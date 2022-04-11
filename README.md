@@ -18,6 +18,14 @@ There is some goals:
 
 The project name `Aprilsh` is derived from `April+sh`. We started this project in April, it's a remote shell.
 
+## Architecture view
+
+![aprilsh.svg](img/aprilsh.svg)
+
+- The green part is provided by the system/terminal emulator. sunch as [alacritty](https://alacritty.org/) or [kitty](https://sw.kovidgoyal.net/kitty/).
+- The cyan part is provided by `Aprilsh`.
+- The rest part is provided by the system.
+
 ## Reference
 
 - mosh source code analysis [client](https://github.com/ericwq/examples/blob/main/tty/client.md), [server](https://github.com/ericwq/examples/blob/main/tty/server.md)
