@@ -1,23 +1,25 @@
 # Aprilsh
 
-reborn [mosh](https://mosh.org/) with golang.
+Reborn [mosh](https://mosh.org/) with golang.
 
 ## Motivation
 
-[openSSH](https://www.openssh.com/) is excellent. While [mosh](https://mosh.org/) provides better keystroke prediction and mosh is capable of handle WiFi/3G/4G/5G roaming problem. But mosh is not active anymore and no release [sine 2017](https://github.com/mobile-shell/mosh/issues/1115). Such a good project like mosh should keeps developing.
+[openSSH](https://www.openssh.com/) is excellent. While `mosh` provides better keystroke prediction/latency and is capable of handle WiFi/cellular mobile network roaming problem. But `mosh` is not active anymore and no release [sine 2017](https://github.com/mobile-shell/mosh/issues/1115). Such a good project like `mosh` should keeps developing.
 
-After read through mosh source code, I decide to use golang to rewrite it. Go is my first choice because the C++ syntax is too complex for me. There is several rules for this project.
+After read through `mosh` source code, I decide to use golang to rewrite it. Go is my first choice because the C++ syntax is too complex for me. And remote shell is our daily tools, if it's broken we need a quick fix. The golang compiler is fast enough.
 
-- Keep the base design of mosh.
+There are several rules for this project:
+
+- Keep the base design of `mosh`: `SSP`, UDP, keystroke prediction.
 - Use 3rd party library as less as possible to keep it clean.
 
-There are some other goals:
+There are some goals for this project:
 
-- Solve the terminal 24bit color support problem.
+- Solve the terminal 24bit color problem.
 - Upgrade to [proto3](https://developers.google.com/protocol-buffers/docs/proto3)
 - Prove that golang is capable of programming terminal application.
 
-The project name `Aprilsh` is derived from `April+sh`. We started this project in April, it's a remote shell.
+The project name `Aprilsh` is derived from `April+sh`. I started this project in April shanghai, it's a remote shell.
 
 ## Architecture view
 
@@ -25,12 +27,13 @@ The project name `Aprilsh` is derived from `April+sh`. We started this project i
 
 - The green part is provided by the system/terminal emulator. Such as [alacritty](https://alacritty.org/) or [kitty](https://sw.kovidgoyal.net/kitty/).
 - The cyan part is provided by `Aprilsh`.
-- The yellow part is our target terminal application. In this case, it's `neovim`.
+- The yellow part is our target terminal application. In the above diagram it's `neovim`.
+- Actually the yellow part can be any terminal based application: [emcas](https://www.gnu.org/software/emacs/), [neovim](https://neovim.io/), [htop](https://htop.dev/), etc.
 - The rest part is provided by the system.
 
 ## Reference
 
-- mosh source code analysis [client](https://github.com/ericwq/examples/blob/main/tty/client.md), [server](https://github.com/ericwq/examples/blob/main/tty/server.md)
+- `mosh` source code analysis [client](https://github.com/ericwq/examples/blob/main/tty/client.md), [server](https://github.com/ericwq/examples/blob/main/tty/server.md)
 - [Unicode 14.0 Character Code Charts](http://www.unicode.org/charts/)
 - [XTerm Control Sequences](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html)
 - [Linux man pages](https://linux.die.net/man/)
