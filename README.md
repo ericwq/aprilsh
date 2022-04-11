@@ -14,7 +14,7 @@ After read through mosh source code, I decide to use golang to rewrite it. Go is
 There is some goals:
 
 - Solve the terminal 24bit color support problem.
-- Verify Golang is capable of programming terminal application.
+- Verify golang is capable of programming terminal application.
 
 The project name `Aprilsh` is derived from `April+sh`. We started this project in April, it's a remote shell.
 
@@ -22,8 +22,9 @@ The project name `Aprilsh` is derived from `April+sh`. We started this project i
 
 ![aprilsh.svg](img/aprilsh.svg)
 
-- The green part is provided by the system/terminal emulator. sunch as [alacritty](https://alacritty.org/) or [kitty](https://sw.kovidgoyal.net/kitty/).
+- The green part is provided by the system/terminal emulator. Such as [alacritty](https://alacritty.org/) or [kitty](https://sw.kovidgoyal.net/kitty/).
 - The cyan part is provided by `Aprilsh`.
+- The yellow part is our target terminal application. In this case, it's `neovim`.
 - The rest part is provided by the system.
 
 ## Reference
