@@ -1,6 +1,6 @@
 # Aprilsh
 
-a [mosh](https://mosh.org/) like tools, golang implementation.
+reborn [mosh](https://mosh.org/) with golang.
 
 ## Motivation
 
