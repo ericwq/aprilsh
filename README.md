@@ -9,12 +9,13 @@ a [mosh](https://mosh.org/) like tools, golang implementation.
 After read through mosh source code, I decide to use golang to rewrite it. Go is my first choice because the C++ syntax is too complex for me. There is several rules for this project.
 
 - Keep the base design of mosh.
-- Use as much as less 3rd party library to keep the implementation clean.
+- Use 3rd party library as less as possible to keep it clean.
 
-There is some goals:
+There are some other goals:
 
 - Solve the terminal 24bit color support problem.
-- Verify golang is capable of programming terminal application.
+- Upgrade to [proto3](https://developers.google.com/protocol-buffers/docs/proto3)
+- Prove that golang is capable of programming terminal application.
 
 The project name `Aprilsh` is derived from `April+sh`. We started this project in April, it's a remote shell.
 
