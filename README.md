@@ -36,5 +36,6 @@ The project name `Aprilsh` is derived from `April+sh`. I started this project in
 - `mosh` source code analysis [client](https://github.com/ericwq/examples/blob/main/tty/client.md), [server](https://github.com/ericwq/examples/blob/main/tty/server.md)
 - [Unicode 14.0 Character Code Charts](http://www.unicode.org/charts/)
 - [XTerm Control Sequences](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html)
+- [wezterm Escape Sequences](https://wezfurlong.org/wezterm/escape-sequences.html)
 - [Linux man pages](https://linux.die.net/man/)
 - [C++ Reference](http://www.cplusplus.com/reference/)
