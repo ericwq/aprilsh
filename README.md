@@ -6,7 +6,7 @@ Reborn [mosh](https://mosh.org/) with golang.
 
 [openSSH](https://www.openssh.com/) is excellent. While `mosh` provides better keystroke prediction/latency and is capable of handle WiFi/cellular mobile network roaming problem. But `mosh` is not active anymore and no release [sine 2017](https://github.com/mobile-shell/mosh/issues/1115). Such a good project like `mosh` should keeps developing.
 
-After read through `mosh` source code, I decide to use golang to rewrite it. Go is my first choice because the C++ syntax is too complex for me. And remote shell is our daily tools, if it's broken we need a quick fix. The golang compiler is fast enough.
+After read through `mosh` source code, I decide to use golang to rewrite it. Golang is my first choice because the C++ syntax is too complex for me. And remote shell is our daily tools, if it's broken we need a quick fix. The golang compiler is fast enough.
 
 There are several rules for this project:
 
