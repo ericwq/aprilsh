@@ -41,6 +41,7 @@ func (r *Renditions) SetBackgroundColor(color uint32) {
 	}
 }
 
+// This method cannot be used to set a color beyond the 16-color set.
 func (r *Renditions) SetRendition(color uint32) {
 	if color == 0 {
 		r.ClearAttributes()
