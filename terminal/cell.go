@@ -19,34 +19,55 @@ const (
 
 const TrueColorMask uint32 = 0x1000000
 
+/* Don't set the fields directly */
 type Renditions struct {
-	foregroundColor uint32
-	backgroundColor uint32
-	attributes      uint32
+	fgColor    uint32
+	bgColor    uint32
+	attributes uint32
 }
 
-func (r *Renditions) SetForegroundColor(color uint32) {
-	if color <= 255 {
-		r.foregroundColor = 30 + color
-	} else if isTrueColor(color) {
-		r.foregroundColor = color
+/*
+The index start from 0. represent ANSI standard color
+The index can also be a true color in the format
+TrueColorMask , r , g , b
+*/
+func (r *Renditions) SetForegroundColor(index uint32) {
+	if index <= 255 {
+		r.fgColor = 30 + index
+	} else if isTrueColor(index) {
+		r.fgColor = index
 	}
 }
 
-func (r *Renditions) SetBackgroundColor(color uint32) {
-	if color <= 255 {
-		r.backgroundColor = 40 + color
-	} else if isTrueColor(color) {
-		r.backgroundColor = color
+/*
+The index start from 0. represent ANSI standard color
+The index can also be a true color in the format
+TrueColorMask , r , g , b
+*/
+func (r *Renditions) SetBackgroundColor(index uint32) {
+	if index <= 255 {
+		r.bgColor = 40 + index
+	} else if isTrueColor(index) {
+		r.bgColor = index
 	}
+}
+
+// set the 24bit foreground color
+func (d *Renditions) SetFgColor(r, g, b uint32) {
+	d.fgColor = makeTrueColor(r, g, b)
+}
+
+// set the 24bit foreground color
+func (d *Renditions) SetBgColor(r, g, b uint32) {
+	d.bgColor = makeTrueColor(r, g, b)
 }
 
 // This method cannot be used to set a color beyond the 16-color set.
 func (r *Renditions) SetRendition(color uint32) {
 	if color == 0 {
 		r.ClearAttributes()
-		r.foregroundColor = 0
-		r.backgroundColor = 0
+		r.fgColor = 0
+		r.bgColor = 0
 		return
 	}
 
@@ -54,24 +75,24 @@ func (r *Renditions) SetRendition(color uint32) {
 	// https://en.wikipedia.org/wiki/ANSI_escape_code
 	switch color {
 	case 39: // Sets the foreground color to the user's configured default text color
-		r.foregroundColor = 0
+		r.fgColor = 0
 		return
 	case 49: // Sets the background color to the user's configured default background color
-		r.backgroundColor = 0
+		r.bgColor = 0
 		return
 	}
 
 	if 30 <= color && color <= 37 { // foreground color in 8-color set
-		r.foregroundColor = color
+		r.fgColor = color
 		return
 	} else if 40 <= color && color <= 47 { // background color in 8-color set
-		r.backgroundColor = color
+		r.bgColor = color
 		return
 	} else if 90 <= color && color <= 97 { //  foreground color in 16-color set
-		r.foregroundColor = color - 90 + 38
+		r.fgColor = color - 90 + 38
 		return
 	} else if 100 <= color && color <= 107 { // background color in 16-color set
-		r.backgroundColor = color - 100 + 48
+		r.bgColor = color - 100 + 48
 	}
 
 	turnOn := color < 9
@@ -115,22 +136,22 @@ func (r *Renditions) SGR() string {
 		ret.WriteString(";8")
 	}
 
-	if r.foregroundColor > 0 {
-		if isTrueColor(r.foregroundColor) { // 24 bit color
-			fmt.Fprintf(&ret, ";38:2;%d;%d;%d", (r.foregroundColor>>16)&0xff, (r.foregroundColor>>8)&0xff, r.foregroundColor&0xff)
-		} else if r.foregroundColor > 37 { // use 256-color set
-			fmt.Fprintf(&ret, ";38;5;%d", r.foregroundColor-30)
+	if r.fgColor > 0 {
+		if isTrueColor(r.fgColor) { // 24 bit color
+			fmt.Fprintf(&ret, ";38;2;%d;%d;%d", (r.fgColor>>16)&0xff, (r.fgColor>>8)&0xff, r.fgColor&0xff)
+		} else if r.fgColor > 37 { // use 256-color set
+			fmt.Fprintf(&ret, ";38;5;%d", r.fgColor-30)
 		} else { // ANSI foreground color
-			fmt.Fprintf(&ret, ";%d", r.foregroundColor)
+			fmt.Fprintf(&ret, ";%d", r.fgColor)
 		}
 	}
-	if r.backgroundColor > 0 {
-		if isTrueColor(r.backgroundColor) {
-			fmt.Fprintf(&ret, ";48;2;%d;%d;%d", (r.backgroundColor>>16)&0xff, (r.backgroundColor>>8)&0xff, r.backgroundColor&0xff)
-		} else if r.backgroundColor > 47 {
-			fmt.Fprintf(&ret, ";48;5;%d", r.backgroundColor-40)
+	if r.bgColor > 0 {
+		if isTrueColor(r.bgColor) {
+			fmt.Fprintf(&ret, ";48;2;%d;%d;%d", (r.bgColor>>16)&0xff, (r.bgColor>>8)&0xff, r.bgColor&0xff)
+		} else if r.bgColor > 47 {
+			fmt.Fprintf(&ret, ";48;5;%d", r.bgColor-40)
 		} else {
-			fmt.Fprintf(&ret, ";%d", r.backgroundColor)
+			fmt.Fprintf(&ret, ";%d", r.bgColor)
 		}
 	}
 	ret.WriteString("m")
