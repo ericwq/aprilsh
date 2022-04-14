@@ -28,8 +28,7 @@ type Renditions struct {
 
 /*
 The index start from 0. represent ANSI standard color
-The index can also be a true color in the format
-TrueColorMask , r , g , b
+The index can also be a true color in the format: TrueColorMask , r , g , b
 */
 func (r *Renditions) SetForegroundColor(index uint32) {
 	if index <= 255 {
@@ -41,8 +40,7 @@ func (r *Renditions) SetForegroundColor(index uint32) {
 
 /*
 The index start from 0. represent ANSI standard color
-The index can also be a true color in the format
-TrueColorMask , r , g , b
+The index can also be a true color in the format: TrueColorMask , r , g , b
 */
 func (r *Renditions) SetBackgroundColor(index uint32) {
 	if index <= 255 {
@@ -138,18 +136,18 @@ func (r *Renditions) SGR() string {
 
 	if r.fgColor > 0 {
 		if isTrueColor(r.fgColor) { // 24 bit color
-			fmt.Fprintf(&ret, ";38;2;%d;%d;%d", (r.fgColor>>16)&0xff, (r.fgColor>>8)&0xff, r.fgColor&0xff)
+			fmt.Fprintf(&ret, ";38:2:%d:%d:%d", (r.fgColor>>16)&0xff, (r.fgColor>>8)&0xff, r.fgColor&0xff)
 		} else if r.fgColor > 37 { // use 256-color set
-			fmt.Fprintf(&ret, ";38;5;%d", r.fgColor-30)
+			fmt.Fprintf(&ret, ";38:5:%d", r.fgColor-30)
 		} else { // ANSI foreground color
 			fmt.Fprintf(&ret, ";%d", r.fgColor)
 		}
 	}
 	if r.bgColor > 0 {
 		if isTrueColor(r.bgColor) {
-			fmt.Fprintf(&ret, ";48;2;%d;%d;%d", (r.bgColor>>16)&0xff, (r.bgColor>>8)&0xff, r.bgColor&0xff)
+			fmt.Fprintf(&ret, ";48:2:%d:%d:%d", (r.bgColor>>16)&0xff, (r.bgColor>>8)&0xff, r.bgColor&0xff)
 		} else if r.bgColor > 47 {
-			fmt.Fprintf(&ret, ";48;5;%d", r.bgColor-40)
+			fmt.Fprintf(&ret, ";48:5:%d", r.bgColor-40)
 		} else {
 			fmt.Fprintf(&ret, ";%d", r.bgColor)
 		}
