@@ -3,6 +3,7 @@ package terminal
 import (
 	"fmt"
 	"strings"
+	"unicode"
 )
 
 const (
@@ -178,4 +179,125 @@ func makeTrueColor(r, g, b uint32) uint32 {
 
 func isTrueColor(color uint32) bool {
 	return color&TrueColorMask != 0
+}
+
+type Cell struct {
+	contents   strings.Builder
+	renditions Renditions
+	wide       bool
+	fallback   bool
+	wrap       bool
+}
+
+func (c *Cell) Reset(bgColor uint32) {
+	c.contents.Reset()
+	c.renditions = Renditions{bgColor: bgColor}
+	c.wide = false
+	c.fallback = false
+	c.wrap = false
+}
+
+func (c Cell) Empty() bool {
+	return c.contents.Len() == 0
+}
+
+// 32 seems like a reasonable limit on combining characters
+func (c Cell) Full() bool {
+	return c.contents.Len() >= 32
+}
+
+func (c *Cell) Clear() {
+	c.contents.Reset()
+}
+
+func (c Cell) IsBlank() bool {
+	return c.Empty() || c.contents.String() == " " || c.contents.String() == "\xC2\xA0"
+}
+
+func (c Cell) ContentsMatch(x Cell) bool {
+	return (c.IsBlank() && x.IsBlank()) || c.contents.String() == x.contents.String()
+}
+
+func (c Cell) Compare(x Cell) bool {
+	// TODO
+	return false
+}
+
+// Is this a printing ISO 8859-1 character?
+func IsPrintISO8859_1(r rune) bool {
+	// return (r <= 0xff && r >= 0xa0) || (r <= 0x7e && r >= 0x20)
+	return unicode.IsGraphic(r)
+}
+
+func AppendToStr(dest strings.Builder, r rune) {
+	// ASCII?  Cheat.
+	if r < 0x7f {
+		dest.WriteByte(byte(r))
+		return
+	}
+	dest.WriteRune(r)
+}
+
+func (c *Cell) Append(r rune) {
+	// ASCII?  Cheat.
+	if r < 0x7f {
+		c.contents.WriteByte(byte(r))
+		return
+	}
+	c.contents.WriteRune(r)
+}
+
+func (c Cell) PrintGrapheme(s strings.Builder) {
+	if c.Empty() {
+		s.WriteString(" ")
+		return
+	}
+	/*
+	 * cells that begin with combining character get combiner
+	 * attached to no-break space
+	 */
+	if c.fallback {
+		s.WriteString("\xC2\xA0")
+	}
+	s.WriteString(c.contents.String())
+}
+
+func (c Cell) GetRenditions() Renditions {
+	return c.renditions
+}
+
+func (c *Cell) SetRenditions(r Renditions) {
+	c.renditions = r
+}
+
+func (c Cell) GetWide() bool {
+	return c.wide
+}
+
+func (c Cell) GetWidth() uint {
+	if c.wide {
+		return 1
+	} else {
+		return 2
+	}
+}
+
+func (c *Cell) SetWide(w bool) {
+	c.wide = w
+}
+
+func (c Cell) GetFallback() bool {
+	return c.fallback
+}
+
+func (c *Cell) SetFallback(f bool) {
+	c.fallback = f
+}
+
+func (c Cell) GetWrap() bool {
+	return c.wrap
+}
+
+func (c *Cell) SetWrap(w bool) {
+	c.wrap = w
 }
