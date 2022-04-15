@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"unicode"
 )
 
 // contents saved in strings.Builder
@@ -111,8 +110,9 @@ func (c Cell) Compare(other Cell) bool {
 
 // Is this a printing ISO 8859-1 character?
 func IsPrintISO8859_1(r rune) bool {
-	// return (r <= 0xff && r >= 0xa0) || (r <= 0x7e && r >= 0x20)
-	return unicode.IsGraphic(r)
+	return (r <= 0xff && r >= 0xa0) || (r <= 0x7e && r >= 0x20)
+	// return unicode.IsGraphic(r)
+	// return unicode.In(r, unicode.Latin, unicode.Number, unicode.Punct)
 }
 
 func AppendToStr(dest *strings.Builder, r rune) {

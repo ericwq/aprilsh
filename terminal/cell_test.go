@@ -5,97 +5,57 @@ import (
 	"testing"
 )
 
-const reset = "\033[0m"
-
-func TestSGR_RGBColor(t *testing.T) {
+func TestAppend(t *testing.T) {
 	tc := []struct {
-		fr, fg, fb uint32
-		br, bg, bb uint32
-		attr       uint32
-		want       string
+		r    rune
+		want string
 	}{
-		{33, 47, 12, 123, 24, 34, Bold, "\033[0;1;38:2:33:47:12;48:2:123:24:34m"},
-		{0, 0, 0, 0, 0, 0, Italic, "\033[0;3;38:2:0:0:0;48:2:0:0:0m"},
-		{12, 34, 128, 59, 190, 155, Underlined, "\033[0;4;38:2:12:34:128;48:2:59:190:155m"},
+		{'\x41', "A"},
+		{'\x4f', "O"},
+		{'\u4e16', "世"},
+		{'\u754c', "界"},
 	}
 
+	var output strings.Builder
 	for _, c := range tc {
-		r := Renditions{}
-		r.SetFgColor(c.fr, c.fg, c.fb)
-		r.SetBgColor(c.br, c.bg, c.bb)
-		if r.GetAttributes(c.attr) {
-			t.Errorf("expect %t, got false", r.GetAttributes(c.attr))
+		var cell Cell
+		output.Reset()
+		cell.Append(c.r)
+		cell.PrintGrapheme(&output)
+		if c.want != output.String() {
+			t.Errorf("expect %s, got %s\n", c.want, output.String())
 		}
-		r.SetAttributes(c.attr, true)
-		got := r.SGR()
-		if c.want != got {
-			a := strings.ReplaceAll(c.want, "\033", "ESC")
-			b := strings.ReplaceAll(got, "\033", "ESC")
-			t.Logf("expect %s, got %s\n", a, b)
 
-			t.Errorf("expect %sThis%s, got %sThis%s\n", c.want, reset, got, reset)
+		output.Reset()
+		AppendToStr(&output, c.r)
+		if c.want != output.String() {
+			t.Errorf("expect %s, got %s\n", c.want, output.String())
 		}
 	}
 }
 
-func TestSGR_256color(t *testing.T) {
+func TestIsPrintISO8859_1(t *testing.T) {
 	tc := []struct {
-		fg   uint32
-		bg   uint32
-		attr uint32
-		want string
+		r rune
+		b bool
 	}{
-		{33, 47, Bold, "\033[0;1;38:5:33;48:5:47m"},
-		{0, 0, Italic, "\033[0;3;30;40m"},
-		{128, 155, Underlined, "\033[0;4;38:5:128;48:5:155m"},
-		{205, 228, Inverse, "\033[0;7;38:5:205;48:5:228m"},
+		{'a', true},
+		{'#', true},
+		{'0', true},
+		{'\x20', true},
+		{'\x7e', true},
+		{'\xa0', true},
+		{'\xff', true},
+		{'\u4e16', false},
 	}
 
 	for _, c := range tc {
-		r := Renditions{}
-		r.SetForegroundColor(c.fg)
-		r.SetBackgroundColor(c.bg)
-		r.SetAttributes(c.attr, true)
-		got := r.SGR()
-		if c.want != got {
-			a := strings.ReplaceAll(c.want, "\033", "ESC")
-			b := strings.ReplaceAll(got, "\033", "ESC")
-			t.Logf("expect %s, got %s\n", a, b)
-
-			t.Errorf("expect %sThis%s, got %sThis%s\n", c.want, reset, got, reset)
+		d := IsPrintISO8859_1(c.r)
+		if d != c.b {
+			t.Errorf("for %c expect %t, got %t\n", c.r, c.b, d)
 		}
 	}
 }
 
-func TestSGR_ANSIcolor(t *testing.T) {
-	tc := []struct {
-		fg   uint32
-		bg   uint32
-		attr uint32
-		want string
-	}{
-		{30, 47, Bold, "\033[0;1;30;47m"},
-		{0, 0, Bold, "\033[0;1m"},
-		{0, 0, Italic, "\033[0;3m"},
-		{0, 0, Underlined, "\033[0;4m"},
-		{39, 49, Invisible, "\033[0;8m"},
-		{90, 107, Underlined, "\033[0;4;38:5:8;48:5:15m"},
-		{37, 40, Faint, "\033[0;37;40m"},
-		{97, 100, Blink, "\033[0;5;38:5:15;48:5:8m"},
-	}
-
-	for _, c := range tc {
-		r := Renditions{}
-		r.SetRendition(c.fg)
-		r.SetRendition(c.bg)
-		r.SetAttributes(c.attr, true)
-		got := r.SGR()
-		if c.want != got {
-			a := strings.ReplaceAll(c.want, "\033", "ESC")
-			b := strings.ReplaceAll(got, "\033", "ESC")
-			t.Logf("expect %s, got %s\n", a, b)
-
-			t.Errorf("expect %sThis%s, got %sThis%s\n", c.want, reset, got, reset)
-		}
-	}
+func TestCompare(t *testing.T) {
 }
