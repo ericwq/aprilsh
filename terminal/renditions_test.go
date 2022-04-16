@@ -7,6 +7,62 @@ import (
 
 const reset = "\033[0m"
 
+func TestSetRendition(t *testing.T) {
+	turnOn := []uint32{1, 2, 3, 4, 5, 6, 7, 8, 9}
+	turnOnWant := []uint32{Bold, 0, Italic, Underlined, Blink, 0, Inverse, Invisible, 0}
+
+	r := Renditions{}
+	for i, c := range turnOn {
+		r.ClearAttributes()
+		// set the flag
+		r.SetRendition(uint32(c))
+
+		// check the flag and skip the undefined item
+		if turnOnWant[i] > 0 && !r.GetAttributes(turnOnWant[i]) {
+			t.Errorf("case [%d] expect %8b, got %8b\n", c, c, r.attributes)
+		}
+	}
+
+	turnOff := []uint32{22, 23, 24, 25, 26, 27, 28, 29}
+	turnOffWant := []uint32{Bold, Italic, Underlined, Blink, 0, Inverse, Invisible, 0}
+	for i, c := range turnOff {
+		// skip the undefined one
+		if turnOffWant[i] == 0 {
+			continue
+		}
+		r.ClearAttributes()
+		// set the flag first
+		r.SetAttributes(turnOffWant[i], true)
+		// next action should disable the flag
+		r.SetRendition(c)
+
+		// error if the flag is not clear
+		if r.GetAttributes(turnOffWant[i]) {
+			t.Errorf("case [%d] expect %8b, got %8b\n", c, c, r.attributes)
+		}
+	}
+}
+
+func TestSetTrueColor(t *testing.T) {
+	tc := []struct {
+		r, g, b uint32
+		want    uint32
+	}{
+		{2, 3, 4, makeTrueColor(2, 3, 4)},
+		{200, 300, 400, makeTrueColor(200, 300, 400)},
+	}
+
+	for _, c := range tc {
+		r := Renditions{}
+		r.SetForegroundColor(TrueColorMask | c.r<<16 | c.g<<8 | c.b)
+		r.SetBackgroundColor(TrueColorMask | c.r<<16 | c.g<<8 | c.b)
+		if r.fgColor != c.want || r.bgColor != c.want {
+			t.Logf("expect foreground color:%2x, got:%2x\n", c.want, r.fgColor)
+			t.Errorf("expect background color:%2x, got:%2x\n", c.want, r.fgColor)
+		}
+	}
+}
+
 func TestSGR_RGBColor(t *testing.T) {
 	tc := []struct {
 		fr, fg, fb uint32
