@@ -1,8 +1,8 @@
 package terminal
 
 import (
-	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 )
@@ -22,6 +22,12 @@ func (c *Cell) Reset(bgColor uint32) {
 	c.wide = false
 	c.fallback = false
 	c.wrap = false
+}
+
+var _output io.Writer
+
+func init() {
+	_output = os.Stderr
 }
 
 func (c Cell) Empty() bool {
@@ -56,8 +62,7 @@ func (c Cell) debugContents() string {
 	chars.WriteString("' [")
 
 	// convert string to bytes
-	buf := bytes.NewBufferString(c.contents.String())
-	b2 := buf.Bytes()
+	b2 := []byte(c.contents.String())
 
 	// print each byte in hex
 	comma := ""
@@ -80,30 +85,30 @@ func (c Cell) Compare(other Cell) bool {
 
 	if grapheme.String() != other_grapheme.String() {
 		ret = true
-		fmt.Fprintf(os.Stderr, "Graphemes: '%s' vs. '%s'\n", grapheme.String(), other_grapheme.String())
+		fmt.Fprintf(_output, "Graphemes: '%s' vs. '%s'\n", grapheme.String(), other_grapheme.String())
 	}
 
 	if !c.ContentsMatch(other) {
-		fmt.Fprintf(os.Stderr, "Contents: %s (%d) vs. %s (%d)\n", c.debugContents(), c.contents.Len(), other.debugContents(), other.contents.Len())
+		fmt.Fprintf(_output, "Contents: %s (%d) vs. %s (%d)\n", c.debugContents(), c.contents.Len(), other.debugContents(), other.contents.Len())
 	}
 
 	if c.fallback != other.fallback {
-		fmt.Fprintf(os.Stderr, "fallback: %t vs. %t\n", c.fallback, other.fallback)
+		fmt.Fprintf(_output, "fallback: %t vs. %t\n", c.fallback, other.fallback)
 	}
 
 	if c.wide != other.wide {
 		ret = true
-		fmt.Fprintf(os.Stderr, "width: %t vs. %t\n", c.wide, other.wide)
+		fmt.Fprintf(_output, "width: %t vs. %t\n", c.wide, other.wide)
 	}
 
 	if c.renditions != other.renditions {
 		ret = true
-		fmt.Fprintf(os.Stderr, "renditions differ\n")
+		fmt.Fprintf(_output, "renditions differ\n")
 	}
 
 	if c.wrap != other.wrap {
 		ret = true
-		fmt.Fprintf(os.Stderr, "wrap: %t vs. %t\n", c.wrap, other.wrap)
+		fmt.Fprintf(_output, "wrap: %t vs. %t\n", c.wrap, other.wrap)
 	}
 	return ret
 }
@@ -128,10 +133,25 @@ func (c *Cell) Append(r rune) {
 	// ASCII?  Cheat.
 	if r < 0x7f {
 		c.contents.WriteByte(byte(r))
+		// set wide automaticlly?
+		// c.wide = runeCount(c.contents.String())
 		return
 	}
 	c.contents.WriteRune(r)
+	// c.wide = runeCount(c.contents.String())
 }
+
+/*
+
+hide it
+func runeCount(s string) bool {
+	if utf8.RuneCountInString(s)>1 {
+		return true
+	} else {
+		return false
+	}
+}
+*/
 
 // print grapheme to output
 func (c Cell) PrintGrapheme(output *strings.Builder) {
@@ -163,9 +183,9 @@ func (c Cell) GetWide() bool {
 
 func (c Cell) GetWidth() uint {
 	if c.wide {
-		return 1
-	} else {
 		return 2
+	} else {
+		return 1
 	}
 }
 
