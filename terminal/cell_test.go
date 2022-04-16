@@ -27,7 +27,43 @@ func TestFull(t *testing.T) {
 			cell.Append(c.addition)
 		}
 		if cell.Full() != c.want {
-			t.Errorf("case:%s[len=%d] expected %t, got %t\n", cell.contents.String(), cell.contents.Len(), c.want, cell.Full())
+			t.Errorf("case:%s[len=%d] expected %t, got %t\n", cell.contents, len(cell.contents), c.want, cell.Full())
+		}
+	}
+}
+
+func TestCellComparable(t *testing.T) {
+	tc := []struct {
+		contents   rune
+		renditions Renditions
+		wide       bool
+		fallback   bool
+		wrap       bool
+	}{
+		{'A', Renditions{bgColor: 0}, false, true, false},
+		{'b', Renditions{bgColor: 40}, false, true, false},
+		{'\x7f', Renditions{bgColor: 41}, false, true, false},
+		{'\u4e16', Renditions{bgColor: 42}, true, true, false},
+		{'\u754c', Renditions{bgColor: 43}, true, true, true},
+	}
+	var c1, c2 Cell
+	for _, c := range tc {
+		c1.Reset(0)
+		c2.Reset(0)
+
+		c1.Append(c.contents)
+		c1.SetRenditions(c.renditions)
+		c1.SetWide(c.wide)
+		c1.SetFallback(c.fallback)
+		c1.SetWrap(c.wrap)
+
+		c2.Append(c.contents)
+		c2.SetRenditions(c1.GetRenditions())
+		c2.SetWide(c1.GetWide())
+		c2.SetFallback(c1.GetFallback())
+		c2.SetWrap(c1.GetWrap())
+		if c1 != c2 {
+			t.Errorf("case %c c1=%v c2=%v\n", c.contents, c1, c2)
 		}
 	}
 }

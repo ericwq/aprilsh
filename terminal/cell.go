@@ -9,7 +9,7 @@ import (
 
 // contents saved in strings.Builder
 type Cell struct {
-	contents   strings.Builder
+	contents   string
 	renditions Renditions
 	wide       bool
 	fallback   bool
@@ -17,7 +17,7 @@ type Cell struct {
 }
 
 func (c *Cell) Reset(bgColor uint32) {
-	c.contents.Reset()
+	c.contents = ""
 	c.renditions = Renditions{bgColor: bgColor}
 	c.wide = false
 	c.fallback = false
@@ -31,24 +31,24 @@ func init() {
 }
 
 func (c Cell) Empty() bool {
-	return c.contents.Len() == 0
+	return len(c.contents) == 0
 }
 
 // 32 seems like a reasonable limit on combining characters
 func (c Cell) Full() bool {
-	return c.contents.Len() >= 32
+	return len(c.contents) >= 32
 }
 
 func (c *Cell) Clear() {
-	c.contents.Reset()
+	c.contents = ""
 }
 
 func (c Cell) IsBlank() bool {
-	return c.Empty() || c.contents.String() == " " || c.contents.String() == "\xC2\xA0"
+	return c.Empty() || c.contents == " " || c.contents == "\xC2\xA0"
 }
 
 func (c Cell) ContentsMatch(x Cell) bool {
-	return (c.IsBlank() && x.IsBlank()) || c.contents.String() == x.contents.String()
+	return (c.IsBlank() && x.IsBlank()) || c.contents == x.contents
 }
 
 func (c Cell) debugContents() string {
@@ -62,7 +62,7 @@ func (c Cell) debugContents() string {
 	chars.WriteString("' [")
 
 	// convert string to bytes
-	b2 := []byte(c.contents.String())
+	b2 := []byte(c.contents)
 
 	// print each byte in hex
 	comma := ""
@@ -89,7 +89,7 @@ func (c Cell) Compare(other Cell) bool {
 	}
 
 	if !c.ContentsMatch(other) {
-		fmt.Fprintf(_output, "Contents: %s (%d) vs. %s (%d)\n", c.debugContents(), c.contents.Len(), other.debugContents(), other.contents.Len())
+		fmt.Fprintf(_output, "Contents: %s (%d) vs. %s (%d)\n", c.debugContents(), len(c.contents), other.debugContents(), len(other.contents))
 	}
 
 	if c.fallback != other.fallback {
@@ -130,15 +130,19 @@ func AppendToStr(dest *strings.Builder, r rune) {
 }
 
 func (c *Cell) Append(r rune) {
+	var builder strings.Builder
+	if !c.Empty() {
+		builder.WriteString(c.contents)
+	}
+
 	// ASCII?  Cheat.
 	if r < 0x7f {
-		c.contents.WriteByte(byte(r))
-		// set wide automaticlly?
-		// c.wide = runeCount(c.contents.String())
-		return
+		builder.WriteByte(byte(r))
+	} else {
+		builder.WriteRune(r)
 	}
-	c.contents.WriteRune(r)
-	// c.wide = runeCount(c.contents.String())
+	c.contents = builder.String()
+	// set wide automaticlly?
 }
 
 /*
@@ -166,7 +170,7 @@ func (c Cell) PrintGrapheme(output *strings.Builder) {
 	if c.fallback {
 		output.WriteString("\xC2\xA0")
 	}
-	output.WriteString(c.contents.String())
+	output.WriteString(c.contents)
 }
 
 func (c Cell) GetRenditions() Renditions {
