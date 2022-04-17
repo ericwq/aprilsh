@@ -9,16 +9,20 @@ func TestSetWrap(t *testing.T) {
 
 	row := NewRow(len(tc), 40)
 
+	// initialize the row with different wrap for each cell
 	for i := range row.cells {
 		row.cells[i].SetWrap(tc[i])
 	}
+	// verify the last one
 	if row.GetWrap() != tc[len(tc)-1] {
 		t.Errorf("Last wrap: expect %t, got %t\n", tc[len(tc)-1], row.GetWrap())
 	}
+	// after delete the last one, verify the (new) last one
 	row.DeleteCell(len(tc)-1, 0)
 	if row.GetWrap() {
 		t.Errorf("expect false, got %t\n", row.GetWrap())
 	}
+	// change the wrap for the (new) last one, and verify it
 	row.SetWrap(true)
 	if !row.GetWrap() {
 		t.Errorf("expect ture, got %t\n", row.GetWrap())
@@ -41,13 +45,17 @@ func TestInsertCell(t *testing.T) {
 	}
 	for _, c := range tc {
 		row := NewRow(width, c.bgColor)
+
+		//insert cell according to the test case col position
 		if row.InsertCell(c.col, 0) {
 			cell := row.cells[c.col]
+
+			// the new cell has different bgColor
 			if cell.GetRenditions().bgColor != 0 {
 				t.Errorf("case %d: expect bgColor=0, got %v\n", c.col, cell.renditions)
 			}
 			// t.Logf("case %d,%v\n", c.col, row.cells)
-		}
+		} // for our of range case, InsertCell should return false.
 	}
 }
 
@@ -66,15 +74,21 @@ func TestDeleteCell(t *testing.T) {
 	}
 	for _, c := range tc {
 		row := NewRow(width, c.bgColor)
+
+		// fill each cell with different grapheme
 		for i := range row.cells {
 			row.cells[i].Append(rune(i + 0x41))
 		}
+
+		// delete cell in different position defined by test case
 		if row.DeleteCell(c.col, 0) {
 			cell := row.cells[c.col]
+
+			// the deleted cell has different grapheme
 			if cell.contents == string(rune(c.col+0x41)) {
 				t.Errorf("case %d, %v\n", c.col, row.cells)
 			}
-		}
+		} // for out of range case, return false
 	}
 }
 
@@ -91,7 +105,7 @@ func TestEqual(t *testing.T) {
 		{2, '\u4e16', 42, true, false, true},
 	}
 
-	// the simple case: same contents
+	// the simple case: same width, same contents
 	for _, c := range tc {
 		row1 := NewRow(c.width, c.bgColor)
 		for i := range row1.cells {
@@ -119,7 +133,7 @@ func TestEqual(t *testing.T) {
 		}
 	}
 
-	// test rows with different width
+	// two rows with different size
 	row1 := NewRow(3, 40)
 	row2 := NewRow(4, 40)
 
@@ -129,7 +143,7 @@ func TestEqual(t *testing.T) {
 		t.Errorf("row.width: row1=%d, row2=%d\n", len(row1.cells), len(row2.cells))
 	}
 
-	// test rows with different content
+	// two rows with different grapheme
 	for _, c := range tc {
 		row1 = NewRow(c.width, c.bgColor)
 		row1.Reset(0)
@@ -140,10 +154,12 @@ func TestEqual(t *testing.T) {
 		}
 
 		for i := range row1.cells {
-			row1.cells[i].Append(c.content + 1) // use different content
+			row1.cells[i].Append(c.content + 1) // use different grapheme
 		}
+
+		// for the gen equal
 		row2.gen = row1.gen
-		if row1.Equal(row2) {
+		if row1.Equal(row2) { //compare different grapheme
 			t.Logf("row.width: row1=%d, row2=%d\n", len(row1.cells), len(row2.cells))
 			t.Errorf("row.cells: row1=%v, row2=%v\n", row1.cells, row2.cells)
 		}

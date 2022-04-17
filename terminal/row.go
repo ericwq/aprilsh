@@ -84,12 +84,18 @@ func (r *Row) SetWrap(w bool) {
 }
 
 func (r Row) Equal(other *Row) bool {
+
+	// the easy way to compare
 	if r.gen != other.gen {
 		return false
 	}
+
+	// has different size?
 	if len(r.cells) != len(other.cells) {
 		return false
 	}
+
+	// check the content
 	for i := range r.cells {
 		if r.cells[i] != other.cells[i] {
 			return false
