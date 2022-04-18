@@ -250,7 +250,7 @@ func (ds *DrawState) ClearDefaultTabs() { ds.defaultTabs = false }
 
 func (ds DrawState) GetNextTab(count int) int {
 	if count >= 0 {
-		for i := ds.cursorCol + 1; i < ds.width; i++ {
+		for i := ds.cursorCol + 1; i < ds.width && count > 0; i++ {
 			count -= 1
 			if ds.tabs[i] && count == 0 {
 				return i
@@ -258,7 +258,7 @@ func (ds DrawState) GetNextTab(count int) int {
 		}
 		return -1
 	} else {
-		for i := ds.cursorCol - 1; i > 0; i-- {
+		for i := ds.cursorCol - 1; i > 0 && count < 0; i-- {
 			count += 1
 			if ds.tabs[i] && count == 0 {
 				return i
@@ -313,7 +313,7 @@ func (ds DrawState) LimitBottom() int {
 func (ds *DrawState) SetForegroundColor(x int)   { ds.renditions.SetForegroundColor(uint32(x)) }
 func (ds *DrawState) SetBackgroundColor(x int)   { ds.renditions.SetBackgroundColor(uint32(x)) }
 func (ds *DrawState) AddRenditions(color uint32) { ds.renditions.SetRendition(color) }
-func (ds DrawState) GetRenditions() Renditions   { return ds.renditions }
+func (ds *DrawState) GetRenditions() Renditions  { return ds.renditions }
 func (ds DrawState) GetBackgroundRendition() int { return int(ds.renditions.bgColor) }
 
 func (ds *DrawState) SavedCursor() {
