@@ -7,7 +7,7 @@ import (
 
 const reset = "\033[0m"
 
-func TestRenditionComparable(t *testing.T) {
+func TestRenditionsComparable(t *testing.T) {
 	tc := []struct {
 		renditions    uint32
 		fgcolor uint32
@@ -40,7 +40,7 @@ func TestRenditionComparable(t *testing.T) {
 	}
 }
 
-func TestSetRendition(t *testing.T) {
+func TestRenditionsSetRendition(t *testing.T) {
 	turnOn := []uint32{1, 2, 3, 4, 5, 6, 7, 8, 9}
 	turnOnWant := []uint32{Bold, 0, Italic, Underlined, Blink, 0, Inverse, Invisible, 0}
 
@@ -76,7 +76,7 @@ func TestSetRendition(t *testing.T) {
 	}
 }
 
-func TestSetTrueColor(t *testing.T) {
+func TestRenditionsSetTrueColor(t *testing.T) {
 	tc := []struct {
 		r, g, b uint32
 		want    uint32
@@ -96,7 +96,7 @@ func TestSetTrueColor(t *testing.T) {
 	}
 }
 
-func TestSGR_RGBColor(t *testing.T) {
+func TestRenditionsSGR_RGBColor(t *testing.T) {
 	tc := []struct {
 		fr, fg, fb uint32
 		br, bg, bb uint32
@@ -127,7 +127,7 @@ func TestSGR_RGBColor(t *testing.T) {
 	}
 }
 
-func TestSGR_256color(t *testing.T) {
+func TestRenditionsSGR_256color(t *testing.T) {
 	tc := []struct {
 		fg   uint32
 		bg   uint32
@@ -156,7 +156,7 @@ func TestSGR_256color(t *testing.T) {
 	}
 }
 
-func TestSGR_ANSIcolor(t *testing.T) {
+func TestRenditionsSGR_ANSIcolor(t *testing.T) {
 	tc := []struct {
 		fg   uint32
 		bg   uint32

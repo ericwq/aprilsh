@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestSetWrap(t *testing.T) {
+func TestRowSetWrap(t *testing.T) {
 	tc := []bool{false, true, false, false, false}
 
 	row := NewRow(len(tc), 40)
@@ -30,7 +30,7 @@ func TestSetWrap(t *testing.T) {
 
 }
 
-func TestInsertCell(t *testing.T) {
+func TestRowInsertCell(t *testing.T) {
 	width := 3
 	tc := []struct {
 		col     int
@@ -59,7 +59,7 @@ func TestInsertCell(t *testing.T) {
 	}
 }
 
-func TestDeleteCell(t *testing.T) {
+func TestRowDeleteCell(t *testing.T) {
 	width := 3
 	tc := []struct {
 		col     int
@@ -92,7 +92,7 @@ func TestDeleteCell(t *testing.T) {
 	}
 }
 
-func TestEqual(t *testing.T) {
+func TestRowEqual(t *testing.T) {
 	tc := []struct {
 		width    int
 		content  rune

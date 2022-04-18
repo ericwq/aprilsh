@@ -8,7 +8,7 @@ import (
 
 // see https://godoc.org/golang.org/x/text/width
 // see http://github.com/mattn/go-runewidth
-func TestFull(t *testing.T) {
+func TestCellFull(t *testing.T) {
 	tc := []struct {
 		base     rune
 		addition rune
@@ -68,7 +68,7 @@ func TestCellComparable(t *testing.T) {
 	}
 }
 
-func TestAppend(t *testing.T) {
+func TestCellAppend(t *testing.T) {
 	tc := []struct {
 		r     rune
 		wide  bool
@@ -106,7 +106,7 @@ func TestAppend(t *testing.T) {
 	}
 }
 
-func TestIsPrintISO8859_1(t *testing.T) {
+func TestCellIsPrintISO8859_1(t *testing.T) {
 	tc := []struct {
 		r rune
 		b bool
@@ -129,7 +129,7 @@ func TestIsPrintISO8859_1(t *testing.T) {
 	}
 }
 
-func TestCompare(t *testing.T) {
+func TestCellCompare(t *testing.T) {
 	tc := []struct {
 		ch0         rune
 		renditions0 uint32
@@ -188,7 +188,7 @@ func TestCompare(t *testing.T) {
 	_output = os.Stderr
 }
 
-func TestPrintGrapheme(t *testing.T) {
+func TestCellPrintGrapheme(t *testing.T) {
 	tc := []struct {
 		ch       rune
 		fallback bool
