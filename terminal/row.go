@@ -104,10 +104,10 @@ func (r Row) Equal(other *Row) bool {
 }
 
 type SavedCursor struct {
-	cursorCol, cursoRow int
-	renditions          Renditions
-	autoWrapMode        bool // default value true
-	originMode          bool
+	cursorCol, cursorRow int
+	renditions           Renditions
+	autoWrapMode         bool // default value true
+	originMode           bool
 }
 
 const (
@@ -176,7 +176,7 @@ func NewDrawState(width, height int) *DrawState {
 
 func (ds *DrawState) reinitializeTabs(start uint) {
 	for i := start; i < uint(len(ds.tabs)); i++ {
-		ds.tabs[i] = (i % 8) == 0
+		ds.tabs[i] = (i % 8) == 0 // TODO : tab size adjustable?
 	}
 }
 
@@ -308,4 +308,75 @@ func (ds DrawState) LimitBottom() int {
 		return ds.scrollingRegionBottomRow
 	}
 	return ds.height - 1
+}
+
+func (ds *DrawState) SetForegroundColor(x int)   { ds.renditions.SetForegroundColor(uint32(x)) }
+func (ds *DrawState) SetBackgroundColor(x int)   { ds.renditions.SetBackgroundColor(uint32(x)) }
+func (ds *DrawState) AddRenditions(color uint32) { ds.renditions.SetRendition(color) }
+func (ds DrawState) GetRenditions() Renditions   { return ds.renditions }
+func (ds DrawState) GetBackgroundRendition() int { return int(ds.renditions.bgColor) }
+
+func (ds *DrawState) SavedCursor() {
+	ds.save.cursorCol = ds.cursorCol
+	ds.save.cursorRow = ds.cursorRow
+	ds.save.renditions = ds.renditions
+	ds.save.autoWrapMode = ds.AutoWrapMode
+	ds.save.originMode = ds.OriginMode
+}
+
+func (ds *DrawState) RestoreCursor() {
+	ds.cursorCol = ds.save.cursorCol
+	ds.cursorRow = ds.save.cursorRow
+	ds.renditions = ds.save.renditions
+	ds.AutoWrapMode = ds.save.autoWrapMode
+	ds.OriginMode = ds.save.originMode
+
+	ds.snapCursorToBorder()
+	ds.newGrapheme()
+}
+
+func (ds *DrawState) ClearCursor() { ds.save = SavedCursor{autoWrapMode: true} }
+
+func (ds *DrawState) Resize(width, height int) {
+	if ds.width != width || ds.height != height {
+		/* reset entire scrolling region on any resize */
+		/* xterm and rxvt-unicode do this. gnome-terminal only
+		   resets scrolling region if it has to become smaller in resize */
+		ds.scrollingRegionTopRow = 0
+		ds.scrollingRegionBottomRow = height - 1
+	}
+
+	// TODO : we initialize the tabs slice from the very beginning?
+	// if something wired happened, please consider to modify it.
+	ds.tabs = make([]bool, width)
+	if ds.defaultTabs {
+		ds.reinitializeTabs(0)
+	}
+
+	ds.width = width
+	ds.height = height
+
+	ds.snapCursorToBorder()
+
+	/* saved cursor will be snapped to border on restore */
+
+	/* invalidate combining char cell if necessary */
+	if ds.combiningCharCol >= width || ds.combiningCharRow >= height {
+		ds.combiningCharCol = -1
+		ds.combiningCharRow = -1
+	}
+}
+
+// use pointer parameter to avoid struct copy
+func (ds DrawState) Equal(x *DrawState) bool {
+	/* only compare fields that affect display */
+	return ds.width == x.width && ds.height == x.height &&
+		ds.cursorCol == x.cursorCol && ds.cursorRow == x.cursorRow &&
+		ds.CursorVisible == x.CursorVisible && ds.ReverseVideo == x.ReverseVideo &&
+		ds.renditions == x.renditions &&
+		ds.BracketedPaste == x.BracketedPaste &&
+		ds.MouseReportingMode == x.MouseReportingMode &&
+		ds.MouseFocusEvent == x.MouseFocusEvent &&
+		ds.MouseAlternateScroll == x.MouseAlternateScroll &&
+		ds.MouseEncodingMode == x.MouseEncodingMode
 }
