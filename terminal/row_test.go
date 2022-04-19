@@ -534,8 +534,47 @@ func TestDrawStateSetScrollingRegion(t *testing.T) {
 
 	for _, v := range tc {
 		ds.SetScrollingRegion(v.pTop, v.pBottom)
+
+		// validate the case
 		if ds.GetScrollingRegionTopRow() != v.wantTop || ds.GetScrollingRegionBottomRow() != v.wantBottom {
 			t.Errorf("%s expect top=%d,bottom=%d; got top=%d,bottom=%d\n", v.name, v.wantTop, v.wantBottom, ds.GetScrollingRegionTopRow(), ds.GetScrollingRegionBottomRow())
 		}
+	}
+}
+
+func TestDrawStateRenditions(t *testing.T) {
+	// base renditions
+	r := Renditions{}
+	fg := 30
+	bg := 47
+	r.SetForegroundColor(uint32(fg))
+	r.SetBackgroundColor(uint32(bg))
+
+	ds := NewDrawState(8, 4)
+
+	// set fg/bg color
+	ds.SetForegroundColor(fg)
+	ds.SetBackgroundColor(bg)
+
+	// validate the result
+	if ds.renditions != r {
+		t.Errorf("set fg/bg color expect %v, got %v\n", r, ds.renditions)
+	}
+
+	// validate the bg color
+	if ds.GetBackgroundRendition() != bg+40 {
+		t.Errorf("get bg color expect %d, got %d\n", bg, ds.GetBackgroundRendition())
+	}
+	// base renditions
+	r = Renditions{}
+	r.SetRendition(uint32(fg))
+
+	ds = NewDrawState(8, 4)
+	// set renditions
+	ds.AddRenditions(uint32(fg))
+
+	// validate the result
+	if ds.renditions != r {
+		t.Errorf("add renditions expect %v, got %v\n", r, ds.renditions)
 	}
 }
