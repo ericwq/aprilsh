@@ -527,12 +527,22 @@ func TestDrawStateSetScrollingRegion(t *testing.T) {
 		{"reverse\t", 10, 5, 10, 10},
 		{"range B\t", 2, 41, 2, 39},
 		{"range T\t", -1, 40, 0, 39},
+		{"range B\t", 2, 41, 2, 39},
+		{"origin Mode\t", -1, 40, 0, 39},
+		{"range B\t", 2, 41, 2, 39},
+		{"just return\t", -57, 40, 2, 39},
 	}
 
 	// implicit screen size 80x40
 	ds := NewDrawState(80, 40)
 
 	for _, v := range tc {
+		if v.pTop < 0 { // test the OriginMode == true
+			ds.OriginMode = true
+			if v.pTop == -57 {
+				ds.height = 0 // specase case: just return, do nothing
+			}
+		}
 		ds.SetScrollingRegion(v.pTop, v.pBottom)
 
 		// validate the case
@@ -576,5 +586,30 @@ func TestDrawStateRenditions(t *testing.T) {
 	// validate the result
 	if ds.renditions != r {
 		t.Errorf("add renditions expect %v, got %v\n", r, ds.renditions)
+	}
+}
+
+func TestDrawStateSnapCursorToBorder(t *testing.T) {
+	tc := []struct {
+		name    string
+		col     int
+		row     int
+		wantCol int
+		wantRow int
+	}{
+		{" in range", 20, 30, 20, 30},
+		{"out range 1", -1, -1, 0, 0},
+		{"out range 2", 89, 41, 79, 39},
+	}
+
+	// implicit size 80x40
+	ds := NewDrawState(80, 40)
+	for _, v := range tc {
+		ds.cursorCol = v.col
+		ds.cursorRow = v.row
+		ds.snapCursorToBorder()
+		if ds.cursorCol != v.wantCol || ds.cursorRow != v.wantRow {
+			t.Errorf("%s expect (%d,%d), got (%d,%d)\n", v.name, v.wantCol, v.wantRow, ds.cursorCol, ds.cursorRow)
+		}
 	}
 }
