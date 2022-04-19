@@ -341,3 +341,45 @@ func TestDrawStateMoveRowCol(t *testing.T) {
 		}
 	}
 }
+
+func TestDrawStateResize(t *testing.T) {
+	tc := []struct {
+		tcName        string
+		currentWidth  int
+		currentHeight int
+		newWidth      int
+		newHeight     int
+	}{
+		{"resize both\t:", 80, 40, 100, 50},
+		{"resize width\t:", 80, 40, 100, 40},
+		{"resize height\t:", 80, 40, 80, 60},
+		{"shrink both\t:", 80, 40, 70, 30},
+		{"shrink width\t:", 80, 40, 70, 40},
+		{"shrink height\t:", 80, 40, 80, 30},
+	}
+	for _, v := range tc {
+		// initialize ds with current size
+		ds := NewDrawState(v.currentWidth, v.currentHeight)
+
+		// move cursor to the edge
+		ds.MoveCol(v.newWidth, false, true)
+		ds.MoveRow(v.newHeight, false)
+
+		// resize
+		ds.Resize(v.newWidth, v.newHeight)
+
+		// validate the new size
+		if ds.GetWidth() != v.newWidth || ds.GetHeight() != v.newHeight {
+			t.Errorf("%s expect size(%d,%d), got size(%d,%d)\n", v.tcName, v.newWidth, v.newHeight, ds.GetWidth(), ds.GetHeight())
+		}
+
+		// shrink will case cause the combining char cell invalidate
+		if v.newHeight < v.currentHeight || v.newWidth < v.currentWidth {
+			if ds.combiningCharCol != -1 && ds.combiningCharRow != -1 {
+				t.Errorf("%s expect combining char col/row to be -1, get %d,%d\n", v.tcName, ds.combiningCharCol, ds.combiningCharRow)
+			}
+			//t.Errorf("%s expect combining char col/row to be -1, get %d,%d\n", v.tcName, ds.combiningCharCol, ds.combiningCharRow)
+		}
+		// t.Logf("%s expect size(%d,%d), got size(%d,%d)\n", v.tcName, v.newWidth, v.newHeight, ds.GetWidth(), ds.GetHeight())
+	}
+}
