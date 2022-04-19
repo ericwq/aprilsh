@@ -514,3 +514,28 @@ func TestDrawStateClearDefaultTab(t *testing.T) {
 		t.Errorf("expect false, got %t\n", ds.defaultTabs)
 	}
 }
+
+func TestDrawStateSetScrollingRegion(t *testing.T) {
+	tc := []struct {
+		name       string
+		pTop       int
+		pBottom    int
+		wantTop    int
+		wantBottom int
+	}{
+		{"in scope\t", 2, 38, 2, 38},
+		{"reverse\t", 10, 5, 10, 10},
+		{"range B\t", 2, 41, 2, 39},
+		{"range T\t", -1, 40, 0, 39},
+	}
+
+	// implicit screen size 80x40
+	ds := NewDrawState(80, 40)
+
+	for _, v := range tc {
+		ds.SetScrollingRegion(v.pTop, v.pBottom)
+		if ds.GetScrollingRegionTopRow() != v.wantTop || ds.GetScrollingRegionBottomRow() != v.wantBottom {
+			t.Errorf("%s expect top=%d,bottom=%d; got top=%d,bottom=%d\n", v.name, v.wantTop, v.wantBottom, ds.GetScrollingRegionTopRow(), ds.GetScrollingRegionBottomRow())
+		}
+	}
+}
