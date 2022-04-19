@@ -378,8 +378,90 @@ func TestDrawStateResize(t *testing.T) {
 			if ds.combiningCharCol != -1 && ds.combiningCharRow != -1 {
 				t.Errorf("%s expect combining char col/row to be -1, get %d,%d\n", v.tcName, ds.combiningCharCol, ds.combiningCharRow)
 			}
-			//t.Errorf("%s expect combining char col/row to be -1, get %d,%d\n", v.tcName, ds.combiningCharCol, ds.combiningCharRow)
+			// t.Errorf("%s expect combining char col/row to be -1, get %d,%d\n", v.tcName, ds.combiningCharCol, ds.combiningCharRow)
 		}
 		// t.Logf("%s expect size(%d,%d), got size(%d,%d)\n", v.tcName, v.newWidth, v.newHeight, ds.GetWidth(), ds.GetHeight())
 	}
+}
+
+func TestDrawStateEqual(t *testing.T) {
+	type parameter struct {
+		width              int
+		height             int
+		cursorCol          int
+		cursorRow          int
+		renditions         Renditions
+		mouseReportingMode int
+		mouseEncodingMode  int
+	}
+
+	tc := []struct {
+		name string
+		p1   parameter
+		p2   parameter
+		want bool
+	}{
+		{
+			"all equal:\t\t",
+			parameter{80, 40, 2, 2, Renditions{bgColor: 0}, MOUSE_REPORTING_NONE, MOUSE_ENCODING_DEFAULT},
+			parameter{80, 40, 2, 2, Renditions{bgColor: 0}, MOUSE_REPORTING_NONE, MOUSE_ENCODING_DEFAULT},
+			true,
+		},
+		{
+			"diff height:\t",
+			parameter{80, 49, 2, 2, Renditions{bgColor: 40}, MOUSE_REPORTING_NONE, MOUSE_ENCODING_DEFAULT},
+			parameter{80, 40, 2, 2, Renditions{bgColor: 40}, MOUSE_REPORTING_NONE, MOUSE_ENCODING_DEFAULT},
+			false,
+		},
+		{
+			"diff width:\t",
+			parameter{83, 40, 2, 2, Renditions{bgColor: 40}, MOUSE_REPORTING_NONE, MOUSE_ENCODING_DEFAULT},
+			parameter{80, 40, 2, 2, Renditions{bgColor: 40}, MOUSE_REPORTING_NONE, MOUSE_ENCODING_DEFAULT},
+			false,
+		},
+		{
+			"diff reporting:\t",
+			parameter{83, 40, 2, 2, Renditions{bgColor: 40}, MOUSE_REPORTING_VT220, MOUSE_ENCODING_DEFAULT},
+			parameter{80, 40, 2, 2, Renditions{bgColor: 40}, MOUSE_REPORTING_NONE, MOUSE_ENCODING_DEFAULT},
+			false,
+		},
+		{
+			"diff endoding:\t",
+			parameter{83, 40, 2, 2, Renditions{bgColor: 40}, MOUSE_REPORTING_VT220, MOUSE_ENCODING_UTF8},
+			parameter{80, 40, 2, 2, Renditions{bgColor: 40}, MOUSE_REPORTING_VT220, MOUSE_ENCODING_DEFAULT},
+			false,
+		},
+		{
+			"diff renditions:\t",
+			parameter{83, 40, 2, 2, Renditions{bgColor: 45}, MOUSE_REPORTING_VT220, MOUSE_ENCODING_UTF8},
+			parameter{80, 40, 2, 2, Renditions{bgColor: 40}, MOUSE_REPORTING_VT220, MOUSE_ENCODING_UTF8},
+			false,
+		},
+	}
+	for _, v := range tc {
+		// create a DrawState and set all the field
+		ds1 := NewDrawState(v.p1.width, v.p1.height)
+		ds1.MoveRow(v.p1.cursorRow, false)
+		ds1.MoveCol(v.p1.cursorCol, false, false)
+		ds1.MouseReportingMode = v.p1.mouseReportingMode
+		ds1.MouseEncodingMode = v.p1.mouseEncodingMode
+		ds1.renditions = v.p1.renditions
+
+		// create another DrawState and set all the field
+		ds2 := NewDrawState(v.p2.width, v.p2.height)
+		ds2.MoveRow(v.p2.cursorRow, false)
+		ds2.MoveCol(v.p2.cursorCol, false, false)
+		ds2.MouseReportingMode = v.p2.mouseReportingMode
+		ds2.MouseEncodingMode = v.p2.mouseEncodingMode
+		ds2.renditions = v.p2.renditions
+
+		if ds1.Equal(ds2) != v.want {
+			//t.Logf("ds1=%v\nds2=%v\n", ds1, ds2)
+			t.Errorf("%s expect %t, got %t\n", v.name, v.want, ds1.Equal(ds2))
+		}
+	}
+}
+
+func TestDrawStateSetTab(t *testing.T) {
+
 }
