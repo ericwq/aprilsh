@@ -456,12 +456,61 @@ func TestDrawStateEqual(t *testing.T) {
 		ds2.renditions = v.p2.renditions
 
 		if ds1.Equal(ds2) != v.want {
-			//t.Logf("ds1=%v\nds2=%v\n", ds1, ds2)
+			// t.Logf("ds1=%v\nds2=%v\n", ds1, ds2)
 			t.Errorf("%s expect %t, got %t\n", v.name, v.want, ds1.Equal(ds2))
 		}
 	}
 }
 
 func TestDrawStateSetTab(t *testing.T) {
+	width := 80
+	tc := []struct {
+		col  int
+		want bool
+	}{
+		{0, true},
+		{1, false},
+		{7, false},
+		{8, true},
+		{width - 1, false},
+		// lack of range check, cancle the test case
+		// {width, true},
+		// {width + 1, false},
+	}
+	for _, v := range tc {
+		ds := NewDrawState(width, 40)
 
+		// validate the origianl tab value
+		original := ds.tabs[v.col]
+		if original != v.want {
+			t.Errorf("original\t col=%d expect %t, got %t\n", v.col, v.want, ds.tabs[v.col])
+		}
+
+		// move cursor to col and set tab[cursorCol]
+		ds.MoveCol(v.col, false, false)
+
+		// set tab true
+		ds.SetTab()
+		if ds.tabs[v.col] != true {
+			t.Errorf("SetTab\t col=%d expect %t, got %t\n", v.col, true, ds.tabs[v.col])
+		}
+
+		// clear tab
+		ds.ClearTab(v.col)
+		if ds.tabs[v.col] != false {
+			t.Errorf("ClearTab\t col=%d expect %t, got %t\n", v.col, false, ds.tabs[v.col])
+		}
+
+		// restore the original tab value
+		ds.tabs[v.col] = original
+	}
+}
+
+func TestDrawStateClearDefaultTab(t *testing.T) {
+	ds := NewDrawState(80, 40)
+
+	ds.ClearDefaultTabs()
+	if ds.defaultTabs {
+		t.Errorf("expect false, got %t\n", ds.defaultTabs)
+	}
 }
