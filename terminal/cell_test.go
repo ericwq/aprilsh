@@ -214,3 +214,28 @@ func TestCellPrintGrapheme(t *testing.T) {
 		}
 	}
 }
+
+func TestCelldebugContents(t *testing.T) {
+	tc := []struct {
+		name string
+		ch   rune
+		want string
+	}{
+		{"empty", -1, "'_' []"},
+		{"space", '\x20', "' ' [0x20, ]"},
+		{"scope", '\x7e', "'~' [0x7e, ]"},
+		{"scope", '\xa0', "' ' [0xc2, , 0xa0, ]"},
+		{"scope", '\xff', "'ÿ' [0xc3, , 0xbf, ]"},
+		{"chinese", '\u4e16', "'世' [0xe4, , 0xb8, , 0x96, ]"},
+	}
+
+	for _, v := range tc {
+		cell := Cell{}
+		if v.ch != -1 {
+			cell.Append(v.ch)
+		}
+		if v.want != cell.debugContents() {
+			t.Errorf("%s:\t expect [%s], got [%s]", v.name, v.want, cell.debugContents())
+		}
+	}
+}
