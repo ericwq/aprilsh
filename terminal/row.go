@@ -1,5 +1,10 @@
 package terminal
 
+import (
+	"fmt"
+	"strings"
+)
+
 var gen_counter uint64 = 0
 
 type Row struct {
@@ -110,6 +115,22 @@ func (r Row) Equal(other *Row) bool {
 		}
 	}
 	return true
+}
+
+func (r Row) String() string {
+	var builder strings.Builder
+
+	builder.WriteString("Row")
+
+	fmt.Fprintf(&builder, "[%2d]{", r.gen )
+
+	for _,v:= range r.cells {
+		v.PrintGrapheme(&builder)
+		//builder.WriteRune(v.PrintGrapheme(output *strings.Builder))
+	}
+	fmt.Fprintf(&builder,"}")
+
+	return builder.String()
 }
 
 type SavedCursor struct {

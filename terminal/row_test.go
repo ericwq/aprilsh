@@ -1,6 +1,7 @@
 package terminal
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -26,6 +27,26 @@ func TestRowSetWrap(t *testing.T) {
 	row.SetWrap(true)
 	if !row.GetWrap() {
 		t.Errorf("expect ture, got %t\n", row.GetWrap())
+	}
+}
+
+func TestRowString(t *testing.T) {
+	width := 10
+	bgColor := uint32(0)
+	row := NewRow(width, bgColor)
+
+	// filled the cell
+	for i := range row.cells {
+		row.cells[i].Append(rune(0x41 + i))
+	}
+
+	// gen will changed dynamiclly
+	str := row.String()
+	gen := fmt.Sprintf("[%2d]", row.gen)
+	want := "Row" + gen + "{ABCDEFGHIJ}"
+
+	if str != want {
+		t.Errorf("expect %s, got %v\n", want, str)
 	}
 }
 
