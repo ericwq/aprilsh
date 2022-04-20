@@ -27,6 +27,15 @@ func NewRow(width int, bgColor uint32) *Row {
 	return &r
 }
 
+// return cell specified by col
+func (r *Row) At(col int) *Cell {
+	if col < 0 || col > len(r.cells)-1 {
+		return nil
+	}
+	cell := r.cells[col]
+	return &cell
+}
+
 func (r *Row) InsertCell(col int, bgColor uint32) bool {
 	// validate the column range
 	if col < 0 || col > len(r.cells)-1 {

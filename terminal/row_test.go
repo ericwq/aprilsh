@@ -29,6 +29,38 @@ func TestRowSetWrap(t *testing.T) {
 	}
 }
 
+func TestRowAt(t *testing.T) {
+	width := 40
+	bgColor := uint32(0)
+
+	tc := []struct {
+		name string
+		col  int
+		want *Cell
+	}{
+		{"col -1", -1, nil},
+		{"col 0", 0, &Cell{renditions: Renditions{bgColor: bgColor}}},
+		{"col 1", 1, &Cell{renditions: Renditions{bgColor: bgColor}}},
+		{"col w-1", width - 1, &Cell{renditions: Renditions{bgColor: bgColor}}},
+		{"col w", width, nil},
+		{"col w+1", width + 1, nil},
+	}
+
+	row := NewRow(width, bgColor)
+	for _, v := range tc {
+		c1 := row.At(v.col)
+		if v.want == nil && c1 == nil {
+			// t.Logf("both nil, %v %v\n", v.want, row.At(v.col))
+			continue
+		} else if v.want != nil && c1 != nil && *c1 == *(v.want) {
+			// t.Logf("%s:REAL\t expect %v, got %v\n", v.name, v.want, row.At(v.col))
+			continue
+		} else {
+			t.Errorf("%s:\t expect %v, got %v\n", v.name, v.want, row.At(v.col))
+		}
+	}
+}
+
 func TestRowInsertCell(t *testing.T) {
 	width := 3
 	tc := []struct {
