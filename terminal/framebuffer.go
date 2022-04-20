@@ -111,7 +111,7 @@ func (fb *Framebuffer) insert(start int, count int) {
 
 	// fill the row : copy or pointer?
 	for i := start; i < start+count; i++ {
-		fb.rows[i] = fb.newRow()
+		fb.rows[i] = *(fb.newRow())
 	}
 
 	// remove the extra one
