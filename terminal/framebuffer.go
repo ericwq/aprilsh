@@ -38,22 +38,25 @@ func (fb *Framebuffer) GetRow(row int) *Row {
 	if row == -1 {
 		row = fb.DS.GetCursorRow()
 	}
+
 	return &(fb.rows[row])
 }
 
 // it is get_mutable_cell go version
 // there is no inline counterpart in go
 func (fb *Framebuffer) GetCell(row, col int) *Cell {
-	if row == -1 {
+	if row < 0 || row > len(fb.rows)-1 {
 		row = fb.DS.GetCursorRow()
 	}
-	if col == -1 {
+
+	if col < 0 || col > len(fb.GetRow(0).cells)-1 {
 		col = fb.DS.GetCursorCol()
 	}
+
 	return fb.GetRow(row).At(col)
 }
 
-func (fb *Framebuffer) InsertLine(beforeRow int, count int) bool {
+func (fb *Framebuffer) InsertLine(beforeRow int, count int) bool { // #BehaviorChange return bool
 	// invalide beforeRow
 	if beforeRow < fb.DS.GetScrollingRegionTopRow() || beforeRow > fb.DS.GetScrollingRegionBottomRow()+1 {
 		return false
@@ -79,10 +82,10 @@ func (fb *Framebuffer) InsertLine(beforeRow int, count int) bool {
 	return true
 }
 
-func (fb *Framebuffer) DeleteLine(row, count int) {
+func (fb *Framebuffer) DeleteLine(row, count int) bool { // #BehaviorChange return bool
 	// invalide row
 	if row < fb.DS.GetScrollingRegionTopRow() || row > fb.DS.GetScrollingRegionBottomRow() {
-		return
+		return false
 	}
 
 	maxRoll := fb.DS.GetScrollingRegionBottomRow() + 1 - row
@@ -90,8 +93,8 @@ func (fb *Framebuffer) DeleteLine(row, count int) {
 		count = maxRoll
 	}
 
-	if count == 0 {
-		return
+	if count <= 0 { // #BehaviorChange: original count ==0
+		return false
 	}
 
 	// delete old rows
@@ -101,12 +104,14 @@ func (fb *Framebuffer) DeleteLine(row, count int) {
 	// insert new rows
 	start = 0 + fb.DS.GetScrollingRegionBottomRow() + 1 - count
 	fb.insert(start, count)
+
+	return true
 }
 
 func (fb *Framebuffer) erase(start int, count int) {
 	// delete count rows
 	copy(fb.rows[start:], fb.rows[start+count:])
-	//fb.rows = fb.rows[:len(fb.rows)-count]
+	// fb.rows = fb.rows[:len(fb.rows)-count]
 }
 
 func (fb *Framebuffer) insert(start int, count int) {
