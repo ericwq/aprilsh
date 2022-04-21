@@ -56,6 +56,66 @@ func (fb *Framebuffer) GetCell(row, col int) *Cell {
 	return fb.GetRow(row).At(col)
 }
 
+func (fb *Framebuffer) erase(start int, count int) {
+	// delete count rows
+	copy(fb.rows[start:], fb.rows[start+count:])
+	// fb.rows = fb.rows[:len(fb.rows)-count]
+}
+
+func (fb *Framebuffer) insert(start int, count int) {
+	// insert count rows
+	fb.rows = append(fb.rows[:start+count], fb.rows[start:]...)
+
+	// fill the row : copy or pointer?
+	for i := start; i < start+count; i++ {
+		fb.rows[i] = *(fb.newRow())
+	}
+
+	// remove the extra one
+	fb.rows = fb.rows[:len(fb.rows)-count]
+}
+
+func (fb *Framebuffer) Scroll(N int) {
+	if N >= 0 {
+		fb.DeleteLine(fb.DS.GetScrollingRegionTopRow(), N)
+	} else {
+		fb.InsertLine(fb.DS.GetScrollingRegionTopRow(), -N)
+	}
+}
+
+func (fb *Framebuffer) MoveRowsAutoscroll(rows int) {
+	/* don't scroll if outside the scrolling region */
+	if fb.DS.GetCursorRow() < fb.DS.GetScrollingRegionTopRow() || fb.DS.GetCursorRow() > fb.DS.GetScrollingRegionBottomRow() {
+		fb.DS.MoveRow(rows, true)
+		return
+	}
+
+	if fb.DS.GetCursorRow()+rows > fb.DS.GetScrollingRegionBottomRow() {
+		N := fb.DS.GetCursorRow() + rows - fb.DS.GetScrollingRegionBottomRow()
+		fb.Scroll(N)
+	} else if fb.DS.GetCursorRow()+rows < fb.DS.GetScrollingRegionTopRow() {
+		N := fb.DS.GetCursorRow() + rows - fb.DS.GetScrollingRegionTopRow()
+		fb.Scroll(N)
+	}
+
+	fb.DS.MoveRow(rows, true)
+}
+
+func (fb *Framebuffer) GetCombiningCell() *Cell {
+	if fb.DS.GetCombiningCharCol() < 0 || fb.DS.GetCombiningCharRow() < 0 || fb.DS.GetCombiningCharCol() >= fb.DS.GetWidth() || fb.DS.GetCombiningCharRow() >= fb.DS.GetHeight() {
+		return nil
+	}
+	return fb.GetCell(fb.DS.GetCombiningCharRow(), fb.DS.GetCombiningCharCol())
+}
+
+func (fb *Framebuffer) ApplyRenditionsToCell(cell *Cell) {
+	if cell == nil {
+		// get cursor cell
+		cell = fb.GetCell(-1, -1)
+	}
+	cell.SetRenditions(fb.DS.GetRenditions())
+}
+
 func (fb *Framebuffer) InsertLine(beforeRow int, count int) bool { // #BehaviorChange return bool
 	// invalide beforeRow
 	if beforeRow < fb.DS.GetScrollingRegionTopRow() || beforeRow > fb.DS.GetScrollingRegionBottomRow()+1 {
@@ -108,21 +168,119 @@ func (fb *Framebuffer) DeleteLine(row, count int) bool { // #BehaviorChange retu
 	return true
 }
 
-func (fb *Framebuffer) erase(start int, count int) {
-	// delete count rows
-	copy(fb.rows[start:], fb.rows[start+count:])
-	// fb.rows = fb.rows[:len(fb.rows)-count]
+func (fb *Framebuffer) InsertCell(row, col int) {
+	fb.GetRow(row).InsertCell(col, uint32(fb.DS.GetBackgroundRendition()))
 }
 
-func (fb *Framebuffer) insert(start int, count int) {
-	// insert count rows
-	fb.rows = append(fb.rows[:start+count], fb.rows[start:]...)
+func (fb *Framebuffer) DeleteCell(row, col int) {
+	fb.GetRow(row).DeleteCell(col, uint32(fb.DS.GetBackgroundRendition()))
+}
 
-	// fill the row : copy or pointer?
-	for i := start; i < start+count; i++ {
-		fb.rows[i] = *(fb.newRow())
+func (fb *Framebuffer) Reset() {
+	width := fb.DS.GetWidth()
+	height := fb.DS.GetHeight()
+
+	fb.DS = *NewDrawState(width, height)
+
+	fb.rows = make([]Row, height)
+	for i := range fb.rows {
+		fb.rows[i] = *NewRow(width, 0)
+	}
+	fb.windowTitle = ""
+	/* do not reset bell_count */
+}
+
+func (fb *Framebuffer) SoftReset() {
+	fb.DS.InsertMode = false
+	fb.DS.OriginMode = false
+	fb.DS.CursorVisible = false
+	fb.DS.ApplicationModeCursorKeys = false
+	fb.DS.SetScrollingRegion(0, fb.DS.GetHeight()-1)
+	fb.DS.AddRenditions(0)
+	fb.DS.ClearSavedCursor()
+}
+
+func (fb *Framebuffer) SetTitleInitialized()        { fb.titleInitialized = true }
+func (fb Framebuffer) IsTitleInitialized() bool     { return fb.titleInitialized }
+func (fb *Framebuffer) SetIconName(iconName string) { fb.iconName = iconName }
+func (fb *Framebuffer) SetWindowTitle(title string) { fb.windowTitle = title }
+func (fb Framebuffer) GetIconName() string          { return fb.iconName }
+func (fb Framebuffer) GetWindowTitle() string       { return fb.windowTitle }
+
+func (fb *Framebuffer) PrefixWindowTitle(s string) {
+	if fb.iconName == fb.windowTitle {
+		/* preserve equivalence */
+		fb.iconName = s + fb.iconName
+	}
+	fb.windowTitle = s + fb.windowTitle
+}
+
+func (fb *Framebuffer) Resize(width, height int) {
+	if width <= 0 || height <= 0 {
+		panic("Framebuffer.Resize(), width or height is negative.")
 	}
 
-	// remove the extra one
-	fb.rows = fb.rows[:len(fb.rows)-count]
+	oldWidth := fb.DS.GetWidth()
+	oldHeight := fb.DS.GetHeight()
+	fb.DS.Resize(width, height)
+
+	if oldHeight != height {
+		// adjust the rows
+		fb.resizeRows(width, height)
+	}
+
+	if oldWidth == width {
+		return
+	}
+
+	// adjust the width
+	fb.resizeCols(width, oldWidth)
+}
+
+func (fb *Framebuffer) resizeRows(width, height int) {
+	count := height - len(fb.rows)
+	if count < 0 {
+		// quick abs
+		count = -count
+
+		// shrink the rows
+		fb.rows = fb.rows[:len(fb.rows)-count]
+	} else {
+		// need to expand the addRows
+		addRows := make([]Row, count)
+		for i := range addRows {
+			addRows[i] = *NewRow(width, 0)
+		}
+		fb.rows = append(fb.rows, addRows[:]...)
+	}
+}
+
+func (fb *Framebuffer) resizeCols(width, oldWidth int) {
+	count := width - oldWidth
+	if count < 0 {
+		// shrink
+		for i := range fb.rows {
+			// already reach the new width
+			if width == len(fb.rows[i].cells) {
+				continue
+			}
+			// shrink the columns
+			fb.rows[i].cells = fb.rows[i].cells[:width]
+		}
+	} else {
+		// expand
+		for i := range fb.rows {
+			// already reach the new width
+			if width == len(fb.rows[i].cells) {
+				continue
+			}
+
+			// expand the addCells
+			addCells := make([]Cell, count)
+			for i := range addCells {
+				addCells[i].SetRenditions(Renditions{bgColor: 0})
+			}
+			fb.rows[i].cells = append(fb.rows[i].cells, addCells[:]...)
+		}
+	}
 }
