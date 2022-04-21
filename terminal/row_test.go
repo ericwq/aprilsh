@@ -266,7 +266,7 @@ func TestDrawStateRestoreCursor(t *testing.T) {
 	}
 
 	// clear the cursor to (0,0)
-	ds.ClearCursor()
+	ds.ClearSavedCursor()
 	ds.RestoreCursor()
 	x = 0
 	y = 0

@@ -365,7 +365,7 @@ func (ds *DrawState) RestoreCursor() {
 	ds.newGrapheme()
 }
 
-func (ds *DrawState) ClearCursor() { ds.save = SavedCursor{autoWrapMode: true} }
+func (ds *DrawState) ClearSavedCursor() { ds.save = SavedCursor{autoWrapMode: true} }
 
 func (ds *DrawState) Resize(width, height int) {
 	if ds.width != width || ds.height != height {
