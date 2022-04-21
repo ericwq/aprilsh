@@ -284,3 +284,27 @@ func (fb *Framebuffer) resizeCols(width, oldWidth int) {
 		}
 	}
 }
+
+func (fb *Framebuffer) ResetCell(c *Cell) { c.Reset(uint32(fb.DS.GetBackgroundRendition())) }
+func (fb *Framebuffer) ResetRow(r *Row)   { r.Reset(uint32(fb.DS.GetBackgroundRendition())) }
+func (fb *Framebuffer) RingBell()         { fb.bellCount += 1 }
+func (fb Framebuffer) GetBellCount() int  { return fb.bellCount }
+
+func (fb Framebuffer) Equal(other *Framebuffer) (ret bool) {
+	// check the rows first
+	for i := range fb.rows {
+		if !fb.rows[i].Equal(&other.rows[i]) {
+			return ret
+		}
+	}
+
+	if fb.windowTitle != other.windowTitle || fb.bellCount != other.bellCount {
+		return ret
+	}
+	if !fb.DS.Equal(&other.DS) {
+		return ret
+	}
+
+	ret = true
+	return ret
+}
