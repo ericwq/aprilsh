@@ -117,7 +117,7 @@ func (fb *Framebuffer) ApplyRenditionsToCell(cell *Cell) {
 }
 
 func (fb *Framebuffer) InsertLine(beforeRow int, count int) bool { // #BehaviorChange return bool
-	// invalide beforeRow
+	// validate beforeRow
 	if beforeRow < fb.DS.GetScrollingRegionTopRow() || beforeRow > fb.DS.GetScrollingRegionBottomRow()+1 {
 		return false
 	}
@@ -143,7 +143,7 @@ func (fb *Framebuffer) InsertLine(beforeRow int, count int) bool { // #BehaviorC
 }
 
 func (fb *Framebuffer) DeleteLine(row, count int) bool { // #BehaviorChange return bool
-	// invalide row
+	// validate row
 	if row < fb.DS.GetScrollingRegionTopRow() || row > fb.DS.GetScrollingRegionBottomRow() {
 		return false
 	}
@@ -215,9 +215,9 @@ func (fb *Framebuffer) PrefixWindowTitle(s string) {
 	fb.windowTitle = s + fb.windowTitle
 }
 
-func (fb *Framebuffer) Resize(width, height int) {
+func (fb *Framebuffer) Resize(width, height int) bool {
 	if width <= 0 || height <= 0 {
-		panic("Framebuffer.Resize(), width or height is negative.")
+		return false
 	}
 
 	oldWidth := fb.DS.GetWidth()
@@ -230,11 +230,12 @@ func (fb *Framebuffer) Resize(width, height int) {
 	}
 
 	if oldWidth == width {
-		return
+		return true
 	}
 
 	// adjust the width
 	fb.resizeCols(width, oldWidth)
+	return true
 }
 
 func (fb *Framebuffer) resizeRows(width, height int) {
@@ -260,10 +261,6 @@ func (fb *Framebuffer) resizeCols(width, oldWidth int) {
 	if count < 0 {
 		// shrink
 		for i := range fb.rows {
-			// already reach the new width
-			if width == len(fb.rows[i].cells) {
-				continue
-			}
 			// shrink the columns
 			fb.rows[i].cells = fb.rows[i].cells[:width]
 		}
@@ -298,9 +295,12 @@ func (fb Framebuffer) Equal(other *Framebuffer) (ret bool) {
 		}
 	}
 
+	// check title and bell count
 	if fb.windowTitle != other.windowTitle || fb.bellCount != other.bellCount {
 		return ret
 	}
+
+	// check DrawState
 	if !fb.DS.Equal(&other.DS) {
 		return ret
 	}

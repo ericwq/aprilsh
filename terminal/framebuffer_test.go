@@ -191,3 +191,44 @@ func TestFramebufferGetCell(t *testing.T) {
 		}
 	}
 }
+
+func TestFramebufferResize(t *testing.T) {
+	tc := []struct {
+		name   string
+		width  int
+		height int
+	}{
+		{"expand both", 12, 10},
+		{"expand height", 8, 10},
+		{"expand width", 12, 8},
+		{"shrink both", 6, 6},
+		{"shrink height", 8, 2},
+		{"shrink width", 2, 8},
+		{"invalid both", -1,-1},
+	}
+
+	// initial framebuffer size
+	width := 8
+	height := 8
+
+	for _, v := range tc {
+		fb := NewFramebuffer(width, height)
+		// fill the contents
+		fillinRows(fb)
+
+		// save the contents: before
+		before := printRows(fb)
+
+		if !fb.Resize(v.width, v.height) {
+			continue
+		}
+
+		after := printRows(fb)
+
+		if len(fb.rows) != v.height || len(fb.rows[v.height-1].cells) != v.width {
+			t.Logf("\nBefore Delete:\n%s", before)
+			t.Logf("\nAfter  Delete:\n%s", after)
+			t.Errorf("%s:\t expect (%d,%d)\n", v.name, v.width, v.height)
+		}
+	}
+}
