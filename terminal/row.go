@@ -37,8 +37,9 @@ func (r *Row) At(col int) *Cell {
 	if col < 0 || col > len(r.cells)-1 {
 		return nil
 	}
-	cell := r.cells[col]
-	return &cell
+
+	// return the pointer of slice element directly
+	return &(r.cells[col])
 }
 
 func (r *Row) InsertCell(col int, bgColor uint32) bool {
@@ -122,13 +123,13 @@ func (r Row) String() string {
 
 	builder.WriteString("Row")
 
-	fmt.Fprintf(&builder, "[%2d]{", r.gen )
+	fmt.Fprintf(&builder, "[%2d]{", r.gen)
 
-	for _,v:= range r.cells {
+	for _, v := range r.cells {
 		v.PrintGrapheme(&builder)
-		//builder.WriteRune(v.PrintGrapheme(output *strings.Builder))
+		// builder.WriteRune(v.PrintGrapheme(output *strings.Builder))
 	}
-	fmt.Fprintf(&builder,"}")
+	fmt.Fprintf(&builder, "}")
 
 	return builder.String()
 }

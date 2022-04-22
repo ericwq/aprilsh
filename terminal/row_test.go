@@ -80,6 +80,13 @@ func TestRowAt(t *testing.T) {
 			t.Errorf("%s:\t expect %v, got %v\n", v.name, v.want, row.At(v.col))
 		}
 	}
+
+	c1 := row.At(8)
+	c2 := row.At(8)
+	if c1 != c2 {
+		t.Errorf("expect %p, got %p\n", c1, c2)
+		t.Errorf("expect %v, got %v\n", c1, c2)
+	}
 }
 
 func TestRowInsertCell(t *testing.T) {
