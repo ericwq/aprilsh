@@ -468,7 +468,7 @@ func TestFramebufferApplyRenditionsToCell(t *testing.T) {
 		wantRenditions Renditions
 	}{
 		{"nil cell", 0, 0, 41, Renditions{bgColor: uint32(41)}},
-		//{"normal cell", 2, 2, 42, Renditions{bgColor: uint32(42)}},
+		{"normal cell", 2, 2, 42, Renditions{bgColor: uint32(42)}},
 	}
 	width := 8
 	height := 8
@@ -501,5 +501,59 @@ func TestFramebufferApplyRenditionsToCell(t *testing.T) {
 				t.Errorf("%s:\t cell is nil, expect %v, got %p\n", v.name, v.wantRenditions, fb.GetCell(-1, -1))
 			}
 		}
+	}
+}
+
+func TestFramebufferResetRow(t *testing.T) {
+	fb := NewFramebuffer(8, 8)
+
+	row := fb.GetRow(-1) // cursor row , default 0
+
+	// prepare different renditions
+	for i := range row.cells {
+		row.cells[i].renditions = Renditions{bgColor: uint32(43)}
+	}
+
+	fb.ResetRow(row)
+
+	// validate the result
+	want := Renditions{bgColor: uint32(0)}
+	for i := range row.cells {
+		if row.cells[i].renditions != want {
+			t.Errorf("expect %v, got %v\n", want, row.cells[i].renditions)
+		}
+	}
+}
+
+func TestFramebufferResetCell(t *testing.T) {
+	fb := NewFramebuffer(8, 8)
+
+	// prepare different cell and renditions
+	cell := fb.GetCell(4, 4)
+	cell.renditions = Renditions{bgColor: uint32(43)}
+
+	fb.ResetCell(cell)
+
+	// validate the result
+	want := Renditions{bgColor: uint32(0)}
+	if cell.renditions != want {
+		t.Errorf("expect %v, got %v\n", want, cell.renditions)
+	}
+}
+
+func TestFramebufferRingBell(t *testing.T) {
+	fb := NewFramebuffer(8, 8)
+
+	if fb.GetBellCount() != 0 {
+		t.Errorf("initial value should be 0, got %d\n", fb.GetBellCount())
+	}
+
+	count := 5
+	for i := 0; i < count; i++ {
+		fb.RingBell()
+	}
+
+	if fb.GetBellCount() != count {
+		t.Errorf("initial value should be 0, got %d\n", fb.GetBellCount())
 	}
 }

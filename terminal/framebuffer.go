@@ -195,7 +195,7 @@ func (fb *Framebuffer) Reset() {
 
 	fb.rows = make([]Row, height)
 	for i := range fb.rows {
-		fb.rows[i] = *NewRow(width, 0)
+		fb.rows[i] = *fb.newRow()
 	}
 	fb.windowTitle = ""
 	/* do not reset bell_count */
@@ -261,7 +261,7 @@ func (fb *Framebuffer) resizeRows(width, height int) {
 		// need to expand the addRows
 		addRows := make([]Row, count)
 		for i := range addRows {
-			addRows[i] = *NewRow(width, 0)
+			addRows[i] = *fb.newRow()
 		}
 		fb.rows = append(fb.rows, addRows[:]...)
 	}
