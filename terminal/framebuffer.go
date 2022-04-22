@@ -1,5 +1,6 @@
 package terminal
 
+
 type Framebuffer struct {
 	rows             []Row
 	iconName         string
@@ -93,9 +94,11 @@ func (fb *Framebuffer) MoveRowsAutoscroll(rows int) {
 	if fb.DS.GetCursorRow()+rows > fb.DS.GetScrollingRegionBottomRow() {
 		N := fb.DS.GetCursorRow() + rows - fb.DS.GetScrollingRegionBottomRow()
 		fb.Scroll(N)
+		fb.DS.MoveRow(-N, true)
 	} else if fb.DS.GetCursorRow()+rows < fb.DS.GetScrollingRegionTopRow() {
 		N := fb.DS.GetCursorRow() + rows - fb.DS.GetScrollingRegionTopRow()
 		fb.Scroll(N)
+		fb.DS.MoveRow(-N, true)
 	}
 
 	fb.DS.MoveRow(rows, true)
@@ -168,12 +171,20 @@ func (fb *Framebuffer) DeleteLine(row, count int) bool { // #BehaviorChange retu
 	return true
 }
 
-func (fb *Framebuffer) InsertCell(row, col int) {
+func (fb *Framebuffer) InsertCell(row, col int) bool {
+	if row < 0 || row > len(fb.rows)-1 || col < 0 || col > fb.DS.GetWidth()-1 {
+		return false
+	}
 	fb.GetRow(row).InsertCell(col, uint32(fb.DS.GetBackgroundRendition()))
+	return true
 }
 
-func (fb *Framebuffer) DeleteCell(row, col int) {
+func (fb *Framebuffer) DeleteCell(row, col int) bool {
+	if row < 0 || row > len(fb.rows)-1 || col < 0 || col > fb.DS.GetWidth()-1 {
+		return false
+	}
 	fb.GetRow(row).DeleteCell(col, uint32(fb.DS.GetBackgroundRendition()))
+	return true
 }
 
 func (fb *Framebuffer) Reset() {
