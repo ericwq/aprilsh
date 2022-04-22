@@ -1,6 +1,5 @@
 package terminal
 
-
 type Framebuffer struct {
 	rows             []Row
 	iconName         string
@@ -204,7 +203,7 @@ func (fb *Framebuffer) Reset() {
 func (fb *Framebuffer) SoftReset() {
 	fb.DS.InsertMode = false
 	fb.DS.OriginMode = false
-	fb.DS.CursorVisible = false
+	fb.DS.CursorVisible = false /* per xterm and gnome-terminal */
 	fb.DS.ApplicationModeCursorKeys = false
 	fb.DS.SetScrollingRegion(0, fb.DS.GetHeight()-1)
 	fb.DS.AddRenditions(0)
@@ -299,13 +298,6 @@ func (fb *Framebuffer) RingBell()         { fb.bellCount += 1 }
 func (fb Framebuffer) GetBellCount() int  { return fb.bellCount }
 
 func (fb Framebuffer) Equal(other *Framebuffer) (ret bool) {
-	// check the rows first
-	for i := range fb.rows {
-		if !fb.rows[i].Equal(&other.rows[i]) {
-			return ret
-		}
-	}
-
 	// check title and bell count
 	if fb.windowTitle != other.windowTitle || fb.bellCount != other.bellCount {
 		return ret
@@ -314,6 +306,13 @@ func (fb Framebuffer) Equal(other *Framebuffer) (ret bool) {
 	// check DrawState
 	if !fb.DS.Equal(&other.DS) {
 		return ret
+	}
+
+	// check the rows first
+	for i := range fb.rows {
+		if !fb.rows[i].Equal(&other.rows[i]) {
+			return ret
+		}
 	}
 
 	ret = true

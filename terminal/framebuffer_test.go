@@ -22,12 +22,19 @@ func TestFramebufferNewFramebuffer(t *testing.T) {
 	}
 }
 
+var startCh int = 0x41
+
 // fill in rows with A,B,C....
-func fillinRows(fb *Framebuffer) {
+func fillinRows(fb *Framebuffer, startCh ...int) {
+	x := 0x41
+	if len(startCh) > 0 {
+		x = startCh[0]
+	}
+
 	rows := fb.GetRows()
 	for i, row := range rows {
 		for j := range row.cells {
-			row.cells[j].Append(rune(0x41 + i + j))
+			row.cells[j].Append(rune(x + i + j))
 		}
 	}
 }
@@ -555,5 +562,109 @@ func TestFramebufferRingBell(t *testing.T) {
 
 	if fb.GetBellCount() != count {
 		t.Errorf("initial value should be 0, got %d\n", fb.GetBellCount())
+	}
+}
+
+func TestFramebufferEqual(t *testing.T) {
+	type parameter struct {
+		width       int
+		height      int
+		contents    int
+		windowTitle string
+		bellCount   int
+	}
+	tc := []struct {
+		name string
+		p1   parameter
+		p2   parameter
+		want bool
+	}{
+		{
+			"all equal",
+			parameter{8, 8, 0x41, "80 million", 2},
+			parameter{8, 8, 0x41, "80 million", 2},
+			true,
+		},
+		{
+			"content not equal",
+			parameter{8, 8, 0x42, "80 million", 2},
+			parameter{8, 8, 0x41, "80 million", 2},
+			false,
+		},
+		{
+			"size not equal",
+			parameter{8, 9, 0x42, "80 million", 2},
+			parameter{9, 8, 0x42, "80 million", 2},
+			false,
+		},
+		{
+			"title not equal",
+			parameter{4, 4, 0x42, "80 million", 2},
+			parameter{4, 4, 0x42, "90 million", 2},
+			false,
+		},
+		{
+			"bell not equal",
+			parameter{4, 4, 0x42, "80 million", 2},
+			parameter{4, 4, 0x42, "90 million", 9},
+			false,
+		},
+	}
+
+	for _, v := range tc {
+		fb1 := NewFramebuffer(v.p1.width, v.p1.height)
+		fillinRows(fb1, v.p1.contents)
+		fb1.SetWindowTitle(v.p1.windowTitle)
+		fb1.bellCount = v.p1.bellCount
+		// force gen to be the same
+		if v.name == "all equal" {
+			for i := range fb1.rows {
+				fb1.rows[i].gen = uint64(i)
+			}
+		}
+		fb2 := NewFramebuffer(v.p2.width, v.p2.height)
+		fillinRows(fb2, v.p2.contents)
+		fb2.SetWindowTitle(v.p2.windowTitle)
+		fb2.bellCount = v.p2.bellCount
+		// force gen to be the same
+		if v.name == "all equal" {
+			for i := range fb2.rows {
+				fb2.rows[i].gen = uint64(i)
+			}
+		}
+
+		if fb1.Equal(fb2) != v.want {
+			t.Errorf("%s expect %t, got %t\n", v.name, v.want, fb1.Equal(fb2))
+		}
+	}
+}
+
+func TestFramebufferSoftReset(t *testing.T) {
+	fb := NewFramebuffer(9, 10)
+
+	fb.DS.InsertMode = true
+	fb.DS.OriginMode = true
+	fb.DS.CursorVisible = true
+	fb.DS.ApplicationModeCursorKeys = true
+	fb.DS.SetScrollingRegion(2, 8)
+	fb.DS.renditions = Renditions{bgColor: uint32(44)}
+
+	fb.SoftReset()
+
+	if fb.DS.InsertMode || fb.DS.OriginMode || fb.DS.CursorVisible || fb.DS.ApplicationModeCursorKeys {
+		t.Errorf(
+			"all 4 state should be false, got InsertMode=%t, OriginMode=%t, CursorVisible=%t, ApplicationModeCursorKeys=%t\n",
+			fb.DS.InsertMode, fb.DS.OriginMode, fb.DS.CursorVisible, fb.DS.ApplicationModeCursorKeys)
+	}
+
+	if fb.DS.GetScrollingRegionTopRow() != 0 || fb.DS.GetScrollingRegionBottomRow() != fb.DS.GetHeight()-1 {
+		t.Errorf(
+			"scrolling Region should be 0-%d, got %d-%d\n", fb.DS.GetHeight()-1,
+			fb.DS.scrollingRegionTopRow, fb.DS.scrollingRegionBottomRow)
+	}
+
+	r := Renditions{bgColor: uint32(0)}
+	if fb.DS.renditions != r {
+		t.Errorf("renditions expect %v, got %v\n", r, fb.DS.renditions)
 	}
 }
