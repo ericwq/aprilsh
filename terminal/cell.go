@@ -24,6 +24,7 @@ func (c *Cell) Reset(bgColor uint32) {
 	c.wrap = false
 }
 
+// ease of testing
 var _output io.Writer
 
 func init() {
