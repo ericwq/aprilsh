@@ -65,6 +65,8 @@ func (fs *FrameState) AppendMove(y, x int) {
 	// Only optimize if cursor pos is known
 	if lastX != -1 && lastY != -1 {
 		// Can we use CR and/or LF?  They're cheap and easier to trace.
+		// the CUP escape sequence only takes 6-8 bytes.
+		// so 5 is the upper limit for cheap solution
 		if x == 0 && y-lastY >= 0 && y-lastY < 5 {
 			if lastX != 0 {
 				fs.AppendByte('\r')
@@ -75,6 +77,7 @@ func (fs *FrameState) AppendMove(y, x int) {
 		// Backspaces are good too.
 		if y == lastY && x-lastX < 0 && x-lastX > -5 {
 			fs.AppendRepeatByte(lastX-x, '\b')
+			return
 		}
 		// More optimizations are possible.
 	}
