@@ -88,19 +88,64 @@ func TestFrameStateAppendSilentMove(t *testing.T) {
 		if v.want != got {
 
 			// replace the escape char to avoid mess the screen
-			a := strings.ReplaceAll(v.want, "\033", "ESC")
-			a = strings.ReplaceAll(a, "\b", "\\b")
-			a = strings.ReplaceAll(a, "\r", "\\r")
-			a = strings.ReplaceAll(a, "\n", "\\n")
-
-			b := strings.ReplaceAll(got, "\033", "ESC")
-			b = strings.ReplaceAll(b, "\b", "\\b")
-			b = strings.ReplaceAll(b, "\r", "\\r")
-			b = strings.ReplaceAll(b, "\n", "\\n")
+			a := replaceControlSequence(v.want)
+			b := replaceControlSequence(got)
 
 			t.Errorf("%s:\t expect [%s], got [%s]\n", v.name, a, b)
 
 			// t.Errorf("%s:\t expect [%s], got [%s]\n", v.name, v.want, fs.strBuiler.String())
+		}
+	}
+}
+
+func replaceControlSequence(before string) string {
+	b := strings.ReplaceAll(before, "\033", "ESC")
+	b = strings.ReplaceAll(b, "\b", "\\b")
+	b = strings.ReplaceAll(b, "\r", "\\r")
+	b = strings.ReplaceAll(b, "\n", "\\n")
+	return b
+}
+
+func TestFrameStateUpdateRendition(t *testing.T) {
+	tc := []struct {
+		name  string
+		r     Renditions
+		other Renditions
+		force bool
+		want  string
+	}{
+		{"skip", Renditions{}, Renditions{}, false, ""},
+		{"force", Renditions{}, Renditions{}, true, "\033[0m"},
+		{"other", Renditions{}, Renditions{bgColor: uint32(42)}, false, "\033[0;42m"},
+	}
+	// implicity frame szie
+	maxX := 50
+	maxY := 10
+
+	// prepare the FrameState
+	fb := NewFramebuffer(maxX, maxY)
+
+	for _, v := range tc {
+		// fresh FrameState
+		fs := NewFrameState(fb)
+
+		// pre-conditions
+		fs.currentRendition = v.r
+
+		fs.UpdateRendition(v.other, v.force)
+
+		got := fs.strBuiler.String()
+		if v.want != got {
+
+			// replace the escape char to avoid mess the screen
+			a := replaceControlSequence(v.want)
+			b := replaceControlSequence(got)
+
+			t.Errorf("%s:\t sequence expect [%s], got [%s]\n", v.name, a, b)
+		}
+
+		if v.other != fs.currentRendition {
+			t.Errorf("%s:\t renditions expect [%v], got [%v]\n", v.name, v.other, fs.currentRendition)
 		}
 	}
 }
