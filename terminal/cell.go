@@ -7,7 +7,11 @@ import (
 	"strings"
 )
 
-// contents saved in strings.Builder
+/* contents saved in strings.Builder
+ * Don't set the fields directly
+ *
+ * Cell is comparable
+ */
 type Cell struct {
 	contents   string
 	renditions Renditions

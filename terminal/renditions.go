@@ -19,7 +19,10 @@ const (
 
 const TrueColorMask uint32 = 0x1000000
 
-/* Don't set the fields directly */
+/* Don't set the fields directly
+ *
+ * Renditions is comparable
+ */
 type Renditions struct {
 	fgColor    uint32
 	bgColor    uint32
@@ -110,6 +113,12 @@ func (r *Renditions) SetRendition(color uint32) {
 	}
 }
 
+/*
+ * https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Functions-using-CSI-_-ordered-by-the-final-character_s_
+ *
+ * CSI Pm m  Character Attributes (SGR).
+ *
+ */
 func (r *Renditions) SGR() string {
 	var ret strings.Builder
 
