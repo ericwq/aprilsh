@@ -1,5 +1,13 @@
 package terminal
 
+/* questions
+ *
+ * do we need to package the the terminfo DB into application?
+ * how to read terminfo DB? through ncurses lib or directly?
+ * how to operate terminal? through direct escape sequence or through terminfo DB?
+ * how to replace the following functions?
+ *    setupterm(), tigetnum(), tigetstr(), tigetflag()
+ */
 type Display struct {
 	hasECH   bool
 	hasBCE   bool
