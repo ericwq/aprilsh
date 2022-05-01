@@ -45,4 +45,4 @@ On the client side, client receives new state from the network.
 - The client apply the prediction to the new state.
 - The client calculate the difference [`new_frame()`] between the new state and local state.
 - The calculated result is a mix of escape sequences and data.
-- The mix is written to the client standard out, which will output to the local terminal emulator.
+- The mix is written to the client standard out, which will output to the real terminal emulator.
