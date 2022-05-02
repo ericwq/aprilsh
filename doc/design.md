@@ -13,8 +13,9 @@ How to adapt to this situation: support different terminal emulator, such as `xt
 
 - First solution: write separate independent parser and actor for different `terminfo` entry. The different implementation share the same terminal emulator data structure. The implementation is chosen by `TERM` at runtime.
 - Second solution: write a base class which can parse and act on a base `terminfo` entry, which could be `st-256color`. (We don't choose `xterm-256color` because `xterm` is too complex) The other `terminfo` entry is implemented by a extend class. The different implementation share the same terminal emulator data structure. The implementation is chosen by `TERM` at runtime.
+- Third solution: a [state machine](https://vt100.net/emu/dec_ansi_parser). We choose the third solution because it's the classical solution to our problem.
 
-Both solution suggest we can support `terminfo` entries one by one, step by step. The scope of `terminfo` entries can be narrowed down to `ncurses-terminfo-base` package (the alpine linux platform).
+Both solutions suggest we can support `terminfo` entries one by one, step by step. The scope of `terminfo` entries can be narrowed down to `ncurses-terminfo-base` package (the alpine linux platform).
 
 ```sh
 ide@nvide-ssh:/etc/terminfo $ apk info -L ncurses-terminfo-base
