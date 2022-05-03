@@ -68,77 +68,75 @@ func (s state) anywhere(ch rune) Transition {
 	return Transition{}
 }
 
-func C0prime(r rune) bool {
-	// why 0x18 0x1A 0x1B is missing?
-	// covered by anywhere rule
-	return ((r <= 0x17) || (r == 0x19) || ((0x1C <= r) && (r <= 0x1F)))
+func c0prime(r rune) bool {
+	// event 00-17,19,1C-1F
+	return r <= 0x17 || r == 0x19 || (0x1C <= r && r <= 0x1F)
 }
 
-func GLGR(r rune) bool {
+func glgr(r rune) bool {
 	// GL or GR
-	return (((0x20 <= r) && (r <= 0x7F)) || ((0xA0 <= r) && (r <= 0xFF)))
+	return (0x20 <= r && r <= 0x7F) || (0xA0 <= r && r <= 0xFF)
 }
 
-type ground struct {
-	state
-}
+type ground struct{ state }
 
 func (g ground) eventList(r rune) Transition {
-	if C0prime(r) {
+	// C0 control
+	if c0prime(r) {
 		return Transition{execute{}, nil}
 	}
 
-	// treat GR the same as GL,
-	// TODO verify unicode support
-	if GLGR(r) {
+	// mosh treat GR the same as GL,
+	// difference from https://vt100.net/emu/dec_ansi_parser
+	// only event 20-7F / print
+	if glgr(r) {
 		return Transition{print{}, nil}
 	}
 
 	return Transition{ignore{}, nil}
 }
 
-type escape struct {
-	state
-}
+type escape struct{ state }
 
 func (g escape) enter() Action { return clear{} }
 func (e escape) eventList(r rune) Transition {
 	// C0 control
-	if C0prime(r) {
+	if c0prime(r) {
 		return Transition{execute{}, nil}
 	}
 
-	// collect
+	// goto esc intermediate
 	if 0x20 <= r && r <= 0x2F {
 		return Transition{collect{}, escapIntermediate{}}
 	}
 
-	// esc dispatch
+	// goto ground
 	if (0x30 <= r && r <= 0x4F) || (0x51 <= r && r <= 0x57) || r == 0x59 || r == 0x5A || r == 0x5C ||
 		(0x60 <= r && r <= 0x7E) {
 		return Transition{escDispatch{}, ground{}}
 	}
 
-	// csi entry
+	// goto csi entry
 	if r == 0x5B {
 		return Transition{nil, csiEntry{}}
 	}
 
-	// osc
+	// goto osc
 	if r == 0x5D {
 		return Transition{nil, oscString{}}
 	}
 
-	// dcs entry
+	// goto dcs entry
 	if r == 0x50 {
 		return Transition{nil, dcsEntry{}}
 	}
 
-	// sos pm apc
+	// goto sos/pm/apc
 	if r == 0x58 || r == 0x5E || r == 0x5F {
 		return Transition{nil, sosPmApcString{}}
 	}
 
+	// the last one is event 7F / ignore
 	return Transition{ignore{}, nil}
 }
 
@@ -146,7 +144,7 @@ type escapIntermediate struct{ state }
 
 func (e escapIntermediate) eventList(r rune) Transition {
 	// c0 control
-	if C0prime(r) {
+	if c0prime(r) {
 		return Transition{execute{}, nil}
 	}
 
@@ -155,14 +153,13 @@ func (e escapIntermediate) eventList(r rune) Transition {
 		return Transition{collect{}, nil}
 	}
 
-	// esc dispatch
+	// goto ground
 	if 0x30 <= r && r <= 0x7E {
 		return Transition{escDispatch{}, ground{}}
 	}
 
-	// event 7F / ignore
-	// TODO verify it
-	return Transition{}
+	// the last one is event 7F / ignore
+	return Transition{ignore{}, nil}
 }
 
 type csiEntry struct{ state }
@@ -170,146 +167,156 @@ type csiEntry struct{ state }
 func (c csiEntry) enter() Action { return clear{} }
 func (c csiEntry) eventList(r rune) Transition {
 	// c0 control
-	if C0prime(r) {
+	if c0prime(r) {
 		return Transition{execute{}, nil}
 	}
 
-	// csi dispatch
+	// goto ground: dispatch
 	if 0x40 <= r && r <= 0x7E {
 		return Transition{csiDispatch{}, ground{}}
 	}
 
-	// csi param : 0~9 and ;
+	// goto csi param: param
+	// 0~9,;
 	if (0x30 <= r && r <= 0x39) || r == 0x3B {
 		return Transition{param{}, csiParam{}}
 	}
 
-	// csi collect param
+	// goto csi para: collect
+	// <,=,>,?
 	if 0x3C <= r && r <= 0x3F {
 		return Transition{collect{}, csiParam{}}
 	}
 
-	// csi ignore
+	// goto csi ignore
+	// :
 	if r == 0x3A {
 		return Transition{ignore{}, csiIgnore{}}
 	}
 
-	// csi collect intermediate
+	// goto csi intermediate: collect
+	// space,!,",#,$,%,&,',(,),*,+,comma,-,.,/
 	if 0x20 <= r && r <= 0x2F {
 		return Transition{collect{}, csiIntermediate{}}
 	}
 
-	// event 7F / ignore
-	// TODO verify it
-	return Transition{}
+	// the last one is event 7F / ignore
+	return Transition{ignore{}, nil}
 }
 
 type csiParam struct{ state }
 
 func (c csiParam) eventList(r rune) Transition {
 	// c0 control
-	if C0prime(r) {
+	if c0prime(r) {
 		return Transition{execute{}, nil}
 	}
 
 	// csi param
-	if (0x30 <= r && r <= 0x39) || r == 0x3B {
+	// ;,0~9
+	// TODO maybe we should add 0x3A here?
+	if r == 0x3B || (0x30 <= r && r <= 0x39) {
 		return Transition{param{}, nil}
 	}
 
-	// csi ignore
+	// goto csi ignore
+	// :,<,=,>,?
 	if r == 0x3A || (0x3C <= r && r <= 0x3F) {
 		return Transition{ignore{}, csiIgnore{}}
 	}
 
-	// csi intermediate collect
+	// goto csi intermediate: collect
+	// space,!,",#,$,%,&,',(,),*,+,comma,-,.,/
 	if 0x20 <= r && r <= 0x2F {
 		return Transition{collect{}, csiIntermediate{}}
 	}
 
-	// csi dispatch
+	// goto ground: csi dispatch
 	if 0x40 <= r && r <= 0x7E {
 		return Transition{csiDispatch{}, ground{}}
 	}
 
-	// event 7F / ignore
-	// TODO verify it
-	return Transition{}
+	// the last one is event 7F / ignore
+	return Transition{ignore{}, nil}
 }
 
 type csiIntermediate struct{ state }
 
 func (c csiIntermediate) eventList(r rune) Transition {
 	// c0 control
-	if C0prime(r) {
+	if c0prime(r) {
 		return Transition{execute{}, nil}
 	}
 
-	// collect action
+	// collect
+	// space,!,",#,$,%,&,',(,),*,+,comma,-,.,/
 	if 0x20 <= r && r <= 0x2F {
 		return Transition{collect{}, nil}
 	}
 
-	// csi dispatch
+	// goto ground: csi dispatch
 	if 0x40 <= r && r <= 0x7E {
 		return Transition{csiDispatch{}, ground{}}
 	}
 
-	// csi ignore
+	// goto csi ignore
 	if 0x30 <= r && r <= 0x3F {
 		return Transition{ignore{}, csiIgnore{}}
 	}
 
-	// event 7F / ignore
-	// TODO verify it
-	return Transition{}
+	// the last one is event 7F / ignore
+	return Transition{ignore{}, nil}
 }
 
 type csiIgnore struct{ state }
 
 func (c csiIgnore) eventList(r rune) Transition {
 	// c0 control
-	if C0prime(r) {
+	if c0prime(r) {
 		return Transition{execute{}, nil}
 	}
 
-	// ignore
-	// event 20-3F,7F / ignore
-	// TODO why change to 40-7E
+	// difference: vt100.net/emu/dec_ansi_parser
+	// event 20-3F / ignore
+
+	// goto ground
 	if 0x40 <= r && r <= 0x7E {
 		return Transition{ignore{}, ground{}}
 	}
 
-	return Transition{}
+	// the last one is event 7F / ignore
+	return Transition{ignore{}, nil}
 }
 
 type dcsEntry struct{ state }
 
 func (d dcsEntry) enter() Action { return clear{} }
 func (d dcsEntry) eventList(r rune) Transition {
-	// c0 control
-	// TODO we add c0, verify it
-	// miss it?
-	if C0prime(r) {
-		return Transition{ignore{}, nil}
-	}
+	// difference: vt100.net/emu/dec_ansi_parser
+	// event 00-17,19,1C-1F / ignore
+	// if c0prime(r) {
+	// 	return Transition{ignore{}, nil}
+	// }
 
-	// goto dcs intermediate
+	// goto dcs intermediate: collect
 	if 0x20 <= r && r <= 0x2F {
 		return Transition{collect{}, dcsIntermediate{}}
 	}
 
 	// goto dcs ignore
+	// :
 	if r == 0x3A {
 		return Transition{ignore{}, dcsIgnore{}}
 	}
 
-	// goto dcs param
+	// goto dcs param: param
+	// ;,0~9
 	if r == 0x3B || (0x30 <= r && r <= 0x39) {
 		return Transition{param{}, dcsParam{}}
 	}
 
-	// goto dcs param
+	// goto dcs param: collect
+	// <,=,>,?
 	if 0x3C <= r && r <= 0x3F {
 		return Transition{collect{}, dcsParam{}}
 	}
@@ -319,32 +326,33 @@ func (d dcsEntry) eventList(r rune) Transition {
 		return Transition{ignore{}, dcsPassthrough{}}
 	}
 
-	// event 7F / ignore
-	// TODO verify it
-	return Transition{}
+	// the last one is event 7F / ignore
+	// event 00-17,19,1C-1F / ignore
+	return Transition{ignore{}, nil}
 }
 
 type dcsParam struct{ state }
 
 func (d dcsParam) eventList(r rune) Transition {
-	// c0 control
-	// TODO we add c0, verify it
-	// miss it?
-	if C0prime(r) {
-		return Transition{ignore{}, nil}
-	}
+	// difference: vt100.net/emu/dec_ansi_parser
+	// event 00-17,19,1C-1F / ignore
+	// if c0prime(r) {
+	// 	return Transition{ignore{}, nil}
+	// }
 
-	// save param
+	// param
+	// ;,0~9
 	if r == 0x3B || (0x30 <= r && r <= 0x39) {
 		return Transition{param{}, nil}
 	}
 
-	// csi ignore
+	// goto dcs ignore
+	// :,<,=,>,?
 	if r == 0x3A || (0x3C <= r && r <= 0x3F) {
 		return Transition{ignore{}, dcsIgnore{}}
 	}
 
-	// goto dcs intermediate
+	// goto dcs intermediate: collect
 	if 0x20 <= r && r <= 0x2F {
 		return Transition{collect{}, dcsIntermediate{}}
 	}
@@ -354,23 +362,19 @@ func (d dcsParam) eventList(r rune) Transition {
 		return Transition{ignore{}, dcsPassthrough{}}
 	}
 
-	// event 7F / ignore
-	// TODO verify it
-	if r == 0x7F {
-		return Transition{ignore{}, nil}
-	}
-	return Transition{}
+	// the last one is event 7F / ignore
+	// event 00-17,19,1C-1F / ignore
+	return Transition{ignore{}, nil}
 }
 
 type dcsIntermediate struct{ state }
 
 func (d dcsIntermediate) eventList(r rune) Transition {
-	// c0 control
-	// TODO we add c0, verify it
-	// miss it?
-	if C0prime(r) {
-		return Transition{ignore{}, nil}
-	}
+	// difference: vt100.net/emu/dec_ansi_parser
+	// event 00-17,19,1C-1F / ignore
+	// if c0prime(r) {
+	// 	return Transition{ignore{}, nil}
+	// }
 
 	// collect
 	if 0x20 <= r && r <= 0x2F {
@@ -387,12 +391,9 @@ func (d dcsIntermediate) eventList(r rune) Transition {
 		return Transition{ignore{}, dcsIgnore{}}
 	}
 
-	// event 7F / ignore
-	// TODO verify it
-	if r == 0x7F {
-		return Transition{ignore{}, nil}
-	}
-	return Transition{}
+	// the last one is event 7F / ignore
+	// event 00-17,19,1C-1F / ignore
+	return Transition{ignore{}, nil}
 }
 
 type dcsPassthrough struct{ state }
@@ -400,39 +401,37 @@ type dcsPassthrough struct{ state }
 func (d dcsPassthrough) enter() Action { return hook{} }
 func (d dcsPassthrough) exit() Action  { return unhook{} }
 func (d dcsPassthrough) eventList(r rune) Transition {
-	// how does the hook works?
-	// TODO verify it: should put 7E in it?
-	if C0prime(r) || (0x20 <= r && r <= 0x7E) {
+	// put
+	if c0prime(r) || (0x20 <= r && r <= 0x7E) {
 		return Transition{put{}, nil}
 	}
 
 	// finish
+	// ST
 	if r == 0x9C {
 		return Transition{ignore{}, ground{}}
 	}
 
-	// event 7F / ignore
-	// TODO verify it
-	if r == 0x7F {
-		return Transition{ignore{}, nil}
-	}
-	return Transition{}
+	// the last one is event 7F / ignore
+	return Transition{ignore{}, nil}
 }
 
 type dcsIgnore struct{ state }
 
 func (d dcsIgnore) eventList(r rune) Transition {
-	// add this according to https://vt100.net/emu/dec_ansi_parser
-	// TODO verify it
-	if C0prime(r) || (0x20 <= r && r <= 0x7F) {
-		return Transition{put{}, nil}
-	}
+	// difference: vt100.net/emu/dec_ansi_parser
+	// event 00-17,19,1C-1F,20-7F / ignore
+	// if c0prime(r) || (0x20 <= r && r <= 0x7F) {
+	// 	return Transition{put{}, nil}
+	// }
 
 	if r == 0x9C {
 		return Transition{ignore{}, ground{}}
 	}
 
-	return Transition{}
+	// the lase one is
+	// event 00-17,19,1C-1F,20-7F / ignore
+	return Transition{ignore{}, nil}
 }
 
 type oscString struct{ state }
@@ -440,36 +439,42 @@ type oscString struct{ state }
 func (o oscString) enter() Action { return oscStart{} }
 func (o oscString) exit() Action  { return oscEnd{} }
 func (o oscString) eventList(r rune) Transition {
-	// add this according to https://vt100.net/emu/dec_ansi_parser
-	// conflict with the following 0x07?
-	// TODO  verify it
-	if C0prime(r) {
-		return Transition{ignore{}, nil}
-	}
+	// difference: vt100.net/emu/dec_ansi_parser
+	// event 00-17,19,1C-1F / ignore
+	// if c0prime(r) {
+	// 	return Transition{ignore{}, nil}
+	// }
 
+	// osc put
 	if 0x20 <= r && r <= 0x7F {
 		return Transition{oscPut{}, nil}
 	}
 
+	// goto ground
 	if r == 0x9C || r == 0x07 { // 0x07 is xterm non-ANSI variant
 		return Transition{ignore{}, ground{}}
 	}
 
-	return Transition{}
+	// the lase one is
+	// event 00-17,19,1C-1F / ignore
+	return Transition{ignore{}, nil}
 }
 
 type sosPmApcString struct{ state }
 
 func (s sosPmApcString) eventList(r rune) Transition {
-	// add this according to https://vt100.net/emu/dec_ansi_parser
-	// TODO verify it
-	if C0prime(r) || (0x20 <= r && r <= 0x7F) {
-		return Transition{ignore{}, nil}
-	}
+	// difference: vt100.net/emu/dec_ansi_parser
+	// event 00-17,19,1C-1F,20-7F / ignore
+	// if c0prime(r) || (0x20 <= r && r <= 0x7F) {
+	// 	return Transition{ignore{}, nil}
+	// }
 
+	// goto ground
 	if r == 0x9C {
 		return Transition{ignore{}, ground{}}
 	}
 
-	return Transition{}
+	// the lase one is
+	// event 00-17,19,1C-1F,20-7F / ignore
+	return Transition{ignore{}, nil}
 }
