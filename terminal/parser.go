@@ -26,28 +26,49 @@ SOFTWARE.
 
 package terminal
 
-/* questions
-
- do we need to package the the terminfo DB into application?
-    yes, mosh-server depends on ncurses-terminfo-base and  ncurses-libs
- how to read terminfo DB? through ncurses lib or directly?
-	yes the answer is read through tcell.
- how to operate terminal? through direct escape sequence or through terminfo DB?
- how to replace the following functions? setupterm(), tigetnum(), tigetstr(), tigetflag()
-
- */
-type Display struct {
-	hasECH   bool
-	hasBCE   bool
-	hasTitle bool
-	smcup    string
-	rmcup    string
+type Parser struct {
+	state State
 }
 
-// https://github.com/gdamore/tcell the successor of termbox-go
-// https://cs.opensource.google/go/x/term/+/master:README.md 
-// apk add mandoc man-pages ncurses-doc
-// apk add ncurses-terminfo
-// apk add ncurses-terminfo-base 
-// apk add ncurses
-// https://ishuah.com/2021/03/10/build-a-terminal-emulator-in-100-lines-of-go/
+func NewParser() *Parser {
+	p := new(Parser)
+	p.state = ground{}
+	return p
+}
+
+// append action to action list except ignore action
+func appendTo(actions []Action, act Action) []Action {
+	if !act.Ignore() {
+		actions = append(actions, act)
+	}
+	return actions
+}
+
+// parse the input character into action and save it in action list
+// it's uesed to be input
+func (p *Parser) parse(actions []Action, r rune) []Action {
+	// start to parse
+	ts := p.state.parse(r)
+
+	// exit action from old state
+	if ts.nextState != nil {
+		actions = appendTo(actions, p.state.exit())
+	}
+
+	// transition action
+	actions = appendTo(actions, ts.action)
+	ts.action = nil
+
+	// enter action to new state
+	if ts.nextState != nil {
+		actions = appendTo(actions, ts.nextState.enter())
+		// transition to next state
+		p.state = ts.nextState
+	}
+
+	return actions
+}
+
+func (p *Parser) reset() {
+	p.state = ground{}
+}
