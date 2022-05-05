@@ -41,7 +41,7 @@ type Dispatcher struct {
 	parsedParams   []int
 	parsed         bool
 	dispatcherChar strings.Builder
-	oscString      []rune
+	oscString      strings.Builder
 }
 
 func (d *Dispatcher) clear(Action) {
@@ -64,6 +64,7 @@ func (d *Dispatcher) newParamChar(act Action) {
 	d.parsed = false
 }
 
+func (d *Dispatcher) getDispatcherChars() string { return d.dispatcherChar.String() }
 func (d *Dispatcher) collect(act Action) {
 	if d.dispatcherChar.Len() < 8 { // should never exceed 2
 		if access, ok := act.(AccessAction); ok && access.GetChar() <= 0xFF { // ignore non-8-bit
@@ -76,9 +77,10 @@ func (d *Dispatcher) collect(act Action) {
 // parse "34:45" into []int{34, 45}
 // corner case such as ";1;2;" will result []int{-1, 1, 2, -1}
 func (d *Dispatcher) parseAll() {
-	if d.parsed {
-		return
-	}
+	// if d.parsed {
+	// 	return
+	// }
+
 	// default capability is 6
 	d.parsedParams = make([]int, 0, 6)
 
@@ -129,4 +131,17 @@ func (d *Dispatcher) getParamCount() int {
 	}
 
 	return len(d.parsedParams)
+}
+
+func (d *Dispatcher) getOSCstring() string { return d.oscString.String() }
+func (d *Dispatcher) oscPut(act Action) {
+	if d.oscString.Len() < 256 { // should be long enough for window title
+		if access, ok := act.(AccessAction); ok && access.GetChar() <= 0xFF { // ignore non-8-bit
+			d.oscString.WriteRune(access.GetChar())
+		}
+	}
+}
+
+func (d *Dispatcher) oscStart(Action) {
+	d.oscString.Reset()
 }

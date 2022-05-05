@@ -78,22 +78,79 @@ func TestDispatcherNewParamChar(t *testing.T) {
 
 	d := Dispatcher{}
 	for _, v := range tc {
-		d.clear(clear{})
+		d.clear(&clear{})
+
+		// fill data with newParamChar
 		for _, ch := range v.params {
 			d.newParamChar(&param{action{ch, true}})
 		}
 
-		if len(v.want) != d.getParamCount() {
-			t.Errorf("%s expect %d result, got %d result.\n", v.name, len(v.want), d.getParamCount())
-		} else {
-			for i, w := range v.want {
-				got := d.getParam(i, 13)
-				if got != w {
-					t.Errorf("%s:\t %q [%02d parameter]: expect %d, got %d\n", v.name, v.params, i, w, got)
-				}
-
+		// check the expect data
+		for i, w := range v.want {
+			got := d.getParam(i, 13)
+			if got != w {
+				t.Errorf("%s:\t %q [%02d parameter]: expect %d, got %d\n", v.name, v.params, i, w, got)
 			}
 		}
+		if len(v.want) != d.getParamCount() {
+			t.Errorf("%s expect %d result, got %d result.\n", v.name, len(v.want), d.getParamCount())
+		}
+	}
+}
 
+func TestDispatcherCollect(t *testing.T) {
+	tc := []struct {
+		name   string
+		params string
+		want   string
+	}{
+		// 0x20-0x2F
+		{"normal", "#$%&'()", "#$%&'()"},
+		{"over size", " !\"#$%&'()*+,-./", " !\"#$%&'"},
+	}
+
+	d := Dispatcher{}
+	for _, v := range tc {
+		d.clear(&clear{})
+		for _, ch := range v.params {
+			d.collect(&collect{action{ch, true}})
+		}
+		if v.want != d.getDispatcherChars() {
+			t.Errorf("%s:\t expect %q, got %q\n", v.name, v.want, d.getDispatcherChars())
+		}
+	}
+}
+
+func TestDispatcherOSCput(t *testing.T) {
+	// over size title
+	a := "Stop all the clocks, cut off the telephone, Prevent the dog from barking with a juicy bone, Silence the pianos and with muffled drum Bring out the coffin, let the mourners come. Let aeroplanes circle moaning overhead Scribbling on the sky the message He Is Dead, Put crepe bows round the white necks of the public doves, Let the traffic policemen wear black cotton gloves. "
+
+	// chinese title
+	b := "北国风光，千里冰封，万里雪飘。望长城内外，惟余莽莽；大河上下，顿失滔滔。山舞银蛇，原驰蜡象，欲与天公试比高。须晴日，看红装素裹，分外妖娆。江山如此多娇，引无数英雄竞折腰。惜秦皇汉武，略输文采；唐宗宋祖，稍逊风骚。一代天骄，成吉思汗，只识弯弓射大雕。俱往矣，数风流人物，还看今朝。"
+
+	// you got this title
+	c := "Stop all the clocks, cut off the telephone, Prevent the dog from barking with a juicy bone, Silence the pianos and with muffled drum Bring out the coffin, let the mourners come. Let aeroplanes circle moaning overhead Scribbling on the sky the message He Is"
+	tc := []struct {
+		name string
+		osc  string
+		want string
+	}{
+		{"normal", a, c},
+		{"chinese", b, ""},
+	}
+
+	d := Dispatcher{}
+	for _, v := range tc {
+		// clear the content
+		d.oscStart(&oscStart{})
+
+		// fill in the osc string
+		for _, ch := range v.osc {
+			d.oscPut(&oscPut{action{ch, true}})
+		}
+
+		if v.want != d.getOSCstring() {
+			t.Errorf("%s:\t osc string size expect %d, got %d\n", v.name, len(v.want), len(d.getOSCstring()))
+		}
 	}
 }
