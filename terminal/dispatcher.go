@@ -136,7 +136,7 @@ func (d *Dispatcher) getParamCount() int {
 func (d *Dispatcher) getOSCstring() string { return d.oscString.String() }
 func (d *Dispatcher) oscPut(act Action) {
 	if d.oscString.Len() < 256 { // should be long enough for window title
-		if access, ok := act.(AccessAction); ok && access.GetChar() <= 0xFF { // ignore non-8-bit
+		if access, ok := act.(AccessAction); ok {
 			d.oscString.WriteRune(access.GetChar())
 		}
 	}
@@ -144,4 +144,49 @@ func (d *Dispatcher) oscPut(act Action) {
 
 func (d *Dispatcher) oscStart(Action) {
 	d.oscString.Reset()
+}
+
+func (d *Dispatcher) dispatch(funcType int, act Action, fb *Framebuffer) {
+}
+
+// xterm uses an Operating System Command to set the window title
+// consider to add the other useful OSC command: such as OSC 52
+// https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands
+func (d *Dispatcher) oscDispatch(act Action, fb *Framebuffer) {
+	oscStr := d.oscString.String()
+	if len(oscStr) >= 1 {
+
+		offset := strings.Index(oscStr, ";")
+		cmdNum := -1
+
+		if offset == 0 {
+			// OSC of the form "\033];<title>\007"
+			cmdNum = 0
+			offset += 1
+		} else { // it must be 1
+			// OSC of the form "\033]X;<title>\007" where X can be:
+			//* 0: set icon name and window title
+			//* 1: set icon name
+			//* 2: set window title
+			if i, err := strconv.Atoi(oscStr[:offset]); err == nil {
+				cmdNum = i
+			}
+			offset += 1
+		}
+		setIcon := cmdNum == 0 || cmdNum == 1
+		setTitle := cmdNum == 0 || cmdNum == 2
+		oscStr = oscStr[offset:]
+
+		if setIcon || setTitle {
+			fb.SetTitleInitialized()
+
+			if setIcon {
+				fb.SetIconName(oscStr)
+			}
+
+			if setTitle {
+				fb.SetWindowTitle(oscStr)
+			}
+		}
+	}
 }

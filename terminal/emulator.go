@@ -26,10 +26,15 @@ SOFTWARE.
 
 package terminal
 
+const (
+	DISPATCH_ESCAPE = iota + 1
+	DISPATCH_CSI
+	DISPATCH_CONTROL
+)
 
 type Emulator interface {
-	Print(act Action)
-	Execute(act Action)
+	// Print(act Action)
+	// Execute(act Action)
 	CSIdispatch(act Action)
 	ESCdispatch(act Action)
 	OSCend(act Action)
@@ -50,3 +55,37 @@ type AccessAction interface {
 	IsPresent() bool
 }
 
+type emulator struct {
+	dispatcher  Dispatcher
+	framebuffer Framebuffer
+}
+
+func (e *emulator) CSIdispatch(act Action) {
+	e.dispatcher.dispatch(DISPATCH_CSI, act, &e.framebuffer)
+}
+
+func (e *emulator) ESCdispatch(act Action) {
+	var ch rune
+	if access, ok := act.(AccessAction); ok {
+		ch = access.GetChar()
+	}
+
+	// handle 7-bit ESC-encoding of C1 control characters
+	if len(e.dispatcher.getDispatcherChars()) == 0 && 0x40 <= ch && ch <= 0x5F {
+		// convert 7-bit esc sequence into 8-bit c1 control sequence
+		act2 := escDispatch{action{ch + 0x40, true}}
+		e.dispatcher.dispatch(DISPATCH_CONTROL, &act2, &e.framebuffer)
+	} else {
+		e.dispatcher.dispatch(DISPATCH_ESCAPE, act, &e.framebuffer)
+	}
+}
+
+func (e *emulator) OSCdispatch(act Action) {
+	e.dispatcher.oscDispatch(act, &e.framebuffer)
+}
+
+func (e *emulator) OSCend(act Action) {
+}
+
+func (e *emulator) Resize(act Action) {
+}

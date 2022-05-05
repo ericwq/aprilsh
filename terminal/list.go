@@ -53,22 +53,22 @@ func lookupActionByName(key string) (actionFunc, error) {
 func init() {
 	actionList.Lock()
 
-	actionList.list[ignoreName] = ignoreAction
-	actionList.list[printName] = printAction
-	actionList.list[executeName] = executeAction
-	actionList.list[clearName] = clearAction
-	actionList.list[collectName] = collectAction
-	actionList.list[paramName] = paramAction
-	actionList.list[escDispatchName] = escDispatchAction
-	actionList.list[csiDispatchName] = csiDispatchAction
-	actionList.list[hookName] = hookAction
-	actionList.list[putName] = putAction
-	actionList.list[unhookName] = unhookAction
-	actionList.list[oscStartName] = oscStartAction
-	actionList.list[oscPutName] = oscPutAction
-	actionList.list[oscEndName] = oscEndAction
-	actionList.list[userByteName] = userByteAction
-	actionList.list[resizeName] = resizeAction
+	actionList.list[ACTION_IGNORE] = ignoreAction
+	actionList.list[ACTION_PRINT] = printAction
+	actionList.list[ACTION_EXECUTE] = executeAction
+	actionList.list[ACTION_CLEAR] = clearAction
+	actionList.list[ACTION_COLLECT] = collectAction
+	actionList.list[ACTION_PARAM] = paramAction
+	actionList.list[ACTION_ESC_DISPATCH] = escDispatchAction
+	actionList.list[ACTION_CSI_DISPATCH] = csiDispatchAction
+	actionList.list[ACTION_HOOK] = hookAction
+	actionList.list[ACTION_PUT] = putAction
+	actionList.list[ACTION_UNHOOK] = unhookAction
+	actionList.list[ACTION_OSC_START] = oscStartAction
+	actionList.list[ACTION_OSC_PUT] = oscPutAction
+	actionList.list[ACTION_OSC_END] = oscEndAction
+	actionList.list[ACTION_USER_BYTE] = userByteAction
+	actionList.list[ACTION_RESIZE] = resizeAction
 
 	defer actionList.Unlock()
 }

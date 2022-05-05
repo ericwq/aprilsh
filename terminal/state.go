@@ -472,6 +472,7 @@ func (o oscString) eventList(r rune) Transition {
 	// }
 
 	// osc put
+	// TODO should consider unicode title
 	if 0x20 <= r && r <= 0x7F {
 		return Transition{&oscPut{}, nil}
 	}

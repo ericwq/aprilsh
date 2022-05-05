@@ -19,31 +19,27 @@ IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
 AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-*/
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 package terminal
 
-
 const (
-	ignoreName      = "Ignore"
-	printName       = "Print"
-	executeName     = "Execute"
-	clearName       = "Clear"
-	collectName     = "Collect"
-	paramName       = "Param"
-	escDispatchName = "ESCdispatch"
-	csiDispatchName = "CSIdispatch"
-	hookName        = "Hook"
-	putName         = "Put"
-	unhookName      = "Unhook"
-	oscStartName    = "OSCstart"
-	oscPutName      = "OSCput"
-	oscEndName      = "OSCEnd"
-	userByteName    = "UserByte"
-	resizeName      = "Resize"
+	ACTION_IGNORE       = "Ignore"
+	ACTION_PRINT        = "Print"
+	ACTION_EXECUTE      = "Execute"
+	ACTION_CLEAR        = "Clear"
+	ACTION_COLLECT      = "Collect"
+	ACTION_PARAM        = "Param"
+	ACTION_ESC_DISPATCH = "ESC_Dispatch"
+	ACTION_CSI_DISPATCH = "CSI_Dispatch"
+	ACTION_HOOK         = "Hook"
+	ACTION_PUT          = "Put"
+	ACTION_UNHOOK       = "Unhook"
+	ACTION_OSC_START    = "OSC_Start"
+	ACTION_OSC_PUT      = "OSC_Put"
+	ACTION_OSC_END      = "OSC_End"
+	ACTION_USER_BYTE    = "UserByte"
+	ACTION_RESIZE       = "Resize"
 )
 
 // action implement both Action interface and accessAction interface
@@ -74,95 +70,95 @@ type ignore struct {
 }
 
 func (i ignore) Ignore() bool { return true } // ignore this action
-func (i ignore) Name() string { return ignoreName }
+func (i ignore) Name() string { return ACTION_IGNORE }
 
 type print struct {
 	action
 }
 
 // func (p print) ActOn(t Emulator) { fmt.Printf("%s: print on terminal\n", p.Name()) }
-func (p print) Name() string { return printName }
+func (p print) Name() string { return ACTION_PRINT }
 
 type execute struct {
 	action
 }
 
 // func (e execute) ActOn(t Emulator) { fmt.Printf("%s: execute on terminal\n", e.Name()) }
-func (e execute) Name() string { return executeName }
+func (e execute) Name() string { return ACTION_EXECUTE }
 
 type clear struct {
 	action
 }
 
 // func (c clear) ActOn(t Emulator) { fmt.Printf("%s: execute on terminal\n", c.Name()) }
-func (c clear) Name() string { return clearName }
+func (c clear) Name() string { return ACTION_CLEAR }
 
 type collect struct {
 	action
 }
 
 // func (c collect) ActOn(t Emulator) { fmt.Printf("%s: execute on terminal\n", c.Name()) }
-func (c collect) Name() string { return collectName }
+func (c collect) Name() string { return ACTION_COLLECT }
 
 type param struct {
 	action
 }
 
 // func (p param) ActOn(t Emulator) { fmt.Printf("%s: execute on terminal\n", p.Name()) }
-func (p param) Name() string { return paramName }
+func (p param) Name() string { return ACTION_PARAM }
 
 type escDispatch struct {
 	action
 }
 
 // func (ed escDispatch) ActOn(t Emulator) { fmt.Printf("%s: execute on terminal\n", ed.Name()) }
-func (ed escDispatch) Name() string { return escDispatchName }
+func (ed escDispatch) Name() string { return ACTION_ESC_DISPATCH }
 
 type csiDispatch struct {
 	action
 }
 
 // func (cd csiDispatch) ActOn(t Emulator) { fmt.Printf("%s: execute on terminal\n", cd.Name()) }
-func (cd csiDispatch) Name() string { return csiDispatchName }
+func (cd csiDispatch) Name() string { return ACTION_CSI_DISPATCH }
 
 type hook struct {
 	action
 }
 
-func (h hook) Name() string { return hookName }
+func (h hook) Name() string { return ACTION_HOOK }
 
 type put struct {
 	action
 }
 
-func (p put) Name() string { return putName }
+func (p put) Name() string { return ACTION_PUT }
 
 type unhook struct {
 	action
 }
 
-func (u unhook) Name() string { return unhookName }
+func (u unhook) Name() string { return ACTION_UNHOOK }
 
 type oscStart struct {
 	action
 }
 
 // func (os oscStart) ActOn(t Emulator) { fmt.Printf("%s: execute on terminal\n", os.Name()) }
-func (os oscStart) Name() string { return oscStartName }
+func (os oscStart) Name() string { return ACTION_OSC_START }
 
 type oscPut struct {
 	action
 }
 
 // func (op oscPut) ActOn(t Emulator) { fmt.Printf("%s: execute on terminal\n", op.Name()) }
-func (op oscPut) Name() string { return oscPutName }
+func (op oscPut) Name() string { return ACTION_OSC_PUT }
 
 type oscEnd struct {
 	action
 }
 
 // func (oe oscEnd) ActOn(t Emulator) { fmt.Printf("%s: execute on terminal\n", oe.Name()) }
-func (oe oscEnd) Name() string { return oscEndName }
+func (oe oscEnd) Name() string { return ACTION_OSC_END }
 
 type UserByte struct {
 	c rune
@@ -170,7 +166,7 @@ type UserByte struct {
 }
 
 // func (ub UserByte) ActOn(t Emulator) { fmt.Printf("%s: execute on terminal\n", ub.Name()) }
-func (ub UserByte) Name() string { return userByteName }
+func (ub UserByte) Name() string { return ACTION_USER_BYTE }
 
 type Resize struct {
 	width  int
@@ -179,4 +175,4 @@ type Resize struct {
 }
 
 // func (r Resize) ActOn(t Emulator) { fmt.Printf("%s: execute on terminal\n", r.Name()) }
-func (r Resize) Name() string { return resizeName }
+func (r Resize) Name() string { return ACTION_RESIZE }
