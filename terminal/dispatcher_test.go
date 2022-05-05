@@ -64,3 +64,35 @@ func TestDispatcherGetParam(t *testing.T) {
 		}
 	}
 }
+
+func TestDispatcherNewParamChar(t *testing.T) {
+	tc := []struct {
+		name   string
+		params string
+		want   []int
+	}{
+		{"normal", ";9;21;", []int{9, 21}},
+		{"too large", ";65536;210;", []int{0, 210}},
+	}
+
+	d := Dispatcher{}
+	for _, v := range tc {
+		d.clear(clear{})
+		for _, ch := range v.params {
+			d.newParamChar(&param{action{ch, true}})
+		}
+
+		if len(v.want) != d.getParamCount() {
+			t.Errorf("%s expect %d result, got %d result.\n", v.name, len(v.want), d.getParamCount())
+		} else {
+			for i, w := range v.want {
+				got := d.getParam(i, 0)
+				if got != w {
+					t.Errorf("%s:\t %q [%02d parameter]: expect %d, got %d\n", v.name, v.params, i, w, got)
+				}
+
+			}
+		}
+
+	}
+}

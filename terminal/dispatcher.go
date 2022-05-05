@@ -53,7 +53,7 @@ func (d *Dispatcher) clear(Action) {
 func (d *Dispatcher) newParamChar(act Action) {
 	if d.params.Len() < 96 {
 		// enough for 16 five-char params plus 15 semicolons
-		// max 16 parameter, every parameter < 99999
+		// max 16 parameter, every parameter < 65535
 		// ensure the above rule at parseAll function
 		if access, ok := act.(AccessAction); ok {
 			d.params.WriteRune(access.GetChar())
@@ -79,7 +79,7 @@ func (d *Dispatcher) parseAll() {
 	d.parsedParams = make([]int, 0, 6)
 	pSlice := strings.Split(d.params.String(), ";")
 
-	//fmt.Printf("pSlice is %v\n", pSlice)
+	// fmt.Printf("pSlice is %v\n", pSlice)
 
 	value := -1
 	for _, str := range pSlice {
@@ -88,7 +88,7 @@ func (d *Dispatcher) parseAll() {
 			continue
 		}
 
-		//fmt.Printf("length of str=%d\n", len(str))
+		// fmt.Printf("length of str=%d\n", len(str))
 
 		if v, err := strconv.Atoi(str); err == nil {
 			value = v
@@ -99,12 +99,12 @@ func (d *Dispatcher) parseAll() {
 			value = -1
 		}
 
-		//fmt.Printf("value=%d\n", value)
+		// fmt.Printf("value=%d\n", value)
 
 		d.parsedParams = append(d.parsedParams, value)
 	}
 
-	//fmt.Printf("parsedParas =%v\n", d.parsedParams)
+	// fmt.Printf("parsedParas =%v\n", d.parsedParams)
 
 	d.parsed = true
 }
