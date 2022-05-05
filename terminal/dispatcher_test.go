@@ -36,10 +36,11 @@ func TestDispatcherGetParam(t *testing.T) {
 		params string
 		want   []int
 	}{
-		{"normal", "4;57;", []int{4, 57}},
-		{"normal", ";5;58", []int{5, 58}},
-		{"abnormal", ";12;45;", []int{12, 45}},
-		{"too large", "65536;4500;", []int{0, 4500}},
+		// the default value is 0
+		{"normal", "4;57", []int{4, 57}},
+		{"malform", ";12;45;", []int{0, 12, 45, 0}},
+		{"too large", "65536;4500;", []int{0, 4500, 0}},
+		{"semicolon", "5:67", []int{5, 67}},
 	}
 
 	for _, v := range tc {
@@ -48,18 +49,16 @@ func TestDispatcherGetParam(t *testing.T) {
 		d.params.WriteString(v.params)
 		// t.Logf("%v\n", d.params)
 
-		d.parseAll()
-
-		for i := range d.parsedParams {
-			got := d.getParam(i, 0)
-			if i < len(v.want) {
+		if len(v.want) != d.getParamCount() {
+			t.Errorf("%s expect %d result, got %d result.\n", v.name, len(v.want), d.getParamCount())
+		} else {
+			for i := range d.parsedParams {
+				got := d.getParam(i, 0)
 				if v.want[i] == got {
 					continue
 				} else {
 					t.Errorf("%s:\t case:%s\t [%02d parameter]: expect %d, got %d\n", v.name, v.params, i, v.want[i], got)
 				}
-			} else {
-				t.Errorf("%s:\t case:%s\t got too much result as wanted.", v.name, v.params)
 			}
 		}
 	}
@@ -71,8 +70,10 @@ func TestDispatcherNewParamChar(t *testing.T) {
 		params string
 		want   []int
 	}{
-		{"normal", ";9;21;", []int{9, 21}},
-		{"too large", ";65536;210;", []int{0, 210}},
+		// the default value is 13
+		{"normal", "9;21", []int{9, 21}},
+		{"malform", ";19;121;", []int{13, 19, 121, 13}},
+		{"too large", "65536;210", []int{13, 210}},
 	}
 
 	d := Dispatcher{}
@@ -86,7 +87,7 @@ func TestDispatcherNewParamChar(t *testing.T) {
 			t.Errorf("%s expect %d result, got %d result.\n", v.name, len(v.want), d.getParamCount())
 		} else {
 			for i, w := range v.want {
-				got := d.getParam(i, 0)
+				got := d.getParam(i, 13)
 				if got != w {
 					t.Errorf("%s:\t %q [%02d parameter]: expect %d, got %d\n", v.name, v.params, i, w, got)
 				}

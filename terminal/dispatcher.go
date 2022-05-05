@@ -50,6 +50,7 @@ func (d *Dispatcher) clear(Action) {
 	d.parsed = false
 }
 
+// newParamChar() requres a &Action value
 func (d *Dispatcher) newParamChar(act Action) {
 	if d.params.Len() < 96 {
 		// enough for 16 five-char params plus 15 semicolons
@@ -71,24 +72,22 @@ func (d *Dispatcher) collect(act Action) {
 	}
 }
 
+// parse "12;23" into []int{12, 34}
+// parse "34:45" into []int{34, 45}
+// corner case such as ";1;2;" will result []int{-1, 1, 2, -1}
 func (d *Dispatcher) parseAll() {
 	if d.parsed {
 		return
 	}
-	// at least 1 parameter
+	// default capability is 6
 	d.parsedParams = make([]int, 0, 6)
-	pSlice := strings.Split(d.params.String(), ";")
 
-	// fmt.Printf("pSlice is %v\n", pSlice)
+	// transfer :(0x3A) to ;(0x3B)
+	params := strings.ReplaceAll(d.params.String(), ":", ";")
+	pSlice := strings.Split(params, ";")
 
 	value := -1
 	for _, str := range pSlice {
-		// skip the empty slice
-		if len(str) < 1 {
-			continue
-		}
-
-		// fmt.Printf("length of str=%d\n", len(str))
 
 		if v, err := strconv.Atoi(str); err == nil {
 			value = v
@@ -99,12 +98,8 @@ func (d *Dispatcher) parseAll() {
 			value = -1
 		}
 
-		// fmt.Printf("value=%d\n", value)
-
 		d.parsedParams = append(d.parsedParams, value)
 	}
-
-	// fmt.Printf("parsedParas =%v\n", d.parsedParams)
 
 	d.parsed = true
 }
