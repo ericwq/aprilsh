@@ -42,6 +42,7 @@ type Dispatcher struct {
 	parsed         bool
 	dispatcherChar strings.Builder
 	oscString      strings.Builder
+	terminalToHost strings.Builder
 }
 
 func (d *Dispatcher) clear(Action) {
