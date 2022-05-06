@@ -37,7 +37,7 @@ var parserActions = struct {
 	sync.Mutex
 	actions map[string]parserActionFunc
 }{
-	actions: make(map[string]parserActionFunc),
+	actions: make(map[string]parserActionFunc,16),
 }
 
 func lookupActionByName(key string) (parserActionFunc, error) {
