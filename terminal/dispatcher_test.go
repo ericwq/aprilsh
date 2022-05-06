@@ -158,3 +158,56 @@ func TestDispatcherOSCput(t *testing.T) {
 		}
 	}
 }
+
+func TestDispatcherOSCdispatch(t *testing.T) {
+	tc := []struct {
+		name    string
+		osc     string
+		command int
+		want    string
+	}{
+		{"normanl", ";title", 0, "title"},
+		{"icon", "1;icon name", 1, "icon name"},
+		{"window", "2;window title name", 2, "window title name"},
+		{"unsupport", "52;window title name", 3, "window title name"},
+	}
+
+	for _, v := range tc {
+		d := Dispatcher{}
+		fb := NewFramebuffer(4, 4)
+
+		// fill in the osc string
+		for _, ch := range v.osc {
+			d.oscPut(&oscPut{action{ch, true}})
+		}
+
+		d.oscDispatch(&oscEnd{}, fb)
+
+		switch v.command {
+		case 0:
+			if fb.IsTitleInitialized() && fb.GetIconName() == v.want && fb.GetWindowTitle() == v.want {
+				continue
+			} else {
+				t.Errorf("%s:\t osc=%q expect %q, got %q and %q\n", v.name, v.osc, v.want, fb.GetIconName(), fb.GetWindowTitle())
+			}
+		case 1:
+			if fb.IsTitleInitialized() && fb.GetIconName() == v.want {
+				continue
+			} else {
+				t.Errorf("%s:\t osc=%q expect %q, got %q \n", v.name, v.osc, v.want, fb.GetIconName())
+			}
+		case 2:
+			if fb.IsTitleInitialized() && fb.GetWindowTitle() == v.want {
+				continue
+			} else {
+				t.Errorf("%s:\t osc=%q expect %q, got %q \n", v.name, v.osc, v.want, fb.GetWindowTitle())
+			}
+		default:
+			if !fb.IsTitleInitialized() {
+				continue
+			} else {
+				t.Errorf("%s:\t osc=%q expect %q, got %q and %q", v.name, v.osc, v.want, fb.GetIconName(), fb.GetWindowTitle())
+			}
+		}
+	}
+}

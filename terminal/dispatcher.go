@@ -150,9 +150,9 @@ func (d *Dispatcher) dispatch(funcType int, act Action, fb *Framebuffer) {
 }
 
 // xterm uses an Operating System Command to set the window title
-// consider to add the other useful OSC command: such as OSC 52
+// consider to add more useful OSC command: such as OSC 52
 // https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands
-func (d *Dispatcher) oscDispatch(act Action, fb *Framebuffer) {
+func (d *Dispatcher) oscDispatch(_ Action, fb *Framebuffer) {
 	oscStr := d.oscString.String()
 	if len(oscStr) >= 1 {
 
@@ -169,7 +169,13 @@ func (d *Dispatcher) oscDispatch(act Action, fb *Framebuffer) {
 			//* 1: set icon name
 			//* 2: set window title
 			if i, err := strconv.Atoi(oscStr[:offset]); err == nil {
-				cmdNum = i
+				if 0 <= i && i <= 2 {
+					// only support OSC 0,1,2
+					cmdNum = i
+				} else {
+					// ignore other OSC command
+					return
+				}
 			}
 			offset += 1
 		}
