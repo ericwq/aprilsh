@@ -63,16 +63,47 @@ func registerFunction(funType int, dispatchChar string, f emuFunc, wrap bool) {
 }
 
 func init() {
-	registerFunction(DISPATCH_CSI, "K", csi_el, true)
-	registerFunction(DISPATCH_CSI, "J", csi_ed, true)
+	registerFunction(DISPATCH_CSI, "K", csi_el, true)        // el
+	registerFunction(DISPATCH_CSI, "J", csi_ed, true)        // ed
+	registerFunction(DISPATCH_CSI, "A", csiCursorMove, true) // cuu
+	registerFunction(DISPATCH_CSI, "B", csiCursorMove, true) // cud
+	registerFunction(DISPATCH_CSI, "C", csiCursorMove, true) // cuf
+	registerFunction(DISPATCH_CSI, "D", csiCursorMove, true) // cub
+	registerFunction(DISPATCH_CSI, "H", csiCursorMove, true) // cup
+	registerFunction(DISPATCH_CSI, "f", csiCursorMove, true) // hvp
 }
 
-// CSI ? Ps J
-// Erase in Display (DECSED), VT220.
-// * Ps = 0  ⇒  Selective Erase Below (default).
-// * Ps = 1  ⇒  Selective Erase Above.
-// * Ps = 2  ⇒  Selective Erase All.
-// * Ps = 3  ⇒  Selective Erase Saved Lines, xterm.
+// CSI Ps A  Cursor Up Ps Times (default = 1) (CUU).
+// CSI Ps B  Cursor Down Ps Times (default = 1) (CUD).
+// CSI Ps C  Cursor Forward Ps Times (default = 1) (CUF).
+// CSI Ps D  Cursor Backward Ps Times (default = 1) (CUB).
+// CSI Ps ; Ps H Cursor Position [row;column] (default = [1,1]) (CUP).
+// CSI Ps ; Ps f Horizontal and Vertical Position [row;column] (default = [1,1]) (HVP).
+func csiCursorMove(fb *Framebuffer, d *Dispatcher) {
+	num := d.getParam(0, 1)
+
+	switch d.getDispatcherChars()[0] {
+	case 'A':
+		fb.DS.MoveRow(-num, true)
+	case 'B':
+		fb.DS.MoveRow(num, true)
+	case 'C':
+		fb.DS.MoveCol(num, true, false)
+	case 'D':
+		fb.DS.MoveCol(-num, true, false)
+	case 'H', 'f':
+		x := d.getParam(0, 1)
+		y := d.getParam(1, 1)
+		fb.DS.MoveRow(x-1, false)
+		fb.DS.MoveCol(y-1, false, false)
+	}
+}
+
+// CSI Ps J Erase in Display (ED), VT100.
+// * Ps = 0  ⇒  Erase Below (default).
+// * Ps = 1  ⇒  Erase Above.
+// * Ps = 2  ⇒  Erase All.
+// * Ps = 3  ⇒  Erase Saved Lines, xterm.
 func csi_ed(fb *Framebuffer, d *Dispatcher) {
 	switch d.getParam(0, 0) {
 	case 0:
@@ -102,8 +133,7 @@ func clearline(fb *Framebuffer, row int, start int, end int) {
 	}
 }
 
-// CSI Ps K
-// Erase in Line (EL), VT100.
+// CSI Ps K Erase in Line (EL), VT100.
 // * Ps = 0  ⇒  Erase to Right (default).
 // * Ps = 1  ⇒  Erase to Left.
 // * Ps = 2  ⇒  Erase All.
