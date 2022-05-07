@@ -85,37 +85,190 @@ func registerFunction(funType int, dispatchChar string, f emuFunc, wrap bool) {
 }
 
 func init() {
-	registerFunction(DISPATCH_CSI, "K", csi_el, true) // el
-
-	registerFunction(DISPATCH_CSI, "J", csi_ed, true) // ed
-
 	registerFunction(DISPATCH_CSI, "A", csiCursorMove, true) // cuu
 	registerFunction(DISPATCH_CSI, "B", csiCursorMove, true) // cud
 	registerFunction(DISPATCH_CSI, "C", csiCursorMove, true) // cuf
 	registerFunction(DISPATCH_CSI, "D", csiCursorMove, true) // cub
 	registerFunction(DISPATCH_CSI, "H", csiCursorMove, true) // cup
+	registerFunction(DISPATCH_CSI, "I", csi_cxt, true)       // cht
+	registerFunction(DISPATCH_CSI, "J", csi_ed, true)        // ed
+	registerFunction(DISPATCH_CSI, "K", csi_el, true)        // el
+	registerFunction(DISPATCH_CSI, "Z", csi_cxt, true)       // cbt
+	registerFunction(DISPATCH_CSI, "c", csi_da, true)        // da request
 	registerFunction(DISPATCH_CSI, "f", csiCursorMove, true) // hvp
-
-	registerFunction(DISPATCH_CSI, "c", csi_da, true)  // da request
-	registerFunction(DISPATCH_CSI, ">c", csi_da, true) // sda request
+	registerFunction(DISPATCH_CSI, "g", csi_tbc, true)       // tbc
+	registerFunction(DISPATCH_CSI, "h", csi_sm, false)       // sm
+	registerFunction(DISPATCH_CSI, "l", csi_rm, false)       // rm
+	registerFunction(DISPATCH_CSI, "r", csi_decstbm, false)  // decstbm
+	registerFunction(DISPATCH_CSI, ">c", csi_da, true)       // sda request
+	registerFunction(DISPATCH_CSI, "?h", csi_decsm, false)   // decset
+	registerFunction(DISPATCH_CSI, "?l", csi_decrm, false)   // decrst
 
 	registerFunction(DISPATCH_ESCAPE, "#8", esc_decaln, true) // decaln
 
-	registerFunction(DISPATCH_CONTROL, "\x84", ctr_lf, true)  // ind
-	registerFunction(DISPATCH_CONTROL, "\x0A", ctr_lf, true)  // lf ctrl-J
-	registerFunction(DISPATCH_CONTROL, "\x0B", ctr_lf, true)  // vt ctrl-K
-	registerFunction(DISPATCH_CONTROL, "\x0C", ctr_lf, true)  // ff ctrl-L
-	registerFunction(DISPATCH_CONTROL, "\x0D", ctr_cr, true)  // cr ctrl-M
-	registerFunction(DISPATCH_CONTROL, "\x08", ctr_bs, true)  // bs ctrl-H
-	registerFunction(DISPATCH_CONTROL, "\x8D", ctr_ri, true)  // ri
-	registerFunction(DISPATCH_CONTROL, "\x85", ctr_nel, true) // nel
-	registerFunction(DISPATCH_CONTROL, "\x09", ctr_ht, true)  // tab
+	registerFunction(DISPATCH_CONTROL, "\x07", ctrl_bel, true) // bel ctrl-G
+	registerFunction(DISPATCH_CONTROL, "\x08", ctrl_bs, true)  // bs ctrl-H
+	registerFunction(DISPATCH_CONTROL, "\x09", ctrl_ht, true)  // tab ctrl-I
+	registerFunction(DISPATCH_CONTROL, "\x0A", ctrl_lf, true)  // lf ctrl-J
+	registerFunction(DISPATCH_CONTROL, "\x0B", ctrl_lf, true)  // vt ctrl-K
+	registerFunction(DISPATCH_CONTROL, "\x0C", ctrl_lf, true)  // ff ctrl-L
+	registerFunction(DISPATCH_CONTROL, "\x0D", ctrl_cr, true)  // cr ctrl-M
+	registerFunction(DISPATCH_CONTROL, "\x84", ctrl_lf, true)  // ind
+	registerFunction(DISPATCH_CONTROL, "\x85", ctrl_nel, true) // nel
+	registerFunction(DISPATCH_CONTROL, "\x88", ctrl_hts, true) // hts
+	registerFunction(DISPATCH_CONTROL, "\x8D", ctrl_ri, true)  // ri
+}
 
-	registerFunction(DISPATCH_CSI, "I", csi_cxt, true) // cht
-	registerFunction(DISPATCH_CSI, "Z", csi_cxt, true) // cbt
+// Bell (BEL  is Ctrl-G).
+// ring the bell
+func ctrl_bel(fb *Framebuffer, _ *Dispatcher) {
+	fb.RingBell()
+}
 
-	registerFunction(DISPATCH_CONTROL, "\x88", ctr_hts, true) // hts
-	registerFunction(DISPATCH_CSI, "g", csi_tbc, true)        // tbc
+// CSI Ps ; Ps r
+// Set Scrolling Region [top;bottom] (default = full size of  window) (DECSTBM), VT100.
+// set top and bottom margins
+func csi_decstbm(fb *Framebuffer, d *Dispatcher) {
+	top := d.getParam(0, 1)
+	bottom := d.getParam(1, fb.DS.GetHeight())
+
+	if bottom <= top || top > fb.DS.GetHeight() || (top == 0 && bottom == 1) {
+		return // invalid, xterm ignores
+	}
+
+	fb.DS.SetScrollingRegion(top-1, bottom-1)
+	fb.DS.MoveCol(0, false, false)
+	fb.DS.MoveRow(0, false)
+}
+
+func getANSImode(param int, fb *Framebuffer) *bool {
+	switch param {
+	case 4:
+		// insert/replace mode
+		return &fb.DS.InsertMode
+	}
+	return nil
+}
+
+// CSI Pm h  Set Mode (SM).
+// *  Ps = 2  ⇒  Keyboard Action Mode (KAM).
+// *  Ps = 4  ⇒  Insert Mode (IRM).
+// *  Ps = 1 2  ⇒  Send/receive (SRM).
+// *  Ps = 2 0  ⇒  Automatic Newline (LNM).
+func csi_sm(fb *Framebuffer, d *Dispatcher) {
+	for i := 0; i < d.getParamCount(); i++ {
+		mode := getANSImode(d.getParam(i, 0), fb)
+		if mode != nil && *mode {
+			*mode = true
+		}
+	}
+}
+
+// CSI Pm l  Reset Mode (RM).
+// *  Ps = 2  ⇒  Keyboard Action Mode (KAM).
+// *  Ps = 4  ⇒  Replace Mode (IRM).
+// *  Ps = 1 2  ⇒  Send/receive (SRM).
+// *  Ps = 2 0  ⇒  Normal Linefeed (LNM).
+func csi_rm(fb *Framebuffer, d *Dispatcher) {
+	for i := 0; i < d.getParamCount(); i++ {
+		mode := getANSImode(d.getParam(i, 0), fb)
+		if mode != nil && *mode {
+			*mode = false
+		}
+	}
+}
+
+func getDECmode(param int, fb *Framebuffer) *bool {
+	switch param {
+	case 1:
+		// cursor key mode
+		return &fb.DS.ApplicationModeCursorKeys
+	case 3:
+		// 80/132. Ignore but clear screen.
+		fb.DS.MoveCol(0, false, false)
+		fb.DS.MoveRow(0, false)
+		for y := 0; y < fb.DS.GetHeight(); y++ {
+			fb.ResetRow(fb.GetRow(y))
+		}
+		return nil
+	case 5:
+		// reverse video
+		return &fb.DS.ReverseVideo
+	case 6:
+		// origin
+		fb.DS.MoveCol(0, false, false)
+		fb.DS.MoveRow(0, false)
+		return &fb.DS.OriginMode
+	case 7:
+		// auto wrap
+		return &fb.DS.AutoWrapMode
+	case 25:
+		return &fb.DS.CursorVisible
+	case 1004:
+		// xterm mouse focus event
+		return &fb.DS.MouseFocusEvent
+	case 1007:
+		// xterm mouse alternate scroll
+		return &fb.DS.MouseAlternateScroll
+	case 2004:
+		// bracketed paste
+		return &fb.DS.BracketedPaste
+	}
+	return nil
+}
+
+func setIfAvailable(mode *bool, value bool) {
+	if mode != nil && *mode {
+		*mode = value
+	}
+}
+
+// CSI ? Pm h
+// DEC Private Mode Set (DECSET).
+// Ps = 9        ⇒  Send Mouse X & Y on button press.
+// Ps = 1 0 0 0  ⇒  Send Mouse X & Y on button press and release.
+// Ps = 1 0 0 1  ⇒  Use Hilite Mouse Tracking, xterm.
+// Ps = 1 0 0 2  ⇒  Use Cell Motion Mouse Tracking, xterm.
+// Ps = 1 0 0 3  ⇒  Use All Motion Mouse Tracking, xterm.
+// Ps = 1 0 0 5  ⇒  Enable UTF-8 Mouse Mode, xterm.
+// Ps = 1 0 0 6  ⇒  Enable SGR Mouse Mode, xterm.
+// Ps = 1 0 1 5  ⇒  Enable urxvt Mouse Mode.
+// set private mode
+func csi_decsm(fb *Framebuffer, d *Dispatcher) {
+	for i := 0; i < d.getParamCount(); i++ {
+		param := d.getParam(i, 0)
+		if param == 9 || (1000 <= param && param <= 1003) {
+			fb.DS.MouseReportingMode = param
+		} else if param == 1005 || param == 1006 || param == 1015 {
+			fb.DS.MouseEncodingMode = param
+		} else {
+			setIfAvailable(getDECmode(param, fb), true)
+		}
+	}
+}
+
+// CSI ? Pm l
+// DEC Private Mode Reset (DECRST).
+// Ps = 9        ⇒  Don't send Mouse X & Y on button press, xterm.
+// Ps = 1 0 0 0  ⇒  Don't send Mouse X & Y on button press and release.
+// Ps = 1 0 0 1  ⇒  Don't use Hilite Mouse Tracking, xterm.
+// Ps = 1 0 0 2  ⇒  Don't use Cell Motion Mouse Tracking, xterm.
+// Ps = 1 0 0 3  ⇒  Don't use All Motion Mouse Tracking, xterm.
+// Ps = 1 0 0 5  ⇒  Disable UTF-8 Mouse Mode, xterm.
+// Ps = 1 0 0 6  ⇒  Disable SGR Mouse Mode, xterm.
+// Ps = 1 0 1 5  ⇒  Disable urxvt Mouse Mode.
+// clear private mode
+func csi_decrm(fb *Framebuffer, d *Dispatcher) {
+	for i := 0; i < d.getParamCount(); i++ {
+		param := d.getParam(i, 0)
+		if param == 9 || (1000 <= param && param <= 1003) {
+			fb.DS.MouseReportingMode = MOUSE_REPORTING_NONE
+		} else if param == 1005 || param == 1006 || param == 1015 {
+			fb.DS.MouseEncodingMode = MOUSE_ENCODING_DEFAULT
+		} else {
+			setIfAvailable(getDECmode(param, fb), false)
+		}
+	}
 }
 
 // CSI Ps g  Tab Clear (TBC).
@@ -138,7 +291,7 @@ func csi_tbc(fb *Framebuffer, d *Dispatcher) {
 
 // Tab Set (HTS  is 0x88).
 // set current cursor column tab true
-func ctr_hts(fb *Framebuffer, _ *Dispatcher) {
+func ctrl_hts(fb *Framebuffer, _ *Dispatcher) {
 	fb.DS.SetTab()
 }
 
@@ -172,14 +325,13 @@ func ht_n(fb *Framebuffer, count int) {
 
 // Horizontal Tab (HTS  is Ctrl-I).
 // move cursor to the next tab position
-// #TODO should we register 0x88 also?
-func ctr_ht(fb *Framebuffer, _ *Dispatcher) {
+func ctrl_ht(fb *Framebuffer, _ *Dispatcher) {
 	ht_n(fb, 1)
 }
 
 // Next Line (NEL  is 0x85).
 // move cursor to the next row, scroll down if necessary. move cursor to row head
-func ctr_nel(fb *Framebuffer, _ *Dispatcher) {
+func ctrl_nel(fb *Framebuffer, _ *Dispatcher) {
 	fb.DS.MoveCol(0, false, false)
 	fb.MoveRowsAutoscroll(1)
 }
@@ -187,25 +339,25 @@ func ctr_nel(fb *Framebuffer, _ *Dispatcher) {
 // Reverse Index (RI  is 0x8d).
 // move cursor to the previous row, scroll up if necessary
 // reverse index -- like a backwards line feed
-func ctr_ri(fb *Framebuffer, _ *Dispatcher) {
+func ctrl_ri(fb *Framebuffer, _ *Dispatcher) {
 	fb.MoveRowsAutoscroll(-1)
 }
 
 // Backspace (BS  is Ctrl-H).
 // bask space
-func ctr_bs(fb *Framebuffer, _ *Dispatcher) {
+func ctrl_bs(fb *Framebuffer, _ *Dispatcher) {
 	fb.DS.MoveCol(-1, true, false)
 }
 
 // Carriage Return (CR  is Ctrl-M).
 // move cursor to the head of the same row
-func ctr_cr(fb *Framebuffer, _ *Dispatcher) {
+func ctrl_cr(fb *Framebuffer, _ *Dispatcher) {
 	fb.DS.MoveCol(0, false, false)
 }
 
 // IND, FF, LF, VT
 // move cursor to the next row, scroll down if necessary.
-func ctr_lf(fb *Framebuffer, _ *Dispatcher) {
+func ctrl_lf(fb *Framebuffer, _ *Dispatcher) {
 	fb.MoveRowsAutoscroll(1)
 }
 
