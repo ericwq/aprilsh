@@ -47,6 +47,28 @@ var emuFunctions = struct {
 	functionsControl: make(map[string]emuFunction, 20),
 }
 
+func findFunctionBy(funType int, key string) emuFunction {
+	emuFunctions.Lock()
+	defer emuFunctions.Unlock()
+
+	switch funType {
+	case DISPATCH_CONTROL:
+		if f, ok := emuFunctions.functionsControl[key]; ok {
+			return f
+		}
+	case DISPATCH_ESCAPE:
+		if f, ok := emuFunctions.functionsESC[key]; ok {
+			return f
+		}
+	case DISPATCH_CSI:
+		if f, ok := emuFunctions.functionsCSI[key]; ok {
+			return f
+		}
+	}
+
+	return emuFunction{}
+}
+
 func registerFunction(funType int, dispatchChar string, f emuFunc, wrap bool) {
 	emuFunctions.Lock()
 	defer emuFunctions.Unlock()

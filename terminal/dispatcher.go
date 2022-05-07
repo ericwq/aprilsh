@@ -143,6 +143,28 @@ func (d *Dispatcher) oscStart(Action) {
 }
 
 func (d *Dispatcher) dispatch(funcType int, act Action, fb *Framebuffer) {
+	key := ""
+
+	switch funcType {
+	case DISPATCH_ESCAPE, DISPATCH_CSI:
+		// add final char to dispatch key
+		act2 := collect{action{act.GetChar(), true}}
+		d.collect(&act2)
+		key = d.dispatcherChar.String()
+	case DISPATCH_CONTROL:
+		key = string(act.GetChar())
+	}
+
+	emuFunc := findFunctionBy(funcType, key)
+	if emuFunc.function != nil { // nil: not find
+		// unkown function
+		fb.DS.NextPrintWillWrap = false
+	} else {
+		if emuFunc.clearsWrapState {
+			fb.DS.NextPrintWillWrap = false
+		}
+		emuFunc.function(fb, d)
+	}
 }
 
 // xterm uses an Operating System Command to set the window title
