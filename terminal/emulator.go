@@ -48,10 +48,6 @@ type Action interface {
 	ActOn(t Emulator)
 	Ignore() bool
 	Name() string
-}
-
-// allow the interface value to access the field value
-type AccessAction interface {
 	SetChar(rune)
 	SetPresent(bool)
 	GetChar() rune
@@ -68,10 +64,7 @@ func (e *emulator) CSIdispatch(act Action) {
 }
 
 func (e *emulator) ESCdispatch(act Action) {
-	var ch rune
-	if access, ok := act.(AccessAction); ok {
-		ch = access.GetChar()
-	}
+	ch := act.GetChar()
 
 	// handle 7-bit ESC-encoding of C1 control characters
 	if len(e.dispatcher.getDispatcherChars()) == 0 && 0x40 <= ch && ch <= 0x5F {

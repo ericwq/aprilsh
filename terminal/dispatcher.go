@@ -53,13 +53,11 @@ func (d *Dispatcher) clear(Action) {
 
 // newParamChar() requres a &Action value
 func (d *Dispatcher) newParamChar(act Action) {
-	if d.params.Len() < 96 {
+	if d.params.Len() < 100 {
 		// enough for 16 five-char params plus 15 semicolons
 		// max 16 parameter, every parameter < 65535
 		// ensure the above rule at parseAll function
-		if access, ok := act.(AccessAction); ok {
-			d.params.WriteRune(access.GetChar())
-		}
+		d.params.WriteRune(act.GetChar())
 	}
 
 	d.parsed = false
@@ -67,10 +65,9 @@ func (d *Dispatcher) newParamChar(act Action) {
 
 func (d *Dispatcher) getDispatcherChars() string { return d.dispatcherChar.String() }
 func (d *Dispatcher) collect(act Action) {
-	if d.dispatcherChar.Len() < 8 { // should never exceed 2
-		if access, ok := act.(AccessAction); ok && access.GetChar() <= 0xFF { // ignore non-8-bit
-			d.dispatcherChar.WriteRune(access.GetChar())
-		}
+	if d.dispatcherChar.Len() < 8 && // should never exceed 2
+		act.GetChar() <= 0xFF { // ignore non-8-bit
+		d.dispatcherChar.WriteRune(act.GetChar())
 	}
 }
 
@@ -137,9 +134,7 @@ func (d *Dispatcher) getParamCount() int {
 func (d *Dispatcher) getOSCstring() string { return d.oscString.String() }
 func (d *Dispatcher) oscPut(act Action) {
 	if d.oscString.Len() < 256 { // should be long enough for window title
-		if access, ok := act.(AccessAction); ok {
-			d.oscString.WriteRune(access.GetChar())
-		}
+		d.oscString.WriteRune(act.GetChar())
 	}
 }
 

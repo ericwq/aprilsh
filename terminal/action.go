@@ -42,16 +42,15 @@ const (
 	ACTION_RESIZE       = "Resize"
 )
 
-// action implement both Action interface and accessAction interface
+// action implement Action interface
 type action struct {
 	ch      rune
 	present bool
 }
 
-func (act action) Ignore() bool     { return false } // default: do not ignore this action
-func (act action) Name() string     { return "" }    // default name: empty
-func (act action) ActOn(t Emulator) {}               // default action: do nothing
-
+func (act *action) Ignore() bool      { return false } // default: do not ignore this action
+func (act *action) Name() string      { return "" }    // default name: empty
+func (act *action) ActOn(t Emulator)  {}               // default action: do nothing
 func (act *action) SetChar(r rune)    { act.ch = r }
 func (act *action) SetPresent(b bool) { act.present = b }
 func (act *action) GetChar() rune     { return act.ch }
