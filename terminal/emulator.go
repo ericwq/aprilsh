@@ -33,12 +33,15 @@ const (
 )
 
 type Emulator interface {
-	// Print(act Action)
-	// Execute(act Action)
+	Print(act Action)
+	Execute(act Action)
+	Dispatch() *Dispatcher
 	CSIdispatch(act Action)
 	ESCdispatch(act Action)
 	OSCend(act Action)
-	Resize(act Action)
+	Resize(width int, height int)
+	User() *UserInput
+	Framebuffer() *Framebuffer
 }
 
 type Action interface {
