@@ -60,11 +60,11 @@ func parseInput(currentState State, r rune) Transition {
 
 	// Normal X.364 state machine.
 	// Parse high Unicode codepoints like 'A'.
-	// TODO verify unicode process
-	if r >= 0xA0 {
-		r = 0x41
+	avatar := r
+	if avatar >= 0xA0 {
+		avatar = 0x41
 	}
-	ret := currentState.eventList(r)
+	ret := currentState.eventList(avatar)
 	ret.action.SetChar(r)
 	ret.action.SetPresent(true)
 	return ret

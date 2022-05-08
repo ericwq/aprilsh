@@ -14,14 +14,14 @@ func compareActions(a []Action, b []Action) bool {
 	return reflect.DeepEqual(a, b)
 }
 
-func TestParserParse(t *testing.T) {
+func TestParserGroundParse(t *testing.T) {
 	tc := []struct {
 		name string
 		raw  string
 		want []Action
 	}{
 		{"ground ISO 8859-1", "sun", []Action{&print{action{'s', true}}, &print{action{'u', true}}, &print{action{'n', true}}}},
-		//{"ground chinese", "s中国", []Action{&print{action{'s', true}}, &print{action{'u', true}}, &print{action{'n', true}}}},
+		{"ground chinese", "s世a", []Action{&print{action{'s', true}}, &print{action{'世', true}}, &print{action{'a', true}}}},
 	}
 
 	p := NewParser()
