@@ -373,7 +373,7 @@ func (ds *DrawState) AddRenditions(color uint32) { ds.renditions.SetRendition(co
 func (ds *DrawState) GetRenditions() Renditions  { return ds.renditions }
 func (ds DrawState) GetBackgroundRendition() int { return int(ds.renditions.bgColor) }
 
-func (ds *DrawState) SavedCursor() {
+func (ds *DrawState) SaveCursor() {
 	ds.save.cursorCol = ds.cursorCol
 	ds.save.cursorRow = ds.cursorRow
 	ds.save.renditions = ds.renditions

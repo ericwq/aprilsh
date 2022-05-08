@@ -284,7 +284,7 @@ func TestDrawStateRestoreCursor(t *testing.T) {
 	ds.MoveCol(x, false, false)
 	ds.MoveRow(y, false)
 
-	ds.SavedCursor()
+	ds.SaveCursor()
 
 	// move to (20,20)
 	ds.MoveCol(20, false, false)

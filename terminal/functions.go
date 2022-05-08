@@ -99,12 +99,15 @@ func init() {
 	registerFunction(DISPATCH_CSI, "g", csi_tbc, true)       // tbc
 	registerFunction(DISPATCH_CSI, "h", csi_sm, false)       // sm
 	registerFunction(DISPATCH_CSI, "l", csi_rm, false)       // rm
+	registerFunction(DISPATCH_CSI, "m", csi_sgr, false)      // sgr
 	registerFunction(DISPATCH_CSI, "r", csi_decstbm, false)  // decstbm
 	registerFunction(DISPATCH_CSI, ">c", csi_da, true)       // sda request
 	registerFunction(DISPATCH_CSI, "?h", csi_decsm, false)   // decset
 	registerFunction(DISPATCH_CSI, "?l", csi_decrm, false)   // decrst
 
 	registerFunction(DISPATCH_ESCAPE, "#8", esc_decaln, true) // decaln
+	registerFunction(DISPATCH_ESCAPE, "7", esc_decsc, true)   // decsc
+	registerFunction(DISPATCH_ESCAPE, "8", esc_decrc, true)   // decrc
 
 	registerFunction(DISPATCH_CONTROL, "\x07", ctrl_bel, true) // bel ctrl-G
 	registerFunction(DISPATCH_CONTROL, "\x08", ctrl_bs, true)  // bs ctrl-H
@@ -117,6 +120,62 @@ func init() {
 	registerFunction(DISPATCH_CONTROL, "\x85", ctrl_nel, true) // nel
 	registerFunction(DISPATCH_CONTROL, "\x88", ctrl_hts, true) // hts
 	registerFunction(DISPATCH_CONTROL, "\x8D", ctrl_ri, true)  // ri
+}
+
+// ESC 7     Save Cursor (DECSC), VT100.
+func esc_decsc(fb *Framebuffer, _ *Dispatcher) {
+	fb.DS.SaveCursor()
+}
+
+// ESC 8     Restore Cursor (DECRC), VT100.
+func esc_decrc(fb *Framebuffer, _ *Dispatcher) {
+	fb.DS.RestoreCursor()
+}
+
+// CSI Pm m  Character Attributes (SGR).
+// select graphics rendition -- e.g., bold, blinking, etc.
+// support 8, 16, 256 color, RGB color.
+// TODO this version doesn't suppor : as seperator
+func csi_sgr(fb *Framebuffer, d *Dispatcher) {
+	for i := 0; i < d.getParamCount(); i++ {
+		rendition := d.getParam(i, 0)
+		// We need to special-case the handling of [34]8 ; 5 ; Ps,
+		// because Ps of 0 in that case does not mean reset to default, even
+		// though it means that otherwise (as usually renditions are applied
+		// in order).
+
+		if (rendition == 38 || rendition == 48) && d.getParamCount()-i >= 3 &&
+			d.getParam(i+1, -1) == 5 {
+
+			if rendition == 38 {
+				fb.DS.SetForegroundColor(d.getParam(i+2, 0))
+			} else {
+				fb.DS.SetBackgroundColor(d.getParam(i+2, 0))
+			}
+
+			i += 2
+			continue
+		}
+		// True color support: ESC[ ... [34]8;2;<r>;<g>;<b> ... m
+		if (rendition == 38 || rendition == 48) && d.getParamCount()-1 >= 5 &&
+			d.getParam(i+1, -1) == 2 {
+
+			red := d.getParam(i+2, 0)
+			green := d.getParam(i+3, 0)
+			blue := d.getParam(i+4, 0)
+
+			if rendition == 38 {
+				fb.DS.renditions.SetFgColor(uint32(red), uint32(green), uint32(blue))
+			} else {
+				fb.DS.renditions.SetBgColor(uint32(red), uint32(green), uint32(blue))
+			}
+
+			i += 4
+			continue
+		}
+
+		fb.DS.AddRenditions(uint32(rendition))
+	}
 }
 
 // Bell (BEL  is Ctrl-G).
