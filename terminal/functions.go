@@ -26,7 +26,10 @@ SOFTWARE.
 
 package terminal
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+)
 
 type emuFunc func(*Framebuffer, *Dispatcher)
 
@@ -85,29 +88,42 @@ func registerFunction(funType int, dispatchChar string, f emuFunc, wrap bool) {
 }
 
 func init() {
-	registerFunction(DISPATCH_CSI, "A", csiCursorMove, true) // cuu
-	registerFunction(DISPATCH_CSI, "B", csiCursorMove, true) // cud
-	registerFunction(DISPATCH_CSI, "C", csiCursorMove, true) // cuf
-	registerFunction(DISPATCH_CSI, "D", csiCursorMove, true) // cub
-	registerFunction(DISPATCH_CSI, "H", csiCursorMove, true) // cup
-	registerFunction(DISPATCH_CSI, "I", csi_cxt, true)       // cht
-	registerFunction(DISPATCH_CSI, "J", csi_ed, true)        // ed
-	registerFunction(DISPATCH_CSI, "K", csi_el, true)        // el
-	registerFunction(DISPATCH_CSI, "Z", csi_cxt, true)       // cbt
-	registerFunction(DISPATCH_CSI, "c", csi_da, true)        // da request
-	registerFunction(DISPATCH_CSI, "f", csiCursorMove, true) // hvp
-	registerFunction(DISPATCH_CSI, "g", csi_tbc, true)       // tbc
-	registerFunction(DISPATCH_CSI, "h", csi_sm, false)       // sm
-	registerFunction(DISPATCH_CSI, "l", csi_rm, false)       // rm
-	registerFunction(DISPATCH_CSI, "m", csi_sgr, false)      // sgr
-	registerFunction(DISPATCH_CSI, "r", csi_decstbm, false)  // decstbm
-	registerFunction(DISPATCH_CSI, ">c", csi_da, true)       // sda request
-	registerFunction(DISPATCH_CSI, "?h", csi_decsm, false)   // decset
-	registerFunction(DISPATCH_CSI, "?l", csi_decrm, false)   // decrst
+	registerFunction(DISPATCH_CSI, "@", csi_ich, true)         // ich
+	registerFunction(DISPATCH_CSI, "A", csi_cursor_move, true) // cuu
+	registerFunction(DISPATCH_CSI, "B", csi_cursor_move, true) // cud
+	registerFunction(DISPATCH_CSI, "C", csi_cursor_move, true) // cuf
+	registerFunction(DISPATCH_CSI, "D", csi_cursor_move, true) // cub
+	registerFunction(DISPATCH_CSI, "G", csi_hpa, true)         // cha
+	registerFunction(DISPATCH_CSI, "H", csi_cursor_move, true) // cup
+	registerFunction(DISPATCH_CSI, "I", csi_cxt, true)         // cht
+	registerFunction(DISPATCH_CSI, "J", csi_ed, true)          // ed
+	registerFunction(DISPATCH_CSI, "K", csi_el, true)          // el
+	registerFunction(DISPATCH_CSI, "L", csi_il, true)          // il
+	registerFunction(DISPATCH_CSI, "M", csi_dl, true)          // dl
+	registerFunction(DISPATCH_CSI, "P", csi_dch, true)         // dch
+	registerFunction(DISPATCH_CSI, "S", csi_su, true)          // SU
+	registerFunction(DISPATCH_CSI, "T", csi_sd, true)          // SD
+	registerFunction(DISPATCH_CSI, "X", csi_ech, true)         // ech
+	registerFunction(DISPATCH_CSI, "Z", csi_cxt, true)         // cbt
+	registerFunction(DISPATCH_CSI, "`", csi_hpa, true)         // hpa
+	registerFunction(DISPATCH_CSI, "c", csi_da, true)          // da request
+	registerFunction(DISPATCH_CSI, "d", csi_vpa, true)         // vpa
+	registerFunction(DISPATCH_CSI, "f", csi_cursor_move, true) // hvp
+	registerFunction(DISPATCH_CSI, "g", csi_tbc, true)         // tbc
+	registerFunction(DISPATCH_CSI, "h", csi_sm, false)         // sm
+	registerFunction(DISPATCH_CSI, "l", csi_rm, false)         // rm
+	registerFunction(DISPATCH_CSI, "m", csi_sgr, false)        // sgr
+	registerFunction(DISPATCH_CSI, "n", csi_dsr, false)        // dsr
+	registerFunction(DISPATCH_CSI, "r", csi_decstbm, false)    // decstbm
+	registerFunction(DISPATCH_CSI, "!p", csi_decstr, true)     // decstr
+	registerFunction(DISPATCH_CSI, ">c", csi_sda, true)        // sda request
+	registerFunction(DISPATCH_CSI, "?h", csi_decsm, false)     // decset
+	registerFunction(DISPATCH_CSI, "?l", csi_decrm, false)     // decrst
 
 	registerFunction(DISPATCH_ESCAPE, "#8", esc_decaln, true) // decaln
 	registerFunction(DISPATCH_ESCAPE, "7", esc_decsc, true)   // decsc
 	registerFunction(DISPATCH_ESCAPE, "8", esc_decrc, true)   // decrc
+	registerFunction(DISPATCH_ESCAPE, "c", esc_rts, true)     // rts
 
 	registerFunction(DISPATCH_CONTROL, "\x07", ctrl_bel, true) // bel ctrl-G
 	registerFunction(DISPATCH_CONTROL, "\x08", ctrl_bs, true)  // bs ctrl-H
@@ -120,6 +136,112 @@ func init() {
 	registerFunction(DISPATCH_CONTROL, "\x85", ctrl_nel, true) // nel
 	registerFunction(DISPATCH_CONTROL, "\x88", ctrl_hts, true) // hts
 	registerFunction(DISPATCH_CONTROL, "\x8D", ctrl_ri, true)  // ri
+}
+
+// CSI Ps S  Scroll up Ps lines (default = 1) (SU), VT420, ECMA-48.
+// TODO it seams mosh revert the SD and SU
+// follow the specification
+func csi_su(fb *Framebuffer, d *Dispatcher) {
+	fb.Scroll(d.getParam(0, 1))
+}
+
+// CSI Ps T  Scroll down Ps lines (default = 1) (SD), VT420.
+// TODO it seams mosh revert the SD and SU
+// follow the specification
+func csi_sd(fb *Framebuffer, d *Dispatcher) {
+	fb.Scroll(-d.getParam(0, 1))
+}
+
+// CSI ! p   Soft terminal reset (DECSTR), VT220 and up.
+func csi_decstr(fb *Framebuffer, _ *Dispatcher) {
+	fb.SoftReset()
+}
+
+// ESC c     Full Reset (RIS), VT100.
+// reset the screen
+func esc_rts(fb *Framebuffer, _ *Dispatcher) {
+	fb.Reset()
+}
+
+// CSI Ps X  Erase Ps Character(s) (default = 1) (ECH).
+func csi_ech(fb *Framebuffer, d *Dispatcher) {
+	num := d.getParam(0, 1)
+	limit := fb.DS.GetCursorCol() + num - 1
+
+	if limit >= fb.DS.GetWidth() {
+		limit = fb.DS.GetWidth() - 1
+	}
+
+	clearline(fb, -1, fb.DS.GetCursorCol(), limit)
+}
+
+// CSI Ps G  Cursor Character Absolute  [column] (default = [row,1]) (CHA).
+// CSI Ps `  Character Position Absolute  [column] (default = [row,1]) (HPA).
+func csi_hpa(fb *Framebuffer, d *Dispatcher) {
+	col := d.getParam(0, 1)
+	fb.DS.MoveCol(col-1, false, false)
+}
+
+// CSI Ps d  Line Position Absolute  [row] (default = [1,column]) (VPA).
+func csi_vpa(fb *Framebuffer, d *Dispatcher) {
+	row := d.getParam(0, 1)
+	fb.DS.MoveRow(row-1, false)
+}
+
+// CSI Ps P  Delete Ps Character(s) (default = 1) (DCH).
+func csi_dch(fb *Framebuffer, d *Dispatcher) {
+	cells := d.getParam(0, 1)
+
+	for i := 0; i < cells; i++ {
+		fb.DeleteCell(fb.DS.GetCursorRow(), fb.DS.GetCursorCol())
+	}
+}
+
+// CSI Ps @  Insert Ps (Blank) Character(s) (default = 1) (ICH).
+func csi_ich(fb *Framebuffer, d *Dispatcher) {
+	cells := d.getParam(0, 1)
+
+	for i := 0; i < cells; i++ {
+		fb.InsertCell(fb.DS.GetCursorRow(), fb.DS.GetCursorCol())
+	}
+}
+
+// CSI Ps M  Delete Ps Line(s) (default = 1) (DL).
+// delete N lines in cursor position
+func csi_dl(fb *Framebuffer, d *Dispatcher) {
+	lines := d.getParam(0, 1)
+
+	fb.DeleteLine(fb.DS.GetCursorRow(), lines)
+
+	// vt220 manual and Ecma-48 say to move to first column */
+	fb.DS.MoveCol(0, false, false)
+}
+
+// CSI Ps L  Insert Ps Line(s) (default = 1) (IL).
+// insert N lines in cursor position
+func csi_il(fb *Framebuffer, d *Dispatcher) {
+	lines := d.getParam(0, 1)
+
+	fb.InsertLine(fb.DS.GetCursorRow(), lines)
+
+	// vt220 manual and Ecma-48 say to move to first column */
+	fb.DS.MoveCol(0, false, false)
+}
+
+// CSI Ps n  Device Status Report (DSR).
+//   Ps = 5  ⇒  Status Report. Result ("OK") is CSI 0 n
+//   Ps = 6  ⇒  Report Cursor Position (CPR) [row;column]. Result is CSI r ; c R
+func csi_dsr(fb *Framebuffer, d *Dispatcher) {
+	param := d.getParam(0, 0)
+
+	switch param {
+	case 5:
+		// device status report requested
+		d.terminalToHost.WriteString("\033[0n")
+	case 6:
+		// report of active position requested
+		fmt.Fprintf(&d.terminalToHost, "\033[%d;%dR", fb.DS.GetCursorRow()+1, fb.DS.GetCursorCol()+1)
+	}
 }
 
 // ESC 7     Save Cursor (DECSC), VT100.
@@ -454,7 +576,7 @@ func csi_da(_ *Framebuffer, d *Dispatcher) {
 // CSI Ps D  Cursor Backward Ps Times (default = 1) (CUB).
 // CSI Ps ; Ps H Cursor Position [row;column] (default = [1,1]) (CUP).
 // CSI Ps ; Ps f Horizontal and Vertical Position [row;column] (default = [1,1]) (HVP).
-func csiCursorMove(fb *Framebuffer, d *Dispatcher) {
+func csi_cursor_move(fb *Framebuffer, d *Dispatcher) {
 	num := d.getParam(0, 1)
 
 	switch d.getDispatcherChars()[0] {
