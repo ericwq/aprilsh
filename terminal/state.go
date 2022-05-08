@@ -26,6 +26,8 @@ SOFTWARE.
 
 package terminal
 
+import "fmt"
+
 type Transition struct {
 	action    Action
 	nextState State
@@ -40,13 +42,14 @@ type State interface {
 
 type state struct{}
 
-func (s state) enter() Action               { return &ignore{} }
-func (s state) exit() Action                { return &ignore{} }
-func (s state) eventList(r rune) Transition { return Transition{} }
+func (s state) enter() Action               { return &ignore{} }    // default: ignore
+func (s state) exit() Action                { return &ignore{} }    // default: ignore
+func (s state) eventList(r rune) Transition { return Transition{} } // go nothing
+func (s state) parse(r rune) Transition     { return Transition{} } // do nothing
 
-func (s state) parse(r rune) Transition {
+func parseInput(currentState State, r rune) Transition {
 	// Check for immediate transitions.
-	anywhere := s.anywhere(r)
+	anywhere := anywhere(r)
 
 	// fill in the action fields
 	if anywhere.nextState != nil {
@@ -61,13 +64,13 @@ func (s state) parse(r rune) Transition {
 	if r >= 0xA0 {
 		r = 0x41
 	}
-	ret := s.eventList(r)
+	ret := currentState.eventList(r)
 	ret.action.SetChar(r)
 	ret.action.SetPresent(true)
 	return ret
 }
 
-func (s state) anywhere(ch rune) Transition {
+func anywhere(ch rune) Transition {
 	if ch == 0x18 || ch == 0x1A || (0x80 <= ch && ch <= 0x8F) || (0x91 <= ch && ch <= 0x97) || ch == 0x99 || ch == 0x9A {
 		return Transition{&execute{}, ground{}}
 	} else if ch == 0x9C {
@@ -100,7 +103,9 @@ func glgr(r rune) bool {
 
 type ground struct{ state }
 
-func (g ground) eventList(r rune) Transition {
+func (st ground) String() string          { return fmt.Sprintf("[%-18s] state", "ground") }
+func (st ground) parse(r rune) Transition { return parseInput(st, r) }
+func (st ground) eventList(r rune) Transition {
 	// C0 control
 	if c0prime(r) {
 		return Transition{&execute{}, nil}
@@ -118,8 +123,10 @@ func (g ground) eventList(r rune) Transition {
 
 type escape struct{ state }
 
-func (g escape) enter() Action { return &clear{} }
-func (e escape) eventList(r rune) Transition {
+func (st escape) String() string          { return fmt.Sprintf("[%-18s] state", "escape") }
+func (st escape) parse(r rune) Transition { return parseInput(st, r) }
+func (st escape) enter() Action           { return &clear{} }
+func (st escape) eventList(r rune) Transition {
 	// C0 control
 	if c0prime(r) {
 		return Transition{&execute{}, nil}
@@ -127,7 +134,7 @@ func (e escape) eventList(r rune) Transition {
 
 	// goto esc intermediate
 	if 0x20 <= r && r <= 0x2F {
-		return Transition{&collect{}, escapIntermediate{}}
+		return Transition{&collect{}, escapeIntermediate{}}
 	}
 
 	// goto ground
@@ -160,9 +167,13 @@ func (e escape) eventList(r rune) Transition {
 	return Transition{&ignore{}, nil}
 }
 
-type escapIntermediate struct{ state }
+type escapeIntermediate struct{ state }
 
-func (e escapIntermediate) eventList(r rune) Transition {
+func (st escapeIntermediate) String() string {
+	return fmt.Sprintf("[%-18s] state", "escapeIntermediate")
+}
+func (st escapeIntermediate) parse(r rune) Transition { return parseInput(st, r) }
+func (st escapeIntermediate) eventList(r rune) Transition {
 	// c0 control
 	if c0prime(r) {
 		return Transition{&execute{}, nil}
@@ -184,8 +195,10 @@ func (e escapIntermediate) eventList(r rune) Transition {
 
 type csiEntry struct{ state }
 
-func (c csiEntry) enter() Action { return &clear{} }
-func (c csiEntry) eventList(r rune) Transition {
+func (st csiEntry) String() string          { return fmt.Sprintf("[%-18s] state", "csiEntry") }
+func (st csiEntry) parse(r rune) Transition { return parseInput(st, r) }
+func (st csiEntry) enter() Action           { return &clear{} }
+func (st csiEntry) eventList(r rune) Transition {
 	// c0 control
 	if c0prime(r) {
 		return Transition{&execute{}, nil}
@@ -226,7 +239,9 @@ func (c csiEntry) eventList(r rune) Transition {
 
 type csiParam struct{ state }
 
-func (c csiParam) eventList(r rune) Transition {
+func (st csiParam) String() string          { return fmt.Sprintf("[%-18s] state", "csiParam") }
+func (st csiParam) parse(r rune) Transition { return parseInput(st, r) }
+func (st csiParam) eventList(r rune) Transition {
 	// c0 control
 	if c0prime(r) {
 		return Transition{&execute{}, nil}
@@ -262,7 +277,9 @@ func (c csiParam) eventList(r rune) Transition {
 
 type csiIntermediate struct{ state }
 
-func (c csiIntermediate) eventList(r rune) Transition {
+func (st csiIntermediate) String() string          { return fmt.Sprintf("[%-18s] state", "csiIntermediate") }
+func (st csiIntermediate) parse(r rune) Transition { return parseInput(st, r) }
+func (st csiIntermediate) eventList(r rune) Transition {
 	// c0 control
 	if c0prime(r) {
 		return Transition{&execute{}, nil}
@@ -290,7 +307,9 @@ func (c csiIntermediate) eventList(r rune) Transition {
 
 type csiIgnore struct{ state }
 
-func (c csiIgnore) eventList(r rune) Transition {
+func (st csiIgnore) String() string          { return fmt.Sprintf("[%-18s] state", "csiIgnore") }
+func (st csiIgnore) parse(r rune) Transition { return parseInput(st, r) }
+func (st csiIgnore) eventList(r rune) Transition {
 	// c0 control
 	if c0prime(r) {
 		return Transition{&execute{}, nil}
@@ -310,8 +329,10 @@ func (c csiIgnore) eventList(r rune) Transition {
 
 type dcsEntry struct{ state }
 
-func (d dcsEntry) enter() Action { return &clear{} }
-func (d dcsEntry) eventList(r rune) Transition {
+func (st dcsEntry) String() string          { return fmt.Sprintf("[%-18s] state", "dcsEntry") }
+func (st dcsEntry) parse(r rune) Transition { return parseInput(st, r) }
+func (st dcsEntry) enter() Action           { return &clear{} }
+func (st dcsEntry) eventList(r rune) Transition {
 	// difference: vt100.net/emu/dec_ansi_parser
 	// event 00-17,19,1C-1F / ignore
 	// if c0prime(r) {
@@ -353,7 +374,9 @@ func (d dcsEntry) eventList(r rune) Transition {
 
 type dcsParam struct{ state }
 
-func (d dcsParam) eventList(r rune) Transition {
+func (st dcsParam) String() string          { return fmt.Sprintf("[%-18s] state", "dcsParam") }
+func (st dcsParam) parse(r rune) Transition { return parseInput(st, r) }
+func (st dcsParam) eventList(r rune) Transition {
 	// difference: vt100.net/emu/dec_ansi_parser
 	// event 00-17,19,1C-1F / ignore
 	// if c0prime(r) {
@@ -389,7 +412,9 @@ func (d dcsParam) eventList(r rune) Transition {
 
 type dcsIntermediate struct{ state }
 
-func (d dcsIntermediate) eventList(r rune) Transition {
+func (st dcsIntermediate) String() string          { return fmt.Sprintf("[%-18s] state", "dcsIntermediate") }
+func (st dcsIntermediate) parse(r rune) Transition { return parseInput(st, r) }
+func (st dcsIntermediate) eventList(r rune) Transition {
 	// difference: vt100.net/emu/dec_ansi_parser
 	// event 00-17,19,1C-1F / ignore
 	// if c0prime(r) {
@@ -418,9 +443,11 @@ func (d dcsIntermediate) eventList(r rune) Transition {
 
 type dcsPassthrough struct{ state }
 
-func (d dcsPassthrough) enter() Action { return &hook{} }
-func (d dcsPassthrough) exit() Action  { return &unhook{} }
-func (d dcsPassthrough) eventList(r rune) Transition {
+func (st dcsPassthrough) String() string          { return fmt.Sprintf("[%-18s] state", "dcsPassthrough") }
+func (st dcsPassthrough) parse(r rune) Transition { return parseInput(st, r) }
+func (st dcsPassthrough) enter() Action           { return &hook{} }
+func (st dcsPassthrough) exit() Action            { return &unhook{} }
+func (st dcsPassthrough) eventList(r rune) Transition {
 	// put
 	if c0prime(r) || (0x20 <= r && r <= 0x7E) {
 		return Transition{&put{}, nil}
@@ -438,7 +465,9 @@ func (d dcsPassthrough) eventList(r rune) Transition {
 
 type dcsIgnore struct{ state }
 
-func (d dcsIgnore) eventList(r rune) Transition {
+func (st dcsIgnore) String() string          { return fmt.Sprintf("[%-18s] state", "dcsIgnore") }
+func (st dcsIgnore) parse(r rune) Transition { return parseInput(st, r) }
+func (st dcsIgnore) eventList(r rune) Transition {
 	// difference: vt100.net/emu/dec_ansi_parser
 	// event 00-17,19,1C-1F,20-7F / ignore
 	// if c0prime(r) || (0x20 <= r && r <= 0x7F) {
@@ -456,9 +485,11 @@ func (d dcsIgnore) eventList(r rune) Transition {
 
 type oscString struct{ state }
 
-func (o oscString) enter() Action { return &oscStart{} }
-func (o oscString) exit() Action  { return &oscEnd{} }
-func (o oscString) eventList(r rune) Transition {
+func (st oscString) String() string          { return fmt.Sprintf("[%-18s] state", "oscString") }
+func (st oscString) parse(r rune) Transition { return parseInput(st, r) }
+func (st oscString) enter() Action           { return &oscStart{} }
+func (st oscString) exit() Action            { return &oscEnd{} }
+func (st oscString) eventList(r rune) Transition {
 	// difference: vt100.net/emu/dec_ansi_parser
 	// event 00-17,19,1C-1F / ignore
 	// if c0prime(r) {
@@ -483,7 +514,9 @@ func (o oscString) eventList(r rune) Transition {
 
 type sosPmApcString struct{ state }
 
-func (s sosPmApcString) eventList(r rune) Transition {
+func (st sosPmApcString) String() string          { return fmt.Sprintf("[%-18s] state", "sosPmApcString") }
+func (st sosPmApcString) parse(r rune) Transition { return parseInput(st, r) }
+func (st sosPmApcString) eventList(r rune) Transition {
 	// difference: vt100.net/emu/dec_ansi_parser
 	// event 00-17,19,1C-1F,20-7F / ignore
 	// if c0prime(r) || (0x20 <= r && r <= 0x7F) {
