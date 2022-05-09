@@ -1,3 +1,29 @@
+/*
+
+MIT License
+
+Copyright (c) 2022 wangqi
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
 package terminal
 
 import (
@@ -14,14 +40,55 @@ func compareActions(a []Action, b []Action) bool {
 	return reflect.DeepEqual(a, b)
 }
 
-func TestParserGroundParse(t *testing.T) {
+func TestParserParse(t *testing.T) {
 	tc := []struct {
 		name string
 		raw  string
 		want []Action
 	}{
-		{"ground ISO 8859-1", "sun", []Action{&print{action{'s', true}}, &print{action{'u', true}}, &print{action{'n', true}}}},
-		{"ground chinese", "s世a", []Action{&print{action{'s', true}}, &print{action{'世', true}}, &print{action{'a', true}}}},
+		{"ground ISO 8859-1", "sun", []Action{
+			&print{action{'s', true}}, &print{action{'u', true}}, &print{action{'n', true}},
+		}},
+		{"ground chinese", "s世a", []Action{
+			&print{action{'s', true}}, &print{action{'世', true}}, &print{action{'a', true}},
+		}},
+		{"Control BEL", "\x07", []Action{
+			&execute{action{'\x07', true}},
+		}},
+		{"Control  LF", "\x0A", []Action{
+			&execute{action{'\x0A', true}},
+		}},
+		{"ESC E", "\x1BE", []Action{
+			&clear{}, &escDispatch{action{'E', true}},
+		}},
+		{"ESC D", "\x1BD", []Action{
+			&clear{}, &escDispatch{action{'D', true}},
+		}},
+		{"ESC 7", "\x1B7", []Action{
+			&clear{}, &escDispatch{action{'7', true}},
+		}},
+		{"ESC #8", "\x1B#8", []Action{
+			&clear{}, &collect{action{'#', true}}, &escDispatch{action{'8', true}},
+		}},
+		{"CSI !P", "\x1B[!P", []Action{
+			&clear{}, &clear{}, &collect{action{'!', true}}, &csiDispatch{action{'P', true}},
+		}},
+		{"CSI Ps;PsH", "\x1B[23;12H", []Action{
+			&clear{}, &clear{}, &param{action{'2', true}}, &param{action{'3', true}},
+			&param{action{';', true}}, &param{action{'1', true}}, &param{action{'2', true}},
+			&csiDispatch{action{'H', true}},
+		}},
+		{"CSI ? Pm h", "\x1B[?1;9;1000h", []Action{
+			&clear{}, &clear{}, &collect{action{'?', true}},
+			&param{action{'1', true}}, &param{action{';', true}}, &param{action{'9', true}},
+			&param{action{';', true}}, &param{action{'1', true}}, &param{action{'0', true}},
+			&param{action{'0', true}}, &param{action{'0', true}}, &csiDispatch{action{'h', true}},
+		}},
+		// {"CSI Ps:PsH", "\x1B[23:12H", []Action{
+		// 	&clear{}, &clear{}, &param{action{'2', true}}, &param{action{'3', true}},
+		// 	&param{action{':', true}}, &param{action{'1', true}}, &param{action{'2', true}},
+		// 	&csiDispatch{action{'H', true}},
+		// }},
 	}
 
 	p := NewParser()
