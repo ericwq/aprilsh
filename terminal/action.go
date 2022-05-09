@@ -71,7 +71,7 @@ type print struct {
 
 func (act print) Name() string { return ACTION_PRINT }
 func (act print) String() string {
-	return fmt.Sprintf("%s(0x%X,%t)", ACTION_PRINT, act.ch, act.present)
+	return fmt.Sprintf("%s(0x%02X,%t)", ACTION_PRINT, act.ch, act.present)
 }
 
 func (act print) ActOn(emu Emulator) {
@@ -84,7 +84,7 @@ type execute struct {
 
 func (act execute) Name() string { return ACTION_EXECUTE }
 func (act execute) String() string {
-	return fmt.Sprintf("%s(0x%X,%t)", ACTION_EXECUTE, act.ch, act.present)
+	return fmt.Sprintf("%s(0x%02X,%t)", ACTION_EXECUTE, act.ch, act.present)
 }
 
 func (act execute) ActOn(emu Emulator) {
@@ -110,7 +110,7 @@ type collect struct {
 
 func (act collect) Name() string { return ACTION_COLLECT }
 func (act collect) String() string {
-	return fmt.Sprintf("%s(0x%X,%t)", ACTION_COLLECT, act.ch, act.present)
+	return fmt.Sprintf("%s(0x%02X,%t)", ACTION_COLLECT, act.ch, act.present)
 }
 
 func (act collect) ActOn(emu Emulator) {
@@ -123,7 +123,7 @@ type param struct {
 
 func (act param) Name() string { return ACTION_PARAM }
 func (act param) String() string {
-	return fmt.Sprintf("%s(0x%X,%t)", ACTION_PARAM, act.ch, act.present)
+	return fmt.Sprintf("%s(0x%02X,%t)", ACTION_PARAM, act.ch, act.present)
 }
 
 func (act param) ActOn(emu Emulator) {
@@ -136,7 +136,7 @@ type escDispatch struct {
 
 func (act escDispatch) Name() string { return ACTION_ESC_DISPATCH }
 func (act escDispatch) String() string {
-	return fmt.Sprintf("%s(0x%X,%t)", ACTION_ESC_DISPATCH, act.ch, act.present)
+	return fmt.Sprintf("%s(0x%02X,%t)", ACTION_ESC_DISPATCH, act.ch, act.present)
 }
 
 func (act escDispatch) ActOn(emu Emulator) {
@@ -149,7 +149,7 @@ type csiDispatch struct {
 
 func (act csiDispatch) Name() string { return ACTION_CSI_DISPATCH }
 func (act csiDispatch) String() string {
-	return fmt.Sprintf("%s(0x%X,%t)", ACTION_CSI_DISPATCH, act.ch, act.present)
+	return fmt.Sprintf("%s(0x%02X,%t)", ACTION_CSI_DISPATCH, act.ch, act.present)
 }
 
 func (act csiDispatch) ActOn(emu Emulator) {
@@ -162,7 +162,7 @@ type hook struct {
 
 func (act hook) Name() string { return ACTION_HOOK }
 func (act hook) String() string {
-	return fmt.Sprintf("%s(0x%X,%t)", ACTION_HOOK, act.ch, act.present)
+	return fmt.Sprintf("%s(0x%02X,%t)", ACTION_HOOK, act.ch, act.present)
 }
 
 type put struct {
@@ -171,7 +171,7 @@ type put struct {
 
 func (act put) Name() string { return ACTION_PUT }
 func (act put) String() string {
-	return fmt.Sprintf("%s(0x%X,%t)", ACTION_PUT, act.ch, act.present)
+	return fmt.Sprintf("%s(0x%02X,%t)", ACTION_PUT, act.ch, act.present)
 }
 
 type unhook struct {
@@ -180,7 +180,7 @@ type unhook struct {
 
 func (act unhook) Name() string { return ACTION_UNHOOK }
 func (act unhook) String() string {
-	return fmt.Sprintf("%s(0x%X,%t)", ACTION_UNHOOK, act.ch, act.present)
+	return fmt.Sprintf("%s(0x%02X,%t)", ACTION_UNHOOK, act.ch, act.present)
 }
 
 type oscStart struct {
@@ -189,7 +189,7 @@ type oscStart struct {
 
 func (act oscStart) Name() string { return ACTION_OSC_START }
 func (act oscStart) String() string {
-	return fmt.Sprintf("%s(0x%X,%t)", ACTION_OSC_START, act.ch, act.present)
+	return fmt.Sprintf("%s(0x%02X,%t)", ACTION_OSC_START, act.ch, act.present)
 }
 
 func (act oscStart) ActOn(emu Emulator) {
@@ -202,7 +202,7 @@ type oscPut struct {
 
 func (act oscPut) Name() string { return ACTION_OSC_PUT }
 func (act oscPut) String() string {
-	return fmt.Sprintf("%s(0x%X,%t)", ACTION_OSC_PUT, act.ch, act.present)
+	return fmt.Sprintf("%s(0x%02X,%t)", ACTION_OSC_PUT, act.ch, act.present)
 }
 
 func (act oscPut) ActOn(emu Emulator) {
@@ -215,7 +215,7 @@ type oscEnd struct {
 
 func (act oscEnd) Name() string { return ACTION_OSC_END }
 func (act oscEnd) String() string {
-	return fmt.Sprintf("%s(0x%X,%t)", ACTION_OSC_END, act.ch, act.present)
+	return fmt.Sprintf("%s(0x%02X,%t)", ACTION_OSC_END, act.ch, act.present)
 }
 
 func (act oscEnd) ActOn(emu Emulator) {
@@ -229,7 +229,7 @@ type UserByte struct {
 
 func (act UserByte) Name() string { return ACTION_USER_BYTE }
 func (act UserByte) String() string {
-	return fmt.Sprintf("%s(0x%X,%t)", ACTION_USER_BYTE, act.c, act.present)
+	return fmt.Sprintf("%s(0x%02X,%t)", ACTION_USER_BYTE, act.c, act.present)
 }
 
 func (act UserByte) ActOn(emu Emulator) {

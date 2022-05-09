@@ -52,6 +52,9 @@ func TestParserParse(t *testing.T) {
 		{"ground chinese", "s世a", []Action{
 			&print{action{'s', true}}, &print{action{'世', true}}, &print{action{'a', true}},
 		}},
+		{"ground chinese", "s世a\x9C", []Action{
+			&print{action{'s', true}}, &print{action{'世', true}}, &print{action{'a', true}},
+		}},
 		{"Control BEL", "\x07", []Action{
 			&execute{action{'\x07', true}},
 		}},
@@ -84,11 +87,25 @@ func TestParserParse(t *testing.T) {
 			&param{action{';', true}}, &param{action{'1', true}}, &param{action{'0', true}},
 			&param{action{'0', true}}, &param{action{'0', true}}, &csiDispatch{action{'h', true}},
 		}},
-		// {"CSI Ps:PsH", "\x1B[23:12H", []Action{
-		// 	&clear{}, &clear{}, &param{action{'2', true}}, &param{action{'3', true}},
-		// 	&param{action{':', true}}, &param{action{'1', true}}, &param{action{'2', true}},
-		// 	&csiDispatch{action{'H', true}},
-		// }},
+		{"CSI 38:2:Pr:Pg,Pbm", "\x1B[38:2:25:90:12m", []Action{
+			&clear{}, &clear{}, &param{action{'3', true}}, &param{action{'8', true}},
+			&param{action{':', true}}, &param{action{'2', true}}, &param{action{':', true}},
+			&param{action{'2', true}}, &param{action{'5', true}}, &param{action{':', true}},
+			&param{action{'9', true}}, &param{action{'0', true}}, &param{action{':', true}},
+			&param{action{'1', true}}, &param{action{'2', true}}, &csiDispatch{action{'m', true}},
+		}},
+		{"OSC 0;Pt BEL", "\x1B]0;ada\x07", []Action{
+			&clear{}, &oscStart{}, &oscPut{action{'0', true}}, &oscPut{action{';', true}},
+			&oscPut{action{'a', true}}, &oscPut{action{'d', true}}, &oscPut{action{'a', true}}, &oscEnd{},
+		}},
+		{"OSC 0;Pt ST", "\x1B]0;ada\x9c", []Action{
+			&clear{}, &oscStart{}, &oscPut{action{'0', true}}, &oscPut{action{';', true}},
+			&oscPut{action{'a', true}}, &oscPut{action{'d', true}}, &oscPut{action{'a', true}}, &oscEnd{},
+		}},
+		{"OSC 0;Pt ST chinese", "\x1B]0;a仁a\x9c", []Action{
+			&clear{}, &oscStart{}, &oscPut{action{'0', true}}, &oscPut{action{';', true}},
+			&oscPut{action{'a', true}}, &oscPut{action{'\u4EC1', true}}, &oscPut{action{'a', true}}, &oscEnd{},
+		}},
 	}
 
 	p := NewParser()
@@ -97,6 +114,9 @@ func TestParserParse(t *testing.T) {
 
 		actions := make([]Action, 0, 8)
 		for _, ch := range v.raw {
+			if ch == '\uFFFD' {
+				t.Errorf("read from raw got 0x%X\n", ch)
+			}
 			actions = p.parse(actions, ch)
 		}
 		if !compareActions(v.want, actions) {

@@ -69,6 +69,7 @@ func (e *emulator) ESCdispatch(act Action) {
 	// handle 7-bit ESC-encoding of C1 control characters
 	if len(e.dispatcher.getDispatcherChars()) == 0 && 0x40 <= ch && ch <= 0x5F {
 		// convert 7-bit esc sequence into 8-bit c1 control sequence
+		// TODO consider remove 8-bit c1 control
 		act2 := escDispatch{action{ch + 0x40, true}}
 		e.dispatcher.dispatch(DISPATCH_CONTROL, &act2, &e.framebuffer)
 	} else {

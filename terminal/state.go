@@ -60,11 +60,12 @@ func parseInput(currentState State, r rune) Transition {
 
 	// Normal X.364 state machine.
 	// Parse high Unicode codepoints like 'A'.
-	avatar := r
-	if avatar >= 0xA0 {
-		avatar = 0x41
-	}
-	ret := currentState.eventList(avatar)
+	// avatar := r
+	// if avatar >= 0xA0 {
+	// 	avatar = 0x41
+	// }
+	// ret := currentState.eventList(avatar)
+	ret := currentState.eventList(r)
 	ret.action.SetChar(r)
 	ret.action.SetPresent(true)
 	return ret
@@ -111,6 +112,11 @@ func (st ground) eventList(r rune) Transition {
 		return Transition{&execute{}, nil}
 	}
 
+	// for unicode problem, ignore it for ground state
+	if r == '\uFFFD' {
+		return Transition{&ignore{}, nil}
+	}
+
 	// mosh treat GR the same as GL,
 	// difference from https://vt100.net/emu/dec_ansi_parser
 	// only event 20-7F / print
@@ -118,7 +124,7 @@ func (st ground) eventList(r rune) Transition {
 		return Transition{&print{}, nil}
 	}
 
-	return Transition{&ignore{}, nil}
+	return Transition{&print{}, nil}
 }
 
 type escape struct{ state }
@@ -210,8 +216,8 @@ func (st csiEntry) eventList(r rune) Transition {
 	}
 
 	// goto csi param: param
-	// 0~9,;
-	if (0x30 <= r && r <= 0x39) || r == 0x3B {
+	// 0~9:;
+	if 0x30 <= r && r <= 0x3B {
 		return Transition{&param{}, csiParam{}}
 	}
 
@@ -219,12 +225,6 @@ func (st csiEntry) eventList(r rune) Transition {
 	// <,=,>,?
 	if 0x3C <= r && r <= 0x3F {
 		return Transition{&collect{}, csiParam{}}
-	}
-
-	// goto csi ignore
-	// :
-	if r == 0x3A {
-		return Transition{&ignore{}, csiIgnore{}}
 	}
 
 	// goto csi intermediate: collect
@@ -248,15 +248,14 @@ func (st csiParam) eventList(r rune) Transition {
 	}
 
 	// csi param
-	// ;,0~9
-	// TODO maybe we should add 0x3A here?
-	if r == 0x3B || (0x30 <= r && r <= 0x39) {
+	// 0~9:;
+	if 0x30 <= r && r <= 0x3B {
 		return Transition{&param{}, nil}
 	}
 
 	// goto csi ignore
-	// :,<,=,>,?
-	if r == 0x3A || (0x3C <= r && r <= 0x3F) {
+	// <,=,>,?
+	if 0x3C <= r && r <= 0x3F {
 		return Transition{&ignore{}, csiIgnore{}}
 	}
 
@@ -498,18 +497,21 @@ func (st oscString) eventList(r rune) Transition {
 
 	// osc put
 	// TODO should consider unicode title
-	if 0x20 <= r && r <= 0x7F {
-		return Transition{&oscPut{}, nil}
-	}
+	// if 0x20 <= r && r <= 0x7F {
+	// 	return Transition{&oscPut{}, nil}
+	// }
 
-	// goto ground
-	if r == 0x9C || r == 0x07 { // 0x07 is xterm non-ANSI variant
+	// goto ground: end osc string state
+	// 0x07 is xterm non-ANSI variant
+	// 0x9C it's not possible for utf-8 environment
+	// \uFFFD for osc string sequence, it's the same as 0x07
+	if r == 0x9C || r == 0x07 || r == '\uFFFD' {
 		return Transition{&ignore{}, ground{}}
 	}
 
 	// the lase one is
 	// event 00-17,19,1C-1F / ignore
-	return Transition{&ignore{}, nil}
+	return Transition{&oscPut{}, nil}
 }
 
 type sosPmApcString struct{ state }
