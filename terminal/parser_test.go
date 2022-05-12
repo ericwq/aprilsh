@@ -41,11 +41,14 @@ func TestParseProcessInput(t *testing.T) {
 		{"OSC 2;Pt BEL chinese", "\x1B]2;a道德经a\x07", "osc 0,1,2"},
 		{"CSI Ps;PsH", "\x1B[24;14H", "cup"},
 		{"CSI Ps;Psf", "\x1B[41;42f", "cup"},
-		{"CSI Ps A", "\x1B[41A", "cux"},
-		{"CSI Ps B", "\x1B[31B", "cux"},
-		{"CSI Ps C", "\x1B[21C", "cux"},
-		{"CSI Ps D", "\x1B[11D", "cux"},
+		{"CSI Ps A", "\x1B[41A", "cuu"},
+		{"CSI Ps B", "\x1B[31B", "cud"},
+		{"CSI Ps C", "\x1B[21C", "cuf"},
+		{"CSI Ps D", "\x1B[11D", "cub"},
 		{"CR", "\x0D", "c0-cr"},
+		{"LF", "\n", "c0-lf"},
+		{"VT", "\v", "c0-lf"},
+		{"FF", "\f", "c0-lf"},
 	}
 
 	p := NewParser()

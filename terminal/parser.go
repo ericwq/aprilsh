@@ -152,14 +152,52 @@ func (p *Parser) getArg() (arg string) {
 	return arg
 }
 
-// prepare parameters for the CUU, CUD, CUF, CUB
-// it's all about cursor move
-func (p *Parser) handle_CUX() (hd *Handler) {
+// prepare parameters for the CUU
+func (p *Parser) handle_CUU() (hd *Handler) {
 	num := p.getPs(0, 1)
 
-	hd = &Handler{name: "cux", ch: p.ch}
+	hd = &Handler{name: "cuu", ch: p.ch}
 	hd.handle = func(emu emulator) {
-		hd_cursor_move(emu, p.ch, num)
+		hdl_csi_cuu(emu, num)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// prepare parameters for the CUD
+func (p *Parser) handle_CUD() (hd *Handler) {
+	num := p.getPs(0, 1)
+
+	hd = &Handler{name: "cud", ch: p.ch}
+	hd.handle = func(emu emulator) {
+		hdl_csi_cud(emu, num)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// prepare parameters for the CUF
+func (p *Parser) handle_CUF() (hd *Handler) {
+	num := p.getPs(0, 1)
+
+	hd = &Handler{name: "cuf", ch: p.ch}
+	hd.handle = func(emu emulator) {
+		hdl_csi_cuf(emu, num)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// prepare parameters for CUB
+func (p *Parser) handle_CUB() (hd *Handler) {
+	num := p.getPs(0, 1)
+
+	hd = &Handler{name: "cub", ch: p.ch}
+	hd.handle = func(emu emulator) {
+		hdl_csi_cub(emu, num)
 	}
 
 	p.setState(InputState_Normal)
@@ -173,7 +211,7 @@ func (p *Parser) handle_CUP() (hd *Handler) {
 
 	hd = &Handler{name: "cup", ch: p.ch}
 	hd.handle = func(emu emulator) {
-		hdl_cup(emu, row, col)
+		hdl_csi_cup(emu, row, col)
 	}
 
 	// reset the state
@@ -223,7 +261,17 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 func (p *Parser) handle_CR() (hd *Handler) {
 	hd = &Handler{name: "c0-cr", ch: p.ch}
 	hd.handle = func(emu emulator) {
-		hd_c0_cr(emu)
+		hdl_c0_cr(emu)
+	}
+	// reset the state
+	p.setState(InputState_Normal)
+	return hd
+}
+
+func (p *Parser) handle_IND() (hd *Handler) {
+	hd = &Handler{name: "c0-lf", ch: p.ch}
+	hd.handle = func(emu emulator) {
+		hdl_c0_lf(emu)
 	}
 	// reset the state
 	p.setState(InputState_Normal)
@@ -251,6 +299,9 @@ func (p *Parser) processInput(ch rune) (hd *Handler) {
 			// fmt.Printf("state=%d ch=%q\n", p.inputState, ch)
 			p.traceNormalInput()
 			hd = p.handle_CR()
+		case '\f', '\v', '\n': // FF, VT same as LF
+			p.traceNormalInput()
+			hd = p.handle_IND()
 		default:
 			// one stop https://www.cl.cam.ac.uk/~mgk25/unicode.html
 			// https://harjit.moe/charsetramble.html
@@ -263,14 +314,22 @@ func (p *Parser) processInput(ch rune) (hd *Handler) {
 		case ']':
 			p.argBuf.Reset()
 			p.setState(InputState_OSC)
+		case 'D':
+			hd = p.handle_IND()
 		}
 	case InputState_CSI:
 		if p.collectNumericParameters(ch) {
 			break
 		}
 		switch ch {
-		case 'A', 'B', 'C', 'D':
-			hd = p.handle_CUX()
+		case 'A':
+			hd = p.handle_CUU()
+		case 'B':
+			hd = p.handle_CUD()
+		case 'C':
+			hd = p.handle_CUF()
+		case 'D':
+			hd = p.handle_CUB()
 		case 'H', 'f':
 			hd = p.handle_CUP()
 		}

@@ -36,32 +36,41 @@ type Handler struct {
 	handle func(emu emulator) // handle the action on emulator
 }
 
+// FF, VT same as LF
+// move cursor to the next row, scroll down if necessary.
+func hdl_c0_lf(emu emulator) {
+	emu.framebuffer.MoveRowsAutoscroll(1)
+}
+
 // Carriage Return (CR  is Ctrl-M).
 // move cursor to the head of the same row
-func hd_c0_cr(emu emulator) {
+func hdl_c0_cr(emu emulator) {
 	emu.framebuffer.DS.MoveCol(0, false, false)
 }
 
 // CSI Ps A  Cursor Up Ps Times (default = 1) (CUU).
+func hdl_csi_cuu(emu emulator, num int) {
+	emu.framebuffer.DS.MoveRow(-num, true)
+}
+
 // CSI Ps B  Cursor Down Ps Times (default = 1) (CUD).
+func hdl_csi_cud(emu emulator, num int) {
+	emu.framebuffer.DS.MoveRow(num, true)
+}
+
 // CSI Ps C  Cursor Forward Ps Times (default = 1) (CUF).
+func hdl_csi_cuf(emu emulator, num int) {
+	emu.framebuffer.DS.MoveCol(num, true, false)
+}
+
 // CSI Ps D  Cursor Backward Ps Times (default = 1) (CUB).
-func hd_cursor_move(emu emulator, ch rune, num int) {
-	switch ch {
-	case 'A':
-		emu.framebuffer.DS.MoveRow(-num, true)
-	case 'B':
-		emu.framebuffer.DS.MoveRow(num, true)
-	case 'C':
-		emu.framebuffer.DS.MoveCol(num, true, false)
-	case 'D':
-		emu.framebuffer.DS.MoveCol(-num, true, false)
-	}
+func hdl_csi_cub(emu emulator, num int) {
+	emu.framebuffer.DS.MoveCol(-num, true, false)
 }
 
 // CSI Ps ; Ps H Cursor Position [row;column] (default = [1,1]) (CUP).
 // CSI Ps ; Ps f Horizontal and Vertical Position [row;column] (default = [1,1]) (HVP).
-func hdl_cup(emu emulator, row int, col int) {
+func hdl_csi_cup(emu emulator, row int, col int) {
 	emu.framebuffer.DS.MoveRow(row-1, false)
 	emu.framebuffer.DS.MoveCol(col-1, false, false)
 }
