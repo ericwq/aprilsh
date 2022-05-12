@@ -27,7 +27,6 @@ SOFTWARE.
 package terminal
 
 import (
-	"fmt"
 	"strings"
 )
 
@@ -56,6 +55,7 @@ type Parser struct {
 
 	// big switch state machine
 	inputState int
+	ch         rune
 
 	// numeric parameters
 	inputOps  []int
@@ -159,49 +159,55 @@ func (p *Parser) collectNumericParameters(ch rune) (isBreak bool) {
 	return isBreak
 }
 
-type Handler struct {
-	name   string             // the name of ActOn
-	handle func(emu emulator) // the action will take place on emulator
+func (p *Parser) getPs(n int, defaultVal int) int {
+	ret := defaultVal
+	if n < p.nInputOps {
+		ret = p.inputOps[n]
+	}
+
+	if ret < 1 {
+		ret = defaultVal
+	}
+	return ret
 }
 
-func (p *Parser) handle_CUP() *Handler {
-	row := 1
-	col := 1
-	if p.inputOps[0] > 0 {
-		row = p.inputOps[0]
+func (p *Parser) getArg() (arg string) {
+	if p.argBuf.Len() > 0 {
+		arg = p.argBuf.String()
 	}
 
-	if p.nInputOps > 1 && p.inputOps[1] > 0 {
-		col = p.inputOps[1]
+	return arg
+}
+
+func (p *Parser) handle_CUX() (hd *Handler) {
+	num := p.getPs(0, 1)
+
+	hd = &Handler{name: "cux", ch: p.ch}
+	hd.handle = func(emu emulator) {
+		hd_cursor_move(emu, p.ch, num)
 	}
 
-	ac := Handler{}
-	ac.name = "cup"
-	ac.handle = func(emu emulator) {
+	p.setState(InputState_Normal)
+	return hd
+}
+
+func (p *Parser) handle_CUP() (hd *Handler) {
+	row := p.getPs(0, 1)
+	col := p.getPs(1, 1)
+
+	hd = &Handler{name: "cup", ch: p.ch}
+	hd.handle = func(emu emulator) {
 		hdl_cup(emu, row, col)
 	}
 
 	// reset the state
 	p.setState(InputState_Normal)
-	return &ac
+	return hd
 }
 
-func hdl_cup(_ emulator, row int, col int) {
-	fmt.Printf("handle osc row=%d, col=%d\n", row, col)
-}
-
-func (p *Parser) handle_OSC() *Handler {
-	var hd *Handler
-	cmd := 0
-	arg := ""
-
-	if p.inputOps[0] > 0 {
-		cmd = p.inputOps[0]
-	}
-
-	if p.argBuf.Len() > 0 {
-		arg = p.argBuf.String()
-	}
+func (p *Parser) handle_OSC() (hd *Handler) {
+	cmd := p.getPs(0, 0)
+	arg := p.getArg()
 
 	if cmd < 0 || cmd > 120 {
 		// LogT "OSC: malformed command string '"
@@ -242,40 +248,12 @@ func (p *Parser) handle_OSC() *Handler {
 	return hd
 }
 
-func hdl_osc_10(_ emulator, cmd int, arg string) {
-	fmt.Printf("handle osc dynamic cmd=%d, arg=%s\n", cmd, arg)
-}
-
-func hdl_osc_52(_ emulator, cmd int, arg string) {
-	fmt.Printf("handle osc copy cmd=%d, arg=%s\n", cmd, arg)
-}
-
-func hdl_osc_4(_ emulator, cmd int, arg string) {
-	fmt.Printf("handle osc palette cmd=%d, arg=%s\n", cmd, arg)
-}
-
-func hdl_osc_0(emu emulator, cmd int, arg string) {
-	// set icon name / window title
-	setIcon := cmd == 0 || cmd == 1
-	setTitle := cmd == 0 || cmd == 2
-	if setIcon || setTitle {
-		emu.framebuffer.SetTitleInitialized()
-
-		if setIcon {
-			emu.framebuffer.SetIconName(arg)
-		}
-
-		if setTitle {
-			emu.framebuffer.SetWindowTitle(arg)
-		}
-	}
-}
-
 func (p *Parser) processInput(ch rune) *Handler {
 	var hd *Handler
 	p.lastEscBegin = 0
 	p.lastNormalBegin = 0
 	p.lastStopPos = 0
+	p.ch = ch
 
 	switch p.inputState {
 	case InputState_Normal:
@@ -299,6 +277,8 @@ func (p *Parser) processInput(ch rune) *Handler {
 			break
 		}
 		switch ch {
+		case 'A', 'B', 'C', 'D':
+			hd = p.handle_CUX()
 		case 'H', 'f':
 			hd = p.handle_CUP()
 		}
