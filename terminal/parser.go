@@ -157,7 +157,7 @@ func (p *Parser) handle_CUU() (hd *Handler) {
 	num := p.getPs(0, 1)
 
 	hd = &Handler{name: "cuu", ch: p.ch}
-	hd.handle = func(emu emulator) {
+	hd.handle = func(emu *emulator) {
 		hdl_csi_cuu(emu, num)
 	}
 
@@ -170,7 +170,7 @@ func (p *Parser) handle_CUD() (hd *Handler) {
 	num := p.getPs(0, 1)
 
 	hd = &Handler{name: "cud", ch: p.ch}
-	hd.handle = func(emu emulator) {
+	hd.handle = func(emu *emulator) {
 		hdl_csi_cud(emu, num)
 	}
 
@@ -183,7 +183,7 @@ func (p *Parser) handle_CUF() (hd *Handler) {
 	num := p.getPs(0, 1)
 
 	hd = &Handler{name: "cuf", ch: p.ch}
-	hd.handle = func(emu emulator) {
+	hd.handle = func(emu *emulator) {
 		hdl_csi_cuf(emu, num)
 	}
 
@@ -196,7 +196,7 @@ func (p *Parser) handle_CUB() (hd *Handler) {
 	num := p.getPs(0, 1)
 
 	hd = &Handler{name: "cub", ch: p.ch}
-	hd.handle = func(emu emulator) {
+	hd.handle = func(emu *emulator) {
 		hdl_csi_cub(emu, num)
 	}
 
@@ -210,7 +210,7 @@ func (p *Parser) handle_CUP() (hd *Handler) {
 	col := p.getPs(1, 1)
 
 	hd = &Handler{name: "cup", ch: p.ch}
-	hd.handle = func(emu emulator) {
+	hd.handle = func(emu *emulator) {
 		hdl_csi_cup(emu, row, col)
 	}
 
@@ -230,22 +230,22 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 		// create the ActOn
 		case 0, 1, 2:
 			hd = &Handler{name: "osc 0,1,2", ch: p.ch}
-			hd.handle = func(emu emulator) {
+			hd.handle = func(emu *emulator) {
 				hdl_osc_0(emu, cmd, arg)
 			}
 		case 4:
 			hd = &Handler{name: "osc 4", ch: p.ch}
-			hd.handle = func(emu emulator) {
+			hd.handle = func(emu *emulator) {
 				hdl_osc_4(emu, cmd, arg)
 			}
 		case 52:
 			hd = &Handler{name: "osc 52", ch: p.ch}
-			hd.handle = func(emu emulator) {
+			hd.handle = func(emu *emulator) {
 				hdl_osc_52(emu, cmd, arg)
 			}
 		case 10, 11, 12, 17, 19:
 			hd = &Handler{name: "osc 10,11,12,17,19", ch: p.ch}
-			hd.handle = func(emu emulator) {
+			hd.handle = func(emu *emulator) {
 				hdl_osc_10(emu, cmd, arg)
 			}
 		default:
@@ -258,23 +258,41 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 	return hd
 }
 
+// Carriage Return
 func (p *Parser) handle_CR() (hd *Handler) {
 	hd = &Handler{name: "c0-cr", ch: p.ch}
-	hd.handle = func(emu emulator) {
+	hd.handle = func(emu *emulator) {
 		hdl_c0_cr(emu)
+	}
+	return hd
+}
+
+// Line Feed
+func (p *Parser) handle_IND() (hd *Handler) {
+	hd = &Handler{name: "c0-lf", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_c0_lf(emu)
 	}
 	// reset the state
 	p.setState(InputState_Normal)
 	return hd
 }
 
-func (p *Parser) handle_IND() (hd *Handler) {
-	hd = &Handler{name: "c0-lf", ch: p.ch}
-	hd.handle = func(emu emulator) {
-		hdl_c0_lf(emu)
+// Horizontal Tab
+func (p *Parser) handle_HT() (hd *Handler) {
+	hd = &Handler{name: "c0-ht", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_c0_ht(emu)
 	}
-	// reset the state
-	p.setState(InputState_Normal)
+	return hd
+}
+
+// Horizontal Tab
+func (p *Parser) handle_BEL() (hd *Handler) {
+	hd = &Handler{name: "c0-bel", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_c0_bel(emu)
+	}
 	return hd
 }
 
@@ -294,14 +312,24 @@ func (p *Parser) processInput(ch rune) (hd *Handler) {
 			p.setState(InputState_Escape)
 			p.inputOps[0] = 0
 			p.nInputOps = 1
-			p.lastEscBegin = p.readPos // ???
-		case '\r': // 0x0D
-			// fmt.Printf("state=%d ch=%q\n", p.inputState, ch)
+			p.lastEscBegin = p.readPos // TODO ???
+		case '\x0D': // CR is \r
 			p.traceNormalInput()
 			hd = p.handle_CR()
-		case '\f', '\v', '\n': // FF, VT same as LF
+		case '\x0C', '\x0B', '\x0A': // FF is \f, VT is \v, LF is \n, they are handled same as IND
 			p.traceNormalInput()
 			hd = p.handle_IND()
+		case '\x09': // HT/TAB is \t
+			p.traceNormalInput()
+			hd = p.handle_HT()
+		case '\x08': // BS is \b
+			p.traceNormalInput()
+			hd = p.handle_CUB()
+		case '\x07': // BEL is \a
+			p.traceNormalInput()
+			hd = p.handle_BEL()
+		case '\x05': // ENQ - Enquiry
+			p.traceNormalInput()
 		default:
 			// one stop https://www.cl.cam.ac.uk/~mgk25/unicode.html
 			// https://harjit.moe/charsetramble.html

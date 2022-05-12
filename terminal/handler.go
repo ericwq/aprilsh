@@ -28,64 +28,92 @@ package terminal
 
 import "fmt"
 
+type handleFunc func(emu *emulator)
+
 // Handler is the parsing result. It can be used to perform control sequence
 // on emulator.
 type Handler struct {
-	name   string             // the name of ActOn
-	ch     rune               // the last byte
-	handle func(emu emulator) // handle the action on emulator
+	name   string     // the name of ActOn
+	ch     rune       // the last byte
+	handle handleFunc // handle function that will perform control sequnce on emulator
+}
+
+// Bell (BEL  is Ctrl-G).
+// ring the bell
+func hdl_c0_bel(emu *emulator) {
+	emu.framebuffer.RingBell()
+}
+
+// Horizontal Tab (HTS  is Ctrl-I).
+// move cursor to the count tab position
+func ht_n(fb *Framebuffer, count int) {
+	col := fb.DS.GetNextTab(count)
+	if col == -1 { // no tabs, go to end of line
+		col = fb.DS.GetWidth() - 1
+	}
+	// A horizontal tab is the only operation that preserves but
+	// does not set the wrap state. It also starts a new grapheme.
+	wrapStateSave := fb.DS.NextPrintWillWrap
+	fb.DS.MoveCol(col, false, false)
+	fb.DS.NextPrintWillWrap = wrapStateSave
+}
+
+// Horizontal Tab (HTS  is Ctrl-I).
+// move cursor to the next tab position
+func hdl_c0_ht(emu *emulator) {
+	ht_n(&emu.framebuffer, 1)
 }
 
 // FF, VT same as LF
 // move cursor to the next row, scroll down if necessary.
-func hdl_c0_lf(emu emulator) {
+func hdl_c0_lf(emu *emulator) {
 	emu.framebuffer.MoveRowsAutoscroll(1)
 }
 
 // Carriage Return (CR  is Ctrl-M).
 // move cursor to the head of the same row
-func hdl_c0_cr(emu emulator) {
+func hdl_c0_cr(emu *emulator) {
 	emu.framebuffer.DS.MoveCol(0, false, false)
 }
 
 // CSI Ps A  Cursor Up Ps Times (default = 1) (CUU).
-func hdl_csi_cuu(emu emulator, num int) {
+func hdl_csi_cuu(emu *emulator, num int) {
 	emu.framebuffer.DS.MoveRow(-num, true)
 }
 
 // CSI Ps B  Cursor Down Ps Times (default = 1) (CUD).
-func hdl_csi_cud(emu emulator, num int) {
+func hdl_csi_cud(emu *emulator, num int) {
 	emu.framebuffer.DS.MoveRow(num, true)
 }
 
 // CSI Ps C  Cursor Forward Ps Times (default = 1) (CUF).
-func hdl_csi_cuf(emu emulator, num int) {
+func hdl_csi_cuf(emu *emulator, num int) {
 	emu.framebuffer.DS.MoveCol(num, true, false)
 }
 
 // CSI Ps D  Cursor Backward Ps Times (default = 1) (CUB).
-func hdl_csi_cub(emu emulator, num int) {
+func hdl_csi_cub(emu *emulator, num int) {
 	emu.framebuffer.DS.MoveCol(-num, true, false)
 }
 
 // CSI Ps ; Ps H Cursor Position [row;column] (default = [1,1]) (CUP).
 // CSI Ps ; Ps f Horizontal and Vertical Position [row;column] (default = [1,1]) (HVP).
-func hdl_csi_cup(emu emulator, row int, col int) {
+func hdl_csi_cup(emu *emulator, row int, col int) {
 	emu.framebuffer.DS.MoveRow(row-1, false)
 	emu.framebuffer.DS.MoveCol(col-1, false, false)
 }
 
-func hdl_osc_10(_ emulator, cmd int, arg string) {
+func hdl_osc_10(_ *emulator, cmd int, arg string) {
 	// TODO not finished
 	fmt.Printf("handle osc dynamic cmd=%d, arg=%s\n", cmd, arg)
 }
 
-func hdl_osc_52(_ emulator, cmd int, arg string) {
+func hdl_osc_52(_ *emulator, cmd int, arg string) {
 	// TODO not finished
 	fmt.Printf("handle osc copy cmd=%d, arg=%s\n", cmd, arg)
 }
 
-func hdl_osc_4(_ emulator, cmd int, arg string) {
+func hdl_osc_4(_ *emulator, cmd int, arg string) {
 	// TODO not finished
 	fmt.Printf("handle osc palette cmd=%d, arg=%s\n", cmd, arg)
 }
@@ -94,7 +122,7 @@ func hdl_osc_4(_ emulator, cmd int, arg string) {
 //* 0: set icon name and window title
 //* 1: set icon name
 //* 2: set window title
-func hdl_osc_0(emu emulator, cmd int, arg string) {
+func hdl_osc_0(emu *emulator, cmd int, arg string) {
 	// set icon name / window title
 	setIcon := cmd == 0 || cmd == 1
 	setTitle := cmd == 0 || cmd == 2

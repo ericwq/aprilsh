@@ -492,17 +492,17 @@ func csi_cxt(fb *Framebuffer, d *Dispatcher) {
 
 // Horizontal Tab (HTS  is Ctrl-I).
 // move cursor to the count tab position
-func ht_n(fb *Framebuffer, count int) {
-	col := fb.DS.GetNextTab(count)
-	if col == -1 { // no tabs, go to end of line
-		col = fb.DS.GetWidth() - 1
-	}
-	// A horizontal tab is the only operation that preserves but
-	// does not set the wrap state. It also starts a new grapheme.
-	wrapStateSave := fb.DS.NextPrintWillWrap
-	fb.DS.MoveCol(col, false, false)
-	fb.DS.NextPrintWillWrap = wrapStateSave
-}
+// func ht_n(fb *Framebuffer, count int) {
+// 	col := fb.DS.GetNextTab(count)
+// 	if col == -1 { // no tabs, go to end of line
+// 		col = fb.DS.GetWidth() - 1
+// 	}
+// 	// A horizontal tab is the only operation that preserves but
+// 	// does not set the wrap state. It also starts a new grapheme.
+// 	wrapStateSave := fb.DS.NextPrintWillWrap
+// 	fb.DS.MoveCol(col, false, false)
+// 	fb.DS.NextPrintWillWrap = wrapStateSave
+// }
 
 // Horizontal Tab (HTS  is Ctrl-I).
 // move cursor to the next tab position

@@ -46,9 +46,13 @@ func TestParseProcessInput(t *testing.T) {
 		{"CSI Ps C", "\x1B[21C", "cuf"},
 		{"CSI Ps D", "\x1B[11D", "cub"},
 		{"CR", "\x0D", "c0-cr"},
-		{"LF", "\n", "c0-lf"},
-		{"VT", "\v", "c0-lf"},
-		{"FF", "\f", "c0-lf"},
+		{"LF", "\x0C", "c0-lf"},
+		{"VT", "\x0B", "c0-lf"},
+		{"FF", "\x0C", "c0-lf"},
+		{"ESC D", "\x1BD", "c0-lf"},
+		{"HT", "\x09", "c0-ht"},
+		{"BS", "\x08", "cub"},
+		{"BEL", "\x07", "c0-bel"},
 	}
 
 	p := NewParser()

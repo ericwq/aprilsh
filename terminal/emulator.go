@@ -32,6 +32,16 @@ const (
 	DISPATCH_CONTROL
 )
 
+const (
+	Charset_UTF8 = iota // sync w/charCodes definition!
+	Charset_DecSpec
+	Charset_DecSuppl
+	Charset_DecUserPref
+	Charset_DecTechn
+	Charset_IsoLatin1
+	Charset_IsoUK
+)
+
 type Emulator interface {
 	Print(act Action)
 	Execute(act Action)
@@ -54,11 +64,40 @@ type Action interface {
 	IsPresent() bool
 }
 
-type emulator struct {
-	dispatcher  Dispatcher
-	framebuffer Framebuffer
+type CharsetState struct {
+	// charset g0,g1,g2,g3
+	g [4]int
+
+	// Locking shift states (index into g[]):
+	gl int
+	gr int
+
+	// Single shift state (0 if none active):
+	// 0 - not active; 2: G2 in GL; 3: G3 in GL
+	ss int
 }
 
+type emulator struct {
+	dispatcher   Dispatcher
+	framebuffer  Framebuffer
+	charsetState CharsetState
+}
+
+func NewEmulator() *emulator {
+	emu := &emulator{}
+	emu.charsetState.g[0] = Charset_UTF8
+	emu.charsetState.g[1] = Charset_UTF8
+	emu.charsetState.g[2] = Charset_UTF8
+	emu.charsetState.g[3] = Charset_UTF8
+
+	emu.charsetState.gl = 0 // G0 in GL
+	emu.charsetState.gr = 2 // G2 in GR
+
+	emu.charsetState.ss = 0
+	return emu
+}
+
+/*
 func (e *emulator) CSIdispatch(act Action) {
 	e.dispatcher.dispatch(DISPATCH_CSI, act, &e.framebuffer)
 }
@@ -86,3 +125,5 @@ func (e *emulator) OSCend(act Action) {
 
 func (e *emulator) Resize(act Action) {
 }
+
+*/
