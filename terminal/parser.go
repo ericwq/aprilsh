@@ -80,44 +80,14 @@ func NewParser() *Parser {
 	return p
 }
 
-// append action to action list except ignore action
-func appendTo(actions []Action, act Action) []Action {
-	if !act.Ignore() {
-		actions = append(actions, act)
-	}
-	return actions
-}
-
-// parse the input character into action and save it in action list
-// it's uesed to be input
-func (p *Parser) parse(actions []Action, r rune) []Action {
-	// start to parse
-	ts := p.state.parse(r)
-
-	// exit action from old state
-	if ts.nextState != nil {
-		actions = appendTo(actions, p.state.exit())
-	}
-
-	// transition action
-	actions = appendTo(actions, ts.action)
-	ts.action = nil
-
-	// enter action to new state
-	if ts.nextState != nil {
-		actions = appendTo(actions, ts.nextState.enter())
-		// transition to next state
-		p.state = ts.nextState
-	}
-
-	return actions
-}
-
 func (p *Parser) reset() {
+	// TODO
 	p.state = ground{}
 }
 
-func (p *Parser) traceNormalInput() {}
+func (p *Parser) traceNormalInput() { // TODO
+}
+
 func (p *Parser) setState(newState int) {
 	if newState == p.inputState {
 		return
@@ -142,7 +112,7 @@ func (p *Parser) collectNumericParameters(ch rune) (isBreak bool) {
 			p.inputOps[p.nInputOps-1] *= 10
 			p.inputOps[p.nInputOps-1] += int(ch - '0')
 		} else {
-			// logE  "inputOp overflow!"
+			// TODO logE  "inputOp overflow!"
 			p.setState(InputState_Normal)
 		}
 	} else if ch == ';' {
@@ -151,7 +121,7 @@ func (p *Parser) collectNumericParameters(ch rune) (isBreak bool) {
 			p.inputOps[p.nInputOps] = 0
 			p.nInputOps += 1
 		} else {
-			// logE inputOps full, increase maxEscOps
+			// TODO logE inputOps full, increase maxEscOps
 			p.setState(InputState_Normal)
 		}
 	}
@@ -159,6 +129,8 @@ func (p *Parser) collectNumericParameters(ch rune) (isBreak bool) {
 	return isBreak
 }
 
+// get number n parameter from parser
+// if the return parameter is zero, use the defaultVal instead
 func (p *Parser) getPs(n int, defaultVal int) int {
 	ret := defaultVal
 	if n < p.nInputOps {
@@ -171,6 +143,7 @@ func (p *Parser) getPs(n int, defaultVal int) int {
 	return ret
 }
 
+// get the string parameter from parser
 func (p *Parser) getArg() (arg string) {
 	if p.argBuf.Len() > 0 {
 		arg = p.argBuf.String()
@@ -179,6 +152,8 @@ func (p *Parser) getArg() (arg string) {
 	return arg
 }
 
+// prepare parameters for the CUU, CUD, CUF, CUB
+// it's all about cursor move
 func (p *Parser) handle_CUX() (hd *Handler) {
 	num := p.getPs(0, 1)
 
@@ -191,6 +166,7 @@ func (p *Parser) handle_CUX() (hd *Handler) {
 	return hd
 }
 
+// prepare parameters for the CUP
 func (p *Parser) handle_CUP() (hd *Handler) {
 	row := p.getPs(0, 1)
 	col := p.getPs(1, 1)
@@ -215,26 +191,22 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 		switch cmd {
 		// create the ActOn
 		case 0, 1, 2:
-			hd = &Handler{}
-			hd.name = "osc 0,1,2"
+			hd = &Handler{name: "osc 0,1,2", ch: p.ch}
 			hd.handle = func(emu emulator) {
 				hdl_osc_0(emu, cmd, arg)
 			}
 		case 4:
-			hd = &Handler{}
-			hd.name = "osc 4"
+			hd = &Handler{name: "osc 4", ch: p.ch}
 			hd.handle = func(emu emulator) {
 				hdl_osc_4(emu, cmd, arg)
 			}
 		case 52:
-			hd = &Handler{}
-			hd.name = "osc 52"
+			hd = &Handler{name: "osc 52", ch: p.ch}
 			hd.handle = func(emu emulator) {
 				hdl_osc_52(emu, cmd, arg)
 			}
 		case 10, 11, 12, 17, 19:
-			hd = &Handler{}
-			hd.name = "osc 10,11,12,17,19"
+			hd = &Handler{name: "osc 10,11,12,17,19", ch: p.ch}
 			hd.handle = func(emu emulator) {
 				hdl_osc_10(emu, cmd, arg)
 			}
@@ -248,8 +220,19 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 	return hd
 }
 
-func (p *Parser) processInput(ch rune) *Handler {
-	var hd *Handler
+func (p *Parser) handle_CR() (hd *Handler) {
+	hd = &Handler{name: "c0-cr", ch: p.ch}
+	hd.handle = func(emu emulator) {
+		hd_c0_cr(emu)
+	}
+	// reset the state
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// process each rune. must apply the UTF-8 decoder to the incoming byte
+// stream before interpreting any control characters.
+func (p *Parser) processInput(ch rune) (hd *Handler) {
 	p.lastEscBegin = 0
 	p.lastNormalBegin = 0
 	p.lastStopPos = 0
@@ -258,11 +241,20 @@ func (p *Parser) processInput(ch rune) *Handler {
 	switch p.inputState {
 	case InputState_Normal:
 		switch ch {
+		case '\x00': // ignore NUL
 		case '\x1B':
 			p.setState(InputState_Escape)
 			p.inputOps[0] = 0
 			p.nInputOps = 1
 			p.lastEscBegin = p.readPos // ???
+		case '\r': // 0x0D
+			// fmt.Printf("state=%d ch=%q\n", p.inputState, ch)
+			p.traceNormalInput()
+			hd = p.handle_CR()
+		default:
+			// one stop https://www.cl.cam.ac.uk/~mgk25/unicode.html
+			// https://harjit.moe/charsetramble.html
+			// need to understand the relationship between utf-8 and  ECMA-35 charset
 		}
 	case InputState_Escape:
 		switch ch {

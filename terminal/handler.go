@@ -36,6 +36,12 @@ type Handler struct {
 	handle func(emu emulator) // handle the action on emulator
 }
 
+// Carriage Return (CR  is Ctrl-M).
+// move cursor to the head of the same row
+func hd_c0_cr(emu emulator) {
+	emu.framebuffer.DS.MoveCol(0, false, false)
+}
+
 // CSI Ps A  Cursor Up Ps Times (default = 1) (CUU).
 // CSI Ps B  Cursor Down Ps Times (default = 1) (CUD).
 // CSI Ps C  Cursor Forward Ps Times (default = 1) (CUF).
@@ -61,17 +67,24 @@ func hdl_cup(emu emulator, row int, col int) {
 }
 
 func hdl_osc_10(_ emulator, cmd int, arg string) {
+	// TODO not finished
 	fmt.Printf("handle osc dynamic cmd=%d, arg=%s\n", cmd, arg)
 }
 
 func hdl_osc_52(_ emulator, cmd int, arg string) {
+	// TODO not finished
 	fmt.Printf("handle osc copy cmd=%d, arg=%s\n", cmd, arg)
 }
 
 func hdl_osc_4(_ emulator, cmd int, arg string) {
+	// TODO not finished
 	fmt.Printf("handle osc palette cmd=%d, arg=%s\n", cmd, arg)
 }
 
+// OSC of the form "\x1B]X;<title>\007" where X can be:
+//* 0: set icon name and window title
+//* 1: set icon name
+//* 2: set window title
 func hdl_osc_0(emu emulator, cmd int, arg string) {
 	// set icon name / window title
 	setIcon := cmd == 0 || cmd == 1

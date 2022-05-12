@@ -26,46 +26,36 @@ SOFTWARE.
 
 package terminal
 
-import (
-	"testing"
-)
+// TODO prepare to delete this file
+// append action to action list except ignore action
+func appendTo(actions []Action, act Action) []Action {
+	if !act.Ignore() {
+		actions = append(actions, act)
+	}
+	return actions
+}
 
-func TestParseProcessInput(t *testing.T) {
-	tc := []struct {
-		name  string
-		raw   string
-		hName string
-	}{
-		{"OSC 0;Pt BEL ", "\x1B]0;ada\x07", "osc 0,1,2"},
-		{"OSC 1;Pt 7bit ST ", "\x1B]1;ada\x1B\\", "osc 0,1,2"},
-		{"OSC 2;Pt BEL chinese", "\x1B]2;a道德经a\x07", "osc 0,1,2"},
-		{"CSI Ps;PsH", "\x1B[24;14H", "cup"},
-		{"CSI Ps;Psf", "\x1B[41;42f", "cup"},
-		{"CSI Ps A", "\x1B[41A", "cux"},
-		{"CSI Ps B", "\x1B[31B", "cux"},
-		{"CSI Ps C", "\x1B[21C", "cux"},
-		{"CSI Ps D", "\x1B[11D", "cux"},
-		{"CR", "\x0D", "c0-cr"},
+// parse the input character into action and save it in action list
+// it's uesed to be input
+func (p *Parser) parse(actions []Action, r rune) []Action {
+	// start to parse
+	ts := p.state.parse(r)
+
+	// exit action from old state
+	if ts.nextState != nil {
+		actions = appendTo(actions, p.state.exit())
 	}
 
-	p := NewParser()
-	var hd *Handler
-	for _, v := range tc {
-		for _, ch := range v.raw {
-			hd = p.processInput(ch)
-		}
-		if hd != nil && hd.name == v.hName {
-			// ac.handle(&clear{})
-			continue
-		} else {
-			if hd != nil {
-				if hd.name != v.hName {
-					t.Errorf("%s:\t raw=%q, expect %s, got %s, ch=%q\n", v.name, v.raw, v.hName, hd.name, hd.ch)
-				}
-			} else {
-				t.Errorf("%s;\t raw=%q, result should not be nil.", v.name, v.raw)
-			}
-		}
+	// transition action
+	actions = appendTo(actions, ts.action)
+	ts.action = nil
 
+	// enter action to new state
+	if ts.nextState != nil {
+		actions = appendTo(actions, ts.nextState.enter())
+		// transition to next state
+		p.state = ts.nextState
 	}
+
+	return actions
 }
