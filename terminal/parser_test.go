@@ -31,7 +31,7 @@ import (
 )
 
 // TODO add test for other charset
-func TestHandleGraphicChar(t *testing.T) {
+func testHandleGraphicChar(t *testing.T) {
 	tc := []struct {
 		name  string
 		raw   string
@@ -65,8 +65,8 @@ func TestHandleSOSI(t *testing.T) {
 		r    rune
 		want int
 	}{
-		{"SI", 0x0F, 0},
 		{"SO", 0x0E, 1},
+		{"SI", 0x0F, 0},
 	}
 
 	p := NewParser()
@@ -95,7 +95,7 @@ func TestHandle_CUU_CUD_CUF_CUB(t *testing.T) {
 		wantName string
 		wantX    int
 		wantY    int
-		raw      string
+		seq      string
 	}{
 		{"CSI Ps;PsH", 10, 10, "cup", 13, 23, "\x1B[24;14H"},
 		{"CSI Ps;Psf", 10, 10, "cup", 41, 20, "\x1B[21;42f"},
@@ -114,7 +114,7 @@ func TestHandle_CUU_CUD_CUF_CUB(t *testing.T) {
 		emu := NewEmulator()
 
 		// parse the sequence
-		for _, ch := range v.raw {
+		for _, ch := range v.seq {
 			hd = p.processInput(ch)
 		}
 		if hd != nil {
@@ -138,6 +138,55 @@ func TestHandle_CUU_CUD_CUF_CUB(t *testing.T) {
 			t.Errorf("%s got nil return\n", v.name)
 		}
 
+	}
+}
+
+func TestHandleOSC_0(t *testing.T) {
+	tc := []struct {
+		name      string
+		wantName  string
+		icon      bool
+		title     bool
+		seq       string
+		wantTitle string
+	}{
+		{"OSC 0;Pt BEL        ", "osc 0,1,2", true, true, "\x1B]0;ada\x07", "ada"},
+		{"OSC 1;Pt 7bit ST    ", "osc 0,1,2", true, false, "\x1B]1;adas\x1B\\", "adas"},
+		{"OSC 2;Pt BEL chinese", "osc 0,1,2", false, true, "\x1B]2;[道德经]\x07", "[道德经]"},
+	}
+
+	p := NewParser()
+	emu := NewEmulator()
+	for _, v := range tc {
+		var hd *Handler
+
+		// parse the sequence
+		for _, ch := range v.seq {
+			hd = p.processInput(ch)
+		}
+
+		if hd != nil {
+			// handle the instruction
+			hd.handle(emu)
+
+			// get the result
+			windowTitle := emu.framebuffer.windowTitle
+			iconName := emu.framebuffer.iconName
+
+			if v.title && v.icon && windowTitle == v.wantTitle && iconName == v.wantTitle &&
+				hd.name == v.wantName {
+				continue
+			} else if v.icon && iconName == v.wantTitle && hd.name == v.wantName {
+				continue
+			} else if v.title && windowTitle == v.wantTitle && hd.name == v.wantName {
+				continue
+			} else {
+				t.Errorf("%s name=%q seq=%q expect %s\n got window title=%s\n got icon name=%s\n",
+					v.name, v.wantName, v.seq, v.wantTitle, windowTitle, iconName)
+			}
+		} else {
+			t.Errorf("%s got nil return\n", v.name)
+		}
 	}
 }
 
