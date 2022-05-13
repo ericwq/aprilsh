@@ -30,6 +30,63 @@ import (
 	"testing"
 )
 
+// TODO add test for other charset
+func TestHandleGraphicChar(t *testing.T) {
+	tc := []struct {
+		name  string
+		raw   string
+		hName string
+	}{
+		{"normal latin", "eng", "graphic-char"},
+		{"chinese", "世界", "graphic-char"},
+		{"GR char", "\xA5", "graphic-char"},
+	}
+
+	hds := make([]*Handler, 0, 16)
+	p := NewParser()
+	emu := NewEmulator()
+	for _, v := range tc {
+		for _, ch := range v.raw {
+			hd := p.processInput(ch)
+			if hd != nil {
+				hds = append(hds, hd)
+			}
+		}
+
+		for _, hd := range hds {
+			hd.handle(emu)
+		}
+	}
+}
+
+func TestHandleSOSI(t *testing.T) {
+	tc := []struct {
+		name string
+		r    rune
+		want int
+	}{
+		{"SI", 0x0F, 0},
+		{"SO", 0x0E, 1},
+	}
+
+	p := NewParser()
+	emu := NewEmulator()
+	for _, v := range tc {
+		hd := p.processInput(v.r)
+		if hd != nil {
+			hd.handle(emu)
+
+			if emu.charsetState.gl != v.want {
+				t.Errorf("%s expect %d, got %d\n", v.name, v.want, emu.charsetState.gl)
+			}
+
+		} else {
+			t.Errorf("%s got nil return\n", v.name)
+		}
+
+	}
+}
+
 func TestParseProcessInput(t *testing.T) {
 	tc := []struct {
 		name  string

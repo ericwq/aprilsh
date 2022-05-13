@@ -296,6 +296,34 @@ func (p *Parser) handle_BEL() (hd *Handler) {
 	return hd
 }
 
+func (p *Parser) hanlde_GraphicChar() (hd *Handler) {
+	hd = &Handler{name: "graphic-char", ch: p.ch}
+
+	r := p.ch // prevent conflict with p.ch
+	hd.handle = func(emu *emulator) {
+		hdl_graphic_char(emu, r)
+	}
+	return hd
+}
+
+// SI - switch to standard character set
+func (p *Parser) handle_SI() (hd *Handler) {
+	hd = &Handler{name: "c0-si", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_c0_si(emu)
+	}
+	return hd
+}
+
+// SO - switch to alternate character set
+func (p *Parser) handle_SO() (hd *Handler) {
+	hd = &Handler{name: "c0-so", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_c0_so(emu)
+	}
+	return hd
+}
+
 // process each rune. must apply the UTF-8 decoder to the incoming byte
 // stream before interpreting any control characters.
 func (p *Parser) processInput(ch rune) (hd *Handler) {
@@ -330,10 +358,17 @@ func (p *Parser) processInput(ch rune) (hd *Handler) {
 			hd = p.handle_BEL()
 		case '\x05': // ENQ - Enquiry
 			p.traceNormalInput()
+		case '\x0E':
+			p.traceNormalInput()
+			hd = p.handle_SO()
+		case '\x0F':
+			p.traceNormalInput()
+			hd = p.handle_SI()
 		default:
 			// one stop https://www.cl.cam.ac.uk/~mgk25/unicode.html
 			// https://harjit.moe/charsetramble.html
 			// need to understand the relationship between utf-8 and  ECMA-35 charset
+			hd = p.hanlde_GraphicChar()
 		}
 	case InputState_Escape:
 		switch ch {

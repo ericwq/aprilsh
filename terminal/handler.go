@@ -26,16 +26,67 @@ SOFTWARE.
 
 package terminal
 
-import "fmt"
+import (
+	"fmt"
+	"unicode/utf8"
+)
 
-type handleFunc func(emu *emulator)
+// type handleFunc func(emu *emulator)
 
 // Handler is the parsing result. It can be used to perform control sequence
 // on emulator.
 type Handler struct {
-	name   string     // the name of ActOn
-	ch     rune       // the last byte
-	handle handleFunc // handle function that will perform control sequnce on emulator
+	name   string              // the name of ActOn
+	ch     rune                // the last byte
+	handle func(emu *emulator) // handle function that will perform control sequnce on emulator
+}
+
+// SI       Switch to Standard Character Set (Ctrl-O is Shift In or LS0).
+//          This invokes the G0 character set (the default) as GL.
+//          VT200 and up implement LS0.
+func hdl_c0_si(emu *emulator) {
+	emu.charsetState.gl = 0
+}
+
+// SO       Switch to Alternate Character Set (Ctrl-N is Shift Out or
+//          LS1).  This invokes the G1 character set as GL.
+//          VT200 and up implement LS1.
+func hdl_c0_so(emu *emulator) {
+	emu.charsetState.gl = 1
+}
+
+// print the graphic char to the emulator
+// TODO print to emulator
+// TODO GR doesn't exist in UTF-8
+func hdl_graphic_char(emu *emulator, r rune) {
+	if utf8.RuneLen(r) > 1 {
+		fmt.Printf("Unicode UTF8 print %c size=%d\n", r, utf8.RuneLen(r))
+	} else if r&0x80 == 0 {
+		// GL range
+		cs := 0
+		if emu.charsetState.ss > 0 {
+			cs = emu.charsetState.g[emu.charsetState.ss]
+			emu.charsetState.ss = 0
+		} else {
+			cs = emu.charsetState.g[emu.charsetState.gl]
+		}
+
+		if cs == Charset_UTF8 {
+			fmt.Printf("GL UTF8 print %c\n", r)
+		} else if r >= 32 && (cs == Charset_IsoLatin1 || r < 127) {
+			ch := charCodes[cs][r-32]
+			fmt.Printf("GL %d print %c\n", cs, ch)
+		}
+	} else {
+		// GR range
+		cs := emu.charsetState.g[emu.charsetState.gr]
+		if cs == Charset_UTF8 {
+			fmt.Printf("GR UTF8 print %c\n", r)
+		} else if r >= 160 && (cs == Charset_IsoLatin1 || r < 255) {
+			ch := charCodes[cs][r-160]
+			fmt.Printf("GR %d print %c\n", cs, ch)
+		}
+	}
 }
 
 // Bell (BEL  is Ctrl-G).
