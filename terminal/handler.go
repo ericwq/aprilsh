@@ -112,7 +112,7 @@ func ht_n(fb *Framebuffer, count int) {
 // Horizontal Tab (HTS  is Ctrl-I).
 // move cursor to the next tab position
 func hdl_c0_ht(emu *emulator) {
-	ht_n(&emu.framebuffer, 1)
+	ht_n(emu.framebuffer, 1)
 }
 
 // FF, VT same as LF

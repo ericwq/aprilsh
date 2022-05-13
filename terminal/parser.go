@@ -332,6 +332,7 @@ func (p *Parser) processInput(ch rune) (hd *Handler) {
 	p.lastStopPos = 0
 	p.ch = ch
 
+	// fmt.Printf(" ch=%q,\t nInputOps=%d, inputOps=%2d\n", ch, p.nInputOps, p.inputOps)
 	switch p.inputState {
 	case InputState_Normal:
 		switch ch {

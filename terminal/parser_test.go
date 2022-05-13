@@ -87,6 +87,61 @@ func TestHandleSOSI(t *testing.T) {
 	}
 }
 
+func TestHandle_CUU_CUD_CUF_CUB(t *testing.T) {
+	tc := []struct {
+		name     string
+		startX   int
+		startY   int
+		wantName string
+		wantX    int
+		wantY    int
+		raw      string
+	}{
+		{"CSI Ps;PsH", 10, 10, "cup", 13, 23, "\x1B[24;14H"},
+		{"CSI Ps;Psf", 10, 10, "cup", 41, 20, "\x1B[21;42f"},
+		{"CSI Ps A  ", 10, 20, "cuu", 10, 14, "\x1B[6A"},
+		{"CSI Ps B  ", 10, 10, "cud", 10, 13, "\x1B[3B"},
+		{"CSI Ps C  ", 10, 10, "cuf", 12, 10, "\x1B[2C"},
+		{"CSI Ps D  ", 20, 10, "cub", 12, 10, "\x1B[8D"},
+		{"BS        ", 12, 12, "cub", 11, 12, "\x08"},
+		{"CUB       ", 12, 12, "cub", 11, 12, "\x1B[1D"},
+		{"BS agin   ", 11, 12, "cub", 10, 12, "\x08"},
+	}
+	p := NewParser()
+
+	for _, v := range tc {
+		var hd *Handler
+		emu := NewEmulator()
+
+		// parse the sequence
+		for _, ch := range v.raw {
+			hd = p.processInput(ch)
+		}
+		if hd != nil {
+
+			// set the start position
+			emu.framebuffer.DS.MoveRow(v.startY, false)
+			emu.framebuffer.DS.MoveCol(v.startX, false, false)
+
+			// handle the instruction
+			hd.handle(emu)
+
+			// get the result
+			gotY := emu.framebuffer.DS.GetCursorRow()
+			gotX := emu.framebuffer.DS.GetCursorCol()
+
+			if gotX != v.wantX || gotY != v.wantY || hd.name != v.wantName {
+				t.Errorf("%s [%s vs %s] expect cursor position (%d,%d), got (%d,%d)\n",
+					v.name, v.wantName, hd.name, v.wantX, v.wantY, gotX, gotY)
+			}
+		} else {
+			t.Errorf("%s got nil return\n", v.name)
+		}
+
+	}
+}
+
+// TODO test the handler
 func TestParseProcessInput(t *testing.T) {
 	tc := []struct {
 		name  string
@@ -96,19 +151,12 @@ func TestParseProcessInput(t *testing.T) {
 		{"OSC 0;Pt BEL ", "\x1B]0;ada\x07", "osc 0,1,2"},
 		{"OSC 1;Pt 7bit ST ", "\x1B]1;ada\x1B\\", "osc 0,1,2"},
 		{"OSC 2;Pt BEL chinese", "\x1B]2;a道德经a\x07", "osc 0,1,2"},
-		{"CSI Ps;PsH", "\x1B[24;14H", "cup"},
-		{"CSI Ps;Psf", "\x1B[41;42f", "cup"},
-		{"CSI Ps A", "\x1B[41A", "cuu"},
-		{"CSI Ps B", "\x1B[31B", "cud"},
-		{"CSI Ps C", "\x1B[21C", "cuf"},
-		{"CSI Ps D", "\x1B[11D", "cub"},
 		{"CR", "\x0D", "c0-cr"},
 		{"LF", "\x0C", "c0-lf"},
 		{"VT", "\x0B", "c0-lf"},
 		{"FF", "\x0C", "c0-lf"},
 		{"ESC D", "\x1BD", "c0-lf"},
 		{"HT", "\x09", "c0-ht"},
-		{"BS", "\x08", "cub"},
 		{"BEL", "\x07", "c0-bel"},
 	}
 

@@ -187,7 +187,7 @@ type CharsetState struct {
 
 type emulator struct {
 	dispatcher   Dispatcher
-	framebuffer  Framebuffer
+	framebuffer  *Framebuffer
 	charsetState CharsetState
 }
 
@@ -202,6 +202,9 @@ func NewEmulator() *emulator {
 	emu.charsetState.gr = 2 // G2 in GR
 
 	emu.charsetState.ss = 0
+
+	// defalult size 80x40
+	emu.framebuffer = NewFramebuffer(80, 40)
 	return emu
 }
 
