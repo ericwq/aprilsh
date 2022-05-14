@@ -397,6 +397,61 @@ func (p *Parser) handle_SS3() (hd *Handler) {
 	return hd
 }
 
+// LS1R gr = 1
+func (p *Parser) handle_LS1R() (hd *Handler) {
+	hd = &Handler{name: "c0-ls1r", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_c0_ls1r(emu)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// LS2 gl = 2
+func (p *Parser) handle_LS2() (hd *Handler) {
+	hd = &Handler{name: "c0-ls2", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_c0_ls2(emu)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// LS2R gr = 2
+func (p *Parser) handle_LS2R() (hd *Handler) {
+	hd = &Handler{name: "c0-ls2r", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_c0_ls2r(emu)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// LS3 gl = 3
+func (p *Parser) handle_LS3() (hd *Handler) {
+	hd = &Handler{name: "c0-ls3", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_c0_ls3(emu)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// LS3R gr = 3
+func (p *Parser) handle_LS3R() (hd *Handler) {
+	hd = &Handler{name: "c0-ls3r", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_c0_ls3r(emu)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
 // process each rune. must apply the UTF-8 decoder to the incoming byte
 // stream before interpreting any control characters.
 func (p *Parser) processInput(ch rune) (hd *Handler) {
@@ -459,6 +514,16 @@ func (p *Parser) processInput(ch rune) (hd *Handler) {
 			hd = p.handle_SS2()
 		case 'O':
 			hd = p.handle_SS3()
+		case '~':
+			hd = p.handle_LS1R()
+		case 'n':
+			hd = p.handle_LS2()
+		case '}':
+			hd = p.handle_LS2R()
+		case 'o':
+			hd = p.handle_LS3()
+		case '|':
+			hd = p.handle_LS3R()
 		}
 	case InputState_CSI:
 		if p.collectNumericParameters(ch) {

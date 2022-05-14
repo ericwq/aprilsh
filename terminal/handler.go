@@ -69,6 +69,31 @@ func hdl_c0_ss3(emu *emulator) {
 	emu.charsetState.ss = 3
 }
 
+// ESC ~     Invoke the G1 Character Set as GR (LS1R), VT100.
+func hdl_c0_ls1r(emu *emulator) {
+	emu.charsetState.gr = 1
+}
+
+// ESC n     Invoke the G2 Character Set as GL (LS2).
+func hdl_c0_ls2(emu *emulator) {
+	emu.charsetState.gl = 2
+}
+
+// ESC }     Invoke the G2 Character Set as GR (LS2R).
+func hdl_c0_ls2r(emu *emulator) {
+	emu.charsetState.gr = 2
+}
+
+// ESC o     Invoke the G3 Character Set as GL (LS3).
+func hdl_c0_ls3(emu *emulator) {
+	emu.charsetState.gl = 3
+}
+
+// ESC |     Invoke the G3 Character Set as GR (LS3R).
+func hdl_c0_ls3r(emu *emulator) {
+	emu.charsetState.gr = 3
+}
+
 // print the graphic char to the emulator
 // TODO print to emulator
 // TODO GR doesn't exist in UTF-8

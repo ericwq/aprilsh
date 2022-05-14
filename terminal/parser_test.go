@@ -59,6 +59,87 @@ func testHandleGraphicChar(t *testing.T) {
 	}
 }
 
+func TestHandle_LS2_LS3(t *testing.T) {
+	tc := []struct {
+		name     string
+		seq      string
+		wantName string
+		want     int
+	}{
+		{"LS2", "\x1Bn", "c0-ls2", 2},
+		{"LS3", "\x1Bo", "c0-ls3", 3},
+	}
+
+	p := NewParser()
+	emu := NewEmulator()
+	for _, v := range tc {
+
+		// reset the charsetState
+		emu.charsetState.gl = 0
+
+		// parse the instruction
+		var hd *Handler
+		for _, ch := range v.seq {
+			hd = p.processInput(ch)
+		}
+
+		// call the handler
+		if hd != nil {
+			hd.handle(emu)
+
+			// verify the result
+			if emu.charsetState.gl != v.want || hd.name != v.wantName {
+				t.Errorf("%s [%s vs %s] expect %d, got %d\n", v.name, hd.name, v.wantName, v.want, emu.charsetState.gl)
+			}
+
+		} else {
+			t.Errorf("%s got nil return\n", v.name)
+		}
+
+	}
+}
+
+func TestHandle_LS1R_LS2R_LS3R(t *testing.T) {
+	tc := []struct {
+		name     string
+		seq      string
+		wantName string
+		want     int
+	}{
+		{"LS1R", "\x1B~", "c0-ls1r", 1},
+		{"LS2R", "\x1B}", "c0-ls2r", 2},
+		{"LS3R", "\x1B|", "c0-ls3r", 3},
+	}
+
+	p := NewParser()
+	emu := NewEmulator()
+	for _, v := range tc {
+
+		// reset the charsetState
+		emu.charsetState.gr = 0
+
+		// parse the instruction
+		var hd *Handler
+		for _, ch := range v.seq {
+			hd = p.processInput(ch)
+		}
+
+		// call the handler
+		if hd != nil {
+			hd.handle(emu)
+
+			// verify the result
+			if emu.charsetState.gr != v.want || hd.name != v.wantName {
+				t.Errorf("%s [%s vs %s] expect %d, got %d\n", v.name, hd.name, v.wantName, v.want, emu.charsetState.gr)
+			}
+
+		} else {
+			t.Errorf("%s got nil return\n", v.name)
+		}
+
+	}
+}
+
 func TestHandle_SS2_SS3(t *testing.T) {
 	tc := []struct {
 		name     string
@@ -89,7 +170,7 @@ func TestHandle_SS2_SS3(t *testing.T) {
 
 			// verify the result
 			if emu.charsetState.ss != v.want || hd.name != v.wantName {
-				t.Errorf("%s [%s vs %s ]expect %d, got %d\n", v.name, hd.name, v.wantName, v.want, emu.charsetState.ss)
+				t.Errorf("%s [%s vs %s] expect %d, got %d\n", v.name, hd.name, v.wantName, v.want, emu.charsetState.ss)
 			}
 
 		} else {
