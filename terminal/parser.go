@@ -375,6 +375,28 @@ func (p *Parser) handle_TBC() (hd *Handler) {
 	return hd
 }
 
+// ESC N Single Shift Select of G2 Character Set (SS2  is 0x8e), VT220.
+func (p *Parser) handle_SS2() (hd *Handler) {
+	hd = &Handler{name: "c0-ss2", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_c0_ss2(emu)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// ESC O Single Shift Select of G3 Character Set (SS3  is 0x8f), VT220.
+func (p *Parser) handle_SS3() (hd *Handler) {
+	hd = &Handler{name: "c0-ss3", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_c0_ss3(emu)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
 // process each rune. must apply the UTF-8 decoder to the incoming byte
 // stream before interpreting any control characters.
 func (p *Parser) processInput(ch rune) (hd *Handler) {
@@ -433,6 +455,10 @@ func (p *Parser) processInput(ch rune) (hd *Handler) {
 			hd = p.handle_IND()
 		case 'H':
 			hd = p.handle_HTS()
+		case 'N':
+			hd = p.handle_SS2()
+		case 'O':
+			hd = p.handle_SS3()
 		}
 	case InputState_CSI:
 		if p.collectNumericParameters(ch) {

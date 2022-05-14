@@ -55,6 +55,20 @@ func hdl_c0_so(emu *emulator) {
 	emu.charsetState.gl = 1
 }
 
+// ESC N
+//     Single Shift Select of G2 Character Set (SS2  is 0x8e), VT220.
+//     This affects next character only.
+func hdl_c0_ss2(emu *emulator) {
+	emu.charsetState.ss = 2
+}
+
+// ESC O
+//     Single Shift Select of G3 Character Set (SS3  is 0x8f), VT220.
+//     This affects next character only.
+func hdl_c0_ss3(emu *emulator) {
+	emu.charsetState.ss = 3
+}
+
 // print the graphic char to the emulator
 // TODO print to emulator
 // TODO GR doesn't exist in UTF-8

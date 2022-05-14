@@ -59,7 +59,47 @@ func testHandleGraphicChar(t *testing.T) {
 	}
 }
 
-func TestHandleSOSI(t *testing.T) {
+func TestHandle_SS2_SS3(t *testing.T) {
+	tc := []struct {
+		name     string
+		seq      string
+		wantName string
+		want     int
+	}{
+		{"SS2", "\x1BN", "c0-ss2", 2},
+		{"SS3", "\x1BO", "c0-ss3", 3},
+	}
+
+	p := NewParser()
+	emu := NewEmulator()
+	for _, v := range tc {
+
+		// reset the charsetState
+		emu.charsetState.ss = 0
+
+		// parse the instruction
+		var hd *Handler
+		for _, ch := range v.seq {
+			hd = p.processInput(ch)
+		}
+
+		// call the handler
+		if hd != nil {
+			hd.handle(emu)
+
+			// verify the result
+			if emu.charsetState.ss != v.want || hd.name != v.wantName {
+				t.Errorf("%s [%s vs %s ]expect %d, got %d\n", v.name, hd.name, v.wantName, v.want, emu.charsetState.ss)
+			}
+
+		} else {
+			t.Errorf("%s got nil return\n", v.name)
+		}
+
+	}
+}
+
+func TestHandle_SO_SI(t *testing.T) {
 	tc := []struct {
 		name string
 		r    rune
@@ -141,7 +181,7 @@ func TestHandle_CUU_CUD_CUF_CUB_CUP(t *testing.T) {
 	}
 }
 
-func TestHandleOSC_0_1_2(t *testing.T) {
+func TestHandle_OSC_0_1_2(t *testing.T) {
 	tc := []struct {
 		name      string
 		wantName  string
