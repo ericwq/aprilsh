@@ -87,7 +87,7 @@ func TestHandleSOSI(t *testing.T) {
 	}
 }
 
-func TestHandle_CUU_CUD_CUF_CUB(t *testing.T) {
+func TestHandle_CUU_CUD_CUF_CUB_CUP(t *testing.T) {
 	tc := []struct {
 		name     string
 		startX   int
@@ -141,7 +141,7 @@ func TestHandle_CUU_CUD_CUF_CUB(t *testing.T) {
 	}
 }
 
-func TestHandleOSC_0(t *testing.T) {
+func TestHandleOSC_0_1_2(t *testing.T) {
 	tc := []struct {
 		name      string
 		wantName  string
@@ -190,42 +190,74 @@ func TestHandleOSC_0(t *testing.T) {
 	}
 }
 
-// TODO test the handler
-func TestParseProcessInput(t *testing.T) {
+func TestHandle_BEL(t *testing.T) {
+	p := NewParser()
+	emu := NewEmulator()
+
+	// process the bell sequence
+	hd := p.processInput('\x07')
+
+	if hd != nil {
+		// handle the bell
+		hd.handle(emu)
+
+		// theck the handler name and bell count
+		bellCount := emu.framebuffer.GetBellCount()
+		if bellCount == 0 || hd.name != "c0-bel" {
+			t.Errorf("BEL expect %d, got %d", 1, bellCount)
+		}
+	} else {
+		t.Errorf("%s got nil return\n", hd.name)
+	}
+}
+
+// TODO test the HT handler
+func TestHandle_CR_LF_VT_FF(t *testing.T) {
 	tc := []struct {
-		name  string
-		raw   string
-		hName string
+		name     string
+		startX   int
+		startY   int
+		wantName string
+		wantX    int
+		wantY    int
+		ctlseq   string
 	}{
-		{"OSC 0;Pt BEL ", "\x1B]0;ada\x07", "osc 0,1,2"},
-		{"OSC 1;Pt 7bit ST ", "\x1B]1;ada\x1B\\", "osc 0,1,2"},
-		{"OSC 2;Pt BEL chinese", "\x1B]2;a道德经a\x07", "osc 0,1,2"},
-		{"CR", "\x0D", "c0-cr"},
-		{"LF", "\x0C", "c0-lf"},
-		{"VT", "\x0B", "c0-lf"},
-		{"FF", "\x0C", "c0-lf"},
-		{"ESC D", "\x1BD", "c0-lf"},
-		{"HT", "\x09", "c0-ht"},
-		{"BEL", "\x07", "c0-bel"},
+		{"CR 1 ", 1, 2, "c0-cr", 0, 2, "\x0D"},
+		{"CR 2 ", 9, 4, "c0-cr", 0, 4, "\x0D"},
+		{"LF   ", 1, 2, "c0-lf", 1, 3, "\x0C"},
+		{"VT   ", 2, 3, "c0-lf", 2, 4, "\x0B"},
+		{"FF   ", 3, 4, "c0-lf", 3, 5, "\x0C"},
+		{"ESC D", 4, 5, "c0-lf", 4, 6, "\x1BD"},
+		//{"HT 1 ", 5, 2, "c0-ht", 15, 2, "\x09"},
+		//{"HT 2 ", 3, 2, "c0-ht", 7, 2, "\x09"},
 	}
 
 	p := NewParser()
 	var hd *Handler
+	emu := NewEmulator()
 	for _, v := range tc {
-		for _, ch := range v.raw {
+
+		for _, ch := range v.ctlseq {
 			hd = p.processInput(ch)
 		}
-		if hd != nil && hd.name == v.hName {
-			// ac.handle(&clear{})
-			continue
-		} else {
-			if hd != nil {
-				if hd.name != v.hName {
-					t.Errorf("%s:\t raw=%q, expect %s, got %s, ch=%q\n", v.name, v.raw, v.hName, hd.name, hd.ch)
-				}
-			} else {
-				t.Errorf("%s;\t raw=%q, result should not be nil.", v.name, v.raw)
+		// set the start position
+		emu.framebuffer.DS.MoveRow(v.startY, false)
+		emu.framebuffer.DS.MoveCol(v.startX, false, false)
+
+		// handle the instruction
+		hd.handle(emu)
+
+		// get the result
+		if hd != nil {
+			gotY := emu.framebuffer.DS.GetCursorRow()
+			gotX := emu.framebuffer.DS.GetCursorCol()
+
+			if gotX != v.wantX || gotY != v.wantY || hd.name != v.wantName {
+				t.Errorf("%s [%s vs %s] expect cursor position (%d,%d), got (%d,%d)\n",
+					v.name, v.wantName, hd.name, v.startX, v.wantY, gotX, gotY)
 			}
+		} else {
+			t.Errorf("%s got nil return\n", v.name)
 		}
 
 	}

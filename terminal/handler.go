@@ -98,7 +98,9 @@ func hdl_c0_bel(emu *emulator) {
 // Horizontal Tab (HTS  is Ctrl-I).
 // move cursor to the count tab position
 func ht_n(fb *Framebuffer, count int) {
+	//fmt.Printf("befor ht %d\n", fb.DS.GetCursorCol())
 	col := fb.DS.GetNextTab(count)
+	//fmt.Printf("after next tab col=%d, next tab=%d\n", col, fb.DS.GetCursorCol())
 	if col == -1 { // no tabs, go to end of line
 		col = fb.DS.GetWidth() - 1
 	}
@@ -106,6 +108,7 @@ func ht_n(fb *Framebuffer, count int) {
 	// does not set the wrap state. It also starts a new grapheme.
 	wrapStateSave := fb.DS.NextPrintWillWrap
 	fb.DS.MoveCol(col, false, false)
+	//fmt.Printf("after next tab col=%d, next tab=%d\n", col, fb.DS.GetCursorCol())
 	fb.DS.NextPrintWillWrap = wrapStateSave
 }
 

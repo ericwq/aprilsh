@@ -287,7 +287,7 @@ func (p *Parser) handle_HT() (hd *Handler) {
 	return hd
 }
 
-// Horizontal Tab
+// Bell
 func (p *Parser) handle_BEL() (hd *Handler) {
 	hd = &Handler{name: "c0-bel", ch: p.ch}
 	hd.handle = func(emu *emulator) {
