@@ -193,6 +193,14 @@ type emulator struct {
 
 func NewEmulator() *emulator {
 	emu := &emulator{}
+	emu.resetCharsetState()
+
+	// defalult size 80x40
+	emu.framebuffer = NewFramebuffer(80, 40)
+	return emu
+}
+
+func (emu *emulator) resetCharsetState() {
 	emu.charsetState.g[0] = Charset_UTF8
 	emu.charsetState.g[1] = Charset_UTF8
 	emu.charsetState.g[2] = Charset_UTF8
@@ -202,10 +210,6 @@ func NewEmulator() *emulator {
 	emu.charsetState.gr = 2 // G2 in GR
 
 	emu.charsetState.ss = 0
-
-	// defalult size 80x40
-	emu.framebuffer = NewFramebuffer(80, 40)
-	return emu
 }
 
 /*

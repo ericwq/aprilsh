@@ -452,6 +452,28 @@ func (p *Parser) handle_LS3R() (hd *Handler) {
 	return hd
 }
 
+// DOCS Select charset: UTF-8
+func (p *Parser) handle_DOCS_UTF8() (hd *Handler) {
+	hd = &Handler{name: "esc-docs-utf-8", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_esc_docs_utf8(emu)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// DOCS Select charset: default (ISO-8859-1)
+func (p *Parser) handle_DOCS_ISO8859_1() (hd *Handler) {
+	hd = &Handler{name: "esc-docs-iso8859-1", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_esc_docs_iso8859_1(emu)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
 // process each rune. must apply the UTF-8 decoder to the incoming byte
 // stream before interpreting any control characters.
 func (p *Parser) processInput(ch rune) (hd *Handler) {
@@ -501,6 +523,8 @@ func (p *Parser) processInput(ch rune) (hd *Handler) {
 		}
 	case InputState_Escape:
 		switch ch {
+		case '%':
+			p.setState(InputState_Esc_Pct)
 		case '[':
 			p.setState(InputState_CSI)
 		case ']':
@@ -524,6 +548,14 @@ func (p *Parser) processInput(ch rune) (hd *Handler) {
 			hd = p.handle_LS3()
 		case '|':
 			hd = p.handle_LS3R()
+		}
+	case InputState_Esc_Pct:
+		switch ch {
+		case '@':
+			// logT << "Select charset: default (ISO-8859-1)"
+			hd = p.handle_DOCS_ISO8859_1()
+		case 'G':
+			hd = p.handle_DOCS_UTF8()
 		}
 	case InputState_CSI:
 		if p.collectNumericParameters(ch) {

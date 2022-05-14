@@ -94,6 +94,19 @@ func hdl_c0_ls3r(emu *emulator) {
 	emu.charsetState.gr = 3
 }
 
+// ESC % G   Select UTF-8 character set, ISO 2022.
+// https://en.wikipedia.org/wiki/ISO/IEC_2022#Interaction_with_other_coding_systems
+func hdl_esc_docs_utf8(emu *emulator) {
+	emu.resetCharsetState()
+}
+
+// ESC % @   Select default character set.  That is ISO 8859-1 (ISO 2022).
+// https://www.cl.cam.ac.uk/~mgk25/unicode.html#utf-8
+func hdl_esc_docs_iso8859_1(emu *emulator) {
+	emu.resetCharsetState()
+	emu.charsetState.g[emu.charsetState.gr] = Charset_IsoLatin1
+}
+
 // print the graphic char to the emulator
 // TODO print to emulator
 // TODO GR doesn't exist in UTF-8

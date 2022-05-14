@@ -27,6 +27,7 @@ SOFTWARE.
 package terminal
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -56,6 +57,66 @@ func testHandleGraphicChar(t *testing.T) {
 		for _, hd := range hds {
 			hd.handle(emu)
 		}
+	}
+}
+
+func TestHandle_DOCS(t *testing.T) {
+	tc := []struct {
+		name     string
+		seq      string
+		wantGL   int
+		wantGR   int
+		wantSS   int
+		wantName string
+	}{
+		{"DOCS utf-8    ", "\x1B%G", 0, 2, 0, "esc-docs-utf-8"},
+		{"DOCS iso8859-1", "\x1B%@", 0, 2, 0, "esc-docs-iso8859-1"},
+	}
+
+	p := NewParser()
+	emu := NewEmulator()
+	fmt.Println("start test")
+	for _, v := range tc {
+
+		// set different value
+		emu.charsetState.gl = 2
+		emu.charsetState.gr = 3
+		emu.charsetState.ss = 2
+
+		for i := 0; i < 4; i++ {
+			emu.charsetState.g[i] = Charset_DecSuppl
+		}
+
+		// parse the instruction
+		var hd *Handler
+		for _, ch := range v.seq {
+			hd = p.processInput(ch)
+		}
+
+		// call the handler
+		if hd != nil {
+			hd.handle(emu)
+
+			for i := 0; i < 4; i++ {
+				if i == 2 {
+					// skip the g[2], which is different for iso8859-1, utf-8
+					continue
+				}
+				if emu.charsetState.g[i] != Charset_UTF8 {
+					t.Errorf("%s charset g1~g4 should be utf-8.", v.name)
+				}
+			}
+			// verify the result
+			if emu.charsetState.gl != v.wantGL || emu.charsetState.gr != v.wantGR ||
+				emu.charsetState.ss != v.wantSS || hd.name != v.wantName {
+				t.Errorf("%s [%s vs %s] expect GL,GR,SS = %d,%d,%d, got %d,%d,%d\n", v.name, hd.name, v.wantName,
+					v.wantGL, v.wantGR, v.wantSS, emu.charsetState.gl, emu.charsetState.gr, emu.charsetState.ss)
+			}
+
+		} else {
+			t.Errorf("%s got nil return\n", v.name)
+		}
+
 	}
 }
 
