@@ -211,6 +211,103 @@ func TestHandle_BEL(t *testing.T) {
 	}
 }
 
+func TestHandle_HTS_TBC(t *testing.T) {
+	tc := []struct {
+		name     string
+		position int
+		setSeq   string
+		clearSeq string
+	}{
+		{"Set/Clear tab stop 1", 18, "\x1BH", "\x1B[g"},
+		{"Set/Clear tab stop 2", 38, "\x1BH", "\x1B[0g"},
+		{"Set/Clear tab stop 3", 48, "\x1BH", "\x1B[3g"},
+	}
+
+	p := NewParser()
+	var hd *Handler
+	emu := NewEmulator()
+	for _, v := range tc {
+
+		// set the start position
+		emu.framebuffer.DS.MoveRow(2, false)
+		emu.framebuffer.DS.MoveCol(v.position, false, false)
+
+		// set the tab stop position
+		for _, ch := range v.setSeq {
+			hd = p.processInput(ch)
+		}
+		if hd == nil {
+			t.Errorf("%s Set got nil return\n", v.name)
+			continue
+		}
+		hd.handle(emu)
+
+		// verify the position is set == true
+		if !emu.framebuffer.DS.tabs[v.position] {
+			t.Errorf("%s expect true, got %t\n", v.name, false)
+		}
+
+		// set the tab stop position
+		for _, ch := range v.clearSeq {
+			hd = p.processInput(ch)
+		}
+
+		if hd == nil {
+			t.Errorf("%s Clear got nil return\n", v.name)
+			continue
+		}
+		hd.handle(emu)
+
+		// verify the position is set == false
+		if emu.framebuffer.DS.tabs[v.position] {
+			t.Errorf("%s expect false, got %t\n", v.name, true)
+		}
+	}
+}
+
+func TestHandle_HT_CHT_CBT(t *testing.T) {
+	tc := []struct {
+		name     string
+		startX   int
+		wantName string
+		wantX    int
+		ctlseq   string
+	}{
+		{"HT 1 ", 5, "c0-ht", 8, "\x09"},
+		{"HT 2 ", 9, "c0-ht", 16, "\x09"},
+		{"CBT  ", 29, "csi-cbt", 8, "\x1B[3Z"},
+		{"CHT  ", 2, "csi-cht", 32, "\x1B[4I"},
+	}
+
+	p := NewParser()
+	var hd *Handler
+	emu := NewEmulator()
+	for _, v := range tc {
+
+		for _, ch := range v.ctlseq {
+			hd = p.processInput(ch)
+		}
+		// set the start position
+		emu.framebuffer.DS.MoveRow(2, false)
+		emu.framebuffer.DS.MoveCol(v.startX, false, false)
+
+		// handle the instruction
+		hd.handle(emu)
+
+		// get the result
+		if hd != nil {
+			gotX := emu.framebuffer.DS.GetCursorCol()
+
+			if gotX != v.wantX || hd.name != v.wantName {
+				t.Errorf("%s [%s vs %s] expect cursor cols=%d, got %d)\n", v.name, v.wantName, hd.name, v.wantX, gotX)
+			}
+		} else {
+			t.Errorf("%s got nil return\n", v.name)
+		}
+
+	}
+}
+
 // TODO test the HT handler
 func TestHandle_CR_LF_VT_FF(t *testing.T) {
 	tc := []struct {

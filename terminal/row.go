@@ -307,18 +307,22 @@ func (ds *DrawState) ClearDefaultTabs() { ds.defaultTabs = false }
 
 func (ds DrawState) GetNextTab(count int) int {
 	if count >= 0 {
-		for i := ds.cursorCol + 1; i < ds.width && count > 0; i++ {
-			count -= 1
-			if ds.tabs[i] && count == 0 {
-				return i
+		for i := ds.cursorCol + 1; i < ds.width; i++ {
+			if ds.tabs[i] { // find one next tab stop
+				count -= 1 // finish one tab stop
+				if count == 0 {
+					return i
+				}
 			}
 		}
 		return -1
 	} else {
-		for i := ds.cursorCol - 1; i > 0 && count < 0; i-- {
-			count += 1
-			if ds.tabs[i] && count == 0 {
-				return i
+		for i := ds.cursorCol - 1; i > 0; i-- {
+			if ds.tabs[i] { // find one previous tab stop
+				count += 1 // finish one tab stop
+				if count == 0 {
+					return i
+				}
 			}
 		}
 		return 0

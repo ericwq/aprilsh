@@ -98,9 +98,7 @@ func hdl_c0_bel(emu *emulator) {
 // Horizontal Tab (HTS  is Ctrl-I).
 // move cursor to the count tab position
 func ht_n(fb *Framebuffer, count int) {
-	//fmt.Printf("befor ht %d\n", fb.DS.GetCursorCol())
 	col := fb.DS.GetNextTab(count)
-	//fmt.Printf("after next tab col=%d, next tab=%d\n", col, fb.DS.GetCursorCol())
 	if col == -1 { // no tabs, go to end of line
 		col = fb.DS.GetWidth() - 1
 	}
@@ -108,7 +106,6 @@ func ht_n(fb *Framebuffer, count int) {
 	// does not set the wrap state. It also starts a new grapheme.
 	wrapStateSave := fb.DS.NextPrintWillWrap
 	fb.DS.MoveCol(col, false, false)
-	//fmt.Printf("after next tab col=%d, next tab=%d\n", col, fb.DS.GetCursorCol())
 	fb.DS.NextPrintWillWrap = wrapStateSave
 }
 
@@ -116,6 +113,13 @@ func ht_n(fb *Framebuffer, count int) {
 // move cursor to the next tab position
 func hdl_c0_ht(emu *emulator) {
 	ht_n(emu.framebuffer, 1)
+}
+
+// horizontal tab set
+// ESC H Tab Set (HTS is 0x88).
+// set cursor position as tab stop position
+func hdl_c0_hts(emu *emulator) {
+	emu.framebuffer.DS.SetTab()
 }
 
 // FF, VT same as LF
@@ -128,6 +132,31 @@ func hdl_c0_lf(emu *emulator) {
 // move cursor to the head of the same row
 func hdl_c0_cr(emu *emulator) {
 	emu.framebuffer.DS.MoveCol(0, false, false)
+}
+
+// CSI Ps g  Tab Clear (TBC).
+//            Ps = 0  ⇒  Clear Current Column (default).
+//            Ps = 3  ⇒  Clear All.
+func hdl_csi_tbc(emu *emulator, cmd int) {
+	switch cmd {
+	case 0: // clear this tab stop
+		emu.framebuffer.DS.ClearTab(emu.framebuffer.DS.GetCursorCol())
+	case 3: // clear all tab stops
+		emu.framebuffer.DS.ClearDefaultTabs()
+		for i := 0; i < emu.framebuffer.DS.GetWidth(); i++ {
+			emu.framebuffer.DS.ClearTab(i)
+		}
+	}
+}
+
+// CSI Ps I  Cursor Forward Tabulation Ps tab stops (default = 1) (CHT).
+func hdl_csi_cht(emu *emulator, count int) {
+	ht_n(emu.framebuffer, count)
+}
+
+// CSI Ps Z  Cursor Backward Tabulation Ps tab stops (default = 1) (CBT).
+func hdl_csi_cbt(emu *emulator, count int) {
+	ht_n(emu.framebuffer, -count)
 }
 
 // CSI Ps A  Cursor Up Ps Times (default = 1) (CUU).

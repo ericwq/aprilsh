@@ -257,11 +257,11 @@ func TestDrawStateGetNextTab(t *testing.T) {
 		count int
 		want  int
 	}{
-		{4, 4, 8},    // right spot
-		{9, 7, 16},   // right spot
-		{4, 3, -1},   // -1
-		{19, -3, 16}, // right spot
-		{19, -4, 0},  // 0
+		{4, 1, 8},    // right spot
+		{9, 1, 16},   // right spot
+		{9, 2, 24},   // -1
+		{19, -1, 16}, // right spot
+		{19, -2, 8},  // 0
 	}
 
 	// implicit condition: cursor start from 0

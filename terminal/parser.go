@@ -279,6 +279,7 @@ func (p *Parser) handle_IND() (hd *Handler) {
 }
 
 // Horizontal Tab
+// move cursor position to next tab stop
 func (p *Parser) handle_HT() (hd *Handler) {
 	hd = &Handler{name: "c0-ht", ch: p.ch}
 	hd.handle = func(emu *emulator) {
@@ -321,6 +322,56 @@ func (p *Parser) handle_SO() (hd *Handler) {
 	hd.handle = func(emu *emulator) {
 		hdl_c0_so(emu)
 	}
+	return hd
+}
+
+// set cursor position as tab stop position
+func (p *Parser) handle_HTS() (hd *Handler) {
+	hd = &Handler{name: "c0-hts", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_c0_hts(emu)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// move cursor forward to the N tab stop position
+func (p *Parser) handle_CHT() (hd *Handler) {
+	count := p.getPs(0, 1)
+
+	hd = &Handler{name: "csi-cht", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_cht(emu, count)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// move bcursor ackward to the N tab stop position
+func (p *Parser) handle_CBT() (hd *Handler) {
+	count := p.getPs(0, 1)
+
+	hd = &Handler{name: "csi-cbt", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_cbt(emu, count)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// clear tab stop position according to cmd
+func (p *Parser) handle_TBC() (hd *Handler) {
+	cmd := p.getPs(0, 0)
+
+	hd = &Handler{name: "csi-tbc", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_tbc(emu, cmd)
+	}
+
+	p.setState(InputState_Normal)
 	return hd
 }
 
@@ -380,6 +431,8 @@ func (p *Parser) processInput(ch rune) (hd *Handler) {
 			p.setState(InputState_OSC)
 		case 'D':
 			hd = p.handle_IND()
+		case 'H':
+			hd = p.handle_HTS()
 		}
 	case InputState_CSI:
 		if p.collectNumericParameters(ch) {
@@ -396,8 +449,13 @@ func (p *Parser) processInput(ch rune) (hd *Handler) {
 			hd = p.handle_CUB()
 		case 'H', 'f':
 			hd = p.handle_CUP()
+		case 'I':
+			hd = p.handle_CHT()
+		case 'Z':
+			hd = p.handle_CBT()
+		case 'g':
+			hd = p.handle_TBC()
 		}
-
 	case InputState_OSC:
 		if p.collectNumericParameters(ch) {
 			break
