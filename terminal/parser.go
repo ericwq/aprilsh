@@ -27,6 +27,7 @@ SOFTWARE.
 package terminal
 
 import (
+	"fmt"
 	"strings"
 )
 
@@ -70,6 +71,10 @@ type Parser struct {
 
 	// string parameter
 	argBuf strings.Builder
+
+	// select character set destination and mode
+	scsDst rune
+	scsMod rune
 }
 
 func NewParser() *Parser {
@@ -474,6 +479,75 @@ func (p *Parser) handle_DOCS_ISO8859_1() (hd *Handler) {
 	return hd
 }
 
+// ESC ( C   Designate G0 Character Set, VT100, ISO 2022.
+// ESC ) C   Designate G1 Character Set, ISO 2022, VT100
+// ESC * C   Designate G2 Character Set, ISO 2022, VT220.
+// ESC + C   Designate G3 Character Set, ISO 2022, VT220.
+// ESC - C   Designate G1 Character Set, VT300.
+// ESC . C   Designate G2 Character Set, VT300.
+// ESC / C   Designate G3 Character Set, VT300.
+// https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Controls-beginning-with-ESC
+func (p *Parser) handle_ESC_DCS() (hd *Handler) {
+	// TODO log it
+	fmt.Printf("DEBUG Designate Character Set: destination %q ,%q, %q\n", p.scsDst, p.scsMod, p.ch)
+
+	index := 0
+	charset96 := false
+
+	switch p.scsDst {
+	case '(':
+		index = 0
+	case ')':
+		index = 1
+	case '*':
+		index = 2
+	case '+':
+		index = 3
+	case '-':
+		index = 1
+		charset96 = true
+	case '.':
+		index = 2
+		charset96 = true
+	case '/':
+		index = 3
+		charset96 = true
+	}
+
+	charset := Charset_UTF8
+
+	// final byte is p.ch
+	switch p.ch {
+	case 'A':
+		if charset96 {
+			charset = Charset_IsoLatin1
+		} else {
+			charset = Charset_IsoUK
+		}
+	case 'B':
+		charset = Charset_UTF8
+	case '0':
+		charset = Charset_DecSpec
+	case '5':
+		if p.scsMod == '%' {
+			charset = Charset_DecSuppl
+		}
+	case '<':
+		charset = Charset_DecUserPref
+	case '>':
+		charset = Charset_DecTechn
+	}
+
+	fmt.Printf("DEBUG Designate Character Set: index= %d, charset=%d\n", index, charset)
+
+	hd = &Handler{name: "esc-dcs", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_esc_dcs(emu, index, charset)
+	}
+	p.setState(InputState_Normal)
+	return hd
+}
+
 // process each rune. must apply the UTF-8 decoder to the incoming byte
 // stream before interpreting any control characters.
 func (p *Parser) processInput(ch rune) (hd *Handler) {
@@ -530,6 +604,13 @@ func (p *Parser) processInput(ch rune) (hd *Handler) {
 		case ']':
 			p.argBuf.Reset()
 			p.setState(InputState_OSC)
+		case '(', ')', '*', '+', '-', '.', '/':
+			fallthrough
+		case ',', '$': // from ISO/IEC 2022 (absorbed, treat as no-op)
+			// the first byte define the target character set
+			p.scsDst = ch
+			p.scsMod = 0x00
+			p.setState(InputState_Select_Charset)
 		case 'D':
 			hd = p.handle_IND()
 		case 'H':
@@ -555,7 +636,16 @@ func (p *Parser) processInput(ch rune) (hd *Handler) {
 			// logT << "Select charset: default (ISO-8859-1)"
 			hd = p.handle_DOCS_ISO8859_1()
 		case 'G':
+			// logT << "Select charset: UTF-8"
 			hd = p.handle_DOCS_UTF8()
+		}
+	case InputState_Select_Charset:
+		if ch < 0x30 {
+			// save the second byte, that means there should be third byte next.
+			p.scsMod = ch
+		} else {
+			// the second byte or the third byte
+			hd = p.handle_ESC_DCS()
 		}
 	case InputState_CSI:
 		if p.collectNumericParameters(ch) {

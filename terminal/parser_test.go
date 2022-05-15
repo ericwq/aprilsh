@@ -27,7 +27,6 @@ SOFTWARE.
 package terminal
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -60,6 +59,50 @@ func testHandleGraphicChar(t *testing.T) {
 	}
 }
 
+func TestHandle_ESC_DCS(t *testing.T) {
+	tc := []struct {
+		name        string
+		seq         string
+		wantName    string
+		wantIndex   int
+		wantCharset int
+	}{
+		{"VT100 G0", "\x1B(A", "esc-dcs", 0, Charset_IsoUK},
+		{"VT100 G1", "\x1B)B", "esc-dcs", 1, Charset_UTF8},
+		{"VT220 G2", "\x1B*5", "esc-dcs", 2, Charset_UTF8},
+		{"VT220 G3", "\x1B+%5", "esc-dcs", 3, Charset_DecSuppl},
+		{"VT300 G1", "\x1B-0", "esc-dcs", 1, Charset_DecSpec},
+		{"VT300 G2", "\x1B.<", "esc-dcs", 2, Charset_DecUserPref},
+		{"VT300 G3", "\x1B/>", "esc-dcs", 3, Charset_DecTechn},
+		{"VT300 G3", "\x1B/A", "esc-dcs", 3, Charset_IsoLatin1},
+	}
+
+	p := NewParser()
+	emu := NewEmulator()
+	for _, v := range tc {
+
+		// set different value for compare
+		for i := 0; i < 4; i++ {
+			emu.charsetState.g[i] = Charset_UTF8
+		}
+		// parse the instruction
+		var hd *Handler
+		for _, ch := range v.seq {
+			hd = p.processInput(ch)
+		}
+		if hd != nil {
+			hd.handle(emu)
+
+			cs := emu.charsetState.g[v.wantIndex]
+			if v.wantName != hd.name || cs != v.wantCharset {
+				t.Errorf("%s: [%s vs %s] expect %d, got %d", v.name, hd.name, v.wantName, v.wantCharset, cs)
+			}
+		} else {
+			t.Errorf("%s got nil return\n", v.name)
+		}
+	}
+}
+
 func TestHandle_DOCS(t *testing.T) {
 	tc := []struct {
 		name     string
@@ -75,7 +118,6 @@ func TestHandle_DOCS(t *testing.T) {
 
 	p := NewParser()
 	emu := NewEmulator()
-	fmt.Println("start test")
 	for _, v := range tc {
 
 		// set different value

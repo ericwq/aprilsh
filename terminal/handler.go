@@ -107,6 +107,11 @@ func hdl_esc_docs_iso8859_1(emu *emulator) {
 	emu.charsetState.g[emu.charsetState.gr] = Charset_IsoLatin1
 }
 
+// Select G0 ~ G3 character set based on parameter
+func hdl_esc_dcs(emu *emulator, index int, charset int) {
+	emu.charsetState.g[index] = charset
+}
+
 // print the graphic char to the emulator
 // TODO print to emulator
 // TODO GR doesn't exist in UTF-8
