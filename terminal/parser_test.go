@@ -59,6 +59,39 @@ func testHandleGraphicChar(t *testing.T) {
 	}
 }
 
+func TestCollectNumericParameters(t *testing.T) {
+	tc := []struct {
+		name string
+		want int
+		seq  string
+	}{
+		{"normal number     ", 65, "65;23"},
+		{"too large number  ", 0, "65536;22"},
+		{"over size 16      ", 0, "1;2;3;4;5;6;7;8;9;0;1;2;3;4;5;6;"},
+		{"over size 17      ", 0, "1;2;3;4;5;6;7;8;9;0;1;2;3;4;5;6;7;"},
+	}
+
+	p := NewParser()
+	for _, v := range tc {
+		// prepare for the condition
+		p.reset()
+		p.nInputOps = 1
+		p.inputOps[0] = 0
+		p.inputState = InputState_CSI
+		// parse the number
+		for _, ch := range v.seq {
+			p.collectNumericParameters(ch)
+			if p.inputState == InputState_Normal {
+				break
+			}
+		}
+		// only test the first number
+		if p.getPs(0, 0) != v.want {
+			t.Errorf("%s expect %d, got %d\n", v.name, v.want, p.getPs(0, 0))
+		}
+	}
+}
+
 func TestHandle_ESC_DCS(t *testing.T) {
 	tc := []struct {
 		name        string
@@ -75,6 +108,10 @@ func TestHandle_ESC_DCS(t *testing.T) {
 		{"VT300 G2", "\x1B.<", "esc-dcs", 2, Charset_DecUserPref},
 		{"VT300 G3", "\x1B/>", "esc-dcs", 3, Charset_DecTechn},
 		{"VT300 G3", "\x1B/A", "esc-dcs", 3, Charset_IsoLatin1},
+		{"ISO/IEC 2022 G0 A", "\x1B,A", "esc-dcs", 0, Charset_IsoUK},
+		{"ISO/IEC 2022 G0 >", "\x1B$>", "esc-dcs", 0, Charset_DecTechn},
+		// for other charset, just replace it with UTF-8
+		{"ISO/IEC 2022 G0 None", "\x1B$%9", "esc-dcs", 0, Charset_UTF8},
 	}
 
 	p := NewParser()
@@ -361,7 +398,6 @@ func TestHandle_CUU_CUD_CUF_CUB_CUP(t *testing.T) {
 		} else {
 			t.Errorf("%s got nil return\n", v.name)
 		}
-
 	}
 }
 
@@ -377,13 +413,16 @@ func TestHandle_OSC_0_1_2(t *testing.T) {
 		{"OSC 0;Pt BEL        ", "osc 0,1,2", true, true, "\x1B]0;ada\x07", "ada"},
 		{"OSC 1;Pt 7bit ST    ", "osc 0,1,2", true, false, "\x1B]1;adas\x1B\\", "adas"},
 		{"OSC 2;Pt BEL chinese", "osc 0,1,2", false, true, "\x1B]2;[道德经]\x07", "[道德经]"},
+		{"OSC 2;Pt BEL unusual", "osc 0,1,2", false, true, "\x1B]2;[neovim]\x1B78\x07", "[neovim]\x1B78"},
+		{"OSC 0;Pt malform 1  ", "osc 0,1,2", true, true, "\x1B]ada\x07", ""},
+		{"OSC 0;Pt malform 2  ", "osc 0,1,2", true, true, "\x1B]7fy;ada\x07", ""},
 	}
 
 	p := NewParser()
 	emu := NewEmulator()
 	for _, v := range tc {
 		var hd *Handler
-
+		p.reset()
 		// parse the sequence
 		for _, ch := range v.seq {
 			hd = p.processInput(ch)
@@ -405,10 +444,13 @@ func TestHandle_OSC_0_1_2(t *testing.T) {
 			} else if v.title && windowTitle == v.wantTitle && hd.name == v.wantName {
 				continue
 			} else {
-				t.Errorf("%s name=%q seq=%q expect %s\n got window title=%s\n got icon name=%s\n",
+				t.Errorf("%s name=%q seq=%q expect %q\n got window title=%q\n got icon name=%q\n",
 					v.name, v.wantName, v.seq, v.wantTitle, windowTitle, iconName)
 			}
 		} else {
+			if p.inputState == InputState_Normal && v.wantTitle == "" {
+				continue
+			}
 			t.Errorf("%s got nil return\n", v.name)
 		}
 	}
@@ -497,10 +539,14 @@ func TestHandle_HT_CHT_CBT(t *testing.T) {
 		wantX    int
 		ctlseq   string
 	}{
-		{"HT 1 ", 5, "c0-ht", 8, "\x09"},
-		{"HT 2 ", 9, "c0-ht", 16, "\x09"},
-		{"CBT  ", 29, "csi-cbt", 8, "\x1B[3Z"},
-		{"CHT  ", 2, "csi-cht", 32, "\x1B[4I"},
+		{"HT 1  ", 5, "c0-ht", 8, "\x09"},
+		{"HT 2  ", 9, "c0-ht", 16, "\x09"},
+		{"CBT   ", 29, "csi-cbt", 8, "\x1B[3Z"},
+		{"CHT   ", 2, "csi-cht", 32, "\x1B[4I"},
+		// reach the right edge
+		{"CHT -1", 59, "csi-cht", 79, "\x1B[4I"},
+		// reach the left edge
+		{"CBT  0", 2, "csi-cbt", 0, "\x1B[3Z"},
 	}
 
 	p := NewParser()
@@ -528,11 +574,9 @@ func TestHandle_HT_CHT_CBT(t *testing.T) {
 		} else {
 			t.Errorf("%s got nil return\n", v.name)
 		}
-
 	}
 }
 
-// TODO test the HT handler
 func TestHandle_CR_LF_VT_FF(t *testing.T) {
 	tc := []struct {
 		name     string
@@ -549,8 +593,6 @@ func TestHandle_CR_LF_VT_FF(t *testing.T) {
 		{"VT   ", 2, 3, "c0-lf", 2, 4, "\x0B"},
 		{"FF   ", 3, 4, "c0-lf", 3, 5, "\x0C"},
 		{"ESC D", 4, 5, "c0-lf", 4, 6, "\x1BD"},
-		//{"HT 1 ", 5, 2, "c0-ht", 15, 2, "\x09"},
-		//{"HT 2 ", 3, 2, "c0-ht", 7, 2, "\x09"},
 	}
 
 	p := NewParser()
@@ -580,6 +622,5 @@ func TestHandle_CR_LF_VT_FF(t *testing.T) {
 		} else {
 			t.Errorf("%s got nil return\n", v.name)
 		}
-
 	}
 }

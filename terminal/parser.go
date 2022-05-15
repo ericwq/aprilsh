@@ -28,6 +28,7 @@ package terminal
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 )
 
@@ -54,6 +55,9 @@ const (
 type Parser struct {
 	state State
 
+	// parsing error
+	perror error
+
 	// big switch state machine
 	inputState int
 	ch         rune
@@ -79,15 +83,26 @@ type Parser struct {
 
 func NewParser() *Parser {
 	p := new(Parser)
+	// TODO consider remove state field
 	p.state = ground{}
-	p.maxEscOps = 16
-	p.inputOps = make([]int, p.maxEscOps)
+
+	p.reset()
 	return p
 }
 
 func (p *Parser) reset() {
-	// TODO
-	p.state = ground{}
+	p.inputState = InputState_Normal
+	p.ch = 0x00
+
+	p.perror = nil
+
+	p.maxEscOps = 16
+	p.inputOps = make([]int, p.maxEscOps)
+	p.nInputOps = 0
+	p.argBuf.Reset()
+
+	p.scsDst = 0x00
+	p.scsMod = 0x00
 }
 
 func (p *Parser) traceNormalInput() { // TODO
@@ -113,11 +128,12 @@ func (p *Parser) setState(newState int) {
 func (p *Parser) collectNumericParameters(ch rune) (isBreak bool) {
 	if '0' <= ch && ch <= '9' {
 		isBreak = true
-		if p.inputOps[p.nInputOps-1] < 65535 { // max value for numeric parameter
-			p.inputOps[p.nInputOps-1] *= 10
-			p.inputOps[p.nInputOps-1] += int(ch - '0')
-		} else {
+		// max value for numeric parameter
+		p.inputOps[p.nInputOps-1] *= 10
+		p.inputOps[p.nInputOps-1] += int(ch - '0')
+		if p.inputOps[p.nInputOps-1] >= 65535 {
 			// TODO logE  "inputOp overflow!"
+			p.perror = fmt.Errorf("the number is too big. %d", p.inputOps[p.nInputOps-1])
 			p.setState(InputState_Normal)
 		}
 	} else if ch == ';' {
@@ -127,10 +143,10 @@ func (p *Parser) collectNumericParameters(ch rune) (isBreak bool) {
 			p.nInputOps += 1
 		} else {
 			// TODO logE inputOps full, increase maxEscOps
+			p.perror = fmt.Errorf("the parameters count limitation is over. %d", p.maxEscOps)
 			p.setState(InputState_Normal)
 		}
 	}
-
 	return isBreak
 }
 
@@ -225,9 +241,25 @@ func (p *Parser) handle_CUP() (hd *Handler) {
 }
 
 func (p *Parser) handle_OSC() (hd *Handler) {
-	cmd := p.getPs(0, 0)
+	cmd := 0
 	arg := p.getArg()
 
+	defer p.setState(InputState_Normal)
+
+	// get the Ps
+	pos := strings.Index(arg, ";")
+	if pos == -1 {
+		p.perror = fmt.Errorf("OSC: no ';' exist. %q", arg)
+		return
+	}
+	var err error
+	if cmd, err = strconv.Atoi(arg[:pos]); err != nil {
+		p.perror = fmt.Errorf("OSC: illegal Ps parameter. %q", arg[:pos])
+		return
+	}
+
+	// get the Pt
+	arg = arg[pos+1:]
 	if cmd < 0 || cmd > 120 {
 		// LogT "OSC: malformed command string '"
 	} else {
@@ -258,8 +290,6 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 		}
 	}
 
-	// reset the state
-	p.setState(InputState_Normal)
 	return hd
 }
 
@@ -538,8 +568,7 @@ func (p *Parser) handle_ESC_DCS() (hd *Handler) {
 		charset = Charset_DecTechn
 	}
 
-	fmt.Printf("DEBUG Designate Character Set: index= %d, charset=%d\n", index, charset)
-
+	// fmt.Printf("DEBUG Designate Character Set: index= %d, charset=%d\n", index, charset)
 	hd = &Handler{name: "esc-dcs", ch: p.ch}
 	hd.handle = func(emu *emulator) {
 		hdl_esc_dcs(emu, index, charset)
@@ -670,9 +699,9 @@ func (p *Parser) processInput(ch rune) (hd *Handler) {
 			hd = p.handle_TBC()
 		}
 	case InputState_OSC:
-		if p.collectNumericParameters(ch) {
-			break
-		}
+		// if p.collectNumericParameters(ch) {
+		// 	break
+		// }
 		switch ch {
 		case '\x07': // final byte = BEL
 			hd = p.handle_OSC()
