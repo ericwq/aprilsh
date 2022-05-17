@@ -28,7 +28,35 @@ package terminal
 
 import (
 	"testing"
+	"unicode/utf8"
+
+	"github.com/rivo/uniseg"
+	"golang.org/x/text/encoding/charmap"
 )
+
+func TestUnisegCapability(t *testing.T) {
+	s := "Chin\u0308\u0308\u0308a 🏖 is where I live. 国旗🇳🇱Fun with Flag🇧🇷."
+	graphemes := uniseg.NewGraphemes(s)
+
+	for graphemes.Next() {
+		t.Logf("%d %x, %q ", len(graphemes.Runes()), graphemes.Runes(), graphemes.Runes())
+	}
+	if uniseg.GraphemeClusterCount(s) != 43 {
+		t.Errorf("UTF-8 string %q expect %d, got %d\n", s, uniseg.GraphemeClusterCount(s), utf8.RuneCountInString(s))
+	}
+}
+
+func TestCharmapCapability(t *testing.T) {
+	invalid := "ABCD\xe0\xe1\xe2\xe3\xe9\x9c" // this is "à á â ã é" in ISO-8859-1
+	// If we convert it from ISO8859-1 to UTF-8:
+	dec, _ := charmap.ISO8859_1.NewDecoder().String(invalid)
+	want := "ABCDàáâãé\u009c"
+
+	if dec != want {
+		t.Logf("Not UTF-8: %q (valid: %v)\n", invalid, utf8.ValidString(invalid))
+		t.Errorf("Decoded: %q (valid UTF8: %v)\n", dec, utf8.ValidString(dec))
+	}
+}
 
 // TODO add test for other charset
 func testHandleGraphicChar(t *testing.T) {

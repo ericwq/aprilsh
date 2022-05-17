@@ -115,6 +115,9 @@ func hdl_esc_dcs(emu *emulator, index int, charset int) {
 // print the graphic char to the emulator
 // TODO print to emulator
 // TODO GR doesn't exist in UTF-8
+// https://henvic.dev/posts/go-utf8/
+// https://pkg.go.dev/golang.org/x/text/encoding/charmap
+// https://github.com/rivo/uniseg
 func hdl_graphic_char(emu *emulator, r rune) {
 	if utf8.RuneLen(r) > 1 {
 		fmt.Printf("Unicode UTF8 print %c size=%d\n", r, utf8.RuneLen(r))
