@@ -28,7 +28,6 @@ package terminal
 
 import (
 	"fmt"
-	"unicode/utf8"
 )
 
 // type handleFunc func(emu *emulator)
@@ -104,12 +103,16 @@ func hdl_esc_docs_utf8(emu *emulator) {
 // https://www.cl.cam.ac.uk/~mgk25/unicode.html#utf-8
 func hdl_esc_docs_iso8859_1(emu *emulator) {
 	emu.resetCharsetState()
-	emu.charsetState.g[emu.charsetState.gr] = Charset_IsoLatin1
+	emu.charsetState.g[emu.charsetState.gr] = &isoLatin1SupplementalVT300 // Charset_IsoLatin1
+	emu.charsetState.vt100 = true
 }
 
 // Select G0 ~ G3 character set based on parameter
-func hdl_esc_dcs(emu *emulator, index int, charset int) {
+func hdl_esc_dcs(emu *emulator, index int, charset *map[byte]rune) {
 	emu.charsetState.g[index] = charset
+	if charset != nil {
+		emu.charsetState.vt100 = true
+	}
 }
 
 // print the graphic char to the emulator
@@ -118,35 +121,52 @@ func hdl_esc_dcs(emu *emulator, index int, charset int) {
 // https://henvic.dev/posts/go-utf8/
 // https://pkg.go.dev/golang.org/x/text/encoding/charmap
 // https://github.com/rivo/uniseg
-func hdl_graphic_char(emu *emulator, r rune) {
-	if utf8.RuneLen(r) > 1 {
-		fmt.Printf("Unicode UTF8 print %c size=%d\n", r, utf8.RuneLen(r))
-	} else if r&0x80 == 0 {
-		// GL range
-		cs := 0
-		if emu.charsetState.ss > 0 {
-			cs = emu.charsetState.g[emu.charsetState.ss]
-			emu.charsetState.ss = 0
-		} else {
-			cs = emu.charsetState.g[emu.charsetState.gl]
-		}
+func hdl_graphemes(emu *emulator, chs ...rune) {
+	// fmt.Printf("hdl_graphemes got %q", chs)
 
-		if cs == Charset_UTF8 {
-			fmt.Printf("GL UTF8 print %c\n", r)
-		} else if r >= 32 && (cs == Charset_IsoLatin1 || r < 127) {
-			ch := charCodes[cs][r-32]
-			fmt.Printf("GL %d print %c\n", cs, ch)
+	if len(chs) == 1 {
+		r := chs[0]
+		if emu.charsetState.vt100 {
+			r = emu.lookupCharset(r)
+			fmt.Printf("   VT100: %q, %U, %x\n", r, r, r)
+		} else {
+			fmt.Printf("   UTF-8: %q, %U, %x\n", r, r, r)
 		}
+	} else if len(chs) > 1 {
+		fmt.Printf("   UTF*8: %q, %U, %x\n", chs, chs, chs)
 	} else {
-		// GR range
-		cs := emu.charsetState.g[emu.charsetState.gr]
-		if cs == Charset_UTF8 {
-			fmt.Printf("GR UTF8 print %c\n", r)
-		} else if r >= 160 && (cs == Charset_IsoLatin1 || r < 255) {
-			ch := charCodes[cs][r-160]
-			fmt.Printf("GR %d print %c\n", cs, ch)
-		}
+		fmt.Printf("   UTF8 : invalid parameters\n")
 	}
+	/*
+		if utf8.RuneLen(r) > 1 {
+			fmt.Printf("Unicode UTF8 print %c size=%d\n", r, utf8.RuneLen(r))
+		} else if r&0x80 == 0 {
+			// GL range
+			var cs *map[byte]rune
+			if emu.charsetState.ss > 0 {
+				cs = emu.charsetState.g[emu.charsetState.ss]
+				emu.charsetState.ss = 0
+			} else {
+				cs = emu.charsetState.g[emu.charsetState.gl]
+			}
+
+			if cs == nil { // Charset_UTF8 {
+				fmt.Printf("GL UTF8 print %c\n", r)
+			} else if r >= 32 && (cs == &isoLatin1SupplementalVT300 || r < 127) { // Charset_IsoLatin1
+				ch := lookupTable(cs, byte(r))
+				fmt.Printf("GL %d print %c\n", cs, ch)
+			}
+		} else {
+			// GR range
+			cs := emu.charsetState.g[emu.charsetState.gr]
+			if cs == nil { //} Charset_UTF8 {
+				fmt.Printf("GR UTF8 print %c\n", r)
+			} else if r >= 160 && (cs == &isoLatin1SupplementalVT300 || r < 255) { // Charset_IsoLatin1
+				ch := lookupTable(cs, byte(r))
+				fmt.Printf("GR %d print %c\n", cs, ch)
+			}
+		}
+	*/
 }
 
 // Bell (BEL  is Ctrl-G).

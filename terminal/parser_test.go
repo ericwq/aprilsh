@@ -27,6 +27,7 @@ SOFTWARE.
 package terminal
 
 import (
+	"strings"
 	"testing"
 	"unicode/utf8"
 
@@ -39,10 +40,31 @@ func TestUnisegCapability(t *testing.T) {
 	graphemes := uniseg.NewGraphemes(s)
 
 	for graphemes.Next() {
-		t.Logf("%d %x, %q ", len(graphemes.Runes()), graphemes.Runes(), graphemes.Runes())
+		start, end := graphemes.Positions()
+		t.Logf("%q\t 0x%X, [%d ~ %d]\n", graphemes.Runes(), graphemes.Runes(), start, end)
 	}
 	if uniseg.GraphemeClusterCount(s) != 43 {
 		t.Errorf("UTF-8 string %q expect %d, got %d\n", s, uniseg.GraphemeClusterCount(s), utf8.RuneCountInString(s))
+	}
+}
+
+func TestCharsetResult(t *testing.T) {
+	s := "ABCD\xe0\xe1\xe2\xe3\xe9\x9c"
+	want := "àáâãé"
+
+	var ret strings.Builder
+
+	cs := Charset_IsoLatin1
+	for i := range s {
+		if 160 < s[i] && s[i] < 255 {
+			ret.WriteRune(charCodes[cs][s[i]-160])
+			t.Logf("%c %x %d in GR", s[i], s[i], s[i])
+		} else {
+			t.Logf("%c %x %d not in GL", s[i], s[i], s[i])
+		}
+	}
+	if want != ret.String() {
+		t.Errorf("Charset Charset_IsoLatin1 expect %s, got %s\n", want, ret.String())
 	}
 }
 
@@ -59,30 +81,39 @@ func TestCharmapCapability(t *testing.T) {
 }
 
 // TODO add test for other charset
-func testHandleGraphicChar(t *testing.T) {
+func TestHandleGraphemes(t *testing.T) {
 	tc := []struct {
 		name  string
 		raw   string
 		hName string
+		want  int
 	}{
-		{"normal latin", "eng", "graphic-char"},
-		{"chinese", "世界", "graphic-char"},
-		{"GR char", "\xA5", "graphic-char"},
+		{"UTF-8 raw english", "long long ago", "graphemes", 13},
+		{
+			"UTF-8 chinese with combining character and flags",
+			"Chin\u0308\u0308a 🏖 i国旗🇳🇱Fun with Flag🇧🇷.s",
+			"graphemes", 28,
+		},
+		{"VT100 mix UTF-8", "中国\x1B%@\xA5AB\xe2\xe3\xe9\x1B%GShanghai\x1B%@CD\xe0\xe1", "graphemes", 23},
 	}
 
-	hds := make([]*Handler, 0, 16)
 	p := NewParser()
 	emu := NewEmulator()
 	for _, v := range tc {
-		for _, ch := range v.raw {
-			hd := p.processInput(ch)
-			if hd != nil {
-				hds = append(hds, hd)
-			}
-		}
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.raw, hds)
 
+		if len(hds) == 0 {
+			t.Errorf("%s got zero handlers.", v.name)
+		}
 		for _, hd := range hds {
+			// fmt.Printf("handle ... %#v\n", hd)
 			hd.handle(emu)
+		}
+		if v.want != len(hds) {
+			t.Errorf("%s expect %d handlers,got %d handlers\n", v.name, v.want, len(hds))
+		} else {
+			t.Logf("%q end.\n", v.name)
 		}
 	}
 }
@@ -126,20 +157,20 @@ func TestHandle_ESC_DCS(t *testing.T) {
 		seq         string
 		wantName    string
 		wantIndex   int
-		wantCharset int
+		wantCharset *map[byte]rune
 	}{
-		{"VT100 G0", "\x1B(A", "esc-dcs", 0, Charset_IsoUK},
-		{"VT100 G1", "\x1B)B", "esc-dcs", 1, Charset_UTF8},
-		{"VT220 G2", "\x1B*5", "esc-dcs", 2, Charset_UTF8},
-		{"VT220 G3", "\x1B+%5", "esc-dcs", 3, Charset_DecSuppl},
-		{"VT300 G1", "\x1B-0", "esc-dcs", 1, Charset_DecSpec},
-		{"VT300 G2", "\x1B.<", "esc-dcs", 2, Charset_DecUserPref},
-		{"VT300 G3", "\x1B/>", "esc-dcs", 3, Charset_DecTechn},
-		{"VT300 G3", "\x1B/A", "esc-dcs", 3, Charset_IsoLatin1},
-		{"ISO/IEC 2022 G0 A", "\x1B,A", "esc-dcs", 0, Charset_IsoUK},
-		{"ISO/IEC 2022 G0 >", "\x1B$>", "esc-dcs", 0, Charset_DecTechn},
+		{"VT100 G0", "\x1B(A", "esc-dcs", 0, &unitedKingdomVT100},
+		{"VT100 G1", "\x1B)B", "esc-dcs", 1, nil},
+		{"VT220 G2", "\x1B*5", "esc-dcs", 2, nil},
+		{"VT220 G3", "\x1B+%5", "esc-dcs", 3, &decSupplementVT200},
+		{"VT300 G1", "\x1B-0", "esc-dcs", 1, &decSpecialVT100},
+		{"VT300 G2", "\x1B.<", "esc-dcs", 2, &decSupplementVT200},
+		{"VT300 G3", "\x1B/>", "esc-dcs", 3, &decTechnicalVT300},
+		{"VT300 G3", "\x1B/A", "esc-dcs", 3, &isoLatin1SupplementalVT300},
+		{"ISO/IEC 2022 G0 A", "\x1B,A", "esc-dcs", 0, &unitedKingdomVT100},
+		{"ISO/IEC 2022 G0 >", "\x1B$>", "esc-dcs", 0, &decTechnicalVT300},
 		// for other charset, just replace it with UTF-8
-		{"ISO/IEC 2022 G0 None", "\x1B$%9", "esc-dcs", 0, Charset_UTF8},
+		{"ISO/IEC 2022 G0 None", "\x1B$%9", "esc-dcs", 0, nil},
 	}
 
 	p := NewParser()
@@ -148,7 +179,7 @@ func TestHandle_ESC_DCS(t *testing.T) {
 
 		// set different value for compare
 		for i := 0; i < 4; i++ {
-			emu.charsetState.g[i] = Charset_UTF8
+			emu.charsetState.g[i] = nil
 		}
 		// parse the instruction
 		var hd *Handler
@@ -160,7 +191,7 @@ func TestHandle_ESC_DCS(t *testing.T) {
 
 			cs := emu.charsetState.g[v.wantIndex]
 			if v.wantName != hd.name || cs != v.wantCharset {
-				t.Errorf("%s: [%s vs %s] expect %d, got %d", v.name, hd.name, v.wantName, v.wantCharset, cs)
+				t.Errorf("%s: [%s vs %s] expect %p, got %p", v.name, hd.name, v.wantName, v.wantCharset, cs)
 			}
 		} else {
 			t.Errorf("%s got nil return\n", v.name)
@@ -191,7 +222,7 @@ func TestHandle_DOCS(t *testing.T) {
 		emu.charsetState.ss = 2
 
 		for i := 0; i < 4; i++ {
-			emu.charsetState.g[i] = Charset_DecSuppl
+			emu.charsetState.g[i] = &decSupplementVT200 // Charset_DecSuppl
 		}
 
 		// parse the instruction
@@ -206,10 +237,10 @@ func TestHandle_DOCS(t *testing.T) {
 
 			for i := 0; i < 4; i++ {
 				if i == 2 {
-					// skip the g[2], which is different for iso8859-1, utf-8
+					// skip the g[2], which is iso8859-1 for 'ESC % @'
 					continue
 				}
-				if emu.charsetState.g[i] != Charset_UTF8 {
+				if emu.charsetState.g[i] != nil {
 					t.Errorf("%s charset g1~g4 should be utf-8.", v.name)
 				}
 			}

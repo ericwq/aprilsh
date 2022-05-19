@@ -30,6 +30,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/rivo/uniseg"
 )
 
 const (
@@ -61,6 +63,7 @@ type Parser struct {
 	// big switch state machine
 	inputState int
 	ch         rune
+	chs        []rune
 
 	// numeric parameters
 	inputOps  []int
@@ -79,6 +82,9 @@ type Parser struct {
 	// select character set destination and mode
 	scsDst rune
 	scsMod rune
+
+	// vt100 charset mode
+	vt100 bool
 }
 
 func NewParser() *Parser {
@@ -332,12 +338,14 @@ func (p *Parser) handle_BEL() (hd *Handler) {
 	return hd
 }
 
-func (p *Parser) hanlde_GraphicChar() (hd *Handler) {
-	hd = &Handler{name: "graphic-char", ch: p.ch}
+// print graphemes on screen
+func (p *Parser) handle_Graphemes() (hd *Handler) {
+	// fmt.Printf("handle_Graphemes got %q\n\n", p.chs)
+	hd = &Handler{name: "graphemes", ch: p.ch}
 
-	r := p.ch // prevent conflict with p.ch
+	r := p.chs
 	hd.handle = func(emu *emulator) {
-		hdl_graphic_char(emu, r)
+		hdl_graphemes(emu, r...)
 	}
 	return hd
 }
@@ -494,6 +502,7 @@ func (p *Parser) handle_DOCS_UTF8() (hd *Handler) {
 		hdl_esc_docs_utf8(emu)
 	}
 
+	p.vt100 = false
 	p.setState(InputState_Normal)
 	return hd
 }
@@ -505,6 +514,7 @@ func (p *Parser) handle_DOCS_ISO8859_1() (hd *Handler) {
 		hdl_esc_docs_iso8859_1(emu)
 	}
 
+	p.vt100 = true
 	p.setState(InputState_Normal)
 	return hd
 }
@@ -519,7 +529,7 @@ func (p *Parser) handle_DOCS_ISO8859_1() (hd *Handler) {
 // https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Controls-beginning-with-ESC
 func (p *Parser) handle_ESC_DCS() (hd *Handler) {
 	// TODO log it
-	fmt.Printf("DEBUG Designate Character Set: destination %q ,%q, %q\n", p.scsDst, p.scsMod, p.ch)
+	// fmt.Printf("DEBUG Designate Character Set: destination %q ,%q, %q\n", p.scsDst, p.scsMod, p.ch)
 
 	index := 0
 	charset96 := false
@@ -544,28 +554,28 @@ func (p *Parser) handle_ESC_DCS() (hd *Handler) {
 		charset96 = true
 	}
 
-	charset := Charset_UTF8
+	var charset *map[byte]rune = nil
 
 	// final byte is p.ch
 	switch p.ch {
 	case 'A':
 		if charset96 {
-			charset = Charset_IsoLatin1
+			charset = &isoLatin1SupplementalVT300 // Charset_IsoLatin1
 		} else {
-			charset = Charset_IsoUK
+			charset = &unitedKingdomVT100 // Charset_IsoUK
 		}
 	case 'B':
-		charset = Charset_UTF8
+		charset = nil // Charset_UTF8
 	case '0':
-		charset = Charset_DecSpec
+		charset = &decSpecialVT100 // Charset_DecSpec
 	case '5':
 		if p.scsMod == '%' {
-			charset = Charset_DecSuppl
+			charset = &decSupplementVT200 // Charset_DecSuppl
 		}
 	case '<':
-		charset = Charset_DecUserPref
+		charset = &decSupplementVT200 // Charset_DecUserPref
 	case '>':
-		charset = Charset_DecTechn
+		charset = &decTechnicalVT300 // Charset_DecTechn
 	}
 
 	// fmt.Printf("DEBUG Designate Character Set: index= %d, charset=%d\n", index, charset)
@@ -573,13 +583,81 @@ func (p *Parser) handle_ESC_DCS() (hd *Handler) {
 	hd.handle = func(emu *emulator) {
 		hdl_esc_dcs(emu, index, charset)
 	}
+
+	// if any charset is not UTF-8, go back to vt100 mode
+	if charset != nil {
+		p.vt100 = true
+	}
+
 	p.setState(InputState_Normal)
 	return hd
 }
 
+func (p *Parser) processStream(str string, hds []*Handler) []*Handler {
+	var input []rune
+	var hd *Handler
+	end := false
+
+	for !end {
+		if p.vt100 {
+			// handle raw byte for others
+			for i := 0; i < len(str); i++ {
+				input = make([]rune, 1)
+				input[0] = rune(str[i]) // the type conversion will promote 0x9c to 0x009c
+				hd = p.processInput(input[0])
+				if hd != nil {
+					hds = append(hds, hd)
+				}
+				if i == len(str)-1 {
+					end = true
+				}
+				if !p.vt100 { // switch to utf-8 mode
+					str = str[i:]
+					break
+				}
+			}
+		} else {
+			// handle multi rune for UTF-8
+			graphemes := uniseg.NewGraphemes(str)
+			for graphemes.Next() {
+				input = graphemes.Runes()
+				// fmt.Printf("processStream: input=%q\n", input)
+				hd = p.processInput(input...)
+				if hd != nil {
+					hds = append(hds, hd)
+				}
+				_, to := graphemes.Positions()
+				if to == len(str)-1 {
+					end = true
+				}
+				if p.vt100 { // switch to vt100 mode
+					str = str[to:]
+					break
+				}
+			}
+		}
+	}
+	return hds
+}
+
 // process each rune. must apply the UTF-8 decoder to the incoming byte
 // stream before interpreting any control characters.
-func (p *Parser) processInput(ch rune) (hd *Handler) {
+func (p *Parser) processInput(chs ...rune) (hd *Handler) {
+	var ch rune
+
+	// for multi runes, it should be grapheme.
+	if len(chs) > 1 {
+		p.chs = chs
+		hd = p.handle_Graphemes()
+		return hd
+	} else if len(chs) == 1 { // it's either grapheme or control sequence
+		p.chs = chs
+		ch = chs[0]
+	} else { // empty chs
+		return hd
+	}
+
+	// fmt.Printf("processInput got %q\n", chs)
 	p.lastEscBegin = 0
 	p.lastNormalBegin = 0
 	p.lastStopPos = 0
@@ -622,7 +700,7 @@ func (p *Parser) processInput(ch rune) (hd *Handler) {
 			// one stop https://www.cl.cam.ac.uk/~mgk25/unicode.html
 			// https://harjit.moe/charsetramble.html
 			// need to understand the relationship between utf-8 and  ECMA-35 charset
-			hd = p.hanlde_GraphicChar()
+			hd = p.handle_Graphemes()
 		}
 	case InputState_Escape:
 		switch ch {

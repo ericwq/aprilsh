@@ -173,8 +173,10 @@ var charCodes = [...]([96]rune){
 }
 
 type CharsetState struct {
+	// indicate vt100 charset or not, default false
+	vt100 bool
 	// charset g0,g1,g2,g3
-	g [4]int
+	g [4]*map[byte]rune
 
 	// Locking shift states (index into g[]):
 	gl int
@@ -201,15 +203,40 @@ func NewEmulator() *emulator {
 }
 
 func (emu *emulator) resetCharsetState() {
-	emu.charsetState.g[0] = Charset_UTF8
-	emu.charsetState.g[1] = Charset_UTF8
-	emu.charsetState.g[2] = Charset_UTF8
-	emu.charsetState.g[3] = Charset_UTF8
+	// we don't use vt100 charset by default
+	emu.charsetState.vt100 = false
 
+	// default nil will fall to UTF-8
+	emu.charsetState.g[0] = nil
+	emu.charsetState.g[1] = nil
+	emu.charsetState.g[2] = nil
+	emu.charsetState.g[3] = nil
+
+	// Locking shift states (index into g[]):
 	emu.charsetState.gl = 0 // G0 in GL
 	emu.charsetState.gr = 2 // G2 in GR
 
+	// Single shift state (0 if none active):
+	// 0 - not active; 2: G2 in GL; 3: G3 in GL
 	emu.charsetState.ss = 0
+}
+
+func (emu *emulator) lookupCharset(p rune) (r rune) {
+	// choose the charset based on instructions before
+	var cs *map[byte]rune
+	if emu.charsetState.ss > 0 {
+		cs = emu.charsetState.g[emu.charsetState.ss]
+		emu.charsetState.ss = 0
+	} else {
+		if p < 0x80 {
+			cs = emu.charsetState.g[emu.charsetState.gl]
+		} else {
+			cs = emu.charsetState.g[emu.charsetState.gr]
+		}
+	}
+
+	r = lookupTable(cs, byte(p))
+	return r
 }
 
 /*
