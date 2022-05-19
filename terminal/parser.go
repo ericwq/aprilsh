@@ -600,10 +600,10 @@ func (p *Parser) processStream(str string, hds []*Handler) []*Handler {
 
 	for !end {
 		if p.vt100 {
-			// handle raw byte for others
+			// handle raw byte for VT mode
 			for i := 0; i < len(str); i++ {
 				input = make([]rune, 1)
-				input[0] = rune(str[i]) // the type conversion will promote 0x9c to 0x009c
+				input[0] = rune(str[i]) // note the type conversion will promote 0x9c to 0x009c
 				hd = p.processInput(input[0])
 				if hd != nil {
 					hds = append(hds, hd)
@@ -612,12 +612,12 @@ func (p *Parser) processStream(str string, hds []*Handler) []*Handler {
 					end = true
 				}
 				if !p.vt100 { // switch to utf-8 mode
-					str = str[i:]
+					str = str[i+1:]
 					break
 				}
 			}
 		} else {
-			// handle multi rune for UTF-8
+			// handle multi rune for modern UTF-8
 			graphemes := uniseg.NewGraphemes(str)
 			for graphemes.Next() {
 				input = graphemes.Runes()

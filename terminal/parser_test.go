@@ -32,7 +32,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/rivo/uniseg"
-	"golang.org/x/text/encoding/charmap"
+	// "golang.org/x/text/encoding/charmap"
 )
 
 func TestUnisegCapability(t *testing.T) {
@@ -68,17 +68,17 @@ func TestCharsetResult(t *testing.T) {
 	}
 }
 
-func TestCharmapCapability(t *testing.T) {
-	invalid := "ABCD\xe0\xe1\xe2\xe3\xe9\x9c" // this is "à á â ã é" in ISO-8859-1
-	// If we convert it from ISO8859-1 to UTF-8:
-	dec, _ := charmap.ISO8859_1.NewDecoder().String(invalid)
-	want := "ABCDàáâãé\u009c"
-
-	if dec != want {
-		t.Logf("Not UTF-8: %q (valid: %v)\n", invalid, utf8.ValidString(invalid))
-		t.Errorf("Decoded: %q (valid UTF8: %v)\n", dec, utf8.ValidString(dec))
-	}
-}
+// func TestCharmapCapability(t *testing.T) {
+// 	invalid := "ABCD\xe0\xe1\xe2\xe3\xe9\x9c" // this is "à á â ã é" in ISO-8859-1
+// 	// If we convert it from ISO8859-1 to UTF-8:
+// 	dec, _ := charmap.ISO8859_1.NewDecoder().String(invalid)
+// 	want := "ABCDàáâãé\u009c"
+//
+// 	if dec != want {
+// 		t.Logf("Not UTF-8: %q (valid: %v)\n", invalid, utf8.ValidString(invalid))
+// 		t.Errorf("Decoded: %q (valid UTF8: %v)\n", dec, utf8.ValidString(dec))
+// 	}
+// }
 
 // TODO add test for other charset
 func TestHandleGraphemes(t *testing.T) {
@@ -94,7 +94,8 @@ func TestHandleGraphemes(t *testing.T) {
 			"Chin\u0308\u0308a 🏖 i国旗🇳🇱Fun with Flag🇧🇷.s",
 			"graphemes", 28,
 		},
-		{"VT100 mix UTF-8", "中国\x1B%@\xA5AB\xe2\xe3\xe9\x1B%GShanghai\x1B%@CD\xe0\xe1", "graphemes", 23},
+		{"VT mix UTF-8", "中国\x1B%@\xA5AB\xe2\xe3\xe9\x1B%GShanghai\x1B%@CD\xe0\xe1", "graphemes", 23},
+		{"VT edge", "\x1B%@Beijing\x1B%@", "graphemes", 9},
 	}
 
 	p := NewParser()
@@ -113,7 +114,7 @@ func TestHandleGraphemes(t *testing.T) {
 		if v.want != len(hds) {
 			t.Errorf("%s expect %d handlers,got %d handlers\n", v.name, v.want, len(hds))
 		} else {
-			t.Logf("%q end.\n", v.name)
+			t.Logf("%q end %d.\n", v.name,len(hds))
 		}
 	}
 }
