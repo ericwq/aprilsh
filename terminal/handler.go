@@ -128,12 +128,12 @@ func hdl_graphemes(emu *emulator, chs ...rune) {
 		r := chs[0]
 		if emu.charsetState.vt100 {
 			r = emu.lookupCharset(r)
-			fmt.Printf("   VT100: %q, %U, %x\n", r, r, r)
+			fmt.Printf("   VT   : %q, %U, %x\n", r, r, r)
 		} else {
 			fmt.Printf("   UTF-8: %q, %U, %x\n", r, r, r)
 		}
 	} else if len(chs) > 1 {
-		fmt.Printf("   UTF*8: %q, %U, %x\n", chs, chs, chs)
+		fmt.Printf(" UTF-8 +: %q, %U, %x\n", chs, chs, chs)
 	} else {
 		fmt.Printf("   UTF8 : invalid parameters\n")
 	}

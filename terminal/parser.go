@@ -83,8 +83,8 @@ type Parser struct {
 	scsDst rune
 	scsMod rune
 
-	// vt100 charset mode
-	vt100 bool
+	// G0~G3 character set compatiable mode, default false
+	vtMode bool
 }
 
 func NewParser() *Parser {
@@ -502,7 +502,7 @@ func (p *Parser) handle_DOCS_UTF8() (hd *Handler) {
 		hdl_esc_docs_utf8(emu)
 	}
 
-	p.vt100 = false
+	p.vtMode = false
 	p.setState(InputState_Normal)
 	return hd
 }
@@ -514,7 +514,7 @@ func (p *Parser) handle_DOCS_ISO8859_1() (hd *Handler) {
 		hdl_esc_docs_iso8859_1(emu)
 	}
 
-	p.vt100 = true
+	p.vtMode = true
 	p.setState(InputState_Normal)
 	return hd
 }
@@ -586,7 +586,7 @@ func (p *Parser) handle_ESC_DCS() (hd *Handler) {
 
 	// if any charset is not UTF-8, go back to vt100 mode
 	if charset != nil {
-		p.vt100 = true
+		p.vtMode = true
 	}
 
 	p.setState(InputState_Normal)
@@ -599,7 +599,7 @@ func (p *Parser) processStream(str string, hds []*Handler) []*Handler {
 	end := false
 
 	for !end {
-		if p.vt100 {
+		if p.vtMode {
 			// handle raw byte for VT mode
 			for i := 0; i < len(str); i++ {
 				input = make([]rune, 1)
@@ -611,7 +611,7 @@ func (p *Parser) processStream(str string, hds []*Handler) []*Handler {
 				if i == len(str)-1 {
 					end = true
 				}
-				if !p.vt100 { // switch to utf-8 mode
+				if !p.vtMode { // switch to utf-8 mode
 					str = str[i+1:]
 					break
 				}
@@ -630,7 +630,7 @@ func (p *Parser) processStream(str string, hds []*Handler) []*Handler {
 				if to == len(str)-1 {
 					end = true
 				}
-				if p.vt100 { // switch to vt100 mode
+				if p.vtMode { // switch to vt100 mode
 					str = str[to:]
 					break
 				}

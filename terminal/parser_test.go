@@ -35,7 +35,8 @@ import (
 	// "golang.org/x/text/encoding/charmap"
 )
 
-func TestUnisegCapability(t *testing.T) {
+// disable this test
+func testUnisegCapability(t *testing.T) {
 	s := "Chin\u0308\u0308\u0308a 🏖 is where I live. 国旗🇳🇱Fun with Flag🇧🇷."
 	graphemes := uniseg.NewGraphemes(s)
 
@@ -48,7 +49,8 @@ func TestUnisegCapability(t *testing.T) {
 	}
 }
 
-func TestCharsetResult(t *testing.T) {
+// disable this test
+func testCharsetResult(t *testing.T) {
 	s := "ABCD\xe0\xe1\xe2\xe3\xe9\x9c"
 	want := "àáâãé"
 
@@ -95,7 +97,7 @@ func TestHandleGraphemes(t *testing.T) {
 			"graphemes", 28,
 		},
 		{"VT mix UTF-8", "中国\x1B%@\xA5AB\xe2\xe3\xe9\x1B%GShanghai\x1B%@CD\xe0\xe1", "graphemes", 23},
-		{"VT edge", "\x1B%@Beijing\x1B%@", "graphemes", 9},
+		{"VT edge", "\x1B%@Beijing\x1B%G", "graphemes", 9},
 	}
 
 	p := NewParser()
