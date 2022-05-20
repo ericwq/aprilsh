@@ -31,6 +31,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
+	"github.com/mattn/go-runewidth"
 	"github.com/rivo/uniseg"
 	// "golang.org/x/text/encoding/charmap"
 )
@@ -70,6 +71,28 @@ func testCharsetResult(t *testing.T) {
 	}
 }
 
+func TestRuneWidth(t *testing.T) {
+	tc := []struct {
+		name  string
+		raw   string
+		width int
+	}{
+		{"latin    ", "long", 4},
+		{"chinese  ", "中国", 4},
+		{"combining", "Chin\u0308\u0308a", 5},
+		// the width of icon is wrong
+		{"icon","🏝️",1},
+		// the width of flags is wrong
+		{"flags", "🇳🇱🇧🇷", 2},
+	}
+
+	for _, v := range tc {
+		if v.width != runewidth.StringWidth(v.raw) {
+			t.Errorf("%s expect width %d, got %d\n", v.name, v.width, runewidth.StringWidth(v.raw))
+		}
+	}
+}
+
 // func TestCharmapCapability(t *testing.T) {
 // 	invalid := "ABCD\xe0\xe1\xe2\xe3\xe9\x9c" // this is "à á â ã é" in ISO-8859-1
 // 	// If we convert it from ISO8859-1 to UTF-8:
@@ -82,7 +105,6 @@ func testCharsetResult(t *testing.T) {
 // 	}
 // }
 
-// TODO add test for other charset
 func TestHandleGraphemes(t *testing.T) {
 	tc := []struct {
 		name  string
@@ -90,9 +112,9 @@ func TestHandleGraphemes(t *testing.T) {
 		hName string
 		want  int
 	}{
-		{"UTF-8 raw english", "long long ago", "graphemes", 13},
+		{"UTF-8 plain english", "long long ago", "graphemes", 13},
 		{
-			"UTF-8 chinese with combining character and flags",
+			"UTF-8 chinese, combining character and flags",
 			"Chin\u0308\u0308a 🏖 i国旗🇳🇱Fun with Flag🇧🇷.s",
 			"graphemes", 28,
 		},
@@ -116,7 +138,7 @@ func TestHandleGraphemes(t *testing.T) {
 		if v.want != len(hds) {
 			t.Errorf("%s expect %d handlers,got %d handlers\n", v.name, v.want, len(hds))
 		} else {
-			t.Logf("%q end %d.\n", v.name,len(hds))
+			t.Logf("%q end %d.\n", v.name, len(hds))
 		}
 	}
 }
