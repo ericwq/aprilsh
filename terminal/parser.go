@@ -55,7 +55,7 @@ const (
 )
 
 type Parser struct {
-//	state State
+	// state State
 
 	// parsing error
 	perror error
@@ -90,7 +90,7 @@ type Parser struct {
 func NewParser() *Parser {
 	p := new(Parser)
 	// TODO consider remove state field
-//	p.state = ground{}
+	// p.state = ground{}
 
 	p.reset()
 	return p

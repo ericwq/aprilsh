@@ -53,6 +53,7 @@ type Action interface {
 	GetChar() rune
 	IsPresent() bool
 }
+
 //
 // /* These tables perform translation of built-in "hard" character sets
 //  * to 16-bit Unicode points. All sets are defined as 96 characters, even
@@ -173,8 +174,9 @@ type Action interface {
 // }
 
 type CharsetState struct {
-	// indicate vt100 charset or not, default false
-	vt100 bool
+	// indicate vtMode charset or not, default false
+	vtMode bool
+
 	// charset g0,g1,g2,g3
 	g [4]*map[byte]rune
 
@@ -204,7 +206,7 @@ func NewEmulator() *emulator {
 
 func (emu *emulator) resetCharsetState() {
 	// we don't use vt100 charset by default
-	emu.charsetState.vt100 = false
+	emu.charsetState.vtMode = false
 
 	// default nil will fall to UTF-8
 	emu.charsetState.g[0] = nil

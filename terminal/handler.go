@@ -44,7 +44,6 @@ type Handler struct {
 
 // In the loop, national flag's width got 1+1=2.
 func runesWidth(runes []rune) (width int) {
-
 	cond := runewidth.NewCondition()
 	cond.StrictEmojiNeutral = false
 	cond.EastAsianWidth = true
@@ -121,69 +120,88 @@ func hdl_esc_docs_utf8(emu *emulator) {
 func hdl_esc_docs_iso8859_1(emu *emulator) {
 	emu.resetCharsetState()
 	emu.charsetState.g[emu.charsetState.gr] = &vt_ISO_8859_1 // Charset_IsoLatin1
-	emu.charsetState.vt100 = true
+	emu.charsetState.vtMode = true
 }
 
 // Select G0 ~ G3 character set based on parameter
 func hdl_esc_dcs(emu *emulator, index int, charset *map[byte]rune) {
 	emu.charsetState.g[index] = charset
 	if charset != nil {
-		emu.charsetState.vt100 = true
+		emu.charsetState.vtMode = true
 	}
 }
 
 // print the graphic char to the emulator
 // TODO print to emulator
-// TODO GR doesn't exist in UTF-8
 // https://henvic.dev/posts/go-utf8/
 // https://pkg.go.dev/golang.org/x/text/encoding/charmap
 // https://github.com/rivo/uniseg
 func hdl_graphemes(emu *emulator, chs ...rune) {
 	// fmt.Printf("hdl_graphemes got %q", chs)
 
-	if len(chs) == 1 {
-		r := chs[0]
-		if emu.charsetState.vt100 {
-			r = emu.lookupCharset(r)
-			fmt.Printf("   VT   : %q, %U, %x w=%d\n", r, r, r, runesWidth(chs))
-		} else {
-			fmt.Printf("   UTF-8: %q, %U, %x w=%d\n", r, r, r,runesWidth(chs))
-		}
-	} else if len(chs) > 1 {
-		fmt.Printf("  UTF-8+: %q, %U, %x w=%d\n", chs, chs, chs, runesWidth(chs))
-	} else {
-		fmt.Printf("   UTF8 : invalid parameters\n")
+	if len(chs) == 1 && emu.charsetState.vtMode {
+		chs[0] = emu.lookupCharset(chs[0])
+		// fmt.Printf("   VT   : %q, %U, %x w=%d\n", r, r, r, runesWidth(chs))
 	}
-	/*
-		if utf8.RuneLen(r) > 1 {
-			fmt.Printf("Unicode UTF8 print %c size=%d\n", r, utf8.RuneLen(r))
-		} else if r&0x80 == 0 {
-			// GL range
-			var cs *map[byte]rune
-			if emu.charsetState.ss > 0 {
-				cs = emu.charsetState.g[emu.charsetState.ss]
-				emu.charsetState.ss = 0
-			} else {
-				cs = emu.charsetState.g[emu.charsetState.gl]
-			}
+	// fmt.Printf("   UTF-8: %q, %U, %x w=%d\n", chs, chs, chs, runesWidth(chs))
 
-			if cs == nil { // Charset_UTF8 {
-				fmt.Printf("GL UTF8 print %c\n", r)
-			} else if r >= 32 && (cs == &isoLatin1SupplementalVT300 || r < 127) { // Charset_IsoLatin1
-				ch := lookupTable(cs, byte(r))
-				fmt.Printf("GL %d print %c\n", cs, ch)
-			}
-		} else {
-			// GR range
-			cs := emu.charsetState.g[emu.charsetState.gr]
-			if cs == nil { //} Charset_UTF8 {
-				fmt.Printf("GR UTF8 print %c\n", r)
-			} else if r >= 160 && (cs == &isoLatin1SupplementalVT300 || r < 255) { // Charset_IsoLatin1
-				ch := lookupTable(cs, byte(r))
-				fmt.Printf("GR %d print %c\n", cs, ch)
-			}
+	// get current cursor cell
+	fb := emu.framebuffer
+	thisCell := fb.GetCell(-1, -1)
+	chWidth := runesWidth(chs)
+
+	if fb.DS.AutoWrapMode && fb.DS.NextPrintWillWrap {
+		fb.GetRow(-1).SetWrap(true)
+		fb.DS.MoveCol(0, false, false)
+		fb.MoveRowsAutoscroll(1)
+		thisCell = nil
+	} else if fb.DS.AutoWrapMode && chWidth == 2 && fb.DS.GetCursorCol() == fb.DS.GetWidth()-1 {
+		// wrap 2-cell chars if no room, even without will-wrap flag
+		fb.ResetCell(thisCell)
+		fb.GetRow(-1).SetWrap(false)
+
+		// There doesn't seem to be a consistent way to get the
+		// downstream terminal emulator to set the wrap-around
+		// copy-and-paste flag on a row that ends with an empty cell
+		// because a wide char was wrapped to the next line.
+
+		fb.DS.MoveCol(0, false, false)
+		fb.MoveRowsAutoscroll(1)
+		thisCell = nil
+	}
+
+	if fb.DS.InsertMode {
+		for i := 0; i < chWidth; i++ {
+			fb.InsertCell(fb.DS.GetCursorRow(), fb.DS.GetCursorCol())
 		}
-	*/
+		thisCell = nil
+	}
+
+	if thisCell == nil {
+		fb.GetCell(-1, -1)
+	}
+
+	// set the cell: content, wide and rendition
+	fb.ResetCell(thisCell)
+	for _, r := range chs {
+		thisCell.Append(r)
+	}
+	if chWidth == 2 {
+		thisCell.SetWide(true)
+	} else {
+		thisCell.SetWide(false)
+	}
+	fb.ApplyRenditionsToCell(thisCell)
+
+	if chWidth == 2 { // erase overlapped cell
+		if fb.DS.GetCursorCol()+1 < fb.DS.GetWidth() {
+			nextCell := fb.GetCell(fb.DS.GetCursorRow(), fb.DS.GetCursorCol()+1)
+			fb.ResetCell(nextCell)
+		}
+	}
+
+	// move cursor to the next position
+	fb.DS.MoveCol(chWidth, true, true)
 }
 
 // Bell (BEL  is Ctrl-G).

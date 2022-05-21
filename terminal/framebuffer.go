@@ -129,6 +129,7 @@ func (fb *Framebuffer) MoveRowsAutoscroll(rows int) {
 	fb.DS.MoveRow(rows, true)
 }
 
+//TODO the meaning.
 func (fb *Framebuffer) GetCombiningCell() *Cell {
 	if fb.DS.GetCombiningCharCol() < 0 || fb.DS.GetCombiningCharRow() < 0 || fb.DS.GetCombiningCharCol() >= fb.DS.GetWidth() || fb.DS.GetCombiningCharRow() >= fb.DS.GetHeight() {
 		return nil
