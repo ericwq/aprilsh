@@ -31,9 +31,7 @@ import (
 	"testing"
 	"unicode/utf8"
 
-	"github.com/mattn/go-runewidth"
 	"github.com/rivo/uniseg"
-	// "golang.org/x/text/encoding/charmap"
 )
 
 // disable this test
@@ -71,7 +69,7 @@ func testCharsetResult(t *testing.T) {
 	}
 }
 
-func TestRuneWidth(t *testing.T) {
+func TestRunesWidth(t *testing.T) {
 	tc := []struct {
 		name  string
 		raw   string
@@ -79,16 +77,36 @@ func TestRuneWidth(t *testing.T) {
 	}{
 		{"latin    ", "long", 4},
 		{"chinese  ", "中国", 4},
-		{"combining", "Chin\u0308\u0308a", 5},
-		// the width of icon is wrong
-		{"icon","🏝️",1},
-		// the width of flags is wrong
-		{"flags", "🇳🇱🇧🇷", 2},
+		{"combining", "shangha\u0308\u0308i", 8},
+		{
+			"emoji 1", "🏝",
+			2,
+		},
+		{
+			"emoji 2", "🏖",
+			2,
+		},
+		{
+			"flags", "🇳🇱🇧🇷",
+			4,
+		},
+		{
+			"flag 2", "🇨🇳",
+			2,
+		},
 	}
 
 	for _, v := range tc {
-		if v.width != runewidth.StringWidth(v.raw) {
-			t.Errorf("%s expect width %d, got %d\n", v.name, v.width, runewidth.StringWidth(v.raw))
+		graphemes := uniseg.NewGraphemes(v.raw)
+		width := 0
+		var rs []rune
+		for graphemes.Next() {
+			rs = graphemes.Runes()
+			width += runesWidth(rs)
+		}
+		if v.width != width {
+			t.Logf("%s :\t %q %U\n", v.name, v.raw, rs)
+			t.Errorf("%s:\t %q  expect width %d, got %d\n", v.name, v.raw, v.width, width)
 		}
 	}
 }
@@ -115,8 +133,8 @@ func TestHandleGraphemes(t *testing.T) {
 		{"UTF-8 plain english", "long long ago", "graphemes", 13},
 		{
 			"UTF-8 chinese, combining character and flags",
-			"Chin\u0308\u0308a 🏖 i国旗🇳🇱Fun with Flag🇧🇷.s",
-			"graphemes", 28,
+			"Chin\u0308\u0308a 🏖 i国旗🇳🇱Fun 🌈with Flag🇧🇷.s",
+			"graphemes", 29,
 		},
 		{"VT mix UTF-8", "中国\x1B%@\xA5AB\xe2\xe3\xe9\x1B%GShanghai\x1B%@CD\xe0\xe1", "graphemes", 23},
 		{"VT edge", "\x1B%@Beijing\x1B%G", "graphemes", 9},

@@ -28,6 +28,8 @@ package terminal
 
 import (
 	"fmt"
+
+	"github.com/mattn/go-runewidth"
 )
 
 // type handleFunc func(emu *emulator)
@@ -38,6 +40,21 @@ type Handler struct {
 	name   string              // the name of ActOn
 	ch     rune                // the last byte
 	handle func(emu *emulator) // handle function that will perform control sequnce on emulator
+}
+
+// In the loop, national flag's width got 1+1=2.
+func runesWidth(runes []rune) (width int) {
+
+	cond := runewidth.NewCondition()
+	cond.StrictEmojiNeutral = false
+	cond.EastAsianWidth = true
+
+	width = 0
+	for i := 0; i < len(runes); i++ {
+		width += cond.RuneWidth(runes[i])
+	}
+
+	return width
 }
 
 // SI       Switch to Standard Character Set (Ctrl-O is Shift In or LS0).
@@ -128,12 +145,12 @@ func hdl_graphemes(emu *emulator, chs ...rune) {
 		r := chs[0]
 		if emu.charsetState.vt100 {
 			r = emu.lookupCharset(r)
-			fmt.Printf("   VT   : %q, %U, %x\n", r, r, r)
+			fmt.Printf("   VT   : %q, %U, %x w=%d\n", r, r, r, runesWidth(chs))
 		} else {
-			fmt.Printf("   UTF-8: %q, %U, %x\n", r, r, r)
+			fmt.Printf("   UTF-8: %q, %U, %x w=%d\n", r, r, r,runesWidth(chs))
 		}
 	} else if len(chs) > 1 {
-		fmt.Printf(" UTF-8 +: %q, %U, %x\n", chs, chs, chs)
+		fmt.Printf(" UTF-8 +: %q, %U, %x w=%d\n", chs, chs, chs, runesWidth(chs))
 	} else {
 		fmt.Printf("   UTF8 : invalid parameters\n")
 	}
