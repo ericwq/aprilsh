@@ -44,10 +44,16 @@ type Handler struct {
 
 // In the loop, national flag's width got 1+1=2.
 func runesWidth(runes []rune) (width int) {
+	// quick pass for iso8859-1
+	if len(runes) == 1 && runes[0] < 0x00fe {
+		return 1
+	}
+
 	cond := runewidth.NewCondition()
 	cond.StrictEmojiNeutral = false
 	cond.EastAsianWidth = true
 
+	// loop for multi rune
 	width = 0
 	for i := 0; i < len(runes); i++ {
 		width += cond.RuneWidth(runes[i])
@@ -141,9 +147,11 @@ func hdl_graphemes(emu *emulator, chs ...rune) {
 
 	if len(chs) == 1 && emu.charsetState.vtMode {
 		chs[0] = emu.lookupCharset(chs[0])
-		// fmt.Printf("   VT   : %q, %U, %x w=%d\n", r, r, r, runesWidth(chs))
 	}
-	// fmt.Printf("   UTF-8: %q, %U, %x w=%d\n", chs, chs, chs, runesWidth(chs))
+	// 	fmt.Printf("   VT   : %q, %U, %x w=%d\n", chs, chs, chs, runesWidth(chs))
+	// } else {
+	// 	fmt.Printf("   UTF-8: %q, %U, %x w=%d\n", chs, chs, chs, runesWidth(chs))
+	// }
 
 	// get current cursor cell
 	fb := emu.framebuffer

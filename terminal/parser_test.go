@@ -123,38 +123,88 @@ func TestRunesWidth(t *testing.T) {
 
 func TestHandleGraphemes(t *testing.T) {
 	tc := []struct {
-		name  string
-		raw   string
-		hName string
-		want  int
+		name   string
+		raw    string // data stream with control sequences
+		hName  string
+		want   int    // handler size: star cols as print.
+		cols   []int  // expect cols for cell on screen.
+		result string // data stream without control sequences
 	}{
-		{"UTF-8 plain english", "long long ago", "graphemes", 13},
+		{
+			"UTF-8 plain english",
+			"long long ago",
+			"graphemes",
+			13,
+			[]int{13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
+			"long long ago",
+		},
 		{
 			"UTF-8 chinese, combining character and flags",
 			"Chin\u0308\u0308a 🏖 i国旗🇳🇱Fun 🌈with Flag🇧🇷.s",
 			"graphemes", 29,
+			[]int{29, 30, 31, 32, 33, 34, 35, 37, 38, 39, 41, 43, 45, 46, 47, 48, 49, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 62, 63},
+			"Chin\u0308\u0308a 🏖 i国旗🇳🇱Fun 🌈with Flag🇧🇷.s",
 		},
-		{"VT mix UTF-8", "中国\x1B%@\xA5AB\xe2\xe3\xe9\x1B%GShanghai\x1B%@CD\xe0\xe1", "graphemes", 23},
-		{"VT edge", "\x1B%@Beijing\x1B%G", "graphemes", 9},
+		{
+			"VT mix UTF-8",
+			"中国\x1B%@\xA5AB\xe2\xe3\xe9\x1B%GShanghai\x1B%@CD\xe0\xe1",
+			"graphemes",
+			23,
+			[]int{23, 25, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44},
+			"中国¥ABâãéShanghaiCDàá",
+		},
+		{
+			"VT edge",
+			"\x1B%@Beijing\x1B%G",
+			"graphemes",
+			9,
+			[]int{9, 10, 11, 12, 13, 14, 15},
+			"Beijing",
+		},
 	}
 
 	p := NewParser()
 	emu := NewEmulator()
-	for _, v := range tc {
+	for i, v := range tc {
 		hds := make([]*Handler, 0, 16)
 		hds = p.processStream(v.raw, hds)
 
 		if len(hds) == 0 {
 			t.Errorf("%s got zero handlers.", v.name)
 		}
+
+		// move to the new row
+		emu.framebuffer.DS.MoveRow(i, false)
+
+		// move to the start col.
+		emu.framebuffer.DS.MoveCol(v.want, false, false)
+
 		for _, hd := range hds {
 			// fmt.Printf("handle ... %#v\n", hd)
 			hd.handle(emu)
 		}
 		if v.want != len(hds) {
 			t.Errorf("%s expect %d handlers,got %d handlers\n", v.name, v.want, len(hds))
-		} else {
-			t.Logf("%q end %d.\n", v.name, len(hds))
+		}
+		// else {
+		// 	t.Logf("%q end %d.\n", v.name, len(hds))
+		// }
+
+		graphemes := uniseg.NewGraphemes(v.result)
+		j := 0
+		for graphemes.Next() {
+			// the expected content
+			chs := graphemes.Runes()
+
+			// get the cell from framebuffer
+			rows := i
+			cols := v.cols[j]
+			cell := emu.framebuffer.GetCell(rows, cols)
+
+			if cell.contents != string(chs) {
+				t.Errorf("%s:\t [row,cols]:[%2d,%2d] expect %q, got %q\n", v.name, rows, cols, string(chs), cell.contents)
+			}
+			j += 1
 		}
 	}
 }
