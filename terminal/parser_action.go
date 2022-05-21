@@ -25,37 +25,37 @@ SOFTWARE.
 */
 
 package terminal
-
-// TODO prepare to delete this file
-// append action to action list except ignore action
-func appendTo(actions []Action, act Action) []Action {
-	if !act.Ignore() {
-		actions = append(actions, act)
-	}
-	return actions
-}
-
-// parse the input character into action and save it in action list
-// it's uesed to be input
-func (p *Parser) parse(actions []Action, r rune) []Action {
-	// start to parse
-	ts := p.state.parse(r)
-
-	// exit action from old state
-	if ts.nextState != nil {
-		actions = appendTo(actions, p.state.exit())
-	}
-
-	// transition action
-	actions = appendTo(actions, ts.action)
-	ts.action = nil
-
-	// enter action to new state
-	if ts.nextState != nil {
-		actions = appendTo(actions, ts.nextState.enter())
-		// transition to next state
-		p.state = ts.nextState
-	}
-
-	return actions
-}
+//
+// // TODO prepare to delete this file
+// // append action to action list except ignore action
+// func appendTo(actions []Action, act Action) []Action {
+// 	if !act.Ignore() {
+// 		actions = append(actions, act)
+// 	}
+// 	return actions
+// }
+//
+// // parse the input character into action and save it in action list
+// // it's uesed to be input
+// func (p *Parser) parse(actions []Action, r rune) []Action {
+// 	// start to parse
+// 	ts := p.state.parse(r)
+//
+// 	// exit action from old state
+// 	if ts.nextState != nil {
+// 		actions = appendTo(actions, p.state.exit())
+// 	}
+//
+// 	// transition action
+// 	actions = appendTo(actions, ts.action)
+// 	ts.action = nil
+//
+// 	// enter action to new state
+// 	if ts.nextState != nil {
+// 		actions = appendTo(actions, ts.nextState.enter())
+// 		// transition to next state
+// 		p.state = ts.nextState
+// 	}
+//
+// 	return actions
+// }

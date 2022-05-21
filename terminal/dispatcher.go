@@ -131,86 +131,86 @@ func (d *Dispatcher) getParamCount() int {
 	return len(d.parsedParams)
 }
 
-func (d *Dispatcher) getOSCstring() string { return d.oscString.String() }
-func (d *Dispatcher) oscPut(act Action) {
-	if d.oscString.Len() < 256 { // should be long enough for window title
-		d.oscString.WriteRune(act.GetChar())
-	}
-}
-
-func (d *Dispatcher) oscStart(Action) {
-	d.oscString.Reset()
-}
-
-func (d *Dispatcher) dispatch(funcType int, act Action, fb *Framebuffer) {
-	key := ""
-
-	switch funcType {
-	case DISPATCH_ESCAPE, DISPATCH_CSI:
-		// add final char to dispatch key
-		act2 := collect{action{act.GetChar(), true}}
-		d.collect(&act2)
-		key = d.dispatcherChar.String()
-	case DISPATCH_CONTROL:
-		key = string(act.GetChar())
-	}
-
-	emuFunc := findFunctionBy(funcType, key)
-	if emuFunc.function != nil { // nil: not find
-		// unkown function
-		fb.DS.NextPrintWillWrap = false
-	} else {
-		if emuFunc.clearsWrapState {
-			fb.DS.NextPrintWillWrap = false
-		}
-		emuFunc.function(fb, d)
-	}
-}
-
-// xterm uses an Operating System Command to set the window title
-// consider to add more useful OSC command: such as OSC 52
-// https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands
-func (d *Dispatcher) oscDispatch(_ Action, fb *Framebuffer) {
-	oscStr := d.oscString.String()
-	if len(oscStr) >= 1 {
-
-		offset := strings.Index(oscStr, ";")
-		cmdNum := -1
-
-		if offset == 0 {
-			// OSC of the form "\033];<title>\007"
-			cmdNum = 0
-			offset += 1
-		} else { // it must be 1
-			// OSC of the form "\033]X;<title>\007" where X can be:
-			//* 0: set icon name and window title
-			//* 1: set icon name
-			//* 2: set window title
-			if i, err := strconv.Atoi(oscStr[:offset]); err == nil {
-				if 0 <= i && i <= 2 {
-					// only support OSC 0,1,2
-					cmdNum = i
-				} else {
-					// ignore other OSC command
-					return
-				}
-			}
-			offset += 1
-		}
-		setIcon := cmdNum == 0 || cmdNum == 1
-		setTitle := cmdNum == 0 || cmdNum == 2
-		oscStr = oscStr[offset:]
-
-		if setIcon || setTitle {
-			fb.SetTitleInitialized()
-
-			if setIcon {
-				fb.SetIconName(oscStr)
-			}
-
-			if setTitle {
-				fb.SetWindowTitle(oscStr)
-			}
-		}
-	}
-}
+// func (d *Dispatcher) getOSCstring() string { return d.oscString.String() }
+// func (d *Dispatcher) oscPut(act Action) {
+// 	if d.oscString.Len() < 256 { // should be long enough for window title
+// 		d.oscString.WriteRune(act.GetChar())
+// 	}
+// }
+//
+// func (d *Dispatcher) oscStart(Action) {
+// 	d.oscString.Reset()
+// }
+//
+// func (d *Dispatcher) dispatch(funcType int, act Action, fb *Framebuffer) {
+// 	key := ""
+//
+// 	switch funcType {
+// 	case DISPATCH_ESCAPE, DISPATCH_CSI:
+// 		// add final char to dispatch key
+// 		act2 := collect{action{act.GetChar(), true}}
+// 		d.collect(&act2)
+// 		key = d.dispatcherChar.String()
+// 	case DISPATCH_CONTROL:
+// 		key = string(act.GetChar())
+// 	}
+//
+// 	emuFunc := findFunctionBy(funcType, key)
+// 	if emuFunc.function != nil { // nil: not find
+// 		// unkown function
+// 		fb.DS.NextPrintWillWrap = false
+// 	} else {
+// 		if emuFunc.clearsWrapState {
+// 			fb.DS.NextPrintWillWrap = false
+// 		}
+// 		emuFunc.function(fb, d)
+// 	}
+// }
+//
+// // xterm uses an Operating System Command to set the window title
+// // consider to add more useful OSC command: such as OSC 52
+// // https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands
+// func (d *Dispatcher) oscDispatch(_ Action, fb *Framebuffer) {
+// 	oscStr := d.oscString.String()
+// 	if len(oscStr) >= 1 {
+//
+// 		offset := strings.Index(oscStr, ";")
+// 		cmdNum := -1
+//
+// 		if offset == 0 {
+// 			// OSC of the form "\033];<title>\007"
+// 			cmdNum = 0
+// 			offset += 1
+// 		} else { // it must be 1
+// 			// OSC of the form "\033]X;<title>\007" where X can be:
+// 			//* 0: set icon name and window title
+// 			//* 1: set icon name
+// 			//* 2: set window title
+// 			if i, err := strconv.Atoi(oscStr[:offset]); err == nil {
+// 				if 0 <= i && i <= 2 {
+// 					// only support OSC 0,1,2
+// 					cmdNum = i
+// 				} else {
+// 					// ignore other OSC command
+// 					return
+// 				}
+// 			}
+// 			offset += 1
+// 		}
+// 		setIcon := cmdNum == 0 || cmdNum == 1
+// 		setTitle := cmdNum == 0 || cmdNum == 2
+// 		oscStr = oscStr[offset:]
+//
+// 		if setIcon || setTitle {
+// 			fb.SetTitleInitialized()
+//
+// 			if setIcon {
+// 				fb.SetIconName(oscStr)
+// 			}
+//
+// 			if setTitle {
+// 				fb.SetWindowTitle(oscStr)
+// 			}
+// 		}
+// 	}
+// }

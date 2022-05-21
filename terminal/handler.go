@@ -150,7 +150,7 @@ func hdl_graphemes(emu *emulator, chs ...rune) {
 			fmt.Printf("   UTF-8: %q, %U, %x w=%d\n", r, r, r,runesWidth(chs))
 		}
 	} else if len(chs) > 1 {
-		fmt.Printf(" UTF-8 +: %q, %U, %x w=%d\n", chs, chs, chs, runesWidth(chs))
+		fmt.Printf("  UTF-8+: %q, %U, %x w=%d\n", chs, chs, chs, runesWidth(chs))
 	} else {
 		fmt.Printf("   UTF8 : invalid parameters\n")
 	}
