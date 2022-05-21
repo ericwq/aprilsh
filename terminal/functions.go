@@ -89,13 +89,13 @@ func registerFunction(funType int, dispatchChar string, f emuFunc, wrap bool) {
 
 func init() {
 	registerFunction(DISPATCH_CSI, "@", csi_ich, true)         // ich
-	registerFunction(DISPATCH_CSI, "A", csi_cursor_move, true) // cuu
-	registerFunction(DISPATCH_CSI, "B", csi_cursor_move, true) // cud
-	registerFunction(DISPATCH_CSI, "C", csi_cursor_move, true) // cuf
-	registerFunction(DISPATCH_CSI, "D", csi_cursor_move, true) // cub
+	// registerFunction(DISPATCH_CSI, "A", csi_cursor_move, true) // cuu
+	// registerFunction(DISPATCH_CSI, "B", csi_cursor_move, true) // cud
+	// registerFunction(DISPATCH_CSI, "C", csi_cursor_move, true) // cuf
+	// registerFunction(DISPATCH_CSI, "D", csi_cursor_move, true) // cub
 	registerFunction(DISPATCH_CSI, "G", csi_hpa, true)         // cha
-	registerFunction(DISPATCH_CSI, "H", csi_cursor_move, true) // cup
-	registerFunction(DISPATCH_CSI, "I", csi_cxt, true)         // cht
+	// registerFunction(DISPATCH_CSI, "H", csi_cursor_move, true) // cup
+	// registerFunction(DISPATCH_CSI, "I", csi_cxt, true)         // cht
 	registerFunction(DISPATCH_CSI, "J", csi_ed, true)          // ed
 	registerFunction(DISPATCH_CSI, "K", csi_el, true)          // el
 	registerFunction(DISPATCH_CSI, "L", csi_il, true)          // il
@@ -104,12 +104,12 @@ func init() {
 	registerFunction(DISPATCH_CSI, "S", csi_su, true)          // SU
 	registerFunction(DISPATCH_CSI, "T", csi_sd, true)          // SD
 	registerFunction(DISPATCH_CSI, "X", csi_ech, true)         // ech
-	registerFunction(DISPATCH_CSI, "Z", csi_cxt, true)         // cbt
+	// registerFunction(DISPATCH_CSI, "Z", csi_cxt, true)         // cbt
 	registerFunction(DISPATCH_CSI, "`", csi_hpa, true)         // hpa
 	registerFunction(DISPATCH_CSI, "c", csi_da, true)          // da request
 	registerFunction(DISPATCH_CSI, "d", csi_vpa, true)         // vpa
-	registerFunction(DISPATCH_CSI, "f", csi_cursor_move, true) // hvp
-	registerFunction(DISPATCH_CSI, "g", csi_tbc, true)         // tbc
+	// registerFunction(DISPATCH_CSI, "f", csi_cursor_move, true) // hvp
+	// registerFunction(DISPATCH_CSI, "g", csi_tbc, true)         // tbc
 	registerFunction(DISPATCH_CSI, "h", csi_sm, false)         // sm
 	registerFunction(DISPATCH_CSI, "l", csi_rm, false)         // rm
 	registerFunction(DISPATCH_CSI, "m", csi_sgr, false)        // sgr
@@ -125,16 +125,16 @@ func init() {
 	registerFunction(DISPATCH_ESCAPE, "8", esc_decrc, true)   // decrc
 	registerFunction(DISPATCH_ESCAPE, "c", esc_rts, true)     // rts
 
-	registerFunction(DISPATCH_CONTROL, "\x07", ctrl_bel, true) // bel ctrl-G
-	registerFunction(DISPATCH_CONTROL, "\x08", ctrl_bs, true)  // bs ctrl-H
-	registerFunction(DISPATCH_CONTROL, "\x09", ctrl_ht, true)  // tab ctrl-I
-	registerFunction(DISPATCH_CONTROL, "\x0A", ctrl_lf, true)  // lf ctrl-J
-	registerFunction(DISPATCH_CONTROL, "\x0B", ctrl_lf, true)  // vt ctrl-K
-	registerFunction(DISPATCH_CONTROL, "\x0C", ctrl_lf, true)  // ff ctrl-L
-	registerFunction(DISPATCH_CONTROL, "\x0D", ctrl_cr, true)  // cr ctrl-M
-	registerFunction(DISPATCH_CONTROL, "\x84", ctrl_lf, true)  // ind
+	// registerFunction(DISPATCH_CONTROL, "\x07", ctrl_bel, true) // bel ctrl-G
+	// registerFunction(DISPATCH_CONTROL, "\x08", ctrl_bs, true)  // bs ctrl-H
+	// registerFunction(DISPATCH_CONTROL, "\x09", ctrl_ht, true)  // tab ctrl-I
+	// registerFunction(DISPATCH_CONTROL, "\x0A", ctrl_lf, true)  // lf ctrl-J
+	// registerFunction(DISPATCH_CONTROL, "\x0B", ctrl_lf, true)  // vt ctrl-K
+	// registerFunction(DISPATCH_CONTROL, "\x0C", ctrl_lf, true)  // ff ctrl-L
+	// registerFunction(DISPATCH_CONTROL, "\x0D", ctrl_cr, true)  // cr ctrl-M
+	// registerFunction(DISPATCH_CONTROL, "\x84", ctrl_lf, true)  // ind
 	registerFunction(DISPATCH_CONTROL, "\x85", ctrl_nel, true) // nel
-	registerFunction(DISPATCH_CONTROL, "\x88", ctrl_hts, true) // hts
+	// registerFunction(DISPATCH_CONTROL, "\x88", ctrl_hts, true) // hts
 	registerFunction(DISPATCH_CONTROL, "\x8D", ctrl_ri, true)  // ri
 }
 
@@ -302,9 +302,9 @@ func csi_sgr(fb *Framebuffer, d *Dispatcher) {
 
 // Bell (BEL  is Ctrl-G).
 // ring the bell
-func ctrl_bel(fb *Framebuffer, _ *Dispatcher) {
-	fb.RingBell()
-}
+// func ctrl_bel(fb *Framebuffer, _ *Dispatcher) {
+// 	fb.RingBell()
+// }
 
 // CSI Ps ; Ps r
 // Set Scrolling Region [top;bottom] (default = full size of  window) (DECSTBM), VT100.
@@ -455,40 +455,40 @@ func csi_decrm(fb *Framebuffer, d *Dispatcher) {
 // CSI Ps g  Tab Clear (TBC).
 // *  Ps = 0  ⇒  Clear Current Column (default).
 // *  Ps = 3  ⇒  Clear All.
-func csi_tbc(fb *Framebuffer, d *Dispatcher) {
-	param := d.getParam(0, 0)
-	switch param {
-	case 0:
-		// clear this tab stop
-		fb.DS.ClearTab(fb.DS.GetCursorCol())
-	case 3:
-		// clear all tab stops
-		fb.DS.ClearDefaultTabs()
-		for x := 0; x < fb.DS.GetWidth(); x++ {
-			fb.DS.ClearTab(x)
-		}
-	}
-}
+// func csi_tbc(fb *Framebuffer, d *Dispatcher) {
+// 	param := d.getParam(0, 0)
+// 	switch param {
+// 	case 0:
+// 		// clear this tab stop
+// 		fb.DS.ClearTab(fb.DS.GetCursorCol())
+// 	case 3:
+// 		// clear all tab stops
+// 		fb.DS.ClearDefaultTabs()
+// 		for x := 0; x < fb.DS.GetWidth(); x++ {
+// 			fb.DS.ClearTab(x)
+// 		}
+// 	}
+// }
 
 // Tab Set (HTS  is 0x88).
 // set current cursor column tab true
-func ctrl_hts(fb *Framebuffer, _ *Dispatcher) {
-	fb.DS.SetTab()
-}
+// func ctrl_hts(fb *Framebuffer, _ *Dispatcher) {
+// 	fb.DS.SetTab()
+// }
 
 // CSI Ps I  Cursor Forward Tabulation Ps tab stops (default = 1) (CHT).
 // CSI Ps Z  Cursor Backward Tabulation Ps tab stops (default = 1) (CBT).
 // move cursor forward/backwoard count tab position
-func csi_cxt(fb *Framebuffer, d *Dispatcher) {
-	param := d.getParam(0, 1)
-	if d.dispatcherChar.String()[0] == 'Z' {
-		param = -param
-	}
-	if param == 0 {
-		return
-	}
-	ht_n(fb, param)
-}
+// func csi_cxt(fb *Framebuffer, d *Dispatcher) {
+// 	param := d.getParam(0, 1)
+// 	if d.dispatcherChar.String()[0] == 'Z' {
+// 		param = -param
+// 	}
+// 	if param == 0 {
+// 		return
+// 	}
+// 	ht_n(fb, param)
+// }
 
 // Horizontal Tab (HTS  is Ctrl-I).
 // move cursor to the count tab position
@@ -506,9 +506,9 @@ func csi_cxt(fb *Framebuffer, d *Dispatcher) {
 
 // Horizontal Tab (HTS  is Ctrl-I).
 // move cursor to the next tab position
-func ctrl_ht(fb *Framebuffer, _ *Dispatcher) {
-	ht_n(fb, 1)
-}
+// func ctrl_ht(fb *Framebuffer, _ *Dispatcher) {
+// 	ht_n(fb, 1)
+// }
 
 // Next Line (NEL  is 0x85).
 // move cursor to the next row, scroll down if necessary. move cursor to row head
@@ -526,21 +526,21 @@ func ctrl_ri(fb *Framebuffer, _ *Dispatcher) {
 
 // Backspace (BS  is Ctrl-H).
 // bask space
-func ctrl_bs(fb *Framebuffer, _ *Dispatcher) {
-	fb.DS.MoveCol(-1, true, false)
-}
-
+// func ctrl_bs(fb *Framebuffer, _ *Dispatcher) {
+// 	fb.DS.MoveCol(-1, true, false)
+// }
+//
 // Carriage Return (CR  is Ctrl-M).
 // move cursor to the head of the same row
-func ctrl_cr(fb *Framebuffer, _ *Dispatcher) {
-	fb.DS.MoveCol(0, false, false)
-}
+// func ctrl_cr(fb *Framebuffer, _ *Dispatcher) {
+// 	fb.DS.MoveCol(0, false, false)
+// }
 
 // IND, FF, LF, VT
 // move cursor to the next row, scroll down if necessary.
-func ctrl_lf(fb *Framebuffer, _ *Dispatcher) {
-	fb.MoveRowsAutoscroll(1)
-}
+// func ctrl_lf(fb *Framebuffer, _ *Dispatcher) {
+// 	fb.MoveRowsAutoscroll(1)
+// }
 
 // ESC # 8   DEC Screen Alignment Test (DECALN), VT100.
 // fill the screen with 'E'
@@ -576,25 +576,25 @@ func csi_da(_ *Framebuffer, d *Dispatcher) {
 // CSI Ps D  Cursor Backward Ps Times (default = 1) (CUB).
 // CSI Ps ; Ps H Cursor Position [row;column] (default = [1,1]) (CUP).
 // CSI Ps ; Ps f Horizontal and Vertical Position [row;column] (default = [1,1]) (HVP).
-func csi_cursor_move(fb *Framebuffer, d *Dispatcher) {
-	num := d.getParam(0, 1)
-
-	switch d.getDispatcherChars()[0] {
-	case 'A':
-		fb.DS.MoveRow(-num, true)
-	case 'B':
-		fb.DS.MoveRow(num, true)
-	case 'C':
-		fb.DS.MoveCol(num, true, false)
-	case 'D':
-		fb.DS.MoveCol(-num, true, false)
-	case 'H', 'f':
-		x := d.getParam(0, 1)
-		y := d.getParam(1, 1)
-		fb.DS.MoveRow(x-1, false)
-		fb.DS.MoveCol(y-1, false, false)
-	}
-}
+// func csi_cursor_move(fb *Framebuffer, d *Dispatcher) {
+// 	num := d.getParam(0, 1)
+//
+// 	switch d.getDispatcherChars()[0] {
+// 	case 'A':
+// 		fb.DS.MoveRow(-num, true)
+// 	case 'B':
+// 		fb.DS.MoveRow(num, true)
+// 	case 'C':
+// 		fb.DS.MoveCol(num, true, false)
+// 	case 'D':
+// 		fb.DS.MoveCol(-num, true, false)
+// 	case 'H', 'f':
+// 		x := d.getParam(0, 1)
+// 		y := d.getParam(1, 1)
+// 		fb.DS.MoveRow(x-1, false)
+// 		fb.DS.MoveCol(y-1, false, false)
+// 	}
+// }
 
 // CSI Ps J Erase in Display (ED), VT100.
 // * Ps = 0  ⇒  Erase Below (default).

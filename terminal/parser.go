@@ -593,6 +593,9 @@ func (p *Parser) handle_ESC_DCS() (hd *Handler) {
 	return hd
 }
 
+// process data stream from outside. for VT mode, character set can be changed
+// according to control sequences. for UTF-8 mode, no need to change character set.
+// the result is a *Handler list. waiting to be executed later.
 func (p *Parser) processStream(str string, hds []*Handler) []*Handler {
 	var input []rune
 	var hd *Handler
@@ -688,14 +691,14 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case '\x07': // BEL is \a
 			p.traceNormalInput()
 			hd = p.handle_BEL()
-		case '\x05': // ENQ - Enquiry
-			p.traceNormalInput()
 		case '\x0E':
 			p.traceNormalInput()
 			hd = p.handle_SO()
 		case '\x0F':
 			p.traceNormalInput()
 			hd = p.handle_SI()
+		case '\x05': // ENQ - Enquiry
+			p.traceNormalInput()
 		default:
 			// one stop https://www.cl.cam.ac.uk/~mgk25/unicode.html
 			// https://harjit.moe/charsetramble.html
