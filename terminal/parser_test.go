@@ -27,47 +27,45 @@ SOFTWARE.
 package terminal
 
 import (
-	"strings"
 	"testing"
-	"unicode/utf8"
 
 	"github.com/rivo/uniseg"
 )
 
 // disable this test
-func testUnisegCapability(t *testing.T) {
-	s := "Chin\u0308\u0308\u0308a 🏖 is where I live. 国旗🇳🇱Fun with Flag🇧🇷."
-	graphemes := uniseg.NewGraphemes(s)
-
-	for graphemes.Next() {
-		start, end := graphemes.Positions()
-		t.Logf("%q\t 0x%X, [%d ~ %d]\n", graphemes.Runes(), graphemes.Runes(), start, end)
-	}
-	if uniseg.GraphemeClusterCount(s) != 43 {
-		t.Errorf("UTF-8 string %q expect %d, got %d\n", s, uniseg.GraphemeClusterCount(s), utf8.RuneCountInString(s))
-	}
-}
-
+// func TestUnisegCapability(t *testing.T) {
+// 	s := "Chin\u0308\u0308\u0308a 🏖 is where I live. 国旗🇳🇱Fun with Flag🇧🇷."
+// 	graphemes := uniseg.NewGraphemes(s)
+//
+// 	for graphemes.Next() {
+// 		start, end := graphemes.Positions()
+// 		t.Logf("%q\t 0x%X, [%d ~ %d]\n", graphemes.Runes(), graphemes.Runes(), start, end)
+// 	}
+// 	if uniseg.GraphemeClusterCount(s) != 43 {
+// 		t.Errorf("UTF-8 string %q expect %d, got %d\n", s, uniseg.GraphemeClusterCount(s), utf8.RuneCountInString(s))
+// 	}
+// }
+//
 // disable this test
-func testCharsetResult(t *testing.T) {
-	s := "ABCD\xe0\xe1\xe2\xe3\xe9\x9c"
-	want := "àáâãé"
-
-	var ret strings.Builder
-
-	cs := Charset_IsoLatin1
-	for i := range s {
-		if 160 < s[i] && s[i] < 255 {
-			ret.WriteRune(charCodes[cs][s[i]-160])
-			t.Logf("%c %x %d in GR", s[i], s[i], s[i])
-		} else {
-			t.Logf("%c %x %d not in GL", s[i], s[i], s[i])
-		}
-	}
-	if want != ret.String() {
-		t.Errorf("Charset Charset_IsoLatin1 expect %s, got %s\n", want, ret.String())
-	}
-}
+// func testCharsetResult(t *testing.T) {
+// 	s := "ABCD\xe0\xe1\xe2\xe3\xe9\x9c"
+// 	want := "àáâãé"
+//
+// 	var ret strings.Builder
+//
+// 	cs := Charset_IsoLatin1
+// 	for i := range s {
+// 		if 160 < s[i] && s[i] < 255 {
+// 			ret.WriteRune(charCodes[cs][s[i]-160])
+// 			t.Logf("%c %x %d in GR", s[i], s[i], s[i])
+// 		} else {
+// 			t.Logf("%c %x %d not in GL", s[i], s[i], s[i])
+// 		}
+// 	}
+// 	if want != ret.String() {
+// 		t.Errorf("Charset Charset_IsoLatin1 expect %s, got %s\n", want, ret.String())
+// 	}
+// }
 
 func TestRunesWidth(t *testing.T) {
 	tc := []struct {
@@ -202,16 +200,16 @@ func TestHandle_ESC_DCS(t *testing.T) {
 		wantIndex   int
 		wantCharset *map[byte]rune
 	}{
-		{"VT100 G0", "\x1B(A", "esc-dcs", 0, &unitedKingdomVT100},
+		{"VT100 G0", "\x1B(A", "esc-dcs", 0, &vt_ISO_UK},
 		{"VT100 G1", "\x1B)B", "esc-dcs", 1, nil},
 		{"VT220 G2", "\x1B*5", "esc-dcs", 2, nil},
-		{"VT220 G3", "\x1B+%5", "esc-dcs", 3, &decSupplementVT200},
-		{"VT300 G1", "\x1B-0", "esc-dcs", 1, &decSpecialVT100},
-		{"VT300 G2", "\x1B.<", "esc-dcs", 2, &decSupplementVT200},
-		{"VT300 G3", "\x1B/>", "esc-dcs", 3, &decTechnicalVT300},
-		{"VT300 G3", "\x1B/A", "esc-dcs", 3, &isoLatin1SupplementalVT300},
-		{"ISO/IEC 2022 G0 A", "\x1B,A", "esc-dcs", 0, &unitedKingdomVT100},
-		{"ISO/IEC 2022 G0 >", "\x1B$>", "esc-dcs", 0, &decTechnicalVT300},
+		{"VT220 G3", "\x1B+%5", "esc-dcs", 3, &vt_DEC_Supplement},
+		{"VT300 G1", "\x1B-0", "esc-dcs", 1, &vt_DEC_Special},
+		{"VT300 G2", "\x1B.<", "esc-dcs", 2, &vt_DEC_Supplement},
+		{"VT300 G3", "\x1B/>", "esc-dcs", 3, &vt_DEC_Technical},
+		{"VT300 G3", "\x1B/A", "esc-dcs", 3, &vt_ISO_8859_1},
+		{"ISO/IEC 2022 G0 A", "\x1B,A", "esc-dcs", 0, &vt_ISO_UK},
+		{"ISO/IEC 2022 G0 >", "\x1B$>", "esc-dcs", 0, &vt_DEC_Technical},
 		// for other charset, just replace it with UTF-8
 		{"ISO/IEC 2022 G0 None", "\x1B$%9", "esc-dcs", 0, nil},
 	}
@@ -265,7 +263,7 @@ func TestHandle_DOCS(t *testing.T) {
 		emu.charsetState.ss = 2
 
 		for i := 0; i < 4; i++ {
-			emu.charsetState.g[i] = &decSupplementVT200 // Charset_DecSuppl
+			emu.charsetState.g[i] = &vt_DEC_Supplement // Charset_DecSuppl
 		}
 
 		// parse the instruction

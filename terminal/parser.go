@@ -560,22 +560,22 @@ func (p *Parser) handle_ESC_DCS() (hd *Handler) {
 	switch p.ch {
 	case 'A':
 		if charset96 {
-			charset = &isoLatin1SupplementalVT300 // Charset_IsoLatin1
+			charset = &vt_ISO_8859_1 // Charset_IsoLatin1
 		} else {
-			charset = &unitedKingdomVT100 // Charset_IsoUK
+			charset = &vt_ISO_UK // Charset_IsoUK
 		}
 	case 'B':
 		charset = nil // Charset_UTF8
 	case '0':
-		charset = &decSpecialVT100 // Charset_DecSpec
+		charset = &vt_DEC_Special // Charset_DecSpec
 	case '5':
 		if p.scsMod == '%' {
-			charset = &decSupplementVT200 // Charset_DecSuppl
+			charset = &vt_DEC_Supplement // Charset_DecSuppl
 		}
 	case '<':
-		charset = &decSupplementVT200 // Charset_DecUserPref
+		charset = &vt_DEC_Supplement // Charset_DecUserPref
 	case '>':
-		charset = &decTechnicalVT300 // Charset_DecTechn
+		charset = &vt_DEC_Technical // Charset_DecTechn
 	}
 
 	// fmt.Printf("DEBUG Designate Character Set: index= %d, charset=%d\n", index, charset)

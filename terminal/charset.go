@@ -1,11 +1,12 @@
 package terminal
 
-var charSets = map[rune]*map[byte]rune{
-	'0': &decSpecialVT100,
-	'U': &unitedKingdomVT100,         // should be 'A' 94-charset, using 'U' to avoid map key confliction
-	'A': &isoLatin1SupplementalVT300, // should be 'A' 96-charset
-	'<': &decSupplementVT200,
-	'B': nil, // ASCII
+var vtCharSets = map[rune]*map[byte]rune{
+	'0': &vt_DEC_Special,
+	'U': &vt_ISO_UK,     // should be 'A' 94-charset, using 'U' to avoid map key confliction
+	'A': &vt_ISO_8859_1, // should be 'A' 96-charset
+	'<': &vt_DEC_Supplement,
+	'>': &vt_DEC_Technical,
+	'B': nil, // UTF-8
 }
 
 /*
@@ -15,11 +16,13 @@ difference clearly and save the memory. we don't distinguish
 96 or 94 characters, even those originally designated by DEC
 as 94-character sets.
 
-These tables are referenced by Vterm::charCodes (see below).
+These tables are referenced by vtCharSets.
+
+Ref: the design of zutty and darktile
 */
 
 // Ref: https://en.wikipedia.org/wiki/DEC_Special_Graphics
-var decSpecialVT100 = map[byte]rune{
+var vt_DEC_Special = map[byte]rune{
 	0x5f: 0x00A0, // NO-BREAK SPACE
 	0x60: 0x25C6, // BLACK DIAMOND
 	0x61: 0x2592, // MEDIUM SHADE
@@ -55,7 +58,7 @@ var decSpecialVT100 = map[byte]rune{
 }
 
 // Ref: https://en.wikipedia.org/wiki/Multinational_Character_Set
-var decSupplementVT200 = map[byte]rune{
+var vt_DEC_Supplement = map[byte]rune{
 	0xa0: 0x0020,
 	0xa6: 0x0026,
 	0xa8: 0x00a4,
@@ -78,7 +81,7 @@ var decSupplementVT200 = map[byte]rune{
 }
 
 // Ref: https://en.wikipedia.org/wiki/DEC_Technical_Character_Set
-var decTechnicalVT300 = map[byte]rune{
+var vt_DEC_Technical = map[byte]rune{
 	0x20: 0x0020, 0x21: 0x23b7, 0x22: 0x250c, 0x23: 0x2500, 0x24: 0x2320, 0x25: 0x2321, 0x26: 0x2502, 0x27: 0x23a1,
 	0x28: 0x23a3, 0x29: 0x23a4, 0x2a: 0x23a6, 0x2b: 0x239b, 0x2c: 0x239d, 0x2d: 0x239e, 0x2e: 0x23a0, 0x2f: 0x23a8,
 	0x30: 0x23ac, 0x31: 0x0020, 0x32: 0x0020, 0x33: 0x0020, 0x34: 0x0020, 0x35: 0x0020, 0x36: 0x0020, 0x37: 0x0020,
@@ -95,7 +98,7 @@ var decTechnicalVT300 = map[byte]rune{
 	0x78: 0x03be, 0x79: 0x03c5, 0x7a: 0x03b6, 0x7b: 0x2190, 0x7c: 0x2191, 0x7d: 0x2192, 0x7e: 0x2193, 0x7f: 0x007f,
 }
 
-var isoLatin1SupplementalVT300 = map[byte]rune{
+var vt_ISO_8859_1 = map[byte]rune{
 	0xa0: 0x00a0,
 	0xff: 0x00ff,
 
@@ -116,7 +119,7 @@ var isoLatin1SupplementalVT300 = map[byte]rune{
 }
 
 // Same as ASCII, but with Pound sign (0x00a3 in place of 0x0023)
-var unitedKingdomVT100 = map[byte]rune{
+var vt_ISO_UK = map[byte]rune{
 	0x23: 0x00A3,
 }
 

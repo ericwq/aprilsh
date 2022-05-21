@@ -120,7 +120,7 @@ func hdl_esc_docs_utf8(emu *emulator) {
 // https://www.cl.cam.ac.uk/~mgk25/unicode.html#utf-8
 func hdl_esc_docs_iso8859_1(emu *emulator) {
 	emu.resetCharsetState()
-	emu.charsetState.g[emu.charsetState.gr] = &isoLatin1SupplementalVT300 // Charset_IsoLatin1
+	emu.charsetState.g[emu.charsetState.gr] = &vt_ISO_8859_1 // Charset_IsoLatin1
 	emu.charsetState.vt100 = true
 }
 

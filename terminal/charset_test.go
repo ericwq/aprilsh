@@ -33,8 +33,8 @@ func testCharsetMap(t *testing.T) {
 	}
 }
 
-func TestUnitedKingdomVT100(t *testing.T) {
-	charsetG[0] = &unitedKingdomVT100
+func TestVt_ISO_UK(t *testing.T) {
+	charsetG[0] = &vt_ISO_UK
 
 	str := "\x22\x23\x24"
 	want := []rune{0x0022, 0x00A3, 0x0024}
@@ -48,8 +48,8 @@ func TestUnitedKingdomVT100(t *testing.T) {
 	}
 }
 
-func TestDecSupplementVT200(t *testing.T) {
-	charsetG[2] = &decSupplementVT200
+func TestVt_DEC_Supplement(t *testing.T) {
+	charsetG[2] = &vt_DEC_Supplement
 	tc := []struct {
 		str  string
 		want []rune
