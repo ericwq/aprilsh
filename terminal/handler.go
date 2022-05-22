@@ -257,6 +257,18 @@ func hdl_c0_cr(emu *emulator) {
 	emu.framebuffer.DS.MoveCol(0, false, false)
 }
 
+// ESC M  Reverse Index (RI  is 0x8d).
+// reverse index -- like a backwards line feed
+func hdl_esc_ri(emu *emulator) {
+	emu.framebuffer.MoveRowsAutoscroll(-1)
+}
+
+// ESC E  Next Line (NEL  is 0x85).
+func hdl_esc_nel(emu *emulator) {
+	emu.framebuffer.DS.MoveCol(0, false, false)
+	emu.framebuffer.MoveRowsAutoscroll(1)
+}
+
 // CSI Ps g  Tab Clear (TBC).
 //            Ps = 0  ⇒  Clear Current Column (default).
 //            Ps = 3  ⇒  Clear All.

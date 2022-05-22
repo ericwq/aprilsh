@@ -519,6 +519,28 @@ func (p *Parser) handle_DOCS_ISO8859_1() (hd *Handler) {
 	return hd
 }
 
+// move cursor to the previous row, scroll up if necessary
+func (p *Parser) handle_RI() (hd *Handler) {
+	hd = &Handler{name: "esc-ri", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_esc_ri(emu)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// move cursor to the next row, scroll down if necessary. move cursor to row head
+func (p *Parser) handle_NEL() (hd *Handler) {
+	hd = &Handler{name: "esc-nel", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_esc_nel(emu)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
 // ESC ( C   Designate G0 Character Set, VT100, ISO 2022.
 // ESC ) C   Designate G1 Character Set, ISO 2022, VT100
 // ESC * C   Designate G2 Character Set, ISO 2022, VT220.
@@ -707,6 +729,12 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		}
 	case InputState_Escape:
 		switch ch {
+		case '\x18', '\x1A': // CAN and SUB interrupts ESC sequence
+			p.setState(InputState_Normal)
+		case '\x1B': // ESC restarts ESC sequence
+			p.inputOps[0] = 0
+			p.nInputOps = 1
+			p.lastEscBegin = p.readPos // TODO ???
 		case '%':
 			p.setState(InputState_Esc_Pct)
 		case '[':
@@ -723,6 +751,10 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			p.setState(InputState_Select_Charset)
 		case 'D':
 			hd = p.handle_IND()
+		case 'M':
+			hd = p.handle_RI()
+		case 'E':
+			hd = p.handle_NEL()
 		case 'H':
 			hd = p.handle_HTS()
 		case 'N':

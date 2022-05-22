@@ -437,8 +437,8 @@ func TestHandle_SS2_SS3(t *testing.T) {
 		wantName string
 		want     int
 	}{
-		{"SS2", "\x1BN", "c0-ss2", 2},
-		{"SS3", "\x1BO", "c0-ss3", 3},
+		{"SS2", "\x1BN", "c0-ss2", 2}, // G2 single shift
+		{"SS3", "\x1BO", "c0-ss3", 3}, // G3 single shift
 	}
 
 	p := NewParser()
@@ -476,8 +476,8 @@ func TestHandle_SO_SI(t *testing.T) {
 		r    rune
 		want int
 	}{
-		{"SO", 0x0E, 1},
-		{"SI", 0x0F, 0},
+		{"SO", 0x0E, 1}, // G1 as GL
+		{"SI", 0x0F, 0}, // G0 as GL
 	}
 
 	p := NewParser()
@@ -627,6 +627,49 @@ func TestHandle_BEL(t *testing.T) {
 	}
 }
 
+func TestHandle_RI_NEL(t *testing.T) {
+	tc := []struct {
+		name     string
+		startY   int // startX is always 5
+		seq      string
+		wantX    int
+		wantY    int
+		wantName string
+	}{
+		{"RI ", 10, "\x1BM", 5, 9, "esc-ri"},   // move cursor up to the previouse row, may scroll up
+		{"NEL", 10, "\x1BE", 0, 11, "esc-nel"}, // move cursor down to next row, may scroll down
+	}
+
+	p := NewParser()
+	var hd *Handler
+	emu := NewEmulator()
+	for _, v := range tc {
+
+		for _, ch := range v.seq {
+			hd = p.processInput(ch)
+		}
+		// set the start position
+		emu.framebuffer.DS.MoveRow(v.startY, false)
+		emu.framebuffer.DS.MoveCol(5, false, false)
+
+		// get the result
+		if hd != nil {
+			// handle the instruction
+			hd.handle(emu)
+
+			gotY := emu.framebuffer.DS.GetCursorRow()
+			gotX := emu.framebuffer.DS.GetCursorCol()
+
+			if gotX != v.wantX || gotY != v.wantY || hd.name != v.wantName {
+				t.Errorf("%s [%s vs %s] expect cursor position (%d,%d), got (%d,%d)\n",
+					v.name, v.wantName, hd.name, v.wantX, v.wantY, gotX, gotY)
+			}
+		} else {
+			t.Errorf("%s got nil return\n", v.name)
+		}
+	}
+}
+
 func TestHandle_HTS_TBC(t *testing.T) {
 	tc := []struct {
 		name     string
@@ -634,7 +677,7 @@ func TestHandle_HTS_TBC(t *testing.T) {
 		setSeq   string
 		clearSeq string
 	}{
-		{"Set/Clear tab stop 1", 18, "\x1BH", "\x1B[g"},
+		{"Set/Clear tab stop 1", 18, "\x1BH", "\x1B[g"}, // set tab stop; clear tab stop
 		{"Set/Clear tab stop 2", 38, "\x1BH", "\x1B[0g"},
 		{"Set/Clear tab stop 3", 48, "\x1BH", "\x1B[3g"},
 	}
@@ -689,10 +732,10 @@ func TestHandle_HT_CHT_CBT(t *testing.T) {
 		wantX    int
 		ctlseq   string
 	}{
-		{"HT 1  ", 5, "c0-ht", 8, "\x09"},
-		{"HT 2  ", 9, "c0-ht", 16, "\x09"},
-		{"CBT   ", 29, "csi-cbt", 8, "\x1B[3Z"},
-		{"CHT   ", 2, "csi-cht", 32, "\x1B[4I"},
+		{"HT 1  ", 5, "c0-ht", 8, "\x09"},       // move to the next tab stop
+		{"HT 2  ", 9, "c0-ht", 16, "\x09"},      // move to the next tab stop
+		{"CBT   ", 29, "csi-cbt", 8, "\x1B[3Z"}, // move backward to the previous N tab stop
+		{"CHT   ", 2, "csi-cht", 32, "\x1B[4I"}, // move to the next N tab stop
 		// reach the right edge
 		{"CHT -1", 59, "csi-cht", 79, "\x1B[4I"},
 		// reach the left edge
