@@ -62,83 +62,7 @@ func runesWidth(runes []rune) (width int) {
 	return width
 }
 
-// SI       Switch to Standard Character Set (Ctrl-O is Shift In or LS0).
-//          This invokes the G0 character set (the default) as GL.
-//          VT200 and up implement LS0.
-func hdl_c0_si(emu *emulator) {
-	emu.charsetState.gl = 0
-}
-
-// SO       Switch to Alternate Character Set (Ctrl-N is Shift Out or
-//          LS1).  This invokes the G1 character set as GL.
-//          VT200 and up implement LS1.
-func hdl_c0_so(emu *emulator) {
-	emu.charsetState.gl = 1
-}
-
-// ESC N
-//     Single Shift Select of G2 Character Set (SS2  is 0x8e), VT220.
-//     This affects next character only.
-func hdl_c0_ss2(emu *emulator) {
-	emu.charsetState.ss = 2
-}
-
-// ESC O
-//     Single Shift Select of G3 Character Set (SS3  is 0x8f), VT220.
-//     This affects next character only.
-func hdl_c0_ss3(emu *emulator) {
-	emu.charsetState.ss = 3
-}
-
-// ESC ~     Invoke the G1 Character Set as GR (LS1R), VT100.
-func hdl_c0_ls1r(emu *emulator) {
-	emu.charsetState.gr = 1
-}
-
-// ESC n     Invoke the G2 Character Set as GL (LS2).
-func hdl_c0_ls2(emu *emulator) {
-	emu.charsetState.gl = 2
-}
-
-// ESC }     Invoke the G2 Character Set as GR (LS2R).
-func hdl_c0_ls2r(emu *emulator) {
-	emu.charsetState.gr = 2
-}
-
-// ESC o     Invoke the G3 Character Set as GL (LS3).
-func hdl_c0_ls3(emu *emulator) {
-	emu.charsetState.gl = 3
-}
-
-// ESC |     Invoke the G3 Character Set as GR (LS3R).
-func hdl_c0_ls3r(emu *emulator) {
-	emu.charsetState.gr = 3
-}
-
-// ESC % G   Select UTF-8 character set, ISO 2022.
-// https://en.wikipedia.org/wiki/ISO/IEC_2022#Interaction_with_other_coding_systems
-func hdl_esc_docs_utf8(emu *emulator) {
-	emu.resetCharsetState()
-}
-
-// ESC % @   Select default character set.  That is ISO 8859-1 (ISO 2022).
-// https://www.cl.cam.ac.uk/~mgk25/unicode.html#utf-8
-func hdl_esc_docs_iso8859_1(emu *emulator) {
-	emu.resetCharsetState()
-	emu.charsetState.g[emu.charsetState.gr] = &vt_ISO_8859_1 // Charset_IsoLatin1
-	emu.charsetState.vtMode = true
-}
-
-// Select G0 ~ G3 character set based on parameter
-func hdl_esc_dcs(emu *emulator, index int, charset *map[byte]rune) {
-	emu.charsetState.g[index] = charset
-	if charset != nil {
-		emu.charsetState.vtMode = true
-	}
-}
-
 // print the graphic char to the emulator
-// TODO print to emulator
 // https://henvic.dev/posts/go-utf8/
 // https://pkg.go.dev/golang.org/x/text/encoding/charmap
 // https://github.com/rivo/uniseg
@@ -212,13 +136,6 @@ func hdl_graphemes(emu *emulator, chs ...rune) {
 	fb.DS.MoveCol(chWidth, true, true)
 }
 
-// Bell (BEL  is Ctrl-G).
-// ring the bell
-func hdl_c0_bel(emu *emulator) {
-	emu.framebuffer.RingBell()
-}
-
-// Horizontal Tab (HTS  is Ctrl-I).
 // move cursor to the count tab position
 func ht_n(fb *Framebuffer, count int) {
 	col := fb.DS.GetNextTab(count)
@@ -238,11 +155,10 @@ func hdl_c0_ht(emu *emulator) {
 	ht_n(emu.framebuffer, 1)
 }
 
-// horizontal tab set
-// ESC H Tab Set (HTS is 0x88).
-// set cursor position as tab stop position
-func hdl_c0_hts(emu *emulator) {
-	emu.framebuffer.DS.SetTab()
+// Bell (BEL  is Ctrl-G).
+// ring the bell
+func hdl_c0_bel(emu *emulator) {
+	emu.framebuffer.RingBell()
 }
 
 // FF, VT same as LF
@@ -255,6 +171,88 @@ func hdl_c0_lf(emu *emulator) {
 // move cursor to the head of the same row
 func hdl_c0_cr(emu *emulator) {
 	emu.framebuffer.DS.MoveCol(0, false, false)
+}
+
+// SI       Switch to Standard Character Set (Ctrl-O is Shift In or LS0).
+//          This invokes the G0 character set (the default) as GL.
+//          VT200 and up implement LS0.
+func hdl_c0_si(emu *emulator) {
+	emu.charsetState.gl = 0
+}
+
+// SO       Switch to Alternate Character Set (Ctrl-N is Shift Out or
+//          LS1).  This invokes the G1 character set as GL.
+//          VT200 and up implement LS1.
+func hdl_c0_so(emu *emulator) {
+	emu.charsetState.gl = 1
+}
+
+// ESC N
+//     Single Shift Select of G2 Character Set (SS2  is 0x8e), VT220.
+//     This affects next character only.
+func hdl_esc_ss2(emu *emulator) {
+	emu.charsetState.ss = 2
+}
+
+// ESC O
+//     Single Shift Select of G3 Character Set (SS3  is 0x8f), VT220.
+//     This affects next character only.
+func hdl_esc_ss3(emu *emulator) {
+	emu.charsetState.ss = 3
+}
+
+// ESC ~     Invoke the G1 Character Set as GR (LS1R), VT100.
+func hdl_esc_ls1r(emu *emulator) {
+	emu.charsetState.gr = 1
+}
+
+// ESC n     Invoke the G2 Character Set as GL (LS2).
+func hdl_esc_ls2(emu *emulator) {
+	emu.charsetState.gl = 2
+}
+
+// ESC }     Invoke the G2 Character Set as GR (LS2R).
+func hdl_esc_ls2r(emu *emulator) {
+	emu.charsetState.gr = 2
+}
+
+// ESC o     Invoke the G3 Character Set as GL (LS3).
+func hdl_esc_ls3(emu *emulator) {
+	emu.charsetState.gl = 3
+}
+
+// ESC |     Invoke the G3 Character Set as GR (LS3R).
+func hdl_esc_ls3r(emu *emulator) {
+	emu.charsetState.gr = 3
+}
+
+// ESC % G   Select UTF-8 character set, ISO 2022.
+// https://en.wikipedia.org/wiki/ISO/IEC_2022#Interaction_with_other_coding_systems
+func hdl_esc_docs_utf8(emu *emulator) {
+	emu.resetCharsetState()
+}
+
+// ESC % @   Select default character set.  That is ISO 8859-1 (ISO 2022).
+// https://www.cl.cam.ac.uk/~mgk25/unicode.html#utf-8
+func hdl_esc_docs_iso8859_1(emu *emulator) {
+	emu.resetCharsetState()
+	emu.charsetState.g[emu.charsetState.gr] = &vt_ISO_8859_1 // Charset_IsoLatin1
+	emu.charsetState.vtMode = true
+}
+
+// Select G0 ~ G3 character set based on parameter
+func hdl_esc_dcs(emu *emulator, index int, charset *map[byte]rune) {
+	emu.charsetState.g[index] = charset
+	if charset != nil {
+		emu.charsetState.vtMode = true
+	}
+}
+
+// horizontal tab set
+// ESC H Tab Set (HTS is 0x88).
+// set cursor position as tab stop position
+func hdl_esc_hts(emu *emulator) {
+	emu.framebuffer.DS.SetTab()
 }
 
 // ESC M  Reverse Index (RI  is 0x8d).

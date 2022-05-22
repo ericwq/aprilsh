@@ -356,8 +356,8 @@ func TestHandle_LS2_LS3(t *testing.T) {
 		wantName string
 		want     int
 	}{
-		{"LS2", "\x1Bn", "c0-ls2", 2},
-		{"LS3", "\x1Bo", "c0-ls3", 3},
+		{"LS2", "\x1Bn", "esc-ls2", 2},
+		{"LS3", "\x1Bo", "esc-ls3", 3},
 	}
 
 	p := NewParser()
@@ -396,9 +396,9 @@ func TestHandle_LS1R_LS2R_LS3R(t *testing.T) {
 		wantName string
 		want     int
 	}{
-		{"LS1R", "\x1B~", "c0-ls1r", 1},
-		{"LS2R", "\x1B}", "c0-ls2r", 2},
-		{"LS3R", "\x1B|", "c0-ls3r", 3},
+		{"LS1R", "\x1B~", "esc-ls1r", 1},
+		{"LS2R", "\x1B}", "esc-ls2r", 2},
+		{"LS3R", "\x1B|", "esc-ls3r", 3},
 	}
 
 	p := NewParser()
@@ -437,8 +437,8 @@ func TestHandle_SS2_SS3(t *testing.T) {
 		wantName string
 		want     int
 	}{
-		{"SS2", "\x1BN", "c0-ss2", 2}, // G2 single shift
-		{"SS3", "\x1BO", "c0-ss3", 3}, // G3 single shift
+		{"SS2", "\x1BN", "esc-ss2", 2}, // G2 single shift
+		{"SS3", "\x1BO", "esc-ss3", 3}, // G3 single shift
 	}
 
 	p := NewParser()

@@ -133,9 +133,9 @@ func init() {
 	// registerFunction(DISPATCH_CONTROL, "\x0C", ctrl_lf, true)  // ff ctrl-L
 	// registerFunction(DISPATCH_CONTROL, "\x0D", ctrl_cr, true)  // cr ctrl-M
 	// registerFunction(DISPATCH_CONTROL, "\x84", ctrl_lf, true)  // ind
-	registerFunction(DISPATCH_CONTROL, "\x85", ctrl_nel, true) // nel
+	// registerFunction(DISPATCH_CONTROL, "\x85", ctrl_nel, true) // nel
 	// registerFunction(DISPATCH_CONTROL, "\x88", ctrl_hts, true) // hts
-	registerFunction(DISPATCH_CONTROL, "\x8D", ctrl_ri, true)  // ri
+	// registerFunction(DISPATCH_CONTROL, "\x8D", ctrl_ri, true)  // ri
 }
 
 // CSI Ps S  Scroll up Ps lines (default = 1) (SU), VT420, ECMA-48.
@@ -512,17 +512,17 @@ func csi_decrm(fb *Framebuffer, d *Dispatcher) {
 
 // Next Line (NEL  is 0x85).
 // move cursor to the next row, scroll down if necessary. move cursor to row head
-func ctrl_nel(fb *Framebuffer, _ *Dispatcher) {
-	fb.DS.MoveCol(0, false, false)
-	fb.MoveRowsAutoscroll(1)
-}
+// func ctrl_nel(fb *Framebuffer, _ *Dispatcher) {
+// 	fb.DS.MoveCol(0, false, false)
+// 	fb.MoveRowsAutoscroll(1)
+// }
 
 // Reverse Index (RI  is 0x8d).
 // move cursor to the previous row, scroll up if necessary
 // reverse index -- like a backwards line feed
-func ctrl_ri(fb *Framebuffer, _ *Dispatcher) {
-	fb.MoveRowsAutoscroll(-1)
-}
+// func ctrl_ri(fb *Framebuffer, _ *Dispatcher) {
+// 	fb.MoveRowsAutoscroll(-1)
+// }
 
 // Backspace (BS  is Ctrl-H).
 // bask space

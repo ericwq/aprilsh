@@ -179,6 +179,18 @@ func (p *Parser) getArg() (arg string) {
 	return arg
 }
 
+// print graphemes on screen
+func (p *Parser) handle_Graphemes() (hd *Handler) {
+	// fmt.Printf("handle_Graphemes got %q\n\n", p.chs)
+	hd = &Handler{name: "graphemes", ch: p.ch}
+
+	r := p.chs
+	hd.handle = func(emu *emulator) {
+		hdl_graphemes(emu, r...)
+	}
+	return hd
+}
+
 // prepare parameters for the CUU
 func (p *Parser) handle_CUU() (hd *Handler) {
 	num := p.getPs(0, 1)
@@ -338,18 +350,6 @@ func (p *Parser) handle_BEL() (hd *Handler) {
 	return hd
 }
 
-// print graphemes on screen
-func (p *Parser) handle_Graphemes() (hd *Handler) {
-	// fmt.Printf("handle_Graphemes got %q\n\n", p.chs)
-	hd = &Handler{name: "graphemes", ch: p.ch}
-
-	r := p.chs
-	hd.handle = func(emu *emulator) {
-		hdl_graphemes(emu, r...)
-	}
-	return hd
-}
-
 // SI - switch to standard character set
 func (p *Parser) handle_SI() (hd *Handler) {
 	hd = &Handler{name: "c0-si", ch: p.ch}
@@ -370,9 +370,9 @@ func (p *Parser) handle_SO() (hd *Handler) {
 
 // set cursor position as tab stop position
 func (p *Parser) handle_HTS() (hd *Handler) {
-	hd = &Handler{name: "c0-hts", ch: p.ch}
+	hd = &Handler{name: "esc-hts", ch: p.ch}
 	hd.handle = func(emu *emulator) {
-		hdl_c0_hts(emu)
+		hdl_esc_hts(emu)
 	}
 
 	p.setState(InputState_Normal)
@@ -420,9 +420,9 @@ func (p *Parser) handle_TBC() (hd *Handler) {
 
 // ESC N Single Shift Select of G2 Character Set (SS2  is 0x8e), VT220.
 func (p *Parser) handle_SS2() (hd *Handler) {
-	hd = &Handler{name: "c0-ss2", ch: p.ch}
+	hd = &Handler{name: "esc-ss2", ch: p.ch}
 	hd.handle = func(emu *emulator) {
-		hdl_c0_ss2(emu)
+		hdl_esc_ss2(emu)
 	}
 
 	p.setState(InputState_Normal)
@@ -431,9 +431,9 @@ func (p *Parser) handle_SS2() (hd *Handler) {
 
 // ESC O Single Shift Select of G3 Character Set (SS3  is 0x8f), VT220.
 func (p *Parser) handle_SS3() (hd *Handler) {
-	hd = &Handler{name: "c0-ss3", ch: p.ch}
+	hd = &Handler{name: "esc-ss3", ch: p.ch}
 	hd.handle = func(emu *emulator) {
-		hdl_c0_ss3(emu)
+		hdl_esc_ss3(emu)
 	}
 
 	p.setState(InputState_Normal)
@@ -442,9 +442,9 @@ func (p *Parser) handle_SS3() (hd *Handler) {
 
 // LS1R gr = 1
 func (p *Parser) handle_LS1R() (hd *Handler) {
-	hd = &Handler{name: "c0-ls1r", ch: p.ch}
+	hd = &Handler{name: "esc-ls1r", ch: p.ch}
 	hd.handle = func(emu *emulator) {
-		hdl_c0_ls1r(emu)
+		hdl_esc_ls1r(emu)
 	}
 
 	p.setState(InputState_Normal)
@@ -453,9 +453,9 @@ func (p *Parser) handle_LS1R() (hd *Handler) {
 
 // LS2 gl = 2
 func (p *Parser) handle_LS2() (hd *Handler) {
-	hd = &Handler{name: "c0-ls2", ch: p.ch}
+	hd = &Handler{name: "esc-ls2", ch: p.ch}
 	hd.handle = func(emu *emulator) {
-		hdl_c0_ls2(emu)
+		hdl_esc_ls2(emu)
 	}
 
 	p.setState(InputState_Normal)
@@ -464,9 +464,9 @@ func (p *Parser) handle_LS2() (hd *Handler) {
 
 // LS2R gr = 2
 func (p *Parser) handle_LS2R() (hd *Handler) {
-	hd = &Handler{name: "c0-ls2r", ch: p.ch}
+	hd = &Handler{name: "esc-ls2r", ch: p.ch}
 	hd.handle = func(emu *emulator) {
-		hdl_c0_ls2r(emu)
+		hdl_esc_ls2r(emu)
 	}
 
 	p.setState(InputState_Normal)
@@ -475,9 +475,9 @@ func (p *Parser) handle_LS2R() (hd *Handler) {
 
 // LS3 gl = 3
 func (p *Parser) handle_LS3() (hd *Handler) {
-	hd = &Handler{name: "c0-ls3", ch: p.ch}
+	hd = &Handler{name: "esc-ls3", ch: p.ch}
 	hd.handle = func(emu *emulator) {
-		hdl_c0_ls3(emu)
+		hdl_esc_ls3(emu)
 	}
 
 	p.setState(InputState_Normal)
@@ -486,9 +486,9 @@ func (p *Parser) handle_LS3() (hd *Handler) {
 
 // LS3R gr = 3
 func (p *Parser) handle_LS3R() (hd *Handler) {
-	hd = &Handler{name: "c0-ls3r", ch: p.ch}
+	hd = &Handler{name: "esc-ls3r", ch: p.ch}
 	hd.handle = func(emu *emulator) {
-		hdl_c0_ls3r(emu)
+		hdl_esc_ls3r(emu)
 	}
 
 	p.setState(InputState_Normal)
