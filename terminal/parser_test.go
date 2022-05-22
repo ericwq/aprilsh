@@ -109,6 +109,50 @@ func TestRunesWidth(t *testing.T) {
 	}
 }
 
+func TestCollectNumericParameters(t *testing.T) {
+	tc := []struct {
+		name string
+		want int
+		seq  string
+	}{
+		{"normal number     ", 65, "65;23"},
+		{"too large number  ", 0, "65536;22"},
+		{"over size 16      ", 0, "1;2;3;4;5;6;7;8;9;0;1;2;3;4;5;6;"},
+		{"over size 17      ", 0, "1;2;3;4;5;6;7;8;9;0;1;2;3;4;5;6;7;"},
+	}
+
+	p := NewParser()
+	for _, v := range tc {
+		// prepare for the condition
+		p.reset()
+		p.nInputOps = 1
+		p.inputOps[0] = 0
+		p.inputState = InputState_CSI
+		// parse the number
+		for _, ch := range v.seq {
+			p.collectNumericParameters(ch)
+			if p.inputState == InputState_Normal {
+				break
+			}
+		}
+		// only test the first number
+		if p.getPs(0, 0) != v.want {
+			t.Errorf("%s expect %d, got %d\n", v.name, v.want, p.getPs(0, 0))
+		}
+	}
+}
+
+func TestProcessInputEmpty(t *testing.T) {
+	p := NewParser()
+	var hd *Handler
+	var chs []rune
+
+	hd = p.processInput(chs...)
+	if hd != nil {
+		t.Errorf("processInput expect empty, got %s\n", hd.name)
+	}
+}
+
 // func TestCharmapCapability(t *testing.T) {
 // 	invalid := "ABCD\xe0\xe1\xe2\xe3\xe9\x9c" // this is "à á â ã é" in ISO-8859-1
 // 	// If we convert it from ISO8859-1 to UTF-8:
@@ -121,7 +165,7 @@ func TestRunesWidth(t *testing.T) {
 // 	}
 // }
 
-func TestHandleGraphemes(t *testing.T) {
+func TestHandle_Graphemes(t *testing.T) {
 	tc := []struct {
 		name   string
 		raw    string // data stream with control sequences
@@ -205,39 +249,6 @@ func TestHandleGraphemes(t *testing.T) {
 				t.Errorf("%s:\t [row,cols]:[%2d,%2d] expect %q, got %q\n", v.name, rows, cols, string(chs), cell.contents)
 			}
 			j += 1
-		}
-	}
-}
-
-func TestCollectNumericParameters(t *testing.T) {
-	tc := []struct {
-		name string
-		want int
-		seq  string
-	}{
-		{"normal number     ", 65, "65;23"},
-		{"too large number  ", 0, "65536;22"},
-		{"over size 16      ", 0, "1;2;3;4;5;6;7;8;9;0;1;2;3;4;5;6;"},
-		{"over size 17      ", 0, "1;2;3;4;5;6;7;8;9;0;1;2;3;4;5;6;7;"},
-	}
-
-	p := NewParser()
-	for _, v := range tc {
-		// prepare for the condition
-		p.reset()
-		p.nInputOps = 1
-		p.inputOps[0] = 0
-		p.inputState = InputState_CSI
-		// parse the number
-		for _, ch := range v.seq {
-			p.collectNumericParameters(ch)
-			if p.inputState == InputState_Normal {
-				break
-			}
-		}
-		// only test the first number
-		if p.getPs(0, 0) != v.want {
-			t.Errorf("%s expect %d, got %d\n", v.name, v.want, p.getPs(0, 0))
 		}
 	}
 }
@@ -606,6 +617,22 @@ func TestHandle_OSC_0_1_2(t *testing.T) {
 	}
 }
 
+func TestHandle_OSC_0_Overflow(t *testing.T) {
+	p := NewParser()
+	// parameter Ps overflow: >120
+	seq := "\x1B]121;home\x07"
+	var hd *Handler
+
+	// parse the sequence
+	for _, ch := range seq {
+		hd = p.processInput(ch)
+	}
+
+	if hd != nil {
+		t.Errorf("OSC overflow: %q should return nil.", seq)
+	}
+}
+
 func TestHandle_BEL(t *testing.T) {
 	p := NewParser()
 	emu := NewEmulator()
@@ -800,11 +827,10 @@ func TestHandle_CR_LF_VT_FF(t *testing.T) {
 		emu.framebuffer.DS.MoveRow(v.startY, false)
 		emu.framebuffer.DS.MoveCol(v.startX, false, false)
 
-		// handle the instruction
-		hd.handle(emu)
-
 		// get the result
 		if hd != nil {
+			// handle the instruction
+			hd.handle(emu)
 			gotY := emu.framebuffer.DS.GetCursorRow()
 			gotX := emu.framebuffer.DS.GetCursorCol()
 
@@ -814,6 +840,37 @@ func TestHandle_CR_LF_VT_FF(t *testing.T) {
 			}
 		} else {
 			t.Errorf("%s got nil return\n", v.name)
+		}
+	}
+}
+
+func TestHandle_ENQ_CAN_SUB_ESC(t *testing.T) {
+	tc := []struct {
+		name      string
+		seq       string
+		nInputOps int
+		state     int
+	}{
+		{"ENQ ", "\x05", 0, InputState_Normal},     // ENQ - Enquiry, ignore
+		{"CAN ", "\x1B\x18", 0, InputState_Normal}, // CAN and SUB interrupts ESC sequence
+		{"SUB ", "\x1B\x1A", 0, InputState_Normal}, // CAN and SUB interrupts ESC sequence
+		{"ESC ", "\x1B\x1B", 1, InputState_Escape}, // ESC restarts ESC sequence
+	}
+
+	p := NewParser()
+	var hd *Handler
+	for _, v := range tc {
+		for _, ch := range v.seq {
+			hd = p.processInput(ch)
+		}
+
+		if hd == nil {
+			if p.inputState != v.state || p.nInputOps != v.nInputOps {
+				t.Errorf("%s seq=%q expect state=%d, nInputOps=%d, got state=%d, nInputOps=%d\n",
+					v.name, v.seq, v.state, v.nInputOps, p.inputState, p.nInputOps)
+			}
+		} else {
+			t.Errorf("%s should get nil handler\n", v.name)
 		}
 	}
 }
