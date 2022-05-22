@@ -88,42 +88,42 @@ func registerFunction(funType int, dispatchChar string, f emuFunc, wrap bool) {
 }
 
 func init() {
-	registerFunction(DISPATCH_CSI, "@", csi_ich, true)         // ich
+	registerFunction(DISPATCH_CSI, "@", csi_ich, true) // ich
 	// registerFunction(DISPATCH_CSI, "A", csi_cursor_move, true) // cuu
 	// registerFunction(DISPATCH_CSI, "B", csi_cursor_move, true) // cud
 	// registerFunction(DISPATCH_CSI, "C", csi_cursor_move, true) // cuf
 	// registerFunction(DISPATCH_CSI, "D", csi_cursor_move, true) // cub
-	registerFunction(DISPATCH_CSI, "G", csi_hpa, true)         // cha
+	registerFunction(DISPATCH_CSI, "G", csi_hpa, true) // cha
 	// registerFunction(DISPATCH_CSI, "H", csi_cursor_move, true) // cup
 	// registerFunction(DISPATCH_CSI, "I", csi_cxt, true)         // cht
-	registerFunction(DISPATCH_CSI, "J", csi_ed, true)          // ed
-	registerFunction(DISPATCH_CSI, "K", csi_el, true)          // el
-	registerFunction(DISPATCH_CSI, "L", csi_il, true)          // il
-	registerFunction(DISPATCH_CSI, "M", csi_dl, true)          // dl
-	registerFunction(DISPATCH_CSI, "P", csi_dch, true)         // dch
-	registerFunction(DISPATCH_CSI, "S", csi_su, true)          // SU
-	registerFunction(DISPATCH_CSI, "T", csi_sd, true)          // SD
-	registerFunction(DISPATCH_CSI, "X", csi_ech, true)         // ech
+	registerFunction(DISPATCH_CSI, "J", csi_ed, true)  // ed
+	registerFunction(DISPATCH_CSI, "K", csi_el, true)  // el
+	registerFunction(DISPATCH_CSI, "L", csi_il, true)  // il
+	registerFunction(DISPATCH_CSI, "M", csi_dl, true)  // dl
+	registerFunction(DISPATCH_CSI, "P", csi_dch, true) // dch
+	registerFunction(DISPATCH_CSI, "S", csi_su, true)  // SU
+	registerFunction(DISPATCH_CSI, "T", csi_sd, true)  // SD
+	registerFunction(DISPATCH_CSI, "X", csi_ech, true) // ech
 	// registerFunction(DISPATCH_CSI, "Z", csi_cxt, true)         // cbt
-	registerFunction(DISPATCH_CSI, "`", csi_hpa, true)         // hpa
-	registerFunction(DISPATCH_CSI, "c", csi_da, true)          // da request
-	registerFunction(DISPATCH_CSI, "d", csi_vpa, true)         // vpa
+	registerFunction(DISPATCH_CSI, "`", csi_hpa, true) // hpa
+	registerFunction(DISPATCH_CSI, "c", csi_da, true)  // da request
+	registerFunction(DISPATCH_CSI, "d", csi_vpa, true) // vpa
 	// registerFunction(DISPATCH_CSI, "f", csi_cursor_move, true) // hvp
 	// registerFunction(DISPATCH_CSI, "g", csi_tbc, true)         // tbc
-	registerFunction(DISPATCH_CSI, "h", csi_sm, false)         // sm
-	registerFunction(DISPATCH_CSI, "l", csi_rm, false)         // rm
-	registerFunction(DISPATCH_CSI, "m", csi_sgr, false)        // sgr
-	registerFunction(DISPATCH_CSI, "n", csi_dsr, false)        // dsr
-	registerFunction(DISPATCH_CSI, "r", csi_decstbm, false)    // decstbm
-	registerFunction(DISPATCH_CSI, "!p", csi_decstr, true)     // decstr
-	registerFunction(DISPATCH_CSI, ">c", csi_sda, true)        // sda request
-	registerFunction(DISPATCH_CSI, "?h", csi_decsm, false)     // decset
-	registerFunction(DISPATCH_CSI, "?l", csi_decrm, false)     // decrst
+	registerFunction(DISPATCH_CSI, "h", csi_sm, false)      // sm
+	registerFunction(DISPATCH_CSI, "l", csi_rm, false)      // rm
+	registerFunction(DISPATCH_CSI, "m", csi_sgr, false)     // sgr
+	registerFunction(DISPATCH_CSI, "n", csi_dsr, false)     // dsr
+	registerFunction(DISPATCH_CSI, "r", csi_decstbm, false) // decstbm
+	registerFunction(DISPATCH_CSI, "!p", csi_decstr, true)  // decstr
+	registerFunction(DISPATCH_CSI, ">c", csi_sda, true)     // sda request
+	registerFunction(DISPATCH_CSI, "?h", csi_decsm, false)  // decset
+	registerFunction(DISPATCH_CSI, "?l", csi_decrm, false)  // decrst
 
 	registerFunction(DISPATCH_ESCAPE, "#8", esc_decaln, true) // decaln
 	registerFunction(DISPATCH_ESCAPE, "7", esc_decsc, true)   // decsc
 	registerFunction(DISPATCH_ESCAPE, "8", esc_decrc, true)   // decrc
-	registerFunction(DISPATCH_ESCAPE, "c", esc_rts, true)     // rts
+	// registerFunction(DISPATCH_ESCAPE, "c", esc_rts, true)     // rts
 
 	// registerFunction(DISPATCH_CONTROL, "\x07", ctrl_bel, true) // bel ctrl-G
 	// registerFunction(DISPATCH_CONTROL, "\x08", ctrl_bs, true)  // bs ctrl-H
@@ -159,9 +159,9 @@ func csi_decstr(fb *Framebuffer, _ *Dispatcher) {
 
 // ESC c     Full Reset (RIS), VT100.
 // reset the screen
-func esc_rts(fb *Framebuffer, _ *Dispatcher) {
-	fb.Reset()
-}
+// func esc_rts(fb *Framebuffer, _ *Dispatcher) {
+// 	fb.Reset()
+// }
 
 // CSI Ps X  Erase Ps Character(s) (default = 1) (ECH).
 func csi_ech(fb *Framebuffer, d *Dispatcher) {

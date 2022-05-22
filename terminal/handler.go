@@ -267,6 +267,12 @@ func hdl_esc_nel(emu *emulator) {
 	emu.framebuffer.MoveRowsAutoscroll(1)
 }
 
+// ESC c     Full Reset (RIS), VT100.
+// reset the screen
+func hdl_esc_ris(emu *emulator) {
+	emu.framebuffer.Reset()
+}
+
 // CSI Ps g  Tab Clear (TBC).
 //            Ps = 0  ⇒  Clear Current Column (default).
 //            Ps = 3  ⇒  Clear All.

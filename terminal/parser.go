@@ -28,6 +28,8 @@ package terminal
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"strconv"
 	"strings"
 
@@ -53,6 +55,26 @@ const (
 	InputState_OSC
 	InputState_OSC_Esc
 )
+
+var strInputState = [...]string{
+	"Normal",
+	"Escape",
+	"Esc_Space",
+	"Esc_Hash",
+	"Esc_Pct",
+	"Select_Charset",
+	"CSI",
+	"CSI_Priv",
+	"CSI_Quote",
+	"CSI_DblQuote",
+	"CSI_Bang",
+	"CSI_SPC",
+	"CSI_GT",
+	"DCS",
+	"DCS_Esc",
+	"OSC",
+	"OSC_Esc",
+}
 
 type Parser struct {
 	// state State
@@ -85,12 +107,23 @@ type Parser struct {
 
 	// G0~G3 character set compatiable mode, default false
 	vtMode bool
+
+	// logger
+	logE     *log.Logger
+	logT     *log.Logger
+	logTrace bool
 }
 
 func NewParser() *Parser {
 	p := new(Parser)
-	// TODO consider remove state field
-	// p.state = ground{}
+
+	// TODO consider to rotate the log file and limit the log file size.
+	// file, err := os.OpenFile("aprish.logs.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	// if err != nil {
+	//     log.Fatal(err)
+	// }
+	p.logT = log.New(os.Stderr, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	p.logE = log.New(os.Stderr, "ERRO: ", log.Ldate|log.Ltime|log.Lshortfile)
 
 	p.reset()
 	return p
@@ -111,7 +144,20 @@ func (p *Parser) reset() {
 	p.scsMod = 0x00
 }
 
-func (p *Parser) traceNormalInput() { // TODO
+// trace the input if logTrace is true
+func (p *Parser) traceNormalInput() {
+	if p.logTrace {
+		p.logT.Printf("Input:%q inputOps=%d, nInputOps=%d, argBuf=%q\n",
+			p.chs, p.inputOps, p.nInputOps, p.argBuf.String())
+	}
+}
+
+// log the unhandled input and reset the state to normal
+func (p *Parser) unhandledInput() {
+	p.logE.Printf("Unhandled input:%q state=%s, inputOps=%d, nInputOps=%d, argBuf=%q\n",
+		p.ch, strInputState[p.inputState], p.inputOps, p.nInputOps, p.argBuf.String())
+
+	p.setState(InputState_Normal)
 }
 
 func (p *Parser) setState(newState int) {
@@ -138,7 +184,7 @@ func (p *Parser) collectNumericParameters(ch rune) (isBreak bool) {
 		p.inputOps[p.nInputOps-1] *= 10
 		p.inputOps[p.nInputOps-1] += int(ch - '0')
 		if p.inputOps[p.nInputOps-1] >= 65535 {
-			// TODO logE  "inputOp overflow!"
+			p.logE.Printf("the number is too big: > 65535, %d", p.inputOps[p.nInputOps-1])
 			p.perror = fmt.Errorf("the number is too big. %d", p.inputOps[p.nInputOps-1])
 			p.setState(InputState_Normal)
 		}
@@ -148,7 +194,7 @@ func (p *Parser) collectNumericParameters(ch rune) (isBreak bool) {
 			p.inputOps[p.nInputOps] = 0
 			p.nInputOps += 1
 		} else {
-			// TODO logE inputOps full, increase maxEscOps
+			p.logE.Printf("inputOps full, increase maxEscOps. %d", p.inputOps)
 			p.perror = fmt.Errorf("the parameters count limitation is over. %d", p.maxEscOps)
 			p.setState(InputState_Normal)
 		}
@@ -541,6 +587,17 @@ func (p *Parser) handle_NEL() (hd *Handler) {
 	return hd
 }
 
+// reset the screen
+func (p *Parser) handle_RIS() (hd *Handler) {
+	hd = &Handler{name: "esc-ris", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_esc_ris(emu)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
 // ESC ( C   Designate G0 Character Set, VT100, ISO 2022.
 // ESC ) C   Designate G1 Character Set, ISO 2022, VT100
 // ESC * C   Designate G2 Character Set, ISO 2022, VT220.
@@ -550,8 +607,7 @@ func (p *Parser) handle_NEL() (hd *Handler) {
 // ESC / C   Designate G3 Character Set, VT300.
 // https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Controls-beginning-with-ESC
 func (p *Parser) handle_ESC_DCS() (hd *Handler) {
-	// TODO log it
-	// fmt.Printf("DEBUG Designate Character Set: destination %q ,%q, %q\n", p.scsDst, p.scsMod, p.ch)
+	p.logT.Printf("Designate Character Set: destination %q ,%q, %q\n", p.scsDst, p.scsMod, p.ch)
 
 	index := 0
 	charset96 := false
@@ -600,7 +656,6 @@ func (p *Parser) handle_ESC_DCS() (hd *Handler) {
 		charset = &vt_DEC_Technical // Charset_DecTechn
 	}
 
-	// fmt.Printf("DEBUG Designate Character Set: index= %d, charset=%d\n", index, charset)
 	hd = &Handler{name: "esc-dcs", ch: p.ch}
 	hd.handle = func(emu *emulator) {
 		hdl_esc_dcs(emu, index, charset)
@@ -761,6 +816,8 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_SS2()
 		case 'O':
 			hd = p.handle_SS3()
+		case 'c':
+			hd = p.handle_RIS()
 		case '~':
 			hd = p.handle_LS1R()
 		case 'n':
@@ -771,6 +828,10 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_LS3()
 		case '|':
 			hd = p.handle_LS3R()
+		case '\\':
+			p.setState(InputState_Normal)
+		default:
+			p.unhandledInput()
 		}
 	case InputState_Esc_Pct:
 		switch ch {
