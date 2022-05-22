@@ -162,6 +162,10 @@ func (p *Parser) unhandledInput() {
 	p.setState(InputState_Normal)
 }
 
+// set the parser new state.
+// if new state is the same as old state just return.
+// if new state is normal, reset the parameter buffer: inputOps[]
+// if old state is normal, print the trace infomation
 func (p *Parser) setState(newState int) {
 	if newState == p.inputState {
 		return
@@ -229,7 +233,6 @@ func (p *Parser) getArg() (arg string) {
 
 // print graphemes on screen
 func (p *Parser) handle_Graphemes() (hd *Handler) {
-	// fmt.Printf("handle_Graphemes got %q\n\n", p.chs)
 	hd = &Handler{name: "graphemes", ch: p.ch}
 
 	r := p.chs
@@ -327,7 +330,7 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 	// get the Pt
 	arg = arg[pos+1:]
 	if cmd < 0 || cmd > 120 {
-		// LogT "OSC: malformed command string '"
+		p.logT.Printf("OSC: malformed command string %d %q\n", cmd, arg)
 	} else {
 		switch cmd {
 		// create the ActOn
@@ -352,7 +355,7 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 				hdl_osc_10(emu, cmd, arg)
 			}
 		default:
-			// logU "unhandled OSC: '"
+			p.logU.Printf("unhandled OSC: %d %q\n", cmd, arg)
 		}
 	}
 
@@ -918,10 +921,10 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 	case InputState_Esc_Pct:
 		switch ch {
 		case '@':
-			// logT << "Select charset: default (ISO-8859-1)"
+			p.logT.Println("Select charset: default (ISO-8859-1)")
 			hd = p.handle_DOCS_ISO8859_1()
 		case 'G':
-			// logT << "Select charset: UTF-8"
+			p.logT.Println("Select charset: UTF-8")
 			hd = p.handle_DOCS_UTF8()
 		}
 	case InputState_Select_Charset:
@@ -967,7 +970,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			if p.argBuf.Len() < 4096 {
 				p.argBuf.WriteRune(ch)
 			} else {
-				// logE "OSC argument string overflow"
+				p.logE.Printf("OSC argument string overflow (>4096). %q\n", p.argBuf.String())
 				p.setState(InputState_Normal)
 			}
 		}
