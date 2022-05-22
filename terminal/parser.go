@@ -111,6 +111,7 @@ type Parser struct {
 	// logger
 	logE     *log.Logger
 	logT     *log.Logger
+	logU     *log.Logger
 	logTrace bool
 }
 
@@ -124,6 +125,7 @@ func NewParser() *Parser {
 	// }
 	p.logT = log.New(os.Stderr, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
 	p.logE = log.New(os.Stderr, "ERRO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	p.logU = log.New(os.Stderr, "(Uimplemented): ", log.Ldate|log.Ltime|log.Lshortfile)
 
 	p.reset()
 	return p
@@ -598,6 +600,39 @@ func (p *Parser) handle_RIS() (hd *Handler) {
 	return hd
 }
 
+// save current cursor
+func (p *Parser) handle_DECSC() (hd *Handler) {
+	hd = &Handler{name: "esc-decsc", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_esc_decsc(emu)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// restore saved cursor
+func (p *Parser) handle_DECRC() (hd *Handler) {
+	hd = &Handler{name: "esc-decrc", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_esc_decrc(emu)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// fill the screen with 'E'
+func (p *Parser) handle_DECALN() (hd *Handler) {
+	hd = &Handler{name: "esc-decaln", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_esc_decaln(emu)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
 // ESC ( C   Designate G0 Character Set, VT100, ISO 2022.
 // ESC ) C   Designate G1 Character Set, ISO 2022, VT100
 // ESC * C   Designate G2 Character Set, ISO 2022, VT220.
@@ -790,6 +825,10 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			p.inputOps[0] = 0
 			p.nInputOps = 1
 			p.lastEscBegin = p.readPos // TODO ???
+		case ' ':
+			p.setState(InputState_Esc_Space)
+		case '#':
+			p.setState(InputState_Esc_Hash)
 		case '%':
 			p.setState(InputState_Esc_Pct)
 		case '[':
@@ -818,6 +857,10 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_SS3()
 		case 'c':
 			hd = p.handle_RIS()
+		case '7':
+			hd = p.handle_DECSC()
+		case '8':
+			hd = p.handle_DECRC()
 		case '~':
 			hd = p.handle_LS1R()
 		case 'n':
@@ -828,8 +871,47 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_LS3()
 		case '|':
 			hd = p.handle_LS3R()
-		case '\\':
+		case '\\': // ignore lone ST
 			p.setState(InputState_Normal)
+		default:
+			p.unhandledInput()
+		}
+	case InputState_Esc_Space:
+		switch ch {
+		case 'F':
+			p.logU.Println("S7C1T: Send 7-bit controls")
+			p.setState(InputState_Normal)
+		case 'G':
+			p.logU.Println("S8C1T: Send 8-bit controls")
+			p.setState(InputState_Normal)
+		case 'L':
+			p.logU.Println("Set ANSI conformance level 1")
+			p.setState(InputState_Normal)
+		case 'M':
+			p.logU.Println("Set ANSI conformance level 2")
+			p.setState(InputState_Normal)
+		case 'N':
+			p.logU.Println("Set ANSI conformance level 3")
+			p.setState(InputState_Normal)
+		default:
+			p.unhandledInput()
+		}
+	case InputState_Esc_Hash:
+		switch ch {
+		case '3':
+			p.logU.Println("DECDHL: Double-height, top half.")
+			p.setState(InputState_Normal)
+		case '4':
+			p.logU.Println("DECDHL: Double-height, bottom half.")
+			p.setState(InputState_Normal)
+		case '5':
+			p.logU.Println("DECSWL: Single-width line.")
+			p.setState(InputState_Normal)
+		case '6':
+			p.logU.Println("DECDWL: Double-width line.")
+			p.setState(InputState_Normal)
+		case '8':
+			hd = p.handle_DECALN()
 		default:
 			p.unhandledInput()
 		}

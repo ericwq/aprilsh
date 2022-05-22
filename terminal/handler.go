@@ -273,6 +273,28 @@ func hdl_esc_ris(emu *emulator) {
 	emu.framebuffer.Reset()
 }
 
+// ESC 7     Save Cursor (DECSC), VT100.
+func hdl_esc_decsc(emu *emulator) {
+	emu.framebuffer.DS.SaveCursor()
+}
+
+// ESC 8     Restore Cursor (DECRC), VT100.
+func hdl_esc_decrc(emu *emulator) {
+	emu.framebuffer.DS.RestoreCursor()
+}
+
+// ESC # 8   DEC Screen Alignment Test (DECALN), VT100.
+// fill the screen with 'E'
+func hdl_esc_decaln(emu *emulator) {
+	fb := emu.framebuffer
+	for y := 0; y < fb.DS.GetHeight(); y++ {
+		for x := 0; x < fb.DS.GetWidth(); x++ {
+			fb.ResetCell(fb.GetCell(y, x))
+			fb.GetCell(y, x).Append('E')
+		}
+	}
+}
+
 // CSI Ps g  Tab Clear (TBC).
 //            Ps = 0  ⇒  Clear Current Column (default).
 //            Ps = 3  ⇒  Clear All.

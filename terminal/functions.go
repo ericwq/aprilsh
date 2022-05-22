@@ -120,9 +120,9 @@ func init() {
 	registerFunction(DISPATCH_CSI, "?h", csi_decsm, false)  // decset
 	registerFunction(DISPATCH_CSI, "?l", csi_decrm, false)  // decrst
 
-	registerFunction(DISPATCH_ESCAPE, "#8", esc_decaln, true) // decaln
-	registerFunction(DISPATCH_ESCAPE, "7", esc_decsc, true)   // decsc
-	registerFunction(DISPATCH_ESCAPE, "8", esc_decrc, true)   // decrc
+	// registerFunction(DISPATCH_ESCAPE, "#8", esc_decaln, true) // decaln
+	// registerFunction(DISPATCH_ESCAPE, "7", esc_decsc, true)   // decsc
+	// registerFunction(DISPATCH_ESCAPE, "8", esc_decrc, true)   // decrc
 	// registerFunction(DISPATCH_ESCAPE, "c", esc_rts, true)     // rts
 
 	// registerFunction(DISPATCH_CONTROL, "\x07", ctrl_bel, true) // bel ctrl-G
@@ -245,14 +245,14 @@ func csi_dsr(fb *Framebuffer, d *Dispatcher) {
 }
 
 // ESC 7     Save Cursor (DECSC), VT100.
-func esc_decsc(fb *Framebuffer, _ *Dispatcher) {
-	fb.DS.SaveCursor()
-}
+// func esc_decsc(fb *Framebuffer, _ *Dispatcher) {
+// 	fb.DS.SaveCursor()
+// }
 
 // ESC 8     Restore Cursor (DECRC), VT100.
-func esc_decrc(fb *Framebuffer, _ *Dispatcher) {
-	fb.DS.RestoreCursor()
-}
+// func esc_decrc(fb *Framebuffer, _ *Dispatcher) {
+// 	fb.DS.RestoreCursor()
+// }
 
 // CSI Pm m  Character Attributes (SGR).
 // select graphics rendition -- e.g., bold, blinking, etc.
@@ -544,14 +544,14 @@ func csi_decrm(fb *Framebuffer, d *Dispatcher) {
 
 // ESC # 8   DEC Screen Alignment Test (DECALN), VT100.
 // fill the screen with 'E'
-func esc_decaln(fb *Framebuffer, _ *Dispatcher) {
-	for y := 0; y < fb.DS.GetHeight(); y++ {
-		for x := 0; x < fb.DS.GetWidth(); x++ {
-			fb.ResetCell(fb.GetCell(y, x))
-			fb.GetCell(y, x).Append('E')
-		}
-	}
-}
+// func esc_decaln(fb *Framebuffer, _ *Dispatcher) {
+// 	for y := 0; y < fb.DS.GetHeight(); y++ {
+// 		for x := 0; x < fb.DS.GetWidth(); x++ {
+// 			fb.ResetCell(fb.GetCell(y, x))
+// 			fb.GetCell(y, x).Append('E')
+// 		}
+// 	}
+// }
 
 // CSI > Ps c Send Device Attributes (Secondary DA).
 // Ps = 0  or omitted ⇒  request the terminal's identification code.
