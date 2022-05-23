@@ -572,6 +572,7 @@ func (p *Parser) handle_DOCS_ISO8859_1() (hd *Handler) {
 }
 
 // move cursor to the previous row, scroll up if necessary
+// Reverse Index
 func (p *Parser) handle_RI() (hd *Handler) {
 	hd = &Handler{name: "esc-ri", ch: p.ch}
 	hd.handle = func(emu *emulator) {
@@ -583,6 +584,7 @@ func (p *Parser) handle_RI() (hd *Handler) {
 }
 
 // move cursor to the next row, scroll down if necessary. move cursor to row head
+// Next Line
 func (p *Parser) handle_NEL() (hd *Handler) {
 	hd = &Handler{name: "esc-nel", ch: p.ch}
 	hd.handle = func(emu *emulator) {
@@ -740,13 +742,16 @@ func (p *Parser) processStream(str string, hds []*Handler) []*Handler {
 			graphemes := uniseg.NewGraphemes(str)
 			for graphemes.Next() {
 				input = graphemes.Runes()
-				// fmt.Printf("processStream: input=%q\n", input)
+
+				// p.logT.Printf("processStream: input=%q\n", input)
 				hd = p.processInput(input...)
 				if hd != nil {
 					hds = append(hds, hd)
 				}
 				_, to := graphemes.Positions()
-				if to == len(str)-1 {
+
+				// p.logT.Printf("processSTream: to=%d\n", to)
+				if to == len(str) {
 					end = true
 				}
 				if p.vtMode { // switch to vt100 mode

@@ -27,6 +27,7 @@ SOFTWARE.
 package terminal
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/rivo/uniseg"
@@ -170,7 +171,7 @@ func TestHandle_Graphemes(t *testing.T) {
 		name   string
 		raw    string // data stream with control sequences
 		hName  string
-		want   int    // handler size: star cols as print.
+		want   int    // handler size: start cols as print. it's also used as start column.
 		cols   []int  // expect cols for cell on screen.
 		result string // data stream without control sequences
 	}{
@@ -249,6 +250,95 @@ func TestHandle_Graphemes(t *testing.T) {
 				t.Errorf("%s:\t [row,cols]:[%2d,%2d] expect %q, got %q\n", v.name, rows, cols, string(chs), cell.contents)
 			}
 			j += 1
+		}
+	}
+}
+
+func TestHandle_Graphemes_Wrap(t *testing.T) {
+	tc := []struct {
+		name string
+		raw  string
+		y, x int
+		cols []int
+	}{
+		{
+			"plain english wrap",
+			"ap\u0308rish",
+			7, 78,
+			[]int{78, 79, 0, 1, 2, 3},
+		},
+		{
+			"chinese even wrap",
+			"@@四姑娘山",
+			8, 78,
+			[]int{78, 79, 0, 2, 4, 6},
+		},
+		{
+			"chinese odd wrap",
+			"#海螺沟",
+			9, 78,
+			[]int{78, 0, 2, 4, 6},
+		},
+		{
+			"insert wrap",
+			"#th#",
+			7, 77,
+			[]int{77, 78, 79, 0},
+		},
+	}
+
+	p := NewParser()
+	p.logTrace = true
+	emu := NewEmulator()
+	for _, v := range tc {
+		// p.logT.Println("A0")
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.raw, hds)
+
+		// p.logT.Println("A1")
+		if len(hds) == 0 {
+			t.Errorf("%s got zero handlers.", v.name)
+		}
+
+		// move to the start row/col
+		emu.framebuffer.DS.MoveRow(v.y, false)
+		emu.framebuffer.DS.MoveCol(v.x, false, false)
+
+		// enable insert mode for this test case
+		if strings.HasPrefix(v.name, "insert") {
+			emu.framebuffer.DS.InsertMode = true
+		}
+
+		// p.logT.Println("A2")
+		for _, hd := range hds {
+			hd.handle(emu)
+		}
+
+		// p.logT.Println("A3")
+		row1 := emu.framebuffer.GetRow(v.y)
+		row2 := emu.framebuffer.GetRow(v.y + 1)
+		p.logT.Printf("%s\n", row1.String())
+		p.logT.Printf("%s\n", row2.String())
+
+		graphemes := uniseg.NewGraphemes(v.raw)
+		rows := v.y
+		index := 0
+		for graphemes.Next() {
+			// the expected content
+			chs := graphemes.Runes()
+
+			// get the cell from framebuffer
+			cols := v.cols[index]
+			if cols == 0 { // wrap
+				rows += 1
+			}
+			cell := emu.framebuffer.GetCell(rows, cols)
+
+			if cell.contents != string(chs) {
+				t.Errorf("%s:\t [row,cols]:[%2d,%2d] expect %q, got %q\n", v.name, rows, cols, string(chs), cell.contents)
+			}
+
+			index += 1
 		}
 	}
 }
@@ -874,6 +964,96 @@ func TestHandle_ENQ_CAN_SUB_ESC(t *testing.T) {
 			}
 		} else {
 			t.Errorf("%s should get nil handler\n", v.name)
+		}
+	}
+}
+
+func TestHandle_DECALN_RIS(t *testing.T) {
+	tc := []struct {
+		name     string
+		seq      string
+		y, x     int
+		wantName string
+		want     string
+	}{
+		{"ESC DECLAN", "\x1B#8", 10, 10, "esc-decaln", "E"}, // the whole screen is filled with 'E'
+		{"ESC RIS   ", "\x1Bc", 10, 10, "esc-ris", ""},      // after reset, the screen is empty
+	}
+
+	p := NewParser()
+	p.logTrace = true // open the trace
+	var hd *Handler
+	emu := NewEmulator()
+	for _, v := range tc {
+		for _, ch := range v.seq {
+			hd = p.processInput(ch)
+		}
+
+		if hd != nil {
+			hd.handle(emu)
+
+			theCell := emu.framebuffer.GetCell(v.y, v.x)
+			if v.want != theCell.contents || hd.name != v.wantName {
+				t.Errorf("%s:\t [%s vs %s] expect (10,10) %q, got %q",
+					v.name, v.wantName, hd.name, v.want, theCell.contents)
+			}
+		} else {
+			t.Errorf("%s expect valid Handler, got nil", v.name)
+		}
+	}
+}
+
+func TestHandle_DECSC_DECRC(t *testing.T) {
+	tc := []struct {
+		name         string
+		seq          string
+		wantName     string
+		y, x         int
+		autoWrapMode bool
+		originMode   bool
+	}{
+		{"ESC DECSC", "\x1B7", "esc-decsc", 8, 8, false, true},
+		{"ESC DECRC", "\x1B8", "esc-decrc", 18, 18, true, false},
+	}
+
+	p := NewParser()
+	p.logTrace = true // open the trace
+	var hd *Handler
+	emu := NewEmulator()
+
+	for i, v := range tc {
+		// 1st round: set the inital position for cursor
+		// 2nd round: set the different position for cursor
+		emu.framebuffer.DS.MoveCol(v.x, false, false)
+		emu.framebuffer.DS.MoveRow(v.y, false)
+
+		// 1st round: set the mode value for emulator
+		// 2nd round: set the different mode value for emulator
+		emu.framebuffer.DS.AutoWrapMode = v.autoWrapMode
+		emu.framebuffer.DS.OriginMode = v.originMode
+
+		// save the cursor data
+		for _, ch := range v.seq {
+			hd = p.processInput(ch)
+		}
+
+		if hd != nil {
+			hd.handle(emu)
+			if hd.name != v.wantName {
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+			}
+		} else {
+			t.Errorf("%s got nil Handler.", v.name)
+		}
+
+		fb := emu.framebuffer
+		v = tc[0]
+		// we only validate the result after the second instruction.
+		if i == 1 && (fb.DS.GetCursorCol() != v.x || fb.DS.GetCursorRow() != v.y ||
+			fb.DS.AutoWrapMode != v.autoWrapMode || fb.DS.OriginMode != v.originMode) {
+			t.Errorf("%s %q expect (%d,%d,%t,%t), got (%d,%d,%t,%t)", v.name, v.seq,
+				v.y, v.x, v.autoWrapMode, v.originMode,
+				fb.DS.GetCursorRow(), fb.DS.GetCursorCol(), fb.DS.AutoWrapMode, fb.DS.OriginMode)
 		}
 	}
 }

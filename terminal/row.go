@@ -151,9 +151,16 @@ func (r Row) String() string {
 
 	fmt.Fprintf(&builder, "[%2d]{", r.gen)
 
+	skipNext := false // skipNext will jump over the next cell for wide cell
 	for _, v := range r.cells {
+		if skipNext {
+			skipNext = false
+			continue
+		}
+		if v.wide {
+			skipNext = true
+		}
 		v.PrintGrapheme(&builder)
-		// builder.WriteRune(v.PrintGrapheme(output *strings.Builder))
 	}
 	fmt.Fprintf(&builder, "}")
 

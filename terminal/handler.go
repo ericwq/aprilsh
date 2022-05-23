@@ -109,8 +109,9 @@ func hdl_graphemes(emu *emulator, chs ...rune) {
 		thisCell = nil
 	}
 
+	// fmt.Printf("print@(%d,%d) chs=%q\n", emu.framebuffer.DS.GetCursorRow(), emu.framebuffer.DS.GetCursorCol(), chs)
 	if thisCell == nil {
-		fb.GetCell(-1, -1)
+		thisCell = fb.GetCell(-1, -1)
 	}
 
 	// set the cell: content, wide and rendition
