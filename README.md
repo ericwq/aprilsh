@@ -24,7 +24,7 @@ The project name `Aprilsh` is derived from `April+sh`. I started this project in
 
 ## Status
 
-- Working on the terminal emulater.
+- Working on the terminal emulator.
 
 ## Architecture view
 
