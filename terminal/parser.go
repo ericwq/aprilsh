@@ -156,7 +156,7 @@ func (p *Parser) traceNormalInput() {
 
 // log the unhandled input and reset the state to normal
 func (p *Parser) unhandledInput() {
-	p.logE.Printf("Unhandled input:%q state=%s, inputOps=%d, nInputOps=%d, argBuf=%q\n",
+	p.logU.Printf("Unhandled input:%q state=%s, inputOps=%d, nInputOps=%d, argBuf=%q\n",
 		p.ch, strInputState[p.inputState], p.inputOps, p.nInputOps, p.argBuf.String())
 
 	p.setState(InputState_Normal)
@@ -190,6 +190,7 @@ func (p *Parser) collectNumericParameters(ch rune) (isBreak bool) {
 		p.inputOps[p.nInputOps-1] *= 10
 		p.inputOps[p.nInputOps-1] += int(ch - '0')
 		if p.inputOps[p.nInputOps-1] >= 65535 {
+			// TODO consider how to consume the extra rune
 			p.logE.Printf("the number is too big: > 65535, %d", p.inputOps[p.nInputOps-1])
 			p.perror = fmt.Errorf("the number is too big. %d", p.inputOps[p.nInputOps-1])
 			p.setState(InputState_Normal)

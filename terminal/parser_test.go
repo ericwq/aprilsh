@@ -851,13 +851,16 @@ func TestHandle_ENQ_CAN_SUB_ESC(t *testing.T) {
 		nInputOps int
 		state     int
 	}{
-		{"ENQ ", "\x05", 0, InputState_Normal},     // ENQ - Enquiry, ignore
-		{"CAN ", "\x1B\x18", 0, InputState_Normal}, // CAN and SUB interrupts ESC sequence
-		{"SUB ", "\x1B\x1A", 0, InputState_Normal}, // CAN and SUB interrupts ESC sequence
-		{"ESC ", "\x1B\x1B", 1, InputState_Escape}, // ESC restarts ESC sequence
+		{"ENQ ", "\x05", 0, InputState_Normal},         // ENQ - Enquiry, ignore
+		{"CAN ", "\x1B\x18", 0, InputState_Normal},     // CAN and SUB interrupts ESC sequence
+		{"SUB ", "\x1B\x1A", 0, InputState_Normal},     // CAN and SUB interrupts ESC sequence
+		{"ESC ", "\x1B\x1B", 1, InputState_Escape},     // ESC restarts ESC sequence
+		{"ESC ST ", "\x1B\\", 0, InputState_Normal},    // lone ST
+		{"ESC unknow ", "\x1Bx", 0, InputState_Normal}, // unhandled ESC sequence
 	}
 
 	p := NewParser()
+	p.logTrace = true // open the trace
 	var hd *Handler
 	for _, v := range tc {
 		for _, ch := range v.seq {
@@ -866,8 +869,8 @@ func TestHandle_ENQ_CAN_SUB_ESC(t *testing.T) {
 
 		if hd == nil {
 			if p.inputState != v.state || p.nInputOps != v.nInputOps {
-				t.Errorf("%s seq=%q expect state=%d, nInputOps=%d, got state=%d, nInputOps=%d\n",
-					v.name, v.seq, v.state, v.nInputOps, p.inputState, p.nInputOps)
+				t.Errorf("%s seq=%q expect state=%s, nInputOps=%d, got state=%s, nInputOps=%d\n",
+					v.name, v.seq, strInputState[v.state], v.nInputOps, strInputState[p.inputState], p.nInputOps)
 			}
 		} else {
 			t.Errorf("%s should get nil handler\n", v.name)
