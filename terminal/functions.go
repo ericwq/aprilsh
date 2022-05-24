@@ -88,15 +88,15 @@ func registerFunction(funType int, dispatchChar string, f emuFunc, wrap bool) {
 }
 
 func init() {
-	registerFunction(DISPATCH_CSI, "@", csi_ich, true) // ich
+	// registerFunction(DISPATCH_CSI, "@", csi_ich, true) // ich
 	// registerFunction(DISPATCH_CSI, "A", csi_cursor_move, true) // cuu
 	// registerFunction(DISPATCH_CSI, "B", csi_cursor_move, true) // cud
 	// registerFunction(DISPATCH_CSI, "C", csi_cursor_move, true) // cuf
 	// registerFunction(DISPATCH_CSI, "D", csi_cursor_move, true) // cub
-	registerFunction(DISPATCH_CSI, "G", csi_hpa, true) // cha
+	// registerFunction(DISPATCH_CSI, "G", csi_hpa, true) // cha
 	// registerFunction(DISPATCH_CSI, "H", csi_cursor_move, true) // cup
 	// registerFunction(DISPATCH_CSI, "I", csi_cxt, true)         // cht
-	registerFunction(DISPATCH_CSI, "J", csi_ed, true)  // ed
+	// registerFunction(DISPATCH_CSI, "J", csi_ed, true)  // ed
 	registerFunction(DISPATCH_CSI, "K", csi_el, true)  // el
 	registerFunction(DISPATCH_CSI, "L", csi_il, true)  // il
 	registerFunction(DISPATCH_CSI, "M", csi_dl, true)  // dl
@@ -105,7 +105,7 @@ func init() {
 	registerFunction(DISPATCH_CSI, "T", csi_sd, true)  // SD
 	registerFunction(DISPATCH_CSI, "X", csi_ech, true) // ech
 	// registerFunction(DISPATCH_CSI, "Z", csi_cxt, true)         // cbt
-	registerFunction(DISPATCH_CSI, "`", csi_hpa, true) // hpa
+	// registerFunction(DISPATCH_CSI, "`", csi_hpa, true) // hpa
 	registerFunction(DISPATCH_CSI, "c", csi_da, true)  // da request
 	registerFunction(DISPATCH_CSI, "d", csi_vpa, true) // vpa
 	// registerFunction(DISPATCH_CSI, "f", csi_cursor_move, true) // hvp
@@ -177,10 +177,10 @@ func csi_ech(fb *Framebuffer, d *Dispatcher) {
 
 // CSI Ps G  Cursor Character Absolute  [column] (default = [row,1]) (CHA).
 // CSI Ps `  Character Position Absolute  [column] (default = [row,1]) (HPA).
-func csi_hpa(fb *Framebuffer, d *Dispatcher) {
-	col := d.getParam(0, 1)
-	fb.DS.MoveCol(col-1, false, false)
-}
+// func csi_hpa(fb *Framebuffer, d *Dispatcher) {
+// 	col := d.getParam(0, 1)
+// 	fb.DS.MoveCol(col-1, false, false)
+// }
 
 // CSI Ps d  Line Position Absolute  [row] (default = [1,column]) (VPA).
 func csi_vpa(fb *Framebuffer, d *Dispatcher) {
@@ -198,13 +198,13 @@ func csi_dch(fb *Framebuffer, d *Dispatcher) {
 }
 
 // CSI Ps @  Insert Ps (Blank) Character(s) (default = 1) (ICH).
-func csi_ich(fb *Framebuffer, d *Dispatcher) {
-	cells := d.getParam(0, 1)
-
-	for i := 0; i < cells; i++ {
-		fb.InsertCell(fb.DS.GetCursorRow(), fb.DS.GetCursorCol())
-	}
-}
+// func csi_ich(fb *Framebuffer, d *Dispatcher) {
+// 	cells := d.getParam(0, 1)
+//
+// 	for i := 0; i < cells; i++ {
+// 		fb.InsertCell(fb.DS.GetCursorRow(), fb.DS.GetCursorCol())
+// 	}
+// }
 
 // CSI Ps M  Delete Ps Line(s) (default = 1) (DL).
 // delete N lines in cursor position
@@ -601,27 +601,27 @@ func csi_da(_ *Framebuffer, d *Dispatcher) {
 // * Ps = 1  ⇒  Erase Above.
 // * Ps = 2  ⇒  Erase All.
 // * Ps = 3  ⇒  Erase Saved Lines, xterm.
-func csi_ed(fb *Framebuffer, d *Dispatcher) {
-	switch d.getParam(0, 0) {
-	case 0:
-		// active position down to end of screen, inclusive
-		clearline(fb, -1, fb.DS.GetCursorCol(), fb.DS.GetWidth()-1)
-		for y := fb.DS.GetCursorRow() + 1; y < fb.DS.GetHeight(); y++ {
-			fb.ResetRow(fb.GetRow(y))
-		}
-	case 1:
-		// start of screen to active position, inclusive
-		for y := 0; y < fb.DS.GetCursorRow(); y++ {
-			fb.ResetRow(fb.GetRow(y))
-		}
-		clearline(fb, -1, 0, fb.DS.GetCursorCol())
-	case 2:
-		//  entire screen
-		for y := 0; y < fb.DS.GetHeight(); y++ {
-			fb.ResetRow(fb.GetRow(y))
-		}
-	}
-}
+// func csi_ed(fb *Framebuffer, d *Dispatcher) {
+// 	switch d.getParam(0, 0) {
+// 	case 0:
+// 		// active position down to end of screen, inclusive
+// 		clearline(fb, -1, fb.DS.GetCursorCol(), fb.DS.GetWidth()-1)
+// 		for y := fb.DS.GetCursorRow() + 1; y < fb.DS.GetHeight(); y++ {
+// 			fb.ResetRow(fb.GetRow(y))
+// 		}
+// 	case 1:
+// 		// start of screen to active position, inclusive
+// 		for y := 0; y < fb.DS.GetCursorRow(); y++ {
+// 			fb.ResetRow(fb.GetRow(y))
+// 		}
+// 		clearline(fb, -1, 0, fb.DS.GetCursorCol())
+// 	case 2:
+// 		//  entire screen
+// 		for y := 0; y < fb.DS.GetHeight(); y++ {
+// 			fb.ResetRow(fb.GetRow(y))
+// 		}
+// 	}
+// }
 
 // erase cell from the start to end at specified row
 func clearline(fb *Framebuffer, row int, start int, end int) {

@@ -470,6 +470,49 @@ func (p *Parser) handle_TBC() (hd *Handler) {
 	return hd
 }
 
+// inserts one or more space (SP) characters starting at the cursor position.
+func (p *Parser) handle_ICH() (hd *Handler) {
+	count := p.getPs(0, 1)
+
+	hd = &Handler{name: "csi-ich", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_ich(emu, count)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// Move the active position to the n-th character of the active line.
+// CHA—Cursor Horizontal Absolute
+func (p *Parser) handle_CHA_HPA() (hd *Handler) {
+	count := p.getPs(0, 1)
+
+	hd = &Handler{name: "csi-cha-hpa", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_cha_hpa(emu, count)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// This control function erases characters from part or all of the display.
+// When you erase complete lines, they become single-height, single-width
+// lines, with all visual character attributes cleared. ED works inside or
+// outside the scrolling margins.
+func (p *Parser) handle_ED() (hd *Handler) {
+	cmd := p.getPs(0, 0)
+
+	hd = &Handler{name: "csi-ed", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_ed(emu, cmd)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
 // ESC N Single Shift Select of G2 Character Set (SS2  is 0x8e), VT220.
 func (p *Parser) handle_SS2() (hd *Handler) {
 	hd = &Handler{name: "esc-ss2", ch: p.ch}
@@ -946,6 +989,8 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			break
 		}
 		switch ch {
+		case '\x1B':
+			p.setState(InputState_Normal)
 		case 'A':
 			hd = p.handle_CUU()
 		case 'B':
@@ -954,12 +999,20 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_CUF()
 		case 'D':
 			hd = p.handle_CUB()
+		case 'G':
+			hd = p.handle_CHA_HPA()
 		case 'H', 'f':
 			hd = p.handle_CUP()
 		case 'I':
 			hd = p.handle_CHT()
+		case 'J':
+			hd = p.handle_ED()
 		case 'Z':
 			hd = p.handle_CBT()
+		case '@':
+			hd = p.handle_ICH()
+		case '`':
+			hd = p.handle_CHA_HPA()
 		case 'g':
 			hd = p.handle_TBC()
 		}

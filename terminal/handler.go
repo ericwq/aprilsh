@@ -321,6 +321,50 @@ func hdl_csi_cbt(emu *emulator, count int) {
 	ht_n(emu.framebuffer, -count)
 }
 
+// CSI Ps @  Insert Ps (Blank) Character(s) (default = 1) (ICH).
+func hdl_csi_ich(emu *emulator, count int) {
+	fb := emu.framebuffer
+	for i := 0; i < count; i++ {
+		fb.InsertCell(fb.DS.GetCursorRow(), fb.DS.GetCursorCol())
+	}
+}
+
+// CSI Ps J Erase in Display (ED), VT100.
+// * Ps = 0  ⇒  Erase Below (default).
+// * Ps = 1  ⇒  Erase Above.
+// * Ps = 2  ⇒  Erase All.
+// * Ps = 3  ⇒  Erase Saved Lines, xterm.
+func hdl_csi_ed(emu *emulator, cmd int) {
+	fb := emu.framebuffer
+	switch cmd {
+	case 0:
+		// active position down to end of screen, inclusive
+		clearline(fb, -1, fb.DS.GetCursorCol(), fb.DS.GetWidth()-1)
+		for y := fb.DS.GetCursorRow() + 1; y < fb.DS.GetHeight(); y++ {
+			fb.ResetRow(fb.GetRow(y))
+		}
+	case 1:
+		// start of screen to active position, inclusive
+		for y := 0; y < fb.DS.GetCursorRow(); y++ {
+			fb.ResetRow(fb.GetRow(y))
+		}
+		clearline(fb, -1, 0, fb.DS.GetCursorCol())
+	case 2:
+		//  entire screen
+		for y := 0; y < fb.DS.GetHeight(); y++ {
+			fb.ResetRow(fb.GetRow(y))
+		}
+	}
+}
+
+// Move the active position to the n-th character of the active line.
+// CHA—Cursor Horizontal Absolute
+// CSI Ps G  Cursor Character Absolute  [column] (default = [row,1]) (CHA).
+// CSI Ps `  Character Position Absolute  [column] (default = [row,1]) (HPA).
+func hdl_csi_cha_hpa(emu *emulator, count int) {
+	emu.framebuffer.DS.MoveCol(count-1, false, false)
+}
+
 // CSI Ps A  Cursor Up Ps Times (default = 1) (CUU).
 func hdl_csi_cuu(emu *emulator, num int) {
 	emu.framebuffer.DS.MoveRow(-num, true)
