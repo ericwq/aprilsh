@@ -1172,3 +1172,70 @@ func inRange(startY, startX, endY, endX, y, x, width int) bool {
 	}
 	return false
 }
+
+func fillRowWith(row *Row, r rune) {
+	for i := range row.cells {
+		row.cells[i].contents = string(r)
+	}
+}
+
+func TestHandle_ICH(t *testing.T) {
+	tc := []struct {
+		name     string
+		wantName string
+		seq      string
+		startIdx int // start Y
+		blankIdx int // start X
+		blankCnt int // count number
+	}{
+		{"     left side", "csi-ich", "\x1B[2@", 7, 0, 2},
+		{"    right side", "csi-ich", "\x1B[3@", 8, 78, 2},
+		{"in the middle ", "csi-ich", "\x1B[10@", 9, 40, 10},
+	}
+	p := NewParser()
+	// the default size of emu is 80x40 [colxrow]
+	emu := NewEmulator()
+	for _, v := range tc {
+
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) == 0 {
+			t.Errorf("%s got zero handlers.", v.name)
+		}
+
+		// fill the row with content
+		row := emu.framebuffer.GetRow(v.startIdx)
+		fillRowWith(row, 'H')
+
+		// move cursor to the active row
+		emu.framebuffer.DS.MoveRow(v.startIdx, false)
+		emu.framebuffer.DS.MoveCol(v.blankIdx, false, false)
+
+		// call the handler
+		for _, hd := range hds {
+			hd.handle(emu)
+			if hd.name != v.wantName {
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+			}
+		}
+
+		// print the row
+		p.logT.Printf("%2d %s\n", v.startIdx, row.String())
+
+		// prepare the validate tool
+		isEmpty := func(col int) bool {
+			return inRange(v.startIdx, v.blankIdx, v.startIdx, v.blankIdx+v.blankCnt-1, v.startIdx, col, 80)
+		}
+
+		// validate the result
+		for col := 0; col < emu.framebuffer.DS.width; col++ {
+			cell := emu.framebuffer.GetCell(v.startIdx, col)
+			if isEmpty(col) && cell.contents == "H" {
+				t.Errorf("%s seq=%q cols=%d expect empty cell, got 'H' cell\n", v.name, v.seq, col)
+			} else if !isEmpty(col) && cell.contents == "" {
+				t.Errorf("%s seq=%q cols=%d expect 'H' cell, got empty cell\n", v.name, v.seq, col)
+			}
+		}
+	}
+}
