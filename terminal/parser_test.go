@@ -27,6 +27,7 @@ SOFTWARE.
 package terminal
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
@@ -225,7 +226,6 @@ func TestHandle_Graphemes(t *testing.T) {
 		emu.framebuffer.DS.MoveCol(v.want, false, false)
 
 		for _, hd := range hds {
-			// fmt.Printf("handle ... %#v\n", hd)
 			hd.handle(emu)
 		}
 		if v.want != len(hds) {
@@ -1056,4 +1056,119 @@ func TestHandle_DECSC_DECRC(t *testing.T) {
 				fb.DS.GetCursorRow(), fb.DS.GetCursorCol(), fb.DS.AutoWrapMode, fb.DS.OriginMode)
 		}
 	}
+}
+
+func TestHandle_DA1_DA2(t *testing.T) {
+	tc := []struct {
+		name     string
+		seq      string
+		want     string
+		wantName string
+	}{
+		{"Primary DA  ", "\x1B[c", fmt.Sprintf("\x1B[?%s", DEVICE_ID), "csi-da1"},
+		{"Secondary DA", "\x1B[>c", "\x1B[>64;0;0c", "csi-da2"},
+	}
+
+	p := NewParser()
+	p.logTrace = true // open the trace
+	var hd *Handler
+	emu := NewEmulator()
+
+	for _, v := range tc {
+		// reset the target content
+		emu.dispatcher.terminalToHost.Reset()
+
+		// parse the sequence
+		for _, ch := range v.seq {
+			hd = p.processInput(ch)
+		}
+
+		// execute the sequence handler
+		if hd != nil {
+			hd.handle(emu)
+			if hd.name != v.wantName {
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+			}
+		} else {
+			t.Errorf("%s got nil Handler.", v.name)
+		}
+
+		got := emu.dispatcher.terminalToHost.String()
+		if v.want != got {
+			t.Errorf("%s seq:%q expect %q, got %q\n", v.name, v.seq, v.want, got)
+		}
+	}
+}
+
+// use DECALN to fill the screen, then call ED to erase part of it.
+func TestHandle_ED(t *testing.T) {
+	tc := []struct {
+		name             string
+		wantName         string
+		activeY, activeX int
+		emptyY1, emptyX1 int
+		emptyY2, emptyX2 int
+		seq              string
+	}{
+		{"CSI 0 J", "csi-ed", 20, 10, 20, 10, 39, 79, "\x1B#8\x1B[J"},  // Erase Below (default).
+		{"CSI 0 J", "csi-ed", 35, 20, 35, 20, 39, 79, "\x1B#8\x1B[0J"}, // Ps = 0  ⇒  Erase Below (default).
+		{"CSI 1 J", "csi-ed", 12, 5, 0, 0, 12, 5, "\x1B#8\x1B[1J"},     // Ps = 1  ⇒  Erase Above.
+		{"CSI 2 J", "csi-ed", 42, 5, 0, 0, 39, 79, "\x1B#8\x1B[2J"},    // Ps = 2  ⇒  Erase All.
+	}
+
+	p := NewParser()
+	// the default size of emu is 80x40 [colxrow]
+	emu := NewEmulator()
+	for _, v := range tc {
+
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) == 0 {
+			t.Errorf("%s got zero handlers.", v.name)
+		}
+
+		// move cursor to the active row
+		emu.framebuffer.DS.MoveRow(v.activeY, false)
+		emu.framebuffer.DS.MoveCol(v.activeX, false, false)
+		for _, hd := range hds {
+			hd.handle(emu)
+		}
+
+		// prepare the validate tools
+		ds := emu.framebuffer.DS
+		isEmpty := func(row, col int) bool {
+			return inRange(v.emptyY1, v.emptyX1, v.emptyY2, v.emptyX2, row, col, 80)
+		}
+
+		// validate the whole screen.
+		for i := 0; i < ds.GetHeight(); i++ {
+			// print the row
+			row := emu.framebuffer.GetRow(i)
+			p.logT.Printf("%2d %s\n", i, row.String())
+
+			// validate the cell should be empty
+			for j := 0; j < ds.GetWidth(); j++ {
+				cell := emu.framebuffer.GetCell(i, j)
+				if isEmpty(i, j) && cell.contents == "E" {
+					t.Errorf("%s seq=%q expect empty cell at (%d,%d), got %q.\n", v.name, v.seq, i, j, cell.contents)
+				} else if !isEmpty(i, j) && cell.contents == "" {
+					t.Errorf("%s seq=%q expect 'E' cell at (%d,%d), got empty.\n", v.name, v.seq, i, j)
+				}
+			}
+		}
+	}
+}
+
+// if the y,x is in the range, return true, otherwise return false
+func inRange(startY, startX, endY, endX, y, x, width int) bool {
+	pStart := startY*width + startX
+	pEnd := endY*width + endX
+
+	p := y*width + x
+
+	if pStart <= p && p <= pEnd {
+		return true
+	}
+	return false
 }
