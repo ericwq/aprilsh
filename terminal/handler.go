@@ -32,7 +32,16 @@ import (
 	"github.com/mattn/go-runewidth"
 )
 
-// type handleFunc func(emu *emulator)
+/* 64 - VT420 family
+ *  1 - 132 columns
+ *  9 - National Replacement Character-sets
+ * 15 - DEC technical set
+ * 21 - horizontal scrolling
+ * 22 - color
+ */
+const (
+	DEVICE_ID = "64;1;9;15;21;22c"
+)
 
 // Handler is the parsing result. It can be used to perform control sequence
 // on emulator.
@@ -408,6 +417,52 @@ func hdl_csi_dch(emu *emulator, cells int) {
 // SU got the -lines
 func hdl_csi_su_sd(emu *emulator, lines int) {
 	emu.framebuffer.Scroll(lines)
+}
+
+// erase cell from the start to end at specified row
+func clearline(fb *Framebuffer, row int, start int, end int) {
+	for col := start; col <= end; col++ {
+		fb.ResetCell(fb.GetCell(row, col))
+	}
+}
+
+// CSI Ps X  Erase Ps Character(s) (default = 1) (ECH).
+func hdl_csi_ech(emu *emulator, num int) {
+	fb := emu.framebuffer
+
+	limit := fb.DS.GetCursorCol() + num - 1
+
+	if limit >= fb.DS.GetWidth() {
+		limit = fb.DS.GetWidth() - 1
+	}
+
+	clearline(fb, -1, fb.DS.GetCursorCol(), limit)
+}
+
+// CSI Ps c  Send Device Attributes (Primary DA).
+// CSI ? 6 2 ; Ps c  ("VT220")
+// DA response
+func hdl_csi_da1(emu *emulator) {
+	// mosh only reply "\x1B[?62c" plain vt220
+	da1Response := fmt.Sprintf("\x1B[?%s", DEVICE_ID)
+	emu.dispatcher.terminalToHost.WriteString(da1Response)
+}
+
+// CSI > Ps c Send Device Attributes (Secondary DA).
+// Ps = 0  or omitted ⇒  request the terminal's identification code.
+// CSI > Pp ; Pv ; Pc c
+// Pp = 1  ⇒  "VT220".
+// Pv is the firmware version.
+// Pc indicates the ROM cartridge registration number and is always zero.
+func hdl_csi_da2(emu *emulator) {
+	// mosh only reply "\033[>1;10;0c" plain vt220
+	da2Response := "\x1B[>64;0;0c" // VT520
+	emu.dispatcher.terminalToHost.WriteString(da2Response)
+}
+
+// CSI Ps d  Line Position Absolute  [row] (default = [1,column]) (VPA).
+func hdl_csi_vpa(emu *emulator, row int) {
+	emu.framebuffer.DS.MoveRow(row-1, false)
 }
 
 // Move the active position to the n-th character of the active line.

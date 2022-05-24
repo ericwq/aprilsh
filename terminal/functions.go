@@ -103,11 +103,11 @@ func init() {
 	// registerFunction(DISPATCH_CSI, "P", csi_dch, true) // dch
 	// registerFunction(DISPATCH_CSI, "S", csi_su, true)  // SU
 	// registerFunction(DISPATCH_CSI, "T", csi_sd, true)  // SD
-	registerFunction(DISPATCH_CSI, "X", csi_ech, true) // ech
+	// registerFunction(DISPATCH_CSI, "X", csi_ech, true) // ech
 	// registerFunction(DISPATCH_CSI, "Z", csi_cxt, true)         // cbt
 	// registerFunction(DISPATCH_CSI, "`", csi_hpa, true) // hpa
-	registerFunction(DISPATCH_CSI, "c", csi_da, true)  // da request
-	registerFunction(DISPATCH_CSI, "d", csi_vpa, true) // vpa
+	// registerFunction(DISPATCH_CSI, "c", csi_da, true)  // da request
+	// registerFunction(DISPATCH_CSI, "d", csi_vpa, true) // vpa
 	// registerFunction(DISPATCH_CSI, "f", csi_cursor_move, true) // hvp
 	// registerFunction(DISPATCH_CSI, "g", csi_tbc, true)         // tbc
 	registerFunction(DISPATCH_CSI, "h", csi_sm, false)      // sm
@@ -116,7 +116,7 @@ func init() {
 	registerFunction(DISPATCH_CSI, "n", csi_dsr, false)     // dsr
 	registerFunction(DISPATCH_CSI, "r", csi_decstbm, false) // decstbm
 	registerFunction(DISPATCH_CSI, "!p", csi_decstr, true)  // decstr
-	registerFunction(DISPATCH_CSI, ">c", csi_sda, true)     // sda request
+	// registerFunction(DISPATCH_CSI, ">c", csi_sda, true)     // sda request
 	registerFunction(DISPATCH_CSI, "?h", csi_decsm, false)  // decset
 	registerFunction(DISPATCH_CSI, "?l", csi_decrm, false)  // decrst
 
@@ -164,16 +164,16 @@ func csi_decstr(fb *Framebuffer, _ *Dispatcher) {
 // }
 
 // CSI Ps X  Erase Ps Character(s) (default = 1) (ECH).
-func csi_ech(fb *Framebuffer, d *Dispatcher) {
-	num := d.getParam(0, 1)
-	limit := fb.DS.GetCursorCol() + num - 1
-
-	if limit >= fb.DS.GetWidth() {
-		limit = fb.DS.GetWidth() - 1
-	}
-
-	clearline(fb, -1, fb.DS.GetCursorCol(), limit)
-}
+// func csi_ech(fb *Framebuffer, d *Dispatcher) {
+// 	num := d.getParam(0, 1)
+// 	limit := fb.DS.GetCursorCol() + num - 1
+//
+// 	if limit >= fb.DS.GetWidth() {
+// 		limit = fb.DS.GetWidth() - 1
+// 	}
+//
+// 	clearline(fb, -1, fb.DS.GetCursorCol(), limit)
+// }
 
 // CSI Ps G  Cursor Character Absolute  [column] (default = [row,1]) (CHA).
 // CSI Ps `  Character Position Absolute  [column] (default = [row,1]) (HPA).
@@ -183,10 +183,10 @@ func csi_ech(fb *Framebuffer, d *Dispatcher) {
 // }
 
 // CSI Ps d  Line Position Absolute  [row] (default = [1,column]) (VPA).
-func csi_vpa(fb *Framebuffer, d *Dispatcher) {
-	row := d.getParam(0, 1)
-	fb.DS.MoveRow(row-1, false)
-}
+// func csi_vpa(fb *Framebuffer, d *Dispatcher) {
+// 	row := d.getParam(0, 1)
+// 	fb.DS.MoveRow(row-1, false)
+// }
 
 // CSI Ps P  Delete Ps Character(s) (default = 1) (DCH).
 // func csi_dch(fb *Framebuffer, d *Dispatcher) {
@@ -555,20 +555,20 @@ func csi_decrm(fb *Framebuffer, d *Dispatcher) {
 
 // CSI > Ps c Send Device Attributes (Secondary DA).
 // Ps = 0  or omitted ⇒  request the terminal's identification code.
-// CSI  > Pp ; Pv ; Pc c
+// CSI > Pp ; Pv ; Pc c
 // Pp = 1  ⇒  "VT220".
 // Pv is the firmware version.
 // Pc indicates the ROM cartridge registration number and is always zero.
-func csi_sda(_ *Framebuffer, d *Dispatcher) {
-	d.terminalToHost.WriteString("\033[>1;10;0c") // plain vt220
-}
+// func csi_sda(_ *Framebuffer, d *Dispatcher) {
+// 	d.terminalToHost.WriteString("\033[>1;10;0c") // plain vt220
+// }
 
 // CSI Ps c  Send Device Attributes (Primary DA).
 // CSI ? 6 2 ; Ps c  ("VT220")
 // DA response
-func csi_da(_ *Framebuffer, d *Dispatcher) {
-	d.terminalToHost.WriteString("\033[?62c") // plain vt220
-}
+// func csi_da(_ *Framebuffer, d *Dispatcher) {
+// 	d.terminalToHost.WriteString("\033[?62c") // plain vt220
+// }
 
 // CSI Ps A  Cursor Up Ps Times (default = 1) (CUU).
 // CSI Ps B  Cursor Down Ps Times (default = 1) (CUD).
@@ -624,11 +624,11 @@ func csi_da(_ *Framebuffer, d *Dispatcher) {
 // }
 
 // erase cell from the start to end at specified row
-func clearline(fb *Framebuffer, row int, start int, end int) {
-	for col := start; col <= end; col++ {
-		fb.ResetCell(fb.GetCell(row, col))
-	}
-}
+// func clearline(fb *Framebuffer, row int, start int, end int) {
+// 	for col := start; col <= end; col++ {
+// 		fb.ResetCell(fb.GetCell(row, col))
+// 	}
+// }
 
 // CSI Ps K Erase in Line (EL), VT100.
 // * Ps = 0  ⇒  Erase to Right (default).

@@ -600,6 +600,63 @@ func (p *Parser) handle_SD() (hd *Handler) {
 	return hd
 }
 
+// This control function erases one or more characters, from the cursor
+// position to the right. ECH clears character attributes from erased
+// character positions. ECH works inside or outside the scrolling margins.
+func (p *Parser) handle_ECH() (hd *Handler) {
+	num := p.getPs(0, 1)
+
+	hd = &Handler{name: "csi-ech", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_ech(emu, num)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// In this DA exchange, the host asks for the terminal's architectural
+// class and basic attributes.
+//
+// The terminal responds by sending its architectural class and basic
+// attributes to the host. This response depends on the terminal's
+// current operating VT level.
+func (p *Parser) handle_DA1() (hd *Handler) {
+	hd = &Handler{name: "csi-da1", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_da1(emu)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// In this DA exchange, the host requests the terminal's identification
+// code, firmware version level, and hardware options.
+func (p *Parser) handle_DA2() (hd *Handler) {
+	hd = &Handler{name: "csi-da2", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_da2(emu)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// VPA causes the active position to be moved to the corresponding
+// horizontal position.
+func (p *Parser) handle_VPA() (hd *Handler) {
+	row := p.getPs(0, 1)
+
+	hd = &Handler{name: "csi-vpa", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_vpa(emu, row)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
 // ESC N Single Shift Select of G2 Character Set (SS2  is 0x8e), VT220.
 func (p *Parser) handle_SS2() (hd *Handler) {
 	hd = &Handler{name: "esc-ss2", ch: p.ch}
@@ -1106,14 +1163,32 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_SU()
 		case 'T':
 			hd = p.handle_SD()
+		case 'X':
+			hd = p.handle_ECH()
 		case 'Z':
 			hd = p.handle_CBT()
 		case '@':
 			hd = p.handle_ICH()
 		case '`':
 			hd = p.handle_CHA_HPA()
+		case 'c':
+			hd = p.handle_DA1()
+		case 'd':
+			hd = p.handle_VPA()
 		case 'g':
 			hd = p.handle_TBC()
+		case '>':
+			p.setState(InputState_CSI_GT)
+		}
+	case InputState_CSI_GT:
+		if p.collectNumericParameters(ch) {
+			break
+		}
+		switch ch {
+		case 'c':
+			hd = p.handle_DA2()
+		default:
+			p.unhandledInput()
 		}
 	case InputState_OSC:
 		// if p.collectNumericParameters(ch) {
