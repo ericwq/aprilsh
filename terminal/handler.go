@@ -357,6 +357,59 @@ func hdl_csi_ed(emu *emulator, cmd int) {
 	}
 }
 
+// CSI Ps K Erase in Line (EL), VT100.
+// * Ps = 0  ⇒  Erase to Right (default).
+// * Ps = 1  ⇒  Erase to Left.
+// * Ps = 2  ⇒  Erase All.
+func hdl_csi_el(emu *emulator, cmd int) {
+	fb := emu.framebuffer
+	switch cmd {
+	case 0:
+		clearline(fb, -1, fb.DS.GetCursorCol(), fb.DS.GetWidth()-1)
+	case 1:
+		clearline(fb, -1, 0, fb.DS.GetCursorCol())
+	case 2:
+		fb.ResetRow(fb.GetRow(-1))
+	}
+}
+
+// CSI Ps L  Insert Ps Line(s) (default = 1) (IL).
+// insert N lines in cursor position
+func hdl_csi_il(emu *emulator, lines int) {
+	fb := emu.framebuffer
+	fb.InsertLine(fb.DS.GetCursorRow(), lines)
+
+	// vt220 manual and Ecma-48 say to move to first column */
+	fb.DS.MoveCol(0, false, false)
+}
+
+// CSI Ps M  Delete Ps Line(s) (default = 1) (DL).
+// delete N lines in cursor position
+func hdl_csi_dl(emu *emulator, lines int) {
+	fb := emu.framebuffer
+
+	fb.DeleteLine(fb.DS.GetCursorRow(), lines)
+
+	// vt220 manual and Ecma-48 say to move to first column */
+	fb.DS.MoveCol(0, false, false)
+}
+
+// CSI Ps P  Delete Ps Character(s) (default = 1) (DCH).
+func hdl_csi_dch(emu *emulator, cells int) {
+	fb := emu.framebuffer
+
+	for i := 0; i < cells; i++ {
+		fb.DeleteCell(fb.DS.GetCursorRow(), fb.DS.GetCursorCol())
+	}
+}
+
+// CSI Ps S  Scroll up Ps lines (default = 1) (SU), VT420, ECMA-48.
+// CSI Ps T  Scroll down Ps lines (default = 1) (SD), VT420.
+// SU got the -lines
+func hdl_csi_su_sd(emu *emulator, lines int) {
+	emu.framebuffer.Scroll(lines)
+}
+
 // Move the active position to the n-th character of the active line.
 // CHA—Cursor Horizontal Absolute
 // CSI Ps G  Cursor Character Absolute  [column] (default = [row,1]) (CHA).

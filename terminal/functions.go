@@ -97,12 +97,12 @@ func init() {
 	// registerFunction(DISPATCH_CSI, "H", csi_cursor_move, true) // cup
 	// registerFunction(DISPATCH_CSI, "I", csi_cxt, true)         // cht
 	// registerFunction(DISPATCH_CSI, "J", csi_ed, true)  // ed
-	registerFunction(DISPATCH_CSI, "K", csi_el, true)  // el
-	registerFunction(DISPATCH_CSI, "L", csi_il, true)  // il
-	registerFunction(DISPATCH_CSI, "M", csi_dl, true)  // dl
-	registerFunction(DISPATCH_CSI, "P", csi_dch, true) // dch
-	registerFunction(DISPATCH_CSI, "S", csi_su, true)  // SU
-	registerFunction(DISPATCH_CSI, "T", csi_sd, true)  // SD
+	// registerFunction(DISPATCH_CSI, "K", csi_el, true)  // el
+	// registerFunction(DISPATCH_CSI, "L", csi_il, true)  // il
+	// registerFunction(DISPATCH_CSI, "M", csi_dl, true)  // dl
+	// registerFunction(DISPATCH_CSI, "P", csi_dch, true) // dch
+	// registerFunction(DISPATCH_CSI, "S", csi_su, true)  // SU
+	// registerFunction(DISPATCH_CSI, "T", csi_sd, true)  // SD
 	registerFunction(DISPATCH_CSI, "X", csi_ech, true) // ech
 	// registerFunction(DISPATCH_CSI, "Z", csi_cxt, true)         // cbt
 	// registerFunction(DISPATCH_CSI, "`", csi_hpa, true) // hpa
@@ -141,16 +141,16 @@ func init() {
 // CSI Ps S  Scroll up Ps lines (default = 1) (SU), VT420, ECMA-48.
 // TODO it seams mosh revert the SD and SU
 // follow the specification
-func csi_su(fb *Framebuffer, d *Dispatcher) {
-	fb.Scroll(d.getParam(0, 1))
-}
+// func csi_su(fb *Framebuffer, d *Dispatcher) {
+// 	fb.Scroll(d.getParam(0, 1))
+// }
 
 // CSI Ps T  Scroll down Ps lines (default = 1) (SD), VT420.
 // TODO it seams mosh revert the SD and SU
 // follow the specification
-func csi_sd(fb *Framebuffer, d *Dispatcher) {
-	fb.Scroll(-d.getParam(0, 1))
-}
+// func csi_sd(fb *Framebuffer, d *Dispatcher) {
+// 	fb.Scroll(-d.getParam(0, 1))
+// }
 
 // CSI ! p   Soft terminal reset (DECSTR), VT220 and up.
 func csi_decstr(fb *Framebuffer, _ *Dispatcher) {
@@ -189,13 +189,13 @@ func csi_vpa(fb *Framebuffer, d *Dispatcher) {
 }
 
 // CSI Ps P  Delete Ps Character(s) (default = 1) (DCH).
-func csi_dch(fb *Framebuffer, d *Dispatcher) {
-	cells := d.getParam(0, 1)
-
-	for i := 0; i < cells; i++ {
-		fb.DeleteCell(fb.DS.GetCursorRow(), fb.DS.GetCursorCol())
-	}
-}
+// func csi_dch(fb *Framebuffer, d *Dispatcher) {
+// 	cells := d.getParam(0, 1)
+//
+// 	for i := 0; i < cells; i++ {
+// 		fb.DeleteCell(fb.DS.GetCursorRow(), fb.DS.GetCursorCol())
+// 	}
+// }
 
 // CSI Ps @  Insert Ps (Blank) Character(s) (default = 1) (ICH).
 // func csi_ich(fb *Framebuffer, d *Dispatcher) {
@@ -208,25 +208,25 @@ func csi_dch(fb *Framebuffer, d *Dispatcher) {
 
 // CSI Ps M  Delete Ps Line(s) (default = 1) (DL).
 // delete N lines in cursor position
-func csi_dl(fb *Framebuffer, d *Dispatcher) {
-	lines := d.getParam(0, 1)
-
-	fb.DeleteLine(fb.DS.GetCursorRow(), lines)
-
-	// vt220 manual and Ecma-48 say to move to first column */
-	fb.DS.MoveCol(0, false, false)
-}
+// func csi_dl(fb *Framebuffer, d *Dispatcher) {
+// 	lines := d.getParam(0, 1)
+//
+// 	fb.DeleteLine(fb.DS.GetCursorRow(), lines)
+//
+// 	// vt220 manual and Ecma-48 say to move to first column */
+// 	fb.DS.MoveCol(0, false, false)
+// }
 
 // CSI Ps L  Insert Ps Line(s) (default = 1) (IL).
 // insert N lines in cursor position
-func csi_il(fb *Framebuffer, d *Dispatcher) {
-	lines := d.getParam(0, 1)
-
-	fb.InsertLine(fb.DS.GetCursorRow(), lines)
-
-	// vt220 manual and Ecma-48 say to move to first column */
-	fb.DS.MoveCol(0, false, false)
-}
+// func csi_il(fb *Framebuffer, d *Dispatcher) {
+// 	lines := d.getParam(0, 1)
+//
+// 	fb.InsertLine(fb.DS.GetCursorRow(), lines)
+//
+// 	// vt220 manual and Ecma-48 say to move to first column */
+// 	fb.DS.MoveCol(0, false, false)
+// }
 
 // CSI Ps n  Device Status Report (DSR).
 //   Ps = 5  ⇒  Status Report. Result ("OK") is CSI 0 n
@@ -634,13 +634,13 @@ func clearline(fb *Framebuffer, row int, start int, end int) {
 // * Ps = 0  ⇒  Erase to Right (default).
 // * Ps = 1  ⇒  Erase to Left.
 // * Ps = 2  ⇒  Erase All.
-func csi_el(fb *Framebuffer, d *Dispatcher) {
-	switch d.getParam(0, 0) {
-	case 0:
-		clearline(fb, -1, fb.DS.GetCursorCol(), fb.DS.GetWidth()-1)
-	case 1:
-		clearline(fb, -1, 0, fb.DS.GetCursorCol())
-	case 2:
-		fb.ResetRow(fb.GetRow(-1))
-	}
-}
+// func csi_el(fb *Framebuffer, d *Dispatcher) {
+// 	switch d.getParam(0, 0) {
+// 	case 0:
+// 		clearline(fb, -1, fb.DS.GetCursorCol(), fb.DS.GetWidth()-1)
+// 	case 1:
+// 		clearline(fb, -1, 0, fb.DS.GetCursorCol())
+// 	case 2:
+// 		fb.ResetRow(fb.GetRow(-1))
+// 	}
+// }

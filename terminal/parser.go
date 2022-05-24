@@ -513,6 +513,93 @@ func (p *Parser) handle_ED() (hd *Handler) {
 	return hd
 }
 
+// This control function erases characters on the line that has the cursor.
+// EL clears all character attributes from erased character positions. EL
+// works inside or outside the scrolling margins.
+func (p *Parser) handle_EL() (hd *Handler) {
+	cmd := p.getPs(0, 0)
+
+	hd = &Handler{name: "csi-el", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_el(emu, cmd)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// This control function inserts one or more blank lines, starting at the
+// cursor.
+func (p *Parser) handle_IL() (hd *Handler) {
+	lines := p.getPs(0, 1)
+
+	hd = &Handler{name: "csi-il", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_il(emu, lines)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// This control function deletes one or more lines in the scrolling region,
+// starting with the line that has the cursor.
+func (p *Parser) handle_DL() (hd *Handler) {
+	lines := p.getPs(0, 1)
+
+	hd = &Handler{name: "csi-dl", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_dl(emu, lines)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// This control function deletes one or more characters from the cursor
+// position to the right.
+func (p *Parser) handle_DCH() (hd *Handler) {
+	cells := p.getPs(0, 1)
+
+	hd = &Handler{name: "csi-dch", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_dch(emu, cells)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// This control function moves the user window down a specified number
+// of lines in page memory.
+// SU got the +lines
+func (p *Parser) handle_SU() (hd *Handler) {
+	lines := p.getPs(0, 1)
+
+	hd = &Handler{name: "csi-su-sd", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_su_sd(emu, lines)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// /This control function moves the user window up a specified number
+// of lines in page memory.
+// SD got the -lines
+func (p *Parser) handle_SD() (hd *Handler) {
+	lines := p.getPs(0, 1)
+
+	hd = &Handler{name: "csi-su-sd", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_su_sd(emu, -lines)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
 // ESC N Single Shift Select of G2 Character Set (SS2  is 0x8e), VT220.
 func (p *Parser) handle_SS2() (hd *Handler) {
 	hd = &Handler{name: "esc-ss2", ch: p.ch}
@@ -1007,6 +1094,18 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_CHT()
 		case 'J':
 			hd = p.handle_ED()
+		case 'K':
+			hd = p.handle_EL()
+		case 'L':
+			hd = p.handle_IL()
+		case 'M':
+			hd = p.handle_DL()
+		case 'P':
+			hd = p.handle_DCH()
+		case 'S':
+			hd = p.handle_SU()
+		case 'T':
+			hd = p.handle_SD()
 		case 'Z':
 			hd = p.handle_CBT()
 		case '@':
