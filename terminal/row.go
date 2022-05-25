@@ -149,7 +149,7 @@ func (r Row) String() string {
 
 	builder.WriteString("Row")
 
-	fmt.Fprintf(&builder, "[%2d]{", r.gen)
+	fmt.Fprintf(&builder, "[%3d]{", r.gen)
 
 	skipNext := false // skipNext will jump over the next cell for wide cell
 	for _, v := range r.cells {
