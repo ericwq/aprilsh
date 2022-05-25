@@ -291,11 +291,9 @@ func TestHandle_Graphemes_Wrap(t *testing.T) {
 	p.logTrace = true
 	emu := NewEmulator()
 	for _, v := range tc {
-		// p.logT.Println("A0")
 		hds := make([]*Handler, 0, 16)
 		hds = p.processStream(v.raw, hds)
 
-		// p.logT.Println("A1")
 		if len(hds) == 0 {
 			t.Errorf("%s got zero handlers.", v.name)
 		}
@@ -309,16 +307,14 @@ func TestHandle_Graphemes_Wrap(t *testing.T) {
 			emu.framebuffer.DS.InsertMode = true
 		}
 
-		// p.logT.Println("A2")
 		for _, hd := range hds {
 			hd.handle(emu)
 		}
 
-		// p.logT.Println("A3")
 		row1 := emu.framebuffer.GetRow(v.y)
 		row2 := emu.framebuffer.GetRow(v.y + 1)
-		p.logT.Printf("%s\n", row1.String())
-		p.logT.Printf("%s\n", row2.String())
+		t.Logf("%s\n", row1.String())
+		t.Logf("%s\n", row2.String())
 
 		graphemes := uniseg.NewGraphemes(v.raw)
 		rows := v.y
@@ -1153,7 +1149,7 @@ func TestHandle_ED_IL_DL(t *testing.T) {
 		for i := 0; i < ds.GetHeight(); i++ {
 			// print the row
 			row := emu.framebuffer.GetRow(i)
-			p.logT.Printf("%2d %s\n", i, row.String())
+			t.Logf("%2d %s\n", i, row.String())
 
 			// validate the cell should be empty
 			for j := 0; j < ds.GetWidth(); j++ {
@@ -1239,7 +1235,7 @@ func TestHandle_ICH_EL_DCH_ECH(t *testing.T) {
 		}
 
 		// print the row
-		p.logT.Printf("%2d %s\n", v.startY, row.String())
+		t.Logf("%2d %s\n", v.startY, row.String())
 
 		// prepare the validate tool
 		isEmpty := func(col int) bool {
@@ -1310,7 +1306,7 @@ func TestHandle_SU_SD(t *testing.T) {
 		for i := 0; i < ds.GetHeight(); i++ {
 			// print the row
 			row := emu.framebuffer.GetRow(i)
-			p.logT.Printf("%2d %s %s\n", i, row.String(), cellIn(i))
+			t.Logf("%2d %s %s\n", i, row.String(), cellIn(i))
 
 			// validate the cell should be empty
 			for j := 0; j < ds.GetWidth(); j++ {
@@ -1342,4 +1338,52 @@ func getCellAtRow(y1, y2 int, row int) string {
 
 	ch := rune(0x30 + row + gap)
 	return string(ch)
+}
+
+func TestHandle_VPA_CHA_HPA(t *testing.T) {
+	tc := []struct {
+		name           string
+		wantName       string
+		startX, startY int
+		wantX, wantY   int
+		seq            string
+	}{
+		{"VPA move cursor to row 3-1 ", "csi-vpa", 9, 8, 9, 2, "\x1B[3d"},
+		{"VPA move cursor to row 34-1", "csi-vpa", 8, 8, 8, 33, "\x1B[34d"},
+		{"SHA move cursor to col 1-1 ", "csi-cha-hpa", 7, 7, 0, 7, "\x1B[G"}, // default Ps is 1
+		{"SHA move cursor to col 79-1", "csi-cha-hpa", 6, 6, 78, 6, "\x1B[79G"},
+		{"HPA move cursor to col 9-1", "csi-cha-hpa", 5, 5, 8, 5, "\x1B[9`"},
+		{"HPA move cursor to col 49-1", "csi-cha-hpa", 4, 4, 48, 4, "\x1B[49`"},
+	}
+	p := NewParser()
+	// the default size of emu is 80x40 [colxrow]
+	emu := NewEmulator()
+	for _, v := range tc {
+
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) == 0 {
+			t.Errorf("%s got zero handlers.", v.name)
+		}
+
+		// move cursor to the active row
+		emu.framebuffer.DS.MoveRow(v.startY, false)
+		emu.framebuffer.DS.MoveCol(v.startX, false, false)
+
+		// handle the control sequence
+		for _, hd := range hds {
+			hd.handle(emu)
+			if hd.name != v.wantName {
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+			}
+		}
+
+		gotX := emu.framebuffer.DS.GetCursorCol()
+		gotY := emu.framebuffer.DS.GetCursorRow()
+
+		if v.wantX != gotX || v.wantY != gotY {
+			t.Errorf("%s seq=%q expect (%d,%d), got (%d,%d)\n", v.name, v.seq, v.wantY, v.wantX, gotY, gotX)
+		}
+	}
 }
