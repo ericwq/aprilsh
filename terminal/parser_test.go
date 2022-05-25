@@ -937,29 +937,47 @@ func TestHandle_ENQ_CAN_SUB_ESC(t *testing.T) {
 		nInputOps int
 		state     int
 	}{
-		{"ENQ ", "\x05", 0, InputState_Normal},         // ENQ - Enquiry, ignore
-		{"CAN ", "\x1B\x18", 0, InputState_Normal},     // CAN and SUB interrupts ESC sequence
-		{"SUB ", "\x1B\x1A", 0, InputState_Normal},     // CAN and SUB interrupts ESC sequence
-		{"ESC ", "\x1B\x1B", 1, InputState_Escape},     // ESC restarts ESC sequence
-		{"ESC ST ", "\x1B\\", 0, InputState_Normal},    // lone ST
-		{"ESC unknow ", "\x1Bx", 0, InputState_Normal}, // unhandled ESC sequence
+		{"ENQ ", "\x05", 0, InputState_Normal},                // ENQ - Enquiry, ignore
+		{"CAN ", "\x1B\x18", 0, InputState_Normal},            // CAN and SUB interrupts ESC sequence
+		{"SUB ", "\x1B\x1A", 0, InputState_Normal},            // CAN and SUB interrupts ESC sequence
+		{"ESC ", "\x1B\x1B", 1, InputState_Escape},            // ESC restarts ESC sequence
+		{"ESC ST ", "\x1B\\", 0, InputState_Normal},           // lone ST
+		{"ESC unknow ", "\x1Bx", 0, InputState_Normal},        // unhandled ESC sequence
+		{"ESC space unknow ", "\x1B x", 0, InputState_Normal}, // unhandled ESC ' 'x
+		{"ESC # unknow ", "\x1B#x", 0, InputState_Normal},     // unhandled ESC '#'x
+		{"CSI ESC ", "\x1B[\x1B", 0, InputState_Normal},       // CSI + ESC
+		{"CSI GT unknow ", "\x1B[>5x", 0, InputState_Normal},  // CSI + > x unhandled CSI >
+		{"overflow OSC string", "\x1B]", 0, InputState_Normal},
 	}
 
 	p := NewParser()
 	p.logTrace = true // open the trace
 	var hd *Handler
 	for _, v := range tc {
-		for _, ch := range v.seq {
+		raw := v.seq
+		// special logic for the overflow case.
+		if strings.HasPrefix(v.name, "overflow OSC") {
+			var b strings.Builder
+			b.WriteString(v.seq)        // the header
+			for i := 0; i < 1024; i++ { // just 4096
+				b.WriteString("blab")
+			}
+			b.WriteString("#") // 4096+1
+			raw = b.String()
+			t.Logf("%d\n", len(raw)-2)
+		}
+
+		for _, ch := range raw {
 			hd = p.processInput(ch)
 		}
 
 		if hd == nil {
 			if p.inputState != v.state || p.nInputOps != v.nInputOps {
-				t.Errorf("%s seq=%q expect state=%s, nInputOps=%d, got state=%s, nInputOps=%d\n",
+				t.Errorf("%s seq=%q expect state=%q, nInputOps=%d, got state=%q, nInputOps=%d\n",
 					v.name, v.seq, strInputState[v.state], v.nInputOps, strInputState[p.inputState], p.nInputOps)
 			}
 		} else {
-			t.Errorf("%s should get nil handler\n", v.name)
+			t.Errorf("%s should get nil handler, got %s\n", v.name, hd.name)
 		}
 	}
 }
