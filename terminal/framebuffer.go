@@ -142,7 +142,7 @@ func (fb *Framebuffer) ApplyRenditionsToCell(cell *Cell) {
 		// get cursor cell
 		cell = fb.GetCell(-1, -1)
 	}
-	cell.SetRenditions(fb.DS.GetRenditions())
+	cell.SetRenditions(*(fb.DS.GetRenditions()))
 }
 
 func (fb *Framebuffer) InsertLine(beforeRow int, count int) bool { // #BehaviorChange return bool

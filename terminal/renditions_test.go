@@ -144,10 +144,7 @@ func TestRenditionsSGR_RGBColor(t *testing.T) {
 		r.SetAttributes(c.attr, true)
 		got := r.SGR()
 		if c.want != got {
-			a := strings.ReplaceAll(c.want, "\033", "ESC")
-			b := strings.ReplaceAll(got, "\033", "ESC")
-			t.Logf("expect %s, got %s\n", a, b)
-
+			t.Logf("expect %q, got %q\n", c.want, got)
 			t.Errorf("expect %sThis%s, got %sThis%s\n", c.want, reset, got, reset)
 		}
 	}
@@ -173,10 +170,7 @@ func TestRenditionsSGR_256color(t *testing.T) {
 		r.SetAttributes(c.attr, true)
 		got := r.SGR()
 		if c.want != got {
-			a := strings.ReplaceAll(c.want, "\033", "ESC")
-			b := strings.ReplaceAll(got, "\033", "ESC")
-			t.Logf("expect %s, got %s\n", a, b)
-
+			t.Logf("expect %q, got %q\n", c.want, got)
 			t.Errorf("expect %sThis%s, got %sThis%s\n", c.want, reset, got, reset)
 		}
 	}

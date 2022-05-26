@@ -195,7 +195,7 @@ func (p *Parser) collectNumericParameters(ch rune) (isBreak bool) {
 			p.perror = fmt.Errorf("the number is too big. %d", p.inputOps[p.nInputOps-1])
 			p.setState(InputState_Normal)
 		}
-	} else if ch == ';' {
+	} else if ch == ';' || ch == ':' {
 		isBreak = true
 		if p.nInputOps < p.maxEscOps { // move to the next parameter
 			p.inputOps[p.nInputOps] = 0
@@ -651,6 +651,21 @@ func (p *Parser) handle_VPA() (hd *Handler) {
 	hd = &Handler{name: "csi-vpa", ch: p.ch}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_vpa(emu, row)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// select graphics rendition -- e.g., bold, blinking, etc.
+func (p *Parser) handle_SGR() (hd *Handler) {
+	// prepare the parameters for sgr
+	params := make([]int, p.nInputOps)
+	copy(params, p.inputOps)
+
+	hd = &Handler{name: "csi-sgr", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_sgr(emu, params)
 	}
 
 	p.setState(InputState_Normal)
@@ -1177,6 +1192,8 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_VPA()
 		case 'g':
 			hd = p.handle_TBC()
+		case 'm':
+			hd = p.handle_SGR()
 		case '>':
 			p.setState(InputState_CSI_GT)
 		}

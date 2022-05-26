@@ -500,6 +500,52 @@ func hdl_csi_cup(emu *emulator, row int, col int) {
 	emu.framebuffer.DS.MoveCol(col-1, false, false)
 }
 
+// CSI Pm m  Character Attributes (SGR).
+// select graphics rendition -- e.g., bold, blinking, etc.
+// support 8, 16, 256 color, RGB color.
+func hdl_csi_sgr(emu *emulator, params []int) {
+	fb := emu.framebuffer
+	for i := 0; i < len(params); i++ {
+		rendition := params[i]
+		// We need to special-case the handling of [34]8 ; 5 ; Ps,
+		// because Ps of 0 in that case does not mean reset to default, even
+		// though it means that otherwise (as usually renditions are applied
+		// in order).
+
+		if (rendition == 38 || rendition == 48) && len(params)-i >= 3 &&
+			params[i+1] == 5 {
+
+			if rendition == 38 {
+				fb.DS.SetForegroundColor(params[i+2])
+			} else {
+				fb.DS.SetBackgroundColor(params[i+2])
+			}
+
+			i += 2
+			continue
+		}
+		// True color support: ESC[ ... [34]8;2;<r>;<g>;<b> ... m
+		if (rendition == 38 || rendition == 48) && len(params)-i >= 5 &&
+			params[i+1] == 2 {
+
+			red := params[i+2]
+			green := params[i+3]
+			blue := params[i+4]
+
+			if rendition == 38 {
+				fb.DS.renditions.SetFgColor(uint32(red), uint32(green), uint32(blue))
+			} else {
+				fb.DS.renditions.SetBgColor(uint32(red), uint32(green), uint32(blue))
+			}
+
+			i += 4
+			continue
+		}
+
+		fb.DS.AddRenditions(uint32(rendition))
+	}
+}
+
 func hdl_osc_10(_ *emulator, cmd int, arg string) {
 	// TODO not finished
 	fmt.Printf("handle osc dynamic cmd=%d, arg=%s\n", cmd, arg)

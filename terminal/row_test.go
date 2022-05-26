@@ -347,7 +347,7 @@ func TestDrawStateNewDrawState(t *testing.T) {
 	}
 
 	r := Renditions{bgColor: 0}
-	if ds.GetRenditions() != r {
+	if *ds.GetRenditions() != r {
 		t.Errorf("renditions expect %v, got %v\n", r, ds.GetRenditions())
 	}
 
