@@ -28,6 +28,7 @@ package terminal
 
 import (
 	"fmt"
+	"io/ioutil"
 	"strings"
 	"testing"
 
@@ -124,6 +125,10 @@ func TestCollectNumericParameters(t *testing.T) {
 	}
 
 	p := NewParser()
+	p.logE.SetOutput(ioutil.Discard)
+	p.logU.SetOutput(ioutil.Discard)
+	p.logT.SetOutput(ioutil.Discard)
+
 	for _, v := range tc {
 		// prepare for the condition
 		p.reset()
@@ -210,47 +215,53 @@ func TestHandle_Graphemes(t *testing.T) {
 	}
 
 	p := NewParser()
+	p.logE.SetOutput(ioutil.Discard)
+	p.logU.SetOutput(ioutil.Discard)
+	p.logT.SetOutput(ioutil.Discard)
+
 	emu := NewEmulator()
 	for i, v := range tc {
-		hds := make([]*Handler, 0, 16)
-		hds = p.processStream(v.raw, hds)
+		t.Run(v.name, func(t *testing.T) {
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.raw, hds)
 
-		if len(hds) == 0 {
-			t.Errorf("%s got zero handlers.", v.name)
-		}
-
-		// move to the new row
-		emu.framebuffer.DS.MoveRow(i, false)
-
-		// move to the start col.
-		emu.framebuffer.DS.MoveCol(v.want, false, false)
-
-		for _, hd := range hds {
-			hd.handle(emu)
-		}
-		if v.want != len(hds) {
-			t.Errorf("%s expect %d handlers,got %d handlers\n", v.name, v.want, len(hds))
-		}
-		// else {
-		// 	t.Logf("%q end %d.\n", v.name, len(hds))
-		// }
-
-		graphemes := uniseg.NewGraphemes(v.result)
-		j := 0
-		for graphemes.Next() {
-			// the expected content
-			chs := graphemes.Runes()
-
-			// get the cell from framebuffer
-			rows := i
-			cols := v.cols[j]
-			cell := emu.framebuffer.GetCell(rows, cols)
-
-			if cell.contents != string(chs) {
-				t.Errorf("%s:\t [row,cols]:[%2d,%2d] expect %q, got %q\n", v.name, rows, cols, string(chs), cell.contents)
+			if len(hds) == 0 {
+				t.Errorf("%s got zero handlers.", v.name)
 			}
-			j += 1
-		}
+
+			// move to the new row
+			emu.framebuffer.DS.MoveRow(i, false)
+
+			// move to the start col.
+			emu.framebuffer.DS.MoveCol(v.want, false, false)
+
+			for _, hd := range hds {
+				hd.handle(emu)
+			}
+			if v.want != len(hds) {
+				t.Errorf("%s expect %d handlers,got %d handlers\n", v.name, v.want, len(hds))
+			}
+			// else {
+			// 	t.Logf("%q end %d.\n", v.name, len(hds))
+			// }
+
+			graphemes := uniseg.NewGraphemes(v.result)
+			j := 0
+			for graphemes.Next() {
+				// the expected content
+				chs := graphemes.Runes()
+
+				// get the cell from framebuffer
+				rows := i
+				cols := v.cols[j]
+				cell := emu.framebuffer.GetCell(rows, cols)
+
+				if cell.contents != string(chs) {
+					t.Errorf("%s:\t [row,cols]:[%2d,%2d] expect %q, got %q\n", v.name, rows, cols, string(chs), cell.contents)
+				}
+				j += 1
+			}
+		})
 	}
 }
 
@@ -288,54 +299,56 @@ func TestHandle_Graphemes_Wrap(t *testing.T) {
 	}
 
 	p := NewParser()
-	p.logTrace = true
+	// p.logTrace = true
 	emu := NewEmulator()
 	for _, v := range tc {
-		hds := make([]*Handler, 0, 16)
-		hds = p.processStream(v.raw, hds)
+		t.Run(v.name, func(t *testing.T) {
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.raw, hds)
 
-		if len(hds) == 0 {
-			t.Errorf("%s got zero handlers.", v.name)
-		}
-
-		// move to the start row/col
-		emu.framebuffer.DS.MoveRow(v.y, false)
-		emu.framebuffer.DS.MoveCol(v.x, false, false)
-
-		// enable insert mode for this test case
-		if strings.HasPrefix(v.name, "insert") {
-			emu.framebuffer.DS.InsertMode = true
-		}
-
-		for _, hd := range hds {
-			hd.handle(emu)
-		}
-
-		row1 := emu.framebuffer.GetRow(v.y)
-		row2 := emu.framebuffer.GetRow(v.y + 1)
-		t.Logf("%s\n", row1.String())
-		t.Logf("%s\n", row2.String())
-
-		graphemes := uniseg.NewGraphemes(v.raw)
-		rows := v.y
-		index := 0
-		for graphemes.Next() {
-			// the expected content
-			chs := graphemes.Runes()
-
-			// get the cell from framebuffer
-			cols := v.cols[index]
-			if cols == 0 { // wrap
-				rows += 1
-			}
-			cell := emu.framebuffer.GetCell(rows, cols)
-
-			if cell.contents != string(chs) {
-				t.Errorf("%s:\t [row,cols]:[%2d,%2d] expect %q, got %q\n", v.name, rows, cols, string(chs), cell.contents)
+			if len(hds) == 0 {
+				t.Errorf("%s got zero handlers.", v.name)
 			}
 
-			index += 1
-		}
+			// move to the start row/col
+			emu.framebuffer.DS.MoveRow(v.y, false)
+			emu.framebuffer.DS.MoveCol(v.x, false, false)
+
+			// enable insert mode for this test case
+			if strings.HasPrefix(v.name, "insert") {
+				emu.framebuffer.DS.InsertMode = true
+			}
+
+			for _, hd := range hds {
+				hd.handle(emu)
+			}
+
+			row1 := emu.framebuffer.GetRow(v.y)
+			row2 := emu.framebuffer.GetRow(v.y + 1)
+			t.Logf("%s\n", row1.String())
+			t.Logf("%s\n", row2.String())
+
+			graphemes := uniseg.NewGraphemes(v.raw)
+			rows := v.y
+			index := 0
+			for graphemes.Next() {
+				// the expected content
+				chs := graphemes.Runes()
+
+				// get the cell from framebuffer
+				cols := v.cols[index]
+				if cols == 0 { // wrap
+					rows += 1
+				}
+				cell := emu.framebuffer.GetCell(rows, cols)
+
+				if cell.contents != string(chs) {
+					t.Errorf("%s:\t [row,cols]:[%2d,%2d] expect %q, got %q\n", v.name, rows, cols, string(chs), cell.contents)
+				}
+
+				index += 1
+			}
+		})
 	}
 }
 
@@ -362,28 +375,33 @@ func TestHandle_ESC_DCS(t *testing.T) {
 	}
 
 	p := NewParser()
+	p.logE.SetOutput(ioutil.Discard)
+	p.logU.SetOutput(ioutil.Discard)
+	p.logT.SetOutput(ioutil.Discard)
+
 	emu := NewEmulator()
 	for _, v := range tc {
-
-		// set different value for compare
-		for i := 0; i < 4; i++ {
-			emu.charsetState.g[i] = nil
-		}
-		// parse the instruction
-		var hd *Handler
-		for _, ch := range v.seq {
-			hd = p.processInput(ch)
-		}
-		if hd != nil {
-			hd.handle(emu)
-
-			cs := emu.charsetState.g[v.wantIndex]
-			if v.wantName != hd.name || cs != v.wantCharset {
-				t.Errorf("%s: [%s vs %s] expect %p, got %p", v.name, hd.name, v.wantName, v.wantCharset, cs)
+		t.Run(v.name, func(t *testing.T) {
+			// set different value for compare
+			for i := 0; i < 4; i++ {
+				emu.charsetState.g[i] = nil
 			}
-		} else {
-			t.Errorf("%s got nil return\n", v.name)
-		}
+			// parse the instruction
+			var hd *Handler
+			for _, ch := range v.seq {
+				hd = p.processInput(ch)
+			}
+			if hd != nil {
+				hd.handle(emu)
+
+				cs := emu.charsetState.g[v.wantIndex]
+				if v.wantName != hd.name || cs != v.wantCharset {
+					t.Errorf("%s: [%s vs %s] expect %p, got %p", v.name, hd.name, v.wantName, v.wantCharset, cs)
+				}
+			} else {
+				t.Errorf("%s got nil return\n", v.name)
+			}
+		})
 	}
 }
 
@@ -401,6 +419,10 @@ func TestHandle_DOCS(t *testing.T) {
 	}
 
 	p := NewParser()
+	p.logE.SetOutput(ioutil.Discard)
+	p.logU.SetOutput(ioutil.Discard)
+	p.logT.SetOutput(ioutil.Discard)
+
 	emu := NewEmulator()
 	for _, v := range tc {
 
@@ -705,6 +727,11 @@ func TestHandle_OSC_0_1_2(t *testing.T) {
 
 func TestHandle_OSC_0_Overflow(t *testing.T) {
 	p := NewParser()
+
+	p.logE.SetOutput(ioutil.Discard)
+	p.logU.SetOutput(ioutil.Discard)
+	p.logT.SetOutput(ioutil.Discard)
+
 	// parameter Ps overflow: >120
 	seq := "\x1B]121;home\x07"
 	var hd *Handler
@@ -951,34 +978,38 @@ func TestHandle_ENQ_CAN_SUB_ESC(t *testing.T) {
 	}
 
 	p := NewParser()
-	p.logTrace = true // open the trace
+	p.logE.SetOutput(ioutil.Discard)
+	p.logU.SetOutput(ioutil.Discard)
+	// p.logTrace = true // open the trace
 	var hd *Handler
 	for _, v := range tc {
-		raw := v.seq
-		// special logic for the overflow case.
-		if strings.HasPrefix(v.name, "overflow OSC") {
-			var b strings.Builder
-			b.WriteString(v.seq)        // the header
-			for i := 0; i < 1024; i++ { // just 4096
-				b.WriteString("blab")
+		t.Run(v.name, func(t *testing.T) {
+			raw := v.seq
+			// special logic for the overflow case.
+			if strings.HasPrefix(v.name, "overflow OSC") {
+				var b strings.Builder
+				b.WriteString(v.seq)        // the header
+				for i := 0; i < 1024; i++ { // just 4096
+					b.WriteString("blab")
+				}
+				b.WriteString("#") // 4096+1
+				raw = b.String()
+				t.Logf("%d\n", len(raw)-2)
 			}
-			b.WriteString("#") // 4096+1
-			raw = b.String()
-			t.Logf("%d\n", len(raw)-2)
-		}
 
-		for _, ch := range raw {
-			hd = p.processInput(ch)
-		}
-
-		if hd == nil {
-			if p.inputState != v.state || p.nInputOps != v.nInputOps {
-				t.Errorf("%s seq=%q expect state=%q, nInputOps=%d, got state=%q, nInputOps=%d\n",
-					v.name, v.seq, strInputState[v.state], v.nInputOps, strInputState[p.inputState], p.nInputOps)
+			for _, ch := range raw {
+				hd = p.processInput(ch)
 			}
-		} else {
-			t.Errorf("%s should get nil handler, got %s\n", v.name, hd.name)
-		}
+
+			if hd == nil {
+				if p.inputState != v.state || p.nInputOps != v.nInputOps {
+					t.Errorf("%s seq=%q expect state=%q, nInputOps=%d, got state=%q, nInputOps=%d\n",
+						v.name, v.seq, strInputState[v.state], v.nInputOps, strInputState[p.inputState], p.nInputOps)
+				}
+			} else {
+				t.Errorf("%s should get nil handler, got %s\n", v.name, hd.name)
+			}
+		})
 	}
 }
 
@@ -995,7 +1026,7 @@ func TestHandle_DECALN_RIS(t *testing.T) {
 	}
 
 	p := NewParser()
-	p.logTrace = true // open the trace
+	// p.logTrace = true // open the trace
 	var hd *Handler
 	emu := NewEmulator()
 	for _, v := range tc {
@@ -1031,7 +1062,7 @@ func TestHandle_DECSC_DECRC(t *testing.T) {
 	}
 
 	p := NewParser()
-	p.logTrace = true // open the trace
+	// p.logTrace = true // open the trace
 	var hd *Handler
 	emu := NewEmulator()
 
@@ -1084,7 +1115,7 @@ func TestHandle_DA1_DA2(t *testing.T) {
 	}
 
 	p := NewParser()
-	p.logTrace = true // open the trace
+	// p.logTrace = true // open the trace
 	var hd *Handler
 	emu := NewEmulator()
 
