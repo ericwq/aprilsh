@@ -299,7 +299,7 @@ func TestHandle_Graphemes_Wrap(t *testing.T) {
 	}
 
 	p := NewParser()
-	// p.logTrace = true
+	p.logTrace = true
 	emu := NewEmulator()
 	for _, v := range tc {
 		t.Run(v.name, func(t *testing.T) {
@@ -378,6 +378,7 @@ func TestHandle_ESC_DCS(t *testing.T) {
 	p.logE.SetOutput(ioutil.Discard)
 	p.logU.SetOutput(ioutil.Discard)
 	p.logT.SetOutput(ioutil.Discard)
+	p.logTrace = true
 
 	emu := NewEmulator()
 	for _, v := range tc {
