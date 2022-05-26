@@ -500,6 +500,29 @@ func hdl_csi_cup(emu *emulator, row int, col int) {
 	emu.framebuffer.DS.MoveCol(col-1, false, false)
 }
 
+// CSI Ps n  Device Status Report (DSR).
+//   Ps = 5  ⇒  Status Report. Result ("OK") is CSI 0 n
+//   Ps = 6  ⇒  Report Cursor Position (CPR) [row;column]. Result is CSI r ; c R
+func hdl_csi_dsr(emu *emulator, cmd int) {
+	switch cmd {
+	case 5:
+		// device status report requested
+		emu.dispatcher.terminalToHost.WriteString("\x1B[0n") // device OK
+	case 6:
+		resp := ""
+		// report of active position requested
+		if emu.framebuffer.DS.OriginMode { // original mode
+			resp = fmt.Sprintf("\x1B[%d;%dR", emu.framebuffer.DS.GetCursorRow()+1,
+				emu.framebuffer.DS.GetCursorCol()+1)
+		} else { // scrolling region mode
+			resp = fmt.Sprintf("\x1B[%d;%dR", emu.framebuffer.DS.GetCursorRow()-emu.framebuffer.DS.GetScrollingRegionTopRow()+1,
+				emu.framebuffer.DS.GetCursorCol()+1)
+		}
+		emu.dispatcher.terminalToHost.WriteString(resp)
+	default:
+	}
+}
+
 // CSI Pm m  Character Attributes (SGR).
 // select graphics rendition -- e.g., bold, blinking, etc.
 // support 8, 16, 256 color, RGB color.

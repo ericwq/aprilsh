@@ -206,7 +206,7 @@ type DrawState struct {
 
 	// public fields
 	NextPrintWillWrap         bool
-	OriginMode                bool
+	OriginMode                bool // absolute and scrolling region
 	AutoWrapMode              bool
 	InsertMode                bool
 	CursorVisible             bool
@@ -381,7 +381,7 @@ func (ds DrawState) LimitBottom() int {
 func (ds *DrawState) SetForegroundColor(x int)   { ds.renditions.SetForegroundColor(uint32(x)) }
 func (ds *DrawState) SetBackgroundColor(x int)   { ds.renditions.SetBackgroundColor(uint32(x)) }
 func (ds *DrawState) AddRenditions(color uint32) { ds.renditions.SetRendition(color) }
-func (ds *DrawState) GetRenditions() *Renditions  { return &ds.renditions }
+func (ds *DrawState) GetRenditions() *Renditions { return &ds.renditions }
 func (ds DrawState) GetBackgroundRendition() int { return int(ds.renditions.bgColor) }
 
 func (ds *DrawState) SaveCursor() {

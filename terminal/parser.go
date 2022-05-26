@@ -672,6 +672,21 @@ func (p *Parser) handle_SGR() (hd *Handler) {
 	return hd
 }
 
+// Device Status Reports
+// Operating Status: https://www.vt100.net/docs/vt510-rm/DSR-OS.html
+// Cursor Position Report: https://www.vt100.net/docs/vt510-rm/DSR-CPR.html
+func (p *Parser) handle_DSR() (hd *Handler) {
+	cmd := p.getPs(0, 0)
+
+	hd = &Handler{name: "csi-dsr", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_dsr(emu, cmd)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
 // ESC N Single Shift Select of G2 Character Set (SS2  is 0x8e), VT220.
 func (p *Parser) handle_SS2() (hd *Handler) {
 	hd = &Handler{name: "esc-ss2", ch: p.ch}
@@ -1194,6 +1209,8 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_TBC()
 		case 'm':
 			hd = p.handle_SGR()
+		case 'n':
+			hd = p.handle_DSR()
 		case '>':
 			p.setState(InputState_CSI_GT)
 		}
