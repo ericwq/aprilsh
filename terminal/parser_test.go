@@ -628,18 +628,18 @@ func TestHandle_CUU_CUD_CUF_CUB_CUP(t *testing.T) {
 		wantY    int
 		seq      string
 	}{
-		{"CSI Ps;PsH", 10, 10, "cup", 13, 23, "\x1B[24;14H"},
-		{"CSI Ps;Psf", 10, 10, "cup", 41, 20, "\x1B[21;42f"},
-		{"CSI Ps A  ", 10, 20, "cuu", 10, 14, "\x1B[6A"},
-		{"CSI Ps B  ", 10, 10, "cud", 10, 13, "\x1B[3B"},
-		{"CSI Ps C  ", 10, 10, "cuf", 12, 10, "\x1B[2C"},
-		{"CSI Ps D  ", 20, 10, "cub", 12, 10, "\x1B[8D"},
-		{"BS        ", 12, 12, "cub", 11, 12, "\x08"},
-		{"CUB       ", 12, 12, "cub", 11, 12, "\x1B[1D"},
-		{"BS agin   ", 11, 12, "cub", 10, 12, "\x08"},
+		{"CSI Ps;PsH", 10, 10, "csi-cup", 13, 23, "\x1B[24;14H"},
+		{"CSI Ps;Psf", 10, 10, "csi-cup", 41, 20, "\x1B[21;42f"},
+		{"CSI Ps A  ", 10, 20, "csi-cuu", 10, 14, "\x1B[6A"},
+		{"CSI Ps B  ", 10, 10, "csi-cud", 10, 13, "\x1B[3B"},
+		{"CSI Ps C  ", 10, 10, "csi-cuf", 12, 10, "\x1B[2C"},
+		{"CSI Ps D  ", 20, 10, "csi-cub", 12, 10, "\x1B[8D"},
+		{"BS        ", 12, 12, "csi-cub", 11, 12, "\x08"},
+		{"CUB       ", 12, 12, "csi-cub", 11, 12, "\x1B[1D"},
+		{"BS agin   ", 11, 12, "csi-cub", 10, 12, "\x08"},
 	}
-	p := NewParser()
 
+	p := NewParser()
 	for _, v := range tc {
 		var hd *Handler
 		emu := NewEmulator()
@@ -1650,6 +1650,89 @@ func TestHandle_DSR6(t *testing.T) {
 			got := emu.dispatcher.terminalToHost.String()
 			if v.wantResp != got {
 				t.Errorf("%s seq:%q expect %q, got %q\n", v.name, v.seq, v.wantResp, got)
+			}
+		})
+	}
+}
+
+func TestHistory(t *testing.T) {
+	tc := []struct {
+		name       string
+		value      rune
+		reverseIdx int
+		want       rune
+	}{
+		{"add a", 'a', 0, 'a'},
+		{"add b", 'b', 0, 'b'},
+		{"add c", 'c', 0, 'c'},
+		{"add d", 'd', 0, 'd'},
+		{"add e", 'e', 0, 'e'},
+		{"add f", 'f', 1, 'e'},
+		{"add d", 'd', 1, 'f'},
+		{"add e", 'e', 1, 'd'},
+		{"add f", 'f', 4, 'e'},
+		{"add x", 'x', 6, '\x00'},
+	}
+
+	p := NewParser()
+	for _, v := range tc {
+		t.Run(v.name, func(t *testing.T) {
+			p.appendToHistory(v.value)
+			if v.want != p.getRuneAt(v.reverseIdx) {
+				t.Errorf("%s expect reverseIdx[%d] value=%q, got %q\n", v.name, v.reverseIdx, v.want, p.getRuneAt(v.reverseIdx))
+			}
+		})
+	}
+}
+
+func TestHandle_CSI_BS_FF_VT(t *testing.T) {
+	tc := []struct {
+		name           string
+		startX, startY int
+		seq            string
+		wantX, wantY   int
+	}{
+		{"CSI backspace number    ", 0, 0, "\x1B[23;12\bH", 0, 23 - 1},       // \b is executed first, just one handler left
+		{"CSI backspace semicolon ", 0, 0, "\x1B[23;\b;12H", 12 - 1, 23 - 1}, // \b is executed first, just one handler left
+		{"cursor down 1+3 rows VT ", 9, 8, "\x1B[3\vB", 9, 12},               // \v handler is handled first
+		{"cursor down 1+3 rows FF ", 9, 8, "\x1B[\f3B", 9, 12},               // \f handler is handled first
+		{"cursor up 2 rows and CR ", 8, 7, "\x1B[\r2A", 0, 5},                // \r handler is handled first
+		{"cursor up 3 rows and CR ", 6, 6, "\x1B[3\rA", 0, 3},                // \r handler is handled first
+		{"cursor forward 2cols +HT", 5, 3, "\x1B[2\tC", 10, 3},               // \t handler is handed first
+		{"cursor forward 1cols +HT", 2, 5, "\x1B[\t1C", 9, 5},                // \t handler is handled first
+	}
+
+	p := NewParser()
+	emu := NewEmulator()
+	for _, v := range tc {
+		t.Run(v.name, func(t *testing.T) {
+			// process control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) == 0 {
+				t.Errorf("%s got zero handlers.", v.name)
+			}
+
+			// reset the start position
+			emu.framebuffer.DS.MoveRow(v.startY, false)
+			emu.framebuffer.DS.MoveCol(v.startX, false, false)
+
+			// handle the control sequence
+			for _, hd := range hds {
+				hd.handle(emu)
+				// if hd.name != v.wantName {
+				// 	t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+				// }
+			}
+
+			// get the result
+			gotY := emu.framebuffer.DS.GetCursorRow()
+			gotX := emu.framebuffer.DS.GetCursorCol()
+
+			if gotX != v.wantX || gotY != v.wantY {
+				t.Errorf("%s:%q expect cursor position (%d,%d), got (%d,%d)\n",
+					v.name, v.seq, v.wantX, v.wantY, gotX, gotY)
 			}
 		})
 	}

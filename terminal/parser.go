@@ -27,6 +27,7 @@ SOFTWARE.
 package terminal
 
 import (
+	"container/list"
 	"fmt"
 	"log"
 	"os"
@@ -92,6 +93,9 @@ type Parser struct {
 	nInputOps int
 	maxEscOps int
 
+	// history, up to last 5 rune
+	history *list.List
+
 	// various indicators
 	readPos         int
 	lastEscBegin    int
@@ -131,6 +135,31 @@ func NewParser() *Parser {
 	return p
 }
 
+// add rune to the history cache, store max 5 recent runes.
+func (p *Parser) appendToHistory(r rune) {
+	p.history.PushBack(r)
+
+	if p.history.Len() > 5 {
+		p.history.Remove(p.history.Front())
+	}
+}
+
+// get the rune value in the specified reverse index
+// return 0 if error.
+func (p *Parser) getRuneAt(reverseIdx int) (r rune) {
+	if reverseIdx >= 5 {
+		return 0
+	}
+	x := p.history.Back()
+	for i := reverseIdx; i > 0; i-- {
+		x = x.Prev()
+	}
+	if v, ok := x.Value.(rune); ok {
+		r = v
+	}
+	return r
+}
+
 func (p *Parser) reset() {
 	p.inputState = InputState_Normal
 	p.ch = 0x00
@@ -142,6 +171,7 @@ func (p *Parser) reset() {
 	p.nInputOps = 0
 	p.argBuf.Reset()
 
+	p.history = list.New()
 	p.scsDst = 0x00
 	p.scsMod = 0x00
 }
@@ -247,7 +277,7 @@ func (p *Parser) handle_Graphemes() (hd *Handler) {
 func (p *Parser) handle_CUU() (hd *Handler) {
 	num := p.getPs(0, 1)
 
-	hd = &Handler{name: "cuu", ch: p.ch}
+	hd = &Handler{name: "csi-cuu", ch: p.ch}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_cuu(emu, num)
 	}
@@ -260,7 +290,7 @@ func (p *Parser) handle_CUU() (hd *Handler) {
 func (p *Parser) handle_CUD() (hd *Handler) {
 	num := p.getPs(0, 1)
 
-	hd = &Handler{name: "cud", ch: p.ch}
+	hd = &Handler{name: "csi-cud", ch: p.ch}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_cud(emu, num)
 	}
@@ -273,7 +303,7 @@ func (p *Parser) handle_CUD() (hd *Handler) {
 func (p *Parser) handle_CUF() (hd *Handler) {
 	num := p.getPs(0, 1)
 
-	hd = &Handler{name: "cuf", ch: p.ch}
+	hd = &Handler{name: "csi-cuf", ch: p.ch}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_cuf(emu, num)
 	}
@@ -286,7 +316,7 @@ func (p *Parser) handle_CUF() (hd *Handler) {
 func (p *Parser) handle_CUB() (hd *Handler) {
 	num := p.getPs(0, 1)
 
-	hd = &Handler{name: "cub", ch: p.ch}
+	hd = &Handler{name: "csi-cub", ch: p.ch}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_cub(emu, num)
 	}
@@ -300,7 +330,7 @@ func (p *Parser) handle_CUP() (hd *Handler) {
 	row := p.getPs(0, 1)
 	col := p.getPs(1, 1)
 
-	hd = &Handler{name: "cup", ch: p.ch}
+	hd = &Handler{name: "csi-cup", ch: p.ch}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_cup(emu, row, col)
 	}
@@ -369,6 +399,7 @@ func (p *Parser) handle_CR() (hd *Handler) {
 	hd.handle = func(emu *emulator) {
 		hdl_c0_cr(emu)
 	}
+	// Do NOT reset the state
 	return hd
 }
 
@@ -378,8 +409,7 @@ func (p *Parser) handle_IND() (hd *Handler) {
 	hd.handle = func(emu *emulator) {
 		hdl_c0_lf(emu)
 	}
-	// reset the state
-	p.setState(InputState_Normal)
+	// Do NOT reset the state
 	return hd
 }
 
@@ -390,6 +420,7 @@ func (p *Parser) handle_HT() (hd *Handler) {
 	hd.handle = func(emu *emulator) {
 		hdl_c0_ht(emu)
 	}
+	// Do NOT reset the state
 	return hd
 }
 
@@ -964,6 +995,7 @@ func (p *Parser) processStream(str string, hds []*Handler) []*Handler {
 				hd = p.processInput(input...)
 				if hd != nil {
 					hds = append(hds, hd)
+					// p.logT.Printf("add handler to list. name=%q, ch=%q", hd.name, hd.ch)
 				}
 				_, to := graphemes.Positions()
 
@@ -994,6 +1026,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 	} else if len(chs) == 1 { // it's either grapheme or control sequence
 		p.chs = chs
 		ch = chs[0]
+		p.appendToHistory(ch) // save the history, max 5 runes
 	} else { // empty chs
 		return hd
 	}
@@ -1004,7 +1037,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 	p.lastStopPos = 0
 	p.ch = ch
 
-	// fmt.Printf(" ch=%q,\t nInputOps=%d, inputOps=%2d\n", ch, p.nInputOps, p.inputOps)
+	// p.logT.Printf(" ch=%q,\t nInputOps=%d, inputOps=%2d\n", ch, p.nInputOps, p.inputOps)
 	switch p.inputState {
 	case InputState_Normal:
 		switch ch {
@@ -1071,6 +1104,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			p.setState(InputState_Select_Charset)
 		case 'D':
 			hd = p.handle_IND()
+			p.setState(InputState_Normal)
 		case 'M':
 			hd = p.handle_RI()
 		case 'E':
@@ -1213,6 +1247,26 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_DSR()
 		case '>':
 			p.setState(InputState_CSI_GT)
+		case '\x07': // BEL is ignored \a in c++
+		case '\x08': // BS is \b
+			// undo last character in CSI sequence:
+			if p.getRuneAt(1) == ';' {
+				p.nInputOps -= 1
+			} else {
+				p.inputOps[p.nInputOps-1] /= 10
+			}
+		case '\x09': // HT/TAB is \t
+			hd = p.handle_HT()
+			p.setState(InputState_CSI)
+		case '\x0D': // CR is \r
+			hd = p.handle_CR()
+			p.setState(InputState_CSI)
+		case '\x0C', '\x0B': // FF is \f, VT is \v
+			hd = p.handle_IND()
+			p.setState(InputState_CSI)
+			p.nInputOps = 1
+		default:
+			p.unhandledInput()
 		}
 	case InputState_CSI_GT:
 		if p.collectNumericParameters(ch) {

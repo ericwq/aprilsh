@@ -27,7 +27,7 @@ SOFTWARE.
 package terminal
 
 import (
-	"fmt"
+	// "fmt"
 	"sync"
 )
 
