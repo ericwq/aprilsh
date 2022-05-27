@@ -1264,7 +1264,6 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case '\x0C', '\x0B': // FF is \f, VT is \v
 			hd = p.handle_IND()
 			p.setState(InputState_CSI)
-			p.nInputOps = 1
 		default:
 			p.unhandledInput()
 		}

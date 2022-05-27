@@ -965,17 +965,18 @@ func TestHandle_ENQ_CAN_SUB_ESC(t *testing.T) {
 		nInputOps int
 		state     int
 	}{
-		{"ENQ ", "\x05", 0, InputState_Normal},                // ENQ - Enquiry, ignore
-		{"CAN ", "\x1B\x18", 0, InputState_Normal},            // CAN and SUB interrupts ESC sequence
-		{"SUB ", "\x1B\x1A", 0, InputState_Normal},            // CAN and SUB interrupts ESC sequence
-		{"ESC ", "\x1B\x1B", 1, InputState_Escape},            // ESC restarts ESC sequence
-		{"ESC ST ", "\x1B\\", 0, InputState_Normal},           // lone ST
-		{"ESC unknow ", "\x1Bx", 0, InputState_Normal},        // unhandled ESC sequence
-		{"ESC space unknow ", "\x1B x", 0, InputState_Normal}, // unhandled ESC ' 'x
-		{"ESC # unknow ", "\x1B#x", 0, InputState_Normal},     // unhandled ESC '#'x
-		{"CSI ESC ", "\x1B[\x1B", 0, InputState_Normal},       // CSI + ESC
-		{"CSI GT unknow ", "\x1B[>5x", 0, InputState_Normal},  // CSI + > x unhandled CSI >
-		{"overflow OSC string", "\x1B]", 0, InputState_Normal},
+		{"ENQ ", "\x05", 0, InputState_Normal},                 // ENQ - Enquiry, ignore
+		{"CAN ", "\x1B\x18", 0, InputState_Normal},             // CAN and SUB interrupts ESC sequence
+		{"SUB ", "\x1B\x1A", 0, InputState_Normal},             // CAN and SUB interrupts ESC sequence
+		{"ESC ", "\x1B\x1B", 1, InputState_Escape},             // ESC restarts ESC sequence
+		{"ESC ST ", "\x1B\\", 0, InputState_Normal},            // lone ST
+		{"ESC unknow ", "\x1Bx", 0, InputState_Normal},         // unhandled ESC sequence
+		{"ESC space unknow ", "\x1B x", 0, InputState_Normal},  // unhandled ESC ' 'x
+		{"ESC # unknow ", "\x1B#x", 0, InputState_Normal},      // unhandled ESC '#'x
+		{"CSI ESC ", "\x1B[\x1B", 0, InputState_Normal},        // CSI + ESC
+		{"CSI GT unknow ", "\x1B[>5x", 0, InputState_Normal},   // CSI + > x unhandled CSI >
+		{"overflow OSC string", "\x1B]", 0, InputState_Normal}, // special logic in the following test code, add 4K string
+		{"CSI unknow ", "\x1B[x", 0, InputState_Normal},        // unhandled CSI sequence
 	}
 
 	p := NewParser()
@@ -1685,7 +1686,7 @@ func TestHistory(t *testing.T) {
 	}
 }
 
-func TestHandle_CSI_BS_FF_VT(t *testing.T) {
+func TestHandle_CSI_BS_FF_VT_CR_TAB(t *testing.T) {
 	tc := []struct {
 		name           string
 		startX, startY int
