@@ -1104,7 +1104,7 @@ func TestHandle_DECSC_DECRC(t *testing.T) {
 	}
 }
 
-func TestHandle_DA1_DA2(t *testing.T) {
+func TestHandle_DA1_DA2_DSR(t *testing.T) {
 	tc := []struct {
 		name     string
 		seq      string
@@ -1113,6 +1113,7 @@ func TestHandle_DA1_DA2(t *testing.T) {
 	}{
 		{"Primary DA  ", "\x1B[c", fmt.Sprintf("\x1B[?%s", DEVICE_ID), "csi-da1"},
 		{"Secondary DA", "\x1B[>c", "\x1B[>64;0;0c", "csi-da2"},
+		{"Operating Status report ", "\x1B[5n", "\x1B[0n", "csi-dsr"},
 	}
 
 	p := NewParser()
@@ -1124,25 +1125,27 @@ func TestHandle_DA1_DA2(t *testing.T) {
 		// reset the target content
 		emu.dispatcher.terminalToHost.Reset()
 
-		// parse the sequence
-		for _, ch := range v.seq {
-			hd = p.processInput(ch)
-		}
-
-		// execute the sequence handler
-		if hd != nil {
-			hd.handle(emu)
-			if hd.name != v.wantName {
-				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+		t.Run(v.name, func(t *testing.T) {
+			// parse the sequence
+			for _, ch := range v.seq {
+				hd = p.processInput(ch)
 			}
-		} else {
-			t.Errorf("%s got nil Handler.", v.name)
-		}
 
-		got := emu.dispatcher.terminalToHost.String()
-		if v.want != got {
-			t.Errorf("%s seq:%q expect %q, got %q\n", v.name, v.seq, v.want, got)
-		}
+			// execute the sequence handler
+			if hd != nil {
+				hd.handle(emu)
+				if hd.name != v.wantName {
+					t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+				}
+			} else {
+				t.Errorf("%s got nil Handler.", v.name)
+			}
+
+			got := emu.dispatcher.terminalToHost.String()
+			if v.want != got {
+				t.Errorf("%s seq:%q expect %q, got %q\n", v.name, v.seq, v.want, got)
+			}
+		})
 	}
 }
 
@@ -1593,6 +1596,60 @@ func TestHandle_SGR_ANSIcolor(t *testing.T) {
 			}
 			if rend.attributes != v.attr {
 				t.Errorf("%s:\t %q expect atrribute %b, got %b", v.name, v.seq, v.attr, rend.attributes)
+			}
+		})
+	}
+}
+
+// TODO full test for scrolling mode
+func TestHandle_DSR6(t *testing.T) {
+	tc := []struct {
+		name           string
+		startX, startY int
+		originMode     bool
+		seq            string
+		wantResp       string
+		wantName       string
+	}{
+		{"Report Cursor Position originMode=true ", 8, 8, true, "\x1B[6n", "\x1B[9;9R", "csi-dsr"},
+		{"Report Cursor Position originMode=false", 9, 9, false, "\x1B[6n", "\x1B[10;10R", "csi-dsr"},
+	}
+
+	p := NewParser()
+	// p.logTrace = true // open the trace
+	var hd *Handler
+	emu := NewEmulator()
+
+	for _, v := range tc {
+		// reset the target content
+		emu.dispatcher.terminalToHost.Reset()
+
+		t.Run(v.name, func(t *testing.T) {
+			// parse the sequence
+			for _, ch := range v.seq {
+				hd = p.processInput(ch)
+			}
+
+			// set condition
+			emu.framebuffer.DS.OriginMode = v.originMode
+			// move to the start position
+			emu.framebuffer.DS.MoveRow(v.startY, false)
+			emu.framebuffer.DS.MoveCol(v.startX, false, false)
+
+			// execute the sequence handler
+			if hd != nil {
+				hd.handle(emu)
+				if hd.name != v.wantName {
+					t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+				}
+			} else {
+				t.Errorf("%s got nil Handler.", v.name)
+			}
+
+			// validate the response
+			got := emu.dispatcher.terminalToHost.String()
+			if v.wantResp != got {
+				t.Errorf("%s seq:%q expect %q, got %q\n", v.name, v.seq, v.wantResp, got)
 			}
 		})
 	}

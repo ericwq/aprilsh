@@ -113,7 +113,7 @@ func init() {
 	registerFunction(DISPATCH_CSI, "h", csi_sm, false)      // sm
 	registerFunction(DISPATCH_CSI, "l", csi_rm, false)      // rm
 	// registerFunction(DISPATCH_CSI, "m", csi_sgr, false)     // sgr
-	registerFunction(DISPATCH_CSI, "n", csi_dsr, false)     // dsr
+	// registerFunction(DISPATCH_CSI, "n", csi_dsr, false)     // dsr
 	registerFunction(DISPATCH_CSI, "r", csi_decstbm, false) // decstbm
 	registerFunction(DISPATCH_CSI, "!p", csi_decstr, true)  // decstr
 	// registerFunction(DISPATCH_CSI, ">c", csi_sda, true)     // sda request
@@ -231,19 +231,19 @@ func csi_decstr(fb *Framebuffer, _ *Dispatcher) {
 // CSI Ps n  Device Status Report (DSR).
 //   Ps = 5  ⇒  Status Report. Result ("OK") is CSI 0 n
 //   Ps = 6  ⇒  Report Cursor Position (CPR) [row;column]. Result is CSI r ; c R
-func csi_dsr(fb *Framebuffer, d *Dispatcher) {
-	param := d.getParam(0, 0)
-
-	switch param {
-	case 5:
-		// device status report requested
-		d.terminalToHost.WriteString("\033[0n")
-	case 6:
-		// report of active position requested
-		fmt.Fprintf(&d.terminalToHost, "\033[%d;%dR", fb.DS.GetCursorRow()+1, fb.DS.GetCursorCol()+1)
-	}
-}
-
+// func csi_dsr(fb *Framebuffer, d *Dispatcher) {
+// 	param := d.getParam(0, 0)
+//
+// 	switch param {
+// 	case 5:
+// 		// device status report requested
+// 		d.terminalToHost.WriteString("\033[0n")
+// 	case 6:
+// 		// report of active position requested
+// 		fmt.Fprintf(&d.terminalToHost, "\033[%d;%dR", fb.DS.GetCursorRow()+1, fb.DS.GetCursorCol()+1)
+// 	}
+// }
+//
 // ESC 7     Save Cursor (DECSC), VT100.
 // func esc_decsc(fb *Framebuffer, _ *Dispatcher) {
 // 	fb.DS.SaveCursor()
