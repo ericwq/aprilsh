@@ -604,3 +604,179 @@ func hdl_osc_0(emu *emulator, cmd int, arg string) {
 		}
 	}
 }
+
+// CSI Pm h  Set Mode (SM).
+// *  Ps = 2  ⇒  Keyboard Action Mode (KAM).
+// *  Ps = 4  ⇒  Insert Mode (IRM).
+// *  Ps = 1 2  ⇒  Send/receive (SRM).
+// *  Ps = 2 0  ⇒  Automatic Newline (LNM).
+func hdl_csi_sm(emu *emulator, params []int) {
+	for _, param := range params {
+		switch param {
+		case 2:
+			emu.framebuffer.DS.keyboardLocked = true
+		case 4:
+			emu.framebuffer.DS.InsertMode = true // zutty:insertMode
+		case 12:
+			emu.framebuffer.DS.localEcho = false
+		case 20:
+			emu.framebuffer.DS.autoNewlineMode = true
+		default:
+			emu.logW.Printf("CSI SM: Ignored bogus set mode %d.\n", param)
+		}
+	}
+}
+
+// CSI Pm l  Reset Mode (RM).
+// *  Ps = 2  ⇒  Keyboard Action Mode (KAM).
+// *  Ps = 4  ⇒  Replace Mode (IRM).
+// *  Ps = 1 2  ⇒  Send/receive (SRM).
+// *  Ps = 2 0  ⇒  Normal Linefeed (LNM).
+func hdl_csi_rm(emu *emulator, params []int) {
+	for _, param := range params {
+		switch param {
+		case 2:
+			emu.framebuffer.DS.keyboardLocked = false
+		case 4:
+			emu.framebuffer.DS.InsertMode = false // zutty:insertMode
+		case 12:
+			emu.framebuffer.DS.localEcho = true
+		case 20:
+			emu.framebuffer.DS.autoNewlineMode = false
+		default:
+			emu.logW.Printf("CSI RM: Ignored bogus reset mode %d.\n", param)
+		}
+	}
+}
+
+// CSI ? Pm h
+// DEC Private Mode Set (DECSET).
+func hdl_csi_decset(emu *emulator, params []int) {
+	for _, param := range params {
+		switch param {
+		case 1:
+			emu.framebuffer.DS.ApplicationModeCursorKeys = true // DECCKM Apllication zutty:cursorKeyMode
+		case 2:
+			emu.resetCharsetState()
+			emu.framebuffer.DS.compatLevel = CompatLevelVT400
+		case 3:
+			emu.logU.Println("TODO switchColMode(ColMode::C132) zutty vterm.icc line 1427") // mosh terminalfunctions.cc line 256
+		case 4:
+			emu.logT.Println("DECSCLM: Set smooth scroll")
+		case 5:
+			emu.framebuffer.DS.ReverseVideo = true // DECSCNM Reverse
+		case 6:
+			emu.framebuffer.DS.OriginMode = true // DECOM ScrollingRegion zutty:originMode
+		case 7:
+			emu.framebuffer.DS.AutoWrapMode = true // DECAWM zutty:autoWrapMode
+		case 8:
+			emu.logU.Println("DECARM: Set auto-repeat mode")
+		case 9:
+			emu.framebuffer.DS.mouseTrk.mode = MouseModeX10
+		case 12:
+			emu.logU.Println("Start blinking cursor")
+		case 25:
+			emu.framebuffer.DS.CursorVisible = true // DECTCEM zutty:showCursorMode
+		case 47:
+			emu.logU.Println("TODO switchScreenBufferMode(true) zutty vterm.icc line 1436")
+		case 67:
+			emu.logU.Println("TODO zutty vterm.icc line 1437")
+		case 69:
+			emu.logU.Println("TODO zutty vterm.icc line 1438")
+		case 1000:
+			emu.framebuffer.DS.mouseTrk.mode = MouseModeVT200
+		case 1001:
+			emu.logU.Println("Set VT200 Highlight Mouse mode")
+		case 1002:
+			emu.framebuffer.DS.mouseTrk.mode = MouseModeButtonEvent
+		case 1003:
+			emu.framebuffer.DS.mouseTrk.mode = MouseModeAnyEvent
+		case 1004:
+			// TODO replace MouseFocusEvent with mouseTrk.focusEventMode
+			emu.framebuffer.DS.MouseFocusEvent = true // xterm zutty:mouseTrk.focusEventMode
+			emu.framebuffer.DS.mouseTrk.focusEventMode = true
+		case 1005:
+			emu.framebuffer.DS.mouseTrk.enc = MouseEncUTF
+		case 1006:
+			emu.framebuffer.DS.mouseTrk.enc = MouseEncSGR
+		case 1007:
+			emu.framebuffer.DS.MouseAlternateScroll = true // xterm zutty:altScrollMode
+		case 1015:
+			emu.framebuffer.DS.mouseTrk.enc = MouseEncURXVT
+		case 1036, 1039:
+			emu.framebuffer.DS.altSendsEscape = true
+		case 1047:
+			emu.logU.Println("TODO switchScreenBufferMode(true) zutty vterm.icc line 1449")
+		case 1048:
+			hdl_esc_decsc(emu)
+		case 1049:
+			hdl_esc_decsc(emu)
+			emu.logU.Println("TODO switchScreenBufferMode(true) zutty vterm.icc line 1451")
+		case 2004:
+			emu.framebuffer.DS.BracketedPaste = true // xterm zutty:bracketedPasteMode
+		default:
+			emu.logU.Printf("set priv mode %d\n", param)
+		}
+	}
+}
+
+// CSI ? Pm l
+// DEC Private Mode Reset (DECRST).
+func hdl_csi_decrst(emu *emulator, params []int) {
+	for _, param := range params {
+		switch param {
+		case 1:
+			emu.framebuffer.DS.ApplicationModeCursorKeys = false // ANSI
+		case 2:
+			emu.resetCharsetState()
+			emu.framebuffer.DS.compatLevel = CompatLevelVT52
+		case 3:
+			emu.logU.Println("TODO switchColMode(ColMode::C80) zutty vterm.icc line 1476") // mosh terminalfunctions.cc line 256
+		case 4:
+			emu.logT.Println("DECSCLM: Set jump scroll")
+		case 5:
+			emu.framebuffer.DS.ReverseVideo = false // Normal
+		case 6:
+			emu.framebuffer.DS.OriginMode = false // Absolute
+		case 7:
+			emu.framebuffer.DS.AutoWrapMode = false
+		case 8:
+			emu.logU.Println("DECARM: Reset auto-repeat mode")
+		case 9, 1000, 1002, 1003:
+			emu.framebuffer.DS.mouseTrk.mode = MouseModeNone
+		case 12:
+			emu.logU.Println("Stop blinking cursor")
+		case 25:
+			emu.framebuffer.DS.CursorVisible = false
+		case 47:
+			emu.logU.Println("TODO switchScreenBufferMode(false) zutty vterm.icc line 1486")
+		case 67:
+			emu.logU.Println("TODO zutty vterm.icc line 1487")
+		case 69:
+			emu.logU.Println("TODO zutty vterm.icc line 1488")
+		case 1001:
+			emu.logU.Println("Reset VT200 Highlight Mouse mode")
+		case 1004:
+			// TODO replace MouseFocusEvent with mouseTrk.focusEventMode
+			emu.framebuffer.DS.MouseFocusEvent = false
+			emu.framebuffer.DS.mouseTrk.focusEventMode = false
+		case 1005, 1006, 1015:
+			emu.framebuffer.DS.mouseTrk.enc = MouseEncNone
+		case 1007:
+			emu.framebuffer.DS.MouseAlternateScroll = false
+		case 1036, 1039:
+			emu.framebuffer.DS.altSendsEscape = false
+		case 1047:
+			emu.logU.Println("TODO switchScreenBufferMode(false) zutty vterm.icc line 1495")
+		case 1048:
+			hdl_esc_decrc(emu)
+		case 1049:
+			emu.logU.Println("TODO switchScreenBufferMode(false) zutty vterm.icc line 1497")
+			hdl_esc_decrc(emu)
+		case 2004:
+			emu.framebuffer.DS.BracketedPaste = false
+		default:
+			emu.logU.Printf("reset priv mode %d\n", param)
+		}
+	}
+}

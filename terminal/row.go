@@ -174,20 +174,6 @@ type SavedCursor struct {
 	originMode           bool
 }
 
-const (
-	MOUSE_REPORTING_NONE          = 0
-	MOUSE_REPORTING_X10           = 9
-	MOUSE_REPORTING_VT220         = 1000
-	MOUSE_REPORTING_VT220_HILIGHT = 1001
-	MOUSE_REPORTING_BTN_EVENT     = 1002
-	MOUSE_REPORTING_ANY_EVENT     = 1003
-
-	MOUSE_ENCODING_DEFAULT = 0
-	MOUSE_ENCODING_UTF8    = 1005
-	MOUSE_ENCODING_SGR     = 1006
-	MOUSE_ENCODING_URXVT   = 1015
-)
-
 type DrawState struct {
 	width            int
 	height           int
@@ -205,18 +191,77 @@ type DrawState struct {
 	save                     SavedCursor
 
 	// public fields
-	NextPrintWillWrap         bool
-	OriginMode                bool // absolute and scrolling region
-	AutoWrapMode              bool
-	InsertMode                bool
-	CursorVisible             bool
-	ReverseVideo              bool
-	BracketedPaste            bool
-	MouseReportingMode        int
-	MouseFocusEvent           bool
-	MouseAlternateScroll      bool
-	MouseEncodingMode         int
-	ApplicationModeCursorKeys bool
+	NextPrintWillWrap bool
+
+	// DEC private mode
+	OriginMode                bool // two possiible value: ScrollingRegion(true), Absolute(false)
+	AutoWrapMode              bool // true/false
+	CursorVisible             bool // true/false
+	ReverseVideo              bool // two possible value: Reverse(true), Normal(false)
+	BracketedPaste            bool // true/false
+	MouseReportingMode        int  // replace it with MouseTrackingMode
+	MouseFocusEvent           bool // replace it with MouseTrackingState.focusEventMode
+	MouseAlternateScroll      bool // rename to altScrollMode
+	MouseEncodingMode         int  // replace it with MouseTrackingEnc
+	ApplicationModeCursorKeys bool // =cursorKeyMode two possible value : Application(true), ANSI(false)
+	mouseTrk                  MouseTrackingState
+	altSendsEscape            bool
+
+	// ANSI mode
+	keyboardLocked  bool
+	InsertMode      bool // true/false
+	localEcho       bool
+	autoNewlineMode bool
+
+	//
+	compatLevel CompatibilityLevel
+}
+
+type (
+	MouseTrackingMode  uint
+	MouseTrackingEnc   uint
+	CompatibilityLevel uint
+	CursorKeyMode      uint
+	KeypadMode         uint
+)
+
+const (
+	MouseModeNone MouseTrackingMode = iota
+	MouseModeX10
+	MouseModeVT200
+	MouseModeVT200Highlight
+	MouseModeButtonEvent
+	MouseModeAnyEvent
+	MouseEncNone MouseTrackingEnc = iota
+	MouseEncUTF
+	MouseEncSGR
+	MouseEncURXVT
+	CompatLevelVT52 CompatibilityLevel = iota
+	CompatLevelVT100
+	CompatLevelVT400
+	KeypadNormal KeypadMode = iota
+	KeypadApplication
+)
+
+// TODO replace the following const with the above one
+const (
+	MOUSE_REPORTING_NONE          = 0
+	MOUSE_REPORTING_X10           = 9
+	MOUSE_REPORTING_VT220         = 1000
+	MOUSE_REPORTING_VT220_HILIGHT = 1001
+	MOUSE_REPORTING_BTN_EVENT     = 1002
+	MOUSE_REPORTING_ANY_EVENT     = 1003
+
+	MOUSE_ENCODING_DEFAULT = 0
+	MOUSE_ENCODING_UTF8    = 1005
+	MOUSE_ENCODING_SGR     = 1006
+	MOUSE_ENCODING_URXVT   = 1015
+)
+
+type MouseTrackingState struct {
+	mode           MouseTrackingMode
+	enc            MouseTrackingEnc
+	focusEventMode bool
 }
 
 func NewDrawState(width, height int) *DrawState {
@@ -231,6 +276,7 @@ func NewDrawState(width, height int) *DrawState {
 	ds.save = SavedCursor{autoWrapMode: true}
 	ds.AutoWrapMode = true
 	ds.CursorVisible = true
+
 	ds.MouseReportingMode = MOUSE_REPORTING_NONE
 	ds.MouseEncodingMode = MOUSE_ENCODING_DEFAULT
 

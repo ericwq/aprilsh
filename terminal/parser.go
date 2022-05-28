@@ -959,6 +959,68 @@ func (p *Parser) handle_ESC_DCS() (hd *Handler) {
 	return hd
 }
 
+// Set Mode
+func (p *Parser) handle_SM() (hd *Handler) {
+	// prepare the parameters
+	params := make([]int, p.nInputOps)
+	copy(params, p.inputOps)
+
+	hd = &Handler{name: "csi-sm", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_sm(emu, params)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// Reset Mode
+func (p *Parser) handle_RM() (hd *Handler) {
+	// prepare the parameters
+	params := make([]int, p.nInputOps)
+	copy(params, p.inputOps)
+
+	hd = &Handler{name: "csi-rm", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_rm(emu, params)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// Set Mode (private)
+// csi_privSM
+func (p *Parser) handle_DECSET() (hd *Handler) {
+	// prepare the parameters
+	params := make([]int, p.nInputOps)
+	copy(params, p.inputOps)
+
+	hd = &Handler{name: "csi-decset", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_decset(emu, params)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// Reset Mode (private)
+// csi_privRM
+func (p *Parser) handle_DECRST() (hd *Handler) {
+	// prepare the parameters
+	params := make([]int, p.nInputOps)
+	copy(params, p.inputOps)
+
+	hd = &Handler{name: "csi-decrst", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_decrst(emu, params)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
 // process data stream from outside. for VT mode, character set can be changed
 // according to control sequences. for UTF-8 mode, no need to change character set.
 // the result is a *Handler list. waiting to be executed later.
@@ -1241,10 +1303,16 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_VPA()
 		case 'g':
 			hd = p.handle_TBC()
+		case 'h':
+			hd = p.handle_SM()
+		case 'l':
+			hd = p.handle_RM()
 		case 'm':
 			hd = p.handle_SGR()
 		case 'n':
 			hd = p.handle_DSR()
+		case '?':
+			p.setState(InputState_CSI_Priv)
 		case '>':
 			p.setState(InputState_CSI_GT)
 		case '\x07': // BEL is ignored \a in c++
@@ -1274,6 +1342,20 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		switch ch {
 		case 'c':
 			hd = p.handle_DA2()
+		default:
+			p.unhandledInput()
+		}
+	case InputState_CSI_Priv:
+		if p.collectNumericParameters(ch) {
+			break
+		}
+		switch ch {
+		case '\x1B':
+			p.setState(InputState_Normal)
+		case 'h':
+			hd = p.handle_DECSET() // csi-privSM
+		case 'l':
+			hd = p.handle_DECRST() // csi_privRM
 		default:
 			p.unhandledInput()
 		}

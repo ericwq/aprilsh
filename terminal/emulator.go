@@ -26,6 +26,11 @@ SOFTWARE.
 
 package terminal
 
+import (
+	"log"
+	"os"
+)
+
 const (
 	DISPATCH_ESCAPE = iota + 1
 	DISPATCH_CSI
@@ -193,6 +198,12 @@ type emulator struct {
 	dispatcher   Dispatcher
 	framebuffer  *Framebuffer
 	charsetState CharsetState
+
+	// logger
+	logE *log.Logger
+	logT *log.Logger // trace
+	logU *log.Logger
+	logW *log.Logger
 }
 
 func NewEmulator() *emulator {
@@ -201,6 +212,12 @@ func NewEmulator() *emulator {
 
 	// defalult size 80x40
 	emu.framebuffer = NewFramebuffer(80, 40)
+
+	// init logger
+	emu.logT = log.New(os.Stderr, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	emu.logE = log.New(os.Stderr, "ERRO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	emu.logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	emu.logU = log.New(os.Stderr, "(Uimplemented): ", log.Ldate|log.Ltime|log.Lshortfile)
 	return emu
 }
 
