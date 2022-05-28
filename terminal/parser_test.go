@@ -29,6 +29,7 @@ package terminal
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"strings"
 	"testing"
 
@@ -1734,6 +1735,129 @@ func TestHandle_CSI_BS_FF_VT_CR_TAB(t *testing.T) {
 			if gotX != v.wantX || gotY != v.wantY {
 				t.Errorf("%s:%q expect cursor position (%d,%d), got (%d,%d)\n",
 					v.name, v.seq, v.wantX, v.wantY, gotX, gotY)
+			}
+		})
+	}
+}
+
+type ANSImode uint
+
+const (
+	t_keyboardLocked ANSImode = iota
+	t_InsertMode
+	t_localEcho
+	t_autoNewlineMode
+)
+
+func getANSImode(ds *DrawState, which ANSImode) bool {
+	switch which {
+	case t_keyboardLocked:
+		return ds.keyboardLocked
+	case t_InsertMode:
+		return ds.InsertMode
+	case t_localEcho:
+		return ds.localEcho
+	case t_autoNewlineMode:
+		return ds.autoNewlineMode
+	}
+	return false
+}
+
+func resetANSImode(ds *DrawState, which ANSImode, value bool) {
+	switch which {
+	case t_keyboardLocked:
+		ds.keyboardLocked = value
+	case t_InsertMode:
+		ds.InsertMode = value
+	case t_localEcho:
+		ds.localEcho = value
+	case t_autoNewlineMode:
+		ds.autoNewlineMode = value
+	}
+}
+
+func TestHandle_SM_RM(t *testing.T) {
+	tc := []struct {
+		name     string
+		seq      string
+		which    ANSImode
+		wantName string
+		want     bool
+	}{
+		{"SM: keyboardLocked ", "\x1B[2h", t_keyboardLocked, "csi-sm", true},
+		{"SM: InsertMode     ", "\x1B[4h", t_InsertMode, "csi-sm", true},
+		{"SM: localEcho      ", "\x1B[12h", t_localEcho, "csi-sm", false},
+		{"SM: autoNewlineMode", "\x1B[20h", t_autoNewlineMode, "csi-sm", true},
+		{"RM: keyboardLocked ", "\x1B[2l", t_keyboardLocked, "csi-rm", false},
+		{"RM: InsertMode     ", "\x1B[4l", t_InsertMode, "csi-rm", false},
+		{"RM: localEcho      ", "\x1B[12l", t_localEcho, "csi-rm", true},
+		{"RM: autoNewlineMode", "\x1B[20l", t_autoNewlineMode, "csi-rm", false},
+	}
+
+	p := NewParser()
+	emu := NewEmulator()
+
+	for _, v := range tc {
+		t.Run(v.name, func(t *testing.T) {
+			// process control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) == 0 {
+				t.Errorf("%s got zero handlers.", v.name)
+			}
+
+			// reset the target value
+			resetANSImode(emu.framebuffer.DS, v.which, !v.want)
+
+			// handle the control sequence
+			for _, hd := range hds {
+				hd.handle(emu)
+				if hd.name != v.wantName {
+					t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+				}
+			}
+
+			if v.want != getANSImode(emu.framebuffer.DS, v.which) {
+				t.Errorf("%s: %q\t expect %t, got %t\n", v.name, v.seq,
+					v.want, getANSImode(emu.framebuffer.DS, v.which))
+			}
+		})
+	}
+}
+
+func TestHandleUnknow(t *testing.T) {
+	tc := []struct {
+		name string
+		seq  string
+		want string
+	}{
+		{"CSI SM unknow", "\x1B[21h", "CSI SM: Ignored bogus set mode"},
+		{"CSI RM unknow", "\x1B[33l", "CSI RM: Ignored bogus reset mode"},
+	}
+
+	p := NewParser()
+	emu := NewEmulator()
+	var place strings.Builder
+	emu.logW = log.New(&place, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+
+	for _, v := range tc {
+		t.Run(v.name, func(t *testing.T) {
+			// process control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) == 0 {
+				t.Errorf("%s got zero handlers.", v.name)
+			}
+
+			// handle the control sequence
+			for _, hd := range hds {
+				hd.handle(emu)
+			}
+
+			if !strings.Contains(place.String(), v.want) {
+				t.Errorf("%s: %q\t expect %q, got %q\n", v.name, v.seq, v.want, place.String())
 			}
 		})
 	}

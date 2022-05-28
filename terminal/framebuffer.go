@@ -32,7 +32,7 @@ type Framebuffer struct {
 	windowTitle      string
 	bellCount        int
 	titleInitialized bool
-	DS               DrawState
+	DS               *DrawState
 }
 
 func NewFramebuffer(width, height int) *Framebuffer {
@@ -41,7 +41,7 @@ func NewFramebuffer(width, height int) *Framebuffer {
 	}
 
 	fb := Framebuffer{}
-	fb.DS = *NewDrawState(width, height)
+	fb.DS = NewDrawState(width, height)
 	fb.rows = make([]Row, height)
 	for i := range fb.rows {
 		fb.rows[i] = *NewRow(width, 0)
@@ -129,7 +129,7 @@ func (fb *Framebuffer) MoveRowsAutoscroll(rows int) {
 	fb.DS.MoveRow(rows, true)
 }
 
-//TODO the meaning.
+// TODO the meaning.
 func (fb *Framebuffer) GetCombiningCell() *Cell {
 	if fb.DS.GetCombiningCharCol() < 0 || fb.DS.GetCombiningCharRow() < 0 || fb.DS.GetCombiningCharCol() >= fb.DS.GetWidth() || fb.DS.GetCombiningCharRow() >= fb.DS.GetHeight() {
 		return nil
@@ -217,7 +217,7 @@ func (fb *Framebuffer) Reset() {
 	width := fb.DS.GetWidth()
 	height := fb.DS.GetHeight()
 
-	fb.DS = *NewDrawState(width, height)
+	fb.DS = NewDrawState(width, height)
 
 	fb.rows = make([]Row, height)
 	for i := range fb.rows {
@@ -331,7 +331,7 @@ func (fb Framebuffer) Equal(other *Framebuffer) (ret bool) {
 	}
 
 	// check DrawState
-	if !fb.DS.Equal(&other.DS) {
+	if !fb.DS.Equal(other.DS) {
 		return ret
 	}
 

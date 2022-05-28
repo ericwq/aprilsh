@@ -110,8 +110,8 @@ func init() {
 	// registerFunction(DISPATCH_CSI, "d", csi_vpa, true) // vpa
 	// registerFunction(DISPATCH_CSI, "f", csi_cursor_move, true) // hvp
 	// registerFunction(DISPATCH_CSI, "g", csi_tbc, true)         // tbc
-	registerFunction(DISPATCH_CSI, "h", csi_sm, false)      // sm
-	registerFunction(DISPATCH_CSI, "l", csi_rm, false)      // rm
+	// registerFunction(DISPATCH_CSI, "h", csi_sm, false)      // sm
+	// registerFunction(DISPATCH_CSI, "l", csi_rm, false)      // rm
 	// registerFunction(DISPATCH_CSI, "m", csi_sgr, false)     // sgr
 	// registerFunction(DISPATCH_CSI, "n", csi_dsr, false)     // dsr
 	registerFunction(DISPATCH_CSI, "r", csi_decstbm, false) // decstbm
@@ -322,42 +322,42 @@ func csi_decstbm(fb *Framebuffer, d *Dispatcher) {
 	fb.DS.MoveRow(0, false)
 }
 
-func getANSImode(param int, fb *Framebuffer) *bool {
-	switch param {
-	case 4:
-		// insert/replace mode
-		return &fb.DS.InsertMode
-	}
-	return nil
-}
+// func getANSImode(param int, fb *Framebuffer) *bool {
+// 	switch param {
+// 	case 4:
+// 		// insert/replace mode
+// 		return &fb.DS.InsertMode
+// 	}
+// 	return nil
+// }
 
 // CSI Pm h  Set Mode (SM).
 // *  Ps = 2  ⇒  Keyboard Action Mode (KAM).
 // *  Ps = 4  ⇒  Insert Mode (IRM).
 // *  Ps = 1 2  ⇒  Send/receive (SRM).
 // *  Ps = 2 0  ⇒  Automatic Newline (LNM).
-func csi_sm(fb *Framebuffer, d *Dispatcher) {
-	for i := 0; i < d.getParamCount(); i++ {
-		mode := getANSImode(d.getParam(i, 0), fb)
-		if mode != nil && *mode {
-			*mode = true
-		}
-	}
-}
+// func csi_sm(fb *Framebuffer, d *Dispatcher) {
+// 	for i := 0; i < d.getParamCount(); i++ {
+// 		mode := getANSImode(d.getParam(i, 0), fb)
+// 		if mode != nil && *mode {
+// 			*mode = true
+// 		}
+// 	}
+// }
 
 // CSI Pm l  Reset Mode (RM).
 // *  Ps = 2  ⇒  Keyboard Action Mode (KAM).
 // *  Ps = 4  ⇒  Replace Mode (IRM).
 // *  Ps = 1 2  ⇒  Send/receive (SRM).
 // *  Ps = 2 0  ⇒  Normal Linefeed (LNM).
-func csi_rm(fb *Framebuffer, d *Dispatcher) {
-	for i := 0; i < d.getParamCount(); i++ {
-		mode := getANSImode(d.getParam(i, 0), fb)
-		if mode != nil && *mode {
-			*mode = false
-		}
-	}
-}
+// func csi_rm(fb *Framebuffer, d *Dispatcher) {
+// 	for i := 0; i < d.getParamCount(); i++ {
+// 		mode := getANSImode(d.getParam(i, 0), fb)
+// 		if mode != nil && *mode {
+// 			*mode = false
+// 		}
+// 	}
+// }
 
 func getDECmode(param int, fb *Framebuffer) *bool {
 	switch param {
