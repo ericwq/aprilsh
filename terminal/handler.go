@@ -780,3 +780,23 @@ func hdl_csi_decrst(emu *emulator, params []int) {
 		}
 	}
 }
+
+// CSI Ps ; Ps r
+// Set Scrolling Region [top;bottom] (default = full size of  window) (DECSTBM), VT100.
+func hdl_csi_decstbm(emu *emulator, top, bottom int) {
+	// TODO consider the originMode, zutty vterm.icc 1310~1343
+	fb := emu.framebuffer
+	if bottom <= top || top > fb.DS.GetHeight() || (top == 0 && bottom == 1) {
+		return // invalid, xterm ignores
+	}
+
+	fb.DS.SetScrollingRegion(top-1, bottom-1)
+	fb.DS.MoveCol(0, false, false)
+	fb.DS.MoveRow(0, false)
+}
+
+// CSI ! p   Soft terminal reset (DECSTR), VT220 and up.
+func hdl_csi_decstr(emu *emulator) {
+	// TODO consider the implementation, zutty csi_DECSTR vterm.icc 1748~1749
+	emu.framebuffer.SoftReset()
+}

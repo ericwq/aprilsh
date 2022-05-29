@@ -1021,6 +1021,33 @@ func (p *Parser) handle_DECRST() (hd *Handler) {
 	return hd
 }
 
+// Set Top and Bottom Margins
+func (p *Parser) handle_DECSTBM() (hd *Handler) {
+	top := p.getPs(0, 1)
+	bottom := p.getPs(1, 1)
+
+	hd = &Handler{name: "csi-decstbm", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_decstbm(emu, top, bottom)
+	}
+
+	// reset the state
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// DEC Soft Terminal Reset
+func (p *Parser) handle_DECSTR() (hd *Handler) {
+	hd = &Handler{name: "csi-decstr", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_decstr(emu)
+	}
+
+	// reset the state
+	p.setState(InputState_Normal)
+	return hd
+}
+
 // process data stream from outside. for VT mode, character set can be changed
 // according to control sequences. for UTF-8 mode, no need to change character set.
 // the result is a *Handler list. waiting to be executed later.
@@ -1311,6 +1338,10 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_SGR()
 		case 'n':
 			hd = p.handle_DSR()
+		case 'r':
+			hd = p.handle_DECSTBM()
+		case '!':
+			p.setState(InputState_CSI_Bang)
 		case '?':
 			p.setState(InputState_CSI_Priv)
 		case '>':
@@ -1332,6 +1363,13 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case '\x0C', '\x0B': // FF is \f, VT is \v
 			hd = p.handle_IND()
 			p.setState(InputState_CSI)
+		default:
+			p.unhandledInput()
+		}
+	case InputState_CSI_Bang:
+		switch ch {
+		case 'p':
+			hd = p.handle_DECSTR()
 		default:
 			p.unhandledInput()
 		}
