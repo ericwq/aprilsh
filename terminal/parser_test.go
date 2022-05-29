@@ -978,6 +978,8 @@ func TestHandle_ENQ_CAN_SUB_ESC(t *testing.T) {
 		{"CSI GT unknow ", "\x1B[>5x", 0, InputState_Normal},   // CSI + > x unhandled CSI >
 		{"overflow OSC string", "\x1B]", 0, InputState_Normal}, // special logic in the following test code, add 4K string
 		{"CSI unknow ", "\x1B[x", 0, InputState_Normal},        // unhandled CSI sequence
+		{"CSI ? unknow ", "\x1B[?x", 0, InputState_Normal},     // unhandled CSI ? sequence
+		{"CSI ? ESC ", "\x1B[?\x1B", 0, InputState_Normal},     // unhandled CSI ? ESC
 	}
 
 	p := NewParser()
@@ -1051,56 +1053,63 @@ func TestHandle_DECALN_RIS(t *testing.T) {
 	}
 }
 
-func TestHandle_DECSC_DECRC(t *testing.T) {
+func TestHandle_DECSC_DECRC_DECSET1048(t *testing.T) {
 	tc := []struct {
 		name         string
 		seq          string
-		wantName     string
+		wantName     []string
 		y, x         int
-		autoWrapMode bool
-		originMode   bool
+		AutoWrapMode bool
+		OriginMode   bool
 	}{
-		{"ESC DECSC", "\x1B7", "esc-decsc", 8, 8, false, true},
-		{"ESC DECRC", "\x1B8", "esc-decrc", 18, 18, true, false},
+		// between the SC/RC, move cursor to 13,23,set originMode, autoWrapMode false,
+		{
+			"ESC DECSC/DECRC",
+			"\x1B7\x1B[24;14H\x1B[?7l\x1B[?6l\x1B8",
+			[]string{"esc-decsc", "csi-cup", "csi-decrst", "csi-decrst", "esc-decrc"},
+			8, 8, true, true,
+		},
+		// between the SC/RC, move cursor to 11,21,set originMode, autoWrapMode true,
+		{
+			"CSI DECSET/DECRST 1048",
+			"\x1B[?1048h\x1B[22;12H\x1B[?7h\x1B[?6h\x1B[?1048l",
+			[]string{"csi-decset", "csi-cup", "csi-decset", "csi-decset", "csi-decrst"},
+			9, 9, false, false,
+		},
 	}
 
 	p := NewParser()
-	// p.logTrace = true // open the trace
-	var hd *Handler
 	emu := NewEmulator()
 
-	for i, v := range tc {
-		// 1st round: set the inital position for cursor
-		// 2nd round: set the different position for cursor
+	for _, v := range tc {
+		// set the target state for cursor
 		emu.framebuffer.DS.MoveCol(v.x, false, false)
 		emu.framebuffer.DS.MoveRow(v.y, false)
+		emu.framebuffer.DS.AutoWrapMode = v.AutoWrapMode
+		emu.framebuffer.DS.OriginMode = v.OriginMode
 
-		// 1st round: set the mode value for emulator
-		// 2nd round: set the different mode value for emulator
-		emu.framebuffer.DS.AutoWrapMode = v.autoWrapMode
-		emu.framebuffer.DS.OriginMode = v.originMode
+		// process control sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
 
-		// save the cursor data
-		for _, ch := range v.seq {
-			hd = p.processInput(ch)
+		if len(hds) == 0 {
+			t.Errorf("%s got zero handlers.", v.name)
 		}
 
-		if hd != nil {
+		// handle the control sequence
+		for j, hd := range hds {
 			hd.handle(emu)
-			if hd.name != v.wantName {
-				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+			if hd.name != v.wantName[j] { // validate the control sequences name
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName[j], hd.name)
 			}
-		} else {
-			t.Errorf("%s got nil Handler.", v.name)
 		}
 
+		// validate the result
 		fb := emu.framebuffer
-		v = tc[0]
-		// we only validate the result after the second instruction.
-		if i == 1 && (fb.DS.GetCursorCol() != v.x || fb.DS.GetCursorRow() != v.y ||
-			fb.DS.AutoWrapMode != v.autoWrapMode || fb.DS.OriginMode != v.originMode) {
+		if fb.DS.GetCursorCol() != v.x || fb.DS.GetCursorRow() != v.y ||
+			fb.DS.AutoWrapMode != v.AutoWrapMode || fb.DS.OriginMode != v.OriginMode {
 			t.Errorf("%s %q expect (%d,%d,%t,%t), got (%d,%d,%t,%t)", v.name, v.seq,
-				v.y, v.x, v.autoWrapMode, v.originMode,
+				v.y, v.x, v.AutoWrapMode, v.OriginMode,
 				fb.DS.GetCursorRow(), fb.DS.GetCursorCol(), fb.DS.AutoWrapMode, fb.DS.OriginMode)
 		}
 	}
@@ -1740,16 +1749,28 @@ func TestHandle_CSI_BS_FF_VT_CR_TAB(t *testing.T) {
 	}
 }
 
-type ANSImode uint
+type (
+	ANSImode uint
+	DECmode  uint
+)
 
 const (
 	t_keyboardLocked ANSImode = iota
 	t_InsertMode
 	t_localEcho
 	t_autoNewlineMode
+	t_ApplicationModeCursorKeys DECmode = iota
+	t_ReverseVideo
+	t_OriginMode
+	t_AutoWrapMode
+	t_CursorVisible
+	t_focusEventMode
+	t_MouseAlternateScroll
+	t_altSendsEscape
+	t_BracketedPaste
 )
 
-func getANSImode(ds *DrawState, which ANSImode) bool {
+func t_getANSImode(ds *DrawState, which ANSImode) bool {
 	switch which {
 	case t_keyboardLocked:
 		return ds.keyboardLocked
@@ -1763,7 +1784,7 @@ func getANSImode(ds *DrawState, which ANSImode) bool {
 	return false
 }
 
-func resetANSImode(ds *DrawState, which ANSImode, value bool) {
+func t_resetANSImode(ds *DrawState, which ANSImode, value bool) {
 	switch which {
 	case t_keyboardLocked:
 		ds.keyboardLocked = value
@@ -1788,6 +1809,7 @@ func TestHandle_SM_RM(t *testing.T) {
 		{"SM: InsertMode     ", "\x1B[4h", t_InsertMode, "csi-sm", true},
 		{"SM: localEcho      ", "\x1B[12h", t_localEcho, "csi-sm", false},
 		{"SM: autoNewlineMode", "\x1B[20h", t_autoNewlineMode, "csi-sm", true},
+
 		{"RM: keyboardLocked ", "\x1B[2l", t_keyboardLocked, "csi-rm", false},
 		{"RM: InsertMode     ", "\x1B[4l", t_InsertMode, "csi-rm", false},
 		{"RM: localEcho      ", "\x1B[12l", t_localEcho, "csi-rm", true},
@@ -1808,7 +1830,7 @@ func TestHandle_SM_RM(t *testing.T) {
 			}
 
 			// reset the target value
-			resetANSImode(emu.framebuffer.DS, v.which, !v.want)
+			t_resetANSImode(emu.framebuffer.DS, v.which, !v.want)
 
 			// handle the control sequence
 			for _, hd := range hds {
@@ -1818,9 +1840,9 @@ func TestHandle_SM_RM(t *testing.T) {
 				}
 			}
 
-			if v.want != getANSImode(emu.framebuffer.DS, v.which) {
+			if v.want != t_getANSImode(emu.framebuffer.DS, v.which) {
 				t.Errorf("%s: %q\t expect %t, got %t\n", v.name, v.seq,
-					v.want, getANSImode(emu.framebuffer.DS, v.which))
+					v.want, t_getANSImode(emu.framebuffer.DS, v.which))
 			}
 		})
 	}
@@ -1861,4 +1883,322 @@ func TestHandleUnknow(t *testing.T) {
 			}
 		})
 	}
+}
+
+func t_getDECmode(ds *DrawState, which DECmode) bool {
+	switch which {
+	case t_ApplicationModeCursorKeys:
+		return ds.ApplicationModeCursorKeys
+	case t_ReverseVideo:
+		return ds.ReverseVideo
+	case t_OriginMode:
+		return ds.OriginMode
+	case t_AutoWrapMode:
+		return ds.AutoWrapMode
+	case t_CursorVisible:
+		return ds.CursorVisible
+	case t_focusEventMode:
+		return ds.mouseTrk.focusEventMode
+	case t_MouseAlternateScroll:
+		return ds.MouseAlternateScroll
+	case t_altSendsEscape:
+		return ds.altSendsEscape
+	case t_BracketedPaste:
+		return ds.BracketedPaste
+	}
+	return false
+}
+
+func t_resetDECmode(ds *DrawState, which DECmode, value bool) {
+	switch which {
+	case t_ApplicationModeCursorKeys:
+		ds.ApplicationModeCursorKeys = value
+	case t_ReverseVideo:
+		ds.ReverseVideo = value
+	case t_OriginMode:
+		ds.OriginMode = value
+	case t_AutoWrapMode:
+		ds.AutoWrapMode = value
+	case t_CursorVisible:
+		ds.CursorVisible = value
+	case t_focusEventMode:
+		ds.mouseTrk.focusEventMode = value
+	case t_MouseAlternateScroll:
+		ds.MouseAlternateScroll = value
+	case t_altSendsEscape:
+		ds.altSendsEscape = value
+	case t_BracketedPaste:
+		ds.BracketedPaste = value
+	}
+}
+
+func TestHandle_DECSET_DECRST_BOOL(t *testing.T) {
+	tc := []struct {
+		name     string
+		seq      string
+		which    DECmode
+		wantName string
+		want     bool
+	}{
+		{"DECSET: ApplicationModeCursorKeys", "\x1B[?1h", t_ApplicationModeCursorKeys, "csi-decset", true},
+		{"DECSET: ReverseVideo", "\x1B[?5h", t_ReverseVideo, "csi-decset", true},
+		{"DECSET: OriginMode", "\x1B[?6h", t_OriginMode, "csi-decset", true},
+		{"DECSET: AutoWrapMode", "\x1B[?7h", t_AutoWrapMode, "csi-decset", true},
+		{"DECSET: CursorVisible", "\x1B[?25h", t_CursorVisible, "csi-decset", true},
+		{"DECSET: focusEventMode", "\x1B[?1004h", t_focusEventMode, "csi-decset", true},
+		{"DECSET: MouseAlternateScroll", "\x1B[?1007h", t_MouseAlternateScroll, "csi-decset", true},
+		{"DECSET: altSendsEscape", "\x1B[?1036h", t_altSendsEscape, "csi-decset", true},
+		{"DECSET: altSendsEscape", "\x1B[?1039h", t_altSendsEscape, "csi-decset", true},
+		{"DECSET: BracketedPaste", "\x1B[?2004h", t_BracketedPaste, "csi-decset", true},
+
+		{"DECRST: ApplicationModeCursorKeys", "\x1B[?1l", t_ApplicationModeCursorKeys, "csi-decrst", false},
+		{"DECRST: ReverseVideo", "\x1B[?5l", t_ReverseVideo, "csi-decrst", false},
+		{"DECRST: OriginMode", "\x1B[?6l", t_OriginMode, "csi-decrst", false},
+		{"DECRST: AutoWrapMode", "\x1B[?7l", t_AutoWrapMode, "csi-decrst", false},
+		{"DECRST: CursorVisible", "\x1B[?25l", t_CursorVisible, "csi-decrst", false},
+		{"DECRST: focusEventMode", "\x1B[?1004l", t_focusEventMode, "csi-decrst", false},
+		{"DECRST: MouseAlternateScroll", "\x1B[?1007l", t_MouseAlternateScroll, "csi-decrst", false},
+		{"DECRST: altSendsEscape", "\x1B[?1036l", t_altSendsEscape, "csi-decrst", false},
+		{"DECRST: altSendsEscape", "\x1B[?1039l", t_altSendsEscape, "csi-decrst", false},
+		{"DECRST: BracketedPaste", "\x1B[?2004l", t_BracketedPaste, "csi-decrst", false},
+	}
+
+	p := NewParser()
+	emu := NewEmulator()
+
+	for _, v := range tc {
+		t.Run(v.name, func(t *testing.T) {
+			// process control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) == 0 {
+				t.Errorf("%s got zero handlers.", v.name)
+			}
+
+			// reset the target value
+			t_resetDECmode(emu.framebuffer.DS, v.which, !v.want)
+
+			// handle the control sequence
+			for _, hd := range hds {
+				hd.handle(emu)
+				if hd.name != v.wantName {
+					t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+				}
+			}
+
+			if v.want != t_getDECmode(emu.framebuffer.DS, v.which) {
+				t.Errorf("%s: %q\t expect %t, got %t\n", v.name, v.seq,
+					v.want, t_getDECmode(emu.framebuffer.DS, v.which))
+			}
+		})
+	}
+}
+
+func TestHandle_DECSET_DECRST_Log(t *testing.T) {
+	tc := []struct {
+		name     string
+		seq      string
+		wantName string
+		want     string
+	}{
+		{"DECSET:   4", "\x1B[?4h", "csi-decset", "DECSCLM: Set smooth scroll"},
+		{"DECSET:   8", "\x1B[?8h", "csi-decset", "DECARM: Set auto-repeat mode"},
+		{"DECSET:  12", "\x1B[?12h", "csi-decset", "Start blinking cursor"},
+		{"DECSET:1001", "\x1B[?1001h", "csi-decset", "Set VT200 Highlight Mouse mode"},
+		{"DECSET:unknow", "\x1B[?2022h", "csi-decset", "set priv mode"},
+
+		{"DECRST:   4", "\x1B[?4l", "csi-decrst", "DECSCLM: Set jump scroll"},
+		{"DECRST:   8", "\x1B[?8l", "csi-decrst", "DECARM: Reset auto-repeat mode"},
+		{"DECRST:  12", "\x1B[?12l", "csi-decrst", "Stop blinking cursor"},
+		{"DECRST:1001", "\x1B[?1001l", "csi-decrst", "Reset VT200 Highlight Mouse mode"},
+		{"DECRST:unknow", "\x1B[?2022l", "csi-decrst", "reset priv mode"},
+	}
+
+	p := NewParser()
+	emu := NewEmulator()
+
+	// replcase the io.Writer for test
+	var place strings.Builder
+	emu.logT = log.New(&place, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// emu.logE = log.New(&place, "ERRO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// emu.logW = log.New(&place, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	emu.logU = log.New(&place, "(Uimplemented): ", log.Ldate|log.Ltime|log.Lshortfile)
+
+	for _, v := range tc {
+		t.Run(v.name, func(t *testing.T) {
+			// process control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) == 0 {
+				t.Errorf("%s got zero handlers.", v.name)
+			}
+
+			// handle the control sequence
+			for _, hd := range hds {
+				hd.handle(emu)
+				if hd.name != v.wantName {
+					t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+				}
+			}
+
+			if !strings.Contains(place.String(), v.want) {
+				t.Errorf("%s: %q\t expect %q, got %q\n", v.name, v.seq, v.want, place.String())
+			}
+		})
+	}
+}
+
+func TestHandle_DECSET_DECRST_MouseTrackingMode(t *testing.T) {
+	tc := []struct {
+		name     string
+		seq      string
+		wantName string
+		want     MouseTrackingMode
+	}{
+		{"DECSET:   9", "\x1B[?9h", "csi-decset", MouseModeX10},
+		{"DECSET:1000", "\x1B[?1000h", "csi-decset", MouseModeVT200},
+		{"DECSET:1002", "\x1B[?1002h", "csi-decset", MouseModeButtonEvent},
+		{"DECSET:1003", "\x1B[?1003h", "csi-decset", MouseModeAnyEvent},
+
+		{"DECRST:   9", "\x1B[?9l", "csi-decrst", MouseModeNone},
+		{"DECRST:1000", "\x1B[?1000l", "csi-decrst", MouseModeNone},
+		{"DECRST:1002", "\x1B[?1002l", "csi-decrst", MouseModeNone},
+		{"DECRST:1003", "\x1B[?1003l", "csi-decrst", MouseModeNone},
+	}
+
+	p := NewParser()
+	emu := NewEmulator()
+
+	for _, v := range tc {
+		t.Run(v.name, func(t *testing.T) {
+			// process control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) == 0 {
+				t.Errorf("%s got zero handlers.", v.name)
+			}
+
+			// handle the control sequence
+			for _, hd := range hds {
+				hd.handle(emu)
+				if hd.name != v.wantName {
+					t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+				}
+			}
+
+			got := emu.framebuffer.DS.mouseTrk.mode
+			if got != v.want {
+				t.Errorf("%s: %q\t expect %d, got %d\n", v.name, v.seq, v.want, got)
+			}
+		})
+	}
+}
+
+func TestHandle_DECSET_DECRST_MouseTrackingEnc(t *testing.T) {
+	tc := []struct {
+		name     string
+		seq      string
+		wantName string
+		want     MouseTrackingEnc
+	}{
+		{"DECSET:1005", "\x1B[?1005h", "csi-decset", MouseEncUTF},
+		{"DECSET:1006", "\x1B[?1006h", "csi-decset", MouseEncSGR},
+		{"DECSET:1015", "\x1B[?1015h", "csi-decset", MouseEncURXVT},
+
+		{"DECRST:1005", "\x1B[?1005l", "csi-decrst", MouseEncNone},
+		{"DECRST:1006", "\x1B[?1006l", "csi-decrst", MouseEncNone},
+		{"DECRST:1015", "\x1B[?1015l", "csi-decrst", MouseEncNone},
+	}
+
+	p := NewParser()
+	emu := NewEmulator()
+
+	for _, v := range tc {
+		t.Run(v.name, func(t *testing.T) {
+			// process control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) == 0 {
+				t.Errorf("%s got zero handlers.", v.name)
+			}
+
+			// handle the control sequence
+			for _, hd := range hds {
+				hd.handle(emu)
+				if hd.name != v.wantName {
+					t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+				}
+			}
+
+			got := emu.framebuffer.DS.mouseTrk.enc
+			if got != v.want {
+				t.Errorf("%s: %q\t expect %d, got %d\n", v.name, v.seq, v.want, got)
+			}
+		})
+	}
+}
+
+func TestHandle_DECSET_DECRST_2(t *testing.T) {
+	tc := []struct {
+		name                string
+		seq                 string
+		wantName            []string
+		compatLevel         CompatibilityLevel
+		isResetCharsetState bool
+	}{
+		{"DECSET 2", "\x1B[?2h", []string{"csi-decset"}, CompatLevelVT400, true},
+		{"DECRST 2", "\x1B[?2l", []string{"csi-decrst"}, CompatLevelVT52, true},
+	}
+
+	p := NewParser()
+	emu := NewEmulator()
+
+	for _, v := range tc {
+
+		// process control sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) == 0 {
+			t.Errorf("%s got zero handlers.", v.name)
+		}
+
+		// handle the control sequence
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.name != v.wantName[j] { // validate the control sequences name
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName[j], hd.name)
+			}
+		}
+
+		// validate the result
+		got := emu.framebuffer.DS.compatLevel
+		newCS := isNewCharsetState(emu.charsetState)
+		if v.isResetCharsetState != newCS || v.compatLevel != got {
+			t.Errorf("%s %q expect reset CharsetState and compatbility level (%t,%d), got(%t,%d)",
+				v.name, v.seq, true, v.compatLevel, newCS, got)
+		}
+	}
+}
+
+func isNewCharsetState(cs CharsetState) (ret bool) {
+	ret = true
+	for _, v := range cs.g {
+		if v != nil {
+			return false
+		}
+	}
+
+	if cs.gl != 0 || cs.gr != 2 || cs.ss != 0 {
+		return false
+	}
+
+	if cs.vtMode {
+		ret = false
+	}
+	return ret
 }
