@@ -980,6 +980,7 @@ func TestHandle_ENQ_CAN_SUB_ESC(t *testing.T) {
 		{"CSI unknow ", "\x1B[x", 0, InputState_Normal},        // unhandled CSI sequence
 		{"CSI ? unknow ", "\x1B[?x", 0, InputState_Normal},     // unhandled CSI ? sequence
 		{"CSI ? ESC ", "\x1B[?\x1B", 0, InputState_Normal},     // unhandled CSI ? ESC
+		{"CSI ! unknow ", "\x1B[!x", 0, InputState_Normal},     // unhandled CSI ! x
 	}
 
 	p := NewParser()
@@ -2201,4 +2202,123 @@ func isNewCharsetState(cs CharsetState) (ret bool) {
 		ret = false
 	}
 	return ret
+}
+
+func TestHandle_DECSTBM(t *testing.T) {
+	tc := []struct {
+		name        string
+		seq         string
+		wantName    []string
+		top, bottom int
+	}{
+		{
+			"DECSTBM ", "\x1B[24;14H\x1B[2;30r", // move the cursor to 24,14 first
+			[]string{"csi-cup", "csi-decstbm"},
+			2 - 1, 30 - 1,
+		},
+		{
+			"DECSTBM ", "\x1B[2;6H\x1B[3;32r\x1B[32;30r", // a successful STBM follow a ignored STBM.
+			[]string{"csi-cup", "csi-decstbm", "csi-decstbm"},
+			3 - 1, 32 - 1,
+		},
+	}
+
+	p := NewParser()
+	emu := NewEmulator()
+
+	for _, v := range tc {
+
+		// process control sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) == 0 {
+			t.Errorf("%s got zero handlers.", v.name)
+		}
+
+		// handle the control sequence
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.name != v.wantName[j] { // validate the control sequences name
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName[j], hd.name)
+			}
+		}
+
+		// validate the result
+		top := emu.framebuffer.DS.GetScrollingRegionTopRow()
+		bottom := emu.framebuffer.DS.GetScrollingRegionBottomRow()
+
+		y := emu.framebuffer.DS.GetCursorRow()
+		x := emu.framebuffer.DS.GetCursorCol()
+
+		if x != 0 || y != 0 || top != v.top || bottom != v.bottom {
+			t.Logf("%s: %q expect cursor in (0,0), got (%d,%d)\n", v.name, v.seq, y, x)
+			t.Errorf("%s: %q expect [top:bottom] [%d,%d], got [%d,%d]\n", v.name, v.seq,
+				v.top, v.bottom, top, bottom)
+		}
+	}
+}
+
+func TestHandle_DECSTR(t *testing.T) {
+	tc := []struct {
+		name     string
+		seq      string
+		wantName []string
+		sc       SavedCursor
+		rend     Renditions
+	}{
+		{
+			"DECSTR ",
+			/*
+				set ture for InsertMode, OriginMode, AutoWrapMode, ApplicationModeCursorKeys
+				set top/bottom region
+				soft terminal reset
+			*/
+			"\x1B[4h\x1B[?6h\x1B[?25h\x1B[?1h\x1B[2;30r\x1B[!p",
+			[]string{"csi-sm", "csi-decset", "csi-decset", "csi-decset", "csi-decstbm", "csi-decstr"},
+			SavedCursor{autoWrapMode: true},
+			Renditions{},
+		},
+	}
+
+	p := NewParser()
+	emu := NewEmulator()
+
+	for _, v := range tc {
+
+		// process control sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) == 0 {
+			t.Errorf("%s got zero handlers.", v.name)
+		}
+
+		// handle the control sequence
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.name != v.wantName[j] { // validate the control sequences name
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName[j], hd.name)
+			}
+		}
+
+		// validate the result
+		ds := emu.framebuffer.DS
+		if ds.InsertMode || ds.OriginMode || ds.CursorVisible || ds.ApplicationModeCursorKeys {
+			t.Errorf("%s: %q expect all false for InsertMode OriginMode CursorVisible ApplicationModeCursorKeys, got %t,%t,%t,%t\n",
+				v.name, v.seq, ds.InsertMode, ds.OriginMode, ds.CursorVisible, ds.ApplicationModeCursorKeys)
+		}
+
+		top := ds.GetScrollingRegionTopRow()
+		bottom := ds.GetScrollingRegionBottomRow()
+
+		if top != 0 || bottom != ds.GetHeight()-1 {
+			t.Errorf("%s: %q expect [top,bottom] [%d,%d], got [%d,%d]\n", v.name, v.seq, 0, ds.GetHeight()-1, top, bottom)
+		}
+
+		if v.sc != ds.save || v.rend != *ds.GetRenditions() {
+			t.Errorf("%s: %q expect Renditions=%v, SavedCursor=%v, got %v, %v\n", v.name, v.seq, v.rend, v.sc,
+				*ds.GetRenditions(), ds.save)
+		}
+	}
 }
