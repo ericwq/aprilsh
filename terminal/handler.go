@@ -588,7 +588,7 @@ func hdl_osc_4(_ *emulator, cmd int, arg string) {
 //* 0: set icon name and window title
 //* 1: set icon name
 //* 2: set window title
-func hdl_osc_0(emu *emulator, cmd int, arg string) {
+func hdl_osc_0_1_2(emu *emulator, cmd int, arg string) {
 	// set icon name / window title
 	setIcon := cmd == 0 || cmd == 1
 	setTitle := cmd == 0 || cmd == 2

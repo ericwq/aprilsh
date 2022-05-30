@@ -340,7 +340,12 @@ func (p *Parser) handle_CUP() (hd *Handler) {
 	return hd
 }
 
+// Operating System Command
+// OSC Ps ; Pt Bell
+// OSC Ps ; Pt ST
+// Set Text Parameters.  Some control sequences return information:
 func (p *Parser) handle_OSC() (hd *Handler) {
+	// Here we parse the parameters by ourselves.
 	cmd := 0
 	arg := p.getArg()
 
@@ -366,22 +371,22 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 		switch cmd {
 		// create the ActOn
 		case 0, 1, 2:
-			hd = &Handler{name: "osc 0,1,2", ch: p.ch}
+			hd = &Handler{name: "osc-0,1,2", ch: p.ch}
 			hd.handle = func(emu *emulator) {
-				hdl_osc_0(emu, cmd, arg)
+				hdl_osc_0_1_2(emu, cmd, arg)
 			}
 		case 4:
-			hd = &Handler{name: "osc 4", ch: p.ch}
+			hd = &Handler{name: "osc-4", ch: p.ch}
 			hd.handle = func(emu *emulator) {
 				hdl_osc_4(emu, cmd, arg)
 			}
 		case 52:
-			hd = &Handler{name: "osc 52", ch: p.ch}
+			hd = &Handler{name: "osc-52", ch: p.ch}
 			hd.handle = func(emu *emulator) {
 				hdl_osc_52(emu, cmd, arg)
 			}
 		case 10, 11, 12, 17, 19:
-			hd = &Handler{name: "osc 10,11,12,17,19", ch: p.ch}
+			hd = &Handler{name: "osc-10,11,12,17,19", ch: p.ch}
 			hd.handle = func(emu *emulator) {
 				hdl_osc_10(emu, cmd, arg)
 			}
@@ -1398,9 +1403,6 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			p.unhandledInput()
 		}
 	case InputState_OSC:
-		// if p.collectNumericParameters(ch) {
-		// 	break
-		// }
 		switch ch {
 		case '\x07': // final byte = BEL
 			hd = p.handle_OSC()

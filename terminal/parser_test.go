@@ -681,12 +681,12 @@ func TestHandle_OSC_0_1_2(t *testing.T) {
 		seq       string
 		wantTitle string
 	}{
-		{"OSC 0;Pt BEL        ", "osc 0,1,2", true, true, "\x1B]0;ada\x07", "ada"},
-		{"OSC 1;Pt 7bit ST    ", "osc 0,1,2", true, false, "\x1B]1;adas\x1B\\", "adas"},
-		{"OSC 2;Pt BEL chinese", "osc 0,1,2", false, true, "\x1B]2;[道德经]\x07", "[道德经]"},
-		{"OSC 2;Pt BEL unusual", "osc 0,1,2", false, true, "\x1B]2;[neovim]\x1B78\x07", "[neovim]\x1B78"},
-		{"OSC 0;Pt malform 1  ", "osc 0,1,2", true, true, "\x1B]ada\x07", ""},
-		{"OSC 0;Pt malform 2  ", "osc 0,1,2", true, true, "\x1B]7fy;ada\x07", ""},
+		{"OSC 0;Pt BEL        ", "osc-0,1,2", true, true, "\x1B]0;ada\x07", "ada"},
+		{"OSC 1;Pt 7bit ST    ", "osc-0,1,2", true, false, "\x1B]1;adas\x1B\\", "adas"},
+		{"OSC 2;Pt BEL chinese", "osc-0,1,2", false, true, "\x1B]2;[道德经]\x07", "[道德经]"},
+		{"OSC 2;Pt BEL unusual", "osc-0,1,2", false, true, "\x1B]2;[neovim]\x1B78\x07", "[neovim]\x1B78"},
+		{"OSC 0;Pt malform 1  ", "osc-0,1,2", true, true, "\x1B]ada\x07", ""},
+		{"OSC 0;Pt malform 2  ", "osc-0,1,2", true, true, "\x1B]7fy;ada\x07", ""},
 	}
 
 	p := NewParser()
@@ -2259,6 +2259,7 @@ func TestHandle_DECSTBM(t *testing.T) {
 	}
 }
 
+// here we use control sequences to setup the pre-conditions
 func TestHandle_DECSTR(t *testing.T) {
 	tc := []struct {
 		name     string
@@ -2271,7 +2272,7 @@ func TestHandle_DECSTR(t *testing.T) {
 			"DECSTR ",
 			/*
 				set ture for InsertMode, OriginMode, AutoWrapMode, ApplicationModeCursorKeys
-				set top/bottom region
+				set top/bottom region, we don't care the value, because reset.
 				soft terminal reset
 			*/
 			"\x1B[4h\x1B[?6h\x1B[?25h\x1B[?1h\x1B[2;30r\x1B[!p",
@@ -2294,7 +2295,7 @@ func TestHandle_DECSTR(t *testing.T) {
 			t.Errorf("%s got zero handlers.", v.name)
 		}
 
-		// handle the control sequence
+		// execute the control sequence
 		for j, hd := range hds {
 			hd.handle(emu)
 			if hd.name != v.wantName[j] { // validate the control sequences name
@@ -2302,20 +2303,21 @@ func TestHandle_DECSTR(t *testing.T) {
 			}
 		}
 
-		// validate the result
+		// validate the 4 mode, should all be false
 		ds := emu.framebuffer.DS
 		if ds.InsertMode || ds.OriginMode || ds.CursorVisible || ds.ApplicationModeCursorKeys {
 			t.Errorf("%s: %q expect all false for InsertMode OriginMode CursorVisible ApplicationModeCursorKeys, got %t,%t,%t,%t\n",
 				v.name, v.seq, ds.InsertMode, ds.OriginMode, ds.CursorVisible, ds.ApplicationModeCursorKeys)
 		}
 
+		// validate the top/bottom region
 		top := ds.GetScrollingRegionTopRow()
 		bottom := ds.GetScrollingRegionBottomRow()
-
 		if top != 0 || bottom != ds.GetHeight()-1 {
 			t.Errorf("%s: %q expect [top,bottom] [%d,%d], got [%d,%d]\n", v.name, v.seq, 0, ds.GetHeight()-1, top, bottom)
 		}
 
+		// validate the Renditions and SavedCursor
 		if v.sc != ds.save || v.rend != *ds.GetRenditions() {
 			t.Errorf("%s: %q expect Renditions=%v, SavedCursor=%v, got %v, %v\n", v.name, v.seq, v.rend, v.sc,
 				*ds.GetRenditions(), ds.save)
