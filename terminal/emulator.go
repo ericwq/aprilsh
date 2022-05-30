@@ -199,6 +199,8 @@ type emulator struct {
 	framebuffer  *Framebuffer
 	charsetState CharsetState
 
+	// local buffer for selection data
+	selectionData map[rune]string
 	// logger
 	logE *log.Logger
 	logT *log.Logger // trace
@@ -209,6 +211,22 @@ type emulator struct {
 func NewEmulator() *emulator {
 	emu := &emulator{}
 	emu.resetCharsetState()
+
+	// prepare selection data for OSC 52
+	// https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands
+	emu.selectionData = make(map[rune]string)
+	emu.selectionData['c'] = "" // clipboard
+	emu.selectionData['p'] = "" // primary
+	emu.selectionData['q'] = "" // secondary
+	emu.selectionData['s'] = "" // select
+	emu.selectionData['0'] = "" // cut-buffer 0
+	emu.selectionData['1'] = "" // cut-buffer 1
+	emu.selectionData['2'] = "" // cut-buffer 2
+	emu.selectionData['3'] = "" // cut-buffer 3
+	emu.selectionData['4'] = "" // cut-buffer 4
+	emu.selectionData['5'] = "" // cut-buffer 5
+	emu.selectionData['6'] = "" // cut-buffer 6
+	emu.selectionData['7'] = "" // cut-buffer 7
 
 	// defalult size 80x40
 	emu.framebuffer = NewFramebuffer(80, 40)

@@ -33,6 +33,7 @@ type Framebuffer struct {
 	bellCount        int
 	titleInitialized bool
 	DS               *DrawState
+	selectionData    string
 }
 
 func NewFramebuffer(width, height int) *Framebuffer {

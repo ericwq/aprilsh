@@ -27,7 +27,9 @@ SOFTWARE.
 package terminal
 
 import (
+	"encoding/base64"
 	"fmt"
+	"strings"
 
 	"github.com/mattn/go-runewidth"
 )
@@ -46,7 +48,7 @@ const (
 // Handler is the parsing result. It can be used to perform control sequence
 // on emulator.
 type Handler struct {
-	name   string              // the name of ActOn
+	name   string              // the name of Handler
 	ch     rune                // the last byte
 	handle func(emu *emulator) // handle function that will perform control sequnce on emulator
 }
@@ -574,9 +576,113 @@ func hdl_osc_10(_ *emulator, cmd int, arg string) {
 	fmt.Printf("handle osc dynamic cmd=%d, arg=%s\n", cmd, arg)
 }
 
-func hdl_osc_52(_ *emulator, cmd int, arg string) {
-	// TODO not finished
-	fmt.Printf("handle osc copy cmd=%d, arg=%s\n", cmd, arg)
+/*
+OSC Ps ; Pt ST
+Ps = 5 2  ⇒ Manipulate Selection Data. The parameter Pt is parsed as
+			Pc ; Pd
+1. use one of the following commands to encode the original text
+and set the system clipboard
+	% echo -e "\033]52;c;$(base64 <<< hello)\a"
+	% echo "Hello Russia!" | base64
+	SGVsbG8gUnVzc2lhIQo=
+	% echo  -e "\033]52;p;SGVsbG8gUnVzc2lhIQo=\a"
+2. press the paste hot-eky, you will see the original text in step 1.
+	% hello
+	% Hello Russia!
+*/
+func hdl_osc_52(emu *emulator, cmd int, arg string) {
+	//
+	pos := strings.Index(arg, ";")
+	if pos == -1 {
+		emu.logW.Printf("OSC 52: can't find Pc parameter. %q\n", arg)
+		return
+	}
+
+	Pc := arg[:pos]
+	Pd := arg[pos+1:]
+
+	/*
+		If the parameter is empty, xterm uses s 0 , to specify the configurable
+		primary/clipboard selection and cut-buffer 0.
+	*/
+	if Pc == "" {
+		Pc = "s0"
+	}
+
+	// validate Pc
+	if !osc52InRange(Pc) {
+		emu.logW.Printf("OSC 52: invalid Pc parameters. %q\n", Pc)
+		return
+	}
+
+	if Pd == "?" {
+		/*
+			If the second parameter is a ? , xterm replies to the host
+			with the selection data encoded using the same protocol.  It
+			uses the first selection found by asking successively for each
+			item from the list of selection parameters.
+		*/
+		for _, ch := range Pc {
+			if data, ok := emu.selectionData[ch]; ok && data != "" {
+				// response to the host
+				response := fmt.Sprintf("\x1B]%d;%c;%s\x1B\\", cmd, ch, data)
+				emu.dispatcher.terminalToHost.WriteString(response)
+				break
+			}
+		}
+	} else {
+		// TODO please consider the race condition
+		_, err := base64.StdEncoding.DecodeString(Pd)
+		set := false
+		if err == nil { // it's a base64 string
+			/*
+			   The second parameter, Pd, gives the selection data.  Normally
+			   this is a string encoded in base64 (RFC-4648).  The data
+			   becomes the new selection, which is then available for pasting
+			   by other applications.
+			*/
+
+			for _, ch := range Pc {
+				if _, ok := emu.selectionData[ch]; ok { // make sure Pc exist
+					// update the new selection in local cache
+					emu.selectionData[ch] = Pd
+					set = true
+				}
+			}
+			if set {
+				// save the selection in framebuffer, later it will be sent to terminal.
+				emu.framebuffer.selectionData += fmt.Sprintf("\x1B]%d;%s;%s\x1B\\", cmd, Pc, Pd)
+			}
+		} else {
+			/*
+			   If the second parameter is neither a base64 string nor ? ,
+			   then the selection is cleared.
+			*/
+			for _, ch := range Pc {
+				if _, ok := emu.selectionData[ch]; ok { // make sure Pc exist
+					// clear the selection in local cache
+					emu.selectionData[ch] = ""
+					set = true
+				}
+			}
+			if set {
+				// save the selection in framebuffer, later it will be sent to terminal.
+				emu.framebuffer.selectionData = fmt.Sprintf("\x1B]%d;%s;%s\x1B\\", cmd, Pc, Pd)
+			}
+		}
+	}
+}
+
+// validate hte Pc content is in the specified set
+func osc52InRange(Pc string) (ret bool) {
+	specSet := "cpqs01234567"
+	for _, ch := range Pc {
+		if !strings.Contains(specSet, string(ch)) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func hdl_osc_4(_ *emulator, cmd int, arg string) {

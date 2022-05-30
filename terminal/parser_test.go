@@ -687,6 +687,7 @@ func TestHandle_OSC_0_1_2(t *testing.T) {
 		{"OSC 2;Pt BEL unusual", "osc-0,1,2", false, true, "\x1B]2;[neovim]\x1B78\x07", "[neovim]\x1B78"},
 		{"OSC 0;Pt malform 1  ", "osc-0,1,2", true, true, "\x1B]ada\x07", ""},
 		{"OSC 0;Pt malform 2  ", "osc-0,1,2", true, true, "\x1B]7fy;ada\x07", ""},
+		{"OSC 0;Pt malform 2  ", "osc-0,1,2", true, true, "\x1B]7fy;ada\x07", ""},
 	}
 
 	p := NewParser()
@@ -2322,5 +2323,130 @@ func TestHandle_DECSTR(t *testing.T) {
 			t.Errorf("%s: %q expect Renditions=%v, SavedCursor=%v, got %v, %v\n", v.name, v.seq, v.rend, v.sc,
 				*ds.GetRenditions(), ds.save)
 		}
+	}
+}
+
+func TestHandle_OSC_52(t *testing.T) {
+	tc := []struct {
+		name       string
+		wantName   []string
+		wantPc     string
+		wantPd     string
+		wantString string
+		noReply    bool
+		seq        string
+	}{
+		{
+			"new selection in c",
+			[]string{"osc-52"},
+			"c", "YXByaWxzaAo=",
+			"\x1B]52;c;YXByaWxzaAo=\x1B\\", true,
+			"\x1B]52;c;YXByaWxzaAo=\x1B\\",
+		},
+		{
+			"clear selection in cs",
+			[]string{"osc-52", "osc-52"},
+			"cs", "",
+			"\x1B]52;cs;x\x1B\\", true, // echo "aprilsh" | base64
+			"\x1B]52;cs;YXByaWxzaAo=\x1B\\\x1B]52;cs;x\x1B\\",
+		},
+		{
+			"empty selection",
+			[]string{"osc-52"},
+			"s0", "5Zub5aeR5aiY5bGxCg==", // echo "四姑娘山" | base64
+			"\x1B]52;s0;5Zub5aeR5aiY5bGxCg==\x1B\\", true,
+			"\x1B]52;;5Zub5aeR5aiY5bGxCg==\x1B\\",
+		},
+		{
+			"question selection",
+			[]string{"osc-52", "osc-52"},
+			"", "", // don't care these values
+			"\x1B]52;c;5Zub5aeR5aiY5bGxCg==\x1B\\", false,
+			"\x1B]52;c0;5Zub5aeR5aiY5bGxCg==\x1B\\\x1B]52;c0;?\x1B\\",
+		},
+	}
+	p := NewParser()
+	emu := NewEmulator()
+
+	for _, v := range tc {
+		emu.framebuffer.selectionData = ""
+		emu.dispatcher.terminalToHost.Reset()
+
+		t.Run(v.name, func(t *testing.T) {
+			// process control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) == 0 {
+				t.Errorf("%s got zero handlers.", v.name)
+			}
+
+			// execute the control sequence
+			for j, hd := range hds {
+				hd.handle(emu)
+				if hd.name != v.wantName[j] { // validate the control sequences name
+					t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName[j], hd.name)
+				}
+			}
+
+			if v.noReply {
+				if v.wantString != emu.framebuffer.selectionData {
+					t.Errorf("%s: seq=%q expect %q, got %q\n", v.name, v.seq, v.wantString, emu.framebuffer.selectionData)
+				}
+				for _, ch := range v.wantPc {
+					if data, ok := emu.selectionData[ch]; ok && data == v.wantPd {
+						continue
+					} else {
+						t.Errorf("%s: seq=%q, expect[%c]%q, got [%c]%q\n", v.name, v.seq, ch, v.wantPc, ch, emu.selectionData[ch])
+					}
+				}
+			} else {
+				got := emu.dispatcher.terminalToHost.String()
+				if got != v.wantString {
+					t.Errorf("%s: seq=%q, expect %q, got %q\n", v.name, v.seq, v.wantString, got)
+				}
+			}
+		})
+	}
+}
+
+func TestHandle_OSC_52_abort(t *testing.T) {
+	tc := []struct {
+		name     string
+		wantName string
+		wantStr  string
+		seq      string
+	}{
+		{"malform OSC 52 ", "osc-52", "OSC 52: can't find Pc parameter.", "\x1B]52;23\x1B\\"},
+		{"Pc not in range", "osc-52", "invalid Pc parameters.", "\x1B]52;se;\x1B\\"},
+	}
+	p := NewParser()
+	emu := NewEmulator()
+	var place strings.Builder
+	emu.logW = log.New(&place, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+
+	for _, v := range tc {
+		place.Reset()
+		t.Run(v.name, func(t *testing.T) {
+			// process control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) == 0 {
+				t.Errorf("%s got zero handlers.", v.name)
+			}
+
+			// execute the control sequence
+			for _, hd := range hds {
+				hd.handle(emu)
+				if hd.name != v.wantName { // validate the control sequences name
+					t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+				}
+			}
+
+			if !strings.Contains(place.String(), v.wantStr) {
+				t.Errorf("%s: seq=%q expect %q, got %q\n", v.name, v.seq, v.wantStr, place.String())
+			}
+		})
 	}
 }
