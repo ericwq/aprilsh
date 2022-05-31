@@ -591,13 +591,12 @@ and set the system clipboard
 	% Hello Russia!
 */
 func hdl_osc_52(emu *emulator, cmd int, arg string) {
-	//
+	// parse Pc:Pd
 	pos := strings.Index(arg, ";")
 	if pos == -1 {
 		emu.logW.Printf("OSC 52: can't find Pc parameter. %q\n", arg)
 		return
 	}
-
 	Pc := arg[:pos]
 	Pd := arg[pos+1:]
 
@@ -641,7 +640,6 @@ func hdl_osc_52(emu *emulator, cmd int, arg string) {
 			   becomes the new selection, which is then available for pasting
 			   by other applications.
 			*/
-
 			for _, ch := range Pc {
 				if _, ok := emu.selectionData[ch]; ok { // make sure Pc exist
 					// update the new selection in local cache
