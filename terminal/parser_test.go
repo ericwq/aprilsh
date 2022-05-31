@@ -28,6 +28,7 @@ package terminal
 
 import (
 	"fmt"
+	// "image/color"
 	"io/ioutil"
 	"log"
 	"strings"
@@ -2449,4 +2450,8 @@ func TestHandle_OSC_52_abort(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestHandle_Color(t *testing.T) {
+	// color.Palette.Index(c color.Color)
 }

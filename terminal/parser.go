@@ -388,7 +388,7 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 		case 10, 11, 12, 17, 19:
 			hd = &Handler{name: "osc-10,11,12,17,19", ch: p.ch}
 			hd.handle = func(emu *emulator) {
-				hdl_osc_10(emu, cmd, arg)
+				hdl_osc_10x(emu, cmd, arg)
 			}
 		default:
 			p.logU.Printf("unhandled OSC: %d %q\n", cmd, arg)

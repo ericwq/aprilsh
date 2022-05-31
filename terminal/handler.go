@@ -571,7 +571,7 @@ func hdl_csi_sgr(emu *emulator, params []int) {
 	}
 }
 
-func hdl_osc_10(_ *emulator, cmd int, arg string) {
+func hdl_osc_10x(_ *emulator, cmd int, arg string) {
 	// TODO not finished
 	fmt.Printf("handle osc dynamic cmd=%d, arg=%s\n", cmd, arg)
 }
@@ -683,6 +683,7 @@ func osc52InRange(Pc string) (ret bool) {
 	return true
 }
 
+// https://tronche.com/gui/x/xlib/color/strings/
 func hdl_osc_4(_ *emulator, cmd int, arg string) {
 	// TODO not finished
 	fmt.Printf("handle osc palette cmd=%d, arg=%s\n", cmd, arg)
