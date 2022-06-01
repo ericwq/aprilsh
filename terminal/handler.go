@@ -684,6 +684,7 @@ func osc52InRange(Pc string) (ret bool) {
 }
 
 // https://tronche.com/gui/x/xlib/color/strings/
+// https://unix.stackexchange.com/questions/105568/how-can-i-list-the-available-color-names
 func hdl_osc_4(_ *emulator, cmd int, arg string) {
 	// TODO not finished
 	fmt.Printf("handle osc palette cmd=%d, arg=%s\n", cmd, arg)
