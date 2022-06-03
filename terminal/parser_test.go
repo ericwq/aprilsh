@@ -2452,6 +2452,83 @@ func TestHandle_OSC_52_abort(t *testing.T) {
 	}
 }
 
-func TestHandle_Color(t *testing.T) {
+func TestHandle_OSC_4(t *testing.T) {
 	// color.Palette.Index(c color.Color)
+	tc := []struct {
+		name       string
+		wantName   []string
+		wantString string
+		warn       bool
+		seq        string
+	}{
+		{
+			"query one color number",
+			[]string{"osc-4"},
+			"\x1B]4;1;rgb:0080/0000/0000\x1B\\", false,
+			"\x1B]4;1;?\x1B\\",
+		},
+		{
+			"query two color number",
+			[]string{"osc-4"},
+			"\x1B]4;250;rgb:00bc/00bc/00bc\x1B\\\x1B]4;1;rgb:0080/0000/0000\x1B\\", false,
+			"\x1B]4;250;?;1;?\x1B\\",
+		},
+		{
+			"query 8 color number",
+			[]string{"osc-4"},
+			"\x1B]4;0;rgb:0000/0000/0000\x1B\\\x1B]4;1;rgb:0080/0000/0000\x1B\\\x1B]4;2;rgb:0000/0080/0000\x1B\\\x1B]4;3;rgb:0080/0080/0000\x1B\\\x1B]4;4;rgb:0000/0000/0080\x1B\\\x1B]4;5;rgb:0080/0000/0080\x1B\\\x1B]4;6;rgb:0000/0080/0080\x1B\\\x1B]4;7;rgb:00c0/00c0/00c0\x1B\\", false,
+			"\x1B]4;0;?;1;?;2;?;3;?;4;?;5;?;6;?;7;?\x1B\\",
+		},
+		{
+			"missing ';' abort",
+			[]string{"osc-4"},
+			"OSC 4: malformed argument, missing ';'.", true,
+			"\x1B]4;1?\x1B\\",
+		},
+		{
+			"Ps malform abort",
+			[]string{"osc-4"},
+			"OSC 4: can't parse c parameter.", true,
+			"\x1B]4;m;?\x1B\\",
+		},
+	}
+	p := NewParser()
+	emu := NewEmulator()
+	var place strings.Builder
+	emu.logW = log.New(&place, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+
+	for _, v := range tc {
+		place.Reset()
+		emu.dispatcher.terminalToHost.Reset()
+
+		t.Run(v.name, func(t *testing.T) {
+			// process control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) == 0 {
+				t.Errorf("%s got zero handlers.", v.name)
+			}
+
+			// execute the control sequence
+
+			for j, hd := range hds {
+				hd.handle(emu)
+				if hd.name != v.wantName[j] { // validate the control sequences name
+					t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName[j], hd.name)
+				}
+			}
+
+			if v.warn {
+				if !strings.Contains(place.String(), v.wantString) {
+					t.Errorf("%s: seq=%q expect %q, got %q\n", v.name, v.seq, v.wantString, place.String())
+				}
+			} else {
+				got := emu.dispatcher.terminalToHost.String()
+				if got != v.wantString {
+					t.Errorf("%s: seq=%q, \nexpect\t %q, \ngot\t\t %q\n", v.name, v.seq, v.wantString, got)
+				}
+			}
+		})
+	}
 }

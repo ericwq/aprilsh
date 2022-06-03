@@ -29,6 +29,7 @@ package terminal
 import (
 	"encoding/base64"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/mattn/go-runewidth"
@@ -683,13 +684,58 @@ func osc52InRange(Pc string) (ret bool) {
 	return true
 }
 
-// https://tronche.com/gui/x/xlib/color/strings/
-// https://unix.stackexchange.com/questions/105568/how-can-i-list-the-available-color-names
-// https://github.com/mgutz/ansi
-// https://misc.flogisoft.com/bash/tip_colors_and_formatting
-func hdl_osc_4(_ *emulator, cmd int, arg string) {
-	// TODO not finished
-	fmt.Printf("handle osc palette cmd=%d, arg=%s\n", cmd, arg)
+/*
+Ps = 4 ; c ; spec ⇒  Change Color Number c to the color specified by spec.
+
+The spec can be a name or RGB specification as per
+XParseColor.  Any number of c/spec pairs may be given.  The
+color numbers correspond to the ANSI colors 0-7, their bright
+versions 8-15, and if supported, the remainder of the 88-color
+or 256-color table.
+
+If a "?" is given rather than a name or RGB specification,
+xterm replies with a control sequence of the same form which
+can be used to set the corresponding color.  Because more than
+one pair of color number and specification can be given in one
+control sequence, xterm can make more than one reply.
+
+string names for colors: https://tronche.com/gui/x/xlib/color/strings/
+xterm 256 color protocol: https://unix.stackexchange.com/questions/105568/how-can-i-list-the-available-color-names
+color and formatting: https://misc.flogisoft.com/bash/tip_colors_and_formatting
+
+*/
+func hdl_osc_4(emu *emulator, cmd int, arg string) {
+	count := strings.Count(arg, ";")
+	if count > 0 && count%2 == 1 { // c/spec pair has 2n-1 ';'
+		pairs := (count + 1) / 2 // count the c/spec pair
+		if pairs >= 8 {          // limit the c/spec pair up to 8
+			pairs = 8
+		}
+
+		args := strings.Split(arg, ";")
+		idx := 0
+		for i := 0; i < pairs; i++ {
+
+			idx = i * 2
+			c := args[idx]
+			spec := args[idx+1]
+
+			// we only support query for the time being.
+			if spec == "?" {
+				colorIdx, err := strconv.Atoi(c)
+				if err != nil {
+					emu.logW.Printf("OSC 4: can't parse c parameter. %q\n", arg)
+					return
+				}
+				color := PaletteColor(colorIdx)
+				response := fmt.Sprintf("\x1B]%d;%d;%s\x1B\\", cmd, colorIdx, color)
+				emu.dispatcher.terminalToHost.WriteString(response)
+			}
+		}
+	} else {
+		emu.logW.Printf("OSC 4: malformed argument, missing ';'. %q\n", arg)
+		return
+	}
 }
 
 // OSC of the form "\x1B]X;<title>\007" where X can be:
