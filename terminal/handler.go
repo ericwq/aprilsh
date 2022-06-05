@@ -530,51 +530,172 @@ func hdl_csi_dsr(emu *emulator, cmd int) {
 // select graphics rendition -- e.g., bold, blinking, etc.
 // support 8, 16, 256 color, RGB color.
 func hdl_csi_sgr(emu *emulator, params []int) {
-	fb := emu.framebuffer
-	for i := 0; i < len(params); i++ {
-		rendition := params[i]
-		// We need to special-case the handling of [34]8 ; 5 ; Ps,
-		// because Ps of 0 in that case does not mean reset to default, even
-		// though it means that otherwise (as usually renditions are applied
-		// in order).
+	// fb := emu.framebuffer
+	rend := emu.framebuffer.DS.renditions
+	for k := 0; k < len(params); k++ {
+		attr := params[k]
 
-		if (rendition == 38 || rendition == 48) && len(params)-i >= 3 &&
-			params[i+1] == 5 {
+		switch attr {
+		case 0:
+			rend.bold = false
+			rend.faint = false
+			rend.italic = false
+			rend.underline = false
+			rend.blink = false
+			rend.rapidBlink = false
+			rend.inverse = false
+			rend.invisible = false
+			rend.setAnsiFgColor(ColorBlack) // default foreground color
+			rend.setAnsiBgColor(ColorWhite) // default backgournd color
+		case 1:
+			rend.bold = true
+		case 2:
+			rend.faint = true
+		case 3:
+			rend.italic = true
+		case 4:
+			rend.underline = true
+		case 5:
+			rend.blink = true
+		case 6:
+			rend.rapidBlink = true
+		case 7:
+			rend.inverse = true // TODO how to handle inverse?
+		case 8:
+			rend.invisible = true
 
-			if rendition == 38 {
-				fb.DS.SetForegroundColor(params[i+2])
-			} else {
-				fb.DS.SetBackgroundColor(params[i+2])
+		case 22:
+			rend.bold = false
+		case 23:
+			rend.italic = false
+		case 24:
+			rend.underline = false
+		case 25:
+			rend.blink = false      // not blinking
+			rend.rapidBlink = false // not blinking
+		case 27:
+			rend.inverse = false // TODO how to handle inverse
+		case 28:
+			rend.invisible = false
+		// standard foregrounds
+		case 30, 31, 32, 33, 34, 35, 36, 37:
+			rend.SetForegroundColor(attr - 30)
+		case 38:
+			if k >= len(params)-1 {
+				break
 			}
-
-			i += 2
-			continue
-		}
-		// True color support: ESC[ ... [34]8;2;<r>;<g>;<b> ... m
-		if (rendition == 38 || rendition == 48) && len(params)-i >= 5 &&
-			params[i+1] == 2 {
-
-			red := params[i+2]
-			green := params[i+3]
-			blue := params[i+4]
-
-			if rendition == 38 {
-				fb.DS.renditions.SetFgColor(uint32(red), uint32(green), uint32(blue))
-			} else {
-				fb.DS.renditions.SetBgColor(uint32(red), uint32(green), uint32(blue))
+			switch params[k+1] {
+			case 5:
+				if k+1 >= len(params)-1 {
+					break
+				}
+				rend.SetForegroundColor(params[k+2])
+				k += 2
+			case 2:
+				if k+1 >= len(params)-3 {
+					break
+				}
+				red := params[k+2]
+				green := params[k+3]
+				blue := params[k+4]
+				rend.SetFgColor(red, green, blue)
+				k += 3
+			default:
 			}
+		case 39:
+			rend.setAnsiFgColor(ColorBlack) // default foreground color
 
-			i += 4
-			continue
+		// standard backgrounds
+		case 40, 41, 42, 43, 44, 45, 46, 47:
+			rend.SetBackgroundColor(attr - 40)
+		case 48:
+			if k >= len(params)-1 {
+				break
+			}
+			switch params[k+1] {
+			case 5:
+				if k+1 >= len(params)-1 {
+					break
+				}
+				rend.SetBackgroundColor(params[k+2])
+				k += 2
+			case 2:
+				if k+1 >= len(params)-3 {
+					break
+				}
+				red := params[k+2]
+				green := params[k+3]
+				blue := params[k+4]
+				rend.SetBgColor(red, green, blue)
+				k += 3
+			default:
+			}
+		case 49:
+			rend.setAnsiBgColor(ColorWhite) // default backgournd color
+
+		// bright colored foregrounds
+		case 90, 91, 92, 93, 94, 95, 96, 97:
+			rend.SetForegroundColor(attr - 82)
+
+		// bright colored backgrounds
+		case 100, 101, 102, 103, 104, 105, 106, 107:
+			rend.SetBackgroundColor(attr - 92)
+		default:
+			emu.logU.Printf("attribute not supported. %d \n", attr)
 		}
-
-		fb.DS.AddRenditions(uint32(rendition))
+		// rendition := params[i]
+		// // We need to special-case the handling of [34]8 ; 5 ; Ps,
+		// // because Ps of 0 in that case does not mean reset to default, even
+		// // though it means that otherwise (as usually renditions are applied
+		// // in order).
+		//
+		// if (rendition == 38 || rendition == 48) && len(params)-i >= 3 &&
+		// 	params[i+1] == 5 {
+		//
+		// 	if rendition == 38 {
+		// 		fb.DS.SetForegroundColor(params[i+2])
+		// 	} else {
+		// 		fb.DS.SetBackgroundColor(params[i+2])
+		// 	}
+		//
+		// 	i += 2
+		// 	continue
+		// }
+		// // True color support: ESC[ ... [34]8;2;<r>;<g>;<b> ... m
+		// if (rendition == 38 || rendition == 48) && len(params)-i >= 5 &&
+		// 	params[i+1] == 2 {
+		//
+		// 	red := params[i+2]
+		// 	green := params[i+3]
+		// 	blue := params[i+4]
+		//
+		// 	if rendition == 38 {
+		// 		fb.DS.renditions.SetFgColor(uint32(red), uint32(green), uint32(blue))
+		// 	} else {
+		// 		fb.DS.renditions.SetBgColor(uint32(red), uint32(green), uint32(blue))
+		// 	}
+		//
+		// 	i += 4
+		// 	continue
+		// }
+		//
+		// fb.DS.AddRenditions(uint32(rendition))
 	}
 }
 
 func hdl_osc_10x(_ *emulator, cmd int, arg string) {
 	// TODO not finished
 	fmt.Printf("handle osc dynamic cmd=%d, arg=%s\n", cmd, arg)
+	// if arg == "?" {
+	// 	switch cmd {
+	// 	case 12:
+	// 		cursorCell := emu.framebuffer.GetCell(-1, -1)
+	// 		r := cursorCell.GetRenditions()
+	// 	// r.fgColor
+	// 			response := fmt.Sprintf("\x1B]%d;%d;%s\x1B\\", cmd, colorIdx, r.fgColor)
+	// 			emu.dispatcher.terminalToHost.WriteString(response)
+	// 	}
+	// }
 }
 
 /*
