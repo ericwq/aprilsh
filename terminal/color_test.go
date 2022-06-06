@@ -188,3 +188,23 @@ func TestColorString(t *testing.T) {
 	// 	t.Errorf("Color(x).Hex() expect return -1, got %d\n ", Color(379|ColorValid).Hex())
 	// }
 }
+
+func TestColorIndex(t *testing.T) {
+	tc := []struct {
+		name  string
+		color Color
+		index int
+	}{
+		{"ANSI 256 color index", Color100, 100},
+		{"ANSI 8 color index", ColorBlack, 0},
+		{"ANSI 16 color index", ColorRed, 9},
+		{"default color", ColorDefault, -1},
+	}
+
+	for _, v := range tc {
+		got := v.color.Index()
+		if v.index != got {
+			t.Errorf("%s: expect %d, got %d\n", v.name, v.index, v.color.Index())
+		}
+	}
+}

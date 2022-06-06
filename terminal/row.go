@@ -46,11 +46,14 @@ func getGen() uint64 {
 	return gen_counter
 }
 
-func NewRow(width int, bgColor uint32) *Row {
+// TODO consider using DS rendition to create new row.
+func NewRow(width int, bgColor int) *Row {
 	r := Row{}
 	r.cells = make([]Cell, width)
 	for i := range r.cells {
-		r.cells[i].SetRenditions(Renditions{bgColor: bgColor})
+		rend := NewRenditions()
+		rend.SetBackgroundColor(bgColor)
+		r.cells[i].SetRenditions(*rend)
 		// fmt.Printf("NeRow: set cell %v %d\n", c.GetRenditions(), bgColor)
 	}
 	r.gen = getGen()
@@ -76,7 +79,7 @@ func (r *Row) InsertCell(col int, bgColor uint32) bool {
 
 	// prepare the new cell
 	cell := Cell{}
-	cell.renditions = Renditions{bgColor: bgColor}
+	cell.renditions = *NewRenditions()
 
 	// insert cell
 	r.cells = append(r.cells[:col+1], r.cells[col:]...)
@@ -95,7 +98,7 @@ func (r *Row) DeleteCell(col int, bgColor uint32) bool {
 
 	// prepare the new cell
 	cell := Cell{}
-	cell.renditions = Renditions{bgColor: bgColor}
+	cell.renditions = *NewRenditions()
 
 	// add new cell at the end
 	r.cells = append(r.cells, cell)
@@ -424,9 +427,14 @@ func (ds DrawState) LimitBottom() int {
 	return ds.height - 1
 }
 
-func (ds *DrawState) SetForegroundColor(x int)   { ds.renditions.SetForegroundColor(uint32(x)) }
-func (ds *DrawState) SetBackgroundColor(x int)   { ds.renditions.SetBackgroundColor(uint32(x)) }
-func (ds *DrawState) AddRenditions(color uint32) { ds.renditions.SetRendition(color) }
+// TODO set index for palette color
+func (ds *DrawState) SetForegroundColor(x int) { ds.renditions.SetForegroundColor(x) }
+
+// TODO set index for palette color
+func (ds *DrawState) SetBackgroundColor(x int) { ds.renditions.SetBackgroundColor(x) }
+
+// TODO change the parameter of AddRenditions() from uint32 to none
+func (ds *DrawState) AddRenditions()             { ds.renditions = *NewRenditions() }
 func (ds *DrawState) GetRenditions() *Renditions { return &ds.renditions }
 func (ds DrawState) GetBackgroundRendition() int { return int(ds.renditions.bgColor) }
 

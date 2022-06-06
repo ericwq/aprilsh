@@ -158,27 +158,27 @@ func TestCellIsPrintISO8859_1(t *testing.T) {
 func TestCellCompare(t *testing.T) {
 	tc := []struct {
 		ch0         rune
-		renditions0 uint32
+		renditions0 int
 		wide0       bool
 		fallback0   bool
 		wrap0       bool
 		ch2         rune
-		renditions2 uint32
+		renditions2 int
 		wide2       bool
 		fallback2   bool
 		wrap2       bool
 		want        string
 		ret         bool
 	}{
-		{'a', 30, true, false, false, 'b', 30, true, false, false, "Graphemes:", true},
-		{'i', 30, true, false, false, 'i', 30, true, false, false, "", false},
-		{'c', 30, true, true, false, 'c', 30, true, true, false, "", false},
-		{'g', 30, true, false, false, 'g', 30, true, false, false, "", false},
-		{'j', 30, true, true, false, 'j', 30, true, false, false, "Graphemes:", true},
-		{'h', 30, true, false, false, 'h', 30, true, true, false, "Graphemes:", true},
-		{'d', 30, true, false, false, 'd', 30, false, false, false, "width: ", true},
-		{'e', 30, true, false, false, 'e', 37, true, false, false, "renditions differ", true},
-		{'f', 30, true, false, false, 'f', 30, true, false, true, "wrap: ", true},
+		{'a', 0, true, false, false, 'b', 0, true, false, false, "Graphemes:", true},
+		{'i', 0, true, false, false, 'i', 0, true, false, false, "", false},
+		{'c', 0, true, true, false, 'c', 0, true, true, false, "", false},
+		{'g', 0, true, false, false, 'g', 0, true, false, false, "", false},
+		{'j', 0, true, true, false, 'j', 0, true, false, false, "Graphemes:", true},
+		{'h', 0, true, false, false, 'h', 0, true, true, false, "Graphemes:", true},
+		{'d', 0, true, false, false, 'd', 0, false, false, false, "width: ", true},
+		{'e', 0, true, false, false, 'e', 7, true, false, false, "renditions differ", true},
+		{'f', 0, true, false, false, 'f', 0, true, false, true, "wrap: ", true},
 	}
 	var cell0, cell2 Cell
 
@@ -190,12 +190,16 @@ func TestCellCompare(t *testing.T) {
 		cell0.Reset(0)
 		cell2.Reset(0)
 		cell0.Append(c.ch0) // prepare cell0
-		cell0.SetRenditions(Renditions{bgColor: c.renditions0})
+		r0 := NewRenditions()
+		r0.SetBackgroundColor(c.renditions0)
+		cell0.SetRenditions(*r0) // Renditions{bgColor: c.renditions0})
 		cell0.SetWide(c.wide0)
 		cell0.SetFallback(c.fallback0)
 		cell0.SetWrap(c.wrap0)
 		cell2.Append(c.ch2) // prepare cell2
-		cell2.SetRenditions(Renditions{bgColor: c.renditions2})
+		r2 := NewRenditions()
+		r2.SetBackgroundColor(c.renditions2)
+		cell2.SetRenditions(*r2) // Renditions{bgColor: c.renditions2})
 		cell2.SetWide(c.wide2)
 		cell2.SetFallback(c.fallback2)
 		cell2.SetWrap(c.wrap2)

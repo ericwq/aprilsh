@@ -497,11 +497,11 @@ func TestFramebufferApplyRenditionsToCell(t *testing.T) {
 		name           string
 		row            int
 		col            int
-		dsRenditions   uint32
-		wantRenditions Renditions
+		dsRenditions   int
+		wantRenditions int
 	}{
-		{"nil cell", 0, 0, 41, Renditions{bgColor: uint32(41)}},
-		{"normal cell", 2, 2, 42, Renditions{bgColor: uint32(42)}},
+		{"nil cell", 0, 0, 41, 41},
+		{"normal cell", 2, 2, 42, 42},
 	}
 	width := 8
 	height := 8
@@ -520,16 +520,20 @@ func TestFramebufferApplyRenditionsToCell(t *testing.T) {
 		}
 
 		// set the target rendition
-		fb.DS.renditions = Renditions{bgColor: v.dsRenditions}
+		dr := NewRenditions()
+		dr.SetBackgroundColor(v.dsRenditions)
+		fb.DS.renditions = *dr // Renditions{bgColor: v.dsRenditions}
 
 		fb.ApplyRenditionsToCell(cell)
 
+		want := NewRenditions()
+		want.SetBackgroundColor(v.wantRenditions)
 		if cell != nil {
-			if cell.GetRenditions() != v.wantRenditions {
+			if cell.GetRenditions() != *want {
 				t.Errorf("%s:\tcell renditions: expect=%v, got %v\n", v.name, v.wantRenditions, cell.GetRenditions())
 			}
 		} else {
-			if fb.GetCell(-1, -1).GetRenditions() != v.wantRenditions {
+			if fb.GetCell(-1, -1).GetRenditions() != *want {
 				t.Logf("after action, cursor row=%d, cursor col=%d\n", fb.DS.cursorRow, fb.DS.cursorCol)
 				t.Errorf("%s:\t cell is nil, expect %v, got %p\n", v.name, v.wantRenditions, fb.GetCell(-1, -1))
 			}
@@ -544,15 +548,18 @@ func TestFramebufferResetRow(t *testing.T) {
 
 	// prepare different renditions
 	for i := range row.cells {
-		row.cells[i].renditions = Renditions{bgColor: uint32(43)}
+		r := NewRenditions()
+		r.SetBackgroundColor(43)
+		row.cells[i].renditions = *r // Renditions{bgColor: uint32(43)}
 	}
 
 	fb.ResetRow(row)
 
 	// validate the result
-	want := Renditions{bgColor: uint32(0)}
+	want := NewRenditions() // Renditions{bgColor: uint32(0)}
+	want.SetBackgroundColor(0)
 	for i := range row.cells {
-		if row.cells[i].renditions != want {
+		if row.cells[i].renditions != *want {
 			t.Errorf("expect %v, got %v\n", want, row.cells[i].renditions)
 		}
 	}
@@ -563,13 +570,17 @@ func TestFramebufferResetCell(t *testing.T) {
 
 	// prepare different cell and renditions
 	cell := fb.GetCell(4, 4)
-	cell.renditions = Renditions{bgColor: uint32(43)}
+	r := NewRenditions()
+	r.SetBackgroundColor(43)
+	cell.renditions = *r // Renditions{bgColor: uint32(43)}
 
 	fb.ResetCell(cell)
 
 	// validate the result
-	want := Renditions{bgColor: uint32(0)}
-	if cell.renditions != want {
+	// want := Renditions{bgColor: uint32(0)}
+	want := NewRenditions() // Renditions{bgColor: uint32(0)}
+	want.SetBackgroundColor(0)
+	if cell.renditions != *want {
 		t.Errorf("expect %v, got %v\n", want, cell.renditions)
 	}
 }
@@ -673,7 +684,9 @@ func TestFramebufferSoftReset(t *testing.T) {
 	fb.DS.CursorVisible = true
 	fb.DS.ApplicationModeCursorKeys = true
 	fb.DS.SetScrollingRegion(2, 8)
-	fb.DS.renditions = Renditions{bgColor: uint32(44)}
+	rend := NewRenditions()
+	rend.SetBackgroundColor(44)
+	fb.DS.renditions = *rend // Renditions{bgColor: uint32(44)}
 
 	fb.SoftReset()
 
@@ -689,8 +702,10 @@ func TestFramebufferSoftReset(t *testing.T) {
 			fb.DS.scrollingRegionTopRow, fb.DS.scrollingRegionBottomRow)
 	}
 
-	r := Renditions{bgColor: uint32(0)}
-	if fb.DS.renditions != r {
-		t.Errorf("renditions expect %v, got %v\n", r, fb.DS.renditions)
+	expectRend := NewRenditions()
+	expectRend.SetBackgroundColor(0)
+	// r := Renditions{bgColor: uint32(0)}
+	if fb.DS.renditions != *expectRend {
+		t.Errorf("renditions expect %v, got %v\n", *expectRend, fb.DS.renditions)
 	}
 }

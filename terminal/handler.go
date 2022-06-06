@@ -545,8 +545,8 @@ func hdl_csi_sgr(emu *emulator, params []int) {
 			rend.rapidBlink = false
 			rend.inverse = false
 			rend.invisible = false
-			rend.setAnsiFgColor(ColorBlack) // default foreground color
-			rend.setAnsiBgColor(ColorWhite) // default backgournd color
+			rend.setAnsiForeground(ColorBlack) // default foreground color
+			rend.setAnsiBackground(ColorWhite) // default backgournd color
 		case 1:
 			rend.bold = true
 		case 2:
@@ -603,7 +603,7 @@ func hdl_csi_sgr(emu *emulator, params []int) {
 			default:
 			}
 		case 39:
-			rend.setAnsiFgColor(ColorBlack) // default foreground color
+			rend.setAnsiForeground(ColorBlack) // default foreground color
 
 		// standard backgrounds
 		case 40, 41, 42, 43, 44, 45, 46, 47:
@@ -631,7 +631,7 @@ func hdl_csi_sgr(emu *emulator, params []int) {
 			default:
 			}
 		case 49:
-			rend.setAnsiBgColor(ColorWhite) // default backgournd color
+			rend.setAnsiBackground(ColorWhite) // default backgournd color
 
 		// bright colored foregrounds
 		case 90, 91, 92, 93, 94, 95, 96, 97:

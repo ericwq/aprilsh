@@ -27,12 +27,13 @@ SOFTWARE.
 package terminal
 
 import (
-	"strings"
-	"testing"
+	// "strings"
+	// "testing"
 )
 
 const reset = "\033[0m"
 
+/*
 func TestRenditionsComparable(t *testing.T) {
 	tc := []struct {
 		renditions    uint32
@@ -208,3 +209,4 @@ func TestRenditionsSGR_ANSIcolor(t *testing.T) {
 		}
 	}
 }
+*/

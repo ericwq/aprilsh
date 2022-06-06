@@ -1074,6 +1074,17 @@ func (c Color) TrueColor() Color {
 	return Color(c.Hex()) | ColorIsRGB | ColorValid
 }
 
+// return the index of palette color, for RGB color return -1
+func (c Color) Index() int {
+	if !c.Valid() { // Color must be a valid color
+		return -1
+	}
+	if c.IsRGB() { // RGB color has not index
+		return -1
+	}
+	return int(c & 0x0FFFFFFFF) // remove ColorValid bit
+}
+
 // return the string representation according to RGB specification as per XParseColor.
 // for example: Color(0xBA55D3).String() returns "rgb:0x00BA/0x0055/0x00D3",
 // for invalid Color, return empty string.

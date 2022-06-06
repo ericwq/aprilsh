@@ -54,7 +54,7 @@ func NewFramebuffer(width, height int) *Framebuffer {
 func (fb *Framebuffer) newRow() *Row {
 	w := fb.DS.GetWidth()
 	bgColor := fb.DS.GetBackgroundRendition()
-	return NewRow(w, uint32(bgColor))
+	return NewRow(w, bgColor)
 }
 
 func (fb *Framebuffer) GetRows() []Row { return fb.rows }
@@ -234,7 +234,7 @@ func (fb *Framebuffer) SoftReset() {
 	fb.DS.CursorVisible = false /* per xterm and gnome-terminal */
 	fb.DS.ApplicationModeCursorKeys = false
 	fb.DS.SetScrollingRegion(0, fb.DS.GetHeight()-1)
-	fb.DS.AddRenditions(0)
+	fb.DS.AddRenditions()
 	fb.DS.ClearSavedCursor()
 }
 
