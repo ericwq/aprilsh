@@ -199,15 +199,8 @@ func (rend *Renditions) ClearAttributes() {
 // 	return color&TrueColorMask != 0
 // }
 
-// create rendition based on color parameter. This method can only be used to set 16-color set.
-func NewRendition(color int) (rend Renditions) {
-	if color == 0 {
-		rend.ClearAttributes()
-		rend.fgColor = ColorDefault
-		rend.bgColor = ColorDefault
-		return
-	}
-
+// build renditions based on color parameter. Can be called multiple times.
+func (rend *Renditions) buildRendition(color int) {
 	// use the default background and foreground color
 	switch color {
 	case 39: // Sets the foreground color to the user's configured default text color
@@ -257,6 +250,69 @@ func NewRendition(color int) (rend Renditions) {
 	case 28:
 		rend.invisible = false
 	}
+}
 
+// create rendition based on color parameter. This method can only be used to set 16-color set.
+func NewRendition(color int) (rend Renditions) {
+	if color == 0 {
+		rend.ClearAttributes()
+		rend.fgColor = ColorDefault
+		rend.bgColor = ColorDefault
+		return
+	}
+
+	rend.buildRendition(color)
+	/*
+		// use the default background and foreground color
+		switch color {
+		case 39: // Sets the foreground color to the user's configured default text color
+			rend.fgColor = ColorDefault
+			return
+		case 49: // Sets the background color to the user's configured default background color
+			rend.bgColor = ColorDefault
+			return
+		}
+
+		if 30 <= color && color <= 37 { // foreground color in 8-color set
+			rend.fgColor = PaletteColor(color - 30)
+			return
+		} else if 40 <= color && color <= 47 { // background color in 8-color set
+			rend.bgColor = PaletteColor(color - 40)
+			return
+		} else if 90 <= color && color <= 97 { //  foreground color in 16-color set
+			rend.fgColor = PaletteColor(color - 82)
+			return
+		} else if 100 <= color && color <= 107 { // background color in 16-color set
+			rend.bgColor = PaletteColor(color - 92)
+		}
+
+		switch color {
+		case 1:
+			rend.bold = true
+		case 22:
+			rend.bold = false
+		case 3:
+			rend.italic = true
+		case 23:
+			rend.italic = false
+		case 4:
+			rend.underline = true
+		case 24:
+			rend.underline = false
+		case 5:
+			rend.blink = true
+		case 25:
+			rend.blink = false
+		case 7:
+			rend.inverse = true
+		case 27:
+			rend.inverse = false
+		case 8:
+			rend.invisible = true
+		case 28:
+			rend.invisible = false
+		}
+
+	*/
 	return rend
 }
