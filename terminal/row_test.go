@@ -86,9 +86,9 @@ func TestRowAt(t *testing.T) {
 		want *Cell
 	}{
 		{"col -1", -1, nil},
-		{"col 0", 0, &Cell{renditions: *NewRenditions()}},
-		{"col 1", 1, &Cell{renditions: *NewRenditions()}},
-		{"col w-1", width - 1, &Cell{renditions: *NewRenditions()}},
+		{"col 0", 0, &Cell{renditions: Renditions{}}},
+		{"col 1", 1, &Cell{renditions: Renditions{}}},
+		{"col w-1", width - 1, &Cell{renditions: Renditions{}}},
 		{"col w", width, nil},
 		{"col w+1", width + 1, nil},
 	}
@@ -195,10 +195,10 @@ func TestRowEqual(t *testing.T) {
 		row1 := NewRow(c.width, c.bgColor)
 		for i := range row1.cells {
 			row1.cells[i].Append(c.content)
-			rend := NewRenditions()
+			rend := Renditions{}
 			rend.SetBackgroundColor(c.bgColor)
 			// row1.cells[i].SetRenditions(Renditions{bgColor: c.bgColor})
-			row1.cells[i].SetRenditions(*rend)
+			row1.cells[i].SetRenditions(rend)
 			row1.cells[i].SetWide(c.wide)
 			row1.cells[i].SetFallback(c.fallback)
 			row1.cells[i].SetWrap(c.wrap)
@@ -206,10 +206,10 @@ func TestRowEqual(t *testing.T) {
 		row2 := NewRow(c.width, c.bgColor)
 		for i := range row2.cells {
 			row2.cells[i].Append(c.content)
-			rend := NewRenditions()
+			rend := Renditions{}
 			rend.SetBackgroundColor(c.bgColor)
 			// row2.cells[i].SetRenditions(Renditions{bgColor: c.bgColor})
-			row2.cells[i].SetRenditions(*rend)
+			row2.cells[i].SetRenditions(rend)
 			row2.cells[i].SetWide(c.wide)
 			row2.cells[i].SetFallback(c.fallback)
 			row2.cells[i].SetWrap(c.wrap)

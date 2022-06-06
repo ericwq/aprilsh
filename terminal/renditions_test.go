@@ -28,45 +28,46 @@ package terminal
 
 import (
 	// "strings"
-	// "testing"
+	"testing"
 )
 
 const reset = "\033[0m"
 
-/*
 func TestRenditionsComparable(t *testing.T) {
 	tc := []struct {
-		renditions    uint32
-		fgcolor uint32
-		bgcolor uint32
+		renditions int
+		fgcolor    int
+		bgcolor    int
 	}{
 		{5, 30, 40},
 		{0, 30, 40},
 		{39, 30, 40},
 		{49, 30, 40},
-		{37, 30, 40}, //fg only
-		{47, 30, 40}, //bg only
+		{37, 30, 40}, // fg only
+		{47, 30, 40}, // bg only
 		{97, 30, 40},
 		{107, 30, 40},
 	}
-	var r1, r2 Renditions
 	for _, c := range tc {
-		r1.ClearAttributes()
-		r2.ClearAttributes()
-
+		// var r1, r2 Renditions
+		r1 := NewRendition(c.renditions)
 		r1.SetForegroundColor(c.fgcolor)
 		r1.SetBackgroundColor(c.bgcolor)
-		r1.SetRendition(c.renditions)
 
+		// r1.SetForegroundColor(c.fgcolor)
+		// r1.SetBackgroundColor(c.bgcolor)
+		// r1.SetRendition(c.renditions)
+
+		r2 := NewRendition(c.renditions)
 		r2.SetForegroundColor(c.fgcolor)
 		r2.SetBackgroundColor(c.bgcolor)
-		r2.SetRendition(c.renditions)
 		if r1 != r2 {
-			t.Errorf("case %d r1=%v, r2=%v\n",c.renditions, r1, r2)
+			t.Errorf("case %d r1=%v, r2=%v\n", c.renditions, r1, r2)
 		}
 	}
 }
 
+/*
 func TestRenditionsSetRendition(t *testing.T) {
 	turnOn := []uint32{1, 2, 3, 4, 5, 6, 7, 8, 9}
 	turnOnWant := []uint32{Bold, 0, Italic, Underlined, Blink, 0, Inverse, Invisible, 0}

@@ -190,16 +190,16 @@ func TestCellCompare(t *testing.T) {
 		cell0.Reset(0)
 		cell2.Reset(0)
 		cell0.Append(c.ch0) // prepare cell0
-		r0 := NewRenditions()
+		r0 := Renditions{}
 		r0.SetBackgroundColor(c.renditions0)
-		cell0.SetRenditions(*r0) // Renditions{bgColor: c.renditions0})
+		cell0.SetRenditions(r0) // Renditions{bgColor: c.renditions0})
 		cell0.SetWide(c.wide0)
 		cell0.SetFallback(c.fallback0)
 		cell0.SetWrap(c.wrap0)
 		cell2.Append(c.ch2) // prepare cell2
-		r2 := NewRenditions()
+		r2 := Renditions{}
 		r2.SetBackgroundColor(c.renditions2)
-		cell2.SetRenditions(*r2) // Renditions{bgColor: c.renditions2})
+		cell2.SetRenditions(r2) // Renditions{bgColor: c.renditions2})
 		cell2.SetWide(c.wide2)
 		cell2.SetFallback(c.fallback2)
 		cell2.SetWrap(c.wrap2)

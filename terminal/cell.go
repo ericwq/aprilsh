@@ -49,7 +49,7 @@ type Cell struct {
 func (c *Cell) Reset(bgColor uint32) {
 	c.contents = ""
 	// c.renditions = Renditions{bgColor: bgColor}
-	c.renditions = *NewRenditions()
+	c.renditions = Renditions{}
 	c.wide = false
 	c.fallback = false
 	c.wrap = false
