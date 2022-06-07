@@ -90,22 +90,22 @@ const (
 // definitions used by ECMA and XTerm.  Hence any further named colors
 // must begin at a value not less than 256.
 const (
-	ColorBlack = ColorValid + iota
-	ColorMaroon
-	ColorGreen
-	ColorOlive
-	ColorNavy
-	ColorPurple
-	ColorTeal
-	ColorSilver
-	ColorGray
-	ColorRed
-	ColorLime
-	ColorYellow
-	ColorBlue
-	ColorFuchsia
-	ColorAqua
-	ColorWhite
+	ColorBlack   = ColorValid + iota
+	ColorMaroon  // 1
+	ColorGreen   // 2
+	ColorOlive   // 3
+	ColorNavy    // 4
+	ColorPurple  // 5
+	ColorTeal    // 6
+	ColorSilver  // 7
+	ColorGray    // 8 //90
+	ColorRed     // 9 //91
+	ColorLime    // 10 //92
+	ColorYellow  // 11 //93
+	ColorBlue    // 12 //94
+	ColorFuchsia // 13 //95
+	ColorAqua    // 14 //96
+	ColorWhite   // 15 //97
 	Color16
 	Color17
 	Color18

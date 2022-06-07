@@ -221,8 +221,9 @@ func (rend *Renditions) ClearAttributes() {
 	rend.invisible = false
 }
 
-// build renditions based on attribute parameter. This method can only be used to set 16-color set.
-// Can be called multiple times. return true if buildRendition() can process the attribute, otherwise false.
+// build renditions based on attribute parameter. This method can process 8-color, 16-color set and
+// default color. Can be called multiple times. return true if buildRendition() can process the
+// attribute, otherwise false.
 func (rend *Renditions) buildRendition(attribute int) (processed bool) {
 	processed = true
 	// use the default background and foreground color
@@ -265,18 +266,19 @@ func (rend *Renditions) buildRendition(attribute int) (processed bool) {
 	// standard foregrounds
 	case 30, 31, 32, 33, 34, 35, 36, 37:
 		rend.SetForegroundColor(attribute - 30) // foreground color in 8-color set
-	// standard backgrounds
+	// default foreground color
 	case 39:
-		rend.setAnsiForeground(ColorDefault) // default foreground color
+		rend.setAnsiForeground(ColorDefault)
+	// standard backgrounds
 	case 40, 41, 42, 43, 44, 45, 46, 47:
 		rend.SetBackgroundColor(attribute - 40) // background color in 8-color set
+	// default background color
 	case 49:
-		rend.setAnsiBackground(ColorDefault) // default background color
+		rend.setAnsiBackground(ColorDefault)
 
 	// bright colored foregrounds
 	case 90, 91, 92, 93, 94, 95, 96, 97:
 		rend.SetForegroundColor(attribute - 82) // foreground color in 16-color set
-
 	// bright colored backgrounds
 	case 100, 101, 102, 103, 104, 105, 106, 107:
 		rend.SetBackgroundColor(attribute - 92) // background color in 16-color set

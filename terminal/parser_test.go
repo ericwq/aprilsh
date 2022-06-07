@@ -1471,20 +1471,20 @@ func TestHandle_SGR_RGBcolor(t *testing.T) {
 			Bold,
 			"\x1B[0;1;38;2;33;47;12;48;2;123;24;34m",
 		},
-		// {
-		// 	"RGB Color 2", "csi-sgr",
-		// 	0, 0, 0,
-		// 	0, 0, 0,
-		// 	Italic,
-		// 	"\x1B[0;3;38:2:0:0:0;48:2:0:0:0m",
-		// },
-		// {
-		// 	"RGB Color 3", "csi-sgr",
-		// 	12, 34, 128,
-		// 	59, 190, 155,
-		// 	Underlined,
-		// 	"\x1B[0;4;38:2:12:34:128;48:2:59:190:155m",
-		// },
+		{
+			"RGB Color 2", "csi-sgr",
+			0, 0, 0,
+			0, 0, 0,
+			Italic,
+			"\x1B[0;3;38:2:0:0:0;48:2:0:0:0m",
+		},
+		{
+			"RGB Color 3", "csi-sgr",
+			12, 34, 128,
+			59, 190, 155,
+			Underlined,
+			"\x1B[0;4;38:2:12:34:128;48:2:59:190:155m",
+		},
 	}
 
 	p := NewParser()
@@ -1493,12 +1493,6 @@ func TestHandle_SGR_RGBcolor(t *testing.T) {
 	// rend0 := new(Renditions)
 
 	for _, v := range tc {
-		// // clear the attribute
-		// rend0.ClearAttributes()
-		// rend0.SetAttributes(v.attr, true)
-		// v.attr = rend0.attributes
-
-		// run the test
 		t.Run(v.name, func(t *testing.T) {
 			// process control sequence
 			hds := make([]*Handler, 0, 16)
@@ -1526,46 +1520,50 @@ func TestHandle_SGR_RGBcolor(t *testing.T) {
 			want.SetFgColor(v.fr, v.fg, v.fb)
 			want.SetAttributes(v.attr, true)
 
-			if got != want {
+			if *got != *want {
 				t.Errorf("%s:\t %q expect renditions %v, got %v", v.name, v.seq, want, got)
 			}
 		})
 	}
 }
 
-/*
 func TestHandle_SGR_ANSIcolor(t *testing.T) {
 	tc := []struct {
 		name     string
 		wantName string
-		fg       uint32
-		bg       uint32
-		attr     uint32
+		fg       Color
+		bg       Color
+		attr     charAttribute
 		seq      string
 	}{
 		{
+			"default Color", "csi-sgr",
+			ColorDefault, ColorDefault, charAttribute(38), // 38,48 is empty charAttribute
+			"\x1B[200m",
+		},
+		{
 			"8 Color", "csi-sgr",
-			37, 40, Bold,
+			ColorSilver, ColorBlack, Bold,
 			"\x1B[1;37;40m",
 		},
 		{
 			"8 Color 2", "csi-sgr",
-			31, 41, Italic,
-			"\x1B[0;3;31;41m",
+			ColorMaroon, ColorMaroon, Italic,
+			"\x1B[3;31;41m",
 		},
 		{
 			"16 Color", "csi-sgr",
-			91 - 90 + 38, 107 - 100 + 48, Underlined,
+			ColorRed, ColorWhite, Underlined,
 			"\x1B[4;91;107m",
 		},
 		{
 			"256 Color 1", "csi-sgr",
-			33 + 30, 47 + 40, Bold,
+			Color33, Color47, Bold,
 			"\x1B[0;1;38:5:33;48:5:47m",
 		},
 		{
 			"256 Color 3", "csi-sgr",
-			128 + 30, 155 + 40, Underlined,
+			Color128, Color155, Underlined,
 			"\x1B[0;4;38:5:128;48:5:155m",
 		},
 	}
@@ -1573,14 +1571,9 @@ func TestHandle_SGR_ANSIcolor(t *testing.T) {
 	p := NewParser()
 	// the default size of emu is 80x40 [colxrow]
 	emu := NewEmulator()
-	rend0 := new(Renditions)
+	emu.logU.SetOutput(ioutil.Discard) // supress the log output
 
 	for _, v := range tc {
-		// clear and set the attribute according to test case attr value
-		rend0.ClearAttributes()
-		rend0.SetAttributes(v.attr, true)
-		v.attr = rend0.attributes
-
 		t.Run(v.name, func(t *testing.T) {
 			// process control sequence
 			hds := make([]*Handler, 0, 16)
@@ -1590,7 +1583,7 @@ func TestHandle_SGR_ANSIcolor(t *testing.T) {
 				t.Errorf("%s got zero handlers.", v.name)
 			}
 
-			emu.framebuffer.DS.GetRenditions().ClearAttributes()
+			emu.framebuffer.DS.AddRenditions()
 
 			// handle the control sequence
 			for _, hd := range hds {
@@ -1601,20 +1594,19 @@ func TestHandle_SGR_ANSIcolor(t *testing.T) {
 			}
 
 			// validate the result
-			rend := emu.framebuffer.DS.GetRenditions()
-			if rend.fgColor != v.fg {
-				t.Errorf("%s:\t %q expect foreground=%d, got %d", v.name, v.seq, v.fg, rend.fgColor)
-			}
-			if rend.bgColor != v.bg {
-				t.Errorf("%s:\t %q expect backgournd=%d, got %d", v.name, v.seq, v.bg, rend.bgColor)
-			}
-			if rend.attributes != v.attr {
-				t.Errorf("%s:\t %q expect atrribute %b, got %b", v.name, v.seq, v.attr, rend.attributes)
+			got := emu.framebuffer.DS.GetRenditions()
+			want := &Renditions{}
+			want.setAnsiForeground(v.fg)
+			want.setAnsiBackground(v.bg)
+			want.buildRendition(int(v.attr))
+
+			if *got != *want {
+				t.Errorf("%s:\t %q expect renditions %v, got %v", v.name, v.seq, want, got)
 			}
 		})
 	}
 }
-*/
+
 // TODO full test for scrolling mode
 func TestHandle_DSR6(t *testing.T) {
 	tc := []struct {
