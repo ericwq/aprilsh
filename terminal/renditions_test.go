@@ -35,9 +35,9 @@ const reset = "\033[0m"
 
 func TestRenditionsComparable(t *testing.T) {
 	tc := []struct {
-		renditions int
-		fgcolor    int
-		bgcolor    int
+		renditions   int
+		fgColorIndex int
+		bgColorIndex int
 	}{
 		{5, 30, 40},
 		{0, 30, 40},
@@ -49,86 +49,67 @@ func TestRenditionsComparable(t *testing.T) {
 		{107, 30, 40},
 	}
 	for _, c := range tc {
-		// var r1, r2 Renditions
 		r1 := NewRendition(c.renditions)
-		r1.SetForegroundColor(c.fgcolor)
-		r1.SetBackgroundColor(c.bgcolor)
-
-		// r1.SetForegroundColor(c.fgcolor)
-		// r1.SetBackgroundColor(c.bgcolor)
-		// r1.SetRendition(c.renditions)
+		r1.SetForegroundColor(c.fgColorIndex)
+		r1.SetBackgroundColor(c.bgColorIndex)
 
 		r2 := NewRendition(c.renditions)
-		r2.SetForegroundColor(c.fgcolor)
-		r2.SetBackgroundColor(c.bgcolor)
+		r2.SetForegroundColor(c.fgColorIndex)
+		r2.SetBackgroundColor(c.bgColorIndex)
 		if r1 != r2 {
 			t.Errorf("case %d r1=%v, r2=%v\n", c.renditions, r1, r2)
 		}
 	}
 }
 
-/*
-func TestRenditionsSetRendition(t *testing.T) {
-	turnOn := []uint32{1, 2, 3, 4, 5, 6, 7, 8, 9}
-	turnOnWant := []uint32{Bold, 0, Italic, Underlined, Blink, 0, Inverse, Invisible, 0}
+func TestRenditionsSetAttributes(t *testing.T) {
+	attrs := []charAttribute{Bold, Faint, Italic, Underlined, Blink, RapidBlink, Inverse, Invisible}
 
 	r := Renditions{}
-	for i, c := range turnOn {
+	for i, v := range attrs {
 		r.ClearAttributes()
 		// set the flag
-		r.SetRendition(uint32(c))
+		r.SetAttributes(v, true)
 
-		// check the flag and skip the undefined item
-		if turnOnWant[i] > 0 && !r.GetAttributes(turnOnWant[i]) {
-			t.Errorf("case [%d] expect %8b, got %8b\n", c, c, r.attributes)
+		// check the flag
+		if v2, ok := r.GetAttributes(v); ok && !v2 {
+			t.Errorf("case [%d] expect %t, got %t\n", i, true, v2)
 		}
 	}
 
-	turnOff := []uint32{22, 23, 24, 25, 26, 27, 28, 29}
-	turnOffWant := []uint32{Bold, Italic, Underlined, Blink, 0, Inverse, Invisible, 0}
-	for i, c := range turnOff {
-		// skip the undefined one
-		if turnOffWant[i] == 0 {
+	on := []int{22, 23, 24, 25, 0, 27, 28}
+	attrs2 := []charAttribute{Bold, Italic, Underlined, Blink, 0, Inverse, Invisible}
+
+	for i, v := range attrs2 {
+		if on[i] == 0 {
 			continue
 		}
 		r.ClearAttributes()
 		// set the flag first
-		r.SetAttributes(turnOffWant[i], true)
-		// next action should disable the flag
-		r.SetRendition(c)
+		r.SetAttributes(v, true)
+		// next action should clear the flag
+		r.buildRendition(on[i])
 
 		// error if the flag is not clear
-		if r.GetAttributes(turnOffWant[i]) {
-			t.Errorf("case [%d] expect %8b, got %8b\n", c, c, r.attributes)
+		if v2, ok := r.GetAttributes(v); ok && v2 {
+			t.Errorf("case [%d] expect %t, got %t\n", i, false, v2)
 		}
 	}
 }
 
-func TestRenditionsSetTrueColor(t *testing.T) {
-	tc := []struct {
-		r, g, b uint32
-		want    uint32
-	}{
-		{2, 3, 4, makeTrueColor(2, 3, 4)},
-		{200, 300, 400, makeTrueColor(200, 300, 400)},
-	}
+func TestRenditionsGetAttributesReturnFalse(t *testing.T) {
+	r := Renditions{}
 
-	for _, c := range tc {
-		r := Renditions{}
-		r.SetForegroundColor(TrueColorMask | c.r<<16 | c.g<<8 | c.b)
-		r.SetBackgroundColor(TrueColorMask | c.r<<16 | c.g<<8 | c.b)
-		if r.fgColor != c.want || r.bgColor != c.want {
-			t.Logf("expect foreground color:%2x, got:%2x\n", c.want, r.fgColor)
-			t.Errorf("expect background color:%2x, got:%2x\n", c.want, r.fgColor)
-		}
+	if _, ok := r.GetAttributes(charAttribute(9)); ok {
+		t.Errorf("GetAttributes should return false, but get %t\n", true)
 	}
 }
 
 func TestRenditionsSGR_RGBColor(t *testing.T) {
 	tc := []struct {
-		fr, fg, fb uint32
-		br, bg, bb uint32
-		attr       uint32
+		fr, fg, fb int
+		br, bg, bb int
+		attr       charAttribute
 		want       string
 	}{
 		{33, 47, 12, 123, 24, 34, Bold, "\033[0;1;38:2:33:47:12;48:2:123:24:34m"},
@@ -137,13 +118,13 @@ func TestRenditionsSGR_RGBColor(t *testing.T) {
 	}
 
 	for _, c := range tc {
-		r := Renditions{}
+		r := &Renditions{}
 		r.SetFgColor(c.fr, c.fg, c.fb)
 		r.SetBgColor(c.br, c.bg, c.bb)
-		if r.GetAttributes(c.attr) {
-			t.Errorf("expect %t, got false", r.GetAttributes(c.attr))
+		if v, ok := r.GetAttributes(c.attr); ok && v { // Now, the attributes is not set
+			t.Errorf("expect %t,ok=%t, got false", v, ok)
 		}
-		r.SetAttributes(c.attr, true)
+		r.buildRendition(int(c.attr)) // set the attributes.
 		got := r.SGR()
 		if c.want != got {
 			t.Logf("expect %q, got %q\n", c.want, got)
@@ -154,23 +135,30 @@ func TestRenditionsSGR_RGBColor(t *testing.T) {
 
 func TestRenditionsSGR_256color(t *testing.T) {
 	tc := []struct {
-		fg   uint32
-		bg   uint32
-		attr uint32
+		fg   Color
+		bg   Color
+		attr charAttribute
 		want string
 	}{
-		{33, 47, Bold, "\033[0;1;38:5:33;48:5:47m"},
-		{0, 0, Italic, "\033[0;3;30;40m"},
-		{128, 155, Underlined, "\033[0;4;38:5:128;48:5:155m"},
-		{205, 228, Inverse, "\033[0;7;38:5:205;48:5:228m"},
+		{Color33, Color47, RapidBlink, "\033[0;6;38:5:33;48:5:47m"},  // 88-color
+		{ColorDefault, ColorDefault, Italic, "\033[0;3m"},            // just italic
+		{ColorDefault, ColorDefault, charAttribute(38), ""},          // default Renditions and no charAttribute generate empty string
+		{Color128, Color155, Blink, "\033[0;5;38:5:128;48:5:155m"},   // 256-color
+		{Color205, Color228, Inverse, "\033[0;7;38:5:205;48:5:228m"}, // 256-color
+		{ColorRed, ColorWhite, charAttribute(38), "\033[0;91;107m"},  // 16-color set
 	}
 
 	for _, c := range tc {
+		// prepare SGR condition
 		r := Renditions{}
-		r.SetForegroundColor(c.fg)
-		r.SetBackgroundColor(c.bg)
-		r.SetAttributes(c.attr, true)
+		r.setAnsiForeground(c.fg)
+		r.setAnsiBackground(c.bg)
+		r.buildRendition(int(c.attr))
+
+		// call SGR
 		got := r.SGR()
+
+		// validate the result
 		if c.want != got {
 			t.Logf("expect %q, got %q\n", c.want, got)
 			t.Errorf("expect %sThis%s, got %sThis%s\n", c.want, reset, got, reset)
@@ -180,34 +168,39 @@ func TestRenditionsSGR_256color(t *testing.T) {
 
 func TestRenditionsSGR_ANSIcolor(t *testing.T) {
 	tc := []struct {
-		fg   uint32
-		bg   uint32
-		attr uint32
+		fg   int
+		bg   int
+		attr charAttribute
 		want string
 	}{
 		{30, 47, Bold, "\033[0;1;30;47m"},
 		{0, 0, Bold, "\033[0;1m"},
+		{0, 0, charAttribute(38), ""}, // buildRendition doesn't support 38,48
 		{0, 0, Italic, "\033[0;3m"},
 		{0, 0, Underlined, "\033[0;4m"},
 		{39, 49, Invisible, "\033[0;8m"},
-		{90, 107, Underlined, "\033[0;4;38:5:8;48:5:15m"},
-		{37, 40, Faint, "\033[0;37;40m"},
-		{97, 100, Blink, "\033[0;5;38:5:15;48:5:8m"},
+		{37, 40, Faint, "\033[0;2;37;40m"},
+		{90, 107, Underlined, "\033[0;4;90;107m"},
+		{97, 100, Blink, "\033[0;5;97;100m"},
 	}
 
 	for _, c := range tc {
 		r := Renditions{}
-		r.SetRendition(c.fg)
-		r.SetRendition(c.bg)
-		r.SetAttributes(c.attr, true)
+		r.buildRendition(c.fg)
+		r.buildRendition(c.bg)
+		r.buildRendition(int(c.attr))
 		got := r.SGR()
 		if c.want != got {
-			a := strings.ReplaceAll(c.want, "\033", "ESC")
-			b := strings.ReplaceAll(got, "\033", "ESC")
-			t.Logf("expect %s, got %s\n", a, b)
+			t.Logf("expect %q, got %q\n", c.want, got)
 
 			t.Errorf("expect %sThis%s, got %sThis%s\n", c.want, reset, got, reset)
 		}
 	}
 }
-*/
+
+func TestRenditionsBuildRenditions(t *testing.T) {
+	r := Renditions{}
+	if r.buildRendition(48) { // buildRendition doesn't support 38,48
+		t.Errorf("buildRenditions expect false, got %t\n", true)
+	}
+}

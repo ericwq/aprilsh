@@ -31,26 +31,21 @@ import (
 	"strings"
 )
 
-// type charAttribute uint8
-//
-// const (
-// 	Bold charAttribute = iota + 1
-// 	Faint
-// 	Italic
-// 	Underlined
-// 	Blink
-// 	RapidBlink // this one is added by SGR
-// 	Inverse
-// 	Invisible
-// 	SIZE
-// )
-//
-// const TrueColorMask uint32 = 0x1000000
+type charAttribute uint8
 
-/* Don't set the fields directly
- *
- * Renditions is comparable
- */
+const (
+	Bold charAttribute = iota + 1
+	Faint
+	Italic
+	Underlined
+	Blink
+	RapidBlink // this one is added by SGR
+	Inverse
+	Invisible
+)
+
+// Renditions determines the foreground and background color and character attribute.
+// it is comparable. default background/foreground is ColorDefault
 type Renditions struct {
 	fgColor Color
 	bgColor Color
@@ -63,12 +58,16 @@ type Renditions struct {
 	rapidBlink bool
 	inverse    bool
 	invisible  bool
-	// attributes charAttribute
 }
 
 // set the ANSI foreground indexed color. The index start from 0. represent ANSI standard color.
 func (rend *Renditions) SetForegroundColor(index int) {
 	rend.fgColor = PaletteColor(index)
+}
+
+// set the ANSI background indexed color. The index start from 0. represent ANSI standard color.
+func (rend *Renditions) SetBackgroundColor(index int) {
+	rend.bgColor = PaletteColor(index)
 }
 
 // set the ansi foreground palette color based on Color const
@@ -81,19 +80,14 @@ func (rend *Renditions) setAnsiBackground(c Color) {
 	rend.bgColor = c
 }
 
-// set the ANSI background indexed color. The index start from 0. represent ANSI standard color.
-func (r *Renditions) SetBackgroundColor(index int) {
-	r.bgColor = PaletteColor(index)
-}
-
 // set the RGB foreground color
 func (rend *Renditions) SetFgColor(r, g, b int) {
 	rend.fgColor = NewRGBColor(int32(r), int32(g), int32(b))
 }
 
 // set the RGB background color
-func (d *Renditions) SetBgColor(r, g, b int) {
-	d.fgColor = NewRGBColor(int32(r), int32(g), int32(b))
+func (rend *Renditions) SetBgColor(r, g, b int) {
+	rend.bgColor = NewRGBColor(int32(r), int32(g), int32(b))
 }
 
 // generate SGR sequence based on Renditions
@@ -168,17 +162,53 @@ func (rend *Renditions) SGR() string {
 	return sgr.String()
 }
 
-// func (r *Renditions) SetAttributes(attr uint32, turnOn bool) {
-// 	if turnOn {
-// 		r.attributes |= (1 << attr)
-// 	} else {
-// 		r.attributes &= ^(1 << attr)
-// 	}
-// }
-//
-// func (r Renditions) GetAttributes(attr uint32) bool {
-// 	return (r.attributes & (1 << attr)) > 0
-// }
+func (r *Renditions) SetAttributes(attr charAttribute, value bool) {
+	switch attr {
+	case Bold:
+		r.bold = value
+	case Faint:
+		r.faint = value
+	case Italic:
+		r.italic = value
+	case Underlined:
+		r.underline = value
+	case Blink:
+		r.blink = value
+	case RapidBlink:
+		r.rapidBlink = value
+	case Inverse:
+		r.inverse = value
+	case Invisible:
+		r.invisible = value
+	}
+}
+
+func (r Renditions) GetAttributes(attr charAttribute) (value, ok bool) {
+	ok = true
+
+	switch attr {
+	case Bold:
+		value = r.bold
+	case Faint:
+		value = r.faint
+	case Italic:
+		value = r.italic
+	case Underlined:
+		value = r.underline
+	case Blink:
+		value = r.blink
+	case RapidBlink: // this one is added by SGR
+		value = r.rapidBlink
+	case Inverse:
+		value = r.inverse
+	case Invisible:
+		value = r.invisible
+	default:
+		ok = false
+	}
+
+	return value, ok
+}
 
 func (rend *Renditions) ClearAttributes() {
 	rend.bold = false
@@ -191,128 +221,81 @@ func (rend *Renditions) ClearAttributes() {
 	rend.invisible = false
 }
 
-// func makeTrueColor(r, g, b uint32) uint32 {
-// 	return TrueColorMask | (r << 16) | (g << 8) | b
-// }
-//
-// func isTrueColor(color uint32) bool {
-// 	return color&TrueColorMask != 0
-// }
-
-// build renditions based on color parameter. Can be called multiple times.
-func (rend *Renditions) buildRendition(color int) {
+// build renditions based on attribute parameter. This method can only be used to set 16-color set.
+// Can be called multiple times. return true if buildRendition() can process the attribute, otherwise false.
+func (rend *Renditions) buildRendition(attribute int) (processed bool) {
+	processed = true
 	// use the default background and foreground color
-	switch color {
-	case 39: // Sets the foreground color to the user's configured default text color
-		rend.fgColor = ColorDefault
-		return
-	case 49: // Sets the background color to the user's configured default background color
-		rend.bgColor = ColorDefault
-		return
-	}
-
-	if 30 <= color && color <= 37 { // foreground color in 8-color set
-		rend.fgColor = PaletteColor(color - 30)
-		return
-	} else if 40 <= color && color <= 47 { // background color in 8-color set
-		rend.bgColor = PaletteColor(color - 40)
-		return
-	} else if 90 <= color && color <= 97 { //  foreground color in 16-color set
-		rend.fgColor = PaletteColor(color - 82)
-		return
-	} else if 100 <= color && color <= 107 { // background color in 16-color set
-		rend.bgColor = PaletteColor(color - 92)
-	}
-
-	switch color {
+	switch attribute {
+	case 0:
+		rend.ClearAttributes()
+		rend.setAnsiForeground(ColorDefault) // default foreground color
+		rend.setAnsiBackground(ColorDefault) // default background color
 	case 1:
 		rend.bold = true
-	case 22:
-		rend.bold = false
+	case 2:
+		rend.faint = true
 	case 3:
 		rend.italic = true
-	case 23:
-		rend.italic = false
 	case 4:
 		rend.underline = true
-	case 24:
-		rend.underline = false
 	case 5:
 		rend.blink = true
-	case 25:
-		rend.blink = false
+	case 6:
+		rend.rapidBlink = true
 	case 7:
-		rend.inverse = true
-	case 27:
-		rend.inverse = false
+		rend.inverse = true // TODO how to handle inverse?
 	case 8:
 		rend.invisible = true
+
+	case 22:
+		rend.bold = false
+	case 23:
+		rend.italic = false
+	case 24:
+		rend.underline = false
+	case 25:
+		rend.blink = false      // not blinking
+		rend.rapidBlink = false // not blinking
+	case 27:
+		rend.inverse = false // TODO how to handle inverse
 	case 28:
 		rend.invisible = false
+
+	// standard foregrounds
+	case 30, 31, 32, 33, 34, 35, 36, 37:
+		rend.SetForegroundColor(attribute - 30) // foreground color in 8-color set
+	// standard backgrounds
+	case 39:
+		rend.setAnsiForeground(ColorDefault) // default foreground color
+	case 40, 41, 42, 43, 44, 45, 46, 47:
+		rend.SetBackgroundColor(attribute - 40) // background color in 8-color set
+	case 49:
+		rend.setAnsiBackground(ColorDefault) // default background color
+
+	// bright colored foregrounds
+	case 90, 91, 92, 93, 94, 95, 96, 97:
+		rend.SetForegroundColor(attribute - 82) // foreground color in 16-color set
+
+	// bright colored backgrounds
+	case 100, 101, 102, 103, 104, 105, 106, 107:
+		rend.SetBackgroundColor(attribute - 92) // background color in 16-color set
+	default:
+		processed = false // false means buildRendition() does not process it
 	}
+
+	return processed
 }
 
-// create rendition based on color parameter. This method can only be used to set 16-color set.
-func NewRendition(color int) (rend Renditions) {
-	if color == 0 {
+// create rendition based on colorAttr parameter. This method can only be used to set 16-color set.
+func NewRendition(colorAttr int) (rend Renditions) {
+	if colorAttr == 0 {
 		rend.ClearAttributes()
 		rend.fgColor = ColorDefault
 		rend.bgColor = ColorDefault
 		return
 	}
 
-	rend.buildRendition(color)
-	/*
-		// use the default background and foreground color
-		switch color {
-		case 39: // Sets the foreground color to the user's configured default text color
-			rend.fgColor = ColorDefault
-			return
-		case 49: // Sets the background color to the user's configured default background color
-			rend.bgColor = ColorDefault
-			return
-		}
-
-		if 30 <= color && color <= 37 { // foreground color in 8-color set
-			rend.fgColor = PaletteColor(color - 30)
-			return
-		} else if 40 <= color && color <= 47 { // background color in 8-color set
-			rend.bgColor = PaletteColor(color - 40)
-			return
-		} else if 90 <= color && color <= 97 { //  foreground color in 16-color set
-			rend.fgColor = PaletteColor(color - 82)
-			return
-		} else if 100 <= color && color <= 107 { // background color in 16-color set
-			rend.bgColor = PaletteColor(color - 92)
-		}
-
-		switch color {
-		case 1:
-			rend.bold = true
-		case 22:
-			rend.bold = false
-		case 3:
-			rend.italic = true
-		case 23:
-			rend.italic = false
-		case 4:
-			rend.underline = true
-		case 24:
-			rend.underline = false
-		case 5:
-			rend.blink = true
-		case 25:
-			rend.blink = false
-		case 7:
-			rend.inverse = true
-		case 27:
-			rend.inverse = false
-		case 8:
-			rend.invisible = true
-		case 28:
-			rend.invisible = false
-		}
-
-	*/
+	rend.buildRendition(colorAttr)
 	return rend
 }

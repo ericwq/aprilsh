@@ -47,12 +47,13 @@ func getGen() uint64 {
 }
 
 // TODO consider using DS rendition to create new row.
-func NewRow(width int, bgColor int) *Row {
+func NewRow(width int, bgColor Color) *Row {
 	r := Row{}
 	r.cells = make([]Cell, width)
 	for i := range r.cells {
 		rend := Renditions{}
-		rend.SetBackgroundColor(bgColor)
+		// rend.SetBackgroundColor(bgColor)
+		rend.setAnsiBackground(bgColor)
 		r.cells[i].SetRenditions(rend)
 		// fmt.Printf("NeRow: set cell %v %d\n", c.GetRenditions(), bgColor)
 	}
@@ -434,9 +435,9 @@ func (ds *DrawState) SetForegroundColor(index int) { ds.renditions.SetForeground
 func (ds *DrawState) SetBackgroundColor(index int) { ds.renditions.SetBackgroundColor(index) }
 
 // TODO change the parameter of AddRenditions() from uint32 to none
-func (ds *DrawState) AddRenditions()             { ds.renditions = Renditions{} }
-func (ds *DrawState) GetRenditions() *Renditions { return &ds.renditions }
-func (ds DrawState) GetBackgroundRendition() int { return int(ds.renditions.bgColor) }
+func (ds *DrawState) AddRenditions()               { ds.renditions = Renditions{} }
+func (ds *DrawState) GetRenditions() *Renditions   { return &ds.renditions }
+func (ds DrawState) GetBackgroundRendition() Color { return ds.renditions.bgColor }
 
 func (ds *DrawState) SaveCursor() {
 	ds.save.cursorCol = ds.cursorCol

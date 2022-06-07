@@ -550,14 +550,13 @@ func TestFramebufferResetRow(t *testing.T) {
 	for i := range row.cells {
 		r := Renditions{}
 		r.SetBackgroundColor(43)
-		row.cells[i].renditions = r // Renditions{bgColor: uint32(43)}
+		row.cells[i].renditions = r
 	}
 
 	fb.ResetRow(row)
 
 	// validate the result
-	want := Renditions{} // Renditions{bgColor: uint32(0)}
-	want.SetBackgroundColor(0)
+	want := Renditions{}
 	for i := range row.cells {
 		if row.cells[i].renditions != want {
 			t.Errorf("expect %v, got %v\n", want, row.cells[i].renditions)
@@ -572,14 +571,12 @@ func TestFramebufferResetCell(t *testing.T) {
 	cell := fb.GetCell(4, 4)
 	r := Renditions{}
 	r.SetBackgroundColor(43)
-	cell.renditions = r // Renditions{bgColor: uint32(43)}
+	cell.renditions = r
 
 	fb.ResetCell(cell)
 
 	// validate the result
-	// want := Renditions{bgColor: uint32(0)}
-	want := Renditions{} // Renditions{bgColor: uint32(0)}
-	want.SetBackgroundColor(0)
+	want := Renditions{}
 	if cell.renditions != want {
 		t.Errorf("expect %v, got %v\n", want, cell.renditions)
 	}
@@ -703,7 +700,7 @@ func TestFramebufferSoftReset(t *testing.T) {
 	}
 
 	expectRend := Renditions{}
-	expectRend.SetBackgroundColor(0)
+	// expectRend.SetBackgroundColor(0)
 	// r := Renditions{bgColor: uint32(0)}
 	if fb.DS.renditions != expectRend {
 		t.Errorf("renditions expect %v, got %v\n", expectRend, fb.DS.renditions)

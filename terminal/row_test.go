@@ -58,7 +58,7 @@ func TestRowSetWrap(t *testing.T) {
 
 func TestRowString(t *testing.T) {
 	width := 10
-	bgColor := 0
+	bgColor := ColorDefault
 	row := NewRow(width, bgColor)
 
 	// filled the cell
@@ -78,7 +78,7 @@ func TestRowString(t *testing.T) {
 
 func TestRowAt(t *testing.T) {
 	width := 40
-	bgColor := 0
+	bgColor := ColorDefault
 
 	tc := []struct {
 		name string
@@ -119,14 +119,14 @@ func TestRowInsertCell(t *testing.T) {
 	width := 3
 	tc := []struct {
 		col     int
-		bgColor int
+		bgColor Color
 	}{
-		{-1, 40},
-		{0, 41},
-		{width - 2, 42},
-		{width - 1, 43},
-		{width, 44},
-		{width + 1, 45},
+		{-1, ColorGray},
+		{0, ColorRed},
+		{width - 2, ColorLime},
+		{width - 1, ColorYellow},
+		{width, ColorBlue},
+		{width + 1, ColorFuchsia},
 	}
 	for _, c := range tc {
 		row := NewRow(width, c.bgColor)
@@ -148,14 +148,14 @@ func TestRowDeleteCell(t *testing.T) {
 	width := 3
 	tc := []struct {
 		col     int
-		bgColor int
+		bgColor Color
 	}{
-		{-1, 40},
-		{0, 41},
-		{width - 2, 42},
-		{width - 1, 43},
-		{width, 44},
-		{width + 1, 45},
+		{-1, ColorDefault},
+		{0, ColorRed},
+		{width - 2, ColorGreen},
+		{width - 1, ColorMaroon},
+		{width, ColorOlive},
+		{width + 1, ColorNavy},
 	}
 	for _, c := range tc {
 		row := NewRow(width, c.bgColor)
@@ -181,13 +181,13 @@ func TestRowEqual(t *testing.T) {
 	tc := []struct {
 		width    int
 		content  rune
-		bgColor  int
+		bgColor  Color
 		wide     bool
 		fallback bool
 		wrap     bool
 	}{
-		{3, '\x41', 41, false, true, false},
-		{2, '\u4e16', 42, true, false, true},
+		{3, '\x41', ColorDefault, false, true, false},
+		{2, '\u4e16', ColorGray, true, false, true},
 	}
 
 	// the simple case: same width, same contents
@@ -196,7 +196,8 @@ func TestRowEqual(t *testing.T) {
 		for i := range row1.cells {
 			row1.cells[i].Append(c.content)
 			rend := Renditions{}
-			rend.SetBackgroundColor(c.bgColor)
+			// rend.SetBackgroundColor(c.bgColor)
+			rend.setAnsiBackground(c.bgColor)
 			// row1.cells[i].SetRenditions(Renditions{bgColor: c.bgColor})
 			row1.cells[i].SetRenditions(rend)
 			row1.cells[i].SetWide(c.wide)
@@ -207,7 +208,8 @@ func TestRowEqual(t *testing.T) {
 		for i := range row2.cells {
 			row2.cells[i].Append(c.content)
 			rend := Renditions{}
-			rend.SetBackgroundColor(c.bgColor)
+			// rend.SetBackgroundColor(c.bgColor)
+			rend.setAnsiBackground(c.bgColor)
 			// row2.cells[i].SetRenditions(Renditions{bgColor: c.bgColor})
 			row2.cells[i].SetRenditions(rend)
 			row2.cells[i].SetWide(c.wide)
