@@ -198,7 +198,8 @@ func TestColorIndex(t *testing.T) {
 		{"ANSI 256 color index", Color100, 100},
 		{"ANSI 8 color index", ColorBlack, 0},
 		{"ANSI 16 color index", ColorRed, 9},
-		{"default color", ColorDefault, -1},
+		{"default color", ColorDefault, -1},    // ColorDefault has no index
+		{"RGB color", GetColor("#818181"), -1}, // RGB color has no index
 	}
 
 	for _, v := range tc {
