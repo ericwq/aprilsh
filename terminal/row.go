@@ -428,10 +428,10 @@ func (ds DrawState) LimitBottom() int {
 	return ds.height - 1
 }
 
-// TODO set index for palette color
+// set index color for foreground
 func (ds *DrawState) SetForegroundColor(index int) { ds.renditions.SetForegroundColor(index) }
 
-// TODO set index for palette color
+// set index color for background
 func (ds *DrawState) SetBackgroundColor(index int) { ds.renditions.SetBackgroundColor(index) }
 
 // TODO change the parameter of AddRenditions() from uint32 to none

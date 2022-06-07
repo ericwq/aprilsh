@@ -646,20 +646,19 @@ func TestDrawStateSetScrollingRegion(t *testing.T) {
 	}
 }
 
-/* TODO refine it
 func TestDrawStateRenditions(t *testing.T) {
 	// base renditions
 	r := Renditions{}
-	fg := 30
-	bg := 47
-	r.SetForegroundColor(uint32(fg))
-	r.SetBackgroundColor(uint32(bg))
+	fgColorIndex := 30
+	bgColorIndex := 47
+	r.SetForegroundColor(fgColorIndex)
+	r.SetBackgroundColor(bgColorIndex)
 
 	ds := NewDrawState(8, 4)
 
 	// set fg/bg color
-	ds.SetForegroundColor(fg)
-	ds.SetBackgroundColor(bg)
+	ds.SetForegroundColor(fgColorIndex)
+	ds.SetBackgroundColor(bgColorIndex)
 
 	// validate the result
 	if ds.renditions != r {
@@ -667,23 +666,23 @@ func TestDrawStateRenditions(t *testing.T) {
 	}
 
 	// validate the bg color
-	if ds.GetBackgroundRendition() != bg+40 {
-		t.Errorf("get bg color expect %d, got %d\n", bg, ds.GetBackgroundRendition())
+	if ds.GetBackgroundRendition() != r.bgColor {
+		t.Errorf("get bg color expect %d, got %d\n", bgColorIndex, ds.GetBackgroundRendition())
 	}
 	// base renditions
 	r = Renditions{}
-	r.SetRendition(uint32(fg))
+	// r.SetRendition(fg)
 
 	ds = NewDrawState(8, 4)
 	// set renditions
-	ds.AddRenditions(uint32(fg))
+	ds.AddRenditions()
 
 	// validate the result
 	if ds.renditions != r {
 		t.Errorf("add renditions expect %v, got %v\n", r, ds.renditions)
 	}
 }
-*/
+
 func TestDrawStateSnapCursorToBorder(t *testing.T) {
 	tc := []struct {
 		name    string
