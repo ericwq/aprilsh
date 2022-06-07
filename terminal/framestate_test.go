@@ -27,7 +27,6 @@ SOFTWARE.
 package terminal
 
 import (
-	"strings"
 	"testing"
 )
 
@@ -112,26 +111,11 @@ func TestFrameStateAppendSilentMove(t *testing.T) {
 
 		got := fs.strBuiler.String()
 		if v.want != got {
-
-			// replace the escape char to avoid mess the screen
-			a := replaceControlSequence(v.want)
-			b := replaceControlSequence(got)
-
-			t.Errorf("%s:\t expect [%s], got [%s]\n", v.name, a, b)
-
-			// t.Errorf("%s:\t expect [%s], got [%s]\n", v.name, v.want, fs.strBuiler.String())
+			t.Errorf("%s:\t expect %q, got %q\n", v.name, v.want, got)
 		}
 	}
 }
 
-func replaceControlSequence(before string) string {
-	b := strings.ReplaceAll(before, "\033", "ESC")
-	b = strings.ReplaceAll(b, "\b", "\\b")
-	b = strings.ReplaceAll(b, "\r", "\\r")
-	b = strings.ReplaceAll(b, "\n", "\\n")
-	return b
-}
-/* TODO refine it
 func TestFrameStateUpdateRendition(t *testing.T) {
 	tc := []struct {
 		name  string
@@ -141,8 +125,8 @@ func TestFrameStateUpdateRendition(t *testing.T) {
 		want  string
 	}{
 		{"skip", Renditions{}, Renditions{}, false, ""},
-		{"force", Renditions{}, Renditions{}, true, "\033[0m"},
-		{"other", Renditions{}, Renditions{bgColor: uint32(42)}, false, "\033[0;42m"},
+		{"force", Renditions{}, Renditions{bgColor: ColorOlive}, true, "\033[0;43m"},
+		{"other", Renditions{}, Renditions{bgColor: ColorGreen}, false, "\033[0;42m"},
 	}
 	// implicity frame szie
 	maxX := 50
@@ -162,12 +146,7 @@ func TestFrameStateUpdateRendition(t *testing.T) {
 
 		got := fs.strBuiler.String()
 		if v.want != got {
-
-			// replace the escape char to avoid mess the screen
-			a := replaceControlSequence(v.want)
-			b := replaceControlSequence(got)
-
-			t.Errorf("%s:\t sequence expect [%s], got [%s]\n", v.name, a, b)
+			t.Errorf("%s:\t sequence expect %q, got %q\n", v.name, v.want, got)
 		}
 
 		if v.other != fs.currentRendition {
@@ -175,4 +154,3 @@ func TestFrameStateUpdateRendition(t *testing.T) {
 		}
 	}
 }
-*/

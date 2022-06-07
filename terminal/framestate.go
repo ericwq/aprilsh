@@ -113,12 +113,10 @@ func (fs *FrameState) AppendMove(y, x int) {
 	fmt.Fprintf(&fs.strBuiler, "\033[%d;%dH", y+1, x+1)
 }
 
+// change the renditions, if force is true
 func (fs *FrameState) UpdateRendition(other Renditions, force bool) {
 	if force || fs.currentRendition!=other {
-		//print renditions
 
-		// https://en.wikipedia.org/wiki/ANSI_escape_code
-		// SGR (Select Graphic Rendition) parameters
 		fs.AppendString(other.SGR())
 		fs.currentRendition = other
 	}
