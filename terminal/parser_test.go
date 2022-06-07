@@ -1455,14 +1455,13 @@ func TestHandle_VPA_CHA_HPA(t *testing.T) {
 	}
 }
 
-/* TODO refine it
 func TestHandle_SGR_RGBcolor(t *testing.T) {
 	tc := []struct {
 		name       string
 		wantName   string
-		fr, fg, fb uint32
-		br, bg, bb uint32
-		attr       uint32
+		fr, fg, fb int
+		br, bg, bb int
+		attr       charAttribute
 		seq        string
 	}{
 		{
@@ -1472,32 +1471,32 @@ func TestHandle_SGR_RGBcolor(t *testing.T) {
 			Bold,
 			"\x1B[0;1;38;2;33;47;12;48;2;123;24;34m",
 		},
-		{
-			"RGB Color 2", "csi-sgr",
-			0, 0, 0,
-			0, 0, 0,
-			Italic,
-			"\x1B[0;3;38:2:0:0:0;48:2:0:0:0m",
-		},
-		{
-			"RGB Color 3", "csi-sgr",
-			12, 34, 128,
-			59, 190, 155,
-			Underlined,
-			"\x1B[0;4;38:2:12:34:128;48:2:59:190:155m",
-		},
+		// {
+		// 	"RGB Color 2", "csi-sgr",
+		// 	0, 0, 0,
+		// 	0, 0, 0,
+		// 	Italic,
+		// 	"\x1B[0;3;38:2:0:0:0;48:2:0:0:0m",
+		// },
+		// {
+		// 	"RGB Color 3", "csi-sgr",
+		// 	12, 34, 128,
+		// 	59, 190, 155,
+		// 	Underlined,
+		// 	"\x1B[0;4;38:2:12:34:128;48:2:59:190:155m",
+		// },
 	}
 
 	p := NewParser()
 	// the default size of emu is 80x40 [colxrow]
 	emu := NewEmulator()
-	rend0 := new(Renditions)
+	// rend0 := new(Renditions)
 
 	for _, v := range tc {
-		// clear the attribute
-		rend0.ClearAttributes()
-		rend0.SetAttributes(v.attr, true)
-		v.attr = rend0.attributes
+		// // clear the attribute
+		// rend0.ClearAttributes()
+		// rend0.SetAttributes(v.attr, true)
+		// v.attr = rend0.attributes
 
 		// run the test
 		t.Run(v.name, func(t *testing.T) {
@@ -1521,19 +1520,20 @@ func TestHandle_SGR_RGBcolor(t *testing.T) {
 			}
 
 			// validate the result
-			rend := emu.framebuffer.DS.GetRenditions()
-			if rend.fgColor != makeTrueColor(v.fr, v.fg, v.fb) {
-				t.Errorf("%s:\t %q expect foreground r=%d,g=%d,b=%d, got %x", v.name, v.seq, v.fr, v.fg, v.fb, rend.fgColor)
-			}
-			if rend.bgColor != makeTrueColor(v.br, v.bg, v.bb) {
-				t.Errorf("%s:\t %q expect backgournd r=%d,g=%d,b=%d, got %x", v.name, v.seq, v.br, v.bg, v.bb, rend.bgColor)
-			}
-			if rend.attributes != v.attr {
-				t.Errorf("%s:\t %q expect atrribute %b, got %b", v.name, v.seq, v.attr, rend.attributes)
+			got := emu.framebuffer.DS.GetRenditions()
+			want := &Renditions{}
+			want.SetBgColor(v.br, v.bg, v.bb)
+			want.SetFgColor(v.fr, v.fg, v.fb)
+			want.SetAttributes(v.attr, true)
+
+			if got != want {
+				t.Errorf("%s:\t %q expect renditions %v, got %v", v.name, v.seq, want, got)
 			}
 		})
 	}
 }
+
+/*
 func TestHandle_SGR_ANSIcolor(t *testing.T) {
 	tc := []struct {
 		name     string

@@ -530,12 +530,12 @@ func hdl_csi_dsr(emu *emulator, cmd int) {
 // select graphics rendition -- e.g., bold, blinking, etc.
 // support 8, 16, 256 color, RGB color.
 func hdl_csi_sgr(emu *emulator, params []int) {
-	// fb := emu.framebuffer
-	rend := emu.framebuffer.DS.renditions
+	// we need to change the field, get the field pointer
+	rend := &emu.framebuffer.DS.renditions
 	for k := 0; k < len(params); k++ {
 		attr := params[k]
 
-		if !rend.buildRendition(attr) {
+		if rend.buildRendition(attr) {
 			continue
 		}
 		switch attr {
@@ -602,7 +602,7 @@ func hdl_csi_sgr(emu *emulator, params []int) {
 				green := params[k+3]
 				blue := params[k+4]
 				rend.SetFgColor(red, green, blue)
-				k += 3
+				k += 4
 			default:
 			}
 		// case 39:
@@ -630,7 +630,7 @@ func hdl_csi_sgr(emu *emulator, params []int) {
 				green := params[k+3]
 				blue := params[k+4]
 				rend.SetBgColor(red, green, blue)
-				k += 3
+				k += 4
 			default:
 			}
 		// case 49:
