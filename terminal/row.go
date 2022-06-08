@@ -183,6 +183,7 @@ type DrawState struct {
 	height           int
 	cursorCol        int
 	cursorRow        int
+	cursorColor      Color
 	combiningCharCol int
 	combiningCharRow int
 
@@ -280,6 +281,7 @@ func NewDrawState(width, height int) *DrawState {
 	ds.save = SavedCursor{autoWrapMode: true}
 	ds.AutoWrapMode = true
 	ds.CursorVisible = true
+	ds.cursorColor = ColorWhite
 
 	ds.MouseReportingMode = MOUSE_REPORTING_NONE
 	ds.MouseEncodingMode = MOUSE_ENCODING_DEFAULT

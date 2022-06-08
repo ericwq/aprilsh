@@ -596,19 +596,58 @@ func hdl_csi_sgr(emu *emulator, params []int) {
 	}
 }
 
-func hdl_osc_10x(_ *emulator, cmd int, arg string) {
-	// TODO not finished
-	fmt.Printf("handle osc dynamic cmd=%d, arg=%s\n", cmd, arg)
-	// if arg == "?" {
-	// 	switch cmd {
-	// 	case 12:
-	// 		cursorCell := emu.framebuffer.GetCell(-1, -1)
-	// 		r := cursorCell.GetRenditions()
-	// 	// r.fgColor
-	// 			response := fmt.Sprintf("\x1B]%d;%d;%s\x1B\\", cmd, colorIdx, r.fgColor)
-	// 			emu.dispatcher.terminalToHost.WriteString(response)
-	// 	}
-	// }
+/*
+
+OSC Ps ; Pt ST
+          The 10 colors (below) which may be set or queried using 1 0
+          through 1 9  are denoted dynamic colors, since the
+          corresponding control sequences were the first means for
+          setting xterm's colors dynamically, i.e., after it was
+          started.  They are not the same as the ANSI colors (however,
+          the dynamic text foreground and background colors are used
+          when ANSI colors are reset using SGR 3 9  and 4 9 ,
+          respectively).  These controls may be disabled using the
+          allowColorOps resource.  At least one parameter is expected
+          for Pt.  Each successive parameter changes the next color in
+          the list.  The value of Ps tells the starting point in the
+          list.  The colors are specified by name or RGB specification
+          as per XParseColor.
+
+          If a "?" is given rather than a name or RGB specification,
+          xterm replies with a control sequence of the same form which
+          can be used to set the corresponding dynamic color.  Because
+          more than one pair of color number and specification can be
+          given in one control sequence, xterm can make more than one
+          reply.
+
+            Ps = 1 0  ⇒  Change VT100 text foreground color to Pt.
+            Ps = 1 1  ⇒  Change VT100 text background color to Pt.
+            Ps = 1 2  ⇒  Change text cursor color to Pt.
+            Ps = 1 3  ⇒  Change pointer foreground color to Pt.
+            Ps = 1 4  ⇒  Change pointer background color to Pt.
+            Ps = 1 5  ⇒  Change Tektronix foreground color to Pt.
+            Ps = 1 6  ⇒  Change Tektronix background color to Pt.
+            Ps = 1 7  ⇒  Change highlight background color to Pt.
+            Ps = 1 8  ⇒  Change Tektronix cursor color to Pt.
+            Ps = 1 9  ⇒  Change highlight foreground color to Pt.
+*/
+func hdl_osc_10x(emu *emulator, cmd int, arg string) {
+	color := ColorDefault
+	// fmt.Printf("cmd=%d, arg=%s\n", cmd, arg)
+	if arg == "?" {
+		switch cmd {
+		case 11, 17: // 11: VT100 text background color  17: highlight background color
+			color = emu.framebuffer.DS.renditions.bgColor
+		case 10, 19: // 10: VT100 text foreground color; 19: highlight foreground color
+			color = emu.framebuffer.DS.renditions.fgColor
+		case 12: // 12: text cursor color
+			color = emu.framebuffer.DS.cursorColor
+		}
+		// if color != ColorDefault {
+			response := fmt.Sprintf("\x1B]%d;%s\x1B\\", cmd, color) // the String() method of Color will be called.
+			emu.dispatcher.terminalToHost.WriteString(response)
+		// }
+	}
 }
 
 /*

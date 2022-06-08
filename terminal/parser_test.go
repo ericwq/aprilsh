@@ -2579,3 +2579,97 @@ func TestHandle_OSC_4(t *testing.T) {
 		})
 	}
 }
+
+// echo -ne '\e]10;?\e\\'; cat
+// echo -ne '\e]4;0;?\e\\'; cat
+func TestHandle_OSC_10x(t *testing.T) {
+	invalidColor := NewHexColor(0xF8F8F8)
+	tc := []struct {
+		name        string
+		fgColor     Color
+		bgColor     Color
+		cursorColor Color
+		wantName    []string
+		wantString  string
+		warn        bool
+		seq         string
+	}{
+		{
+			"VT100 text foreground color: regular color",
+			ColorWhite, invalidColor, invalidColor,
+			[]string{"osc-10,11,12,17,19"},
+				"\x1B]10;rgb:00ff/00ff/00ff\x1B\\", false,
+			"\x1B]10;?\x1B\\",
+		},
+		{
+			"VT100 text background color: default color",
+			invalidColor, ColorDefault, invalidColor,
+			[]string{"osc-10,11,12,17,19"},
+			"\x1B]11;rgb:0000/0000/0000\x1B\\", false,
+			"\x1B]11;?\x1B\\",
+		},
+		{
+			"text cursor color: regular color",
+			invalidColor, invalidColor, ColorGreen,
+			[]string{"osc-10,11,12,17,19"},
+				"\x1B]12;rgb:0000/0080/0000\x1B\\", false,
+			"\x1B]12;?\x1B\\",
+		},
+		{
+			"text cursor color: default color",
+			invalidColor, invalidColor, ColorDefault,
+			[]string{"osc-10,11,12,17,19"},
+			"\x1B]12;rgb:0000/0000/0000\x1B\\", false,
+			"\x1B]12;?\x1B\\",
+		},
+	}
+	p := NewParser()
+	emu := NewEmulator()
+	var place strings.Builder
+	emu.logW = log.New(&place, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+
+	for _, v := range tc {
+		place.Reset()
+		emu.dispatcher.terminalToHost.Reset()
+
+		t.Run(v.name, func(t *testing.T) {
+			// process control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) == 0 {
+				t.Errorf("%s got zero handlers.", v.name)
+			}
+
+			// set pre-condition
+			if v.fgColor != invalidColor {
+				emu.framebuffer.DS.renditions.fgColor = v.fgColor
+			}
+			if v.bgColor != invalidColor {
+				emu.framebuffer.DS.renditions.bgColor = v.bgColor
+			}
+			if v.cursorColor != invalidColor {
+				emu.framebuffer.DS.cursorColor = v.cursorColor
+			}
+
+			// execute the control sequence
+			for j, hd := range hds {
+				hd.handle(emu)
+				if hd.name != v.wantName[j] { // validate the control sequences name
+					t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName[j], hd.name)
+				}
+			}
+
+			if v.warn {
+				if !strings.Contains(place.String(), v.wantString) {
+					t.Errorf("%s: seq=%q expect %q, got %q\n", v.name, v.seq, v.wantString, place.String())
+				}
+			} else {
+				got := emu.dispatcher.terminalToHost.String()
+				if got != v.wantString {
+					t.Errorf("%s: seq=%q, \nexpect\t %q, \ngot\t\t %q\n", v.name, v.seq, v.wantString, got)
+				}
+			}
+		})
+	}
+}

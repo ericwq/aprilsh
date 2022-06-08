@@ -1088,12 +1088,30 @@ func (c Color) Index() int {
 // return the string representation according to RGB specification as per XParseColor.
 // for example: Color(0xBA55D3).String() returns "rgb:0x00BA/0x0055/0x00D3",
 // for invalid Color, return empty string.
-func (c Color) String() string {
-	r, g, b := c.RGB()
-	if r == -1 && g == -1 && b == -1 {
-		return ""
+func (c Color) String() (name string) {
+	if c == ColorDefault { // treat default as black
+		c = ColorBlack
 	}
-	return fmt.Sprintf("rgb:%04x/%04x/%04x", r, g, b)
+	// name = c.Name() // check the color name then
+	// if name != "" {
+	// 	return
+	// }
+	r, g, b := c.RGB() // check the RGB color
+	if r == -1 && g == -1 && b == -1 {
+		return
+	}
+	name = fmt.Sprintf("rgb:%02x%02x/%02x%02x/%02x%02x", r, r, g,g,b, b)
+	return
+}
+
+// lookup the color name if applicable, return empty string if not applicable.
+func (c Color) Name() string {
+	for k, v := range ColorNames {
+		if v == c {
+			return k
+		}
+	}
+	return ""
 }
 
 // NewRGBColor returns a new color with the given red, green, and blue values.
