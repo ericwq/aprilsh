@@ -2595,33 +2595,40 @@ func TestHandle_OSC_10x(t *testing.T) {
 		seq         string
 	}{
 		{
-			"VT100 text foreground color: regular color",
-			ColorWhite, invalidColor, invalidColor,
+			"query 2 color",
+			ColorWhite, ColorGreen, invalidColor,
 			[]string{"osc-10,11,12,17,19"},
-				"\x1B]10;rgb:ffff/ffff/ffff\x1B\\", false,
-			"\x1B]10;?\x1B\\",
+			"\x1B]10;rgb:ffff/ffff/ffff\x1B\\\x1b]11;rgb:0000/8080/0000\x1b\\", false,
+			"\x1B]10;?;11;?\x1B\\",
 		},
-		{
-			"VT100 text background color: default color",
-			invalidColor, ColorDefault, invalidColor,
-			[]string{"osc-10,11,12,17,19"},
-			"\x1B]11;rgb:0000/0000/0000\x1B\\", false,
-			"\x1B]11;?\x1B\\",
-		},
-		{
-			"text cursor color: regular color",
-			invalidColor, invalidColor, ColorGreen,
-			[]string{"osc-10,11,12,17,19"},
-				"\x1B]12;rgb:0000/8080/0000\x1B\\", false,
-			"\x1B]12;?\x1B\\",
-		},
-		{
-			"text cursor color: default color",
-			invalidColor, invalidColor, ColorDefault,
-			[]string{"osc-10,11,12,17,19"},
-			"\x1B]12;rgb:0000/0000/0000\x1B\\", false,
-			"\x1B]12;?\x1B\\",
-		},
+		// {
+		// 	"VT100 text foreground color: regular color",
+		// 	ColorWhite, invalidColor, invalidColor,
+		// 	[]string{"osc-10,11,12,17,19"},
+		// 	"\x1B]10;rgb:ffff/ffff/ffff\x1B\\", false,
+		// 	"\x1B]10;?\x1B\\",
+		// },
+		// {
+		// 	"VT100 text background color: default color",
+		// 	invalidColor, ColorDefault, invalidColor,
+		// 	[]string{"osc-10,11,12,17,19"},
+		// 	"\x1B]11;rgb:0000/0000/0000\x1B\\", false,
+		// 	"\x1B]11;?\x1B\\",
+		// },
+		// {
+		// 	"text cursor color: regular color",
+		// 	invalidColor, invalidColor, ColorGreen,
+		// 	[]string{"osc-10,11,12,17,19"},
+		// 	"\x1B]12;rgb:0000/8080/0000\x1B\\", false,
+		// 	"\x1B]12;?\x1B\\",
+		// },
+		// {
+		// 	"text cursor color: default color",
+		// 	invalidColor, invalidColor, ColorDefault,
+		// 	[]string{"osc-10,11,12,17,19"},
+		// 	"\x1B]12;rgb:0000/0000/0000\x1B\\", false,
+		// 	"\x1B]12;?\x1B\\",
+		// },
 	}
 	p := NewParser()
 	emu := NewEmulator()

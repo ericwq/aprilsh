@@ -632,19 +632,46 @@ OSC Ps ; Pt ST
             Ps = 1 9  ⇒  Change highlight foreground color to Pt.
 */
 func hdl_osc_10x(emu *emulator, cmd int, arg string) {
-	color := ColorDefault
-	// fmt.Printf("cmd=%d, arg=%s\n", cmd, arg)
-	if arg == "?" {
-		switch cmd {
-		case 11, 17: // 11: VT100 text background color  17: highlight background color
-			color = emu.framebuffer.DS.renditions.bgColor
-		case 10, 19: // 10: VT100 text foreground color; 19: highlight foreground color
-			color = emu.framebuffer.DS.renditions.fgColor
-		case 12: // 12: text cursor color
-			color = emu.framebuffer.DS.cursorColor
+	arg = fmt.Sprintf("%d;%s", cmd, arg)
+	count := strings.Count(arg, ";")
+	if count > 0 && count%2 == 1 { // c/spec pair has 2n-1 ';'
+		pairs := (count + 1) / 2 // count the color pair
+		if pairs >= 5 {          // limit the color pair up to 5
+			pairs = 5
 		}
-		response := fmt.Sprintf("\x1B]%d;%s\x1B\\", cmd, color) // the String() method of Color will be called.
-		emu.dispatcher.terminalToHost.WriteString(response)
+
+		args := strings.Split(arg, ";")
+		idx := 0
+		for i := 0; i < pairs; i++ {
+
+			idx = i * 2
+			color := args[idx]
+			action := args[idx+1]
+
+			// we only support query for the time being.
+			if action == "?" {
+				colorIdx, err := strconv.Atoi(color)
+				if err != nil {
+					emu.logW.Printf("OSC 10x: can't parse c parameter. %q\n", arg)
+					return
+				}
+
+				color := ColorDefault
+				switch colorIdx {
+				case 11, 17: // 11: VT100 text background color  17: highlight background color
+					color = emu.framebuffer.DS.renditions.bgColor
+				case 10, 19: // 10: VT100 text foreground color; 19: highlight foreground color
+					color = emu.framebuffer.DS.renditions.fgColor
+				case 12: // 12: text cursor color
+					color = emu.framebuffer.DS.cursorColor
+				}
+				response := fmt.Sprintf("\x1B]%d;%s\x1B\\", colorIdx, color) // the String() method of Color will be called.
+				emu.dispatcher.terminalToHost.WriteString(response)
+			}
+		}
+	} else {
+		emu.logW.Printf("OSC 10x: malformed argument, missing ';'. %q\n", arg)
+		return
 	}
 }
 
