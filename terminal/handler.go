@@ -547,12 +547,14 @@ func hdl_csi_sgr(emu *emulator, params []int) {
 			switch params[k+1] {
 			case 5:
 				if k+1 >= len(params)-1 {
+					k += len(params) - 1 - k
 					break
 				}
 				rend.SetForegroundColor(params[k+2])
 				k += 2
 			case 2:
 				if k+1 >= len(params)-3 {
+					k += len(params) - 1 - k
 					break
 				}
 				red := params[k+2]
@@ -561,6 +563,7 @@ func hdl_csi_sgr(emu *emulator, params []int) {
 				rend.SetFgColor(red, green, blue)
 				k += 4
 			default:
+				k += len(params) - 1 - k
 			}
 		case 48:
 			if k >= len(params)-1 {
@@ -569,12 +572,14 @@ func hdl_csi_sgr(emu *emulator, params []int) {
 			switch params[k+1] {
 			case 5:
 				if k+1 >= len(params)-1 {
+					k += len(params) - 1 - k
 					break
 				}
 				rend.SetBackgroundColor(params[k+2])
 				k += 2
 			case 2:
 				if k+1 >= len(params)-3 {
+					k += len(params) - 1 - k
 					break
 				}
 				red := params[k+2]
@@ -583,6 +588,7 @@ func hdl_csi_sgr(emu *emulator, params []int) {
 				rend.SetBgColor(red, green, blue)
 				k += 4
 			default:
+				k += len(params) - 1 - k
 			}
 		default:
 			emu.logU.Printf("attribute not supported. %d \n", attr)

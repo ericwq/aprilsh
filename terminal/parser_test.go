@@ -1607,6 +1607,61 @@ func TestHandle_SGR_ANSIcolor(t *testing.T) {
 	}
 }
 
+func TestHandle_SGR_Break(t *testing.T) {
+	tc := []struct {
+		name     string
+		wantName string
+		seq      string
+	}{
+		{"break 38    ", "csi-sgr", "\x1B[38m"},
+		{"break 38;   ", "csi-sgr", "\x1B[38;m"},
+		{"break 38:5  ", "csi-sgr", "\x1B[38;5m"},
+		{"break 38:2-1", "csi-sgr", "\x1B[38:2:23m"},
+		{"break 38:2-2", "csi-sgr", "\x1B[38:2:23:24m"},
+		{"break 38:7  ", "csi-sgr", "\x1B[38;7m"},
+		{"break 48    ", "csi-sgr", "\x1B[48m"},
+		{"break 48;   ", "csi-sgr", "\x1B[48;m"},
+		{"break 48:5  ", "csi-sgr", "\x1B[48;5m"},
+		{"break 48:2-1", "csi-sgr", "\x1B[48:2:23m"},
+		{"break 48:2-2", "csi-sgr", "\x1B[48:2:23:22m"},
+		{"break 48:7  ", "csi-sgr", "\x1B[48;7m"},
+	}
+	p := NewParser() // the default size of emu is 80x40 [colxrow]
+	emu := NewEmulator()
+	// emu.logU.SetOutput(ioutil.Discard) // supress the log output
+
+	for _, v := range tc {
+		t.Run(v.name, func(t *testing.T) {
+			// process control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) == 0 {
+				t.Errorf("%s got zero handlers.", v.name)
+			}
+
+			// reset the renditions
+			emu.framebuffer.DS.AddRenditions()
+
+			// handle the control sequence
+			for _, hd := range hds {
+				hd.handle(emu)
+				if hd.name != v.wantName {
+					t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+				}
+			}
+
+			// validate the result
+			got := emu.framebuffer.DS.GetRenditions()
+			want := &Renditions{}
+
+			if *got != *want {
+				t.Errorf("%s:\t %q expect renditions \n%v, got \n%v\n", v.name, v.seq, want, got)
+			}
+		})
+	}
+}
+
 // TODO full test for scrolling mode
 func TestHandle_DSR6(t *testing.T) {
 	tc := []struct {
