@@ -2511,19 +2511,19 @@ func TestHandle_OSC_4(t *testing.T) {
 		{
 			"query one color number",
 			[]string{"osc-4"},
-			"\x1B]4;1;rgb:0080/0000/0000\x1B\\", false,
+			"\x1B]4;1;rgb:8080/0000/0000\x1B\\", false,
 			"\x1B]4;1;?\x1B\\",
 		},
 		{
 			"query two color number",
 			[]string{"osc-4"},
-			"\x1B]4;250;rgb:00bc/00bc/00bc\x1B\\\x1B]4;1;rgb:0080/0000/0000\x1B\\", false,
+			"\x1B]4;250;rgb:bcbc/bcbc/bcbc\x1B\\\x1B]4;1;rgb:8080/0000/0000\x1B\\", false,
 			"\x1B]4;250;?;1;?\x1B\\",
 		},
 		{
 			"query 8 color number",
 			[]string{"osc-4"},
-			"\x1B]4;0;rgb:0000/0000/0000\x1B\\\x1B]4;1;rgb:0080/0000/0000\x1B\\\x1B]4;2;rgb:0000/0080/0000\x1B\\\x1B]4;3;rgb:0080/0080/0000\x1B\\\x1B]4;4;rgb:0000/0000/0080\x1B\\\x1B]4;5;rgb:0080/0000/0080\x1B\\\x1B]4;6;rgb:0000/0080/0080\x1B\\\x1B]4;7;rgb:00c0/00c0/00c0\x1B\\", false,
+			"\x1B]4;0;rgb:0000/0000/0000\x1B\\\x1B]4;1;rgb:8080/0000/0000\x1B\\\x1B]4;2;rgb:0000/8080/0000\x1B\\\x1B]4;3;rgb:8080/8080/0000\x1B\\\x1B]4;4;rgb:0000/0000/8080\x1B\\\x1B]4;5;rgb:8080/0000/8080\x1B\\\x1B]4;6;rgb:0000/8080/8080\x1B\\\x1B]4;7;rgb:c0c0/c0c0/c0c0\x1B\\", false,
 			"\x1B]4;0;?;1;?;2;?;3;?;4;?;5;?;6;?;7;?\x1B\\",
 		},
 		{
@@ -2598,7 +2598,7 @@ func TestHandle_OSC_10x(t *testing.T) {
 			"VT100 text foreground color: regular color",
 			ColorWhite, invalidColor, invalidColor,
 			[]string{"osc-10,11,12,17,19"},
-				"\x1B]10;rgb:00ff/00ff/00ff\x1B\\", false,
+				"\x1B]10;rgb:ffff/ffff/ffff\x1B\\", false,
 			"\x1B]10;?\x1B\\",
 		},
 		{
@@ -2612,7 +2612,7 @@ func TestHandle_OSC_10x(t *testing.T) {
 			"text cursor color: regular color",
 			invalidColor, invalidColor, ColorGreen,
 			[]string{"osc-10,11,12,17,19"},
-				"\x1B]12;rgb:0000/0080/0000\x1B\\", false,
+				"\x1B]12;rgb:0000/8080/0000\x1B\\", false,
 			"\x1B]12;?\x1B\\",
 		},
 		{

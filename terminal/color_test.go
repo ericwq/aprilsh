@@ -167,11 +167,11 @@ func TestColorString(t *testing.T) {
 		want  string
 		isRGB bool
 	}{
-		{"RGB     color string", NewRGBColor(0x35, 0x33, 0x45), "rgb:0035/0033/0045", true},
-		{"palette color string", PaletteColor(2), "rgb:0000/0080/0000", false},
+		{"RGB     color string", NewRGBColor(0x35, 0x33, 0x45), "rgb:3535/3333/4545", true},
+		{"palette color string", PaletteColor(2), "rgb:0000/8080/0000", false},
 		{"invalid color string", Color(2), "", false},
 		{"outof range palette color string", Color(379 | ColorValid), "", false}, // any number >378 is undefined color index
-		{"#345678 color string", GetColor("#345678"), "rgb:0034/0056/0078", true},
+		{"#345678 color string", GetColor("#345678"), "rgb:3434/5656/7878", true},
 	}
 
 	for _, v := range tc {

@@ -1100,7 +1100,7 @@ func (c Color) String() (name string) {
 	if r == -1 && g == -1 && b == -1 {
 		return
 	}
-	name = fmt.Sprintf("rgb:%02x%02x/%02x%02x/%02x%02x", r, r, g,g,b, b)
+	name = fmt.Sprintf("rgb:%02x%02x/%02x%02x/%02x%02x", r, r, g, g, b, b)
 	return
 }
 

@@ -643,10 +643,8 @@ func hdl_osc_10x(emu *emulator, cmd int, arg string) {
 		case 12: // 12: text cursor color
 			color = emu.framebuffer.DS.cursorColor
 		}
-		// if color != ColorDefault {
-			response := fmt.Sprintf("\x1B]%d;%s\x1B\\", cmd, color) // the String() method of Color will be called.
-			emu.dispatcher.terminalToHost.WriteString(response)
-		// }
+		response := fmt.Sprintf("\x1B]%d;%s\x1B\\", cmd, color) // the String() method of Color will be called.
+		emu.dispatcher.terminalToHost.WriteString(response)
 	}
 }
 
