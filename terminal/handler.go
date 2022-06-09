@@ -1052,3 +1052,34 @@ func hdl_csi_decstr(emu *emulator) {
 	// TODO consider the implementation, zutty csi_DECSTR vterm.icc 1748~1749
 	emu.framebuffer.SoftReset()
 }
+
+// DCS $ q Pt ST
+//           Request Status String (DECRQSS), VT420 and up.
+//           The string following the "q" is one of the following:
+//             m       ⇒  SGR
+//             " p     ⇒  DECSCL
+//             SP q    ⇒  DECSCUSR
+//             " q     ⇒  DECSCA
+//             r       ⇒  DECSTBM
+//             s       ⇒  DECSLRM
+//             t       ⇒  DECSLPP
+//             $ |     ⇒  DECSCPP
+//             $ }     ⇒  DECSASD
+//             $ ~     ⇒  DECSSDT
+//             * |     ⇒  DECSNLS
+//           xterm responds with DCS 1 $ r Pt ST for valid requests,
+//           replacing the Pt with the corresponding CSI string, or DCS 0 $
+//           r Pt ST for invalid requests.
+//
+// DECRQSS—Request Selection or Setting
+func hdl_dcs_decrqss(emu *emulator, arg string) {
+	// only response to DECSCL
+	if arg == "$q\"p" {
+		emu.framebuffer.DS.compatLevel = CompatLevelVT400
+		response := fmt.Sprintf("\x1BP1$r%s\x1B\\", DEVICE_ID)
+		emu.dispatcher.terminalToHost.WriteString(response)
+	} else {
+		response := fmt.Sprintf("\x1BP0$r%s\x1B\\", arg[2:])
+		emu.dispatcher.terminalToHost.WriteString(response)
+	}
+}

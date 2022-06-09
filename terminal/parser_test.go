@@ -1000,9 +1000,8 @@ func TestHandle_ENQ_CAN_SUB_ESC(t *testing.T) {
 				for i := 0; i < 1024; i++ { // just 4096
 					b.WriteString("blab")
 				}
-				b.WriteString("#") // 4096+1
 				raw = b.String()
-				t.Logf("%d\n", len(raw)-2)
+				t.Logf("%d\n", len(raw)-2) // OSC prefix takes two runes
 			}
 
 			for _, ch := range raw {

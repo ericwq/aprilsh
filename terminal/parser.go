@@ -1053,6 +1053,25 @@ func (p *Parser) handle_DECSTR() (hd *Handler) {
 	return hd
 }
 
+// Device Control String
+func (p *Parser) handle_DCS() (hd *Handler) {
+	// reset the state
+	defer p.setState(InputState_Normal)
+
+	arg := p.getArg()
+
+	if strings.HasPrefix(arg, "$q") { // only process DECRQSS
+		hd = &Handler{name: "dcs-decrqss", ch: p.ch}
+		hd.handle = func(emu *emulator) {
+			hdl_dcs_decrqss(emu, arg)
+		}
+	} else {
+		p.logU.Printf("DCS: %q", arg)
+	}
+
+	return hd
+}
+
 // process data stream from outside. for VT mode, character set can be changed
 // according to control sequences. for UTF-8 mode, no need to change character set.
 // the result is a *Handler list. waiting to be executed later.
@@ -1209,6 +1228,9 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_SS2()
 		case 'O':
 			hd = p.handle_SS3()
+		case 'P':
+			p.argBuf.Reset()
+			p.setState(InputState_DCS)
 		case 'c':
 			hd = p.handle_RIS()
 		case '7':
@@ -1402,6 +1424,27 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		default:
 			p.unhandledInput()
 		}
+	case InputState_DCS:
+		switch ch {
+		case '\x1B':
+			p.setState(InputState_DCS_Esc)
+		default:
+			if p.argBuf.Len() < 4095 {
+				p.argBuf.WriteRune(ch)
+			} else {
+				p.logE.Printf("DCS argument string overflow (>4095). %q\n", p.argBuf.String())
+				p.setState(InputState_Normal)
+			}
+		}
+	case InputState_DCS_Esc:
+		switch ch {
+		case '\\':
+			hd = p.handle_DCS()
+		default:
+			p.argBuf.WriteRune('\x1b')
+			p.argBuf.WriteRune(ch)
+			p.setState(InputState_DCS)
+		}
 	case InputState_OSC:
 		switch ch {
 		case '\x07': // final byte = BEL
@@ -1409,7 +1452,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case '\x1B':
 			p.setState(InputState_OSC_Esc)
 		default:
-			if p.argBuf.Len() < 4096 {
+			if p.argBuf.Len() < 4095 {
 				p.argBuf.WriteRune(ch)
 			} else {
 				p.logE.Printf("OSC argument string overflow (>4096). %q\n", p.argBuf.String())
