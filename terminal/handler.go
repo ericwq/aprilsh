@@ -632,9 +632,9 @@ OSC Ps ; Pt ST
             Ps = 1 9  ⇒  Change highlight foreground color to Pt.
 */
 func hdl_osc_10x(emu *emulator, cmd int, arg string) {
-	arg = fmt.Sprintf("%d;%s", cmd, arg)
+	arg = fmt.Sprintf("%d;%s", cmd, arg) // add the cmd back to the arg
 	count := strings.Count(arg, ";")
-	if count > 0 && count%2 == 1 { // c/spec pair has 2n-1 ';'
+	if count > 0 && count%2 == 1 { // color pair has 2n-1 ';'
 		pairs := (count + 1) / 2 // count the color pair
 		if pairs >= 5 {          // limit the color pair up to 5
 			pairs = 5
@@ -652,7 +652,7 @@ func hdl_osc_10x(emu *emulator, cmd int, arg string) {
 			if action == "?" {
 				colorIdx, err := strconv.Atoi(color)
 				if err != nil {
-					emu.logW.Printf("OSC 10x: can't parse c parameter. %q\n", arg)
+					emu.logW.Printf("OSC 10x: can't parse color index. %q\n", arg)
 					return
 				}
 
