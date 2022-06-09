@@ -273,7 +273,7 @@ func (p *Parser) handle_Graphemes() (hd *Handler) {
 	return hd
 }
 
-// prepare parameters for the CUU
+// Cursor up by <n>
 func (p *Parser) handle_CUU() (hd *Handler) {
 	num := p.getPs(0, 1)
 
@@ -286,7 +286,7 @@ func (p *Parser) handle_CUU() (hd *Handler) {
 	return hd
 }
 
-// prepare parameters for the CUD
+// Cursor down by <n>
 func (p *Parser) handle_CUD() (hd *Handler) {
 	num := p.getPs(0, 1)
 
@@ -299,7 +299,7 @@ func (p *Parser) handle_CUD() (hd *Handler) {
 	return hd
 }
 
-// prepare parameters for the CUF
+// Cursor forward (Right) by <n>
 func (p *Parser) handle_CUF() (hd *Handler) {
 	num := p.getPs(0, 1)
 
@@ -312,7 +312,7 @@ func (p *Parser) handle_CUF() (hd *Handler) {
 	return hd
 }
 
-// prepare parameters for CUB
+// Cursor backward (Left) by <n>
 func (p *Parser) handle_CUB() (hd *Handler) {
 	num := p.getPs(0, 1)
 
@@ -326,6 +326,7 @@ func (p *Parser) handle_CUB() (hd *Handler) {
 }
 
 // prepare parameters for the CUP
+//Cursor moves to <row>; <col> coordinate within the viewport
 func (p *Parser) handle_CUP() (hd *Handler) {
 	row := p.getPs(0, 1)
 	col := p.getPs(1, 1)
@@ -519,8 +520,8 @@ func (p *Parser) handle_ICH() (hd *Handler) {
 	return hd
 }
 
-// Move the active position to the n-th character of the active line.
 // CHA—Cursor Horizontal Absolute
+// Cursor moves to <n>th position horizontally in the current line
 func (p *Parser) handle_CHA_HPA() (hd *Handler) {
 	count := p.getPs(0, 1)
 
@@ -679,8 +680,8 @@ func (p *Parser) handle_DA2() (hd *Handler) {
 	return hd
 }
 
-// VPA causes the active position to be moved to the corresponding
-// horizontal position.
+// VPA causes the active position to be moved to the corresponding horizontal position.
+// Cursor moves to the <n>th position vertically in the current column
 func (p *Parser) handle_VPA() (hd *Handler) {
 	row := p.getPs(0, 1)
 
@@ -824,7 +825,8 @@ func (p *Parser) handle_DOCS_ISO8859_1() (hd *Handler) {
 	return hd
 }
 
-// move cursor to the previous row, scroll up if necessary
+// Performs the reverse operation of \n, moves cursor up one line, maintains
+// horizontal position, scrolls buffer if necessary
 // Reverse Index
 func (p *Parser) handle_RI() (hd *Handler) {
 	hd = &Handler{name: "esc-ri", ch: p.ch}
@@ -1128,6 +1130,7 @@ func (p *Parser) processStream(str string, hds []*Handler) []*Handler {
 
 // process each rune. must apply the UTF-8 decoder to the incoming byte
 // stream before interpreting any control characters.
+// ref: https://docs.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences
 func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 	var ch rune
 
@@ -1308,7 +1311,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			// the second byte or the third byte
 			hd = p.handle_ESC_DCS()
 		}
-	case InputState_CSI:
+	case InputState_CSI: // TODO CNL, CPL
 		if p.collectNumericParameters(ch) {
 			break
 		}
