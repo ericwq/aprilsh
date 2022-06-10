@@ -828,7 +828,7 @@ func hdl_osc_4(emu *emulator, cmd int, arg string) {
 				color := PaletteColor(colorIdx)
 				response := fmt.Sprintf("\x1B]%d;%d;%s\x1B\\", cmd, colorIdx, color)
 				emu.dispatcher.terminalToHost.WriteString(response)
-			}
+			} // TODO set the screen colors palette values to any RGB value.
 		}
 	} else {
 		emu.logW.Printf("OSC 4: malformed argument, missing ';'. %q\n", arg)
@@ -907,6 +907,8 @@ func hdl_csi_decset(emu *emulator, params []int) {
 	for _, param := range params {
 		switch param {
 		case 1:
+			// The Cursor Keys Mode controls the sequences that are emitted by the
+			// arrow keys as well as Home and End
 			emu.framebuffer.DS.ApplicationModeCursorKeys = true // DECCKM Apllication zutty:cursorKeyMode
 		case 2:
 			emu.resetCharsetState()
@@ -926,7 +928,7 @@ func hdl_csi_decset(emu *emulator, params []int) {
 		case 9:
 			emu.framebuffer.DS.mouseTrk.mode = MouseModeX10
 		case 12:
-			emu.logU.Println("Start blinking cursor")
+			emu.logU.Println("Start blinking cursor") //TODO support blinking
 		case 25:
 			emu.framebuffer.DS.CursorVisible = true // DECTCEM zutty:showCursorMode
 		case 47:

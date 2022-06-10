@@ -326,7 +326,7 @@ func (p *Parser) handle_CUB() (hd *Handler) {
 }
 
 // prepare parameters for the CUP
-//Cursor moves to <row>; <col> coordinate within the viewport
+// Cursor moves to <row>; <col> coordinate within the viewport
 func (p *Parser) handle_CUP() (hd *Handler) {
 	row := p.getPs(0, 1)
 	col := p.getPs(1, 1)
@@ -345,6 +345,7 @@ func (p *Parser) handle_CUP() (hd *Handler) {
 // OSC Ps ; Pt Bell
 // OSC Ps ; Pt ST
 // Set Text Parameters.  Some control sequences return information:
+// TODO rewrite the p.perror.
 func (p *Parser) handle_OSC() (hd *Handler) {
 	// Here we parse the parameters by ourselves.
 	cmd := 0
@@ -508,6 +509,8 @@ func (p *Parser) handle_TBC() (hd *Handler) {
 }
 
 // inserts one or more space (SP) characters starting at the cursor position.
+// Insert <n> spaces at the current cursor position, shifting all existing text
+// to the right. Text exiting the screen to the right is removed.
 func (p *Parser) handle_ICH() (hd *Handler) {
 	count := p.getPs(0, 1)
 
@@ -595,6 +598,8 @@ func (p *Parser) handle_DL() (hd *Handler) {
 
 // This control function deletes one or more characters from the cursor
 // position to the right.
+// Delete <n> characters at the current cursor position, shifting in
+// space characters from the right edge of the screen.
 func (p *Parser) handle_DCH() (hd *Handler) {
 	cells := p.getPs(0, 1)
 
@@ -610,6 +615,7 @@ func (p *Parser) handle_DCH() (hd *Handler) {
 // This control function moves the user window down a specified number
 // of lines in page memory.
 // SU got the +lines
+// Scroll text up by <n>. Also known as pan down, new lines fill in from the bottom of the screen
 func (p *Parser) handle_SU() (hd *Handler) {
 	lines := p.getPs(0, 1)
 
@@ -625,6 +631,7 @@ func (p *Parser) handle_SU() (hd *Handler) {
 // /This control function moves the user window up a specified number
 // of lines in page memory.
 // SD got the -lines
+// Scroll down by <n>. Also known as pan up, new lines fill in from the top of the screen
 func (p *Parser) handle_SD() (hd *Handler) {
 	lines := p.getPs(0, 1)
 
