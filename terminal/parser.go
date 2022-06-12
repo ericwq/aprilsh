@@ -28,7 +28,6 @@ package terminal
 
 import (
 	"container/list"
-	"fmt"
 	"log"
 	"os"
 	"strconv"
@@ -81,7 +80,7 @@ type Parser struct {
 	// state State
 
 	// parsing error
-	perror error
+	// perror error
 
 	// big switch state machine
 	inputState int
@@ -164,7 +163,7 @@ func (p *Parser) reset() {
 	p.inputState = InputState_Normal
 	p.ch = 0x00
 
-	p.perror = nil
+	// p.perror = nil
 
 	p.maxEscOps = 16
 	p.inputOps = make([]int, p.maxEscOps)
@@ -222,7 +221,7 @@ func (p *Parser) collectNumericParameters(ch rune) (isBreak bool) {
 		if p.inputOps[p.nInputOps-1] >= 65535 {
 			// TODO consider how to consume the extra rune
 			p.logE.Printf("the number is too big: > 65535, %d", p.inputOps[p.nInputOps-1])
-			p.perror = fmt.Errorf("the number is too big. %d", p.inputOps[p.nInputOps-1])
+			// p.perror = fmt.Errorf("the number is too big. %d", p.inputOps[p.nInputOps-1])
 			p.setState(InputState_Normal)
 		}
 	} else if ch == ';' || ch == ':' {
@@ -232,7 +231,7 @@ func (p *Parser) collectNumericParameters(ch rune) (isBreak bool) {
 			p.nInputOps += 1
 		} else {
 			p.logE.Printf("inputOps full, increase maxEscOps. %d", p.inputOps)
-			p.perror = fmt.Errorf("the parameters count limitation is over. %d", p.maxEscOps)
+			// p.perror = fmt.Errorf("the parameters count limitation is over. %d", p.maxEscOps)
 			p.setState(InputState_Normal)
 		}
 	}
@@ -364,7 +363,6 @@ func (p *Parser) handle_CUP() (hd *Handler) {
 // OSC Ps ; Pt Bell
 // OSC Ps ; Pt ST
 // Set Text Parameters.  Some control sequences return information:
-// TODO rewrite the p.perror.
 func (p *Parser) handle_OSC() (hd *Handler) {
 	// Here we parse the parameters by ourselves.
 	cmd := 0
@@ -375,12 +373,12 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 	// get the Ps
 	pos := strings.Index(arg, ";")
 	if pos == -1 {
-		p.perror = fmt.Errorf("OSC: no ';' exist. %q", arg)
+		p.logT.Printf("OSC: no ';' exist. %q\n", arg)
 		return
 	}
 	var err error
 	if cmd, err = strconv.Atoi(arg[:pos]); err != nil {
-		p.perror = fmt.Errorf("OSC: illegal Ps parameter. %q", arg[:pos])
+		p.logT.Printf("OSC: illegal Ps parameter. %q\n", arg[:pos])
 		return
 	}
 

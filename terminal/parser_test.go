@@ -675,20 +675,17 @@ func TestHandle_CUU_CUD_CUF_CUB_CUP(t *testing.T) {
 
 func TestHandle_OSC_0_1_2(t *testing.T) {
 	tc := []struct {
-		name      string
-		wantName  string
-		icon      bool
-		title     bool
-		seq       string
-		wantTitle string
+		name     string
+		wantName string
+		icon     bool
+		title    bool
+		seq      string
+		wantStr  string
 	}{
 		{"OSC 0;Pt BEL        ", "osc-0,1,2", true, true, "\x1B]0;ada\x07", "ada"},
 		{"OSC 1;Pt 7bit ST    ", "osc-0,1,2", true, false, "\x1B]1;adas\x1B\\", "adas"},
 		{"OSC 2;Pt BEL chinese", "osc-0,1,2", false, true, "\x1B]2;[道德经]\x07", "[道德经]"},
 		{"OSC 2;Pt BEL unusual", "osc-0,1,2", false, true, "\x1B]2;[neovim]\x1B78\x07", "[neovim]\x1B78"},
-		{"OSC 0;Pt malform 1  ", "osc-0,1,2", true, true, "\x1B]ada\x07", ""},
-		{"OSC 0;Pt malform 2  ", "osc-0,1,2", true, true, "\x1B]7fy;ada\x07", ""},
-		{"OSC 0;Pt malform 2  ", "osc-0,1,2", true, true, "\x1B]7fy;ada\x07", ""},
 	}
 
 	p := NewParser()
@@ -709,19 +706,21 @@ func TestHandle_OSC_0_1_2(t *testing.T) {
 			windowTitle := emu.framebuffer.windowTitle
 			iconName := emu.framebuffer.iconName
 
-			if v.title && v.icon && windowTitle == v.wantTitle && iconName == v.wantTitle &&
-				hd.name == v.wantName {
-				continue
-			} else if v.icon && iconName == v.wantTitle && hd.name == v.wantName {
-				continue
-			} else if v.title && windowTitle == v.wantTitle && hd.name == v.wantName {
-				continue
-			} else {
-				t.Errorf("%s name=%q seq=%q expect %q\n got window title=%q\n got icon name=%q\n",
-					v.name, v.wantName, v.seq, v.wantTitle, windowTitle, iconName)
+			if hd.name != v.wantName {
+				t.Errorf("%s seq=%q expect handler name %q, got %q\n", v.name, v.seq, v.wantName, hd.name)
+			}
+			if v.title && !v.icon && windowTitle != v.wantStr {
+				t.Errorf("%s seq=%q only title should be set.\nexpect %q, \ngot %q\n", v.name, v.seq, v.wantStr, windowTitle)
+			}
+			if !v.title && v.icon && iconName != v.wantStr {
+				t.Errorf("%s seq=%q only icon name should be set.\nexpect %q, \ngot %q\n", v.name, v.seq, v.wantStr, iconName)
+			}
+			if v.title && v.icon && (iconName != v.wantStr || windowTitle != v.wantStr) {
+				t.Errorf("%s seq=%q both icon name and window title should be set.\nexpect %q, \ngot window title:%q\ngot iconName:%q\n",
+					v.name, v.seq, v.wantStr, windowTitle, iconName)
 			}
 		} else {
-			if p.inputState == InputState_Normal && v.wantTitle == "" {
+			if p.inputState == InputState_Normal && v.wantStr == "" {
 				continue
 			}
 			t.Errorf("%s got nil return\n", v.name)
@@ -729,24 +728,40 @@ func TestHandle_OSC_0_1_2(t *testing.T) {
 	}
 }
 
-func TestHandle_OSC_0_Overflow(t *testing.T) {
-	p := NewParser()
-
-	p.logE.SetOutput(ioutil.Discard)
-	p.logU.SetOutput(ioutil.Discard)
-	p.logT.SetOutput(ioutil.Discard)
-
-	// parameter Ps overflow: >120
-	seq := "\x1B]121;home\x07"
-	var hd *Handler
-
-	// parse the sequence
-	for _, ch := range seq {
-		hd = p.processInput(ch)
+func TestHandle_OSC_Abort(t *testing.T) {
+	tc := []struct {
+		name string
+		seq  string
+		want string
+	}{
+		{"OSC malform 1         ", "\x1B]ada\x1B\\", "OSC: no ';' exist."},
+		{"OSC malform 2         ", "\x1B]7fy;ada\x1B\\", "OSC: illegal Ps parameter."},
+		{"OSC Ps overflow: >120 ", "\x1B]121;home\x1B\\", "OSC: malformed command string"},
+		{"OSC malform 3         ", "\x1B]7;ada\x1B\\", "unhandled OSC:"},
 	}
+	p := NewParser()
+	var place strings.Builder
+	p.logT.SetOutput(&place) // redirect the output to the string builder
+	p.logU.SetOutput(&place)
 
-	if hd != nil {
-		t.Errorf("OSC overflow: %q should return nil.", seq)
+	for _, v := range tc {
+		// reset the out put for every test case
+		place.Reset()
+		var hd *Handler
+
+		// parse the sequence
+		for _, ch := range v.seq {
+			hd = p.processInput(ch)
+		}
+
+		if hd != nil {
+			t.Errorf("%s: seq=%q for abort case, hd should be nil. hd=%v\n", v.name, v.seq, hd)
+		}
+
+		got := place.String()
+		if !strings.Contains(got, v.want) {
+			t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, v.want, got)
+		}
 	}
 }
 
