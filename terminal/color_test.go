@@ -216,16 +216,28 @@ func TestColorName(t *testing.T) {
 		color Color
 		want  string
 	}{
-		{"Balck     ", ColorBlack, "black"},
-		{"Slate grey", ColorSlateGray, "slategrey"},
-		{"Indigo    ", ColorIndigo, "indigo"},
+		{"Balck        ", ColorBlack, "black"},
+		{"Slate grey   ", ColorSlateGray, "slategrey"},
+		{"Slate grey   ", ColorSlateGray, "slategray"},
+		{"Indigo       ", ColorIndigo, "indigo"},
 		{"Absense color", Color108, ""},
 	}
 
 	for _, v := range tc {
-		got := v.color.Name()
-		if got != v.want {
-			t.Errorf("%s: expect %s, got %s\n", v.name, got, v.want)
+		names := v.color.Name()
+		// t.Logf("TC:%q %s\n", v.name, names)
+		found := false
+		for _, name := range names {
+			if name == v.want {
+				found = true
+			}
 		}
+		if v.want == "" && names == nil {
+			continue
+		}
+		if !found {
+			t.Errorf("%s: expect color name=%s, got nothing.\n", v.name, v.want)
+		}
+
 	}
 }

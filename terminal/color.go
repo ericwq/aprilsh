@@ -1104,14 +1104,19 @@ func (c Color) String() (name string) {
 	return
 }
 
-// lookup the color name if applicable, return empty string if not applicable.
-func (c Color) Name() string {
+// lookup the color name slice if applicable, return nil if not applicable.
+func (c Color) Name() []string {
+	ss := make([]string, 0)
 	for k, v := range ColorNames {
 		if v == c {
-			return k
+			ss = append(ss, k)
 		}
 	}
-	return ""
+
+	if len(ss) != 0 {
+		return ss
+	}
+	return nil
 }
 
 // NewRGBColor returns a new color with the given red, green, and blue values.
