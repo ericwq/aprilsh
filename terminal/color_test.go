@@ -209,3 +209,23 @@ func TestColorIndex(t *testing.T) {
 		}
 	}
 }
+
+func TestColorName(t *testing.T) {
+	tc := []struct {
+		name  string
+		color Color
+		want  string
+	}{
+		{"Balck     ", ColorBlack, "black"},
+		{"Slate grey", ColorSlateGray, "slategrey"},
+		{"Indigo    ", ColorIndigo, "indigo"},
+		{"Absense color", Color108, ""},
+	}
+
+	for _, v := range tc {
+		got := v.color.Name()
+		if got != v.want {
+			t.Errorf("%s: expect %s, got %s\n", v.name, got, v.want)
+		}
+	}
+}
