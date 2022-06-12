@@ -13,6 +13,24 @@ type UserInput struct {
 	state int
 }
 
+type UserByte struct {
+	c rune
+}
+
+type Resize struct {
+	width  int
+	height int
+}
+
+func (u UserByte) handle(emu emulator) {
+	ret := emu.user.parse(u, emu.framebuffer.DS.ApplicationModeCursorKeys)
+	emu.dispatcher.terminalToHost.WriteString(ret)
+}
+
+func (r Resize) handle(emu emulator) {
+	emu.resize(r.width, r.height)
+}
+
 // The user will always be in application mode. If client is not in
 // application mode, convert user's cursor control function to an
 // ANSI cursor control sequence */

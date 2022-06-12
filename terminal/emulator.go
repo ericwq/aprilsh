@@ -31,33 +31,33 @@ import (
 	"os"
 )
 
-const (
-	DISPATCH_ESCAPE = iota + 1
-	DISPATCH_CSI
-	DISPATCH_CONTROL
-)
-
-type Emulator interface {
-	Print(act Action)
-	Execute(act Action)
-	Dispatch() *Dispatcher
-	CSIdispatch(act Action)
-	ESCdispatch(act Action)
-	OSCend(act Action)
-	Resize(width int, height int)
-	User() *UserInput
-	Framebuffer() *Framebuffer
-}
-
-type Action interface {
-	ActOn(t Emulator)
-	Ignore() bool
-	Name() string
-	SetChar(rune)
-	SetPresent(bool)
-	GetChar() rune
-	IsPresent() bool
-}
+// const (
+// 	DISPATCH_ESCAPE = iota + 1
+// 	DISPATCH_CSI
+// 	DISPATCH_CONTROL
+// )
+//
+// type Emulator interface {
+// 	Print(act Action)
+// 	Execute(act Action)
+// 	Dispatch() *Dispatcher
+// 	CSIdispatch(act Action)
+// 	ESCdispatch(act Action)
+// 	OSCend(act Action)
+// 	Resize(width int, height int)
+// 	User() *UserInput
+// 	Framebuffer() *Framebuffer
+// }
+//
+// type Action interface {
+// 	ActOn(t Emulator)
+// 	Ignore() bool
+// 	Name() string
+// 	SetChar(rune)
+// 	SetPresent(bool)
+// 	GetChar() rune
+// 	IsPresent() bool
+// }
 
 //
 // /* These tables perform translation of built-in "hard" character sets
@@ -198,6 +198,7 @@ type emulator struct {
 	dispatcher   Dispatcher
 	framebuffer  *Framebuffer
 	charsetState CharsetState
+	user         UserInput
 
 	// local buffer for selection data
 	selectionData map[rune]string
@@ -276,6 +277,9 @@ func (emu *emulator) lookupCharset(p rune) (r rune) {
 	return r
 }
 
+func (emu *emulator) resize(width, height int) {
+	emu.framebuffer.Resize(width , height )
+}
 /*
 func (e *emulator) CSIdispatch(act Action) {
 	e.dispatcher.dispatch(DISPATCH_CSI, act, &e.framebuffer)

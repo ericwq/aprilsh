@@ -28,64 +28,64 @@ package terminal
 
 import (
 	// "fmt"
-	"sync"
+	// "sync"
 )
 
-type emuFunc func(*Framebuffer, *Dispatcher)
-
-type emuFunction struct {
-	function        emuFunc
-	clearsWrapState bool
-}
+// type emuFunc func(*Framebuffer, *Dispatcher)
+//
+// type emuFunction struct {
+// 	function        emuFunc
+// 	clearsWrapState bool
+// }
 
 // this is a center for register emulator function.
-var emuFunctions = struct {
-	sync.Mutex
-	functionsESC     map[string]emuFunction
-	functionsCSI     map[string]emuFunction
-	functionsControl map[string]emuFunction
-}{
-	functionsESC:     make(map[string]emuFunction, 20),
-	functionsCSI:     make(map[string]emuFunction, 20),
-	functionsControl: make(map[string]emuFunction, 20),
-}
+// var emuFunctions = struct {
+// 	sync.Mutex
+// 	functionsESC     map[string]emuFunction
+// 	functionsCSI     map[string]emuFunction
+// 	functionsControl map[string]emuFunction
+// }{
+// 	functionsESC:     make(map[string]emuFunction, 20),
+// 	functionsCSI:     make(map[string]emuFunction, 20),
+// 	functionsControl: make(map[string]emuFunction, 20),
+// }
 
-func findFunctionBy(funType int, key string) emuFunction {
-	emuFunctions.Lock()
-	defer emuFunctions.Unlock()
-
-	switch funType {
-	case DISPATCH_CONTROL:
-		if f, ok := emuFunctions.functionsControl[key]; ok {
-			return f
-		}
-	case DISPATCH_ESCAPE:
-		if f, ok := emuFunctions.functionsESC[key]; ok {
-			return f
-		}
-	case DISPATCH_CSI:
-		if f, ok := emuFunctions.functionsCSI[key]; ok {
-			return f
-		}
-	}
-
-	return emuFunction{}
-}
-
-func registerFunction(funType int, dispatchChar string, f emuFunc, wrap bool) {
-	emuFunctions.Lock()
-	defer emuFunctions.Unlock()
-
-	switch funType {
-	case DISPATCH_CONTROL:
-		emuFunctions.functionsControl[dispatchChar] = emuFunction{function: f, clearsWrapState: wrap}
-	case DISPATCH_ESCAPE:
-		emuFunctions.functionsESC[dispatchChar] = emuFunction{function: f, clearsWrapState: wrap}
-	case DISPATCH_CSI:
-		emuFunctions.functionsCSI[dispatchChar] = emuFunction{function: f, clearsWrapState: wrap}
-	default: // just ignore
-	}
-}
+// func findFunctionBy(funType int, key string) emuFunction {
+// 	emuFunctions.Lock()
+// 	defer emuFunctions.Unlock()
+//
+// 	switch funType {
+// 	case DISPATCH_CONTROL:
+// 		if f, ok := emuFunctions.functionsControl[key]; ok {
+// 			return f
+// 		}
+// 	case DISPATCH_ESCAPE:
+// 		if f, ok := emuFunctions.functionsESC[key]; ok {
+// 			return f
+// 		}
+// 	case DISPATCH_CSI:
+// 		if f, ok := emuFunctions.functionsCSI[key]; ok {
+// 			return f
+// 		}
+// 	}
+//
+// 	return emuFunction{}
+// }
+//
+// func registerFunction(funType int, dispatchChar string, f emuFunc, wrap bool) {
+// 	emuFunctions.Lock()
+// 	defer emuFunctions.Unlock()
+//
+// 	switch funType {
+// 	case DISPATCH_CONTROL:
+// 		emuFunctions.functionsControl[dispatchChar] = emuFunction{function: f, clearsWrapState: wrap}
+// 	case DISPATCH_ESCAPE:
+// 		emuFunctions.functionsESC[dispatchChar] = emuFunction{function: f, clearsWrapState: wrap}
+// 	case DISPATCH_CSI:
+// 		emuFunctions.functionsCSI[dispatchChar] = emuFunction{function: f, clearsWrapState: wrap}
+// 	default: // just ignore
+// 	}
+// }
 
 func init() {
 	// registerFunction(DISPATCH_CSI, "@", csi_ich, true) // ich
@@ -114,11 +114,11 @@ func init() {
 	// registerFunction(DISPATCH_CSI, "l", csi_rm, false)      // rm
 	// registerFunction(DISPATCH_CSI, "m", csi_sgr, false)     // sgr
 	// registerFunction(DISPATCH_CSI, "n", csi_dsr, false)     // dsr
-	registerFunction(DISPATCH_CSI, "r", csi_decstbm, false) // decstbm
-	registerFunction(DISPATCH_CSI, "!p", csi_decstr, true)  // decstr
+	// registerFunction(DISPATCH_CSI, "r", csi_decstbm, false) // decstbm
+	// registerFunction(DISPATCH_CSI, "!p", csi_decstr, true)  // decstr
 	// registerFunction(DISPATCH_CSI, ">c", csi_sda, true)     // sda request
-	registerFunction(DISPATCH_CSI, "?h", csi_decsm, false)  // decset
-	registerFunction(DISPATCH_CSI, "?l", csi_decrm, false)  // decrst
+	// registerFunction(DISPATCH_CSI, "?h", csi_decsm, false)  // decset
+	// registerFunction(DISPATCH_CSI, "?l", csi_decrm, false)  // decrst
 
 	// registerFunction(DISPATCH_ESCAPE, "#8", esc_decaln, true) // decaln
 	// registerFunction(DISPATCH_ESCAPE, "7", esc_decsc, true)   // decsc
@@ -153,9 +153,9 @@ func init() {
 // }
 
 // CSI ! p   Soft terminal reset (DECSTR), VT220 and up.
-func csi_decstr(fb *Framebuffer, _ *Dispatcher) {
-	fb.SoftReset()
-}
+// func csi_decstr(fb *Framebuffer, _ *Dispatcher) {
+// 	fb.SoftReset()
+// }
 
 // ESC c     Full Reset (RIS), VT100.
 // reset the screen
@@ -309,18 +309,18 @@ func csi_decstr(fb *Framebuffer, _ *Dispatcher) {
 // CSI Ps ; Ps r
 // Set Scrolling Region [top;bottom] (default = full size of  window) (DECSTBM), VT100.
 // set top and bottom margins
-func csi_decstbm(fb *Framebuffer, d *Dispatcher) {
-	top := d.getParam(0, 1)
-	bottom := d.getParam(1, fb.DS.GetHeight())
-
-	if bottom <= top || top > fb.DS.GetHeight() || (top == 0 && bottom == 1) {
-		return // invalid, xterm ignores
-	}
-
-	fb.DS.SetScrollingRegion(top-1, bottom-1)
-	fb.DS.MoveCol(0, false, false)
-	fb.DS.MoveRow(0, false)
-}
+// func csi_decstbm(fb *Framebuffer, d *Dispatcher) {
+// 	top := d.getParam(0, 1)
+// 	bottom := d.getParam(1, fb.DS.GetHeight())
+//
+// 	if bottom <= top || top > fb.DS.GetHeight() || (top == 0 && bottom == 1) {
+// 		return // invalid, xterm ignores
+// 	}
+//
+// 	fb.DS.SetScrollingRegion(top-1, bottom-1)
+// 	fb.DS.MoveCol(0, false, false)
+// 	fb.DS.MoveRow(0, false)
+// }
 
 // func getANSImode(param int, fb *Framebuffer) *bool {
 // 	switch param {
@@ -415,18 +415,18 @@ func setIfAvailable(mode *bool, value bool) {
 // Ps = 1 0 0 6  ⇒  Enable SGR Mouse Mode, xterm.
 // Ps = 1 0 1 5  ⇒  Enable urxvt Mouse Mode.
 // set private mode
-func csi_decsm(fb *Framebuffer, d *Dispatcher) {
-	for i := 0; i < d.getParamCount(); i++ {
-		param := d.getParam(i, 0)
-		if param == 9 || (1000 <= param && param <= 1003) {
-			fb.DS.MouseReportingMode = param
-		} else if param == 1005 || param == 1006 || param == 1015 {
-			fb.DS.MouseEncodingMode = param
-		} else {
-			setIfAvailable(getDECmode(param, fb), true)
-		}
-	}
-}
+// func csi_decsm(fb *Framebuffer, d *Dispatcher) {
+// 	for i := 0; i < d.getParamCount(); i++ {
+// 		param := d.getParam(i, 0)
+// 		if param == 9 || (1000 <= param && param <= 1003) {
+// 			fb.DS.MouseReportingMode = param
+// 		} else if param == 1005 || param == 1006 || param == 1015 {
+// 			fb.DS.MouseEncodingMode = param
+// 		} else {
+// 			setIfAvailable(getDECmode(param, fb), true)
+// 		}
+// 	}
+// }
 
 // CSI ? Pm l
 // DEC Private Mode Reset (DECRST).
@@ -439,19 +439,19 @@ func csi_decsm(fb *Framebuffer, d *Dispatcher) {
 // Ps = 1 0 0 6  ⇒  Disable SGR Mouse Mode, xterm.
 // Ps = 1 0 1 5  ⇒  Disable urxvt Mouse Mode.
 // clear private mode
-func csi_decrm(fb *Framebuffer, d *Dispatcher) {
-	for i := 0; i < d.getParamCount(); i++ {
-		param := d.getParam(i, 0)
-		if param == 9 || (1000 <= param && param <= 1003) {
-			fb.DS.MouseReportingMode = MOUSE_REPORTING_NONE
-		} else if param == 1005 || param == 1006 || param == 1015 {
-			fb.DS.MouseEncodingMode = MOUSE_ENCODING_DEFAULT
-		} else {
-			setIfAvailable(getDECmode(param, fb), false)
-		}
-	}
-}
-
+// func csi_decrm(fb *Framebuffer, d *Dispatcher) {
+// 	for i := 0; i < d.getParamCount(); i++ {
+// 		param := d.getParam(i, 0)
+// 		if param == 9 || (1000 <= param && param <= 1003) {
+// 			fb.DS.MouseReportingMode = MOUSE_REPORTING_NONE
+// 		} else if param == 1005 || param == 1006 || param == 1015 {
+// 			fb.DS.MouseEncodingMode = MOUSE_ENCODING_DEFAULT
+// 		} else {
+// 			setIfAvailable(getDECmode(param, fb), false)
+// 		}
+// 	}
+// }
+//
 // CSI Ps g  Tab Clear (TBC).
 // *  Ps = 0  ⇒  Clear Current Column (default).
 // *  Ps = 3  ⇒  Clear All.

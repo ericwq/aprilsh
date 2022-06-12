@@ -46,7 +46,7 @@ const (
 	DEVICE_ID = "64;1;9;15;21;22c"
 )
 
-// Handler is the parsing result. It can be used to perform control sequence
+// Handler can handle the input. It can be used to perform control sequence
 // on emulator.
 type Handler struct {
 	name   string              // the name of Handler
@@ -148,6 +148,15 @@ func hdl_graphemes(emu *emulator, chs ...rune) {
 	// move cursor to the next position
 	fb.DS.MoveCol(chWidth, true, true)
 }
+
+// func hdl_userbyte(emu *emulator, u UserByte) {
+// 	ret := emu.user.parse(u, emu.framebuffer.DS.ApplicationModeCursorKeys)
+// 	emu.dispatcher.terminalToHost.WriteString(ret)
+// }
+//
+// func hdl_resize(emu *emulator, width, height int) {
+// 	emu.resize(width, height)
+// }
 
 // move cursor to the count tab position
 func ht_n(fb *Framebuffer, count int) {
@@ -928,7 +937,7 @@ func hdl_csi_decset(emu *emulator, params []int) {
 		case 9:
 			emu.framebuffer.DS.mouseTrk.mode = MouseModeX10
 		case 12:
-			emu.logU.Println("Start blinking cursor") //TODO support blinking
+			emu.logU.Println("Start blinking cursor") // TODO support blinking
 		case 25:
 			emu.framebuffer.DS.CursorVisible = true // DECTCEM zutty:showCursorMode
 		case 47:

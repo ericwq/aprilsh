@@ -262,6 +262,25 @@ func (p *Parser) getArg() (arg string) {
 	return arg
 }
 
+// func handle_UserByte(ch rune) (hd *Handler) {
+// 	u := UserByte{ch}
+// 	hd = &Handler{name: "user-byte", ch: ch}
+// 	hd.handle = func(emu *emulator) {
+// 		hdl_userbyte(emu, u)
+// 	}
+// 	return hd
+// }
+//
+// func handle_Resize(width, height int) (hd *Handler) {
+// 	// resize := Resize{width, height}
+//
+// 	hd = &Handler{name: "resize"}
+// 	hd.handle = func(emu *emulator) {
+// 		hdl_resize(emu, width, height)
+// 	}
+// 	return hd
+// }
+
 // print graphemes on screen
 func (p *Parser) handle_Graphemes() (hd *Handler) {
 	hd = &Handler{name: "graphemes", ch: p.ch}

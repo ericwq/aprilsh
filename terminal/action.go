@@ -22,6 +22,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. */
 
 package terminal
+
 //
 // import "fmt"
 //
@@ -222,30 +223,9 @@ package terminal
 // 	emu.OSCend(&act)
 // }
 //
-type UserByte struct {
-	c rune
-}
 
-//func (act UserByte) Name() string { return ACTION_USER_BYTE }
+// func (act UserByte) Name() string { return ACTION_USER_BYTE }
 // func (act UserByte) String() string {
 // 	return fmt.Sprintf("%s(0x%02X,%t)", ACTION_USER_BYTE, act.c, act.present)
 // }
 
-func (act UserByte) ActOn(emu Emulator) {
-	ret := emu.User().parse(act, emu.Framebuffer().DS.ApplicationModeCursorKeys)
-	emu.Dispatch().terminalToHost.WriteString(ret)
-}
-
-type Resize struct {
-	width  int
-	height int
-}
-
-// func (act Resize) Name() string { return ACTION_RESIZE }
-// func (act Resize) String() string {
-// 	return fmt.Sprintf("%s(%d,%d)", ACTION_RESIZE, act.width, act.height)
-// }
-
-func (act Resize) ActOn(emu Emulator) {
-	emu.Resize(act.width, act.height)
-}
