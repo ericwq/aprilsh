@@ -37,6 +37,9 @@ import (
 	"github.com/rivo/uniseg"
 )
 
+// https://www.redhat.com/sysadmin/linux-script-command
+// check script command for preparing the test data.
+
 // disable this test
 // func TestUnisegCapability(t *testing.T) {
 // 	s := "Chin\u0308\u0308\u0308a 🏖 is where I live. 国旗🇳🇱Fun with Flag🇧🇷."
