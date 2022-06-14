@@ -629,10 +629,9 @@ func (p *Parser) handle_DCH() (hd *Handler) {
 	return hd
 }
 
-// This control function moves the user window down a specified number
-// of lines in page memory.
-// SU got the +lines
+// This control function moves the user window down a specified number of lines in page memory.
 // Scroll text up by <n>. Also known as pan down, new lines fill in from the bottom of the screen
+// text up, window down. SU got the +lines.
 func (p *Parser) handle_SU() (hd *Handler) {
 	lines := p.getPs(0, 1)
 
@@ -645,10 +644,9 @@ func (p *Parser) handle_SU() (hd *Handler) {
 	return hd
 }
 
-// /This control function moves the user window up a specified number
-// of lines in page memory.
-// SD got the -lines
+// /This control function moves the user window up a specified number of lines in page memory.
 // Scroll down by <n>. Also known as pan up, new lines fill in from the top of the screen
+// text down, window up. SD got the -lines
 func (p *Parser) handle_SD() (hd *Handler) {
 	lines := p.getPs(0, 1)
 
