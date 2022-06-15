@@ -2254,12 +2254,89 @@ func TestHandle_DECSET_DECRST_2(t *testing.T) {
 	}
 }
 
-// func TestHandle_DECSET_DECRST_1049(t *testing.T) {
-// 	seq := "\x1B[24;14H\x1B[?1049h\x1B[?1049l"
-//
-// 	p := NewParser()
-// 	emu := NewEmulator()
-// }
+func TestHandle_DECSET_DECRST_1049(t *testing.T) {
+	name := "DECSET/RST 1049"
+	// move cursor to 23,13
+	// DECSET 1049 set altenate screen buffer (true)
+	// move cursor to 33,24
+	// DECRST 1049 set normal screen buffer (false)
+	// DECRST 1049 set normal screen buffer (again for fast return)
+	seq := "\x1B[24;14H\x1B[?1049h\x1B[34;24H\x1B[?1049l\x1B[?1049l"
+	seqName := []string{"csi-cup", "csi-decset", "csi-cup", "csi-decrst", "csi-decrst"}
+
+	p := NewParser()
+	emu := NewEmulator()
+
+	// process control sequence
+	hds := make([]*Handler, 0, 16)
+	hds = p.processStream(seq, hds)
+
+	if len(hds) != len(seqName) {
+		t.Errorf("%s got zero handlers.", name)
+	}
+
+	// handle the control sequence
+	for j, hd := range hds {
+		hd.handle(emu)
+		if hd.name != seqName[j] { // validate the control sequences name
+			t.Errorf("%s:\t %q expect %s, got %s\n", name, seq, seqName[j], hd.name)
+		}
+
+		switch j {
+		case 0:
+			wantX := 13
+			wantY := 23
+
+			gotX := emu.framebuffer.DS.cursorCol
+			gotY := emu.framebuffer.DS.cursorRow
+
+			if gotX != wantX || gotY != wantY {
+				t.Errorf("%s:\t %q expect [%d,%d], got [%d,%d]\n", name, seq, wantY, wantX, gotY, gotX)
+			}
+		case 1:
+			want := true
+			got := emu.framebuffer.DS.altScreenBufferMode
+
+			if got != want {
+				t.Errorf("%s:\t %q expect %t, got %t\n", name, seq, want, got)
+			}
+		case 2:
+			wantX := 23
+			wantY := 33
+
+			gotX := emu.framebuffer.DS.cursorCol
+			gotY := emu.framebuffer.DS.cursorRow
+
+			if gotX != wantX || gotY != wantY {
+				t.Errorf("%s:\t %q expect [%d,%d], got [%d,%d].\n", name, seq, wantY, wantX, gotY, gotX)
+			}
+		case 3:
+			wantX := 13
+			wantY := 23
+
+			gotX := emu.framebuffer.DS.cursorCol
+			gotY := emu.framebuffer.DS.cursorRow
+
+			if gotX != wantX || gotY != wantY {
+				t.Errorf("%s:\t %q expect [%d,%d], got [%d,%d]\n", name, seq, wantY, wantX, gotY, gotX)
+			}
+
+			want := false
+			got := emu.framebuffer.DS.altScreenBufferMode
+
+			if got != want {
+				t.Errorf("%s:\t %q expect %t, got %t\n", name, seq, want, got)
+			}
+		case 4:
+			want := false
+			got := emu.framebuffer.DS.altScreenBufferMode
+
+			if got != want {
+				t.Errorf("%s:\t %q expect %t, got %t\n", name, seq, want, got)
+			}
+		}
+	}
+}
 
 func TestHandle_DECSET_DECRST_47_1047(t *testing.T) {
 	tc := []struct {
