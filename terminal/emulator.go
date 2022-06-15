@@ -195,8 +195,12 @@ type CharsetState struct {
 }
 
 type emulator struct {
-	dispatcher   Dispatcher
-	framebuffer  *Framebuffer
+	dispatcher Dispatcher
+
+	framebuffer    *Framebuffer
+	primaryFrame   Framebuffer // normal screen buffer
+	alternateFrame Framebuffer // alternate screen buffer
+
 	charsetState CharsetState
 	user         UserInput
 
@@ -230,7 +234,8 @@ func NewEmulator() *emulator {
 	emu.selectionData['7'] = "" // cut-buffer 7
 
 	// defalult size 80x40
-	emu.framebuffer = NewFramebuffer(80, 40)
+	emu.primaryFrame = *NewFramebuffer(80, 40)
+	emu.framebuffer = &emu.primaryFrame
 
 	// init logger
 	emu.logT = log.New(os.Stderr, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
@@ -278,8 +283,38 @@ func (emu *emulator) lookupCharset(p rune) (r rune) {
 }
 
 func (emu *emulator) resize(width, height int) {
-	emu.framebuffer.Resize(width , height )
+	emu.framebuffer.Resize(width, height)
 }
+
+func (emu *emulator) switchScreenBufferMode(altScreenBufferMode bool) {
+	if emu.framebuffer.DS.altScreenBufferMode == altScreenBufferMode {
+		return
+	}
+
+	if altScreenBufferMode {
+		emu.alternateFrame = *NewFramebuffer(emu.framebuffer.DS.width, emu.framebuffer.DS.height)
+		emu.framebuffer = &emu.alternateFrame
+
+		// TODO savedCursor?
+		// savedCursor_DEC = &savedCursor_DEC_alt ?
+
+		emu.framebuffer.DS.altScreenBufferMode = true
+	} else {
+		// reset the alterate screen buffer
+		emu.framebuffer.Reset()
+
+		// point to the primary screen buffer
+		emu.framebuffer = &emu.primaryFrame
+		emu.framebuffer.Resize(emu.framebuffer.DS.width, emu.framebuffer.DS.height)
+
+		// TODO savedCursor?
+		// savedCursor_DEC_alt.isSet = false;
+		// savedCursor_DEC = &savedCursor_DEC_pri;
+
+		emu.framebuffer.DS.altScreenBufferMode = false
+	}
+}
+
 /*
 func (e *emulator) CSIdispatch(act Action) {
 	e.dispatcher.dispatch(DISPATCH_CSI, act, &e.framebuffer)

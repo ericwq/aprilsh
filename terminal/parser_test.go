@@ -39,6 +39,7 @@ import (
 
 // https://www.redhat.com/sysadmin/linux-script-command
 // check script command for preparing the test data.
+// apk add util-linux-misc util-linux-doc
 
 // disable this test
 // func TestUnisegCapability(t *testing.T) {
@@ -1074,7 +1075,7 @@ func TestHandle_DECALN_RIS(t *testing.T) {
 	}
 }
 
-func TestHandle_DECSC_DECRC_DECSET1048(t *testing.T) {
+func TestHandle_DECSC_DECRC_DECSET_1048(t *testing.T) {
 	tc := []struct {
 		name         string
 		seq          string
@@ -2250,6 +2251,60 @@ func TestHandle_DECSET_DECRST_2(t *testing.T) {
 			t.Errorf("%s %q expect reset CharsetState and compatbility level (%t,%d), got(%t,%d)",
 				v.name, v.seq, true, v.compatLevel, newCS, got)
 		}
+	}
+}
+
+// func TestHandle_DECSET_DECRST_1049(t *testing.T) {
+// 	seq := "\x1B[24;14H\x1B[?1049h\x1B[?1049l"
+//
+// 	p := NewParser()
+// 	emu := NewEmulator()
+// }
+
+func TestHandle_DECSET_DECRST_47_1047(t *testing.T) {
+	tc := []struct {
+		name      string
+		seq       string
+		seqName   []string
+		setMode   bool
+		unsetMode bool
+	}{
+		{"DECSET/RST 47", "\x1B[?47h\x1B[?47l", []string{"csi-decset", "csi-decrst"}, true, false},
+		{"DECSET/RST 1047", "\x1B[?1047h\x1B[?1047l", []string{"csi-decset", "csi-decrst"}, true, false},
+	}
+
+	p := NewParser()
+	emu := NewEmulator()
+
+	for _, v := range tc {
+
+		// process control sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) != 2 {
+			t.Errorf("%s got zero handlers.", v.name)
+		}
+
+		// handle the control sequence
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.name != v.seqName[j] { // validate the control sequences name
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.seqName[j], hd.name)
+			}
+			got := emu.framebuffer.DS.altScreenBufferMode
+			switch j {
+			case 0:
+				if got != v.setMode {
+					t.Errorf("%s:\t %q expect %t, got %t\n", v.name, v.seq, true, got)
+				}
+			case 1:
+				if got != v.unsetMode {
+					t.Errorf("%s:\t %q expect %t, got %t\n", v.name, v.seq, true, got)
+				}
+			}
+		}
+
 	}
 }
 

@@ -941,7 +941,7 @@ func hdl_csi_decset(emu *emulator, params []int) {
 		case 25:
 			emu.framebuffer.DS.CursorVisible = true // DECTCEM zutty:showCursorMode
 		case 47:
-			emu.logU.Println("TODO switchScreenBufferMode(true) zutty vterm.icc line 1436")
+			emu.switchScreenBufferMode(true)
 		case 67:
 			emu.logU.Println("TODO zutty vterm.icc line 1437")
 		case 69:
@@ -969,12 +969,12 @@ func hdl_csi_decset(emu *emulator, params []int) {
 		case 1036, 1039:
 			emu.framebuffer.DS.altSendsEscape = true
 		case 1047:
-			emu.logU.Println("TODO switchScreenBufferMode(true) zutty vterm.icc line 1449")
+			emu.switchScreenBufferMode(true)
 		case 1048:
 			hdl_esc_decsc(emu)
 		case 1049:
 			hdl_esc_decsc(emu)
-			emu.logU.Println("TODO switchScreenBufferMode(true) zutty vterm.icc line 1451")
+			emu.switchScreenBufferMode(true)
 		case 2004:
 			emu.framebuffer.DS.BracketedPaste = true // xterm zutty:bracketedPasteMode
 		default:
@@ -1012,7 +1012,7 @@ func hdl_csi_decrst(emu *emulator, params []int) {
 		case 25:
 			emu.framebuffer.DS.CursorVisible = false
 		case 47:
-			emu.logU.Println("TODO switchScreenBufferMode(false) zutty vterm.icc line 1486")
+			emu.switchScreenBufferMode(false)
 		case 67:
 			emu.logU.Println("TODO zutty vterm.icc line 1487")
 		case 69:
@@ -1030,11 +1030,11 @@ func hdl_csi_decrst(emu *emulator, params []int) {
 		case 1036, 1039:
 			emu.framebuffer.DS.altSendsEscape = false
 		case 1047:
-			emu.logU.Println("TODO switchScreenBufferMode(false) zutty vterm.icc line 1495")
+			emu.switchScreenBufferMode(false)
 		case 1048:
 			hdl_esc_decrc(emu)
 		case 1049:
-			emu.logU.Println("TODO switchScreenBufferMode(false) zutty vterm.icc line 1497")
+			emu.switchScreenBufferMode(false)
 			hdl_esc_decrc(emu)
 		case 2004:
 			emu.framebuffer.DS.BracketedPaste = false

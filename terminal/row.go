@@ -218,8 +218,9 @@ type DrawState struct {
 	localEcho       bool
 	autoNewlineMode bool
 
-	//
-	compatLevel CompatibilityLevel
+	// added for vt400 compatibility
+	compatLevel         CompatibilityLevel
+	altScreenBufferMode bool // Alternate Screen Buffer support: default false
 }
 
 type (
