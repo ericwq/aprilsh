@@ -221,6 +221,7 @@ type DrawState struct {
 	// added for vt400 compatibility
 	compatLevel         CompatibilityLevel
 	altScreenBufferMode bool // Alternate Screen Buffer support: default false
+	columnMode          ColMode
 }
 
 type (
@@ -229,6 +230,7 @@ type (
 	CompatibilityLevel uint
 	CursorKeyMode      uint
 	KeypadMode         uint
+	ColMode            uint
 )
 
 const (
@@ -247,6 +249,8 @@ const (
 	CompatLevelVT400
 	KeypadNormal KeypadMode = iota
 	KeypadApplication
+	ColModeC80 ColMode = iota
+	ColModeC132
 )
 
 // TODO replace the following const with the above one
@@ -286,6 +290,8 @@ func NewDrawState(width, height int) *DrawState {
 
 	ds.MouseReportingMode = MOUSE_REPORTING_NONE
 	ds.MouseEncodingMode = MOUSE_ENCODING_DEFAULT
+
+	ds.columnMode = ColModeC80
 
 	ds.reinitializeTabs(0)
 	return ds

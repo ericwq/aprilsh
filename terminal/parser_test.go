@@ -2338,6 +2338,49 @@ func TestHandle_DECSET_DECRST_1049(t *testing.T) {
 	}
 }
 
+func TestHandle_DECSET_DECRST_3(t *testing.T) {
+	tc := []struct {
+		name    string
+		seq     string
+		hdlName []string
+		mode    ColMode
+	}{
+		{"change to column Mode    132", "\x1B[?3h", []string{"csi-decset"}, ColModeC132},
+		{"change to column Mode     80", "\x1B[?3l", []string{"csi-decrst"}, ColModeC80},
+		{"change to column Mode repeat", "\x1B[?3h\x1B[?3h", []string{"csi-decset", "csi-decset"}, ColModeC132},
+	}
+
+	p := NewParser()
+	emu := NewEmulator()
+
+	// throw away the INFO log
+	emu.logT.SetOutput(ioutil.Discard)
+
+	for _, v := range tc {
+
+		// process control sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) == 0 {
+			t.Errorf("%s got zero handlers.", v.name)
+		}
+
+		// handle the control sequence
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.name != v.hdlName[j] { // validate the control sequences name
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.hdlName[j], hd.name)
+			}
+		}
+
+		got := emu.framebuffer.DS.columnMode
+		if got != v.mode {
+			t.Errorf("%s:\t %q expect %d, got %d\n", v.name, v.seq, v.mode, got)
+		}
+	}
+}
+
 func TestHandle_DECSET_DECRST_47_1047(t *testing.T) {
 	tc := []struct {
 		name      string

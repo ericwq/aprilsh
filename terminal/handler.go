@@ -923,7 +923,7 @@ func hdl_csi_decset(emu *emulator, params []int) {
 			emu.resetCharsetState()
 			emu.framebuffer.DS.compatLevel = CompatLevelVT400
 		case 3:
-			emu.logU.Println("TODO switchColMode(ColMode::C132) zutty vterm.icc line 1427") // mosh terminalfunctions.cc line 256
+			emu.switchColMode(ColModeC132)
 		case 4:
 			emu.logT.Println("DECSCLM: Set smooth scroll")
 		case 5:
@@ -994,7 +994,7 @@ func hdl_csi_decrst(emu *emulator, params []int) {
 			emu.resetCharsetState()
 			emu.framebuffer.DS.compatLevel = CompatLevelVT52
 		case 3:
-			emu.logU.Println("TODO switchColMode(ColMode::C80) zutty vterm.icc line 1476") // mosh terminalfunctions.cc line 256
+			emu.switchColMode(ColModeC80)
 		case 4:
 			emu.logT.Println("DECSCLM: Set jump scroll")
 		case 5:

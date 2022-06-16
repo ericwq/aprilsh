@@ -315,6 +315,22 @@ func (emu *emulator) switchScreenBufferMode(altScreenBufferMode bool) {
 	}
 }
 
+func (emu *emulator) switchColMode(columnMode ColMode) {
+	if emu.framebuffer.DS.columnMode == columnMode {
+		return
+	}
+
+	// resetScreen() TODO?
+	// clearScreen() TODO?
+	if columnMode == ColModeC80 {
+		emu.logT.Println("DECCOLM: Selected 80 columns per line")
+	} else {
+		emu.logT.Println("DECCOLM: Selected 132 columns per line")
+	}
+
+	emu.framebuffer.DS.columnMode = columnMode
+}
+
 /*
 func (e *emulator) CSIdispatch(act Action) {
 	e.dispatcher.dispatch(DISPATCH_CSI, act, &e.framebuffer)
