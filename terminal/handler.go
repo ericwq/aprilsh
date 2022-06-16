@@ -945,7 +945,9 @@ func hdl_csi_decset(emu *emulator, params []int) {
 		case 67:
 			emu.logU.Println("TODO zutty vterm.icc line 1437")
 		case 69:
-			emu.logU.Println("TODO zutty vterm.icc line 1438")
+			emu.framebuffer.DS.horizMarginMode = true // DECLRMM: Set Left and Right Margins
+			emu.framebuffer.DS.hMargin = 0
+			emu.framebuffer.DS.nColsEff = emu.framebuffer.DS.width
 		case 1000:
 			emu.framebuffer.DS.mouseTrk.mode = MouseModeVT200
 		case 1001:
@@ -1016,7 +1018,9 @@ func hdl_csi_decrst(emu *emulator, params []int) {
 		case 67:
 			emu.logU.Println("TODO zutty vterm.icc line 1487")
 		case 69:
-			emu.logU.Println("TODO zutty vterm.icc line 1488")
+			emu.framebuffer.DS.horizMarginMode = false // DECLRMM: Set Left and Right Margins
+			emu.framebuffer.DS.hMargin = 0
+			emu.framebuffer.DS.nColsEff = emu.framebuffer.DS.width
 		case 1001:
 			emu.logU.Println("Reset VT200 Highlight Mouse mode")
 		case 1004:

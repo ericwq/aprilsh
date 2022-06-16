@@ -219,9 +219,12 @@ type DrawState struct {
 	autoNewlineMode bool
 
 	// added for vt400 compatibility
-	compatLevel         CompatibilityLevel
-	altScreenBufferMode bool // Alternate Screen Buffer support: default false
-	columnMode          ColMode
+	compatLevel         CompatibilityLevel // VT52, VT100, VT400
+	altScreenBufferMode bool               // Alternate Screen Buffer support: default false
+	columnMode          ColMode            // column mode 80 or 132, just for compatibility
+	horizMarginMode     bool               // left and right margins support
+	hMargin             int                // left margins
+	nColsEff            int                // right margins
 }
 
 type (
