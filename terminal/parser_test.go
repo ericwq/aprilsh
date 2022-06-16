@@ -2428,6 +2428,51 @@ func TestHandle_DECSET_DECRST_47_1047(t *testing.T) {
 	}
 }
 
+func TestHandle_DECSET_DECRST_69(t *testing.T) {
+	tc := []struct {
+		name            string
+		seq             string
+		seqName         []string
+		horizMarginMode bool
+	}{
+		{"DECSET/DECRST 69 combining", "\x1B[?69h\x1B[?69l", []string{"csi-decset", "csi-decrst"}, true},
+	}
+
+	p := NewParser()
+	emu := NewEmulator()
+
+	for _, v := range tc {
+
+		// process control sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) != 2 {
+			t.Errorf("%s got %d handlers, expect 2 handlers.", v.name, len(hds))
+		}
+
+		// handle the control sequence
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.name != v.seqName[j] { // validate the control sequences name
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.seqName[j], hd.name)
+			}
+			got := emu.framebuffer.DS.horizMarginMode
+			switch j {
+			case 0:
+				if got != true {
+					t.Errorf("%s:\t %q expect %t, got %t\n", v.name, v.seq, true, got)
+				}
+			case 1:
+				if got != false {
+					t.Errorf("%s:\t %q expect %t, got %t\n", v.name, v.seq, false, got)
+				}
+			}
+		}
+
+	}
+}
+
 func isNewCharsetState(cs CharsetState) (ret bool) {
 	ret = true
 	for _, v := range cs.g {
@@ -2791,7 +2836,7 @@ func TestHandle_OSC_10x(t *testing.T) {
 			"query 6 color",
 			ColorWhite, ColorGreen, ColorOlive,
 			[]string{"osc-10,11,12,17,19"},
-			"\x1B]10;rgb:ffff/ffff/ffff\x1B\\\x1b]11;rgb:0000/8080/0000\x1b\\\x1b]17;rgb:0000/8080/0000\x1b\\\x1b]19;rgb:ffff/ffff/ffff\x1b\\\x1b]12;rgb:8080/8080/0000\x1b\\", false,
+			"\x1B]10;rgb:ffff/ffff/ffff\x1B\\\x1B]11;rgb:0000/8080/0000\x1B\\\x1B]17;rgb:0000/8080/0000\x1B\\\x1B]19;rgb:ffff/ffff/ffff\x1B\\\x1B]12;rgb:8080/8080/0000\x1B\\", false,
 			"\x1B]10;?;11;?;17;?;19;?;12;?\x1B\\",
 		},
 		{

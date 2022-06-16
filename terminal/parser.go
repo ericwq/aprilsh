@@ -1366,8 +1366,8 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_DCH()
 		case 'S':
 			hd = p.handle_SU()
-		case 'T':
-			hd = p.handle_SD()
+		case 'T', '^':
+			hd = p.handle_SD() // ^ is the same as T
 		case 'X':
 			hd = p.handle_ECH()
 		case 'Z':
@@ -1466,7 +1466,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case '\\':
 			hd = p.handle_DCS()
 		default:
-			p.argBuf.WriteRune('\x1b')
+			p.argBuf.WriteRune('\x1B')
 			p.argBuf.WriteRune(ch)
 			p.setState(InputState_DCS)
 		}
@@ -1489,7 +1489,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case '\\': // ESC \ : ST
 			hd = p.handle_OSC()
 		default:
-			p.argBuf.WriteRune('\x1b')
+			p.argBuf.WriteRune('\x1B')
 			p.argBuf.WriteRune(ch)
 			p.setState(InputState_OSC)
 		}
