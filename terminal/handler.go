@@ -1116,8 +1116,6 @@ func hdl_csi_decslrm(emu *emulator, params []int) {
 
 		if newMarginLeft > 0 {
 			newMarginLeft -= 1
-		} else {
-			newMarginLeft = 0
 		}
 
 		if newMarginRight < newMarginLeft+2 || emu.framebuffer.DS.width < newMarginRight {
