@@ -1051,7 +1051,7 @@ func hdl_csi_decrst(emu *emulator, params []int) {
 // CSI Ps ; Ps r
 // Set Scrolling Region [top;bottom] (default = full size of  window) (DECSTBM), VT100.
 func hdl_csi_decstbm(emu *emulator, top, bottom int) {
-	// TODO consider the originMode, zutty vterm.icc 1310~1343
+	// TODO consider the originMode, zutty vterm.icc csi_STBM
 	fb := emu.framebuffer
 	if bottom <= top || top > fb.DS.GetHeight() || (top == 0 && bottom == 1) {
 		return // invalid, xterm ignores
@@ -1096,5 +1096,63 @@ func hdl_dcs_decrqss(emu *emulator, arg string) {
 	} else {
 		response := fmt.Sprintf("\x1BP0$r%s\x1B\\", arg[2:])
 		emu.dispatcher.terminalToHost.WriteString(response)
+	}
+}
+
+// CSI Pl ; Pr s
+//          Set left and right margins (DECSLRM), VT420 and up.  This is
+//          available only when DECLRMM is enabled.
+func hdl_csi_decslrm(emu *emulator, params []int) {
+	if !emu.framebuffer.DS.horizMarginMode {
+		return
+	}
+
+	if len(params) == 1 && params[0] == 0 {
+		emu.framebuffer.DS.hMargin = 0
+		emu.framebuffer.DS.nColsEff = emu.framebuffer.DS.width
+	} else if len(params) == 2 {
+		newMarginLeft := params[0]
+		newMarginRight := params[1]
+
+		if newMarginLeft > 0 {
+			newMarginLeft -= 1
+		} else {
+			newMarginLeft = 0
+		}
+
+		if newMarginRight < newMarginLeft+2 || emu.framebuffer.DS.width < newMarginRight {
+			emu.logT.Printf("Illegal arguments to SetLeftRightMargins: left=%d, right=%d\n", params[0], params[1])
+		} else if newMarginLeft != emu.framebuffer.DS.hMargin || newMarginRight != emu.framebuffer.DS.nColsEff {
+			emu.framebuffer.DS.hMargin = newMarginLeft
+			emu.framebuffer.DS.nColsEff = newMarginRight
+		}
+	}
+
+	if !emu.framebuffer.DS.OriginMode { // false means Absolute
+		emu.framebuffer.DS.cursorCol = 0
+		emu.framebuffer.DS.cursorRow = 0
+	} else {
+		emu.framebuffer.DS.cursorCol = emu.framebuffer.DS.hMargin
+		emu.framebuffer.DS.cursorRow = emu.framebuffer.DS.scrollingRegionTopRow
+	}
+}
+
+// CSI s     Save cursor, available only when DECLRMM is disabled (SCOSC, also ANSI.SYS).
+func hdl_csi_scosc(emu *emulator) {
+	emu.framebuffer.DS.savedCursorSCO.col = emu.framebuffer.DS.cursorCol
+	emu.framebuffer.DS.savedCursorSCO.row = emu.framebuffer.DS.cursorRow
+	emu.framebuffer.DS.savedCursorSCO.isSet = true
+}
+
+// CSI u     Restore cursor (SCORC, also ANSI.SYS).
+func hdl_csi_scorc(emu *emulator) {
+	if !emu.framebuffer.DS.savedCursorSCO.isSet {
+		emu.logT.Println("Asked to restore cursor (SCORC) but it has not been saved.")
+	} else {
+		emu.framebuffer.DS.cursorCol = emu.framebuffer.DS.savedCursorSCO.col
+		emu.framebuffer.DS.cursorRow = emu.framebuffer.DS.savedCursorSCO.row
+
+		emu.framebuffer.DS.snapCursorToBorder()
+		emu.framebuffer.DS.savedCursorSCO.isSet = false
 	}
 }

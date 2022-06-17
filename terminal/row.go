@@ -225,6 +225,8 @@ type DrawState struct {
 	horizMarginMode     bool               // left and right margins support
 	hMargin             int                // left margins
 	nColsEff            int                // right margins
+
+	savedCursorSCO SavedCursorSCO // SCO console cursor state
 }
 
 type (
@@ -275,6 +277,12 @@ type MouseTrackingState struct {
 	mode           MouseTrackingMode
 	enc            MouseTrackingEnc
 	focusEventMode bool
+}
+
+type SavedCursorSCO struct {
+	col int
+	row int
+	isSet bool
 }
 
 func NewDrawState(width, height int) *DrawState {

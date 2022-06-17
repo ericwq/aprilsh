@@ -1096,6 +1096,42 @@ func (p *Parser) handle_DCS() (hd *Handler) {
 	return hd
 }
 
+// disambiguation SLRM and SCOSC
+// SLRM: Set Left and Right Margins
+// SCOSC: Save Cursor Position for SCO console
+func (p *Parser) handle_SLRM_SCOSC() (hd *Handler) {
+	// disambiguate SLRM and SCOSC with the parameters number
+	if p.nInputOps > 0 {
+		// prepare the parameters
+		params := make([]int, p.nInputOps)
+		copy(params, p.inputOps)
+
+		hd = &Handler{name: "csi-decslrm", ch: p.ch}
+		hd.handle = func(emu *emulator) {
+			hdl_csi_decslrm(emu, params)
+		}
+	} else {
+		hd = &Handler{name: "csi-scosc", ch: p.ch}
+		hd.handle = func(emu *emulator) {
+			hdl_csi_scosc(emu)
+		}
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// SCORC: Restore Cursor Position for SCO console
+func (p *Parser) handle_SCORC() (hd *Handler) {
+	hd = &Handler{name: "csi-scorc", ch: p.ch}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_scorc(emu)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
 // process data stream from outside. for VT mode, character set can be changed
 // according to control sequences. for UTF-8 mode, no need to change character set.
 // the result is a *Handler list. waiting to be executed later.
@@ -1392,6 +1428,10 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_DSR()
 		case 'r':
 			hd = p.handle_DECSTBM()
+		case 's':
+			hd = p.handle_SLRM_SCOSC()
+		case 'u':
+			hd = p.handle_SCORC()
 		case '!':
 			p.setState(InputState_CSI_Bang)
 		case '?':
