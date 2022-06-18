@@ -3079,26 +3079,27 @@ func TestHandle_DECSLRM(t *testing.T) {
 
 func TestHandle_DECSLRM_Others(t *testing.T) {
 	tc := []struct {
-		name     string
-		seq      string
-		hdName   []string
-		wantStr  string
-		row, col int
+		name                    string
+		seq                     string
+		hdName                  []string
+		wantStr                 string
+		leftMargin, rightMargin int
+		topMargin               int
 	}{
 		{
 			"DECLRMM disable", "\x1B[?69l\x1B[4;49s",
 			[]string{"csi-decrst", "csi-decslrm"},
-			"", 0, 0,
+			"", 0, 0, 0,
 		},
 		{
-			"DECLRMM outof range", "\x1B[?69h\x1B[4;89s",
+			"DECLRMM enable, outof range", "\x1B[?69h\x1B[4;89s",
 			[]string{"csi-decset", "csi-decslrm"},
-			"Illegal arguments to SetLeftRightMargins: ", 0, 0,
+			"Illegal arguments to SetLeftRightMargins: ", 0, 0, 0,
 		},
 		{
-			"DECLRMM origin mode", "\x1B[?69h\x1B[4;69s",
-			[]string{"csi-decset", "csi-decslrm"},
-			"", 3, 69,
+			"DECLRMM origin mode, enable", "\x1B[?6h\x1B[?69h\x1B[4;69s",
+			[]string{"csi-decset", "csi-decset", "csi-decslrm"},
+			"", 3, 69, 0,
 		},
 	}
 
@@ -3106,7 +3107,7 @@ func TestHandle_DECSLRM_Others(t *testing.T) {
 	emu := NewEmulator()
 
 	var place strings.Builder
-	p.logT.SetOutput(&place) // redirect the output to the string builder
+	emu.logT.SetOutput(&place) // redirect the output to the string builder
 
 	for i, v := range tc {
 
@@ -3114,7 +3115,7 @@ func TestHandle_DECSLRM_Others(t *testing.T) {
 		hds := make([]*Handler, 0, 16)
 		hds = p.processStream(v.seq, hds)
 
-		if len(hds) != 2 {
+		if len(hds) < 2 {
 			t.Errorf("%s got %d handlers, expect 2 handlers.", v.name, len(hds))
 		}
 
@@ -3128,11 +3129,30 @@ func TestHandle_DECSLRM_Others(t *testing.T) {
 
 		switch i {
 		case 0:
-		if !emu.framebuffer.DS.horizMarginMode {
-				t.Errorf("%s: %q expect %t, got %t\n", args ...any)
+			if emu.framebuffer.DS.horizMarginMode {
+				t.Errorf("%s: %q expect %t, got %t\n", v.name, v.seq, false, emu.framebuffer.DS.horizMarginMode)
 			}
 		case 1:
+			expect := "Illegal arguments to SetLeftRightMargins:"
+			got := strings.Contains(place.String(), expect)
+			if !got {
+				t.Errorf("%s: %q expect %s, got %s\n", v.name, v.seq, expect, place.String())
+			}
 		case 2:
+			// validate the left/right margin
+			gotLeft := emu.framebuffer.DS.hMargin
+			gotRight := emu.framebuffer.DS.nColsEff
+			if gotLeft != v.leftMargin || gotRight != v.rightMargin {
+				t.Errorf("%s:\t %q expect (%d,%d), got (%d,%d)\n", v.name, v.seq, v.leftMargin, v.rightMargin, gotLeft, gotRight)
+			}
+
+			// validate the cursor row/col
+			gotRow := emu.framebuffer.DS.scrollingRegionTopRow
+			gotCol := emu.framebuffer.DS.cursorCol
+
+			if gotRow != v.topMargin || gotCol != v.leftMargin {
+				t.Errorf("%s:\t %q expect (%d/%d), got (%d/%d)\n", v.name, v.seq, v.leftMargin, v.topMargin, gotCol, gotRow)
+			}
 
 		}
 	}
