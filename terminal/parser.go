@@ -1101,7 +1101,12 @@ func (p *Parser) handle_DCS() (hd *Handler) {
 // SCOSC: Save Cursor Position for SCO console
 func (p *Parser) handle_SLRM_SCOSC() (hd *Handler) {
 	// disambiguate SLRM and SCOSC with the parameters number
-	if p.nInputOps > 0 {
+	if p.getRuneAt(1) == '[' {
+		hd = &Handler{name: "csi-scosc", ch: p.ch}
+		hd.handle = func(emu *emulator) {
+			hdl_csi_scosc(emu)
+		}
+	} else {
 		// prepare the parameters
 		params := make([]int, p.nInputOps)
 		copy(params, p.inputOps)
@@ -1109,11 +1114,6 @@ func (p *Parser) handle_SLRM_SCOSC() (hd *Handler) {
 		hd = &Handler{name: "csi-decslrm", ch: p.ch}
 		hd.handle = func(emu *emulator) {
 			hdl_csi_decslrm(emu, params)
-		}
-	} else {
-		hd = &Handler{name: "csi-scosc", ch: p.ch}
-		hd.handle = func(emu *emulator) {
-			hdl_csi_scosc(emu)
 		}
 	}
 

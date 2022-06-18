@@ -3157,3 +3157,80 @@ func TestHandle_DECSLRM_Others(t *testing.T) {
 		}
 	}
 }
+
+func TestHandle_SCOSC_SCORC(t *testing.T) {
+	tc := []struct {
+		name     string
+		seq      string
+		hdName   []string
+		col, row int
+		set      bool
+		wantStr  string
+	}{
+		{
+			"move cursor, SCOSC, check", "\x1B[22;33H\x1B[s",
+			[]string{"csi-cup", "csi-scosc"},
+			32, 21, true, "",
+		},
+		{
+			"move cursor, SCOSC, move cursor, SCORC, check", "\x1B[33;44H\x1B[s\x1B[42;35H\x1B[u",
+			[]string{"csi-cup", "csi-scosc", "csi-cup", "csi-scorc"},
+			43, 32, false, "",
+		},
+		{
+			"SCORC, check", "\x1B[u",
+			[]string{"csi-scorc"},
+			0, 0, false, "Asked to restore cursor (SCORC) but it has not been saved.",
+		},
+	}
+
+	p := NewParser()
+	// p.logTrace = true
+	emu := NewEmulator()
+
+	var place strings.Builder
+	emu.logT.SetOutput(&place) // redirect the output to the string builder
+
+	for i, v := range tc {
+
+		// process control sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) < 1 {
+			t.Errorf("%s got %d handlers.", v.name, len(hds))
+		}
+
+		// handle the control sequence
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.name != v.hdName[j] { // validate the control sequences name
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.hdName[j], hd.name)
+			}
+		}
+
+		switch i {
+		case 0:
+			gotCol := emu.framebuffer.DS.savedCursorSCO.col
+			gotRow := emu.framebuffer.DS.savedCursorSCO.row
+			gotSet := emu.framebuffer.DS.savedCursorSCO.isSet
+
+			if gotCol != v.col || gotRow != v.row || gotSet != v.set {
+				t.Errorf("%s:\t %q expect {%d,%d,%t}, got %v", v.name, v.seq, v.row, v.col, v.set, emu.framebuffer.DS.savedCursorSCO)
+			}
+		case 1:
+			gotCol := emu.framebuffer.DS.cursorCol
+			gotRow := emu.framebuffer.DS.cursorRow
+			gotSet := emu.framebuffer.DS.savedCursorSCO.isSet
+
+			if gotCol != v.col || gotRow != v.row || gotSet != v.set {
+				t.Errorf("%s:\t %q expect {%d,%d,%t}, got %v", v.name, v.seq, v.row, v.col, v.set, emu.framebuffer.DS.savedCursorSCO)
+			}
+		case 2:
+			got := strings.Contains(place.String(), v.wantStr)
+			if !got {
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantStr, place.String())
+			}
+		}
+	}
+}
