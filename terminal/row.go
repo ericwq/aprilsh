@@ -225,6 +225,7 @@ type DrawState struct {
 	horizMarginMode     bool               // left and right margins support
 	hMargin             int                // left margins
 	nColsEff            int                // right margins
+	bkspSendsDel        bool               // backspace send delete
 
 	savedCursorSCO SavedCursorSCO // SCO console cursor state
 }
@@ -245,15 +246,27 @@ const (
 	MouseModeVT200Highlight
 	MouseModeButtonEvent
 	MouseModeAnyEvent
+)
+
+const (
 	MouseEncNone MouseTrackingEnc = iota
 	MouseEncUTF
 	MouseEncSGR
 	MouseEncURXVT
+)
+
+const (
 	CompatLevelVT52 CompatibilityLevel = iota
 	CompatLevelVT100
 	CompatLevelVT400
+)
+
+const (
 	KeypadNormal KeypadMode = iota
 	KeypadApplication
+)
+
+const (
 	ColModeC80 ColMode = iota
 	ColModeC132
 )
@@ -280,8 +293,8 @@ type MouseTrackingState struct {
 }
 
 type SavedCursorSCO struct {
-	col int
-	row int
+	col   int
+	row   int
 	isSet bool
 }
 
@@ -303,6 +316,7 @@ func NewDrawState(width, height int) *DrawState {
 	ds.MouseEncodingMode = MOUSE_ENCODING_DEFAULT
 
 	ds.columnMode = ColModeC80
+	ds.bkspSendsDel = true
 
 	ds.reinitializeTabs(0)
 	return ds

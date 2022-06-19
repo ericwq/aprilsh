@@ -943,7 +943,7 @@ func hdl_csi_decset(emu *emulator, params []int) {
 		case 47:
 			emu.switchScreenBufferMode(true)
 		case 67:
-			emu.logU.Println("TODO zutty vterm.icc line 1437")
+			emu.framebuffer.DS.bkspSendsDel = false // Backarrow key sends backspace (DECBKM), VT340, VT420.
 		case 69:
 			emu.framebuffer.DS.horizMarginMode = true // DECLRMM: Set Left and Right Margins
 			emu.framebuffer.DS.hMargin = 0
@@ -1016,7 +1016,7 @@ func hdl_csi_decrst(emu *emulator, params []int) {
 		case 47:
 			emu.switchScreenBufferMode(false)
 		case 67:
-			emu.logU.Println("TODO zutty vterm.icc line 1487")
+			emu.framebuffer.DS.bkspSendsDel = true // Backarrow key sends delete (DECBKM), VT340,
 		case 69:
 			emu.framebuffer.DS.horizMarginMode = false // DECLRMM: Set Left and Right Margins
 			emu.framebuffer.DS.hMargin = 0

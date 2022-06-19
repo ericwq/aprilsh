@@ -3234,3 +3234,41 @@ func TestHandle_SCOSC_SCORC(t *testing.T) {
 		}
 	}
 }
+
+func TestHandle_DECSET_DECRST_67(t *testing.T) {
+	tc := []struct {
+		name             string
+		seq              string
+		hdName           []string
+		backspaceSendDel bool
+	}{
+		{"enable DECBKM—Backarrow Key Mode", "\x1B[?67h", []string{"csi-decset"}, false},
+		{"disable DECBKM—Backarrow Key Mode", "\x1B[?67l", []string{"csi-decrst"}, true},
+	}
+
+	p := NewParser()
+	emu := NewEmulator()
+	for _, v := range tc {
+
+		// process control sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) != 1 {
+			t.Errorf("%s got %d handlers.", v.name, len(hds))
+		}
+
+		// handle the control sequence
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.name != v.hdName[j] { // validate the control sequences name
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.hdName[j], hd.name)
+			}
+		}
+
+		got := emu.framebuffer.DS.bkspSendsDel
+		if got != v.backspaceSendDel {
+			t.Errorf("%s:\t %q expect %t,got %t\n", v.name, v.seq, v.backspaceSendDel, got)
+		}
+	}
+}
