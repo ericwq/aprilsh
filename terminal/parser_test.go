@@ -1758,8 +1758,8 @@ func TestHistory(t *testing.T) {
 	for _, v := range tc {
 		t.Run(v.name, func(t *testing.T) {
 			p.appendToHistory(v.value)
-			if v.want != p.getRuneAt(v.reverseIdx) {
-				t.Errorf("%s expect reverseIdx[%d] value=%q, got %q\n", v.name, v.reverseIdx, v.want, p.getRuneAt(v.reverseIdx))
+			if v.want != p.getHistoryAt(v.reverseIdx) {
+				t.Errorf("%s expect reverseIdx[%d] value=%q, got %q\n", v.name, v.reverseIdx, v.want, p.getHistoryAt(v.reverseIdx))
 			}
 		})
 	}
@@ -3269,6 +3269,36 @@ func TestHandle_DECSET_DECRST_67(t *testing.T) {
 		got := emu.framebuffer.DS.bkspSendsDel
 		if got != v.backspaceSendDel {
 			t.Errorf("%s:\t %q expect %t,got %t\n", v.name, v.seq, v.backspaceSendDel, got)
+		}
+	}
+}
+
+func TestHistoryReset(t *testing.T) {
+	tc := []struct {
+		name    string
+		seq     string
+		history string
+	}{
+		{"unhandled sequence", "\x1B[23;24i", "\x1B[23;24i"},
+	}
+	p := NewParser()
+	var place strings.Builder
+	p.logU.SetOutput(&place) // redirect the output to the string builder
+
+	for _, v := range tc {
+		// reset the output
+		place.Reset()
+
+		// process control sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) != 0 {
+			t.Errorf("%s expect %d handlers.", v.name, len(hds))
+		}
+
+		if !strings.Contains(place.String(), fmt.Sprintf("%q", v.history)) {
+			t.Errorf("%s:\t %q expect %q, got %s\n", v.name, v.seq, v.history, place.String())
 		}
 	}
 }

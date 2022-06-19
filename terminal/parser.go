@@ -138,14 +138,31 @@ func NewParser() *Parser {
 func (p *Parser) appendToHistory(r rune) {
 	p.history.PushBack(r)
 
-	if p.history.Len() > 5 {
+	// max history = DCS/OSC buffer limitation plus 5
+	if p.history.Len() > 4095+5 {
 		p.history.Remove(p.history.Front())
 	}
 }
 
+// return the history string representation
+func (p *Parser) historyString() string {
+	var str strings.Builder
+	// Iterate through list and print its contents.
+	for e := p.history.Front(); e != nil; e = e.Next() {
+		str.WriteRune(e.Value.(rune))
+	}
+
+	return str.String()
+}
+
+// reset the history cache
+func (p *Parser) resetHistory() {
+	p.history = list.New()
+}
+
 // get the rune value in the specified reverse index
 // return 0 if error.
-func (p *Parser) getRuneAt(reverseIdx int) (r rune) {
+func (p *Parser) getHistoryAt(reverseIdx int) (r rune) {
 	if reverseIdx >= 5 {
 		return 0
 	}
@@ -170,7 +187,7 @@ func (p *Parser) reset() {
 	p.nInputOps = 0
 	p.argBuf.Reset()
 
-	p.history = list.New()
+	p.resetHistory()
 	p.scsDst = 0x00
 	p.scsMod = 0x00
 }
@@ -186,7 +203,7 @@ func (p *Parser) traceNormalInput() {
 // log the unhandled input and reset the state to normal
 func (p *Parser) unhandledInput() {
 	p.logU.Printf("Unhandled input:%q state=%s, inputOps=%d, nInputOps=%d, argBuf=%q\n",
-		p.ch, strInputState[p.inputState], p.inputOps, p.nInputOps, p.argBuf.String())
+		p.historyString(), strInputState[p.inputState], p.inputOps, p.nInputOps, p.argBuf.String())
 
 	p.setState(InputState_Normal)
 }
@@ -204,6 +221,8 @@ func (p *Parser) setState(newState int) {
 		p.nInputOps = 0
 		p.inputOps[0] = 0
 		p.lastNormalBegin = p.readPos + 1
+
+		p.resetHistory()
 	} else if p.inputState == InputState_Normal {
 		p.traceNormalInput()
 	}
@@ -1101,7 +1120,7 @@ func (p *Parser) handle_DCS() (hd *Handler) {
 // SCOSC: Save Cursor Position for SCO console
 func (p *Parser) handle_SLRM_SCOSC() (hd *Handler) {
 	// disambiguate SLRM and SCOSC with the parameters number
-	if p.getRuneAt(1) == '[' {
+	if p.getHistoryAt(1) == '[' {
 		hd = &Handler{name: "csi-scosc", ch: p.ch}
 		hd.handle = func(emu *emulator) {
 			hdl_csi_scosc(emu)
@@ -1360,6 +1379,8 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case 'G':
 			p.logT.Println("Select charset: UTF-8")
 			hd = p.handle_DOCS_UTF8()
+		default:
+			p.unhandledInput()
 		}
 	case InputState_Select_Charset:
 		if ch < 0x30 {
@@ -1441,7 +1462,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case '\x07': // BEL is ignored \a in c++
 		case '\x08': // BS is \b
 			// undo last character in CSI sequence:
-			if p.getRuneAt(1) == ';' {
+			if p.getHistoryAt(1) == ';' {
 				p.nInputOps -= 1
 			} else {
 				p.inputOps[p.nInputOps-1] /= 10
@@ -1520,7 +1541,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			if p.argBuf.Len() < 4095 {
 				p.argBuf.WriteRune(ch)
 			} else {
-				p.logE.Printf("OSC argument string overflow (>4096). %q\n", p.argBuf.String())
+				p.logE.Printf("OSC argument string overflow (>4095). %q\n", p.argBuf.String())
 				p.setState(InputState_Normal)
 			}
 		}
