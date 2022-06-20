@@ -844,7 +844,7 @@ func (p *Parser) handle_LS3R() (hd *Handler) {
 
 // DOCS Select charset: UTF-8
 func (p *Parser) handle_DOCS_UTF8() (hd *Handler) {
-	hd = &Handler{name: "esc-docs-utf-8", ch: p.ch}
+	hd = &Handler{id: esc_docs_utf8, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_esc_docs_utf8(emu)
 	}
@@ -856,7 +856,7 @@ func (p *Parser) handle_DOCS_UTF8() (hd *Handler) {
 
 // DOCS Select charset: default (ISO-8859-1)
 func (p *Parser) handle_DOCS_ISO8859_1() (hd *Handler) {
-	hd = &Handler{name: "esc-docs-iso8859-1", ch: p.ch}
+	hd = &Handler{id: esc_docs_iso8859_1, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_esc_docs_iso8859_1(emu)
 	}

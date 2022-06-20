@@ -414,24 +414,30 @@ func TestHandle_ESC_DCS(t *testing.T) {
 
 func TestHandle_DOCS(t *testing.T) {
 	tc := []struct {
-		name     string
-		seq      string
-		wantGL   int
-		wantGR   int
-		wantSS   int
-		wantName string
+		name    string
+		seq     string
+		wantGL  int
+		wantGR  int
+		wantSS  int
+		hdIDs   int
+		warnStr string
 	}{
-		{"DOCS utf-8    ", "\x1B%G", 0, 2, 0, "esc-docs-utf-8"},
-		{"DOCS iso8859-1", "\x1B%@", 0, 2, 0, "esc-docs-iso8859-1"},
+		{"set DOCS utf-8       ", "\x1B%G", 0, 2, 0, esc_docs_utf8, ""},
+		{"set DOCS iso8859-1   ", "\x1B%@", 0, 2, 0, esc_docs_iso8859_1, ""},
+		{"ESC Percent unhandled", "\x1B%H", 0, 2, 0, unused_handlerID, "Unhandled input:"},
 	}
 
 	p := NewParser()
-	p.logE.SetOutput(ioutil.Discard)
-	p.logU.SetOutput(ioutil.Discard)
-	p.logT.SetOutput(ioutil.Discard)
+
+	var place strings.Builder
+	p.logE.SetOutput(&place)
+	p.logU.SetOutput(&place)
+	p.logT.SetOutput(&place)
 
 	emu := NewEmulator()
 	for _, v := range tc {
+
+		place.Reset()
 
 		// set different value
 		emu.charsetState.gl = 2
@@ -452,6 +458,10 @@ func TestHandle_DOCS(t *testing.T) {
 		if hd != nil {
 			hd.handle(emu)
 
+			if hd.id != v.hdIDs {
+				t.Errorf("%s: %q expect %s, got %s", v.name, v.seq, strHandlerID[v.hdIDs], strHandlerID[hd.id])
+			}
+
 			for i := 0; i < 4; i++ {
 				if i == 2 {
 					// skip the g[2], which is iso8859-1 for 'ESC % @'
@@ -462,16 +472,17 @@ func TestHandle_DOCS(t *testing.T) {
 				}
 			}
 			// verify the result
-			if emu.charsetState.gl != v.wantGL || emu.charsetState.gr != v.wantGR ||
-				emu.charsetState.ss != v.wantSS || hd.name != v.wantName {
-				t.Errorf("%s [%s vs %s] expect GL,GR,SS = %d,%d,%d, got %d,%d,%d\n", v.name, hd.name, v.wantName,
-					v.wantGL, v.wantGR, v.wantSS, emu.charsetState.gl, emu.charsetState.gr, emu.charsetState.ss)
+			if emu.charsetState.gl != v.wantGL || emu.charsetState.gr != v.wantGR || emu.charsetState.ss != v.wantSS {
+				t.Errorf("%s expect GL,GR,SS= %d,%d,%d, got=%d,%d,%d\n", v.name, v.wantGL, v.wantGR, v.wantSS,
+					emu.charsetState.gl, emu.charsetState.gr, emu.charsetState.ss)
 			}
-
 		} else {
-			t.Errorf("%s got nil return\n", v.name)
+			if v.hdIDs == unused_handlerID {
+				if !strings.Contains(place.String(), v.warnStr) {
+					t.Errorf("%s:\t %q expect %q, got %s\n", v.name, v.seq, v.warnStr, place.String())
+				}
+			}
 		}
-
 	}
 }
 
@@ -3373,7 +3384,7 @@ func TestHandle_DECSCL(t *testing.T) {
 			if hd.id != v.hdIDs[j] { // validate the control sequences name
 				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 			}
-			t.Logf("%s seq=%q\n", v.name, hd.sequence)
+			// t.Logf("%s seq=%q\n", v.name, hd.sequence)
 		}
 
 		switch i {

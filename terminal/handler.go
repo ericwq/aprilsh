@@ -49,11 +49,15 @@ const (
 const (
 	unused_handlerID = iota
 	csi_decscl
+	esc_docs_utf8
+	esc_docs_iso8859_1
 )
 
 var strHandlerID = [...]string{
 	"",
 	"csi-decscl",
+	"esc-docs-utf-8",
+	"esc-docs-iso8859-1",
 }
 
 // Handler is the outcome of parsering input, it can be used to perform control sequence on emulator.
