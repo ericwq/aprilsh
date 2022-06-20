@@ -3302,3 +3302,91 @@ func TestHistoryReset(t *testing.T) {
 		}
 	}
 }
+
+func TestHandle_DECSCL(t *testing.T) {
+	tc := []struct {
+		name     string
+		seq      string
+		hdIDs    []int
+		cmpLevel CompatibilityLevel
+		warnStr  string
+	}{
+		{"set CompatLevel VT100", "\x1B[61\"p", []int{csi_decscl}, CompatLevelVT100, ""},
+		{"set CompatLevel VT400", "\x1B[62\"p", []int{csi_decscl}, CompatLevelVT400, ""},
+		{"set CompatLevel VT400", "\x1B[63\"p", []int{csi_decscl}, CompatLevelVT400, ""},
+		{"set CompatLevel VT400", "\x1B[64\"p", []int{csi_decscl}, CompatLevelVT400, ""},
+		{"set CompatLevel VT400", "\x1B[65\"p", []int{csi_decscl}, CompatLevelVT400, ""},
+		{
+			"set CompatLevel others", "\x1B[66\"p",
+			[]int{csi_decscl},
+			CompatLevelVT52,
+			"compatibility mode:",
+		}, // here CompatLevelVT52 is unused
+		{
+			"set CompatLevel 8-bit control", "\x1B[65;0\"p",
+			[]int{csi_decscl},
+			CompatLevelVT52,
+			"DECSCL: 8-bit controls",
+		}, // here CompatLevelVT52 is unused
+		{
+			"set CompatLevel 8-bit control", "\x1B[61;2\"p",
+			[]int{csi_decscl},
+			CompatLevelVT52,
+			"DECSCL: 8-bit controls",
+		}, // here CompatLevelVT52 is unused
+		{
+			"set CompatLevel 7-bit control", "\x1B[65;1\"p",
+			[]int{csi_decscl},
+			CompatLevelVT52,
+			"DECSCL: 7-bit controls",
+		}, // here CompatLevelVT52 is unused
+		{
+			"set CompatLevel outof range  ", "\x1B[65;3\"p",
+			[]int{csi_decscl},
+			CompatLevelVT52,
+			"DECSCL: C1 control transmission mode:",
+		}, // here CompatLevelVT52 is unused
+	}
+
+	emu := NewEmulator()
+	p := NewParser()
+	var place strings.Builder
+	// redirect the output to the string builder
+	emu.logU.SetOutput(&place)
+	emu.logT.SetOutput(&place)
+
+	for i, v := range tc {
+		// reset the output
+		place.Reset()
+
+		// process control sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) != 1 {
+			t.Errorf("%s expect %d handlers.", v.name, len(hds))
+		}
+
+		// handle the control sequence
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.id != v.hdIDs[j] { // validate the control sequences name
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+			}
+			t.Logf("%s seq=%q\n", v.name, hd.sequence)
+		}
+
+		switch i {
+		case 0, 1, 2, 3, 4:
+			got := emu.framebuffer.DS.compatLevel
+			if got != v.cmpLevel {
+				t.Errorf("%s:\t %q, expect %d, got %d\n", v.name, v.seq, v.cmpLevel, got)
+			}
+		default:
+			if !strings.Contains(place.String(), v.warnStr) {
+				t.Errorf("%s:\t %q expect %q, got %s\n", v.name, v.seq, v.warnStr, place.String())
+			}
+
+		}
+	}
+}
