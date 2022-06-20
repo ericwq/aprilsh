@@ -136,12 +136,13 @@ func NewParser() *Parser {
 
 // add rune to the history cache, store max 5 recent runes.
 func (p *Parser) appendToHistory(r rune) {
-	p.history.PushBack(r)
-
-	// max history = DCS/OSC buffer limitation plus 5
-	if p.history.Len() > 4095+5 {
-		p.history.Remove(p.history.Front())
+	// max history = DCS/OSC buffer limitation 4095 + 5
+	if p.history.Len() < 4097 {
+		p.history.PushBack(r)
+	} else {
+		p.logE.Printf("Parser histroy string overflow (>4097). %q[%c]\n", p.historyString(), r)
 	}
+	// p.history.Remove(p.history.Front())
 }
 
 // return the history string representation

@@ -1010,6 +1010,7 @@ func TestHandle_ENQ_CAN_SUB_ESC(t *testing.T) {
 		{"CSI GT unknow ", "\x1B[>5x", 0, InputState_Normal},   // CSI + > x unhandled CSI >
 		{"overflow OSC string", "\x1B]", 0, InputState_Normal}, // special logic in the following test code, add 4K string
 		{"overflow DCS string", "\x1BP", 0, InputState_Normal}, // special logic in the following test code, add 4K string
+		{"overflow history", "\x1BP", 0, InputState_Normal},    // special logic in the following test code, add 4K string
 		{"CSI unknow ", "\x1B[x", 0, InputState_Normal},        // unhandled CSI sequence
 		{"CSI ? unknow ", "\x1B[?x", 0, InputState_Normal},     // unhandled CSI ? sequence
 		{"CSI ? ESC ", "\x1B[?\x1B", 0, InputState_Normal},     // unhandled CSI ? ESC
@@ -1017,11 +1018,15 @@ func TestHandle_ENQ_CAN_SUB_ESC(t *testing.T) {
 	}
 
 	p := NewParser()
-	p.logE.SetOutput(ioutil.Discard)
-	p.logU.SetOutput(ioutil.Discard)
+	var place strings.Builder
+
+	p.logE.SetOutput(&place)
+	p.logU.SetOutput(&place)
 	// p.logTrace = true // open the trace
 	var hd *Handler
 	for _, v := range tc {
+		place.Reset()
+
 		t.Run(v.name, func(t *testing.T) {
 			raw := v.seq
 			// special logic for the overflow case.
@@ -1032,7 +1037,7 @@ func TestHandle_ENQ_CAN_SUB_ESC(t *testing.T) {
 					b.WriteString("blab")
 				}
 				raw = b.String()
-				t.Logf("%d\n", len(raw)-2) // OSC prefix takes two runes
+				// t.Logf("%d\n", len(raw)-2) // OSC prefix takes two runes
 			}
 
 			for _, ch := range raw {
@@ -1044,8 +1049,13 @@ func TestHandle_ENQ_CAN_SUB_ESC(t *testing.T) {
 					t.Errorf("%s seq=%q expect state=%q, nInputOps=%d, got state=%q, nInputOps=%d\n",
 						v.name, v.seq, strInputState[v.state], v.nInputOps, strInputState[p.inputState], p.nInputOps)
 				}
+				// overflow logic
+				// each overflow warn message contains at least one history warn message
+				if strings.HasPrefix(v.name, "overflow") && !strings.Contains(place.String(), "overflow") {
+					t.Errorf("%s seq=%q should contains %q\n, got=%s\n", v.name, v.seq, "overflow", place.String())
+				}
 			} else {
-				t.Errorf("%s should get nil handler, got %s\n", v.name, hd.name)
+				t.Errorf("%s should get nil handler, got %s, history=%q\n", v.name, hd.name, p.historyString())
 			}
 		})
 	}
@@ -3357,6 +3367,12 @@ func TestHandle_DECSCL(t *testing.T) {
 			CompatLevelVT52,
 			"DECSCL: C1 control transmission mode:",
 		}, // here CompatLevelVT52 is unused
+		{
+			"set CompatLevel unhandled", "\x1B[65;3\"q",
+			[]int{csi_decscl},
+			CompatLevelVT52,
+			"Unhandled input:",
+		}, // here CompatLevelVT52 is unused
 	}
 
 	emu := NewEmulator()
@@ -3365,6 +3381,8 @@ func TestHandle_DECSCL(t *testing.T) {
 	// redirect the output to the string builder
 	emu.logU.SetOutput(&place)
 	emu.logT.SetOutput(&place)
+
+	p.logU.SetOutput(&place)
 
 	for i, v := range tc {
 		// reset the output
@@ -3375,7 +3393,13 @@ func TestHandle_DECSCL(t *testing.T) {
 		hds = p.processStream(v.seq, hds)
 
 		if len(hds) != 1 {
-			t.Errorf("%s expect %d handlers.", v.name, len(hds))
+			if v.warnStr == "" {
+				t.Errorf("%s expect %d handlers.", v.name, len(hds))
+			} else if v.warnStr != "" && !strings.Contains(place.String(), v.warnStr) {
+				t.Errorf("%s:\t %q expect %q, got %s\n", v.name, v.seq, v.warnStr, place.String())
+			} else {
+				continue
+			}
 		}
 
 		// handle the control sequence
