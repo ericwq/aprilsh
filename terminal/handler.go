@@ -46,12 +46,23 @@ const (
 	DEVICE_ID = "64;1;9;15;21;22c"
 )
 
-// Handler can handle the input. It can be used to perform control sequence
-// on emulator.
+const (
+	unused_handlerID = iota
+	csi_decscl
+)
+
+var strHandlerID = [...]string{
+	"",
+	"csi-decscl",
+}
+
+// Handler is the outcome of parsering input, it can be used to perform control sequence on emulator.
 type Handler struct {
-	name   string              // the name of Handler
-	ch     rune                // the last byte
-	handle func(emu *emulator) // handle function that will perform control sequnce on emulator
+	name     string              // the name of Handler. TODO consider remove this field
+	id       int                 // handler ID
+	sequence string              // control sequence
+	ch       rune                // the last byte
+	handle   func(emu *emulator) // handle function that will perform control sequnce on emulator
 }
 
 // In the loop, national flag's width got 1+1=2.
@@ -1152,5 +1163,48 @@ func hdl_csi_scorc(emu *emulator) {
 
 		emu.framebuffer.DS.snapCursorToBorder()
 		emu.framebuffer.DS.savedCursorSCO.isSet = false
+	}
+}
+
+// CSI Pl ; Pc " p
+//           Set conformance level (DECSCL), VT220 and up.
+//
+//           The first parameter selects the conformance level.  Valid
+//           values are:
+//             Pl = 6 1  ⇒  level 1, e.g., VT100.
+//             Pl = 6 2  ⇒  level 2, e.g., VT200.
+//             Pl = 6 3  ⇒  level 3, e.g., VT300.
+//             Pl = 6 4  ⇒  level 4, e.g., VT400.
+//             Pl = 6 5  ⇒  level 5, e.g., VT500.
+//
+//           The second parameter selects the C1 control transmission mode.
+//           This is an optional parameter, ignored in conformance level 1.
+//           Valid values are:
+//             Pc = 0  ⇒  8-bit controls.
+//             Pc = 1  ⇒  7-bit controls (DEC factory default).
+//             Pc = 2  ⇒  8-bit controls.
+//
+//           The 7-bit and 8-bit control modes can also be set by S7C1T and
+//           S8C1T, but DECSCL is preferred.
+func hdl_csi_decscl(emu *emulator, params []int) {
+	if len(params) > 0 {
+		switch params[0] {
+		case 61:
+			emu.framebuffer.DS.compatLevel = CompatLevelVT100
+		case 62, 63, 64, 65: // treat VT200,VT300,VT500 as VT400
+			emu.framebuffer.DS.compatLevel = CompatLevelVT400
+		default:
+			emu.logU.Printf("compatibility mode: %d", params[0])
+		}
+	}
+	if len(params) > 1 {
+		switch params[1] {
+		case 0, 2:
+			emu.logT.Println("DECSCL: 8-bit controls")
+		case 1:
+			emu.logT.Println("DECSCL: 7-bit controls")
+		default:
+			emu.logU.Printf("DECSCL: C1 control transmission mode: %d", params[1])
+		}
 	}
 }

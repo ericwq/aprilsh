@@ -1151,6 +1151,20 @@ func (p *Parser) handle_SCORC() (hd *Handler) {
 	return hd
 }
 
+// DEC Set Compatibility Level
+func (p *Parser) handle_DECSCL() (hd *Handler) {
+	// prepare the parameters
+	params := make([]int, p.nInputOps)
+	copy(params, p.inputOps)
+
+	hd = &Handler{id: csi_decscl, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_decscl(emu, params)
+	}
+	p.setState(InputState_Normal)
+	return hd
+}
+
 // process data stream from outside. for VT mode, character set can be changed
 // according to control sequences. for UTF-8 mode, no need to change character set.
 // the result is a *Handler list. waiting to be executed later.
@@ -1453,6 +1467,10 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_SLRM_SCOSC()
 		case 'u':
 			hd = p.handle_SCORC()
+		case '\'':
+			p.setState(InputState_CSI_Quote)
+		case '"':
+			p.setState(InputState_CSI_DblQuote)
 		case '!':
 			p.setState(InputState_CSI_Bang)
 		case '?':
@@ -1483,6 +1501,22 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		switch ch {
 		case 'p':
 			hd = p.handle_DECSTR()
+		default:
+			p.unhandledInput()
+		}
+	case InputState_CSI_Quote:
+		switch ch {
+		// case '}':
+		// 	hd = p.handle_DECIC()
+		// case '~':
+		// 	hd = p.handle_DECDC()
+		default:
+			p.unhandledInput()
+		}
+	case InputState_CSI_DblQuote:
+		switch ch {
+		case 'p':
+			hd = p.handle_DECSCL()
 		default:
 			p.unhandledInput()
 		}
