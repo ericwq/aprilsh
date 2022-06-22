@@ -83,9 +83,9 @@ func TestDamage(t *testing.T) {
 	}{
 		{"extra left", 1, 9, 1, 98},
 		{"extra right", 96, 100, 7, 100},
-		{"middle", 9, 90, 7, 98},
+		{"inside damage", 9, 90, 7, 98},
 		{"equal start,end", 7, 7, 7, 7},
-		{"reverse", 98, 7, 0, 108},
+		{"reverse start,end", 98, 7, 0, 108},
 	}
 	for _, v := range tc {
 		// base condition: start=7, end=98, totalCells=108
