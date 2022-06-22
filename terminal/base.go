@@ -37,8 +37,9 @@ type Rect struct {
 }
 
 func NewRect() (rect *Rect) {
-	rect.tl = Point{-1, -1}
-	rect.br = Point{-1, -1}
+	rect = &Rect{}
+	rect.clear()
+
 	return rect
 }
 
