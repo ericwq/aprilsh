@@ -37,8 +37,8 @@ type Framebuffer struct {
 
 	// support both (scrollable) normal screen buffer and alternate screen buffer
 	cells        []Cell // the cells
-	winPx        int    // current cursor col
-	winPy        int    // current cursor row
+	winPx        int    // window size x-axis
+	winPy        int    // window size y-axis
 	nCols        int    // cols number per window
 	nRows        int    // rows number per window
 	saveLines    int    // nRows + saveLines is the scrolling area limitation
@@ -49,6 +49,8 @@ type Framebuffer struct {
 	viewOffset   int    // how many rows above top row does the view start?
 	margin       bool   // are there (non-default) top/bottom margins set?
 
+	posX      int // current cursor horizontal position (on-screen)
+	posY      int // current cursor vertical position (on-screen)
 	selection Rect
 }
 
