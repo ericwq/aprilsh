@@ -26,6 +26,92 @@ SOFTWARE.
 
 package terminal
 
+type Point struct {
+	x, y int
+}
+
+type Rect struct {
+	tl          Point // top left corner
+	br          Point // bottom right corner
+	rectangular bool
+}
+
+func NewRect() (rect *Rect) {
+	rect.tl = Point{-1, -1}
+	rect.br = Point{-1, -1}
+	return rect
+}
+
+// empty rectangular
+func (rect *Rect) empty() bool {
+	return rect.tl == rect.br
+}
+
+// null rectangular
+func (rect *Rect) null() bool {
+	raw := Point{-1, -1}
+	return rect.tl == raw && rect.br == raw
+}
+
+// return the middle point of rectangular
+func (rect *Rect) mid() Point {
+	return Point{(rect.tl.x + rect.br.x) / 2, (rect.tl.y + rect.br.y) / 2}
+}
+
+func (rect *Rect) clear() {
+	rect.tl = Point{-1, -1}
+	rect.br = Point{-1, -1}
+}
+
+func (rect *Rect) toggleRectangular() {
+	rect.rectangular = !rect.rectangular
+}
+
+type Damage struct {
+	start      int
+	end        int
+	totalCells int
+}
+
+func (dmg *Damage) reset() {
+	dmg.start = 0
+	dmg.end = 0
+}
+
+func (dmg *Damage) expose() {
+	dmg.start = 0
+	dmg.end = dmg.totalCells
+}
+
+func (dmg *Damage) add(start, end int) {
+	if end < start {
+		start = 0
+		end = dmg.totalCells
+	}
+
+	if start == end {
+		dmg.start = start
+		dmg.end = end
+	} else {
+		dmg.start = min(dmg.start, start)
+		dmg.end = max(dmg.end, end)
+	}
+}
+
+func min(x, y int) int {
+	if x < y {
+		return x
+	}
+	return y
+}
+
+func max(x, y int) int {
+	if x > y {
+		return x
+	}
+	return y
+}
+
 type Framebuffer struct {
 	rows             []Row
 	iconName         string
@@ -34,6 +120,22 @@ type Framebuffer struct {
 	titleInitialized bool
 	DS               *DrawState
 	selectionData    string
+
+	// support both (scrollable) normal screen buffer and alternate screen buffer
+	cells        []Cell // the cells
+	winPx        int    // current cursor col
+	winPy        int    // current cursor row
+	nCols        int    // cols number per window
+	nRows        int    // rows number per window
+	saveLines    int    // nRows + saveLines is the scrolling area limitation
+	scrollHead   int    // row offset of scrolling area's logical top row
+	marginTop    int    // current margin top (number of rows above)
+	marginBottom int    // current margin bottom (number of rows above + 1)
+	historyRows  int    // number of history (off-screen) rows with data
+	viewOffset   int    // how many rows above top row does the view start?
+	margin       bool   // are there (non-default) top/bottom margins set?
+
+	selection Rect
 }
 
 func NewFramebuffer(width, height int) *Framebuffer {
