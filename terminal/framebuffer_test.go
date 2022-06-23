@@ -65,19 +65,30 @@ func fillinRows(fb *Framebuffer, startCh ...int) {
 	}
 }
 
-// fill in screen with rotating A~Z.
-func fillinRows2(fb *Framebuffer, startCh ...int) {
-	A := 0x41
-	if len(startCh) > 0 {
-		A = startCh[0]
+func inScope(rows []int, x int) bool {
+	if len(rows) == 0 {
+		return false
 	}
+	for _, v := range rows {
+		if v == x {
+			return true
+		}
+	}
+	return false
+}
+
+// fill in screen with rotating A~Z.
+func fillCells(fb *Framebuffer, rows ...int) {
+	A := 0x41
 
 	for r := 0; r < fb.nRows; r++ {
-		start := fb.getIdx(r, 0)
-		end := start + fb.nCols
-		for k := start; k < end; k++ {
-			ch := rune(A + (k % 26))
-			fb.cells[k].contents = string(ch)
+		if inScope(rows, r) {
+			start := fb.getIdx(r, 0)
+			end := start + fb.nCols
+			for k := start; k < end; k++ {
+				ch := rune(A + (k % 26))
+				fb.cells[k].contents = string(ch)
+			}
 		}
 	}
 }
@@ -91,16 +102,18 @@ func printRows(fb *Framebuffer) string {
 	return output.String()
 }
 
-func printRows2(fb *Framebuffer) string {
+func printCells(fb *Framebuffer, rows ...int) string {
 	var output strings.Builder
 
 	for r := 0; r < fb.nRows; r++ {
-		start := fb.getIdx(r, 0)
-		end := start + fb.nCols
-		for k := start; k < end; k++ {
-			output.WriteString(fb.cells[k].contents)
+		if inScope(rows, r) {
+			start := fb.getIdx(r, 0)
+			end := start + fb.nCols
+			for k := start; k < end; k++ {
+				output.WriteString(fb.cells[k].contents)
+			}
+			output.WriteString("\n")
 		}
-		output.WriteString("\n")
 	}
 	return output.String()
 }
@@ -740,7 +753,21 @@ func TestFramebufferSoftReset(t *testing.T) {
 
 func TestFramebufferMoveInRow(t *testing.T) {
 	fb := NewFramebuffer3(80, 40, 0)
+	row := 2
+	startX := 74
+	count := 5
 
-	// fill the screen with 'E'
-	fb.fillCells('E', Renditions{})
+	// fill the screen with rotating A~Z
+	fillCells(fb, row)
+
+	before := printCells(fb, row)
+	after := ""
+
+	fb.moveInRow(row, startX+count, startX, count)
+	fb.eraseInRow(row, startX, count, Renditions{})
+
+	after = printCells(fb, row)
+
+	t.Logf("Before\n%s", before)
+	t.Logf("After\n%s", after)
 }
