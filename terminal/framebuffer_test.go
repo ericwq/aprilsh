@@ -65,12 +65,43 @@ func fillinRows(fb *Framebuffer, startCh ...int) {
 	}
 }
 
+// fill in screen with rotating A~Z.
+func fillinRows2(fb *Framebuffer, startCh ...int) {
+	A := 0x41
+	if len(startCh) > 0 {
+		A = startCh[0]
+	}
+
+	for r := 0; r < fb.nRows; r++ {
+		start := fb.getIdx(r, 0)
+		end := start + fb.nCols
+		for k := start; k < end; k++ {
+			ch := rune(A + (k % 26))
+			fb.cells[k].contents = string(ch)
+		}
+	}
+}
+
 func printRows(fb *Framebuffer) string {
 	var output strings.Builder
 	for _, row := range fb.rows {
 		output.WriteString(row.String() + "\n")
 	}
 
+	return output.String()
+}
+
+func printRows2(fb *Framebuffer) string {
+	var output strings.Builder
+
+	for r := 0; r < fb.nRows; r++ {
+		start := fb.getIdx(r, 0)
+		end := start + fb.nCols
+		for k := start; k < end; k++ {
+			output.WriteString(fb.cells[k].contents)
+		}
+		output.WriteString("\n")
+	}
 	return output.String()
 }
 
@@ -705,4 +736,11 @@ func TestFramebufferSoftReset(t *testing.T) {
 	if fb.DS.renditions != expectRend {
 		t.Errorf("renditions expect %v, got %v\n", expectRend, fb.DS.renditions)
 	}
+}
+
+func TestFramebufferMoveInRow(t *testing.T) {
+	fb := NewFramebuffer3(80, 40, 0)
+
+	// fill the screen with 'E'
+	fb.fillCells('E', Renditions{})
 }

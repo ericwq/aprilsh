@@ -161,12 +161,10 @@ func (fb *Framebuffer) moveCells(dstIx, srcIx, count int) {
 	fb.damage.add(dstIx, dstIx+count)
 }
 
-// required by moveInRow
 func (fb *Framebuffer) getIdx(pY, pX int) int {
 	return fb.nCols*fb.getPhysicalRow(pY-fb.viewOffset) + pX
 }
 
-// required by getIdx
 func (fb *Framebuffer) getPhysicalRow(pY int) int {
 	if pY < 0 {
 		if !fb.margin {
@@ -189,6 +187,20 @@ func (fb *Framebuffer) getPhysicalRow(pY int) int {
 	}
 
 	return pY
+}
+
+// fill current screen with specified rune and renditions.
+func (fb *Framebuffer) fillCells(ch rune, rend Renditions) {
+	for r := 0; r < fb.nRows; r++ {
+
+		start := fb.getIdx(r, 0)
+		end := start + fb.nCols
+		for k := start; k < end; k++ {
+			fb.cells[k].renditions = rend
+			fb.cells[k].contents = string(ch)
+		}
+		fb.damage.add(start, end)
+	}
 }
 
 func (fb *Framebuffer) newRow() *Row {
