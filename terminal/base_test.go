@@ -115,3 +115,38 @@ func TestDamage(t *testing.T) {
 		}
 	}
 }
+
+func TestPointAll(t *testing.T) {
+	tc := []struct {
+		name   string
+		lhs    Point
+		rhs    Point
+		expect bool
+	}{
+		{"equal true", Point{1, 2}, Point{1, 2}, true},
+		{"equal false", Point{1, 2}, Point{2, 2}, false},
+		{"less true", Point{10, 2}, Point{20, 2}, true},
+		{"less false", Point{10, 2}, Point{9, 2}, false},
+		{"less equal true", Point{9, 2}, Point{9, 2}, true},
+		{"less equal true", Point{8, 2}, Point{9, 2}, true},
+		{"less equal false", Point{8, 3}, Point{9, 2}, false},
+	}
+
+	for i, v := range tc {
+		lhs := v.lhs
+		switch i {
+		case 0, 1:
+			if lhs.equal(v.rhs) != v.expect {
+				t.Errorf("%s expect %t, got %t\n", v.name, v.expect, lhs.equal(v.rhs))
+			}
+		case 2, 3:
+			if lhs.less(v.rhs) != v.expect {
+				t.Errorf("%s expect %t, got %t\n", v.name, v.expect, lhs.less(v.rhs))
+			}
+		default:
+			if lhs.lessEqual(v.rhs) != v.expect {
+				t.Errorf("%s expect %t, got %t\n", v.name, v.expect, lhs.lessEqual(v.rhs))
+			}
+		}
+	}
+}
