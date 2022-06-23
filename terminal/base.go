@@ -26,8 +26,29 @@ SOFTWARE.
 
 package terminal
 
+import "fmt"
+
 type Point struct {
 	x, y int
+}
+
+func (p Point) String() string {
+	return fmt.Sprintf("(%d,%d)", p.x, p.y)
+}
+
+// Point(this) <= Point(rhs)
+func (p Point) lessEqual(rhs Point) bool {
+	return p.less(rhs) || p.equal(rhs)
+}
+
+// Point(this) < Point(rhs)
+func (p Point) less(rhs Point) bool {
+	return p.y < rhs.y || (p.y == rhs.y && p.x < rhs.x)
+}
+
+// Point(this) < Point(rhs)
+func (p Point) equal(rhs Point) bool {
+	return p.x == rhs.x && p.y == rhs.y
 }
 
 type Rect struct {
@@ -41,6 +62,17 @@ func NewRect() (rect *Rect) {
 	rect.clear()
 
 	return rect
+}
+
+func NewRect4(x1, y1, x2, y2 int) (rect *Rect) {
+	rect = &Rect{}
+	rect.tl = Point{x1, y1}
+	rect.tl = Point{x2, y2}
+	return rect
+}
+
+func (rect *Rect) String() string {
+	return fmt.Sprintf("Rect{tl=%s br=%s rectangular=%t}", rect.tl, rect.br, rect.rectangular)
 }
 
 // empty rectangular
