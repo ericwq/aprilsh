@@ -38,17 +38,16 @@ func TestRectAll(t *testing.T) {
 	if !r.null() {
 		t.Errorf("Rect.null() should return %t, got %t\n", true, r.null())
 	}
-	r.tl.x = 8
-	r.tl.y = 9
 
 	// now, empty() should return false
+	r.tl.x = 8
+	r.tl.y = 9
 	if r.empty() {
 		t.Errorf("Rect.empty() should return %t, got %t\n", false, r.empty())
 	}
 
-	r.clear()
-
 	// after clear, empty() return true
+	r.clear()
 	if !r.empty() {
 		t.Errorf("Rect.empty() should return %t, got %t\n", true, r.empty())
 	}
@@ -63,15 +62,22 @@ func TestRectAll(t *testing.T) {
 		t.Errorf("Rect.mid() expect %v, got %v\n", expect, r.mid())
 	}
 
+	// check rectangular first
 	if r.rectangular {
 		t.Errorf("First Rect.rectangular should return %t, got %t\n", false, r.rectangular)
 	}
 
-	// toggle should return true
+	// after toggle should return true
 	r.toggleRectangular()
 	got := r.rectangular
 	if !got {
 		t.Errorf("Second Rect.rectangular should return %t, got %t\n", true, got)
+	}
+
+	expectStr := "Rect{tl=(1,1) br=(9,9) rectangular=true}"
+	gotStr := r.String()
+	if gotStr != expectStr {
+		t.Errorf("Rect.String expect %s, got %s\n", expectStr, gotStr)
 	}
 }
 
