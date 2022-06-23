@@ -46,10 +46,23 @@ type Cell struct {
 	wrap       bool
 }
 
+// reset cell with default renditions, note hte bgColor is not used.
+// the default contents is empty string
 func (c *Cell) Reset(bgColor uint32) {
 	c.contents = ""
 	// c.renditions = Renditions{bgColor: bgColor}
 	c.renditions = Renditions{}
+	c.wide = false
+	c.fallback = false
+	c.wrap = false
+}
+
+// reset cell with specified renditions
+// the default contents is " "
+func (c *Cell) Reset2(rend Renditions) {
+	c.contents = " "
+	// c.renditions = Renditions{bgColor: bgColor}
+	c.renditions = rend
 	c.wide = false
 	c.fallback = false
 	c.wrap = false
