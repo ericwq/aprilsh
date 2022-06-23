@@ -48,6 +48,7 @@ const (
 
 const (
 	unused_handlerID = iota
+	csi_decic
 	csi_decscl
 	esc_docs_utf8
 	esc_docs_iso8859_1
@@ -55,6 +56,7 @@ const (
 
 var strHandlerID = [...]string{
 	"",
+	"csi-decic",
 	"csi-decscl",
 	"esc-docs-utf-8",
 	"esc-docs-iso8859-1",
@@ -1210,5 +1212,14 @@ func hdl_csi_decscl(emu *emulator, params []int) {
 		default:
 			emu.logU.Printf("DECSCL: C1 control transmission mode: %d", params[1])
 		}
+	}
+}
+
+// CSI Ps ' }
+//           Insert Ps Column(s) (default = 1) (DECIC), VT420 and up.
+func hdl_csi_decic(emu *emulator, num int) {
+	if emu.framebuffer.isCursorInsideMargins() {
+		num = min(num, emu.framebuffer.DS.nColsEff-emu.framebuffer.posX)
+		emu.framebuffer.insertCols(emu.framebuffer.posX, num)
 	}
 }

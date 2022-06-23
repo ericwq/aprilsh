@@ -37,8 +37,6 @@ type Framebuffer struct {
 
 	// support both (scrollable) normal screen buffer and alternate screen buffer
 	cells        []Cell // the cells
-	winPx        int    // window size x-axis
-	winPy        int    // window size y-axis
 	nCols        int    // cols number per window
 	nRows        int    // rows number per window
 	saveLines    int    // nRows + saveLines is the scrolling area limitation
@@ -48,10 +46,10 @@ type Framebuffer struct {
 	historyRows  int    // number of history (off-screen) rows with data
 	viewOffset   int    // how many rows above top row does the view start?
 	margin       bool   // are there (non-default) top/bottom margins set?
-
-	posX      int // current cursor horizontal position (on-screen)
-	posY      int // current cursor vertical position (on-screen)
-	selection Rect
+	posX         int    // current cursor horizontal position (on-screen)
+	posY         int    // current cursor vertical position (on-screen)
+	selection    Rect   // selection area
+	damage       Damage // damage scope
 }
 
 func NewFramebuffer(width, height int) *Framebuffer {
@@ -67,6 +65,130 @@ func NewFramebuffer(width, height int) *Framebuffer {
 	}
 
 	return &fb
+}
+
+// saveLines: for alternate screen buffer default is 0, for normal screen buffer the default is 500, max 50000
+func NewFramebuffer3(nCols, nRows, saveLines int) *Framebuffer {
+	fb := Framebuffer{}
+
+	fb.DS = NewDrawState(nCols, nRows)
+
+	fb.cells = make([]Cell, nCols*(nRows+saveLines))
+	fb.nCols = nCols
+	fb.nRows = nRows
+
+	fb.saveLines = saveLines
+	fb.scrollHead = 0
+	fb.marginTop = 0
+	fb.marginBottom = nRows + saveLines
+	fb.historyRows = 0
+	fb.viewOffset = 0
+	fb.margin = false
+
+	fb.damage.totalCells = nCols * (nRows + saveLines)
+	fb.selection = *NewRect()
+
+	return &fb
+}
+
+func (fb *Framebuffer) expose() {
+	fb.damage.expose()
+}
+
+func (fb *Framebuffer) resetDamage() {
+	fb.damage.reset()
+}
+
+func (fb *Framebuffer) getHistroryRows() int {
+	return fb.historyRows
+}
+
+func (fb *Framebuffer) isCursorInsideMargins() bool {
+	return fb.posX >= fb.DS.hMargin && fb.posX < fb.DS.nColsEff &&
+		fb.posY >= fb.marginTop && fb.posY < fb.marginBottom
+}
+
+func (fb *Framebuffer) invalidateSelection(damage *Rect) {
+	if fb.selection.empty() {
+		return
+	}
+
+	if fb.selection.br.lessEqual(damage.tl) || damage.br.lessEqual(fb.selection.tl) {
+		return
+	}
+
+	fb.selection.clear()
+}
+
+// insert blank cols at and to the right of startX, within the scrolling area
+func (fb *Framebuffer) insertCols(startX, count int) {
+	for r := fb.marginTop; r < fb.marginBottom; r++ {
+		fb.moveInRow(r, startX+count, startX, fb.DS.nColsEff-startX-count)
+		fb.eraseInRow(r, startX, count, fb.DS.renditions) // it's Vterm.attrs in zutty
+	}
+}
+
+func (fb *Framebuffer) eraseRange(start, end int, rend Renditions) {
+	for i := range fb.cells[start:end] {
+		fb.cells[start+i].Reset2(rend)
+	}
+	fb.damage.add(start, end)
+}
+
+func (fb *Framebuffer) eraseInRow(pY, startX, count int, rend Renditions) {
+	if count == 0 {
+		return
+	}
+
+	idx := fb.getIdx(pY, startX)
+	fb.eraseRange(idx, idx+count, rend)
+	fb.invalidateSelection(NewRect4(startX, pY, startX+count, pY))
+}
+
+func (fb *Framebuffer) moveInRow(pY, dstX, srcX, count int) {
+	if count == 0 {
+		return
+	}
+
+	dstIdx := fb.getIdx(pY, dstX)
+	srcIdx := fb.getIdx(pY, srcX)
+	fb.moveCells(dstIdx, srcIdx, count)
+	fb.invalidateSelection(NewRect4(dstX, pY, dstX+count, pY))
+}
+
+func (fb *Framebuffer) moveCells(dstIx, srcIx, count int) {
+	copy(fb.cells[dstIx:], fb.cells[srcIx:srcIx+count])
+	fb.damage.add(dstIx, dstIx+count)
+}
+
+// required by moveInRow
+func (fb *Framebuffer) getIdx(pY, pX int) int {
+	return fb.nCols*fb.getPhysicalRow(pY-fb.viewOffset) + pX
+}
+
+// required by getIdx
+func (fb *Framebuffer) getPhysicalRow(pY int) int {
+	if pY < 0 {
+		if !fb.margin {
+			pY += fb.scrollHead
+		}
+		if pY < 0 {
+			pY += fb.nRows + fb.saveLines
+		}
+
+		return pY
+	}
+
+	if fb.margin && (pY < fb.marginTop || pY >= fb.marginBottom) {
+		return pY
+	}
+
+	pY += fb.scrollHead - fb.marginTop
+	if pY >= fb.marginBottom {
+		pY -= fb.marginBottom - fb.marginTop
+	}
+
+	return pY
 }
 
 func (fb *Framebuffer) newRow() *Row {
