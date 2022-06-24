@@ -124,7 +124,7 @@ func (fb *Framebuffer) invalidateSelection(damage *Rect) {
 func (fb *Framebuffer) insertCols(startX, count int) {
 	for r := fb.marginTop; r < fb.marginBottom; r++ {
 		fb.moveInRow(r, startX+count, startX, fb.DS.nColsEff-startX-count)
-		fb.eraseInRow(r, startX, count, fb.DS.renditions) // it's the default renditions
+		fb.eraseInRow(r, startX, count, fb.DS.renditions) // use the default renditions
 	}
 }
 
@@ -132,10 +132,11 @@ func (fb *Framebuffer) insertCols(startX, count int) {
 func (fb *Framebuffer) deleteCols(startX, count int) {
 	for r := fb.marginTop; r < fb.marginBottom; r++ {
 		fb.moveInRow(r, startX, startX+count, fb.DS.nColsEff-startX-count)
-		fb.eraseInRow(r, fb.DS.nColsEff-count, count, fb.DS.renditions) // it's the default renditions
+		fb.eraseInRow(r, fb.DS.nColsEff-count, count, fb.DS.renditions) // use the default renditions
 	}
 }
 
+// erase (reset) fromt start to end with specified renditions
 func (fb *Framebuffer) eraseRange(start, end int, rend Renditions) {
 	for i := range fb.cells[start:end] {
 		fb.cells[start+i].Reset2(rend)
@@ -143,6 +144,7 @@ func (fb *Framebuffer) eraseRange(start, end int, rend Renditions) {
 	fb.damage.add(start, end)
 }
 
+// erase (count) cells from startX column
 func (fb *Framebuffer) eraseInRow(pY, startX, count int, rend Renditions) {
 	if count == 0 {
 		return
@@ -153,6 +155,7 @@ func (fb *Framebuffer) eraseInRow(pY, startX, count int, rend Renditions) {
 	fb.invalidateSelection(NewRect4(startX, pY, startX+count, pY))
 }
 
+// move (count) cells from srcX column to dstX column in row pY
 func (fb *Framebuffer) moveInRow(pY, dstX, srcX, count int) {
 	if count == 0 {
 		return
@@ -164,6 +167,7 @@ func (fb *Framebuffer) moveInRow(pY, dstX, srcX, count int) {
 	fb.invalidateSelection(NewRect4(dstX, pY, dstX+count, pY))
 }
 
+// move (count) cells from srcIx to dstIx. Both of the parameters are the index for cells.
 func (fb *Framebuffer) moveCells(dstIx, srcIx, count int) {
 	copy(fb.cells[dstIx:], fb.cells[srcIx:srcIx+count])
 	fb.damage.add(dstIx, dstIx+count)
@@ -173,6 +177,7 @@ func (fb *Framebuffer) getIdx(pY, pX int) int {
 	return fb.nCols*fb.getPhysicalRow(pY-fb.viewOffset) + pX
 }
 
+// TODO the relationship between viewOffset and scrollHead
 func (fb *Framebuffer) getPhysicalRow(pY int) int {
 	if pY < 0 {
 		if !fb.margin {
@@ -195,6 +200,76 @@ func (fb *Framebuffer) getPhysicalRow(pY int) int {
 	}
 
 	return pY
+}
+
+// copy a row from srcY to dstY, within the left-right scrolling area. (startX,count) defines the area.
+func (fb *Framebuffer) copyRow(dstY, srcY, startX, count int) {
+	if count == 0 {
+		return
+	}
+
+	dstIdx := fb.getIdx(dstY, startX)
+	srcIdx := fb.getIdx(srcY, startX)
+	fb.copyCells(dstIdx, srcIdx, count)
+	fb.invalidateSelection(NewRect4(startX, dstY, startX+count, dstY))
+}
+
+// copy (count) cells from srcIx to dstIx. Both of the parameters are the index for cells.
+func (fb *Framebuffer) copyCells(dstIx, srcIx, count int) {
+	copy(fb.cells[dstIx:], fb.cells[srcIx:srcIx+count])
+	fb.damage.add(dstIx, dstIx+count)
+}
+
+// insert blank rows at and below startY, within the scrolling area
+func (fb *Framebuffer) insertRows(startY, count int) {
+	for pY := fb.marginBottom - count - 1; pY >= startY; pY-- {
+		fb.copyRow(pY+count, pY, fb.DS.hMargin, fb.DS.nColsEff-fb.DS.hMargin)
+		if pY == 0 {
+			break
+		}
+	}
+
+	for pY := startY; pY < startY+count; pY++ {
+		// use the default renditions
+		fb.eraseRow(pY, fb.DS.hMargin, fb.DS.nColsEff-fb.DS.hMargin, fb.DS.renditions)
+	}
+}
+
+// delete rows at and below startY, within the scrolling area
+func (fb *Framebuffer) deleteRows(startY, count int) {
+	// move the rest (startY+count) rows up
+	for pY := startY; pY < fb.marginBottom-count; pY++ {
+		fb.copyRow(pY, pY+count, fb.DS.hMargin, fb.DS.nColsEff-fb.DS.hMargin)
+	}
+
+	// erase the remain rows
+	for pY := fb.marginBottom - count; pY < fb.marginBottom; pY++ {
+		// use the default renditions
+		fb.eraseRow(pY, fb.DS.hMargin, fb.DS.nColsEff-fb.DS.hMargin, fb.DS.renditions)
+	}
+}
+
+// erase rows at and below startY, within the scrolling area
+func (fb *Framebuffer) eraseRows(startY, count int) {
+	for pY := startY; pY < startY+count; pY++ {
+		// use the default renditions
+		fb.eraseRow(pY, fb.DS.hMargin, fb.DS.nColsEff-fb.DS.hMargin, fb.DS.renditions)
+	}
+}
+
+// erase a row at pY, within the left-right scrolling area. (startX,count) defines the area.
+func (fb *Framebuffer) eraseRow(pY, startX, count int, rend Renditions) {
+	if count == 0 {
+		return
+	}
+
+	idx := fb.getIdx(pY, startX)
+	fb.eraseRange(idx, idx+count, rend)
+	fb.invalidateSelection(NewRect4(startX, pY, startX+count, pY))
+}
+
+func (fb *Framebuffer) freeCells() {
+	fb.cells = nil
 }
 
 // fill current screen with specified rune and renditions.
