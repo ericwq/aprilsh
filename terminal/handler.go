@@ -49,6 +49,7 @@ const (
 const (
 	unused_handlerID = iota
 	csi_decic
+	csi_decdc
 	csi_decscl
 	esc_docs_utf8
 	esc_docs_iso8859_1
@@ -57,6 +58,7 @@ const (
 var strHandlerID = [...]string{
 	"",
 	"csi-decic",
+	"csi-decdc",
 	"csi-decscl",
 	"esc-docs-utf-8",
 	"esc-docs-iso8859-1",
@@ -1221,5 +1223,14 @@ func hdl_csi_decic(emu *emulator, num int) {
 	if emu.framebuffer.isCursorInsideMargins() {
 		num = min(num, emu.framebuffer.DS.nColsEff-emu.framebuffer.posX)
 		emu.framebuffer.insertCols(emu.framebuffer.posX, num)
+	}
+}
+
+// CSI Ps ' ~
+//           Delete Ps Column(s) (default = 1) (DECDC), VT420 and up.
+func hdl_csi_decdc(emu *emulator, num int) {
+	if emu.framebuffer.isCursorInsideMargins() {
+		num = min(num, emu.framebuffer.DS.nColsEff-emu.framebuffer.posX)
+		emu.framebuffer.deleteCols(emu.framebuffer.posX, num)
 	}
 }

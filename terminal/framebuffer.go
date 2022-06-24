@@ -124,7 +124,15 @@ func (fb *Framebuffer) invalidateSelection(damage *Rect) {
 func (fb *Framebuffer) insertCols(startX, count int) {
 	for r := fb.marginTop; r < fb.marginBottom; r++ {
 		fb.moveInRow(r, startX+count, startX, fb.DS.nColsEff-startX-count)
-		fb.eraseInRow(r, startX, count, fb.DS.renditions) // it's Vterm.attrs in zutty
+		fb.eraseInRow(r, startX, count, fb.DS.renditions) // it's the default renditions
+	}
+}
+
+// delete cols at and to the right of startX, within the scrolling area
+func (fb *Framebuffer) deleteCols(startX, count int) {
+	for r := fb.marginTop; r < fb.marginBottom; r++ {
+		fb.moveInRow(r, startX, startX+count, fb.DS.nColsEff-startX-count)
+		fb.eraseInRow(r, fb.DS.nColsEff-count, count, fb.DS.renditions) // it's the default renditions
 	}
 }
 

@@ -1179,6 +1179,19 @@ func (p *Parser) handle_DECIC() (hd *Handler) {
 	return hd
 }
 
+// Delete Column
+func (p *Parser) handle_DECDC() (hd *Handler) {
+	num := p.getPs(0, 1)
+
+	hd = &Handler{id: csi_decdc, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_decdc(emu, num)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
 // process data stream from outside. for VT mode, character set can be changed
 // according to control sequences. for UTF-8 mode, no need to change character set.
 // the result is a *Handler list. waiting to be executed later.
@@ -1522,8 +1535,8 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		switch ch {
 		case '}':
 			hd = p.handle_DECIC()
-		// case '~':
-		// 	hd = p.handle_DECDC()
+		case '~':
+			hd = p.handle_DECDC()
 		default:
 			p.unhandledInput()
 		}
