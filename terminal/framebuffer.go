@@ -132,14 +132,14 @@ func (fb *Framebuffer) resize(nCols, nRows int) (marginTop, marginBottom int) {
 
 	// copy the active area
 	for pY := 0; pY < nCopyRows; pY++ {
-		srcStartIdx := fb.nCols * fb.getPhysicalRow(pY)
+		srcStartIdx := fb.getPhysicalRowIndex(pY)
 		srcEndIdx := srcStartIdx + rowLen
 		dstStartIdx := nCols * pY
 		copy(newCells[dstStartIdx:], fb.cells[srcStartIdx:srcEndIdx])
 	}
 	// copy the history rows
 	for pY := -fb.historyRows; pY < 0; pY++ {
-		srcStartIdx := fb.nCols * fb.getPhysicalRow(pY)
+		srcStartIdx := fb.getPhysicalRowIndex(pY)
 		srcEndIdx := srcStartIdx + rowLen
 		dstStartIdx := nCols * abs(pY)
 		copy(newCells[dstStartIdx:], fb.cells[srcStartIdx:srcEndIdx])
@@ -159,6 +159,15 @@ func (fb *Framebuffer) resize(nCols, nRows int) (marginTop, marginBottom int) {
 	marginBottom = nRows // external report marginBottom
 
 	return
+}
+
+func (fb *Framebuffer) fullCopyCells(dst []Cell) {
+	for pY := 0; pY < fb.nRows; pY++ {
+		srcStartIdx := fb.getViewRowIndex(pY)
+		srcEndIdx := srcStartIdx + fb.nCols
+		dstStartIdx := fb.nCols * pY
+		copy(dst[dstStartIdx:], fb.cells[srcStartIdx:srcEndIdx])
+	}
 }
 
 func (fb *Framebuffer) expose() {
@@ -325,6 +334,14 @@ func (fb *Framebuffer) moveCells(dstIx, srcIx, count int) {
 	fb.damage.add(dstIx, dstIx+count)
 }
 
+func (fb *Framebuffer) getPhysicalRowIndex(pY int) int {
+	return fb.nCols * fb.getPhysicalRow(pY)
+}
+
+func (fb *Framebuffer) getViewRowIndex(pY int) int {
+	return fb.getPhysicalRowIndex(pY - fb.viewOffset)
+}
+
 func (fb *Framebuffer) getIdx(pY, pX int) int {
 	return fb.nCols*fb.getPhysicalRow(pY-fb.viewOffset) + pX
 }
@@ -449,7 +466,6 @@ func (fb *Framebuffer) unwrapCellStorage() {
 	fb.scrollHead = fb.marginTop
 }
 
-// new frame end here
 func (fb *Framebuffer) freeCells() {
 	fb.cells = nil
 }
@@ -467,6 +483,8 @@ func (fb *Framebuffer) fillCells(ch rune, rend Renditions) {
 		fb.damage.add(start, end)
 	}
 }
+
+/* --------------------------------------------------- new frame end here */
 
 func (fb *Framebuffer) newRow() *Row {
 	w := fb.DS.GetWidth()
