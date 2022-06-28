@@ -90,6 +90,77 @@ func NewFramebuffer3(nCols, nRows, saveLines int) *Framebuffer {
 	return &fb
 }
 
+// drop the scrollback history and view offset
+func (fb *Framebuffer) dropScrollbackHistory() {
+	fb.viewOffset = 0
+	fb.historyRows = 0
+	fb.expose()
+}
+
+func (fb *Framebuffer) setMargins(marginTop, marginBottom int) {
+	fb.unwrapCellStorage()
+	fb.marginTop = marginTop
+	fb.scrollHead = fb.marginTop
+	fb.marginBottom = marginBottom
+	fb.margin = true
+	fb.expose()
+}
+
+// return marginTop = 0, marginBottom = nRows
+func (fb *Framebuffer) resetMargins() (marginTop, marginBottom int) {
+	fb.unwrapCellStorage()
+	marginTop = 0
+	fb.marginTop = marginTop
+	fb.scrollHead = fb.marginTop
+	fb.marginBottom = fb.nRows + fb.saveLines // internal marginBottom = nRows+saveLines
+	marginBottom = fb.nRows                   // external reported value of marginBottom
+	fb.margin = false
+	fb.expose()
+
+	return
+}
+
+func (fb *Framebuffer) resize(nCols, nRows int) (marginTop, marginBottom int) {
+	if fb.nCols == nCols && fb.nRows == nRows {
+		return
+	}
+
+	// adjust the internal cell storage according to the new columns an rows
+	newCells := make([]Cell, fb.nCols*(fb.nRows+fb.saveLines))
+	rowLen := min(fb.nCols, nCols)    // minimal row length
+	nCopyRows := min(fb.nRows, nRows) // minimal row number
+
+	// copy the active area
+	for pY := 0; pY < nCopyRows; pY++ {
+		srcStartIdx := fb.nCols * fb.getPhysicalRow(pY)
+		srcEndIdx := srcStartIdx + rowLen
+		dstStartIdx := nCols * pY
+		copy(newCells[dstStartIdx:], fb.cells[srcStartIdx:srcEndIdx])
+	}
+	// copy the history rows
+	for pY := -fb.historyRows; pY < 0; pY++ {
+		srcStartIdx := fb.nCols * fb.getPhysicalRow(pY)
+		srcEndIdx := srcStartIdx + rowLen
+		dstStartIdx := nCols * abs(pY)
+		copy(newCells[dstStartIdx:], fb.cells[srcStartIdx:srcEndIdx])
+	}
+
+	fb.cells = newCells
+	fb.nCols = nCols
+	fb.nRows = nRows
+	fb.marginTop = 0
+	fb.scrollHead = fb.marginTop
+	fb.marginBottom = fb.nRows + fb.saveLines // internal marginBottom
+	fb.margin = false
+	fb.viewOffset = 0
+	fb.damage.totalCells = fb.nCols * (fb.nRows + fb.saveLines)
+
+	marginTop = 0
+	marginBottom = nRows // external report marginBottom
+
+	return
+}
+
 func (fb *Framebuffer) expose() {
 	fb.damage.expose()
 }
@@ -102,16 +173,39 @@ func (fb *Framebuffer) getHistroryRows() int {
 	return fb.historyRows
 }
 
+// invalidate the selection area if it overlaped with damage area
 func (fb *Framebuffer) invalidateSelection(damage *Rect) {
 	if fb.selection.empty() {
 		return
 	}
 
+	// damage area is not overlaped with selection area
 	if fb.selection.br.lessEqual(damage.tl) || damage.br.lessEqual(fb.selection.tl) {
 		return
 	}
 
 	fb.selection.clear()
+}
+
+// how the vertical scrolling affect selection area.
+// #Understand
+//   why move the selection area?
+func (fb *Framebuffer) vscrollSelection(vertOffset int) {
+	if fb.selection.null() {
+		return
+	}
+
+	y1 := fb.selection.tl.y + vertOffset
+	y2 := fb.selection.br.y + vertOffset
+
+	if (fb.margin && y1 < fb.marginTop) || y1 < -fb.saveLines ||
+		y2 > fb.marginBottom || (y2 == fb.marginBottom && fb.selection.br.x > 0) {
+		fb.selection.clear()
+		return
+	}
+
+	fb.selection.tl.y = y1
+	fb.selection.br.y = y2
 }
 
 // text up, screen down count rows
@@ -147,6 +241,35 @@ func (fb *Framebuffer) pageToBottom() {
 	fb.selection.tl.y -= fb.viewOffset
 	fb.viewOffset = 0
 	fb.expose()
+}
+
+// text up, active area down count rows
+func (fb *Framebuffer) scrollUp(count int) {
+	fb.vscrollSelection(-count)
+	for k := 0; k < count; k++ {
+		fb.scrollHead += 1
+		if fb.scrollHead == fb.marginBottom {
+			// wrap around the end of the scrolling area
+			fb.scrollHead = fb.marginTop
+		}
+	}
+	fb.historyRows = min(fb.historyRows+count, fb.saveLines)
+	fb.damage.add(fb.marginTop*fb.nCols, fb.marginBottom*fb.nCols)
+}
+
+// text down, active area up count rows
+func (fb *Framebuffer) scrollDown(count int) {
+	fb.vscrollSelection(count)
+	for k := 0; k < count; k++ {
+		if fb.scrollHead >= fb.marginTop+1 {
+			fb.scrollHead -= 1
+		} else {
+			// wrap around the head of the scrolling area
+			fb.scrollHead = fb.marginBottom - 1
+		}
+	}
+	fb.historyRows = max(0, fb.historyRows-count)
+	fb.damage.add(fb.marginTop*fb.nCols, fb.marginBottom*fb.nCols)
 }
 
 // insert blank cols at and to the right of startX, within the scrolling area
@@ -297,6 +420,36 @@ func (fb *Framebuffer) eraseRow(pY, startX, count int, rend Renditions) {
 	fb.invalidateSelection(NewRect4(startX, pY, startX+count, pY))
 }
 
+func (fb *Framebuffer) copyAllCells(dst []Cell) {
+	// copy the active area
+	for pY := 0; pY < fb.nRows; pY++ {
+		srcStartIdx := fb.nCols * fb.getPhysicalRow(pY)
+		srcEndIdx := srcStartIdx + fb.nCols
+		dstStartIdx := fb.nCols * pY
+		copy(dst[dstStartIdx:], fb.cells[srcStartIdx:srcEndIdx])
+	}
+	// copy the history rows
+	for pY := -fb.historyRows; pY < 0; pY++ {
+		srcStartIdx := fb.nCols * fb.getPhysicalRow(pY)
+		srcEndIdx := srcStartIdx + fb.nCols
+		dstStartIdx := fb.nCols * abs(pY)
+		copy(dst[dstStartIdx:], fb.cells[srcStartIdx:srcEndIdx])
+	}
+}
+
+// rearrange the storage to solve the wrap around case
+// resize and set top/bottom margin will call this function
+func (fb *Framebuffer) unwrapCellStorage() {
+	if fb.scrollHead == fb.marginTop {
+		return
+	}
+	newCells := make([]Cell, fb.nCols*(fb.nRows+fb.saveLines))
+	fb.copyAllCells(newCells)
+	fb.cells = newCells
+	fb.scrollHead = fb.marginTop
+}
+
+// new frame end here
 func (fb *Framebuffer) freeCells() {
 	fb.cells = nil
 }
