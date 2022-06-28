@@ -46,10 +46,9 @@ type Framebuffer struct {
 	historyRows  int    // number of history (off-screen) rows with data
 	viewOffset   int    // how many rows above top row does the view start?
 	margin       bool   // are there (non-default) top/bottom margins set?
-	posX         int    // current cursor horizontal position (on-screen)
-	posY         int    // current cursor vertical position (on-screen)
 	selection    Rect   // selection area
 	damage       Damage // damage scope
+	cursor       Cursor // current cursor style, color and position
 }
 
 func NewFramebuffer(width, height int) *Framebuffer {
@@ -103,11 +102,6 @@ func (fb *Framebuffer) getHistroryRows() int {
 	return fb.historyRows
 }
 
-func (fb *Framebuffer) isCursorInsideMargins() bool {
-	return fb.posX >= fb.DS.hMargin && fb.posX < fb.DS.nColsEff &&
-		fb.posY >= fb.marginTop && fb.posY < fb.marginBottom
-}
-
 func (fb *Framebuffer) invalidateSelection(damage *Rect) {
 	if fb.selection.empty() {
 		return
@@ -118,6 +112,41 @@ func (fb *Framebuffer) invalidateSelection(damage *Rect) {
 	}
 
 	fb.selection.clear()
+}
+
+// text up, screen down count rows
+func (fb *Framebuffer) pageUp(count int) {
+	viewOffset := min(fb.viewOffset+count, fb.historyRows)
+	delta := viewOffset - fb.viewOffset
+	fb.cursor.posY += delta
+	fb.selection.br.y += delta
+	fb.selection.tl.y += delta
+	fb.viewOffset = viewOffset
+	fb.expose()
+}
+
+// text down, screen up count rows
+func (fb *Framebuffer) pageDown(count int) {
+	viewOffset := max(0, fb.viewOffset-count)
+	delta := viewOffset - fb.viewOffset
+	fb.cursor.posY += delta
+	fb.selection.br.y += delta
+	fb.selection.tl.y += delta
+	fb.viewOffset = viewOffset
+	fb.expose()
+}
+
+// text down, screen up to the top row
+func (fb *Framebuffer) pageToBottom() {
+	if fb.viewOffset == 0 {
+		return
+	}
+
+	fb.cursor.posY -= fb.viewOffset
+	fb.selection.br.y -= fb.viewOffset
+	fb.selection.tl.y -= fb.viewOffset
+	fb.viewOffset = 0
+	fb.expose()
 }
 
 // insert blank cols at and to the right of startX, within the scrolling area

@@ -1220,17 +1220,17 @@ func hdl_csi_decscl(emu *emulator, params []int) {
 // CSI Ps ' }
 //           Insert Ps Column(s) (default = 1) (DECIC), VT420 and up.
 func hdl_csi_decic(emu *emulator, num int) {
-	if emu.framebuffer.isCursorInsideMargins() {
-		num = min(num, emu.framebuffer.DS.nColsEff-emu.framebuffer.posX)
-		emu.framebuffer.insertCols(emu.framebuffer.posX, num)
+	if emu.isCursorInsideMargins() {
+		num = min(num, emu.framebuffer.DS.nColsEff-emu.framebuffer.cursor.posX)
+		emu.framebuffer.insertCols(emu.framebuffer.cursor.posX, num)
 	}
 }
 
 // CSI Ps ' ~
 //           Delete Ps Column(s) (default = 1) (DECDC), VT420 and up.
 func hdl_csi_decdc(emu *emulator, num int) {
-	if emu.framebuffer.isCursorInsideMargins() {
-		num = min(num, emu.framebuffer.DS.nColsEff-emu.framebuffer.posX)
-		emu.framebuffer.deleteCols(emu.framebuffer.posX, num)
+	if emu.isCursorInsideMargins() {
+		num = min(num, emu.framebuffer.DS.nColsEff-emu.framebuffer.cursor.posX)
+		emu.framebuffer.deleteCols(emu.framebuffer.cursor.posX, num)
 	}
 }

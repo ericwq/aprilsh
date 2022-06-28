@@ -204,6 +204,12 @@ type emulator struct {
 	charsetState CharsetState
 	user         UserInput
 
+	posX         int // current cursor horizontal position (on-screen)
+	posY         int // current cursor vertical position (on-screen)
+	marginTop    int // current margin top (copy of frame field)
+	marginBottom int // current margin bottom (copy of frame field)
+	lastCol      bool
+
 	// local buffer for selection data
 	selectionData map[rune]string
 	// logger
@@ -329,6 +335,11 @@ func (emu *emulator) switchColMode(columnMode ColMode) {
 	}
 
 	emu.framebuffer.DS.columnMode = columnMode
+}
+
+func (emu *emulator) isCursorInsideMargins() bool {
+	return emu.posX >= emu.framebuffer.DS.hMargin && emu.posX < emu.framebuffer.DS.nColsEff &&
+		emu.posY >= emu.marginTop && emu.posY < emu.marginBottom
 }
 
 /*
