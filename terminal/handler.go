@@ -530,9 +530,6 @@ func hdl_csi_cub(emu *emulator, num int) {
 
 // CSI Ps ; Ps H Cursor Position [row;column] (default = [1,1]) (CUP).
 func hdl_csi_cup(emu *emulator, row int, col int) {
-	// emu.logT.Printf("Cursor positioned parameters (%d,%d)\n", row, col)
-	// emu.logT.Printf(" emu.nRows=%d, emu.nCols=%d, emu.marginBottom=%d\n", emu.nRows, emu.nCols, emu.marginBottom)
-
 	switch emu.originMode {
 	case OriginModeAbsolute:
 		row = max(1, min(row, emu.nRows)) - 1
@@ -547,10 +544,6 @@ func hdl_csi_cup(emu *emulator, row int, col int) {
 	emu.lastCol = false
 
 	emu.logT.Printf("Cursor positioned to (%d,%d)\n", emu.posY, emu.posX)
-
-	// TODO consider deleting this part
-	// emu.framebuffer.DS.MoveRow(row-1, false)
-	// emu.framebuffer.DS.MoveCol(col-1, false, false)
 }
 
 // CSI Ps n  Device Status Report (DSR).
