@@ -165,9 +165,16 @@ type SavedCursorSCO struct {
 	lastCol bool
 }
 
+type SavedCursor_SCO struct {
+	isSet   bool
+	posX    int
+	posY    int
+	lastCol bool
+}
+
 // TODO refine the constructor
-type SavedCursorDEC struct {
-	SavedCursorSCO
+type SavedCursor_DEC struct {
+	SavedCursor_SCO
 	rend         Renditions
 	originMode   OriginMode
 	charsetState CharsetState

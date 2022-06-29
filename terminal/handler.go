@@ -53,6 +53,8 @@ const (
 	csi_decdc
 	csi_decscl
 	csi_decstbm
+	csi_scorc
+	csi_scosc
 	esc_docs_utf8
 	esc_docs_iso8859_1
 )
@@ -64,6 +66,8 @@ var strHandlerID = [...]string{
 	"csi-decdc",
 	"csi-decscl",
 	"csi-decstbm",
+	"csi-scorc",
+	"csi-scosc",
 	"esc-docs-utf-8",
 	"esc-docs-iso8859-1",
 }
@@ -1196,21 +1200,20 @@ func hdl_csi_decslrm(emu *emulator, params []int) {
 
 // CSI s     Save cursor, available only when DECLRMM is disabled (SCOSC, also ANSI.SYS).
 func hdl_csi_scosc(emu *emulator) {
-	emu.framebuffer.DS.savedCursorSCO.col = emu.framebuffer.DS.cursorCol
-	emu.framebuffer.DS.savedCursorSCO.row = emu.framebuffer.DS.cursorRow
-	emu.framebuffer.DS.savedCursorSCO.isSet = true
+	emu.savedCursor_SCO.posX = emu.posX
+	emu.savedCursor_SCO.posY = emu.posY
+	emu.savedCursor_SCO.isSet = true
 }
 
 // CSI u     Restore cursor (SCORC, also ANSI.SYS).
 func hdl_csi_scorc(emu *emulator) {
-	if !emu.framebuffer.DS.savedCursorSCO.isSet {
-		emu.logT.Println("Asked to restore cursor (SCORC) but it has not been saved.")
+	if !emu.savedCursor_SCO.isSet {
+		emu.logI.Println("Asked to restore cursor (SCORC) but it has not been saved.")
 	} else {
-		emu.framebuffer.DS.cursorCol = emu.framebuffer.DS.savedCursorSCO.col
-		emu.framebuffer.DS.cursorRow = emu.framebuffer.DS.savedCursorSCO.row
-
-		emu.framebuffer.DS.snapCursorToBorder()
-		emu.framebuffer.DS.savedCursorSCO.isSet = false
+		emu.posX = emu.savedCursor_SCO.posX
+		emu.posY = emu.savedCursor_SCO.posY
+		emu.normalizeCursorPos()
+		emu.savedCursor_SCO.isSet = false
 	}
 }
 

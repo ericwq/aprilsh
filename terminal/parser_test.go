@@ -3253,40 +3253,41 @@ func TestHandle_DECSLRM_Others(t *testing.T) {
 
 func TestHandle_SCOSC_SCORC(t *testing.T) {
 	tc := []struct {
-		name     string
-		seq      string
-		hdName   []string
-		col, row int
-		set      bool
-		wantStr  string
+		name       string
+		seq        string
+		hdIDs      []int
+		posY, posX int
+		set        bool
+		logMsg     string
 	}{
 		{
 			"move cursor, SCOSC, check", "\x1B[22;33H\x1B[s",
-			[]string{"csi-cup", "csi-scosc"},
-			32, 21, true, "",
+			[]int{csi_cup, csi_scosc},
+			22 - 1, 33 - 1, true, "",
 		},
 		{
 			"move cursor, SCOSC, move cursor, SCORC, check", "\x1B[33;44H\x1B[s\x1B[42;35H\x1B[u",
-			[]string{"csi-cup", "csi-scosc", "csi-cup", "csi-scorc"},
-			43, 32, false, "",
+			[]int{csi_cup, csi_scosc, csi_cup, csi_scorc},
+			33 - 1, 44 - 1, false, "",
 		},
 		{
 			"SCORC, check", "\x1B[u",
-			[]string{"csi-scorc"},
+			[]int{csi_scorc},
 			0, 0, false, "Asked to restore cursor (SCORC) but it has not been saved.",
 		},
 	}
 
 	p := NewParser()
-	// p.logTrace = true
-	emu := NewEmulator()
+	emu := NewEmulator3(80, 40, 500)
 
 	var place strings.Builder
+	emu.logI.SetOutput(&place) // redirect the output to the string builder
 	emu.logT.SetOutput(&place) // redirect the output to the string builder
 
 	for i, v := range tc {
+		place.Reset()
 
-		// process control sequence
+		// parse control sequence
 		hds := make([]*Handler, 0, 16)
 		hds = p.processStream(v.seq, hds)
 
@@ -3297,32 +3298,24 @@ func TestHandle_SCOSC_SCORC(t *testing.T) {
 		// handle the control sequence
 		for j, hd := range hds {
 			hd.handle(emu)
-			if hd.name != v.hdName[j] { // validate the control sequences name
-				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.hdName[j], hd.name)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 			}
 		}
 
 		switch i {
-		case 0:
-			gotCol := emu.framebuffer.DS.savedCursorSCO.col
-			gotRow := emu.framebuffer.DS.savedCursorSCO.row
-			gotSet := emu.framebuffer.DS.savedCursorSCO.isSet
+		case 0, 1:
+			gotCol := emu.savedCursor_SCO.posX
+			gotRow := emu.savedCursor_SCO.posY
+			gotSet := emu.savedCursor_SCO.isSet
 
-			if gotCol != v.col || gotRow != v.row || gotSet != v.set {
-				t.Errorf("%s:\t %q expect {%d,%d,%t}, got %v", v.name, v.seq, v.row, v.col, v.set, emu.framebuffer.DS.savedCursorSCO)
-			}
-		case 1:
-			gotCol := emu.framebuffer.DS.cursorCol
-			gotRow := emu.framebuffer.DS.cursorRow
-			gotSet := emu.framebuffer.DS.savedCursorSCO.isSet
-
-			if gotCol != v.col || gotRow != v.row || gotSet != v.set {
-				t.Errorf("%s:\t %q expect {%d,%d,%t}, got %v", v.name, v.seq, v.row, v.col, v.set, emu.framebuffer.DS.savedCursorSCO)
+			if gotCol != v.posX || gotRow != v.posY || gotSet != v.set {
+				t.Errorf("%s:\t %q expect {%d,%d,%t}, got %v", v.name, v.seq, v.posY, v.posX, v.set, emu.savedCursor_SCO)
 			}
 		case 2:
-			got := strings.Contains(place.String(), v.wantStr)
+			got := strings.Contains(place.String(), v.logMsg)
 			if !got {
-				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantStr, place.String())
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.logMsg, place.String())
 			}
 		}
 	}

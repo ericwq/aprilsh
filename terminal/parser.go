@@ -1124,7 +1124,7 @@ func (p *Parser) handle_DCS() (hd *Handler) {
 func (p *Parser) handle_SLRM_SCOSC() (hd *Handler) {
 	// disambiguate SLRM and SCOSC with the parameters number
 	if p.getHistoryAt(1) == '[' {
-		hd = &Handler{name: "csi-scosc", ch: p.ch}
+		hd = &Handler{id: csi_scosc, ch: p.ch, sequence: p.historyString()}
 		hd.handle = func(emu *emulator) {
 			hdl_csi_scosc(emu)
 		}
@@ -1145,7 +1145,7 @@ func (p *Parser) handle_SLRM_SCOSC() (hd *Handler) {
 
 // SCORC: Restore Cursor Position for SCO console
 func (p *Parser) handle_SCORC() (hd *Handler) {
-	hd = &Handler{name: "csi-scorc", ch: p.ch}
+	hd = &Handler{id: csi_scorc, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_scorc(emu)
 	}

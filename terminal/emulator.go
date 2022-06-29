@@ -211,6 +211,7 @@ type emulator struct {
 	logT *log.Logger // trace
 	logU *log.Logger
 	logW *log.Logger
+	logI *log.Logger
 
 	nRows int
 	nCols int
@@ -244,10 +245,10 @@ type emulator struct {
 	originMode    OriginMode // two possiible value: ScrollingRegion(true), Absolute(false)
 	colMode       ColMode    // column mode 80 or 132, just for compatibility
 
-	savedCursor_SCO     SavedCursorSCO // SCO console cursor state
-	savedCursor_DEC_pri SavedCursorDEC
-	savedCursor_DEC_alt SavedCursorDEC
-	savedCursor_DEC     *SavedCursorDEC
+	savedCursor_SCO     SavedCursor_SCO // SCO console cursor state
+	savedCursor_DEC_pri SavedCursor_DEC
+	savedCursor_DEC_alt SavedCursor_DEC
+	savedCursor_DEC     *SavedCursor_DEC
 
 	mouseTrk MouseTrackingState
 	/*
@@ -361,7 +362,8 @@ func (emu *emulator) initSelectionData() {
 
 func (emu *emulator) initLog() {
 	// init logger
-	emu.logT = log.New(os.Stderr, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	emu.logT = log.New(os.Stderr, "TRAC: ", log.Ldate|log.Ltime|log.Lshortfile)
+	emu.logI = log.New(os.Stderr, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
 	emu.logE = log.New(os.Stderr, "ERRO: ", log.Ldate|log.Ltime|log.Lshortfile)
 	emu.logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 	emu.logU = log.New(os.Stderr, "(Uimplemented): ", log.Ldate|log.Ltime|log.Lshortfile)
@@ -384,6 +386,15 @@ func (emu *emulator) resetCharsetState() {
 	// Single shift state (0 if none active):
 	// 0 - not active; 2: G2 in GL; 3: G3 in GL
 	emu.charsetState.ss = 0
+}
+
+func (emu *emulator) normalizeCursorPos() {
+	if emu.nColsEff < emu.posX+1 {
+		emu.posX = emu.nColsEff - 1
+	}
+	if emu.nRows < emu.posY+1 {
+		emu.posY = emu.nRows - 1
+	}
 }
 
 func (emu *emulator) lookupCharset(p rune) (r rune) {
