@@ -1046,7 +1046,7 @@ func (p *Parser) handle_DECSET() (hd *Handler) {
 	params := make([]int, p.nInputOps)
 	copy(params, p.inputOps)
 
-	hd = &Handler{name: "csi-decset", ch: p.ch}
+	hd = &Handler{id: csi_decset, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_decset(emu, params)
 	}
@@ -1062,7 +1062,7 @@ func (p *Parser) handle_DECRST() (hd *Handler) {
 	params := make([]int, p.nInputOps)
 	copy(params, p.inputOps)
 
-	hd = &Handler{name: "csi-decrst", ch: p.ch}
+	hd = &Handler{id: csi_decrst, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_decrst(emu, params)
 	}

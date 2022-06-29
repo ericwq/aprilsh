@@ -51,10 +51,14 @@ const (
 	csi_cup
 	csi_decic
 	csi_decdc
+	csi_decrst
 	csi_decscl
+	csi_decset
 	csi_decstbm
 	csi_scorc
 	csi_scosc
+	esc_decrc
+	esc_decsc
 	esc_docs_utf8
 	esc_docs_iso8859_1
 )
@@ -64,10 +68,14 @@ var strHandlerID = [...]string{
 	"csi-cup",
 	"csi-decic",
 	"csi-decdc",
+	"csi-decrst",
 	"csi-decscl",
+	"csi-decset",
 	"csi-decstbm",
 	"csi-scorc",
 	"csi-scosc",
+	"esc-decrc",
+	"esc-decsc",
 	"esc-docs-utf-8",
 	"esc-docs-iso8859-1",
 }
