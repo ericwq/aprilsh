@@ -530,8 +530,8 @@ func hdl_csi_cub(emu *emulator, num int) {
 
 // CSI Ps ; Ps H Cursor Position [row;column] (default = [1,1]) (CUP).
 func hdl_csi_cup(emu *emulator, row int, col int) {
-	emu.logT.Printf("Cursor positioned parameters (%d,%d)\n", row, col)
-	emu.logT.Printf(" emu.nRows=%d, emu.nCols=%d, emu.marginBottom=%d\n", emu.nRows, emu.nCols, emu.marginBottom)
+	// emu.logT.Printf("Cursor positioned parameters (%d,%d)\n", row, col)
+	// emu.logT.Printf(" emu.nRows=%d, emu.nCols=%d, emu.marginBottom=%d\n", emu.nRows, emu.nCols, emu.marginBottom)
 
 	switch emu.originMode {
 	case OriginModeAbsolute:
