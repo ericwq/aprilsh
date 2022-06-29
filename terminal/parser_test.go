@@ -2573,27 +2573,34 @@ func TestHandle_DECSTBM(t *testing.T) {
 	tc := []struct {
 		name        string
 		seq         string
-		wantName    []string
+		hdIDs       []int
 		top, bottom int
+		posX, posY  int
+		logMessage  string
 	}{
 		{
-			"DECSTBM ", "\x1B[24;14H\x1B[2;30r", // move the cursor to 24,14 first
-			[]string{"csi-cup", "csi-decstbm"},
-			2 - 1, 30 - 1,
+			"DECSTBM ", "\x1B[24;14H\x1B[2;30r", // move the cursor to 23,13 first
+			[]int{csi_cup, csi_decstbm}, // then set new top/bottom margin
+			2 - 1, 30, 0, 0, "",
 		},
 		{
-			"DECSTBM ", "\x1B[2;6H\x1B[3;32r\x1B[32;30r", // a successful STBM follow a ignored STBM.
-			[]string{"csi-cup", "csi-decstbm", "csi-decstbm"},
-			3 - 1, 32 - 1,
+			"DECSTBM ", "\x1B[2;6H\x1B[3;32r\x1B[32;30r", // CUP, then a successful STBM follow an ignored STBM.
+			[]int{csi_cup, csi_decstbm, csi_decstbm},
+			3 - 1, 32, 0, 0, "Illegal arguments to SetTopBottomMargins:",
 		},
 	}
 
 	p := NewParser()
-	emu := NewEmulator()
 
-	for _, v := range tc {
+	emu := NewEmulator3(80, 40, 500)
+	var place strings.Builder
+	emu.logT.SetOutput(&place)
 
-		// process control sequence
+	for k, v := range tc {
+		// reset the log content
+		place.Reset()
+
+		// parse control sequence
 		hds := make([]*Handler, 0, 16)
 		hds = p.processStream(v.seq, hds)
 
@@ -2604,22 +2611,30 @@ func TestHandle_DECSTBM(t *testing.T) {
 		// handle the control sequence
 		for j, hd := range hds {
 			hd.handle(emu)
-			if hd.name != v.wantName[j] { // validate the control sequences name
-				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName[j], hd.name)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 			}
 		}
 
-		// validate the result
-		top := emu.framebuffer.DS.GetScrollingRegionTopRow()
-		bottom := emu.framebuffer.DS.GetScrollingRegionBottomRow()
+		// get the new top/bottom
+		top := emu.marginTop
+		bottom := emu.marginBottom
 
-		y := emu.framebuffer.DS.GetCursorRow()
-		x := emu.framebuffer.DS.GetCursorCol()
+		// get the new cursor position
+		y := emu.posY
+		x := emu.posX
 
-		if x != 0 || y != 0 || top != v.top || bottom != v.bottom {
-			t.Logf("%s: %q expect cursor in (0,0), got (%d,%d)\n", v.name, v.seq, y, x)
-			t.Errorf("%s: %q expect [top:bottom] [%d,%d], got [%d,%d]\n", v.name, v.seq,
-				v.top, v.bottom, top, bottom)
+		if x != v.posX || y != v.posY || top != v.top || bottom != v.bottom {
+			t.Errorf("%s: %q expect cursor in (%d,%d), got (%d,%d)\n", v.name, v.seq, v.posY, v.posX, y, x)
+			t.Errorf("%s: %q expect [top:bottom] [%d,%d], got [%d,%d]\n", v.name, v.seq, v.top, v.bottom, top, bottom)
+		}
+
+		switch k {
+		case 1:
+			if !strings.Contains(place.String(), v.logMessage) {
+				t.Errorf("%s seq=%q expect output=%q, got %q\n", v.name, v.seq, v.logMessage, place.String())
+			}
+		default:
 		}
 	}
 }

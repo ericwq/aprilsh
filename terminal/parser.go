@@ -1073,8 +1073,6 @@ func (p *Parser) handle_DECRST() (hd *Handler) {
 
 // Set Top and Bottom Margins
 func (p *Parser) handle_DECSTBM() (hd *Handler) {
-	// top := p.getPs(0, 1)// default value is 1
-	// bottom := p.getPs(1, 0)// default value should be current number of lines per screen
 	// prepare the parameters
 	params := make([]int, p.nInputOps)
 	copy(params, p.inputOps)
