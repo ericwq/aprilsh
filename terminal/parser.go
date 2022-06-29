@@ -904,9 +904,9 @@ func (p *Parser) handle_RIS() (hd *Handler) {
 	return hd
 }
 
-// save current cursor
+// Save Cursor and Attributes
 func (p *Parser) handle_DECSC() (hd *Handler) {
-	hd = &Handler{name: "esc-decsc", ch: p.ch}
+	hd = &Handler{id: esc_decsc, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_esc_decsc(emu)
 	}
@@ -915,9 +915,9 @@ func (p *Parser) handle_DECSC() (hd *Handler) {
 	return hd
 }
 
-// restore saved cursor
+// Restore Cursor and Attributes
 func (p *Parser) handle_DECRC() (hd *Handler) {
-	hd = &Handler{name: "esc-decrc", ch: p.ch}
+	hd = &Handler{id: esc_decrc, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_esc_decrc(emu)
 	}

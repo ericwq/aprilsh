@@ -96,30 +96,29 @@ type (
 )
 
 const (
-	CursorKeyModeANSI CursorKeyMode = iota
-	CursorKeyModeApplication
+	CursorKeyMode_ANSI CursorKeyMode = iota
+	CursorKeyMode_Application
 )
 
 const (
-	MouseModeNone MouseTrackingMode = iota
-	MouseModeX10
-	MouseModeVT200
-	MouseModeVT200Highlight
-	MouseModeButtonEvent
-	MouseModeAnyEvent
+	MouseTrackingMode_Disable MouseTrackingMode = iota
+	MouseTrackingMode_X10_Compat
+	MouseTrackingMode_VT200
+	MouseTrackingMode_VT200_ButtonEvent
+	MouseTrackingMode_VT200_AnyEvent
 )
 
 const (
-	MouseEncNone MouseTrackingEnc = iota
-	MouseEncUTF
-	MouseEncSGR
-	MouseEncURXVT
+	MouseTrackingEnc_Default MouseTrackingEnc = iota
+	MouseTrackingEnc_UTF8
+	MouseTrackingEnc_SGR
+	MouseTrackingEnc_URXVT
 )
 
 const (
-	CompatLevelVT52 CompatibilityLevel = iota
-	CompatLevelVT100
-	CompatLevelVT400
+	CompatLevel_VT52 CompatibilityLevel = iota
+	CompatLevel_VT100
+	CompatLevel_VT400
 )
 
 const (
@@ -128,13 +127,13 @@ const (
 )
 
 const (
-	ColModeC80 ColMode = iota
-	ColModeC132
+	ColMode_C80 ColMode = iota
+	ColMode_C132
 )
 
 const (
-	OriginModeAbsolute OriginMode = iota
-	OriginModeScrollingRegion
+	OriginMode_Absolute OriginMode = iota
+	OriginMode_ScrollingRegion
 )
 
 // TODO replace the following const with the above one
@@ -175,7 +174,7 @@ type SavedCursor_SCO struct {
 // TODO refine the constructor
 type SavedCursor_DEC struct {
 	SavedCursor_SCO
-	rend         Renditions
+	attrs        Cell
 	originMode   OriginMode
 	charsetState CharsetState
 }
@@ -197,7 +196,7 @@ func NewDrawState(width, height int) *DrawState {
 	ds.MouseReportingMode = MOUSE_REPORTING_NONE
 	ds.MouseEncodingMode = MOUSE_ENCODING_DEFAULT
 
-	ds.columnMode = ColModeC80
+	ds.columnMode = ColMode_C80
 	ds.bkspSendsDel = true
 
 	ds.reinitializeTabs(0)

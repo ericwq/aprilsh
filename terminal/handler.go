@@ -332,12 +332,29 @@ func hdl_esc_ris(emu *emulator) {
 
 // ESC 7     Save Cursor (DECSC), VT100.
 func hdl_esc_decsc(emu *emulator) {
-	emu.framebuffer.DS.SaveCursor()
+	emu.savedCursor_DEC.posX = emu.posX
+	emu.savedCursor_DEC.posY = emu.posY
+	emu.savedCursor_DEC.lastCol = emu.lastCol
+	emu.savedCursor_DEC.attrs = emu.attrs
+	emu.savedCursor_DEC.originMode = emu.originMode
+	emu.savedCursor_DEC.charsetState = emu.charsetState
+	emu.savedCursor_DEC.isSet = true
 }
 
 // ESC 8     Restore Cursor (DECRC), VT100.
 func hdl_esc_decrc(emu *emulator) {
-	emu.framebuffer.DS.RestoreCursor()
+	if !emu.savedCursor_DEC.isSet {
+		emu.logI.Println("Asked to restore cursor (DECRC) but it has not been saved.")
+	} else {
+		emu.posX = emu.savedCursor_DEC.posX
+		emu.posY = emu.savedCursor_DEC.posY
+		emu.normalizeCursorPos()
+		emu.lastCol = emu.savedCursor_DEC.lastCol
+		emu.attrs = emu.savedCursor_DEC.attrs
+		emu.originMode = emu.savedCursor_DEC.originMode
+		emu.charsetState = emu.savedCursor_DEC.charsetState
+		emu.savedCursor_DEC.isSet = false
+	}
 }
 
 // ESC # 8   DEC Screen Alignment Test (DECALN), VT100.
@@ -543,9 +560,9 @@ func hdl_csi_cub(emu *emulator, num int) {
 // CSI Ps ; Ps H Cursor Position [row;column] (default = [1,1]) (CUP).
 func hdl_csi_cup(emu *emulator, row int, col int) {
 	switch emu.originMode {
-	case OriginModeAbsolute:
+	case OriginMode_Absolute:
 		row = max(1, min(row, emu.nRows)) - 1
-	case OriginModeScrollingRegion:
+	case OriginMode_ScrollingRegion:
 		row = max(1, min(row, emu.marginBottom)) - 1
 		row += emu.marginTop
 	}
@@ -962,60 +979,78 @@ func hdl_csi_decset(emu *emulator, params []int) {
 	for _, param := range params {
 		switch param {
 		case 1:
-			// The Cursor Keys Mode controls the sequences that are emitted by the
-			// arrow keys as well as Home and End
-			emu.framebuffer.DS.ApplicationModeCursorKeys = true // DECCKM Apllication zutty:cursorKeyMode
+			// emu.framebuffer.DS.ApplicationModeCursorKeys = true // DECCKM Apllication zutty:cursorKeyMode
+			emu.cursorKeyMode = CursorKeyMode_Application
 		case 2:
 			emu.resetCharsetState()
-			emu.framebuffer.DS.compatLevel = CompatLevelVT400
+			emu.compatLevel = CompatLevel_VT400
+			// emu.framebuffer.DS.compatLevel = CompatLevelVT400
 		case 3:
-			emu.switchColMode(ColModeC132)
+			emu.switchColMode(ColMode_C132)
 		case 4:
 			emu.logT.Println("DECSCLM: Set smooth scroll")
 		case 5:
-			emu.framebuffer.DS.ReverseVideo = true // DECSCNM Reverse
+			// emu.framebuffer.DS.ReverseVideo = true // DECSCNM Reverse
+			emu.reverseVideo = true
 		case 6:
-			emu.framebuffer.DS.OriginMode = true // DECOM ScrollingRegion zutty:originMode
+			// emu.framebuffer.DS.OriginMode = true // DECOM ScrollingRegion zutty:originMode
+			emu.originMode = OriginMode_ScrollingRegion
 		case 7:
-			emu.framebuffer.DS.AutoWrapMode = true // DECAWM zutty:autoWrapMode
+			// emu.framebuffer.DS.AutoWrapMode = true // DECAWM zutty:autoWrapMode
+			emu.autoWrapMode = true
 		case 8:
 			emu.logU.Println("DECARM: Set auto-repeat mode")
 		case 9:
-			emu.framebuffer.DS.mouseTrk.mode = MouseModeX10
+			// emu.framebuffer.DS.mouseTrk.mode = MouseModeX10
+			emu.mouseTrk.mode = MouseTrackingMode_X10_Compat
 		case 12:
 			emu.logU.Println("Start blinking cursor") // TODO support blinking
 		case 25:
-			emu.framebuffer.DS.CursorVisible = true // DECTCEM zutty:showCursorMode
+			// emu.framebuffer.DS.CursorVisible = true // DECTCEM zutty:showCursorMode
+			emu.showCursorMode = true
 		case 47:
 			emu.switchScreenBufferMode(true)
 		case 67:
-			emu.framebuffer.DS.bkspSendsDel = false // Backarrow key sends backspace (DECBKM), VT340, VT420.
+			// emu.framebuffer.DS.bkspSendsDel = false // Backarrow key sends backspace (DECBKM), VT340, VT420.
+			emu.bkspSendsDel = false
 		case 69:
-			emu.framebuffer.DS.horizMarginMode = true // DECLRMM: Set Left and Right Margins
-			emu.framebuffer.DS.hMargin = 0
-			emu.framebuffer.DS.nColsEff = emu.framebuffer.DS.width
+			// emu.framebuffer.DS.horizMarginMode = true // DECLRMM: Set Left and Right Margins
+			// emu.framebuffer.DS.hMargin = 0
+			// emu.framebuffer.DS.nColsEff = emu.framebuffer.DS.width
+			emu.horizMarginMode = true
+			emu.hMargin = 0
+			emu.nColsEff = emu.nCols
 		case 1000:
-			emu.framebuffer.DS.mouseTrk.mode = MouseModeVT200
+			// emu.framebuffer.DS.mouseTrk.mode = MouseModeVT200
+			emu.mouseTrk.mode = MouseTrackingMode_VT200
 		case 1001:
 			emu.logU.Println("Set VT200 Highlight Mouse mode")
 		case 1002:
-			emu.framebuffer.DS.mouseTrk.mode = MouseModeButtonEvent
+			// emu.framebuffer.DS.mouseTrk.mode = MouseModeButtonEvent
+			emu.mouseTrk.mode = MouseTrackingMode_VT200_ButtonEvent
 		case 1003:
-			emu.framebuffer.DS.mouseTrk.mode = MouseModeAnyEvent
+			// emu.framebuffer.DS.mouseTrk.mode = MouseModeAnyEvent
+			emu.mouseTrk.mode = MouseTrackingMode_VT200_AnyEvent
 		case 1004:
 			// TODO replace MouseFocusEvent with mouseTrk.focusEventMode
-			emu.framebuffer.DS.MouseFocusEvent = true // xterm zutty:mouseTrk.focusEventMode
-			emu.framebuffer.DS.mouseTrk.focusEventMode = true
+			// emu.framebuffer.DS.MouseFocusEvent = true // xterm zutty:mouseTrk.focusEventMode
+			// emu.framebuffer.DS.mouseTrk.focusEventMode = true
+			emu.mouseTrk.focusEventMode = true
 		case 1005:
-			emu.framebuffer.DS.mouseTrk.enc = MouseEncUTF
+			// emu.framebuffer.DS.mouseTrk.enc = MouseEncUTF
+			emu.mouseTrk.enc = MouseTrackingEnc_UTF8
 		case 1006:
-			emu.framebuffer.DS.mouseTrk.enc = MouseEncSGR
+			// emu.framebuffer.DS.mouseTrk.enc = MouseEncSGR
+			emu.mouseTrk.enc = MouseTrackingEnc_SGR
 		case 1007:
-			emu.framebuffer.DS.MouseAlternateScroll = true // xterm zutty:altScrollMode
+			// emu.framebuffer.DS.MouseAlternateScroll = true // xterm zutty:altScrollMode
+			emu.altScrollMode = true
 		case 1015:
-			emu.framebuffer.DS.mouseTrk.enc = MouseEncURXVT
+			// emu.framebuffer.DS.mouseTrk.enc = MouseEncURXVT
+			emu.mouseTrk.enc = MouseTrackingEnc_URXVT
 		case 1036, 1039:
-			emu.framebuffer.DS.altSendsEscape = true
+			// emu.framebuffer.DS.altSendsEscape = true
+			emu.altSendsEscape = true
 		case 1047:
 			emu.switchScreenBufferMode(true)
 		case 1048:
@@ -1024,7 +1059,8 @@ func hdl_csi_decset(emu *emulator, params []int) {
 			hdl_esc_decsc(emu)
 			emu.switchScreenBufferMode(true)
 		case 2004:
-			emu.framebuffer.DS.BracketedPaste = true // xterm zutty:bracketedPasteMode
+			// emu.framebuffer.DS.BracketedPaste = true // xterm zutty:bracketedPasteMode
+			emu.bracketedPasteMode = true
 		default:
 			emu.logU.Printf("set priv mode %d\n", param)
 		}
@@ -1037,48 +1073,63 @@ func hdl_csi_decrst(emu *emulator, params []int) {
 	for _, param := range params {
 		switch param {
 		case 1:
-			emu.framebuffer.DS.ApplicationModeCursorKeys = false // ANSI
+			// emu.framebuffer.DS.ApplicationModeCursorKeys = false // ANSI
+			emu.cursorKeyMode = CursorKeyMode_ANSI
 		case 2:
 			emu.resetCharsetState()
-			emu.framebuffer.DS.compatLevel = CompatLevelVT52
+			// emu.framebuffer.DS.compatLevel = CompatLevel_VT52
+			emu.compatLevel = CompatLevel_VT52
 		case 3:
-			emu.switchColMode(ColModeC80)
+			emu.switchColMode(ColMode_C80)
 		case 4:
 			emu.logT.Println("DECSCLM: Set jump scroll")
 		case 5:
-			emu.framebuffer.DS.ReverseVideo = false // Normal
+			// emu.framebuffer.DS.ReverseVideo = false // Normal
+			emu.reverseVideo = false
 		case 6:
-			emu.framebuffer.DS.OriginMode = false // Absolute
+			// emu.framebuffer.DS.OriginMode = false // Absolute
+			emu.originMode = OriginMode_Absolute
 		case 7:
-			emu.framebuffer.DS.AutoWrapMode = false
+			// emu.framebuffer.DS.AutoWrapMode = false
+			emu.autoWrapMode = false
 		case 8:
 			emu.logU.Println("DECARM: Reset auto-repeat mode")
 		case 9, 1000, 1002, 1003:
-			emu.framebuffer.DS.mouseTrk.mode = MouseModeNone
+			// emu.framebuffer.DS.mouseTrk.mode = MouseModeNone
+			emu.mouseTrk.mode = MouseTrackingMode_Disable
 		case 12:
 			emu.logU.Println("Stop blinking cursor")
 		case 25:
-			emu.framebuffer.DS.CursorVisible = false
+			// emu.framebuffer.DS.CursorVisible = false
+			emu.showCursorMode = false
 		case 47:
 			emu.switchScreenBufferMode(false)
 		case 67:
-			emu.framebuffer.DS.bkspSendsDel = true // Backarrow key sends delete (DECBKM), VT340,
+			// emu.framebuffer.DS.bkspSendsDel = true // Backarrow key sends delete (DECBKM), VT340,
+			emu.bkspSendsDel = true
 		case 69:
-			emu.framebuffer.DS.horizMarginMode = false // DECLRMM: Set Left and Right Margins
-			emu.framebuffer.DS.hMargin = 0
-			emu.framebuffer.DS.nColsEff = emu.framebuffer.DS.width
+			// emu.framebuffer.DS.horizMarginMode = false // DECLRMM: Set Left and Right Margins
+			// emu.framebuffer.DS.hMargin = 0
+			// emu.framebuffer.DS.nColsEff = emu.framebuffer.DS.width
+			emu.horizMarginMode = false
+			emu.hMargin = 0
+			emu.nColsEff = emu.nCols
 		case 1001:
 			emu.logU.Println("Reset VT200 Highlight Mouse mode")
 		case 1004:
 			// TODO replace MouseFocusEvent with mouseTrk.focusEventMode
-			emu.framebuffer.DS.MouseFocusEvent = false
-			emu.framebuffer.DS.mouseTrk.focusEventMode = false
+			// emu.framebuffer.DS.MouseFocusEvent = false
+			// emu.framebuffer.DS.mouseTrk.focusEventMode = false
+			emu.mouseTrk.focusEventMode = false
 		case 1005, 1006, 1015:
-			emu.framebuffer.DS.mouseTrk.enc = MouseEncNone
+			// emu.framebuffer.DS.mouseTrk.enc = MouseEncNone
+			emu.mouseTrk.enc = MouseTrackingEnc_Default
 		case 1007:
-			emu.framebuffer.DS.MouseAlternateScroll = false
+			// emu.framebuffer.DS.MouseAlternateScroll = false
+			emu.altScrollMode = false
 		case 1036, 1039:
-			emu.framebuffer.DS.altSendsEscape = false
+			// emu.framebuffer.DS.altSendsEscape = false
+			emu.altSendsEscape = false
 		case 1047:
 			emu.switchScreenBufferMode(false)
 		case 1048:
@@ -1087,7 +1138,8 @@ func hdl_csi_decrst(emu *emulator, params []int) {
 			emu.switchScreenBufferMode(false)
 			hdl_esc_decrc(emu)
 		case 2004:
-			emu.framebuffer.DS.BracketedPaste = false
+			// emu.framebuffer.DS.BracketedPaste = false
+			emu.bracketedPasteMode = false
 		default:
 			emu.logU.Printf("reset priv mode %d\n", param)
 		}
@@ -1123,7 +1175,7 @@ func hdl_csi_decstbm(emu *emulator, params []int) {
 		}
 	}
 
-	if emu.originMode == OriginModeAbsolute {
+	if emu.originMode == OriginMode_Absolute {
 		emu.posX = 0
 		emu.posY = 0
 	} else {
@@ -1161,7 +1213,7 @@ func hdl_csi_decstr(emu *emulator) {
 func hdl_dcs_decrqss(emu *emulator, arg string) {
 	// only response to DECSCL
 	if arg == "$q\"p" {
-		emu.framebuffer.DS.compatLevel = CompatLevelVT400
+		emu.framebuffer.DS.compatLevel = CompatLevel_VT400
 		response := fmt.Sprintf("\x1BP1$r%s\x1B\\", DEVICE_ID)
 		emu.dispatcher.terminalToHost.WriteString(response)
 	} else {
@@ -1249,9 +1301,9 @@ func hdl_csi_decscl(emu *emulator, params []int) {
 	if len(params) > 0 {
 		switch params[0] {
 		case 61:
-			emu.framebuffer.DS.compatLevel = CompatLevelVT100
+			emu.framebuffer.DS.compatLevel = CompatLevel_VT100
 		case 62, 63, 64, 65: // treat VT200,VT300,VT500 as VT400
-			emu.framebuffer.DS.compatLevel = CompatLevelVT400
+			emu.framebuffer.DS.compatLevel = CompatLevel_VT400
 		default:
 			emu.logU.Printf("compatibility mode: %d", params[0])
 		}

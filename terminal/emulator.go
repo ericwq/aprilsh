@@ -221,6 +221,8 @@ type emulator struct {
 	marginTop    int // current margin top (copy of frame field)
 	marginBottom int // current margin bottom (copy of frame field)
 	lastCol      bool
+	attrs        Cell // prototype cell with current attributes
+	reverseVideo bool
 
 	// move states from drawstate
 	showCursorMode      bool
@@ -251,6 +253,7 @@ type emulator struct {
 	savedCursor_DEC     *SavedCursor_DEC
 
 	mouseTrk MouseTrackingState
+
 	/*
 		CursorVisible             bool // true/false
 		ReverseVideo              bool // two possible value: Reverse(true), Normal(false)
@@ -305,6 +308,7 @@ func NewEmulator3(nCols, nRows, saveLines int) *emulator {
 	emu.posY = 0
 	emu.lastCol = false
 
+	emu.savedCursor_DEC_pri = SavedCursor_DEC{}
 	emu.savedCursor_DEC = &emu.savedCursor_DEC_pri
 	emu.initSelectionData()
 	emu.initLog()
@@ -328,10 +332,10 @@ func (emu *emulator) resetScreen() {
 	emu.localEcho = false
 	emu.bracketedPasteMode = false
 
-	emu.compatLevel = CompatLevelVT400
-	emu.cursorKeyMode = CursorKeyModeANSI
+	emu.compatLevel = CompatLevel_VT400
+	emu.cursorKeyMode = CursorKeyMode_ANSI
 	emu.keypadMode = KeypadNormal
-	emu.originMode = OriginModeAbsolute
+	emu.originMode = OriginMode_Absolute
 	emu.resetCharsetState()
 
 	emu.savedCursor_SCO.isSet = false
@@ -448,20 +452,21 @@ func (emu *emulator) switchScreenBufferMode(altScreenBufferMode bool) {
 	}
 }
 
-func (emu *emulator) switchColMode(columnMode ColMode) {
-	if emu.framebuffer.DS.columnMode == columnMode {
+// TODO see the comments
+func (emu *emulator) switchColMode(colMode ColMode) {
+	if emu.colMode == colMode {
 		return
 	}
 
 	// resetScreen() TODO?
 	// clearScreen() TODO?
-	if columnMode == ColModeC80 {
+	if colMode == ColMode_C80 {
 		emu.logT.Println("DECCOLM: Selected 80 columns per line")
 	} else {
 		emu.logT.Println("DECCOLM: Selected 132 columns per line")
 	}
 
-	emu.framebuffer.DS.columnMode = columnMode
+	emu.colMode = colMode
 }
 
 func (emu *emulator) isCursorInsideMargins() bool {

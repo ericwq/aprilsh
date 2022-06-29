@@ -1157,8 +1157,8 @@ func TestHandle_DECSC_DECRC_DECSET_1048(t *testing.T) {
 	tc := []struct {
 		name         string
 		seq          string
-		wantName     []string
-		y, x         int
+		hdIDs        []int
+		posY, posX   int
 		AutoWrapMode bool
 		OriginMode   bool
 	}{
@@ -1166,25 +1166,27 @@ func TestHandle_DECSC_DECRC_DECSET_1048(t *testing.T) {
 		{
 			"ESC DECSC/DECRC",
 			"\x1B7\x1B[24;14H\x1B[?7l\x1B[?6l\x1B8",
-			[]string{"esc-decsc", "csi-cup", "csi-decrst", "csi-decrst", "esc-decrc"},
+			[]int{esc_decsc, csi_cup, csi_decrst, csi_decrst, esc_decrc},
 			8, 8, true, true,
 		},
 		// between the SC/RC, move cursor to 11,21,set originMode, autoWrapMode true,
 		{
 			"CSI DECSET/DECRST 1048",
 			"\x1B[?1048h\x1B[22;12H\x1B[?7h\x1B[?6h\x1B[?1048l",
-			[]string{"csi-decset", "csi-cup", "csi-decset", "csi-decset", "csi-decrst"},
+			[]int{csi_decset, csi_cup, csi_decset, csi_decset, csi_decrst},
 			9, 9, false, false,
 		},
 	}
 
 	p := NewParser()
-	emu := NewEmulator()
+	emu := NewEmulator3(80, 40, 500)
+	var place strings.Builder
+	emu.logT.SetOutput(&place)
 
 	for _, v := range tc {
 		// set the target state for cursor
-		emu.framebuffer.DS.MoveCol(v.x, false, false)
-		emu.framebuffer.DS.MoveRow(v.y, false)
+		emu.framebuffer.DS.MoveCol(v.posX, false, false)
+		emu.framebuffer.DS.MoveRow(v.posY, false)
 		emu.framebuffer.DS.AutoWrapMode = v.AutoWrapMode
 		emu.framebuffer.DS.OriginMode = v.OriginMode
 
@@ -1199,17 +1201,17 @@ func TestHandle_DECSC_DECRC_DECSET_1048(t *testing.T) {
 		// handle the control sequence
 		for j, hd := range hds {
 			hd.handle(emu)
-			if hd.name != v.wantName[j] { // validate the control sequences name
-				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName[j], hd.name)
+			if hd.id != v.hdIDs[j] { // validate the control sequences name
+				t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 			}
 		}
 
 		// validate the result
 		fb := emu.framebuffer
-		if fb.DS.GetCursorCol() != v.x || fb.DS.GetCursorRow() != v.y ||
+		if fb.DS.GetCursorCol() != v.posX || fb.DS.GetCursorRow() != v.posY ||
 			fb.DS.AutoWrapMode != v.AutoWrapMode || fb.DS.OriginMode != v.OriginMode {
 			t.Errorf("%s %q expect (%d,%d,%t,%t), got (%d,%d,%t,%t)", v.name, v.seq,
-				v.y, v.x, v.AutoWrapMode, v.OriginMode,
+				v.posY, v.posX, v.AutoWrapMode, v.OriginMode,
 				fb.DS.GetCursorRow(), fb.DS.GetCursorCol(), fb.DS.AutoWrapMode, fb.DS.OriginMode)
 		}
 	}
@@ -2204,15 +2206,15 @@ func TestHandle_DECSET_DECRST_MouseTrackingMode(t *testing.T) {
 		wantName string
 		want     MouseTrackingMode
 	}{
-		{"DECSET:   9", "\x1B[?9h", "csi-decset", MouseModeX10},
-		{"DECSET:1000", "\x1B[?1000h", "csi-decset", MouseModeVT200},
-		{"DECSET:1002", "\x1B[?1002h", "csi-decset", MouseModeButtonEvent},
-		{"DECSET:1003", "\x1B[?1003h", "csi-decset", MouseModeAnyEvent},
+		{"DECSET:   9", "\x1B[?9h", "csi-decset", MouseTrackingMode_X10_Compat},
+		{"DECSET:1000", "\x1B[?1000h", "csi-decset", MouseTrackingMode_VT200},
+		{"DECSET:1002", "\x1B[?1002h", "csi-decset", MouseTrackingMode_VT200_ButtonEvent},
+		{"DECSET:1003", "\x1B[?1003h", "csi-decset", MouseTrackingMode_VT200_AnyEvent},
 
-		{"DECRST:   9", "\x1B[?9l", "csi-decrst", MouseModeNone},
-		{"DECRST:1000", "\x1B[?1000l", "csi-decrst", MouseModeNone},
-		{"DECRST:1002", "\x1B[?1002l", "csi-decrst", MouseModeNone},
-		{"DECRST:1003", "\x1B[?1003l", "csi-decrst", MouseModeNone},
+		{"DECRST:   9", "\x1B[?9l", "csi-decrst", MouseTrackingMode_Disable},
+		{"DECRST:1000", "\x1B[?1000l", "csi-decrst", MouseTrackingMode_Disable},
+		{"DECRST:1002", "\x1B[?1002l", "csi-decrst", MouseTrackingMode_Disable},
+		{"DECRST:1003", "\x1B[?1003l", "csi-decrst", MouseTrackingMode_Disable},
 	}
 
 	p := NewParser()
@@ -2251,13 +2253,13 @@ func TestHandle_DECSET_DECRST_MouseTrackingEnc(t *testing.T) {
 		wantName string
 		want     MouseTrackingEnc
 	}{
-		{"DECSET:1005", "\x1B[?1005h", "csi-decset", MouseEncUTF},
-		{"DECSET:1006", "\x1B[?1006h", "csi-decset", MouseEncSGR},
-		{"DECSET:1015", "\x1B[?1015h", "csi-decset", MouseEncURXVT},
+		{"DECSET:1005", "\x1B[?1005h", "csi-decset", MouseTrackingEnc_UTF8},
+		{"DECSET:1006", "\x1B[?1006h", "csi-decset", MouseTrackingEnc_SGR},
+		{"DECSET:1015", "\x1B[?1015h", "csi-decset", MouseTrackingEnc_URXVT},
 
-		{"DECRST:1005", "\x1B[?1005l", "csi-decrst", MouseEncNone},
-		{"DECRST:1006", "\x1B[?1006l", "csi-decrst", MouseEncNone},
-		{"DECRST:1015", "\x1B[?1015l", "csi-decrst", MouseEncNone},
+		{"DECRST:1005", "\x1B[?1005l", "csi-decrst", MouseTrackingEnc_Default},
+		{"DECRST:1006", "\x1B[?1006l", "csi-decrst", MouseTrackingEnc_Default},
+		{"DECRST:1015", "\x1B[?1015l", "csi-decrst", MouseTrackingEnc_Default},
 	}
 
 	p := NewParser()
@@ -2297,8 +2299,8 @@ func TestHandle_DECSET_DECRST_2(t *testing.T) {
 		compatLevel         CompatibilityLevel
 		isResetCharsetState bool
 	}{
-		{"DECSET 2", "\x1B[?2h", []string{"csi-decset"}, CompatLevelVT400, true},
-		{"DECRST 2", "\x1B[?2l", []string{"csi-decrst"}, CompatLevelVT52, true},
+		{"DECSET 2", "\x1B[?2h", []string{"csi-decset"}, CompatLevel_VT400, true},
+		{"DECRST 2", "\x1B[?2l", []string{"csi-decrst"}, CompatLevel_VT52, true},
 	}
 
 	p := NewParser()
@@ -2336,7 +2338,7 @@ func TestHandle_DECSET_DECRST_1049(t *testing.T) {
 	name := "DECSET/RST 1049"
 	// move cursor to 23,13
 	// DECSET 1049 set altenate screen buffer (true)
-	// move cursor to 33,24
+	// move cursor to 33,23
 	// DECRST 1049 set normal screen buffer (false)
 	// DECRST 1049 set normal screen buffer (again for fast return)
 	seq := "\x1B[24;14H\x1B[?1049h\x1B[34;24H\x1B[?1049l\x1B[?1049l"
@@ -2423,9 +2425,9 @@ func TestHandle_DECSET_DECRST_3(t *testing.T) {
 		hdlName []string
 		mode    ColMode
 	}{
-		{"change to column Mode    132", "\x1B[?3h", []string{"csi-decset"}, ColModeC132},
-		{"change to column Mode     80", "\x1B[?3l", []string{"csi-decrst"}, ColModeC80},
-		{"change to column Mode repeat", "\x1B[?3h\x1B[?3h", []string{"csi-decset", "csi-decset"}, ColModeC132},
+		{"change to column Mode    132", "\x1B[?3h", []string{"csi-decset"}, ColMode_C132},
+		{"change to column Mode     80", "\x1B[?3l", []string{"csi-decrst"}, ColMode_C80},
+		{"change to column Mode repeat", "\x1B[?3h\x1B[?3h", []string{"csi-decset", "csi-decset"}, ColMode_C132},
 	}
 
 	p := NewParser()
@@ -3397,45 +3399,45 @@ func TestHandle_DECSCL(t *testing.T) {
 		cmpLevel CompatibilityLevel
 		warnStr  string
 	}{
-		{"set CompatLevel VT100", "\x1B[61\"p", []int{csi_decscl}, CompatLevelVT100, ""},
-		{"set CompatLevel VT400", "\x1B[62\"p", []int{csi_decscl}, CompatLevelVT400, ""},
-		{"set CompatLevel VT400", "\x1B[63\"p", []int{csi_decscl}, CompatLevelVT400, ""},
-		{"set CompatLevel VT400", "\x1B[64\"p", []int{csi_decscl}, CompatLevelVT400, ""},
-		{"set CompatLevel VT400", "\x1B[65\"p", []int{csi_decscl}, CompatLevelVT400, ""},
+		{"set CompatLevel VT100", "\x1B[61\"p", []int{csi_decscl}, CompatLevel_VT100, ""},
+		{"set CompatLevel VT400", "\x1B[62\"p", []int{csi_decscl}, CompatLevel_VT400, ""},
+		{"set CompatLevel VT400", "\x1B[63\"p", []int{csi_decscl}, CompatLevel_VT400, ""},
+		{"set CompatLevel VT400", "\x1B[64\"p", []int{csi_decscl}, CompatLevel_VT400, ""},
+		{"set CompatLevel VT400", "\x1B[65\"p", []int{csi_decscl}, CompatLevel_VT400, ""},
 		{
 			"set CompatLevel others", "\x1B[66\"p",
 			[]int{csi_decscl},
-			CompatLevelVT52,
+			CompatLevel_VT52,
 			"compatibility mode:",
 		}, // here CompatLevelVT52 is unused
 		{
 			"set CompatLevel 8-bit control", "\x1B[65;0\"p",
 			[]int{csi_decscl},
-			CompatLevelVT52,
+			CompatLevel_VT52,
 			"DECSCL: 8-bit controls",
 		}, // here CompatLevelVT52 is unused
 		{
 			"set CompatLevel 8-bit control", "\x1B[61;2\"p",
 			[]int{csi_decscl},
-			CompatLevelVT52,
+			CompatLevel_VT52,
 			"DECSCL: 8-bit controls",
 		}, // here CompatLevelVT52 is unused
 		{
 			"set CompatLevel 7-bit control", "\x1B[65;1\"p",
 			[]int{csi_decscl},
-			CompatLevelVT52,
+			CompatLevel_VT52,
 			"DECSCL: 7-bit controls",
 		}, // here CompatLevelVT52 is unused
 		{
 			"set CompatLevel outof range  ", "\x1B[65;3\"p",
 			[]int{csi_decscl},
-			CompatLevelVT52,
+			CompatLevel_VT52,
 			"DECSCL: C1 control transmission mode:",
 		}, // here CompatLevelVT52 is unused
 		{
 			"set CompatLevel unhandled", "\x1B[65;3\"q",
 			[]int{csi_decscl},
-			CompatLevelVT52,
+			CompatLevel_VT52,
 			"Unhandled input:",
 		}, // here CompatLevelVT52 is unused
 	}
