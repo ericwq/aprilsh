@@ -635,6 +635,65 @@ func TestHandle_SO_SI(t *testing.T) {
 	}
 }
 
+func TestHandle_CUP(t *testing.T) {
+	tc := []struct {
+		name    string
+		startX  int
+		startY  int
+		hdIDs   int
+		wantY   int
+		wantX   int
+		seq     string
+		warnStr string
+	}{
+		{"CSI Ps;PsH normal", 10, 10, csi_cup, 23, 13, "\x1B[24;14H", "Cursor positioned to"},
+		{"CSI Ps;PsH default", 10, 10, csi_cup, 0, 0, "\x1B[H", "Cursor positioned to"},
+		{"CSI Ps;PsH second default", 10, 10, csi_cup, 0, 0, "\x1B[1H", "Cursor positioned to"},
+		{"CSI Ps;PsH outrange active area", 10, 10, csi_cup, 39, 79, "\x1B[42;89H", "Cursor positioned to"},
+	}
+	p := NewParser()
+
+	emu := NewEmulator3(80, 40, 500)
+	var place strings.Builder
+	emu.logT.SetOutput(&place)
+
+	for _, v := range tc {
+		var hd *Handler
+
+		// parse the sequence
+		for _, ch := range v.seq {
+			hd = p.processInput(ch)
+		}
+		if hd == nil {
+			t.Errorf("%s got nil Handler\n", v.name)
+			continue
+		}
+
+		// reset the cursor position
+		emu.posY = v.startY
+		emu.posX = v.startX
+
+		// handle the instruction
+		hd.handle(emu)
+		if hd.id != v.hdIDs {
+			t.Errorf("%s seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs], strHandlerID[hd.id])
+		}
+
+		// get the result
+		gotY := emu.posY
+		gotX := emu.posX
+
+		if gotX != v.wantX || gotY != v.wantY {
+			t.Errorf("%s expect cursor position (%d,%d), got (%d,%d)\n",
+				v.name, v.wantX, v.wantY, gotX, gotY)
+		}
+
+		if !strings.Contains(place.String(), v.warnStr) {
+			t.Errorf("%s seq=%q expect %q, got %q\n", v.name, v.seq, v.warnStr, place.String())
+		}
+	}
+}
+
 func TestHandle_CUU_CUD_CUF_CUB_CUP(t *testing.T) {
 	tc := []struct {
 		name     string
@@ -645,8 +704,6 @@ func TestHandle_CUU_CUD_CUF_CUB_CUP(t *testing.T) {
 		wantY    int
 		seq      string
 	}{
-		{"CSI Ps;PsH", 10, 10, "csi-cup", 13, 23, "\x1B[24;14H"},
-		{"CSI Ps;Psf", 10, 10, "csi-cup", 41, 20, "\x1B[21;42f"},
 		{"CSI Ps A  ", 10, 20, "csi-cuu", 10, 14, "\x1B[6A"},
 		{"CSI Ps B  ", 10, 10, "csi-cud", 10, 13, "\x1B[3B"},
 		{"CSI Ps C  ", 10, 10, "csi-cuf", 12, 10, "\x1B[2C"},

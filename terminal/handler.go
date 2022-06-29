@@ -48,18 +48,22 @@ const (
 
 const (
 	unused_handlerID = iota
+	csi_cup
 	csi_decic
 	csi_decdc
 	csi_decscl
+	csi_decstbm
 	esc_docs_utf8
 	esc_docs_iso8859_1
 )
 
 var strHandlerID = [...]string{
 	"",
+	"csi-cup",
 	"csi-decic",
 	"csi-decdc",
 	"csi-decscl",
+	"csi-decstbm",
 	"esc-docs-utf-8",
 	"esc-docs-iso8859-1",
 }
@@ -525,10 +529,28 @@ func hdl_csi_cub(emu *emulator, num int) {
 }
 
 // CSI Ps ; Ps H Cursor Position [row;column] (default = [1,1]) (CUP).
-// CSI Ps ; Ps f Horizontal and Vertical Position [row;column] (default = [1,1]) (HVP).
 func hdl_csi_cup(emu *emulator, row int, col int) {
-	emu.framebuffer.DS.MoveRow(row-1, false)
-	emu.framebuffer.DS.MoveCol(col-1, false, false)
+	emu.logT.Printf("Cursor positioned parameters (%d,%d)\n", row, col)
+	emu.logT.Printf(" emu.nRows=%d, emu.nCols=%d, emu.marginBottom=%d\n", emu.nRows, emu.nCols, emu.marginBottom)
+
+	switch emu.originMode {
+	case OriginModeAbsolute:
+		row = max(1, min(row, emu.nRows)) - 1
+	case OriginModeScrollingRegion:
+		row = max(1, min(row, emu.marginBottom)) - 1
+		row += emu.marginTop
+	}
+	col = max(1, min(col, emu.nCols)) - 1
+
+	emu.posX = col
+	emu.posY = row
+	emu.lastCol = false
+
+	emu.logT.Printf("Cursor positioned to (%d,%d)\n", emu.posY, emu.posX)
+
+	// TODO consider deleting this part
+	// emu.framebuffer.DS.MoveRow(row-1, false)
+	// emu.framebuffer.DS.MoveCol(col-1, false, false)
 }
 
 // CSI Ps n  Device Status Report (DSR).
@@ -1069,16 +1091,41 @@ func hdl_csi_decrst(emu *emulator, params []int) {
 
 // CSI Ps ; Ps r
 // Set Scrolling Region [top;bottom] (default = full size of  window) (DECSTBM), VT100.
-func hdl_csi_decstbm(emu *emulator, top, bottom int) {
-	// TODO consider the originMode, zutty vterm.icc csi_STBM
-	fb := emu.framebuffer
-	if bottom <= top || top > fb.DS.GetHeight() || (top == 0 && bottom == 1) {
-		return // invalid, xterm ignores
+func hdl_csi_decstbm(emu *emulator, params []int) {
+	// only top is set to 0
+	if len(params) == 1 && params[0] == 0 {
+		if emu.marginTop != 0 || emu.marginBottom != emu.nRows {
+			emu.marginTop, emu.marginBottom = emu.framebuffer.resetMargins()
+		}
+	} else if len(params) == 2 {
+		newMarginTop := 0
+		newMarginBottom := params[1]
+
+		if params[0] > 0 {
+			newMarginTop = params[0] - 1
+		}
+
+		if newMarginBottom < newMarginTop+2 || emu.nRows < newMarginBottom {
+			emu.logT.Printf("Illegal arguments to SetTopBottomMargins: top=%d, bottom=%d\n", params[0], params[1])
+		} else if newMarginTop != emu.marginTop || newMarginBottom != emu.marginBottom {
+			emu.marginTop = newMarginTop
+			emu.marginBottom = newMarginBottom
+			if emu.marginTop == 0 && emu.marginBottom == emu.nRows {
+				emu.marginTop, emu.marginBottom = emu.framebuffer.resetMargins()
+			} else {
+				emu.framebuffer.setMargins(emu.marginTop, emu.marginBottom)
+			}
+		}
 	}
 
-	fb.DS.SetScrollingRegion(top-1, bottom-1)
-	fb.DS.MoveCol(0, false, false)
-	fb.DS.MoveRow(0, false)
+	if emu.originMode == OriginModeAbsolute {
+		emu.posX = 0
+		emu.posY = 0
+	} else {
+		emu.posX = emu.hMargin
+		emu.posY = emu.marginTop
+	}
+	emu.lastCol = false
 }
 
 // CSI ! p   Soft terminal reset (DECSTR), VT220 and up.

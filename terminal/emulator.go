@@ -204,12 +204,6 @@ type emulator struct {
 	charsetState CharsetState
 	user         UserInput
 
-	posX         int // current cursor horizontal position (on-screen)
-	posY         int // current cursor vertical position (on-screen)
-	marginTop    int // current margin top (copy of frame field)
-	marginBottom int // current margin bottom (copy of frame field)
-	lastCol      bool
-
 	// local buffer for selection data
 	selectionData map[rune]string
 	// logger
@@ -217,12 +211,137 @@ type emulator struct {
 	logT *log.Logger // trace
 	logU *log.Logger
 	logW *log.Logger
+
+	nRows int
+	nCols int
+
+	posX         int // current cursor horizontal position (on-screen)
+	posY         int // current cursor vertical position (on-screen)
+	marginTop    int // current margin top (copy of frame field)
+	marginBottom int // current margin bottom (copy of frame field)
+	lastCol      bool
+
+	// move states from drawstate
+	showCursorMode      bool
+	altScreenBufferMode bool // Alternate Screen Buffer support: default false
+	autoWrapMode        bool // true/false
+	autoNewlineMode     bool
+	keyboardLocked      bool
+	insertMode          bool // true/false
+	bkspSendsDel        bool // backspace send delete
+	localEcho           bool
+	bracketedPasteMode  bool // true/false
+	altScrollMode       bool
+	altSendsEscape      bool
+
+	horizMarginMode bool // left and right margins support
+	hMargin         int  // left margins
+	nColsEff        int  // right margins
+
+	compatLevel   CompatibilityLevel // VT52, VT100, VT400
+	cursorKeyMode CursorKeyMode
+	keypadMode    KeypadMode
+	originMode    OriginMode // two possiible value: ScrollingRegion(true), Absolute(false)
+	colMode       ColMode    // column mode 80 or 132, just for compatibility
+
+	savedCursor_SCO     SavedCursorSCO // SCO console cursor state
+	savedCursor_DEC_pri SavedCursorDEC
+	savedCursor_DEC_alt SavedCursorDEC
+	savedCursor_DEC     *SavedCursorDEC
+
+	mouseTrk MouseTrackingState
+	/*
+		CursorVisible             bool // true/false
+		ReverseVideo              bool // two possible value: Reverse(true), Normal(false)
+		MouseReportingMode        int  // replace it with MouseTrackingMode
+		MouseFocusEvent           bool // replace it with MouseTrackingState.focusEventMode
+		MouseAlternateScroll      bool // rename to altScrollMode
+		MouseEncodingMode         int  // replace it with MouseTrackingEnc
+		ApplicationModeCursorKeys bool // =cursorKeyMode two possible value : Application(true), ANSI(false)
+	*/
 }
 
 func NewEmulator() *emulator {
 	emu := &emulator{}
 	emu.resetCharsetState()
 
+	// defalult size 80x40
+	emu.primaryFrame = *NewFramebuffer(80, 40)
+	emu.framebuffer = &emu.primaryFrame
+
+	emu.initSelectionData()
+	emu.initLog()
+	return emu
+}
+
+func NewEmulator3(nCols, nRows, saveLines int) *emulator {
+	// TODO makePalette256 (palette256);
+
+	emu := &emulator{}
+	emu.framebuffer, emu.marginTop, emu.marginBottom = NewFramebuffer3(nCols, nRows, saveLines)
+	emu.primaryFrame = *emu.framebuffer
+
+	emu.nCols = nCols
+	emu.nRows = nRows
+
+	emu.showCursorMode = true
+	emu.altScreenBufferMode = false
+	emu.autoWrapMode = true
+	emu.autoNewlineMode = false
+	emu.keyboardLocked = false
+	emu.insertMode = false
+	emu.bkspSendsDel = true
+	emu.localEcho = false
+	emu.bracketedPasteMode = false
+	emu.altScrollMode = false
+	emu.altSendsEscape = true
+
+	emu.horizMarginMode = false
+	emu.nColsEff = emu.nCols
+	emu.hMargin = 0
+
+	emu.posX = 0
+	emu.posY = 0
+	emu.lastCol = false
+
+	emu.savedCursor_DEC = &emu.savedCursor_DEC_pri
+	emu.initSelectionData()
+	emu.initLog()
+
+	emu.resetTerminal()
+
+	return emu
+}
+
+func (emu *emulator) resetTerminal() {
+	emu.resetScreen()
+}
+
+func (emu *emulator) resetScreen() {
+	emu.showCursorMode = true
+	emu.autoWrapMode = true
+	emu.autoNewlineMode = false
+	emu.keyboardLocked = false
+	emu.insertMode = false
+	emu.bkspSendsDel = true
+	emu.localEcho = false
+	emu.bracketedPasteMode = false
+
+	emu.compatLevel = CompatLevelVT400
+	emu.cursorKeyMode = CursorKeyModeANSI
+	emu.keypadMode = KeypadNormal
+	emu.originMode = OriginModeAbsolute
+	emu.resetCharsetState()
+
+	emu.savedCursor_SCO.isSet = false
+	emu.savedCursor_DEC.isSet = false
+
+	emu.mouseTrk = MouseTrackingState{}
+
+	// emu.framebuffer.getsele
+}
+
+func (emu *emulator) initSelectionData() {
 	// prepare selection data for OSC 52
 	// https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands
 	emu.selectionData = make(map[rune]string)
@@ -238,17 +357,14 @@ func NewEmulator() *emulator {
 	emu.selectionData['5'] = "" // cut-buffer 5
 	emu.selectionData['6'] = "" // cut-buffer 6
 	emu.selectionData['7'] = "" // cut-buffer 7
+}
 
-	// defalult size 80x40
-	emu.primaryFrame = *NewFramebuffer(80, 40)
-	emu.framebuffer = &emu.primaryFrame
-
+func (emu *emulator) initLog() {
 	// init logger
 	emu.logT = log.New(os.Stderr, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
 	emu.logE = log.New(os.Stderr, "ERRO: ", log.Ldate|log.Ltime|log.Lshortfile)
 	emu.logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 	emu.logU = log.New(os.Stderr, "(Uimplemented): ", log.Ldate|log.Ltime|log.Lshortfile)
-	return emu
 }
 
 func (emu *emulator) resetCharsetState() {

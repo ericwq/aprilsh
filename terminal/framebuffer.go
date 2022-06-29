@@ -67,8 +67,8 @@ func NewFramebuffer(width, height int) *Framebuffer {
 }
 
 // saveLines: for alternate screen buffer default is 0, for normal screen buffer the default is 500, max 50000
-func NewFramebuffer3(nCols, nRows, saveLines int) *Framebuffer {
-	fb := Framebuffer{}
+func NewFramebuffer3(nCols, nRows, saveLines int) (fb *Framebuffer, marginTop int, marginBottom int) {
+	fb = &Framebuffer{}
 
 	fb.DS = NewDrawState(nCols, nRows)
 
@@ -87,7 +87,9 @@ func NewFramebuffer3(nCols, nRows, saveLines int) *Framebuffer {
 	fb.damage.totalCells = nCols * (nRows + saveLines)
 	fb.selection = *NewRect()
 
-	return &fb
+	marginTop = fb.marginTop
+	marginBottom = fb.nRows
+	return
 }
 
 // drop the scrollback history and view offset

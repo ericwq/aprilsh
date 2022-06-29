@@ -92,6 +92,12 @@ type (
 	CursorKeyMode      uint
 	KeypadMode         uint
 	ColMode            uint
+	OriginMode         uint
+)
+
+const (
+	CursorKeyModeANSI CursorKeyMode = iota
+	CursorKeyModeApplication
 )
 
 const (
@@ -126,6 +132,11 @@ const (
 	ColModeC132
 )
 
+const (
+	OriginModeAbsolute OriginMode = iota
+	OriginModeScrollingRegion
+)
+
 // TODO replace the following const with the above one
 const (
 	MOUSE_REPORTING_NONE          = 0
@@ -148,9 +159,18 @@ type MouseTrackingState struct {
 }
 
 type SavedCursorSCO struct {
-	col   int
-	row   int
-	isSet bool
+	col     int
+	row     int
+	isSet   bool
+	lastCol bool
+}
+
+// TODO refine the constructor
+type SavedCursorDEC struct {
+	SavedCursorSCO
+	rend         Renditions
+	originMode   OriginMode
+	charsetState CharsetState
 }
 
 func NewDrawState(width, height int) *DrawState {

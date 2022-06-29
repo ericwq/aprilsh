@@ -365,11 +365,12 @@ func (p *Parser) handle_CUB() (hd *Handler) {
 
 // prepare parameters for the CUP
 // Cursor moves to <row>; <col> coordinate within the viewport
+// Cursor Position
 func (p *Parser) handle_CUP() (hd *Handler) {
 	row := p.getPs(0, 1)
 	col := p.getPs(1, 1)
 
-	hd = &Handler{name: "csi-cup", ch: p.ch}
+	hd = &Handler{id: csi_cup, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_cup(emu, row, col)
 	}
@@ -1072,12 +1073,15 @@ func (p *Parser) handle_DECRST() (hd *Handler) {
 
 // Set Top and Bottom Margins
 func (p *Parser) handle_DECSTBM() (hd *Handler) {
-	top := p.getPs(0, 1)
-	bottom := p.getPs(1, 1)
+	// top := p.getPs(0, 1)// default value is 1
+	// bottom := p.getPs(1, 0)// default value should be current number of lines per screen
+	// prepare the parameters
+	params := make([]int, p.nInputOps)
+	copy(params, p.inputOps)
 
-	hd = &Handler{name: "csi-decstbm", ch: p.ch}
+	hd = &Handler{id: csi_decstbm, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
-		hdl_csi_decstbm(emu, top, bottom)
+		hdl_csi_decstbm(emu, params)
 	}
 
 	// reset the state
@@ -1448,7 +1452,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_CUB()
 		case 'G':
 			hd = p.handle_CHA_HPA()
-		case 'H', 'f':
+		case 'H':
 			hd = p.handle_CUP()
 		case 'I':
 			hd = p.handle_CHT()
