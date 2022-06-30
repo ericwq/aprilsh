@@ -221,16 +221,19 @@ func TestHandle_DECSET_DECRST_2(t *testing.T) {
 	tc := []struct {
 		name                string
 		seq                 string
-		wantName            []string
+		hdIDs               []int
 		compatLevel         CompatibilityLevel
 		isResetCharsetState bool
 	}{
-		{"DECSET 2", "\x1B[?2h", []string{"csi-decset"}, CompatLevel_VT400, true},
-		{"DECRST 2", "\x1B[?2l", []string{"csi-decrst"}, CompatLevel_VT52, true},
+		{"DECSET 2", "\x1B[?2h", []int{csi_decset}, CompatLevel_VT400, true},
+		{"DECRST 2", "\x1B[?2l", []int{csi_decrst}, CompatLevel_VT52, true},
 	}
 
 	p := NewParser()
-	emu := NewEmulator()
+	emu := NewEmulator3(80, 40, 500)
+	var place strings.Builder
+	emu.logI.SetOutput(&place)
+	emu.logT.SetOutput(&place)
 
 	for _, v := range tc {
 
@@ -245,17 +248,36 @@ func TestHandle_DECSET_DECRST_2(t *testing.T) {
 		// handle the control sequence
 		for j, hd := range hds {
 			hd.handle(emu)
-			if hd.name != v.wantName[j] { // validate the control sequences name
-				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName[j], hd.name)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 			}
 		}
 
 		// validate the result
-		got := emu.framebuffer.DS.compatLevel
-		newCS := isNewCharsetState(emu.charsetState)
-		if v.isResetCharsetState != newCS || v.compatLevel != got {
-			t.Errorf("%s %q expect reset CharsetState and compatbility level (%t,%d), got(%t,%d)",
-				v.name, v.seq, true, v.compatLevel, newCS, got)
+		gotCL := emu.compatLevel
+		gotRCS := isResetCharsetState(emu.charsetState)
+		if v.isResetCharsetState != gotRCS || v.compatLevel != gotCL {
+			t.Errorf("%s seq=%q expect reset CharsetState and compatbility level (%t,%d), got(%t,%d)",
+				v.name, v.seq, v.isResetCharsetState, v.compatLevel, gotRCS, gotCL)
 		}
 	}
+}
+
+// make sure this is a new initialized CharsetState
+func isResetCharsetState(cs CharsetState) (ret bool) {
+	ret = true
+	for _, v := range cs.g {
+		if v != nil {
+			return false
+		}
+	}
+
+	if cs.gl != 0 || cs.gr != 2 || cs.ss != 0 {
+		return false
+	}
+
+	if cs.vtMode {
+		ret = false
+	}
+	return ret
 }

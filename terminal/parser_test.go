@@ -2318,24 +2318,6 @@ func TestHandle_DECSET_DECRST_69(t *testing.T) {
 	}
 }
 
-func isNewCharsetState(cs CharsetState) (ret bool) {
-	ret = true
-	for _, v := range cs.g {
-		if v != nil {
-			return false
-		}
-	}
-
-	if cs.gl != 0 || cs.gr != 2 || cs.ss != 0 {
-		return false
-	}
-
-	if cs.vtMode {
-		ret = false
-	}
-	return ret
-}
-
 func TestHandle_DECSTBM(t *testing.T) {
 	tc := []struct {
 		name        string
