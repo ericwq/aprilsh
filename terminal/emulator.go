@@ -241,6 +241,8 @@ type emulator struct {
 	hMargin         int  // left margins
 	nColsEff        int  // right margins
 
+	tabStops []int // tab stop positions
+
 	compatLevel   CompatibilityLevel // VT52, VT100, VT400
 	cursorKeyMode CursorKeyMode
 	keypadMode    KeypadMode
@@ -334,7 +336,7 @@ func (emu *emulator) resetScreen() {
 
 	emu.compatLevel = CompatLevel_VT400
 	emu.cursorKeyMode = CursorKeyMode_ANSI
-	emu.keypadMode = KeypadNormal
+	emu.keypadMode = KeypadMode_Normal
 	emu.originMode = OriginMode_Absolute
 	emu.resetCharsetState()
 
@@ -342,8 +344,25 @@ func (emu *emulator) resetScreen() {
 	emu.savedCursor_DEC.isSet = false
 
 	emu.mouseTrk = MouseTrackingState{}
+	emu.tabStops = make([]int, 0)
+	emu.framebuffer.getSelection().clear()
+}
 
-	// emu.framebuffer.getsele
+func (emu *emulator) resetAttrs() {
+	emu.reverseVideo = false
+
+	// TODO checking SGR?
+}
+
+func (emu *emulator) clearScreen() {
+	emu.posX = 0
+	emu.posY = 0
+	emu.lastCol = false
+	emu.fillScreen(' ')
+}
+
+func (emu *emulator) fillScreen(ch rune) {
+	emu.framebuffer.fillCells(ch, emu.attrs)
 }
 
 func (emu *emulator) initSelectionData() {
@@ -424,31 +443,25 @@ func (emu *emulator) resize(width, height int) {
 }
 
 func (emu *emulator) switchScreenBufferMode(altScreenBufferMode bool) {
-	if emu.framebuffer.DS.altScreenBufferMode == altScreenBufferMode {
+	if emu.altScreenBufferMode == altScreenBufferMode {
 		return
 	}
 
 	if altScreenBufferMode {
-		emu.alternateFrame = *NewFramebuffer(emu.framebuffer.DS.width, emu.framebuffer.DS.height)
-		emu.framebuffer = &emu.alternateFrame
+		emu.framebuffer, emu.marginTop, emu.marginBottom = NewFramebuffer3(emu.nCols, emu.nRows, 0)
+		emu.alternateFrame = *emu.framebuffer
 
-		// TODO savedCursor?
-		// savedCursor_DEC = &savedCursor_DEC_alt ?
-
-		emu.framebuffer.DS.altScreenBufferMode = true
+		emu.savedCursor_DEC = &emu.savedCursor_DEC_alt
+		emu.altScreenBufferMode = true
 	} else {
-		// reset the alterate screen buffer
-		emu.framebuffer.Reset()
-
-		// point to the primary screen buffer
 		emu.framebuffer = &emu.primaryFrame
-		emu.framebuffer.Resize(emu.framebuffer.DS.width, emu.framebuffer.DS.height)
+		emu.marginTop, emu.marginBottom = emu.framebuffer.resize(emu.nCols, emu.nRows)
+		emu.framebuffer.expose()
 
-		// TODO savedCursor?
-		// savedCursor_DEC_alt.isSet = false;
-		// savedCursor_DEC = &savedCursor_DEC_pri;
+		emu.savedCursor_DEC_alt.isSet = false
+		emu.savedCursor_DEC = &emu.savedCursor_DEC_pri
+		emu.altScreenBufferMode = false
 
-		emu.framebuffer.DS.altScreenBufferMode = false
 	}
 }
 
@@ -458,8 +471,9 @@ func (emu *emulator) switchColMode(colMode ColMode) {
 		return
 	}
 
-	// resetScreen() TODO?
-	// clearScreen() TODO?
+	emu.resetScreen()
+	emu.clearScreen()
+
 	if colMode == ColMode_C80 {
 		emu.logT.Println("DECCOLM: Selected 80 columns per line")
 	} else {

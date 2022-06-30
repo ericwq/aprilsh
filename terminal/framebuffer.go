@@ -219,6 +219,10 @@ func (fb *Framebuffer) vscrollSelection(vertOffset int) {
 	fb.selection.br.y = y2
 }
 
+func (fb *Framebuffer) getSelection() *Rect {
+	return &fb.selection
+}
+
 // text up, screen down count rows
 func (fb *Framebuffer) pageUp(count int) {
 	viewOffset := min(fb.viewOffset+count, fb.historyRows)
@@ -473,13 +477,13 @@ func (fb *Framebuffer) freeCells() {
 }
 
 // fill current screen with specified rune and renditions.
-func (fb *Framebuffer) fillCells(ch rune, rend Renditions) {
+func (fb *Framebuffer) fillCells(ch rune, attrs Cell) {
 	for r := 0; r < fb.nRows; r++ {
 
 		start := fb.getIdx(r, 0)
 		end := start + fb.nCols
 		for k := start; k < end; k++ {
-			fb.cells[k].renditions = rend
+			fb.cells[k].renditions = attrs.renditions
 			fb.cells[k].contents = string(ch)
 		}
 		fb.damage.add(start, end)

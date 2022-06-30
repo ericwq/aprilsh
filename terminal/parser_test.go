@@ -28,7 +28,6 @@ package terminal
 
 import (
 	"fmt"
-	// "image/color"
 	"io/ioutil"
 	"log"
 	"strings"
@@ -1149,70 +1148,6 @@ func TestHandle_DECALN_RIS(t *testing.T) {
 			}
 		} else {
 			t.Errorf("%s expect valid Handler, got nil", v.name)
-		}
-	}
-}
-
-func TestHandle_DECSC_DECRC_DECSET_1048(t *testing.T) {
-	tc := []struct {
-		name         string
-		seq          string
-		hdIDs        []int
-		posY, posX   int
-		AutoWrapMode bool
-		OriginMode   bool
-	}{
-		// between the SC/RC, move cursor to 13,23,set originMode, autoWrapMode false,
-		{
-			"ESC DECSC/DECRC",
-			"\x1B7\x1B[24;14H\x1B[?7l\x1B[?6l\x1B8",
-			[]int{esc_decsc, csi_cup, csi_decrst, csi_decrst, esc_decrc},
-			8, 8, true, true,
-		},
-		// between the SC/RC, move cursor to 11,21,set originMode, autoWrapMode true,
-		{
-			"CSI DECSET/DECRST 1048",
-			"\x1B[?1048h\x1B[22;12H\x1B[?7h\x1B[?6h\x1B[?1048l",
-			[]int{csi_decset, csi_cup, csi_decset, csi_decset, csi_decrst},
-			9, 9, false, false,
-		},
-	}
-
-	p := NewParser()
-	emu := NewEmulator3(80, 40, 500)
-	var place strings.Builder
-	emu.logT.SetOutput(&place)
-
-	for _, v := range tc {
-		// set the target state for cursor
-		emu.framebuffer.DS.MoveCol(v.posX, false, false)
-		emu.framebuffer.DS.MoveRow(v.posY, false)
-		emu.framebuffer.DS.AutoWrapMode = v.AutoWrapMode
-		emu.framebuffer.DS.OriginMode = v.OriginMode
-
-		// process control sequence
-		hds := make([]*Handler, 0, 16)
-		hds = p.processStream(v.seq, hds)
-
-		if len(hds) == 0 {
-			t.Errorf("%s got zero handlers.", v.name)
-		}
-
-		// handle the control sequence
-		for j, hd := range hds {
-			hd.handle(emu)
-			if hd.id != v.hdIDs[j] { // validate the control sequences name
-				t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
-			}
-		}
-
-		// validate the result
-		fb := emu.framebuffer
-		if fb.DS.GetCursorCol() != v.posX || fb.DS.GetCursorRow() != v.posY ||
-			fb.DS.AutoWrapMode != v.AutoWrapMode || fb.DS.OriginMode != v.OriginMode {
-			t.Errorf("%s %q expect (%d,%d,%t,%t), got (%d,%d,%t,%t)", v.name, v.seq,
-				v.posY, v.posX, v.AutoWrapMode, v.OriginMode,
-				fb.DS.GetCursorRow(), fb.DS.GetCursorCol(), fb.DS.AutoWrapMode, fb.DS.OriginMode)
 		}
 	}
 }

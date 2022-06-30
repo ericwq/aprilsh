@@ -93,6 +93,7 @@ type (
 	KeypadMode         uint
 	ColMode            uint
 	OriginMode         uint
+	SelectSnapTo       uint
 )
 
 const (
@@ -122,8 +123,8 @@ const (
 )
 
 const (
-	KeypadNormal KeypadMode = iota
-	KeypadApplication
+	KeypadMode_Normal KeypadMode = iota
+	KeypadMode_Application
 )
 
 const (
@@ -134,6 +135,13 @@ const (
 const (
 	OriginMode_Absolute OriginMode = iota
 	OriginMode_ScrollingRegion
+)
+
+const (
+	SelectSnapTo_Char SelectSnapTo = iota
+	SelectSnapTo_Word
+	SelectSnapTo_Line
+	SelectSnapTo_COUNT
 )
 
 // TODO replace the following const with the above one
@@ -151,6 +159,7 @@ const (
 	MOUSE_ENCODING_URXVT   = 1015
 )
 
+// TODO default constructor checking
 type MouseTrackingState struct {
 	mode           MouseTrackingMode
 	enc            MouseTrackingEnc
