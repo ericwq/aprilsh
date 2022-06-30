@@ -31,6 +31,76 @@ import (
 	"testing"
 )
 
+func TestHandle_SCOSC_SCORC(t *testing.T) {
+	tc := []struct {
+		name       string
+		seq        string
+		hdIDs      []int
+		posY, posX int
+		set        bool
+		logMsg     string
+	}{
+		{
+			"move cursor, SCOSC, check", "\x1B[22;33H\x1B[s",
+			[]int{csi_cup, csi_scosc},
+			22 - 1, 33 - 1, true, "",
+		},
+		{
+			"move cursor, SCOSC, move cursor, SCORC, check", "\x1B[33;44H\x1B[s\x1B[42;35H\x1B[u",
+			[]int{csi_cup, csi_scosc, csi_cup, csi_scorc},
+			33 - 1, 44 - 1, false, "",
+		},
+		{
+			"SCORC, check", "\x1B[u",
+			[]int{csi_scorc},
+			0, 0, false, "Asked to restore cursor (SCORC) but it has not been saved.",
+		},
+	}
+
+	p := NewParser()
+	emu := NewEmulator3(80, 40, 500)
+
+	var place strings.Builder
+	emu.logI.SetOutput(&place) // redirect the output to the string builder
+	emu.logT.SetOutput(&place) // redirect the output to the string builder
+
+	for i, v := range tc {
+		place.Reset()
+
+		// parse control sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) < 1 {
+			t.Errorf("%s got %d handlers.", v.name, len(hds))
+		}
+
+		// handle the control sequence
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+			}
+		}
+
+		switch i {
+		case 0, 1:
+			gotCol := emu.savedCursor_SCO.posX
+			gotRow := emu.savedCursor_SCO.posY
+			gotSet := emu.savedCursor_SCO.isSet
+
+			if gotCol != v.posX || gotRow != v.posY || gotSet != v.set {
+				t.Errorf("%s:\t %q expect {%d,%d,%t}, got %v", v.name, v.seq, v.posY, v.posX, v.set, emu.savedCursor_SCO)
+			}
+		case 2:
+			got := strings.Contains(place.String(), v.logMsg)
+			if !got {
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.logMsg, place.String())
+			}
+		}
+	}
+}
+
 func TestHandle_DECSC_DECRC_DECSET_1048(t *testing.T) {
 	tc := []struct {
 		name       string
@@ -294,7 +364,11 @@ func TestHandle_DECSET_DECRST_67(t *testing.T) {
 	}
 
 	p := NewParser()
-	emu := NewEmulator()
+	emu := NewEmulator3(80, 40, 500)
+	var place strings.Builder
+	emu.logI.SetOutput(&place)
+	emu.logT.SetOutput(&place)
+
 	for _, v := range tc {
 
 		// process control sequence
@@ -316,6 +390,161 @@ func TestHandle_DECSET_DECRST_67(t *testing.T) {
 		got := emu.bkspSendsDel
 		if got != v.bkspSendsDel {
 			t.Errorf("%s:\t %q expect %t,got %t\n", v.name, v.seq, v.bkspSendsDel, got)
+		}
+	}
+}
+
+func TestHandle_DECSLRM(t *testing.T) {
+	tc := []struct {
+		name                    string
+		seq                     string
+		hdIDs                   []int
+		leftMargin, rightMargin int
+		posX, posY              int
+	}{
+		{
+			"set left right margin, normal",
+			"\x1B[?69h\x1B[4;70s",
+			[]int{csi_decset, csi_decslrm},
+			3, 70, 0, 0,
+		},
+		{
+			"set left right margin, missing right parameter",
+			"\x1B[?69h\x1B[1s",
+			[]int{csi_decset, csi_decslrm},
+			0, 80, 0, 0,
+		},
+		{
+			"set left right margin, left parameter is zero",
+			"\x1B[?69h\x1B[0s",
+			[]int{csi_decset, csi_decslrm},
+			0, 80, 0, 0,
+		},
+	}
+
+	p := NewParser()
+	emu := NewEmulator3(80, 40, 500)
+	var place strings.Builder
+	emu.logI.SetOutput(&place)
+	emu.logT.SetOutput(&place)
+
+	for _, v := range tc {
+
+		// parse control sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) != 2 {
+			t.Errorf("%s got %d handlers, expect 2 handlers.", v.name, len(hds))
+		}
+
+		// handle the control sequence
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+			}
+			switch j {
+			case 0:
+				gotMode := emu.horizMarginMode
+				if gotMode != true {
+					t.Errorf("%s:\t %q expect %t, got %t\n", v.name, v.seq, true, gotMode)
+				}
+			case 1:
+				// validate the left/right margin
+				gotLeft := emu.hMargin
+				gotRight := emu.nColsEff
+				if gotLeft != v.leftMargin || gotRight != v.rightMargin {
+					t.Errorf("%s:\t %q expect (%d,%d), got (%d,%d)\n", v.name, v.seq, v.leftMargin, v.rightMargin, gotLeft, gotRight)
+				}
+
+				// validate the cursor row/col
+				posY := emu.posY
+				posXZ := emu.posX
+
+				if posY != v.posY || posXZ != v.posX {
+					t.Errorf("%s:\t %q expect (%d/%d), got (%d/%d)\n", v.name, v.seq, v.posX, v.posY, posXZ, posY)
+				}
+			}
+		}
+	}
+}
+
+func TestHandle_DECSLRM_Others(t *testing.T) {
+	tc := []struct {
+		name        string
+		seq         string
+		hdIDs       []int
+		logMsg      string
+		left, right int
+		posY, posX  int
+	}{
+		{
+			"DECLRMM disable", "\x1B[?69l\x1B[4;49s",
+			[]int{csi_decrst, csi_decslrm},
+			"", 0, 0, 0, 0,
+		},
+		{
+			"DECLRMM enable, outof range", "\x1B[?69h\x1B[4;89s",
+			[]int{csi_decset, csi_decslrm},
+			"Illegal arguments to SetLeftRightMargins:", 0, 0, 0, 0,
+		},
+		{
+			"DECLRMM OriginMode_ScrollingRegion, enable", "\x1B[?6h\x1B[?69h\x1B[4;69s", // DECLRMM: Set Left and Right Margins
+			[]int{csi_decset, csi_decset, csi_decslrm},
+			"", 3, 69, 0, 3,
+		},
+	}
+
+	p := NewParser()
+	emu := NewEmulator3(80, 40, 500)
+	var place strings.Builder
+	emu.logI.SetOutput(&place)
+	emu.logT.SetOutput(&place)
+
+	for i, v := range tc {
+
+		// parse control sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) < 2 {
+			t.Errorf("%s got %d handlers, expect at lease 2 handlers.", v.name, len(hds))
+		}
+
+		// handle the control sequence
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+			}
+		}
+
+		switch i {
+		case 0:
+			if emu.horizMarginMode {
+				t.Errorf("%s: seq=%q expect %t, got %t\n", v.name, v.seq, false, emu.horizMarginMode)
+			}
+		case 1:
+			got := strings.Contains(place.String(), v.logMsg)
+			if !got {
+				t.Errorf("%s: seq=%q expect %q, got %q\n", v.name, v.seq, v.logMsg, place.String())
+			}
+		case 2:
+			// validate the left/right margin
+			left := emu.hMargin
+			right := emu.nColsEff
+			if left != v.left || right != v.right {
+				t.Errorf("%s: seq=%q expect left/right margin (%d,%d), got (%d,%d)\n", v.name, v.seq, v.left, v.right, left, right)
+			}
+
+			// validate the cursor row/col
+			posY := emu.posY
+			posX := emu.posX
+
+			if posY != v.posY || posX != v.posX {
+				t.Errorf("%s: seq=%q expect cursor (%d,%d), got (%d,%d)\n", v.name, v.seq, v.posY, v.posX, posY, posX)
+			}
 		}
 	}
 }

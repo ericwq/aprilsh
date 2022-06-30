@@ -54,6 +54,7 @@ const (
 	csi_decrst
 	csi_decscl
 	csi_decset
+	csi_decslrm
 	csi_decstbm
 	csi_scorc
 	csi_scosc
@@ -71,6 +72,7 @@ var strHandlerID = [...]string{
 	"csi-decrst",
 	"csi-decscl",
 	"csi-decset",
+	"csi-decslrm",
 	"csi-decstbm",
 	"csi-scorc",
 	"csi-scosc",
@@ -1226,13 +1228,13 @@ func hdl_dcs_decrqss(emu *emulator, arg string) {
 //          Set left and right margins (DECSLRM), VT420 and up.  This is
 //          available only when DECLRMM is enabled.
 func hdl_csi_decslrm(emu *emulator, params []int) {
-	if !emu.framebuffer.DS.horizMarginMode {
+	if !emu.horizMarginMode { // only avaialbe when DECLRMM is enabled
 		return
 	}
 
 	if len(params) == 1 && params[0] == 0 {
-		emu.framebuffer.DS.hMargin = 0
-		emu.framebuffer.DS.nColsEff = emu.framebuffer.DS.width
+		emu.hMargin = 0
+		emu.nColsEff = emu.nCols
 	} else if len(params) == 2 {
 		newMarginLeft := params[0]
 		newMarginRight := params[1]
@@ -1241,21 +1243,22 @@ func hdl_csi_decslrm(emu *emulator, params []int) {
 			newMarginLeft -= 1
 		}
 
-		if newMarginRight < newMarginLeft+2 || emu.framebuffer.DS.width < newMarginRight {
+		if newMarginRight < newMarginLeft+2 || emu.nCols < newMarginRight {
 			emu.logT.Printf("Illegal arguments to SetLeftRightMargins: left=%d, right=%d\n", params[0], params[1])
-		} else if newMarginLeft != emu.framebuffer.DS.hMargin || newMarginRight != emu.framebuffer.DS.nColsEff {
-			emu.framebuffer.DS.hMargin = newMarginLeft
-			emu.framebuffer.DS.nColsEff = newMarginRight
+		} else if newMarginLeft != emu.hMargin || newMarginRight != emu.nColsEff {
+			emu.hMargin = newMarginLeft
+			emu.nColsEff = newMarginRight
 		}
 	}
 
-	if !emu.framebuffer.DS.OriginMode { // false means Absolute
-		emu.framebuffer.DS.cursorCol = 0
-		emu.framebuffer.DS.cursorRow = 0
+	if emu.originMode == OriginMode_Absolute { // false means Absolute
+		emu.posX = 0
+		emu.posY = 0
 	} else {
-		emu.framebuffer.DS.cursorCol = emu.framebuffer.DS.hMargin
-		emu.framebuffer.DS.cursorRow = emu.framebuffer.DS.scrollingRegionTopRow
+		emu.posX = emu.hMargin
+		emu.posY = emu.marginTop
 	}
+	emu.lastCol = false
 }
 
 // CSI s     Save cursor, available only when DECLRMM is disabled (SCOSC, also ANSI.SYS).

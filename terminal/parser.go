@@ -1133,7 +1133,7 @@ func (p *Parser) handle_SLRM_SCOSC() (hd *Handler) {
 		params := make([]int, p.nInputOps)
 		copy(params, p.inputOps)
 
-		hd = &Handler{name: "csi-decslrm", ch: p.ch}
+		hd = &Handler{id: csi_decslrm, ch: p.ch, sequence: p.historyString()}
 		hd.handle = func(emu *emulator) {
 			hdl_csi_decslrm(emu, params)
 		}
