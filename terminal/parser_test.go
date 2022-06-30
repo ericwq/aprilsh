@@ -693,57 +693,6 @@ func TestHandle_CUP(t *testing.T) {
 	}
 }
 
-func TestHandle_CUU_CUD_CUF_CUB_CUP(t *testing.T) {
-	tc := []struct {
-		name     string
-		startX   int
-		startY   int
-		wantName string
-		wantX    int
-		wantY    int
-		seq      string
-	}{
-		{"CSI Ps A  ", 10, 20, "csi-cuu", 10, 14, "\x1B[6A"},
-		{"CSI Ps B  ", 10, 10, "csi-cud", 10, 13, "\x1B[3B"},
-		{"CSI Ps C  ", 10, 10, "csi-cuf", 12, 10, "\x1B[2C"},
-		{"CSI Ps D  ", 20, 10, "csi-cub", 12, 10, "\x1B[8D"},
-		{"BS        ", 12, 12, "csi-cub", 11, 12, "\x08"},
-		{"CUB       ", 12, 12, "csi-cub", 11, 12, "\x1B[1D"},
-		{"BS agin   ", 11, 12, "csi-cub", 10, 12, "\x08"},
-	}
-
-	p := NewParser()
-	for _, v := range tc {
-		var hd *Handler
-		emu := NewEmulator()
-
-		// parse the sequence
-		for _, ch := range v.seq {
-			hd = p.processInput(ch)
-		}
-		if hd != nil {
-
-			// set the start position
-			emu.framebuffer.DS.MoveRow(v.startY, false)
-			emu.framebuffer.DS.MoveCol(v.startX, false, false)
-
-			// handle the instruction
-			hd.handle(emu)
-
-			// get the result
-			gotY := emu.framebuffer.DS.GetCursorRow()
-			gotX := emu.framebuffer.DS.GetCursorCol()
-
-			if gotX != v.wantX || gotY != v.wantY || hd.name != v.wantName {
-				t.Errorf("%s [%s vs %s] expect cursor position (%d,%d), got (%d,%d)\n",
-					v.name, v.wantName, hd.name, v.wantX, v.wantY, gotX, gotY)
-			}
-		} else {
-			t.Errorf("%s got nil return\n", v.name)
-		}
-	}
-}
-
 func TestHandle_OSC_0_1_2(t *testing.T) {
 	tc := []struct {
 		name     string
