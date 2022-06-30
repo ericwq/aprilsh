@@ -89,3 +89,87 @@ func TestHandle_DECSC_DECRC_DECSET_1048(t *testing.T) {
 		}
 	}
 }
+
+func TestHandle_DECSET_DECRST_1049(t *testing.T) {
+	name := "DECSET/RST 1049"
+	// move cursor to 23,13
+	// DECSET 1049 enable altenate screen buffer
+	// move cursor to 33,23
+	// DECRST 1049 disable normal screen buffer (false)
+	// DECRST 1049 set normal screen buffer (again for fast return)
+	seq := "\x1B[24;14H\x1B[?1049h\x1B[34;24H\x1B[?1049l\x1B[?1049l"
+	hdIDs := []int{csi_cup, csi_decset, csi_cup, csi_decrst, csi_decrst}
+
+	p := NewParser()
+	emu := NewEmulator3(80, 40, 500)
+	var place strings.Builder
+	emu.logI.SetOutput(&place)
+	emu.logT.SetOutput(&place)
+
+	// parse the control sequence
+	hds := make([]*Handler, 0, 16)
+	hds = p.processStream(seq, hds)
+
+	if len(hds) != len(hdIDs) {
+		t.Errorf("%s got zero handlers.", name)
+	}
+
+	// handle the instruction
+	for j, hd := range hds {
+		hd.handle(emu)
+		if hd.id != hdIDs[j] { // validate the control sequences id
+			t.Errorf("%s:\t %q expect %s, got %s\n", name, seq, strHandlerID[hdIDs[j]], strHandlerID[hd.id])
+		}
+
+		switch j {
+		case 0, 3:
+			wantY := 23
+			wantX := 13
+
+			gotY := emu.posY
+			gotX := emu.posX
+
+			if gotX != wantX || gotY != wantY {
+				t.Errorf("%s:\t %q expect [%d,%d], got [%d,%d]\n", name, seq, wantY, wantX, gotY, gotX)
+			}
+
+			want := false
+			got := emu.altScreenBufferMode
+
+			if got != want {
+				t.Errorf("%s:\t %q expect %t, got %t\n", name, seq, want, got)
+			}
+		case 1:
+			want := true
+			got := emu.altScreenBufferMode
+
+			if got != want {
+				t.Errorf("%s:\t %q expect %t, got %t\n", name, seq, want, got)
+			}
+		case 2:
+			wantY := 33
+			wantX := 23
+
+			gotY := emu.posY
+			gotX := emu.posX
+
+			if gotX != wantX || gotY != wantY {
+				t.Errorf("%s:\t %q expect [%d,%d], got [%d,%d].\n", name, seq, wantY, wantX, gotY, gotX)
+			}
+		case 4:
+			want := false
+			got := emu.altScreenBufferMode
+
+			if got != want {
+				t.Errorf("%s:\t %q expect %t, got %t\n", name, seq, want, got)
+			}
+
+			logMsg := "Asked to restore cursor (DECRC) but it has not been saved."
+			if !strings.Contains(place.String(), logMsg) {
+				t.Errorf("%s seq=%q expect %q, got %q\n", name, seq, logMsg, place.String())
+			}
+		}
+		// reset the output buffer
+		place.Reset()
+	}
+}
