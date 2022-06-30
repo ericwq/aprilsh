@@ -281,3 +281,41 @@ func isResetCharsetState(cs CharsetState) (ret bool) {
 	}
 	return ret
 }
+
+func TestHandle_DECSET_DECRST_67(t *testing.T) {
+	tc := []struct {
+		name         string
+		seq          string
+		hdIDs        []int
+		bkspSendsDel bool
+	}{
+		{"enable DECBKM—Backarrow Key Mode", "\x1B[?67h", []int{csi_decset}, false},
+		{"disable DECBKM—Backarrow Key Mode", "\x1B[?67l", []int{csi_decrst}, true},
+	}
+
+	p := NewParser()
+	emu := NewEmulator()
+	for _, v := range tc {
+
+		// process control sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) != 1 {
+			t.Errorf("%s got %d handlers.", v.name, len(hds))
+		}
+
+		// handle the control sequence
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+			}
+		}
+
+		got := emu.bkspSendsDel
+		if got != v.bkspSendsDel {
+			t.Errorf("%s:\t %q expect %t,got %t\n", v.name, v.seq, v.bkspSendsDel, got)
+		}
+	}
+}
