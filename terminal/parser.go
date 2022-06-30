@@ -315,7 +315,7 @@ func (p *Parser) handle_Graphemes() (hd *Handler) {
 func (p *Parser) handle_CUU() (hd *Handler) {
 	num := p.getPs(0, 1)
 
-	hd = &Handler{name: "csi-cuu", ch: p.ch}
+	hd = &Handler{id: csi_cuu, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_cuu(emu, num)
 	}
@@ -328,7 +328,7 @@ func (p *Parser) handle_CUU() (hd *Handler) {
 func (p *Parser) handle_CUD() (hd *Handler) {
 	num := p.getPs(0, 1)
 
-	hd = &Handler{name: "csi-cud", ch: p.ch}
+	hd = &Handler{id: csi_cud, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_cud(emu, num)
 	}
@@ -341,7 +341,7 @@ func (p *Parser) handle_CUD() (hd *Handler) {
 func (p *Parser) handle_CUF() (hd *Handler) {
 	num := p.getPs(0, 1)
 
-	hd = &Handler{name: "csi-cuf", ch: p.ch}
+	hd = &Handler{id: csi_cuf, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_cuf(emu, num)
 	}
@@ -354,7 +354,7 @@ func (p *Parser) handle_CUF() (hd *Handler) {
 func (p *Parser) handle_CUB() (hd *Handler) {
 	num := p.getPs(0, 1)
 
-	hd = &Handler{name: "csi-cub", ch: p.ch}
+	hd = &Handler{id: csi_cub, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_cub(emu, num)
 	}

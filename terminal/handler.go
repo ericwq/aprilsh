@@ -48,7 +48,11 @@ const (
 
 const (
 	unused_handlerID = iota
+	csi_cub
+	csi_cud
+	csi_cuf
 	csi_cup
+	csi_cuu
 	csi_decic
 	csi_decdc
 	csi_decrst
@@ -69,7 +73,11 @@ const (
 
 var strHandlerID = [...]string{
 	"",
+	"csi-cub",
+	"csi-cud",
+	"csi-cuf",
 	"csi-cup",
+	"csi-cuu",
 	"csi-decic",
 	"csi-decdc",
 	"csi-decrst",
@@ -547,22 +555,49 @@ func hdl_csi_cha_hpa(emu *emulator, count int) {
 
 // CSI Ps A  Cursor Up Ps Times (default = 1) (CUU).
 func hdl_csi_cuu(emu *emulator, num int) {
-	emu.framebuffer.DS.MoveRow(-num, true)
+	if emu.posY >= emu.marginTop {
+		num = min(num, emu.posY-emu.marginTop)
+	} else {
+		num = min(num, emu.posY)
+	}
+	emu.posY -= num
+	emu.lastCol = false
+	// emu.framebuffer.DS.MoveRow(-num, true)
 }
 
 // CSI Ps B  Cursor Down Ps Times (default = 1) (CUD).
 func hdl_csi_cud(emu *emulator, num int) {
-	emu.framebuffer.DS.MoveRow(num, true)
+	if emu.posY < emu.marginBottom {
+		num = min(num, emu.marginBottom-emu.posY-1)
+	} else {
+		num = min(num, emu.nRows-emu.posY-1)
+	}
+	emu.posY += num
+	emu.lastCol = false
+	// emu.framebuffer.DS.MoveRow(num, true)
 }
 
 // CSI Ps C  Cursor Forward Ps Times (default = 1) (CUF).
 func hdl_csi_cuf(emu *emulator, num int) {
-	emu.framebuffer.DS.MoveCol(num, true, false)
+	num = min(num, emu.nColsEff-emu.posX-1)
+	emu.posX += num
+	emu.lastCol = false
+	// emu.framebuffer.DS.MoveCol(num, true, false)
 }
 
 // CSI Ps D  Cursor Backward Ps Times (default = 1) (CUB).
 func hdl_csi_cub(emu *emulator, num int) {
-	emu.framebuffer.DS.MoveCol(-num, true, false)
+	if emu.posX >= emu.hMargin {
+		num = min(num, emu.posX-emu.hMargin)
+	} else {
+		num = min(num, emu.posX)
+	}
+	if emu.posX == emu.nColsEff {
+		num = min(num+1, emu.posX)
+	}
+	emu.posX -= num
+	emu.lastCol = false
+	// emu.framebuffer.DS.MoveCol(-num, true, false)
 }
 
 // CSI Ps ; Ps H Cursor Position [row;column] (default = [1,1]) (CUP).
