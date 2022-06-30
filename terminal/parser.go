@@ -1015,7 +1015,7 @@ func (p *Parser) handle_SM() (hd *Handler) {
 	params := make([]int, p.nInputOps)
 	copy(params, p.inputOps)
 
-	hd = &Handler{name: "csi-sm", ch: p.ch}
+	hd = &Handler{id: csi_sm, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_sm(emu, params)
 	}
@@ -1030,7 +1030,7 @@ func (p *Parser) handle_RM() (hd *Handler) {
 	params := make([]int, p.nInputOps)
 	copy(params, p.inputOps)
 
-	hd = &Handler{name: "csi-rm", ch: p.ch}
+	hd = &Handler{id: csi_rm, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_rm(emu, params)
 	}
@@ -1089,7 +1089,7 @@ func (p *Parser) handle_DECSTBM() (hd *Handler) {
 
 // DEC Soft Terminal Reset
 func (p *Parser) handle_DECSTR() (hd *Handler) {
-	hd = &Handler{name: "csi-decstr", ch: p.ch}
+	hd = &Handler{id: csi_decstr, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_decstr(emu)
 	}

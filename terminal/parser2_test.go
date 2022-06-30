@@ -548,3 +548,216 @@ func TestHandle_DECSLRM_Others(t *testing.T) {
 		}
 	}
 }
+
+type (
+	ANSImode uint
+	DECmode  uint
+)
+
+const (
+	t_keyboardLocked ANSImode = iota
+	t_insertMode
+	t_localEcho
+	t_autoNewlineMode
+)
+
+const (
+	t_ApplicationModeCursorKeys DECmode = iota
+	t_ReverseVideo
+	t_OriginMode
+	t_AutoWrapMode
+	t_CursorVisible
+	t_focusEventMode
+	t_MouseAlternateScroll
+	t_altSendsEscape
+	t_BracketedPaste
+)
+
+func TestHandle_SM_RM(t *testing.T) {
+	tc := []struct {
+		name  string
+		seq   string
+		which ANSImode
+		hdIDs []int
+		want  bool
+	}{
+		{"SM: keyboardLocked ", "\x1B[2l\x1B[2h", t_keyboardLocked, []int{csi_rm, csi_sm}, true},
+		{"SM: insertMode     ", "\x1B[4l\x1B[4h", t_insertMode, []int{csi_rm, csi_sm}, true},
+		{"SM: localEcho      ", "\x1B[12l\x1B[12h", t_localEcho, []int{csi_rm, csi_sm}, false},
+		{"SM: autoNewlineMode", "\x1B[20l\x1B[20h", t_autoNewlineMode, []int{csi_rm, csi_sm}, true},
+
+		{"RM: keyboardLocked ", "\x1B[2h\x1B[2l", t_keyboardLocked, []int{csi_sm, csi_rm}, false},
+		{"RM: insertMode     ", "\x1B[4h\x1B[4l", t_insertMode, []int{csi_sm, csi_rm}, false},
+		{"RM: localEcho      ", "\x1B[12h\x1B[12l", t_localEcho, []int{csi_sm, csi_rm}, true},
+		{"RM: autoNewlineMode", "\x1B[20h\x1B[20l", t_autoNewlineMode, []int{csi_sm, csi_rm}, false},
+	}
+
+	p := NewParser()
+	emu := NewEmulator3(80, 40, 500)
+	var place strings.Builder
+	emu.logI.SetOutput(&place)
+	emu.logT.SetOutput(&place)
+
+	for _, v := range tc {
+		t.Run(v.name, func(t *testing.T) {
+			// parse control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) == 0 {
+				t.Errorf("%s got zero handlers.", v.name)
+			}
+
+			// handle the control sequence
+			for j, hd := range hds {
+				hd.handle(emu)
+				if hd.id != v.hdIDs[j] { // validate the control sequences id
+					t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+				}
+			}
+
+			if v.want != t_getANSImode(emu, v.which) {
+				t.Errorf("%s: seq=%q expect %t, got %t\n", v.name, v.seq, v.want, t_getANSImode(emu, v.which))
+			}
+		})
+	}
+}
+
+func t_getANSImode(emu *emulator, which ANSImode) bool {
+	switch which {
+	case t_keyboardLocked:
+		return emu.keyboardLocked
+	case t_insertMode:
+		return emu.insertMode
+	case t_localEcho:
+		return emu.localEcho
+	case t_autoNewlineMode:
+		return emu.autoNewlineMode
+	}
+	return false
+}
+
+// func t_resetANSImode(emu *emulator, which ANSImode, value bool) {
+// 	switch which {
+// 	case t_keyboardLocked:
+// 		emu.keyboardLocked = value
+// 	case t_insertMode:
+// 		emu.insertMode = value
+// 	case t_localEcho:
+// 		emu.localEcho = value
+// 	case t_autoNewlineMode:
+// 		emu.autoNewlineMode = value
+// 	}
+// }
+
+func TestHandle_SM_RM_Unknow(t *testing.T) {
+	tc := []struct {
+		name string
+		seq  string
+		want string
+	}{
+		{"CSI SM unknow", "\x1B[21h", "Ignored bogus set mode"},
+		{"CSI RM unknow", "\x1B[33l", "Ignored bogus reset mode"},
+	}
+
+	p := NewParser()
+	emu := NewEmulator3(80, 40, 500)
+	var place strings.Builder
+	emu.logI.SetOutput(&place)
+	emu.logW.SetOutput(&place)
+
+	for _, v := range tc {
+		t.Run(v.name, func(t *testing.T) {
+			// process control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) == 0 {
+				t.Errorf("%s got zero handlers.", v.name)
+			}
+
+			// handle the control sequence
+			for _, hd := range hds {
+				hd.handle(emu)
+			}
+
+			if !strings.Contains(place.String(), v.want) {
+				t.Errorf("%s: %q\t expect %q, got %q\n", v.name, v.seq, v.want, place.String())
+			}
+		})
+	}
+}
+
+func TestHandle_DECSTR(t *testing.T) {
+	tc := []struct {
+		name           string
+		seq            string
+		hdIDs          []int
+		insertMode     bool
+		originMode     OriginMode
+		showCursorMode bool
+		cursorKeyMode  CursorKeyMode
+		reverseVideo   bool
+	}{
+		{
+			"DECSTR ",
+			/*
+				set ture for insertMode=true, originMode=OriginMode_ScrollingRegion,
+				showCursorMode=false, cursorKeyMode = CursorKeyMode_Application,reverseVideo = true
+				set top/bottom region = [1,30)
+				we don't check the response of the above sequence, we choose the opposite value on purpose
+				(finally) soft terminal reset, check the opposite result for the soft reset sequence.
+			*/
+			"\x1B[4h\x1B[?6h\x1B[?25l\x1B[?1h\x1B[2;30r\x1B[!p",
+			[]int{csi_sm, csi_decset, csi_decrst, csi_decset, csi_decstbm, csi_decstr},
+			false, OriginMode_Absolute, true, CursorKeyMode_ANSI, false,
+		},
+	}
+
+	p := NewParser()
+	emu := NewEmulator3(80, 40, 500)
+	var place strings.Builder
+	emu.logI.SetOutput(&place)
+	emu.logT.SetOutput(&place)
+
+	for _, v := range tc {
+
+		// process control sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) == 0 {
+			t.Errorf("%s got zero handlers.", v.name)
+		}
+
+		// execute the control sequence
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+			}
+		}
+
+		// validate the insertMode
+		insertMode := emu.insertMode
+		if insertMode != v.insertMode {
+			t.Errorf("%s seq=%q insertMode expect %t, got %t\n", v.name, v.seq, v.insertMode, insertMode)
+		}
+		originMode := emu.originMode
+		if originMode != v.originMode {
+			t.Errorf("%s seq=%q originMode expect %d, got %d\n", v.name, v.seq, v.originMode, originMode)
+		}
+		showCursorMode := emu.showCursorMode
+		if showCursorMode != v.showCursorMode {
+			t.Errorf("%s seq=%q showCursorMode expect %t, got %t\n", v.name, v.seq, v.showCursorMode, showCursorMode)
+		}
+		cursorKeyMode := emu.cursorKeyMode
+		if cursorKeyMode != v.cursorKeyMode {
+			t.Errorf("%s seq=%q cursorKeyMode expect %d, got %d\n", v.name, v.seq, v.cursorKeyMode, cursorKeyMode)
+		}
+		reverseVideo := emu.reverseVideo
+		if reverseVideo != v.reverseVideo {
+			t.Errorf("%s seq=%q reverseVideo expect %t, got %t\n", v.name, v.seq, v.reverseVideo, reverseVideo)
+		}
+	}
+}

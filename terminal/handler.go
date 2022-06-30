@@ -56,6 +56,9 @@ const (
 	csi_decset
 	csi_decslrm
 	csi_decstbm
+	csi_decstr
+	csi_rm
+	csi_sm
 	csi_scorc
 	csi_scosc
 	esc_decrc
@@ -74,6 +77,9 @@ var strHandlerID = [...]string{
 	"csi-decset",
 	"csi-decslrm",
 	"csi-decstbm",
+	"csi-decstr",
+	"csi-rm",
+	"csi-sm",
 	"csi-scorc",
 	"csi-scosc",
 	"esc-decrc",
@@ -940,15 +946,15 @@ func hdl_csi_sm(emu *emulator, params []int) {
 	for _, param := range params {
 		switch param {
 		case 2:
-			emu.framebuffer.DS.keyboardLocked = true
+			emu.keyboardLocked = true
 		case 4:
-			emu.framebuffer.DS.InsertMode = true // zutty:insertMode
+			emu.insertMode = true // zutty:insertMode
 		case 12:
-			emu.framebuffer.DS.localEcho = false
+			emu.localEcho = false
 		case 20:
-			emu.framebuffer.DS.autoNewlineMode = true
+			emu.autoNewlineMode = true
 		default:
-			emu.logW.Printf("CSI SM: Ignored bogus set mode %d.\n", param)
+			emu.logW.Printf("Ignored bogus set mode %d.\n", param)
 		}
 	}
 }
@@ -962,15 +968,15 @@ func hdl_csi_rm(emu *emulator, params []int) {
 	for _, param := range params {
 		switch param {
 		case 2:
-			emu.framebuffer.DS.keyboardLocked = false
+			emu.keyboardLocked = false
 		case 4:
-			emu.framebuffer.DS.InsertMode = false // zutty:insertMode
+			emu.insertMode = false // zutty:insertMode
 		case 12:
-			emu.framebuffer.DS.localEcho = true
+			emu.localEcho = true
 		case 20:
-			emu.framebuffer.DS.autoNewlineMode = false
+			emu.autoNewlineMode = false
 		default:
-			emu.logW.Printf("CSI RM: Ignored bogus reset mode %d.\n", param)
+			emu.logW.Printf("Ignored bogus reset mode %d.\n", param)
 		}
 	}
 }
@@ -1189,8 +1195,8 @@ func hdl_csi_decstbm(emu *emulator, params []int) {
 
 // CSI ! p   Soft terminal reset (DECSTR), VT220 and up.
 func hdl_csi_decstr(emu *emulator) {
-	// TODO consider the implementation, zutty csi_DECSTR vterm.icc 1748~1749
-	emu.framebuffer.SoftReset()
+	emu.resetScreen()
+	emu.resetAttrs()
 }
 
 // DCS $ q Pt ST

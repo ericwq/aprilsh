@@ -222,6 +222,8 @@ type emulator struct {
 	marginBottom int // current margin bottom (copy of frame field)
 	lastCol      bool
 	attrs        Cell // prototype cell with current attributes
+	fg           Color
+	bg           Color
 	reverseVideo bool
 
 	// move states from drawstate
@@ -309,6 +311,8 @@ func NewEmulator3(nCols, nRows, saveLines int) *emulator {
 	emu.posX = 0
 	emu.posY = 0
 	emu.lastCol = false
+	emu.fg = emu.attrs.renditions.fgColor
+	emu.bg = emu.attrs.renditions.bgColor
 
 	emu.savedCursor_DEC_pri = SavedCursor_DEC{}
 	emu.savedCursor_DEC = &emu.savedCursor_DEC_pri
@@ -322,6 +326,21 @@ func NewEmulator3(nCols, nRows, saveLines int) *emulator {
 
 func (emu *emulator) resetTerminal() {
 	emu.resetScreen()
+	emu.resetAttrs()
+
+	emu.switchColMode(ColMode_C80)
+	emu.framebuffer.dropScrollbackHistory()
+	emu.marginTop, emu.marginBottom = emu.framebuffer.resetMargins()
+	emu.clearScreen()
+
+	emu.switchScreenBufferMode(false)
+	// TODO consider how to implemnt options parameters
+	// emu.altScrollMode
+
+	emu.horizMarginMode = false
+	emu.hMargin = 0
+	emu.nColsEff = emu.nCols
+	// TODO checking hasOSCHandler
 }
 
 func (emu *emulator) resetScreen() {
@@ -350,8 +369,12 @@ func (emu *emulator) resetScreen() {
 
 func (emu *emulator) resetAttrs() {
 	emu.reverseVideo = false
+	emu.fg = emu.attrs.renditions.fgColor
+	emu.bg = emu.attrs.renditions.bgColor
 
-	// TODO checking SGR?
+	// reset the character attributes
+	params := []int{0} // preapare parameters for SGR
+	hdl_csi_sgr(emu, params)
 }
 
 func (emu *emulator) clearScreen() {
