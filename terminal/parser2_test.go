@@ -173,3 +173,89 @@ func TestHandle_DECSET_DECRST_1049(t *testing.T) {
 		place.Reset()
 	}
 }
+
+func TestHandle_DECSET_DECRST_3(t *testing.T) {
+	tc := []struct {
+		name  string
+		seq   string
+		hdIDs []int
+		mode  ColMode
+	}{
+		{"change to column Mode    132", "\x1B[?3h", []int{csi_decset}, ColMode_C132},
+		{"change to column Mode     80", "\x1B[?3l", []int{csi_decrst}, ColMode_C80},
+		{"change to column Mode repeat", "\x1B[?3h\x1B[?3h", []int{csi_decset, csi_decset}, ColMode_C132},
+	}
+
+	p := NewParser()
+	emu := NewEmulator3(80, 40, 500)
+	var place strings.Builder
+	emu.logI.SetOutput(&place)
+	emu.logT.SetOutput(&place)
+
+	for _, v := range tc {
+
+		// process control sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) == 0 {
+			t.Errorf("%s got zero handlers.", v.name)
+		}
+
+		// handle the control sequence
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+			}
+		}
+
+		got := emu.colMode
+		if got != v.mode {
+			t.Errorf("%s:\t %q expect %d, got %d\n", v.name, v.seq, v.mode, got)
+		}
+	}
+}
+
+func TestHandle_DECSET_DECRST_2(t *testing.T) {
+	tc := []struct {
+		name                string
+		seq                 string
+		wantName            []string
+		compatLevel         CompatibilityLevel
+		isResetCharsetState bool
+	}{
+		{"DECSET 2", "\x1B[?2h", []string{"csi-decset"}, CompatLevel_VT400, true},
+		{"DECRST 2", "\x1B[?2l", []string{"csi-decrst"}, CompatLevel_VT52, true},
+	}
+
+	p := NewParser()
+	emu := NewEmulator()
+
+	for _, v := range tc {
+
+		// process control sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) == 0 {
+			t.Errorf("%s got zero handlers.", v.name)
+		}
+
+		// handle the control sequence
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.name != v.wantName[j] { // validate the control sequences name
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName[j], hd.name)
+			}
+		}
+
+		// validate the result
+		got := emu.framebuffer.DS.compatLevel
+		newCS := isNewCharsetState(emu.charsetState)
+		if v.isResetCharsetState != newCS || v.compatLevel != got {
+			t.Errorf("%s %q expect reset CharsetState and compatbility level (%t,%d), got(%t,%d)",
+				v.name, v.seq, true, v.compatLevel, newCS, got)
+		}
+	}
+}
