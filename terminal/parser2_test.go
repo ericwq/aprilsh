@@ -1344,23 +1344,26 @@ func TestHandle_CUU_CUD_CUF_CUB_CUP(t *testing.T) {
 func TestHandle_SU_SD(t *testing.T) {
 	tc := []struct {
 		name             string
-		hdID             int
+		hdIDs            []int
 		activeY, activeX int
 		emptyY1, emptyX1 int
 		emptyY2, emptyX2 int
 		seq              string
 	}{
-		{"SU scroll up   2 lines", csi_su, 5, 0, 38, 0, 39, 79, "\x1B[2S"},
-		{"SD scroll down 3 lines", csi_sd, 5, 0, 0, 0, 2, 79, "\x1B[3T"},
+		{"SU scroll up   2 lines", []int{csi_cup, csi_su}, 5, 0, 38, 0, 39, 79, "\x1B[40;1H\x1B[2S"},
+		{"SD scroll down 3 lines", []int{csi_cup, csi_sd}, 5, 0, 0, 0, 2, 79, "\x1B[1;1H\x1B[3T"},
 	}
 
 	p := NewParser()
 	// the default size of emu is 80x40 [colxrow]
-	emu := NewEmulator3(80, 40, 500)
+	emu := NewEmulator3(80, 40, 5)
 	var place strings.Builder
 	emu.logI.SetOutput(&place)
 	emu.logT.SetOutput(&place)
 
+	// prepare the damage area
+	dmg := Damage{}
+	dmg.totalCells = emu.cf.damage.totalCells
 	for _, v := range tc {
 
 		hds := make([]*Handler, 0, 16)
@@ -1371,7 +1374,7 @@ func TestHandle_SU_SD(t *testing.T) {
 		}
 
 		fillCells(emu.cf)
-		// before := printCells(emu.cf)
+		before := printCells(emu.cf)
 
 		// fill the screen with different rune for each row
 		// ds := emu.cf.DS
@@ -1381,15 +1384,24 @@ func TestHandle_SU_SD(t *testing.T) {
 		// }
 
 		// handle the control sequence
-		for _, hd := range hds {
+		for j, hd := range hds {
 			hd.handle(emu)
-			if hd.id != v.hdID {
-				t.Errorf("%s: seq=%q expect handler %s, got %s\n", v.name, v.seq, strHandlerID[v.hdID], strHandlerID[hd.id])
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 			}
 		}
 
-		// after := printCells(emu.cf)
+		after := printCells(emu.cf)
 
+		// calculate the expected dmage area
+		dmg.start = 8
+		dmg.end = 9
+
+		if emu.cf.damage != dmg {
+			t.Errorf("%q:\n", v.name)
+			t.Errorf("before:\n%s", before)
+			t.Errorf("after:\n%s", after)
+		}
 		// // prepare the validate tools
 		// isEmpty := func(row, col int) bool {
 		// 	return inRange(v.emptyY1, v.emptyX1, v.emptyY2, v.emptyX2, row, col, 80)

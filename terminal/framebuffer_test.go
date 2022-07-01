@@ -27,6 +27,7 @@ SOFTWARE.
 package terminal
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -113,6 +114,7 @@ func printCells(fb *Framebuffer, rows ...int) string {
 		if len(rows) == 0 || inScope(rows, r) {
 			start := fb.getIdx(r, 0)
 			end := start + fb.nCols
+			fmt.Fprintf(&output, "[%3d] ",r)
 			for k := start; k < end; k++ {
 				output.WriteString(fb.cells[k].contents)
 			}
