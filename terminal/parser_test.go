@@ -949,53 +949,6 @@ func TestHandle_HT_CHT_CBT(t *testing.T) {
 	}
 }
 
-func TestHandle_CR_LF_VT_FF(t *testing.T) {
-	tc := []struct {
-		name     string
-		startX   int
-		startY   int
-		wantName string
-		wantX    int
-		wantY    int
-		ctlseq   string
-	}{
-		{"CR 1 ", 1, 2, "c0-cr", 0, 2, "\x0D"},
-		{"CR 2 ", 9, 4, "c0-cr", 0, 4, "\x0D"},
-		{"LF   ", 1, 2, "c0-lf", 1, 3, "\x0C"},
-		{"VT   ", 2, 3, "c0-lf", 2, 4, "\x0B"},
-		{"FF   ", 3, 4, "c0-lf", 3, 5, "\x0C"},
-		{"ESC D", 4, 5, "c0-lf", 4, 6, "\x1BD"},
-	}
-
-	p := NewParser()
-	var hd *Handler
-	emu := NewEmulator()
-	for _, v := range tc {
-
-		for _, ch := range v.ctlseq {
-			hd = p.processInput(ch)
-		}
-		// set the start position
-		emu.framebuffer.DS.MoveRow(v.startY, false)
-		emu.framebuffer.DS.MoveCol(v.startX, false, false)
-
-		// get the result
-		if hd != nil {
-			// handle the instruction
-			hd.handle(emu)
-			gotY := emu.framebuffer.DS.GetCursorRow()
-			gotX := emu.framebuffer.DS.GetCursorCol()
-
-			if gotX != v.wantX || gotY != v.wantY || hd.name != v.wantName {
-				t.Errorf("%s [%s vs %s] expect cursor position (%d,%d), got (%d,%d)\n",
-					v.name, v.wantName, hd.name, v.startX, v.wantY, gotX, gotY)
-			}
-		} else {
-			t.Errorf("%s got nil return\n", v.name)
-		}
-	}
-}
-
 func TestHandle_ENQ_CAN_SUB_ESC(t *testing.T) {
 	tc := []struct {
 		name      string

@@ -48,6 +48,9 @@ const (
 
 const (
 	unused_handlerID = iota
+	c0_cr
+	c0_ht
+	c0_lf
 	csi_cub
 	csi_cud
 	csi_cuf
@@ -73,6 +76,9 @@ const (
 
 var strHandlerID = [...]string{
 	"",
+	"c0-cr",
+	"c0-ht",
+	"c0-lf",
 	"csi-cub",
 	"csi-cud",
 	"csi-cuf",
@@ -225,7 +231,10 @@ func ht_n(fb *Framebuffer, count int) {
 // Horizontal Tab (HTS  is Ctrl-I).
 // move cursor to the next tab position
 func hdl_c0_ht(emu *emulator) {
-	ht_n(emu.framebuffer, 1)
+	if emu.posX < emu.nColsEff-1 {
+		emu.jumpToNextTabStop()
+	}
+	// ht_n(emu.framebuffer, 1)
 }
 
 // Bell (BEL  is Ctrl-G).
@@ -234,16 +243,31 @@ func hdl_c0_bel(emu *emulator) {
 	emu.framebuffer.RingBell()
 }
 
-// FF, VT same as LF
+// FF, VT same as LF a.k.a IND Index
 // move cursor to the next row, scroll down if necessary.
-func hdl_c0_lf(emu *emulator) {
-	emu.framebuffer.MoveRowsAutoscroll(1)
+func hdl_c0_lf(emu *emulator) (scrolled bool) {
+	if emu.posY == emu.marginBottom-1 {
+		// TODO need SU
+		// hdl_csi_su_sd(emu , 1)
+		scrolled = true
+	} else if emu.posY < emu.nRows-1 {
+		emu.posY++
+		emu.lastCol = false
+	}
+	// emu.framebuffer.MoveRowsAutoscroll(1)
+	return
 }
 
 // Carriage Return (CR  is Ctrl-M).
 // move cursor to the head of the same row
 func hdl_c0_cr(emu *emulator) {
-	emu.framebuffer.DS.MoveCol(0, false, false)
+	if emu.originMode == OriginMode_Absolute && emu.posX < emu.hMargin {
+		emu.posX = 0
+	} else {
+		emu.posX = emu.hMargin
+	}
+	emu.lastCol = false
+	// emu.framebuffer.DS.MoveCol(0, false, false)
 }
 
 // SI       Switch to Standard Character Set (Ctrl-O is Shift In or LS0).

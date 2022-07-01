@@ -1190,21 +1190,71 @@ func TestHandle_DECSET_DECRST_69(t *testing.T) {
 	}
 }
 
+func TestHandle_CR_LF_VT_FF(t *testing.T) {
+	tc := []struct {
+		name  string
+		hdIDs []int
+		wantX int
+		wantY int
+		seq   string
+	}{
+		{"CR 1 ", []int{csi_cup, c0_cr}, 0, 2, "\x1B[3;2H\x0D"},
+		{"CR 2 ", []int{csi_cup, c0_cr}, 0, 4, "\x1B[5;10H\x0D"},
+		{"LF   ", []int{csi_cup, c0_lf}, 1, 3, "\x1B[3;2H\x0C"},
+		{"VT   ", []int{csi_cup, c0_lf}, 2, 4, "\x1B[4;3H\x0B"},
+		{"FF   ", []int{csi_cup, c0_lf}, 3, 5, "\x1B[5;4H\x0C"},
+		{"ESC D", []int{csi_cup, c0_lf}, 4, 6, "\x1B[6;5H\x1BD"},
+	}
+
+	p := NewParser()
+	emu := NewEmulator3(80, 40, 500)
+	var place strings.Builder
+	emu.logI.SetOutput(&place)
+	emu.logT.SetOutput(&place)
+	for _, v := range tc {
+
+		// parse the sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) != 2 {
+			t.Errorf("%s got zero handlers.", v.name)
+		}
+
+		// handle the control sequence
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+			}
+		}
+
+		// get final cursor position
+		gotY := emu.posY
+		gotX := emu.posX
+
+		if gotX != v.wantX || gotY != v.wantY {
+			t.Errorf("%s seq=%q expect cursor position (%d,%d), got (%d,%d)\n", v.name, v.seq, v.wantX, v.wantY, gotX, gotY)
+		}
+	}
+}
+
 func TestHandle_CSI_BS_FF_VT_CR_TAB(t *testing.T) {
 	tc := []struct {
-		name           string
-		startX, startY int
-		seq            string
-		wantX, wantY   int
+		name         string
+		hdIDs        []int
+		seq          string
+		wantY, wantX int
 	}{
-		{"CSI backspace number    ", 0, 0, "\x1B[23;12\bH", 0, 23 - 1},       // \b is executed first, just one handler left
-		{"CSI backspace semicolon ", 0, 0, "\x1B[23;\b;12H", 12 - 1, 23 - 1}, // \b is executed first, just one handler left
-		{"cursor down 1+3 rows VT ", 9, 8, "\x1B[3\vB", 9, 12},               // \v handler is handled first
-		{"cursor down 1+3 rows FF ", 9, 8, "\x1B[\f3B", 9, 12},               // \f handler is handled first
-		{"cursor up 2 rows and CR ", 8, 7, "\x1B[\r2A", 0, 5},                // \r handler is handled first
-		{"cursor up 3 rows and CR ", 6, 6, "\x1B[3\rA", 0, 3},                // \r handler is handled first
-		{"cursor forward 2cols +HT", 5, 3, "\x1B[2\tC", 10, 3},               // \t handler is handled first
-		{"cursor forward 1cols +HT", 2, 5, "\x1B[\t1C", 9, 5},                // \t handler is handled first
+		// call CUP first to set the start position
+		{"CSI backspace number    ", []int{csi_cup, csi_cup}, "\x1B[1;1H\x1B[23;12\bH", 22, 0},     // undo last character in CSI sequence
+		{"CSI backspace semicolon ", []int{csi_cup, csi_cup}, "\x1B[1;1H\x1B[23;\b;12H", 22, 11},   // undo last character in CSI sequence
+		{"cursor down 1+3 rows VT ", []int{csi_cup, c0_lf, csi_cud}, "\x1B[9;10H\x1B[3\vB", 12, 9}, //(8,9)->(9.9)->(12,9)
+		{"cursor down 1+3 rows FF ", []int{csi_cup, c0_lf, csi_cud}, "\x1B[9;10H\x1B[\f3B", 12, 9},
+		{"cursor up 2 rows and CR ", []int{csi_cup, c0_cr, csi_cuu}, "\x1B[8;9H\x1B[\r2A", 5, 0},
+		{"cursor up 3 rows and CR ", []int{csi_cup, c0_cr, csi_cuu}, "\x1B[7;7H\x1B[3\rA", 3, 0},
+		{"cursor forward 2cols +HT", []int{csi_cup, c0_ht, csi_cuf}, "\x1B[4;6H\x1B[2\tC", 3, 10},
+		{"cursor forward 1cols +HT", []int{csi_cup, c0_ht, csi_cuf}, "\x1B[6;3H\x1B[\t1C", 5, 9},
 	}
 
 	p := NewParser()
@@ -1214,81 +1264,79 @@ func TestHandle_CSI_BS_FF_VT_CR_TAB(t *testing.T) {
 	emu.logT.SetOutput(&place)
 
 	for _, v := range tc {
-		t.Run(v.name, func(t *testing.T) {
-			// parse control sequence
-			hds := make([]*Handler, 0, 16)
-			hds = p.processStream(v.seq, hds)
+		// parse control sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
 
-			if len(hds) == 0 {
-				t.Errorf("%s got zero handlers.", v.name)
+		if len(hds) == 0 {
+			t.Errorf("%s got zero handlers.", v.name)
+		}
+
+		// handle the control sequence
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s: seq=%q hd[%d] expect %s, got %s\n", v.name, v.seq, j, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 			}
+		}
 
-			// reset the start position
-			emu.posY = v.startY
-			emu.posX = v.startX
-
-			// handle the control sequence
-			for _, hd := range hds {
-				hd.handle(emu)
-			}
-
-			// get the result
-			gotY := emu.posY
-			gotX := emu.posX
-			if gotX != v.wantX || gotY != v.wantY {
-				t.Errorf("%s: seq=%q expect cursor position (%d,%d), got (%d,%d)\n", v.name, v.seq, v.wantX, v.wantY, gotX, gotY)
-			}
-		})
+		// get the result
+		gotY := emu.posY
+		gotX := emu.posX
+		if gotX != v.wantX || gotY != v.wantY {
+			t.Errorf("%s: seq=%q expect cursor position (%d,%d), got (%d,%d)\n", v.name, v.seq, v.wantY, v.wantX, gotY, gotX)
+		}
 	}
 }
 
 func TestHandle_CUU_CUD_CUF_CUB_CUP(t *testing.T) {
 	tc := []struct {
-		name     string
-		startX   int
-		startY   int
-		wantName string
-		wantX    int
-		wantY    int
-		seq      string
+		name  string
+		hdIDs []int
+		wantX int
+		wantY int
+		seq   string
 	}{
-		{"CSI Ps A  ", 10, 20, "csi-cuu", 10, 14, "\x1B[6A"},
-		{"CSI Ps B  ", 10, 10, "csi-cud", 10, 13, "\x1B[3B"},
-		{"CSI Ps C  ", 10, 10, "csi-cuf", 12, 10, "\x1B[2C"},
-		{"CSI Ps D  ", 20, 10, "csi-cub", 12, 10, "\x1B[8D"},
-		{"BS        ", 12, 12, "csi-cub", 11, 12, "\x08"},
-		{"CUB       ", 12, 12, "csi-cub", 11, 12, "\x1B[1D"},
-		{"BS agin   ", 11, 12, "csi-cub", 10, 12, "\x08"},
+		// call CUP first to set the start position
+		{"CSI Ps A  ", []int{csi_cup, csi_cuu}, 10, 14, "\x1B[21;11H\x1B[6A"},
+		{"CSI Ps B  ", []int{csi_cup, csi_cud}, 10, 13, "\x1B[11;11H\x1B[3B"},
+		{"CSI Ps C  ", []int{csi_cup, csi_cuf}, 12, 10, "\x1B[11;11H\x1B[2C"},
+		{"CSI Ps D  ", []int{csi_cup, csi_cub}, 12, 10, "\x1B[11;21H\x1B[8D"},
+		{"BS        ", []int{csi_cup, csi_cub}, 11, 12, "\x1B[13;13H\x08"}, // \x08 calls CUB
+		{"CUB       ", []int{csi_cup, csi_cub}, 11, 12, "\x1B[13;13H\x1B[1D"},
+		{"BS agin   ", []int{csi_cup, csi_cub}, 10, 12, "\x1B[13;12H\x08"}, // \x08 calls CUB
 	}
 
 	p := NewParser()
+	emu := NewEmulator3(80, 40, 500)
+	var place strings.Builder
+	emu.logI.SetOutput(&place)
+	emu.logT.SetOutput(&place)
+
 	for _, v := range tc {
-		var hd *Handler
-		emu := NewEmulator()
 
 		// parse the sequence
-		for _, ch := range v.seq {
-			hd = p.processInput(ch)
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) != 2 {
+			t.Errorf("%s got zero handlers.", v.name)
 		}
-		if hd != nil {
 
-			// set the start position
-			emu.framebuffer.DS.MoveRow(v.startY, false)
-			emu.framebuffer.DS.MoveCol(v.startX, false, false)
-
-			// handle the instruction
+		// handle the control sequence
+		for j, hd := range hds {
 			hd.handle(emu)
-
-			// get the result
-			gotY := emu.framebuffer.DS.GetCursorRow()
-			gotX := emu.framebuffer.DS.GetCursorCol()
-
-			if gotX != v.wantX || gotY != v.wantY || hd.name != v.wantName {
-				t.Errorf("%s [%s vs %s] expect cursor position (%d,%d), got (%d,%d)\n",
-					v.name, v.wantName, hd.name, v.wantX, v.wantY, gotX, gotY)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 			}
-		} else {
-			t.Errorf("%s got nil return\n", v.name)
+		}
+
+		// get final cursor position
+		gotY := emu.posY
+		gotX := emu.posX
+
+		if gotX != v.wantX || gotY != v.wantY {
+			t.Errorf("%s seq=%q expect cursor position (%d,%d), got (%d,%d)\n", v.name, v.seq, v.wantX, v.wantY, gotX, gotY)
 		}
 	}
 }

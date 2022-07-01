@@ -440,7 +440,7 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 
 // Carriage Return
 func (p *Parser) handle_CR() (hd *Handler) {
-	hd = &Handler{name: "c0-cr", ch: p.ch}
+	hd = &Handler{id: c0_cr, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_c0_cr(emu)
 	}
@@ -450,7 +450,7 @@ func (p *Parser) handle_CR() (hd *Handler) {
 
 // Line Feed
 func (p *Parser) handle_IND() (hd *Handler) {
-	hd = &Handler{name: "c0-lf", ch: p.ch}
+	hd = &Handler{id: c0_lf, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_c0_lf(emu)
 	}
@@ -461,7 +461,7 @@ func (p *Parser) handle_IND() (hd *Handler) {
 // Horizontal Tab
 // move cursor position to next tab stop
 func (p *Parser) handle_HT() (hd *Handler) {
-	hd = &Handler{name: "c0-ht", ch: p.ch}
+	hd = &Handler{id: c0_ht, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_c0_ht(emu)
 	}
@@ -1286,7 +1286,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case '\x0D': // CR is \r
 			p.traceNormalInput()
 			hd = p.handle_CR()
-		case '\x0C', '\x0B', '\x0A': // FF is \f, VT is \v, LF is \n, they are handled same as IND
+		case '\x0C', '\x0B', '\x0A': // FF(\f), VT(\v), LF(\n), they are handled same as IND
 			p.traceNormalInput()
 			hd = p.handle_IND()
 		case '\x09': // HT/TAB is \t

@@ -443,6 +443,22 @@ func (emu *emulator) normalizeCursorPos() {
 	}
 }
 
+func (emu *emulator) jumpToNextTabStop() {
+	if len(emu.tabStops) == 0 {
+		margin := 0
+		if emu.isCursorInsideMargins() {
+			margin = emu.hMargin
+		}
+		// Hard default of 8 chars limited to right margin
+		for ok := true; ok; ok = emu.posX < margin {
+			emu.posX = ((emu.posX / 8) + 1) * 8
+		}
+		emu.posX = min(emu.posX, emu.nColsEff-1)
+	}
+	// TODO tabStops set case
+	emu.lastCol = false
+}
+
 func (emu *emulator) lookupCharset(p rune) (r rune) {
 	// choose the charset based on instructions before
 	var cs *map[byte]rune
