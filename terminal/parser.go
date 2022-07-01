@@ -656,7 +656,7 @@ func (p *Parser) handle_DCH() (hd *Handler) {
 func (p *Parser) handle_SU() (hd *Handler) {
 	lines := p.getPs(0, 1)
 
-	hd = &Handler{name: "csi-su-sd", ch: p.ch}
+	hd = &Handler{id: csi_su, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_su_sd(emu, lines)
 	}
@@ -671,7 +671,7 @@ func (p *Parser) handle_SU() (hd *Handler) {
 func (p *Parser) handle_SD() (hd *Handler) {
 	lines := p.getPs(0, 1)
 
-	hd = &Handler{name: "csi-su-sd", ch: p.ch}
+	hd = &Handler{id: csi_sd, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_su_sd(emu, -lines)
 	}

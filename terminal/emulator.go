@@ -197,9 +197,9 @@ type CharsetState struct {
 type emulator struct {
 	dispatcher Dispatcher
 
-	framebuffer    *Framebuffer
-	primaryFrame   Framebuffer // normal screen buffer
-	alternateFrame Framebuffer // alternate screen buffer
+	cf             *Framebuffer // current frame buffer
+	primaryFrame   Framebuffer  // normal screen buffer
+	alternateFrame Framebuffer  // alternate screen buffer
 
 	charsetState CharsetState
 	user         UserInput
@@ -275,7 +275,7 @@ func NewEmulator() *emulator {
 
 	// defalult size 80x40
 	emu.primaryFrame = *NewFramebuffer(80, 40)
-	emu.framebuffer = &emu.primaryFrame
+	emu.cf = &emu.primaryFrame
 
 	emu.initSelectionData()
 	emu.initLog()
@@ -286,8 +286,8 @@ func NewEmulator3(nCols, nRows, saveLines int) *emulator {
 	// TODO makePalette256 (palette256);
 
 	emu := &emulator{}
-	emu.framebuffer, emu.marginTop, emu.marginBottom = NewFramebuffer3(nCols, nRows, saveLines)
-	emu.primaryFrame = *emu.framebuffer
+	emu.cf, emu.marginTop, emu.marginBottom = NewFramebuffer3(nCols, nRows, saveLines)
+	emu.primaryFrame = *emu.cf
 
 	emu.nCols = nCols
 	emu.nRows = nRows
@@ -329,8 +329,8 @@ func (emu *emulator) resetTerminal() {
 	emu.resetAttrs()
 
 	emu.switchColMode(ColMode_C80)
-	emu.framebuffer.dropScrollbackHistory()
-	emu.marginTop, emu.marginBottom = emu.framebuffer.resetMargins()
+	emu.cf.dropScrollbackHistory()
+	emu.marginTop, emu.marginBottom = emu.cf.resetMargins()
 	emu.clearScreen()
 
 	emu.switchScreenBufferMode(false)
@@ -364,7 +364,7 @@ func (emu *emulator) resetScreen() {
 
 	emu.mouseTrk = MouseTrackingState{}
 	emu.tabStops = make([]int, 0)
-	emu.framebuffer.getSelection().clear()
+	emu.cf.getSelection().clear()
 }
 
 func (emu *emulator) resetAttrs() {
@@ -385,7 +385,7 @@ func (emu *emulator) clearScreen() {
 }
 
 func (emu *emulator) fillScreen(ch rune) {
-	emu.framebuffer.fillCells(ch, emu.attrs)
+	emu.cf.fillCells(ch, emu.attrs)
 }
 
 func (emu *emulator) initSelectionData() {
@@ -478,7 +478,7 @@ func (emu *emulator) lookupCharset(p rune) (r rune) {
 }
 
 func (emu *emulator) resize(width, height int) {
-	emu.framebuffer.Resize(width, height)
+	emu.cf.Resize(width, height)
 }
 
 func (emu *emulator) switchScreenBufferMode(altScreenBufferMode bool) {
@@ -487,15 +487,15 @@ func (emu *emulator) switchScreenBufferMode(altScreenBufferMode bool) {
 	}
 
 	if altScreenBufferMode {
-		emu.framebuffer, emu.marginTop, emu.marginBottom = NewFramebuffer3(emu.nCols, emu.nRows, 0)
-		emu.alternateFrame = *emu.framebuffer
+		emu.cf, emu.marginTop, emu.marginBottom = NewFramebuffer3(emu.nCols, emu.nRows, 0)
+		emu.alternateFrame = *emu.cf
 
 		emu.savedCursor_DEC = &emu.savedCursor_DEC_alt
 		emu.altScreenBufferMode = true
 	} else {
-		emu.framebuffer = &emu.primaryFrame
-		emu.marginTop, emu.marginBottom = emu.framebuffer.resize(emu.nCols, emu.nRows)
-		emu.framebuffer.expose()
+		emu.cf = &emu.primaryFrame
+		emu.marginTop, emu.marginBottom = emu.cf.resize(emu.nCols, emu.nRows)
+		emu.cf.expose()
 
 		emu.savedCursor_DEC_alt.isSet = false
 		emu.savedCursor_DEC = &emu.savedCursor_DEC_pri
@@ -523,7 +523,7 @@ func (emu *emulator) switchColMode(colMode ColMode) {
 }
 
 func (emu *emulator) isCursorInsideMargins() bool {
-	return emu.posX >= emu.framebuffer.DS.hMargin && emu.posX < emu.framebuffer.DS.nColsEff &&
+	return emu.posX >= emu.cf.DS.hMargin && emu.posX < emu.cf.DS.nColsEff &&
 		emu.posY >= emu.marginTop && emu.posY < emu.marginBottom
 }
 

@@ -1340,3 +1340,74 @@ func TestHandle_CUU_CUD_CUF_CUB_CUP(t *testing.T) {
 		}
 	}
 }
+
+func TestHandle_SU_SD(t *testing.T) {
+	tc := []struct {
+		name             string
+		wantName         string
+		activeY, activeX int
+		emptyY1, emptyX1 int
+		emptyY2, emptyX2 int
+		seq              string
+	}{
+		{"SU scroll up   2 lines", "csi-su-sd", 5, 0, 38, 0, 39, 79, "\x1B[2S"},
+		{"SD scroll down 3 lines", "csi-su-sd", 5, 0, 0, 0, 2, 79, "\x1B[3T"},
+	}
+
+	p := NewParser()
+	// the default size of emu is 80x40 [colxrow]
+	emu := NewEmulator()
+	for _, v := range tc {
+
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) == 0 {
+			t.Errorf("%s got zero handlers.", v.name)
+		}
+
+		// fill the screen with different rune for each row
+		ds := emu.cf.DS
+		for i := 0; i < ds.GetHeight(); i++ {
+			row := emu.cf.GetRow(i)
+			fillRowWith(row, rune(0x0030+i))
+		}
+
+		// handle the control sequence
+		for _, hd := range hds {
+			hd.handle(emu)
+			if hd.name != v.wantName {
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+			}
+		}
+
+		// prepare the validate tools
+		isEmpty := func(row, col int) bool {
+			return inRange(v.emptyY1, v.emptyX1, v.emptyY2, v.emptyX2, row, col, 80)
+		}
+
+		cellIn := func(row int) string {
+			return getCellAtRow(v.emptyY1, v.emptyY2, row)
+		}
+		// validate the whole screen.
+		for i := 0; i < ds.GetHeight(); i++ {
+			// print the row
+			row := emu.cf.GetRow(i)
+			t.Logf("%2d %s %s\n", i, row.String(), cellIn(i))
+
+			// validate the cell should be empty
+			for j := 0; j < ds.GetWidth(); j++ {
+				cell := emu.cf.GetCell(i, j)
+				if isEmpty(i, j) {
+					if cell.contents != "" {
+						t.Errorf("%s seq=%q expect empty cell at (%d,%d), got %q.\n", v.name, v.seq, i, j, cell.contents)
+					}
+				} else {
+					if cell.contents != cellIn(i) {
+						t.Errorf("%s seq=%q expect none empty cell at (%d,%d), got %s.\n", v.name, v.seq, i, j, cellIn(i))
+					}
+				}
+			}
+		}
+	}
+}

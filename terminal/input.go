@@ -23,7 +23,7 @@ type Resize struct {
 }
 
 func (u UserByte) handle(emu emulator) {
-	ret := emu.user.parse(u, emu.framebuffer.DS.ApplicationModeCursorKeys)
+	ret := emu.user.parse(u, emu.cf.DS.ApplicationModeCursorKeys)
 	emu.dispatcher.terminalToHost.WriteString(ret)
 }
 

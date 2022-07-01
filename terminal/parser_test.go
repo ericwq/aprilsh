@@ -235,10 +235,10 @@ func TestHandle_Graphemes(t *testing.T) {
 			}
 
 			// move to the new row
-			emu.framebuffer.DS.MoveRow(i, false)
+			emu.cf.DS.MoveRow(i, false)
 
 			// move to the start col.
-			emu.framebuffer.DS.MoveCol(v.want, false, false)
+			emu.cf.DS.MoveCol(v.want, false, false)
 
 			for _, hd := range hds {
 				hd.handle(emu)
@@ -259,7 +259,7 @@ func TestHandle_Graphemes(t *testing.T) {
 				// get the cell from framebuffer
 				rows := i
 				cols := v.cols[j]
-				cell := emu.framebuffer.GetCell(rows, cols)
+				cell := emu.cf.GetCell(rows, cols)
 
 				if cell.contents != string(chs) {
 					t.Errorf("%s:\t [row,cols]:[%2d,%2d] expect %q, got %q\n", v.name, rows, cols, string(chs), cell.contents)
@@ -316,20 +316,20 @@ func TestHandle_Graphemes_Wrap(t *testing.T) {
 			}
 
 			// move to the start row/col
-			emu.framebuffer.DS.MoveRow(v.y, false)
-			emu.framebuffer.DS.MoveCol(v.x, false, false)
+			emu.cf.DS.MoveRow(v.y, false)
+			emu.cf.DS.MoveCol(v.x, false, false)
 
 			// enable insert mode for this test case
 			if strings.HasPrefix(v.name, "insert") {
-				emu.framebuffer.DS.InsertMode = true
+				emu.cf.DS.InsertMode = true
 			}
 
 			for _, hd := range hds {
 				hd.handle(emu)
 			}
 
-			row1 := emu.framebuffer.GetRow(v.y)
-			row2 := emu.framebuffer.GetRow(v.y + 1)
+			row1 := emu.cf.GetRow(v.y)
+			row2 := emu.cf.GetRow(v.y + 1)
 			t.Logf("%s\n", row1.String())
 			t.Logf("%s\n", row2.String())
 
@@ -345,7 +345,7 @@ func TestHandle_Graphemes_Wrap(t *testing.T) {
 				if cols == 0 { // wrap
 					rows += 1
 				}
-				cell := emu.framebuffer.GetCell(rows, cols)
+				cell := emu.cf.GetCell(rows, cols)
 
 				if cell.contents != string(chs) {
 					t.Errorf("%s:\t [row,cols]:[%2d,%2d] expect %q, got %q\n", v.name, rows, cols, string(chs), cell.contents)
@@ -723,8 +723,8 @@ func TestHandle_OSC_0_1_2(t *testing.T) {
 			hd.handle(emu)
 
 			// get the result
-			windowTitle := emu.framebuffer.windowTitle
-			iconName := emu.framebuffer.iconName
+			windowTitle := emu.cf.windowTitle
+			iconName := emu.cf.iconName
 
 			if hd.name != v.wantName {
 				t.Errorf("%s seq=%q expect handler name %q, got %q\n", v.name, v.seq, v.wantName, hd.name)
@@ -797,7 +797,7 @@ func TestHandle_BEL(t *testing.T) {
 		hd.handle(emu)
 
 		// theck the handler name and bell count
-		bellCount := emu.framebuffer.GetBellCount()
+		bellCount := emu.cf.GetBellCount()
 		if bellCount == 0 || hd.name != "c0-bel" {
 			t.Errorf("BEL expect %d, got %d", 1, bellCount)
 		}
@@ -828,16 +828,16 @@ func TestHandle_RI_NEL(t *testing.T) {
 			hd = p.processInput(ch)
 		}
 		// set the start position
-		emu.framebuffer.DS.MoveRow(v.startY, false)
-		emu.framebuffer.DS.MoveCol(5, false, false)
+		emu.cf.DS.MoveRow(v.startY, false)
+		emu.cf.DS.MoveCol(5, false, false)
 
 		// get the result
 		if hd != nil {
 			// handle the instruction
 			hd.handle(emu)
 
-			gotY := emu.framebuffer.DS.GetCursorRow()
-			gotX := emu.framebuffer.DS.GetCursorCol()
+			gotY := emu.cf.DS.GetCursorRow()
+			gotX := emu.cf.DS.GetCursorCol()
 
 			if gotX != v.wantX || gotY != v.wantY || hd.name != v.wantName {
 				t.Errorf("%s [%s vs %s] expect cursor position (%d,%d), got (%d,%d)\n",
@@ -867,8 +867,8 @@ func TestHandle_HTS_TBC(t *testing.T) {
 	for _, v := range tc {
 
 		// set the start position
-		emu.framebuffer.DS.MoveRow(2, false)
-		emu.framebuffer.DS.MoveCol(v.position, false, false)
+		emu.cf.DS.MoveRow(2, false)
+		emu.cf.DS.MoveCol(v.position, false, false)
 
 		// set the tab stop position
 		for _, ch := range v.setSeq {
@@ -881,7 +881,7 @@ func TestHandle_HTS_TBC(t *testing.T) {
 		hd.handle(emu)
 
 		// verify the position is set == true
-		if !emu.framebuffer.DS.tabs[v.position] {
+		if !emu.cf.DS.tabs[v.position] {
 			t.Errorf("%s expect true, got %t\n", v.name, false)
 		}
 
@@ -897,7 +897,7 @@ func TestHandle_HTS_TBC(t *testing.T) {
 		hd.handle(emu)
 
 		// verify the position is set == false
-		if emu.framebuffer.DS.tabs[v.position] {
+		if emu.cf.DS.tabs[v.position] {
 			t.Errorf("%s expect false, got %t\n", v.name, true)
 		}
 	}
@@ -930,15 +930,15 @@ func TestHandle_HT_CHT_CBT(t *testing.T) {
 			hd = p.processInput(ch)
 		}
 		// set the start position
-		emu.framebuffer.DS.MoveRow(2, false)
-		emu.framebuffer.DS.MoveCol(v.startX, false, false)
+		emu.cf.DS.MoveRow(2, false)
+		emu.cf.DS.MoveCol(v.startX, false, false)
 
 		// handle the instruction
 		hd.handle(emu)
 
 		// get the result
 		if hd != nil {
-			gotX := emu.framebuffer.DS.GetCursorCol()
+			gotX := emu.cf.DS.GetCursorCol()
 
 			if gotX != v.wantX || hd.name != v.wantName {
 				t.Errorf("%s [%s vs %s] expect cursor cols=%d, got %d)\n", v.name, v.wantName, hd.name, v.wantX, gotX)
@@ -1043,7 +1043,7 @@ func TestHandle_DECALN_RIS(t *testing.T) {
 		if hd != nil {
 			hd.handle(emu)
 
-			theCell := emu.framebuffer.GetCell(v.y, v.x)
+			theCell := emu.cf.GetCell(v.y, v.x)
 			if v.want != theCell.contents || hd.name != v.wantName {
 				t.Errorf("%s:\t [%s vs %s] expect (10,10) %q, got %q",
 					v.name, v.wantName, hd.name, v.want, theCell.contents)
@@ -1133,8 +1133,8 @@ func TestHandle_ED_IL_DL(t *testing.T) {
 		}
 
 		// move cursor to the active row
-		emu.framebuffer.DS.MoveRow(v.activeY, false)
-		emu.framebuffer.DS.MoveCol(v.activeX, false, false)
+		emu.cf.DS.MoveRow(v.activeY, false)
+		emu.cf.DS.MoveCol(v.activeX, false, false)
 		for i, hd := range hds {
 			hd.handle(emu)
 			if i == 1 && hd.name != v.wantName {
@@ -1143,7 +1143,7 @@ func TestHandle_ED_IL_DL(t *testing.T) {
 		}
 
 		// prepare the validate tools
-		ds := emu.framebuffer.DS
+		ds := emu.cf.DS
 		isEmpty := func(row, col int) bool {
 			return inRange(v.emptyY1, v.emptyX1, v.emptyY2, v.emptyX2, row, col, 80)
 		}
@@ -1151,12 +1151,12 @@ func TestHandle_ED_IL_DL(t *testing.T) {
 		// validate the whole screen.
 		for i := 0; i < ds.GetHeight(); i++ {
 			// print the row
-			row := emu.framebuffer.GetRow(i)
+			row := emu.cf.GetRow(i)
 			t.Logf("%2d %s\n", i, row.String())
 
 			// validate the cell should be empty
 			for j := 0; j < ds.GetWidth(); j++ {
-				cell := emu.framebuffer.GetCell(i, j)
+				cell := emu.cf.GetCell(i, j)
 				if isEmpty(i, j) && cell.contents == "E" {
 					t.Errorf("%s seq=%q expect empty cell at (%d,%d), got %q.\n", v.name, v.seq, i, j, cell.contents)
 				} else if !isEmpty(i, j) && cell.contents == "" {
@@ -1222,12 +1222,12 @@ func TestHandle_ICH_EL_DCH_ECH(t *testing.T) {
 		}
 
 		// fill the row with content
-		row := emu.framebuffer.GetRow(v.startY)
+		row := emu.cf.GetRow(v.startY)
 		fillRowWith(row, 'H')
 
 		// move cursor to the active row
-		emu.framebuffer.DS.MoveRow(v.startY, false)
-		emu.framebuffer.DS.MoveCol(v.startX, false, false)
+		emu.cf.DS.MoveRow(v.startY, false)
+		emu.cf.DS.MoveCol(v.startX, false, false)
 
 		// call the handler
 		for _, hd := range hds {
@@ -1246,83 +1246,12 @@ func TestHandle_ICH_EL_DCH_ECH(t *testing.T) {
 		}
 
 		// validate the result
-		for col := 0; col < emu.framebuffer.DS.width; col++ {
-			cell := emu.framebuffer.GetCell(v.startY, col)
+		for col := 0; col < emu.cf.DS.width; col++ {
+			cell := emu.cf.GetCell(v.startY, col)
 			if isEmpty(col) && cell.contents == "H" {
 				t.Errorf("%s seq=%q cols=%d expect empty cell, got 'H' cell\n", v.name, v.seq, col)
 			} else if !isEmpty(col) && cell.contents == "" {
 				t.Errorf("%s seq=%q cols=%d expect 'H' cell, got empty cell\n", v.name, v.seq, col)
-			}
-		}
-	}
-}
-
-func TestHandle_SU_SD(t *testing.T) {
-	tc := []struct {
-		name             string
-		wantName         string
-		activeY, activeX int
-		emptyY1, emptyX1 int
-		emptyY2, emptyX2 int
-		seq              string
-	}{
-		{"SU scroll up   2 lines", "csi-su-sd", 5, 0, 38, 0, 39, 79, "\x1B[2S"},
-		{"SD scroll down 3 lines", "csi-su-sd", 5, 0, 0, 0, 2, 79, "\x1B[3T"},
-	}
-
-	p := NewParser()
-	// the default size of emu is 80x40 [colxrow]
-	emu := NewEmulator()
-	for _, v := range tc {
-
-		hds := make([]*Handler, 0, 16)
-		hds = p.processStream(v.seq, hds)
-
-		if len(hds) == 0 {
-			t.Errorf("%s got zero handlers.", v.name)
-		}
-
-		// fill the screen with different rune for each row
-		ds := emu.framebuffer.DS
-		for i := 0; i < ds.GetHeight(); i++ {
-			row := emu.framebuffer.GetRow(i)
-			fillRowWith(row, rune(0x0030+i))
-		}
-
-		// handle the control sequence
-		for _, hd := range hds {
-			hd.handle(emu)
-			if hd.name != v.wantName {
-				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
-			}
-		}
-
-		// prepare the validate tools
-		isEmpty := func(row, col int) bool {
-			return inRange(v.emptyY1, v.emptyX1, v.emptyY2, v.emptyX2, row, col, 80)
-		}
-
-		cellIn := func(row int) string {
-			return getCellAtRow(v.emptyY1, v.emptyY2, row)
-		}
-		// validate the whole screen.
-		for i := 0; i < ds.GetHeight(); i++ {
-			// print the row
-			row := emu.framebuffer.GetRow(i)
-			t.Logf("%2d %s %s\n", i, row.String(), cellIn(i))
-
-			// validate the cell should be empty
-			for j := 0; j < ds.GetWidth(); j++ {
-				cell := emu.framebuffer.GetCell(i, j)
-				if isEmpty(i, j) {
-					if cell.contents != "" {
-						t.Errorf("%s seq=%q expect empty cell at (%d,%d), got %q.\n", v.name, v.seq, i, j, cell.contents)
-					}
-				} else {
-					if cell.contents != cellIn(i) {
-						t.Errorf("%s seq=%q expect none empty cell at (%d,%d), got %s.\n", v.name, v.seq, i, j, cellIn(i))
-					}
-				}
 			}
 		}
 	}
@@ -1371,8 +1300,8 @@ func TestHandle_VPA_CHA_HPA(t *testing.T) {
 		}
 
 		// move cursor to the active row
-		emu.framebuffer.DS.MoveRow(v.startY, false)
-		emu.framebuffer.DS.MoveCol(v.startX, false, false)
+		emu.cf.DS.MoveRow(v.startY, false)
+		emu.cf.DS.MoveCol(v.startX, false, false)
 
 		// handle the control sequence
 		for _, hd := range hds {
@@ -1382,8 +1311,8 @@ func TestHandle_VPA_CHA_HPA(t *testing.T) {
 			}
 		}
 
-		gotX := emu.framebuffer.DS.GetCursorCol()
-		gotY := emu.framebuffer.DS.GetCursorRow()
+		gotX := emu.cf.DS.GetCursorCol()
+		gotY := emu.cf.DS.GetCursorRow()
 
 		if v.wantX != gotX || v.wantY != gotY {
 			t.Errorf("%s seq=%q expect (%d,%d), got (%d,%d)\n", v.name, v.seq, v.wantY, v.wantX, gotY, gotX)
@@ -1439,7 +1368,7 @@ func TestHandle_SGR_RGBcolor(t *testing.T) {
 			}
 
 			// reset the renditions
-			emu.framebuffer.DS.GetRenditions().ClearAttributes()
+			emu.cf.DS.GetRenditions().ClearAttributes()
 
 			// handle the control sequence
 			for _, hd := range hds {
@@ -1450,7 +1379,7 @@ func TestHandle_SGR_RGBcolor(t *testing.T) {
 			}
 
 			// validate the result
-			got := emu.framebuffer.DS.GetRenditions()
+			got := emu.cf.DS.GetRenditions()
 			want := &Renditions{}
 			want.SetBgColor(v.br, v.bg, v.bb)
 			want.SetFgColor(v.fr, v.fg, v.fb)
@@ -1519,7 +1448,7 @@ func TestHandle_SGR_ANSIcolor(t *testing.T) {
 				t.Errorf("%s got zero handlers.", v.name)
 			}
 
-			emu.framebuffer.DS.AddRenditions()
+			emu.cf.DS.AddRenditions()
 
 			// handle the control sequence
 			for _, hd := range hds {
@@ -1530,7 +1459,7 @@ func TestHandle_SGR_ANSIcolor(t *testing.T) {
 			}
 
 			// validate the result
-			got := emu.framebuffer.DS.GetRenditions()
+			got := emu.cf.DS.GetRenditions()
 			want := &Renditions{}
 			want.setAnsiForeground(v.fg)
 			want.setAnsiBackground(v.bg)
@@ -1577,7 +1506,7 @@ func TestHandle_SGR_Break(t *testing.T) {
 			}
 
 			// reset the renditions
-			emu.framebuffer.DS.AddRenditions()
+			emu.cf.DS.AddRenditions()
 
 			// handle the control sequence
 			for _, hd := range hds {
@@ -1588,7 +1517,7 @@ func TestHandle_SGR_Break(t *testing.T) {
 			}
 
 			// validate the result
-			got := emu.framebuffer.DS.GetRenditions()
+			got := emu.cf.DS.GetRenditions()
 			want := &Renditions{}
 
 			if *got != *want {
@@ -1628,10 +1557,10 @@ func TestHandle_DSR6(t *testing.T) {
 			}
 
 			// set condition
-			emu.framebuffer.DS.OriginMode = v.originMode
+			emu.cf.DS.OriginMode = v.originMode
 			// move to the start position
-			emu.framebuffer.DS.MoveRow(v.startY, false)
-			emu.framebuffer.DS.MoveCol(v.startX, false, false)
+			emu.cf.DS.MoveRow(v.startY, false)
+			emu.cf.DS.MoveCol(v.startX, false, false)
 
 			// execute the sequence handler
 			if hd != nil {
@@ -1795,7 +1724,7 @@ func TestHandle_OSC_52(t *testing.T) {
 	emu := NewEmulator()
 
 	for _, v := range tc {
-		emu.framebuffer.selectionData = ""
+		emu.cf.selectionData = ""
 		emu.dispatcher.terminalToHost.Reset()
 
 		t.Run(v.name, func(t *testing.T) {
@@ -1816,8 +1745,8 @@ func TestHandle_OSC_52(t *testing.T) {
 			}
 
 			if v.noReply {
-				if v.wantString != emu.framebuffer.selectionData {
-					t.Errorf("%s: seq=%q expect %q, got %q\n", v.name, v.seq, v.wantString, emu.framebuffer.selectionData)
+				if v.wantString != emu.cf.selectionData {
+					t.Errorf("%s: seq=%q expect %q, got %q\n", v.name, v.seq, v.wantString, emu.cf.selectionData)
 				}
 				for _, ch := range v.wantPc {
 					if data, ok := emu.selectionData[ch]; ok && data == v.wantPd {
@@ -2042,13 +1971,13 @@ func TestHandle_OSC_10x(t *testing.T) {
 
 			// set pre-condition
 			if v.fgColor != invalidColor {
-				emu.framebuffer.DS.renditions.fgColor = v.fgColor
+				emu.cf.DS.renditions.fgColor = v.fgColor
 			}
 			if v.bgColor != invalidColor {
-				emu.framebuffer.DS.renditions.bgColor = v.bgColor
+				emu.cf.DS.renditions.bgColor = v.bgColor
 			}
 			if v.cursorColor != invalidColor {
-				emu.framebuffer.DS.cursorColor = v.cursorColor
+				emu.cf.DS.cursorColor = v.cursorColor
 			}
 
 			// execute the control sequence
@@ -2259,7 +2188,7 @@ func TestHandle_DECSCL(t *testing.T) {
 
 		switch i {
 		case 0, 1, 2, 3, 4:
-			got := emu.framebuffer.DS.compatLevel
+			got := emu.cf.DS.compatLevel
 			if got != v.cmpLevel {
 				t.Errorf("%s:\t %q, expect %d, got %d\n", v.name, v.seq, v.cmpLevel, got)
 			}

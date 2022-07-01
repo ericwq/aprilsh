@@ -65,7 +65,9 @@ const (
 	csi_decstbm
 	csi_decstr
 	csi_rm
+	csi_sd
 	csi_sm
+	csi_su
 	csi_scorc
 	csi_scosc
 	esc_decrc
@@ -93,7 +95,9 @@ var strHandlerID = [...]string{
 	"csi-decstbm",
 	"csi-decstr",
 	"csi-rm",
+	"csi-sd",
 	"csi-sm",
+	"csi-su",
 	"csi-scorc",
 	"csi-scosc",
 	"esc-decrc",
@@ -147,7 +151,7 @@ func hdl_graphemes(emu *emulator, chs ...rune) {
 	// }
 
 	// get current cursor cell
-	fb := emu.framebuffer
+	fb := emu.cf
 	thisCell := fb.GetCell(-1, -1)
 	chWidth := runesWidth(chs)
 
@@ -240,7 +244,7 @@ func hdl_c0_ht(emu *emulator) {
 // Bell (BEL  is Ctrl-G).
 // ring the bell
 func hdl_c0_bel(emu *emulator) {
-	emu.framebuffer.RingBell()
+	emu.cf.RingBell()
 }
 
 // FF, VT same as LF a.k.a IND Index
@@ -349,25 +353,25 @@ func hdl_esc_dcs(emu *emulator, index int, charset *map[byte]rune) {
 // ESC H Tab Set (HTS is 0x88).
 // set cursor position as tab stop position
 func hdl_esc_hts(emu *emulator) {
-	emu.framebuffer.DS.SetTab()
+	emu.cf.DS.SetTab()
 }
 
 // ESC M  Reverse Index (RI  is 0x8d).
 // reverse index -- like a backwards line feed
 func hdl_esc_ri(emu *emulator) {
-	emu.framebuffer.MoveRowsAutoscroll(-1)
+	emu.cf.MoveRowsAutoscroll(-1)
 }
 
 // ESC E  Next Line (NEL  is 0x85).
 func hdl_esc_nel(emu *emulator) {
-	emu.framebuffer.DS.MoveCol(0, false, false)
-	emu.framebuffer.MoveRowsAutoscroll(1)
+	emu.cf.DS.MoveCol(0, false, false)
+	emu.cf.MoveRowsAutoscroll(1)
 }
 
 // ESC c     Full Reset (RIS), VT100.
 // reset the screen
 func hdl_esc_ris(emu *emulator) {
-	emu.framebuffer.Reset()
+	emu.cf.Reset()
 }
 
 // ESC 7     Save Cursor (DECSC), VT100.
@@ -400,7 +404,7 @@ func hdl_esc_decrc(emu *emulator) {
 // ESC # 8   DEC Screen Alignment Test (DECALN), VT100.
 // fill the screen with 'E'
 func hdl_esc_decaln(emu *emulator) {
-	fb := emu.framebuffer
+	fb := emu.cf
 	for y := 0; y < fb.DS.GetHeight(); y++ {
 		for x := 0; x < fb.DS.GetWidth(); x++ {
 			fb.ResetCell(fb.GetCell(y, x))
@@ -415,28 +419,28 @@ func hdl_esc_decaln(emu *emulator) {
 func hdl_csi_tbc(emu *emulator, cmd int) {
 	switch cmd {
 	case 0: // clear this tab stop
-		emu.framebuffer.DS.ClearTab(emu.framebuffer.DS.GetCursorCol())
+		emu.cf.DS.ClearTab(emu.cf.DS.GetCursorCol())
 	case 3: // clear all tab stops
-		emu.framebuffer.DS.ClearDefaultTabs()
-		for i := 0; i < emu.framebuffer.DS.GetWidth(); i++ {
-			emu.framebuffer.DS.ClearTab(i)
+		emu.cf.DS.ClearDefaultTabs()
+		for i := 0; i < emu.cf.DS.GetWidth(); i++ {
+			emu.cf.DS.ClearTab(i)
 		}
 	}
 }
 
 // CSI Ps I  Cursor Forward Tabulation Ps tab stops (default = 1) (CHT).
 func hdl_csi_cht(emu *emulator, count int) {
-	ht_n(emu.framebuffer, count)
+	ht_n(emu.cf, count)
 }
 
 // CSI Ps Z  Cursor Backward Tabulation Ps tab stops (default = 1) (CBT).
 func hdl_csi_cbt(emu *emulator, count int) {
-	ht_n(emu.framebuffer, -count)
+	ht_n(emu.cf, -count)
 }
 
 // CSI Ps @  Insert Ps (Blank) Character(s) (default = 1) (ICH).
 func hdl_csi_ich(emu *emulator, count int) {
-	fb := emu.framebuffer
+	fb := emu.cf
 	for i := 0; i < count; i++ {
 		fb.InsertCell(fb.DS.GetCursorRow(), fb.DS.GetCursorCol())
 	}
@@ -448,7 +452,7 @@ func hdl_csi_ich(emu *emulator, count int) {
 // * Ps = 2  ⇒  Erase All.
 // * Ps = 3  ⇒  Erase Saved Lines, xterm.
 func hdl_csi_ed(emu *emulator, cmd int) {
-	fb := emu.framebuffer
+	fb := emu.cf
 	switch cmd {
 	case 0:
 		// active position down to end of screen, inclusive
@@ -475,7 +479,7 @@ func hdl_csi_ed(emu *emulator, cmd int) {
 // * Ps = 1  ⇒  Erase to Left.
 // * Ps = 2  ⇒  Erase All.
 func hdl_csi_el(emu *emulator, cmd int) {
-	fb := emu.framebuffer
+	fb := emu.cf
 	switch cmd {
 	case 0:
 		clearline(fb, -1, fb.DS.GetCursorCol(), fb.DS.GetWidth()-1)
@@ -489,7 +493,7 @@ func hdl_csi_el(emu *emulator, cmd int) {
 // CSI Ps L  Insert Ps Line(s) (default = 1) (IL).
 // insert N lines in cursor position
 func hdl_csi_il(emu *emulator, lines int) {
-	fb := emu.framebuffer
+	fb := emu.cf
 	fb.InsertLine(fb.DS.GetCursorRow(), lines)
 
 	// vt220 manual and Ecma-48 say to move to first column */
@@ -499,7 +503,7 @@ func hdl_csi_il(emu *emulator, lines int) {
 // CSI Ps M  Delete Ps Line(s) (default = 1) (DL).
 // delete N lines in cursor position
 func hdl_csi_dl(emu *emulator, lines int) {
-	fb := emu.framebuffer
+	fb := emu.cf
 
 	fb.DeleteLine(fb.DS.GetCursorRow(), lines)
 
@@ -509,18 +513,32 @@ func hdl_csi_dl(emu *emulator, lines int) {
 
 // CSI Ps P  Delete Ps Character(s) (default = 1) (DCH).
 func hdl_csi_dch(emu *emulator, cells int) {
-	fb := emu.framebuffer
+	fb := emu.cf
 
 	for i := 0; i < cells; i++ {
 		fb.DeleteCell(fb.DS.GetCursorRow(), fb.DS.GetCursorCol())
 	}
 }
 
-// CSI Ps S  Scroll up Ps lines (default = 1) (SU), VT420, ECMA-48.
-// CSI Ps T  Scroll down Ps lines (default = 1) (SD), VT420.
 // SU got the -lines
 func hdl_csi_su_sd(emu *emulator, lines int) {
-	emu.framebuffer.Scroll(lines)
+	emu.cf.Scroll(lines)
+}
+
+// CSI Ps S  Scroll up Ps lines (default = 1) (SU), VT420, ECMA-48.
+func hdl_csi_su(emu *emulator, arg int) {
+	// if emu.horizMarginMode {
+	// 	arg = min(arg, emu.marginBottom-emu.marginTop)
+	// 	emu.deleteRows(emu.marginTop, arg)
+	// } else {
+	// 	emu.framebuffer.scrollUp(arg)
+	// 	emu.eraseRows(emu.marginBottom-arg, arg)
+	// 	emu.lastCol = false
+	// }
+}
+
+// CSI Ps T  Scroll down Ps lines (default = 1) (SD), VT420.
+func hdl_csi_sd(emu *emulator, arg int) {
 }
 
 // erase cell from the start to end at specified row
@@ -532,7 +550,7 @@ func clearline(fb *Framebuffer, row int, start int, end int) {
 
 // CSI Ps X  Erase Ps Character(s) (default = 1) (ECH).
 func hdl_csi_ech(emu *emulator, num int) {
-	fb := emu.framebuffer
+	fb := emu.cf
 
 	limit := fb.DS.GetCursorCol() + num - 1
 
@@ -566,7 +584,7 @@ func hdl_csi_da2(emu *emulator) {
 
 // CSI Ps d  Line Position Absolute  [row] (default = [1,column]) (VPA).
 func hdl_csi_vpa(emu *emulator, row int) {
-	emu.framebuffer.DS.MoveRow(row-1, false)
+	emu.cf.DS.MoveRow(row-1, false)
 }
 
 // Move the active position to the n-th character of the active line.
@@ -574,7 +592,7 @@ func hdl_csi_vpa(emu *emulator, row int) {
 // CSI Ps G  Cursor Character Absolute  [column] (default = [row,1]) (CHA).
 // CSI Ps `  Character Position Absolute  [column] (default = [row,1]) (HPA).
 func hdl_csi_cha_hpa(emu *emulator, count int) {
-	emu.framebuffer.DS.MoveCol(count-1, false, false)
+	emu.cf.DS.MoveCol(count-1, false, false)
 }
 
 // CSI Ps A  Cursor Up Ps Times (default = 1) (CUU).
@@ -653,12 +671,12 @@ func hdl_csi_dsr(emu *emulator, cmd int) {
 	case 6:
 		resp := ""
 		// report of active position requested
-		if emu.framebuffer.DS.OriginMode { // original mode
-			resp = fmt.Sprintf("\x1B[%d;%dR", emu.framebuffer.DS.GetCursorRow()+1,
-				emu.framebuffer.DS.GetCursorCol()+1)
+		if emu.cf.DS.OriginMode { // original mode
+			resp = fmt.Sprintf("\x1B[%d;%dR", emu.cf.DS.GetCursorRow()+1,
+				emu.cf.DS.GetCursorCol()+1)
 		} else { // scrolling region mode
-			resp = fmt.Sprintf("\x1B[%d;%dR", emu.framebuffer.DS.GetCursorRow()-emu.framebuffer.DS.GetScrollingRegionTopRow()+1,
-				emu.framebuffer.DS.GetCursorCol()+1)
+			resp = fmt.Sprintf("\x1B[%d;%dR", emu.cf.DS.GetCursorRow()-emu.cf.DS.GetScrollingRegionTopRow()+1,
+				emu.cf.DS.GetCursorCol()+1)
 		}
 		emu.dispatcher.terminalToHost.WriteString(resp)
 	default:
@@ -670,7 +688,7 @@ func hdl_csi_dsr(emu *emulator, cmd int) {
 // support 8, 16, 256 color, RGB color.
 func hdl_csi_sgr(emu *emulator, params []int) {
 	// we need to change the field, get the field pointer
-	rend := &emu.framebuffer.DS.renditions
+	rend := &emu.cf.DS.renditions
 	for k := 0; k < len(params); k++ {
 		attr := params[k]
 
@@ -798,11 +816,11 @@ func hdl_osc_10x(emu *emulator, cmd int, arg string) {
 				color := ColorDefault
 				switch colorIdx {
 				case 11, 17: // 11: VT100 text background color  17: highlight background color
-					color = emu.framebuffer.DS.renditions.bgColor
+					color = emu.cf.DS.renditions.bgColor
 				case 10, 19: // 10: VT100 text foreground color; 19: highlight foreground color
-					color = emu.framebuffer.DS.renditions.fgColor
+					color = emu.cf.DS.renditions.fgColor
 				case 12: // 12: text cursor color
-					color = emu.framebuffer.DS.cursorColor
+					color = emu.cf.DS.cursorColor
 				}
 				response := fmt.Sprintf("\x1B]%d;%s\x1B\\", colorIdx, color) // the String() method of Color will be called.
 				emu.dispatcher.terminalToHost.WriteString(response)
@@ -887,7 +905,7 @@ func hdl_osc_52(emu *emulator, cmd int, arg string) {
 			}
 			if set {
 				// save the selection in framebuffer, later it will be sent to terminal.
-				emu.framebuffer.selectionData += fmt.Sprintf("\x1B]%d;%s;%s\x1B\\", cmd, Pc, Pd)
+				emu.cf.selectionData += fmt.Sprintf("\x1B]%d;%s;%s\x1B\\", cmd, Pc, Pd)
 			}
 		} else {
 			/*
@@ -903,7 +921,7 @@ func hdl_osc_52(emu *emulator, cmd int, arg string) {
 			}
 			if set {
 				// save the selection in framebuffer, later it will be sent to terminal.
-				emu.framebuffer.selectionData = fmt.Sprintf("\x1B]%d;%s;%s\x1B\\", cmd, Pc, Pd)
+				emu.cf.selectionData = fmt.Sprintf("\x1B]%d;%s;%s\x1B\\", cmd, Pc, Pd)
 			}
 		}
 	}
@@ -984,14 +1002,14 @@ func hdl_osc_0_1_2(emu *emulator, cmd int, arg string) {
 	setIcon := cmd == 0 || cmd == 1
 	setTitle := cmd == 0 || cmd == 2
 	if setIcon || setTitle {
-		emu.framebuffer.SetTitleInitialized()
+		emu.cf.SetTitleInitialized()
 
 		if setIcon {
-			emu.framebuffer.SetIconName(arg)
+			emu.cf.SetIconName(arg)
 		}
 
 		if setTitle {
-			emu.framebuffer.SetWindowTitle(arg)
+			emu.cf.SetWindowTitle(arg)
 		}
 	}
 }
@@ -1219,7 +1237,7 @@ func hdl_csi_decstbm(emu *emulator, params []int) {
 	// only top is set to 0
 	if len(params) == 1 && params[0] == 0 {
 		if emu.marginTop != 0 || emu.marginBottom != emu.nRows {
-			emu.marginTop, emu.marginBottom = emu.framebuffer.resetMargins()
+			emu.marginTop, emu.marginBottom = emu.cf.resetMargins()
 		}
 	} else if len(params) == 2 {
 		newMarginTop := 0
@@ -1235,9 +1253,9 @@ func hdl_csi_decstbm(emu *emulator, params []int) {
 			emu.marginTop = newMarginTop
 			emu.marginBottom = newMarginBottom
 			if emu.marginTop == 0 && emu.marginBottom == emu.nRows {
-				emu.marginTop, emu.marginBottom = emu.framebuffer.resetMargins()
+				emu.marginTop, emu.marginBottom = emu.cf.resetMargins()
 			} else {
-				emu.framebuffer.setMargins(emu.marginTop, emu.marginBottom)
+				emu.cf.setMargins(emu.marginTop, emu.marginBottom)
 			}
 		}
 	}
@@ -1280,7 +1298,7 @@ func hdl_csi_decstr(emu *emulator) {
 func hdl_dcs_decrqss(emu *emulator, arg string) {
 	// only response to DECSCL
 	if arg == "$q\"p" {
-		emu.framebuffer.DS.compatLevel = CompatLevel_VT400
+		emu.cf.DS.compatLevel = CompatLevel_VT400
 		response := fmt.Sprintf("\x1BP1$r%s\x1B\\", DEVICE_ID)
 		emu.dispatcher.terminalToHost.WriteString(response)
 	} else {
@@ -1369,9 +1387,9 @@ func hdl_csi_decscl(emu *emulator, params []int) {
 	if len(params) > 0 {
 		switch params[0] {
 		case 61:
-			emu.framebuffer.DS.compatLevel = CompatLevel_VT100
+			emu.cf.DS.compatLevel = CompatLevel_VT100
 		case 62, 63, 64, 65: // treat VT200,VT300,VT500 as VT400
-			emu.framebuffer.DS.compatLevel = CompatLevel_VT400
+			emu.cf.DS.compatLevel = CompatLevel_VT400
 		default:
 			emu.logU.Printf("compatibility mode: %d", params[0])
 		}
@@ -1392,8 +1410,8 @@ func hdl_csi_decscl(emu *emulator, params []int) {
 //           Insert Ps Column(s) (default = 1) (DECIC), VT420 and up.
 func hdl_csi_decic(emu *emulator, num int) {
 	if emu.isCursorInsideMargins() {
-		num = min(num, emu.framebuffer.DS.nColsEff-emu.framebuffer.cursor.posX)
-		emu.framebuffer.insertCols(emu.framebuffer.cursor.posX, num)
+		num = min(num, emu.cf.DS.nColsEff-emu.cf.cursor.posX)
+		emu.cf.insertCols(emu.cf.cursor.posX, num)
 	}
 }
 
@@ -1401,7 +1419,7 @@ func hdl_csi_decic(emu *emulator, num int) {
 //           Delete Ps Column(s) (default = 1) (DECDC), VT420 and up.
 func hdl_csi_decdc(emu *emulator, num int) {
 	if emu.isCursorInsideMargins() {
-		num = min(num, emu.framebuffer.DS.nColsEff-emu.framebuffer.cursor.posX)
-		emu.framebuffer.deleteCols(emu.framebuffer.cursor.posX, num)
+		num = min(num, emu.cf.DS.nColsEff-emu.cf.cursor.posX)
+		emu.cf.deleteCols(emu.cf.cursor.posX, num)
 	}
 }
