@@ -122,7 +122,7 @@ func (dmg *Damage) add(start, end int) {
 		end = dmg.totalCells
 	}
 
-	if start == end {
+	if dmg.start == dmg.end {
 		dmg.start = start
 		dmg.end = end
 	} else {

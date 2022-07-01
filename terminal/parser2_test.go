@@ -1370,6 +1370,9 @@ func TestHandle_SU_SD(t *testing.T) {
 			t.Errorf("%s got zero handlers.", v.name)
 		}
 
+		fillCells(emu.cf)
+		// before := printCells(emu.cf)
+
 		// fill the screen with different rune for each row
 		// ds := emu.cf.DS
 		// for i := 0; i < ds.GetHeight(); i++ {
@@ -1384,6 +1387,8 @@ func TestHandle_SU_SD(t *testing.T) {
 				t.Errorf("%s: seq=%q expect handler %s, got %s\n", v.name, v.seq, strHandlerID[v.hdID], strHandlerID[hd.id])
 			}
 		}
+
+		// after := printCells(emu.cf)
 
 		// // prepare the validate tools
 		// isEmpty := func(row, col int) bool {

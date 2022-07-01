@@ -87,19 +87,20 @@ func TestDamage(t *testing.T) {
 		start, end   int
 		eStart, eEnd int
 	}{
-		{"extra left", 1, 9, 1, 98},
-		{"extra right", 96, 100, 7, 100},
-		{"inside damage", 9, 90, 7, 98},
-		{"equal start,end", 7, 7, 7, 7},
+		{"1st round: start point", 6, 97, 6, 97}, // the last value pair is the base for the next round
+		{"2nd round: extra left", 4, 90, 4, 97},
+		{"3rd round: extra right", 96, 100, 4, 100},
+		{"4th round: inside damage", 9, 90, 4, 100},
+		{"5th round: equal start,end", 7, 7, 4, 100},
 		{"reverse start,end", 98, 7, 0, 108},
 	}
+	// base condition: start=7, end=98, totalCells=108
+	d := Damage{start: 7, end: 7, totalCells: 108}
 	for _, v := range tc {
-		// base condition: start=7, end=98, totalCells=108
-		d := Damage{start: 7, end: 98, totalCells: 108}
 		d.add(v.start, v.end)
+
 		gotStart := d.start
 		gotEnd := d.end
-
 		if gotStart != v.eStart || gotEnd != v.eEnd {
 			t.Errorf("%s expect (%d,%d), got (%d,%d)\n", v.name, v.eStart, v.eEnd, gotStart, gotEnd)
 		}
@@ -113,6 +114,8 @@ func TestDamage(t *testing.T) {
 		if d.start != 0 || d.end != 0 {
 			t.Errorf("%s expect (%d,%d), got (%d,%d)\n", v.name, 0, 0, d.start, d.end)
 		}
+		// set the base for the next round
+		d.add(v.eStart, v.eEnd)
 	}
 }
 

@@ -759,32 +759,50 @@ func TestFramebufferMoveInRow(t *testing.T) {
 	tc := []struct {
 		name               string
 		row, startX, count int
-		result             string
+		// result             string
 	}{
-		{"Normal head", 1, 0, 4, "    CDEFKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCD\n"},
-		{"Normal mid", 1, 24, 5, "CDEFGHIJKLMNOPQRSTUVWXYZ     ABCDEKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCD\n"},
-		{"Normal end", 1, 78, 4, "CDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZAB  \n"},
+		{
+			"Normal head", 1, 0, 4,
+			// "    CDEFKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCD\n",
+		},
+		{
+			"Normal mid", 1, 24, 5,
+			// "CDEFGHIJKLMNOPQRSTUVWXYZ     ABCDEKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCD\n",
+		},
+		{
+			"Normal end", 1, 78, 4,
+			// "CDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZAB  \n",
+		},
 	}
+
 	fb, _, _ := NewFramebuffer3(80, 40, 0)
+	// prepare the damage area
+	dmg := Damage{}
+	dmg.totalCells = fb.damage.totalCells
 
 	for _, v := range tc {
 		// reset the conent
+		fb.damage.reset()
 		fillCells(fb, v.row)
 
 		before := printCells(fb, v.row)
-		after := ""
 
 		cell := Cell{}
 		cell.contents = " "
 		fb.moveInRow(v.row, v.startX+v.count, v.startX, v.count)
 		fb.eraseInRow(v.row, v.startX, v.count, cell)
 
-		after = printCells(fb, v.row)
+		after := printCells(fb, v.row)
 
-		if after != v.result {
+		// calculate the expected dmage area
+		dmg.start = fb.nCols*v.row + v.startX
+		dmg.end = dmg.start + v.count*2
+
+		if fb.damage != dmg {
 			t.Errorf("%q:\n", v.name)
 			t.Errorf("[expect row=%d, x=%d, count=%d] %s", v.row, v.startX, v.count, before)
 			t.Errorf("[got    row=%d, x=%d, count=%d] %s", v.row, v.startX, v.count, after)
+			t.Errorf("expect damage %v, got %v\n", dmg, fb.damage)
 		}
 	}
 }
