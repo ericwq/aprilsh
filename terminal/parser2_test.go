@@ -1343,15 +1343,14 @@ func TestHandle_CUU_CUD_CUF_CUB_CUP(t *testing.T) {
 
 func TestHandle_SU_SD(t *testing.T) {
 	tc := []struct {
-		name             string
-		hdIDs            []int
-		activeY, activeX int
-		emptyY1, emptyX1 int
-		emptyY2, emptyX2 int
-		seq              string
+		name      string
+		hdIDs     []int
+		emptyRows []int
+		seq       string
 	}{
-		{"SU scroll up   2 lines", []int{csi_cup, csi_su}, 5, 0, 38, 0, 39, 79, "\x1B[40;1H\x1B[2S"},
-		{"SD scroll down 3 lines", []int{csi_cup, csi_sd}, 5, 0, 0, 0, 2, 79, "\x1B[1;1H\x1B[3T"},
+		// move cursor to the start place, then scroll up/down
+		{"SU scroll up   2 lines", []int{csi_cup, csi_su}, []int{38, 39}, "\x1B[40;1H\x1B[2S"},
+		{"SD scroll down 3 lines", []int{csi_cup, csi_sd}, []int{0, 1, 2}, "\x1B[1;1H\x1B[3T"},
 	}
 
 	p := NewParser()
@@ -1361,9 +1360,6 @@ func TestHandle_SU_SD(t *testing.T) {
 	emu.logI.SetOutput(&place)
 	emu.logT.SetOutput(&place)
 
-	// prepare the damage area
-	dmg := Damage{}
-	dmg.totalCells = emu.cf.damage.totalCells
 	for _, v := range tc {
 
 		hds := make([]*Handler, 0, 16)
@@ -1376,13 +1372,6 @@ func TestHandle_SU_SD(t *testing.T) {
 		fillCells(emu.cf)
 		before := printCells(emu.cf)
 
-		// fill the screen with different rune for each row
-		// ds := emu.cf.DS
-		// for i := 0; i < ds.GetHeight(); i++ {
-		// 	row := emu.cf.GetRow(i)
-		// 	fillRowWith(row, rune(0x0030+i))
-		// }
-
 		// handle the control sequence
 		for j, hd := range hds {
 			hd.handle(emu)
@@ -1393,42 +1382,10 @@ func TestHandle_SU_SD(t *testing.T) {
 
 		after := printCells(emu.cf)
 
-		// calculate the expected dmage area
-		dmg.start = 8
-		dmg.end = 9
-
-		if emu.cf.damage != dmg {
+		if !isEmptyRows(emu.cf, v.emptyRows...) {
 			t.Errorf("%q:\n", v.name)
 			t.Errorf("before:\n%s", before)
 			t.Errorf("after:\n%s", after)
 		}
-		// // prepare the validate tools
-		// isEmpty := func(row, col int) bool {
-		// 	return inRange(v.emptyY1, v.emptyX1, v.emptyY2, v.emptyX2, row, col, 80)
-		// }
-		//
-		// cellIn := func(row int) string {
-		// 	return getCellAtRow(v.emptyY1, v.emptyY2, row)
-		// }
-		// // validate the whole screen.
-		// for i := 0; i < ds.GetHeight(); i++ {
-		// 	// print the row
-		// 	row := emu.cf.GetRow(i)
-		// 	t.Logf("%2d %s %s\n", i, row.String(), cellIn(i))
-		//
-		// 	// validate the cell should be empty
-		// 	for j := 0; j < ds.GetWidth(); j++ {
-		// 		cell := emu.cf.GetCell(i, j)
-		// 		if isEmpty(i, j) {
-		// 			if cell.contents != "" {
-		// 				t.Errorf("%s seq=%q expect empty cell at (%d,%d), got %q.\n", v.name, v.seq, i, j, cell.contents)
-		// 			}
-		// 		} else {
-		// 			if cell.contents != cellIn(i) {
-		// 				t.Errorf("%s seq=%q expect none empty cell at (%d,%d), got %s.\n", v.name, v.seq, i, j, cellIn(i))
-		// 			}
-		// 		}
-		// 	}
-		// }
 	}
 }

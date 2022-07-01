@@ -311,6 +311,10 @@ func NewEmulator3(nCols, nRows, saveLines int) *emulator {
 	emu.posX = 0
 	emu.posY = 0
 	emu.lastCol = false
+
+	emu.attrs.contents = " "
+	emu.attrs.renditions = Renditions{}
+
 	emu.fg = emu.attrs.renditions.fgColor
 	emu.bg = emu.attrs.renditions.bgColor
 

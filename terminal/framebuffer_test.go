@@ -114,7 +114,7 @@ func printCells(fb *Framebuffer, rows ...int) string {
 		if len(rows) == 0 || inScope(rows, r) {
 			start := fb.getIdx(r, 0)
 			end := start + fb.nCols
-			fmt.Fprintf(&output, "[%3d] ",r)
+			fmt.Fprintf(&output, "[%3d] ", r)
 			for k := start; k < end; k++ {
 				output.WriteString(fb.cells[k].contents)
 			}
@@ -122,6 +122,25 @@ func printCells(fb *Framebuffer, rows ...int) string {
 		}
 	}
 	return output.String()
+}
+
+// check the specified rows is empty, if so return true, otherwise return false.
+func isEmptyRows(fb *Framebuffer, rows ...int) bool {
+	if len(rows) == 0 {
+		return false
+	}
+	for r := 0; r < fb.nRows; r++ {
+		if inScope(rows, r) {
+			start := fb.getIdx(r, 0)
+			end := start + fb.nCols
+			for k := start; k < end; k++ {
+				if fb.cells[k].contents != " " {
+					return false
+				}
+			}
+		}
+	}
+	return true
 }
 
 func TestFramebufferInsertLine(t *testing.T) {
