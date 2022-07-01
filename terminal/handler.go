@@ -251,8 +251,7 @@ func hdl_c0_bel(emu *emulator) {
 // move cursor to the next row, scroll down if necessary.
 func hdl_c0_lf(emu *emulator) (scrolled bool) {
 	if emu.posY == emu.marginBottom-1 {
-		// TODO need SU
-		// hdl_csi_su_sd(emu , 1)
+		hdl_csi_su(emu, 1)
 		scrolled = true
 	} else if emu.posY < emu.nRows-1 {
 		emu.posY++
@@ -520,25 +519,28 @@ func hdl_csi_dch(emu *emulator, cells int) {
 	}
 }
 
-// SU got the -lines
-func hdl_csi_su_sd(emu *emulator, lines int) {
-	emu.cf.Scroll(lines)
-}
-
 // CSI Ps S  Scroll up Ps lines (default = 1) (SU), VT420, ECMA-48.
 func hdl_csi_su(emu *emulator, arg int) {
-	// if emu.horizMarginMode {
-	// 	arg = min(arg, emu.marginBottom-emu.marginTop)
-	// 	emu.deleteRows(emu.marginTop, arg)
-	// } else {
-	// 	emu.framebuffer.scrollUp(arg)
-	// 	emu.eraseRows(emu.marginBottom-arg, arg)
-	// 	emu.lastCol = false
-	// }
+	if emu.horizMarginMode {
+		arg = min(arg, emu.marginBottom-emu.marginTop)
+		emu.deleteRows(emu.marginTop, arg)
+	} else {
+		emu.cf.scrollUp(arg)
+		emu.eraseRows(emu.marginBottom-arg, arg)
+		emu.lastCol = false
+	}
 }
 
 // CSI Ps T  Scroll down Ps lines (default = 1) (SD), VT420.
 func hdl_csi_sd(emu *emulator, arg int) {
+	if emu.horizMarginMode {
+		arg = min(arg, emu.marginBottom-emu.marginTop)
+		emu.insertRows(emu.marginTop, arg)
+	} else {
+		emu.cf.scrollDown(arg)
+		emu.eraseRows(emu.marginTop, arg)
+		emu.lastCol = false
+	}
 }
 
 // erase cell from the start to end at specified row
@@ -1411,7 +1413,7 @@ func hdl_csi_decscl(emu *emulator, params []int) {
 func hdl_csi_decic(emu *emulator, num int) {
 	if emu.isCursorInsideMargins() {
 		num = min(num, emu.cf.DS.nColsEff-emu.cf.cursor.posX)
-		emu.cf.insertCols(emu.cf.cursor.posX, num)
+		emu.insertCols(emu.cf.cursor.posX, num)
 	}
 }
 
@@ -1420,6 +1422,6 @@ func hdl_csi_decic(emu *emulator, num int) {
 func hdl_csi_decdc(emu *emulator, num int) {
 	if emu.isCursorInsideMargins() {
 		num = min(num, emu.cf.DS.nColsEff-emu.cf.cursor.posX)
-		emu.cf.deleteCols(emu.cf.cursor.posX, num)
+		emu.deleteCols(emu.cf.cursor.posX, num)
 	}
 }

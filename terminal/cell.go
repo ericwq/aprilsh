@@ -59,10 +59,10 @@ func (c *Cell) Reset(bgColor uint32) {
 
 // reset cell with specified renditions
 // the default contents is " "
-func (c *Cell) Reset2(rend Renditions) {
-	c.contents = " "
+func (c *Cell) Reset2(attrs Cell) {
+	c.contents = attrs.contents
 	// c.renditions = Renditions{bgColor: bgColor}
-	c.renditions = rend
+	c.renditions = attrs.renditions
 	c.wide = false
 	c.fallback = false
 	c.wrap = false

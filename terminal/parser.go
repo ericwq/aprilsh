@@ -652,13 +652,13 @@ func (p *Parser) handle_DCH() (hd *Handler) {
 
 // This control function moves the user window down a specified number of lines in page memory.
 // Scroll text up by <n>. Also known as pan down, new lines fill in from the bottom of the screen
-// text up, window down. SU got the +lines.
+// text up, window down.
 func (p *Parser) handle_SU() (hd *Handler) {
 	lines := p.getPs(0, 1)
 
 	hd = &Handler{id: csi_su, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
-		hdl_csi_su_sd(emu, lines)
+		hdl_csi_su(emu, lines)
 	}
 
 	p.setState(InputState_Normal)
@@ -667,13 +667,13 @@ func (p *Parser) handle_SU() (hd *Handler) {
 
 // /This control function moves the user window up a specified number of lines in page memory.
 // Scroll down by <n>. Also known as pan up, new lines fill in from the top of the screen
-// text down, window up. SD got the -lines
+// text down, window up.
 func (p *Parser) handle_SD() (hd *Handler) {
 	lines := p.getPs(0, 1)
 
 	hd = &Handler{id: csi_sd, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
-		hdl_csi_su_sd(emu, -lines)
+		hdl_csi_sd(emu, lines)
 	}
 
 	p.setState(InputState_Normal)

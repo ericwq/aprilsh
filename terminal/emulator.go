@@ -434,31 +434,6 @@ func (emu *emulator) resetCharsetState() {
 	emu.charsetState.ss = 0
 }
 
-func (emu *emulator) normalizeCursorPos() {
-	if emu.nColsEff < emu.posX+1 {
-		emu.posX = emu.nColsEff - 1
-	}
-	if emu.nRows < emu.posY+1 {
-		emu.posY = emu.nRows - 1
-	}
-}
-
-func (emu *emulator) jumpToNextTabStop() {
-	if len(emu.tabStops) == 0 {
-		margin := 0
-		if emu.isCursorInsideMargins() {
-			margin = emu.hMargin
-		}
-		// Hard default of 8 chars limited to right margin
-		for ok := true; ok; ok = emu.posX < margin {
-			emu.posX = ((emu.posX / 8) + 1) * 8
-		}
-		emu.posX = min(emu.posX, emu.nColsEff-1)
-	}
-	// TODO tabStops set case
-	emu.lastCol = false
-}
-
 func (emu *emulator) lookupCharset(p rune) (r rune) {
 	// choose the charset based on instructions before
 	var cs *map[byte]rune
@@ -522,9 +497,89 @@ func (emu *emulator) switchColMode(colMode ColMode) {
 	emu.colMode = colMode
 }
 
+func (emu *emulator) normalizeCursorPos() {
+	if emu.nColsEff < emu.posX+1 {
+		emu.posX = emu.nColsEff - 1
+	}
+	if emu.nRows < emu.posY+1 {
+		emu.posY = emu.nRows - 1
+	}
+}
+
 func (emu *emulator) isCursorInsideMargins() bool {
 	return emu.posX >= emu.cf.DS.hMargin && emu.posX < emu.cf.DS.nColsEff &&
 		emu.posY >= emu.marginTop && emu.posY < emu.marginBottom
+}
+
+func (emu *emulator) eraseRow(pY int) {
+	emu.cf.eraseInRow(pY, emu.hMargin, emu.nColsEff-emu.hMargin, emu.attrs)
+}
+
+// erase rows at and below startY, within the scrolling area
+func (emu *emulator) eraseRows(startY, count int) {
+	for pY := startY; pY < startY+count; pY++ {
+		emu.eraseRow(pY)
+	}
+}
+
+func (emu *emulator) copyRow(dstY, srcY int) {
+	emu.cf.copyRow(dstY, srcY, emu.hMargin, emu.nColsEff-emu.hMargin)
+}
+
+// insert blank rows at and below startY, within the scrolling area
+func (emu *emulator) insertRows(startY, count int) {
+	for pY := emu.marginBottom - count - 1; pY >= startY; pY-- {
+		emu.copyRow(pY+count, pY)
+		if pY == 0 {
+			break
+		}
+	}
+	for pY := startY; pY < startY+count; pY++ {
+		emu.eraseRow(pY)
+	}
+}
+
+// delete rows at and below startY, within the scrolling area
+func (emu *emulator) deleteRows(startY, count int) {
+	for pY := startY; pY < emu.marginBottom-count; pY++ {
+		emu.copyRow(pY, pY+count)
+	}
+
+	for pY := emu.marginBottom - count; pY < emu.marginBottom; pY++ {
+		emu.eraseRow(pY)
+	}
+}
+
+// insert blank cols at and to the right of startX, within the scrolling area
+func (emu *emulator) insertCols(startX, count int) {
+	for r := emu.marginTop; r < emu.marginBottom; r++ {
+		emu.cf.moveInRow(r, startX+count, startX, emu.nColsEff-startX-count)
+		emu.cf.eraseInRow(r, startX, count, emu.attrs) // use the default renditions
+	}
+}
+
+// delete cols at and to the right of startX, within the scrolling area
+func (emu *emulator) deleteCols(startX, count int) {
+	for r := emu.marginTop; r < emu.marginBottom; r++ {
+		emu.cf.moveInRow(r, startX, startX+count, emu.nColsEff-startX-count)
+		emu.cf.eraseInRow(r, emu.nColsEff-count, count, emu.attrs) // use the default renditions
+	}
+}
+
+func (emu *emulator) jumpToNextTabStop() {
+	if len(emu.tabStops) == 0 {
+		margin := 0
+		if emu.isCursorInsideMargins() {
+			margin = emu.hMargin
+		}
+		// Hard default of 8 chars limited to right margin
+		for ok := true; ok; ok = emu.posX < margin {
+			emu.posX = ((emu.posX / 8) + 1) * 8
+		}
+		emu.posX = min(emu.posX, emu.nColsEff-1)
+	}
+	// TODO tabStops set case
+	emu.lastCol = false
 }
 
 /*
