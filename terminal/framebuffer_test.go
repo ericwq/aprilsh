@@ -65,24 +65,36 @@ func fillinRows(fb *Framebuffer, startCh ...int) {
 	}
 }
 
-func inScope(rows []int, x int) bool {
+func printRows(fb *Framebuffer) string {
+	var output strings.Builder
+	for _, row := range fb.rows {
+		output.WriteString(row.String() + "\n")
+	}
+
+	return output.String()
+}
+
+// check if the row in the specified row list. if so, return true
+// otherwise return false. for empty row list, return false.
+func inScope(rows []int, row int) bool {
 	if len(rows) == 0 {
 		return false
 	}
 	for _, v := range rows {
-		if v == x {
+		if v == row {
 			return true
 		}
 	}
 	return false
 }
 
-// fill in screen with rotating A~Z.
+// fill the specified rows on the screen with rotating A~Z.
+// if row list is empty, fill the whole screen.
 func fillCells(fb *Framebuffer, rows ...int) {
 	A := 0x41
 
 	for r := 0; r < fb.nRows; r++ {
-		if inScope(rows, r) {
+		if len(rows) == 0 || inScope(rows, r) {
 			start := fb.getIdx(r, 0)
 			end := start + fb.nCols
 			for k := start; k < end; k++ {
@@ -93,20 +105,12 @@ func fillCells(fb *Framebuffer, rows ...int) {
 	}
 }
 
-func printRows(fb *Framebuffer) string {
-	var output strings.Builder
-	for _, row := range fb.rows {
-		output.WriteString(row.String() + "\n")
-	}
-
-	return output.String()
-}
-
+// print the screen with specified rows. if the row list is empty, print the whole screen.
 func printCells(fb *Framebuffer, rows ...int) string {
 	var output strings.Builder
 
 	for r := 0; r < fb.nRows; r++ {
-		if inScope(rows, r) {
+		if len(rows) == 0 || inScope(rows, r) {
 			start := fb.getIdx(r, 0)
 			end := start + fb.nCols
 			for k := start; k < end; k++ {
@@ -752,24 +756,35 @@ func TestFramebufferSoftReset(t *testing.T) {
 }
 
 func TestFramebufferMoveInRow(t *testing.T) {
+	tc := []struct {
+		name               string
+		row, startX, count int
+		result             string
+	}{
+		{"Normal head", 1, 0, 4, "    CDEFKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCD\n"},
+		{"Normal mid", 1, 24, 5, "CDEFGHIJKLMNOPQRSTUVWXYZ     ABCDEKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCD\n"},
+		{"Normal end", 1, 78, 4, "CDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFGHIJKLMNOPQRSTUVWXYZAB  \n"},
+	}
 	fb, _, _ := NewFramebuffer3(80, 40, 0)
-	row := 2
-	startX := 74
-	count := 5
 
-	// fill the screen with rotating A~Z
-	fillCells(fb, row)
+	for _, v := range tc {
+		// reset the conent
+		fillCells(fb, v.row)
 
-	before := printCells(fb, row)
-	after := ""
+		before := printCells(fb, v.row)
+		after := ""
 
-	cell := Cell{}
-	cell.contents = " "
-	fb.moveInRow(row, startX+count, startX, count)
-	fb.eraseInRow(row, startX, count, cell)
+		cell := Cell{}
+		cell.contents = " "
+		fb.moveInRow(v.row, v.startX+v.count, v.startX, v.count)
+		fb.eraseInRow(v.row, v.startX, v.count, cell)
 
-	after = printCells(fb, row)
+		after = printCells(fb, v.row)
 
-	t.Logf("Before\n%s", before)
-	t.Logf("After\n%s", after)
+		if after != v.result {
+			t.Errorf("%q:\n", v.name)
+			t.Errorf("[expect row=%d, x=%d, count=%d] %s", v.row, v.startX, v.count, before)
+			t.Errorf("[got    row=%d, x=%d, count=%d] %s", v.row, v.startX, v.count, after)
+		}
+	}
 }
