@@ -498,7 +498,7 @@ func (p *Parser) handle_SO() (hd *Handler) {
 
 // set cursor position as tab stop position
 func (p *Parser) handle_HTS() (hd *Handler) {
-	hd = &Handler{name: "esc-hts", ch: p.ch}
+	hd = &Handler{id: esc_hts, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_esc_hts(emu)
 	}
@@ -511,7 +511,7 @@ func (p *Parser) handle_HTS() (hd *Handler) {
 func (p *Parser) handle_CHT() (hd *Handler) {
 	count := p.getPs(0, 1)
 
-	hd = &Handler{name: "csi-cht", ch: p.ch}
+	hd = &Handler{id: csi_cht, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_cht(emu, count)
 	}
@@ -524,7 +524,7 @@ func (p *Parser) handle_CHT() (hd *Handler) {
 func (p *Parser) handle_CBT() (hd *Handler) {
 	count := p.getPs(0, 1)
 
-	hd = &Handler{name: "csi-cbt", ch: p.ch}
+	hd = &Handler{id: csi_cbt, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_cbt(emu, count)
 	}
@@ -537,7 +537,7 @@ func (p *Parser) handle_CBT() (hd *Handler) {
 func (p *Parser) handle_TBC() (hd *Handler) {
 	cmd := p.getPs(0, 0)
 
-	hd = &Handler{name: "csi-tbc", ch: p.ch}
+	hd = &Handler{id: csi_tbc, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_tbc(emu, cmd)
 	}

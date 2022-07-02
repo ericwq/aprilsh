@@ -581,8 +581,15 @@ func (emu *emulator) jumpToNextTabStop() {
 			emu.posX = ((emu.posX / 8) + 1) * 8
 		}
 		emu.posX = min(emu.posX, emu.nColsEff-1)
+	} else {
+		// Next tabstop column set, or the right margin
+		nextTabIdx := LowerBound(emu.tabStops, emu.posX)
+		if nextTabIdx > len(emu.tabStops) {
+			emu.posX = emu.nCols - 1
+		} else {
+			emu.posX = emu.tabStops[nextTabIdx]
+		}
 	}
-	// TODO tabStops set case
 	emu.lastCol = false
 }
 

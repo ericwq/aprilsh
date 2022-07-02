@@ -29,6 +29,7 @@ package terminal
 import (
 	"encoding/base64"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -51,6 +52,8 @@ const (
 	c0_cr
 	c0_ht
 	c0_lf
+	csi_cbt
+	csi_cht
 	csi_cub
 	csi_cud
 	csi_cuf
@@ -70,10 +73,12 @@ const (
 	csi_su
 	csi_scorc
 	csi_scosc
+	csi_tbc
 	esc_decrc
 	esc_decsc
 	esc_docs_utf8
 	esc_docs_iso8859_1
+	esc_hts
 )
 
 var strHandlerID = [...]string{
@@ -81,6 +86,8 @@ var strHandlerID = [...]string{
 	"c0-cr",
 	"c0-ht",
 	"c0-lf",
+	"csi-cbt",
+	"csi-cht",
 	"csi-cub",
 	"csi-cud",
 	"csi-cuf",
@@ -100,10 +107,12 @@ var strHandlerID = [...]string{
 	"csi-su",
 	"csi-scorc",
 	"csi-scosc",
+	"csi-tbc",
 	"esc-decrc",
 	"esc-decsc",
 	"esc-docs-utf-8",
 	"esc-docs-iso8859-1",
+	"esc-hts",
 }
 
 // Handler is the outcome of parsering input, it can be used to perform control sequence on emulator.
@@ -348,11 +357,11 @@ func hdl_esc_dcs(emu *emulator, index int, charset *map[byte]rune) {
 	}
 }
 
-// horizontal tab set
 // ESC H Tab Set (HTS is 0x88).
-// set cursor position as tab stop position
+// Sets a tab stop in the current column the cursor is in.
 func hdl_esc_hts(emu *emulator) {
-	emu.cf.DS.SetTab()
+	emu.tabStops = append(emu.tabStops, emu.posX)
+	sort.Ints(emu.tabStops)
 }
 
 // ESC M  Reverse Index (RI  is 0x8d).
@@ -418,23 +427,54 @@ func hdl_esc_decaln(emu *emulator) {
 func hdl_csi_tbc(emu *emulator, cmd int) {
 	switch cmd {
 	case 0: // clear this tab stop
-		emu.cf.DS.ClearTab(emu.cf.DS.GetCursorCol())
-	case 3: // clear all tab stops
-		emu.cf.DS.ClearDefaultTabs()
-		for i := 0; i < emu.cf.DS.GetWidth(); i++ {
-			emu.cf.DS.ClearTab(i)
+		idx := sort.SearchInts(emu.tabStops, emu.posX)
+		if idx < len(emu.tabStops) && emu.tabStops[idx] == emu.posX {
+			// posX is present at tabStops[idx]
+			emu.tabStops = RemoveIndex(emu.tabStops, idx)
 		}
+	case 3: // clear all tab stops
+		emu.tabStops = make([]int, 0)
+	default:
 	}
 }
 
 // CSI Ps I  Cursor Forward Tabulation Ps tab stops (default = 1) (CHT).
+// Advance the cursor to the next column (in the same row) with a tab stop.
+// If there are no more tab stops, move to the last column in the row.
 func hdl_csi_cht(emu *emulator, count int) {
-	ht_n(emu.cf, count)
+	if count == 1 {
+		hdl_c0_ht(emu)
+	} else {
+		for k := 0; k < count; k++ {
+			emu.jumpToNextTabStop()
+		}
+	}
 }
 
 // CSI Ps Z  Cursor Backward Tabulation Ps tab stops (default = 1) (CBT).
+// Move the cursor to the previous column (in the same row) with a tab stop.
+// If there are no more tab stops, moves the cursor to the first column.
+// If the cursor is in the first column, doesn’t move the cursor.
 func hdl_csi_cbt(emu *emulator, count int) {
-	ht_n(emu.cf, -count)
+	for k := 0; k < count; k++ {
+		if len(emu.tabStops) == 0 {
+			if emu.posX > 0 && emu.posX%8 == 0 {
+				emu.posX -= 8
+			} else {
+				emu.posX = (emu.posX / 8) * 8
+			}
+		} else {
+			// Set posX to previous tab stop
+			nextTabIdx := LowerBound(emu.tabStops, emu.posX)
+			if nextTabIdx-1 >= 0 {
+				emu.posX = emu.tabStops[nextTabIdx-1]
+			} else {
+				emu.posX = 0
+			}
+
+			emu.lastCol = false
+		}
+	}
 }
 
 // CSI Ps @  Insert Ps (Blank) Character(s) (default = 1) (ICH).
