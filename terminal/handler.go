@@ -228,26 +228,12 @@ func hdl_graphemes(emu *emulator, chs ...rune) {
 // 	emu.resize(width, height)
 // }
 
-// move cursor to the count tab position
-func ht_n(fb *Framebuffer, count int) {
-	col := fb.DS.GetNextTab(count)
-	if col == -1 { // no tabs, go to end of line
-		col = fb.DS.GetWidth() - 1
-	}
-	// A horizontal tab is the only operation that preserves but
-	// does not set the wrap state. It also starts a new grapheme.
-	wrapStateSave := fb.DS.NextPrintWillWrap
-	fb.DS.MoveCol(col, false, false)
-	fb.DS.NextPrintWillWrap = wrapStateSave
-}
-
 // Horizontal Tab (HTS  is Ctrl-I).
 // move cursor to the next tab position
 func hdl_c0_ht(emu *emulator) {
 	if emu.posX < emu.nColsEff-1 {
 		emu.jumpToNextTabStop()
 	}
-	// ht_n(emu.framebuffer, 1)
 }
 
 // Bell (BEL  is Ctrl-G).
@@ -266,7 +252,6 @@ func hdl_c0_lf(emu *emulator) (scrolled bool) {
 		emu.posY++
 		emu.lastCol = false
 	}
-	// emu.framebuffer.MoveRowsAutoscroll(1)
 	return
 }
 
@@ -279,7 +264,6 @@ func hdl_c0_cr(emu *emulator) {
 		emu.posX = emu.hMargin
 	}
 	emu.lastCol = false
-	// emu.framebuffer.DS.MoveCol(0, false, false)
 }
 
 // SI       Switch to Standard Character Set (Ctrl-O is Shift In or LS0).
@@ -646,7 +630,6 @@ func hdl_csi_cuu(emu *emulator, num int) {
 	}
 	emu.posY -= num
 	emu.lastCol = false
-	// emu.framebuffer.DS.MoveRow(-num, true)
 }
 
 // CSI Ps B  Cursor Down Ps Times (default = 1) (CUD).
@@ -658,7 +641,6 @@ func hdl_csi_cud(emu *emulator, num int) {
 	}
 	emu.posY += num
 	emu.lastCol = false
-	// emu.framebuffer.DS.MoveRow(num, true)
 }
 
 // CSI Ps C  Cursor Forward Ps Times (default = 1) (CUF).
@@ -666,7 +648,6 @@ func hdl_csi_cuf(emu *emulator, num int) {
 	num = min(num, emu.nColsEff-emu.posX-1)
 	emu.posX += num
 	emu.lastCol = false
-	// emu.framebuffer.DS.MoveCol(num, true, false)
 }
 
 // CSI Ps D  Cursor Backward Ps Times (default = 1) (CUB).
@@ -681,7 +662,6 @@ func hdl_csi_cub(emu *emulator, num int) {
 	}
 	emu.posX -= num
 	emu.lastCol = false
-	// emu.framebuffer.DS.MoveCol(-num, true, false)
 }
 
 // CSI Ps ; Ps H Cursor Position [row;column] (default = [1,1]) (CUP).
@@ -1067,7 +1047,7 @@ func hdl_csi_sm(emu *emulator, params []int) {
 		case 2:
 			emu.keyboardLocked = true
 		case 4:
-			emu.insertMode = true // zutty:insertMode
+			emu.insertMode = true
 		case 12:
 			emu.localEcho = false
 		case 20:
@@ -1089,7 +1069,7 @@ func hdl_csi_rm(emu *emulator, params []int) {
 		case 2:
 			emu.keyboardLocked = false
 		case 4:
-			emu.insertMode = false // zutty:insertMode
+			emu.insertMode = false
 		case 12:
 			emu.localEcho = true
 		case 20:
