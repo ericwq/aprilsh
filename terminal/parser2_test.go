@@ -27,6 +27,7 @@ SOFTWARE.
 package terminal
 
 import (
+	"sort"
 	"strings"
 	"testing"
 )
@@ -1386,6 +1387,115 @@ func TestHandle_SU_SD(t *testing.T) {
 			t.Errorf("%q:\n", v.name)
 			t.Errorf("before:\n%s", before)
 			t.Errorf("after:\n%s", after)
+		}
+	}
+}
+
+func isTabStop(emu *emulator, x int) bool {
+	data := emu.tabStops
+
+	i := sort.Search(len(data), func(i int) bool { return data[i] >= x })
+	if i < len(data) && data[i] == x {
+		return true
+		// x is present at data[i]
+	}
+	return false
+}
+
+func TestHandle_HTS_TBC(t *testing.T) {
+	tc := []struct {
+		name  string
+		hdIDs []int
+		seq   string
+	}{
+		{"Set/Clear tab stop 1", []int{csi_cup, esc_hts, csi_tbc}, "\x1B[21;19H\x1BH\x1B[g"}, // set tab stop; clear tab stop
+		{"Set/Clear tab stop 2", []int{csi_cup, esc_hts, csi_tbc}, "\x1B[21;39H\x1BH\x1B[0g"},
+		{"Set/Clear tab stop 3", []int{csi_cup, esc_hts, csi_tbc}, "\x1B[21;47H\x1BH\x1B[3g"},
+	}
+
+	p := NewParser()
+	emu := NewEmulator3(80, 40, 5)
+	var place strings.Builder
+	emu.logI.SetOutput(&place)
+	emu.logT.SetOutput(&place)
+
+	for _, v := range tc {
+
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) != 3 {
+			t.Errorf("%s expect %d handlers, got %d handlers.", v.name, 3, len(hds))
+		}
+
+		// handle the control sequence
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+			}
+
+			gotX := emu.posX
+			switch j {
+			case 0:
+				if isTabStop(emu, gotX) {
+					t.Errorf("%s seq=%q expect position %d is not tab stop, it is\n", v.name, v.seq, gotX)
+				}
+			case 1:
+				if !isTabStop(emu, gotX) {
+					t.Errorf("%s seq=%q expect position %d is not tab stop, it is\n", v.name, v.seq, gotX)
+				}
+			case 2:
+				if isTabStop(emu, gotX) {
+					t.Errorf("%s seq=%q expect position %d is not tab stop, it is\n", v.name, v.seq, gotX)
+				}
+			}
+		}
+	}
+}
+
+func TestHandle_HT_CHT_CBT(t *testing.T) {
+	tc := []struct {
+		name  string
+		hdIDs []int
+		posX  int
+		seq   string
+	}{
+		{"HT case 1  ", []int{csi_cup, c0_ht}, 8, "\x1B[21;6H\x09"},                 // move to the next tab stop
+		{"HT case 2  ", []int{csi_cup, c0_ht}, 16, "\x1B[21;10H\x09"},               // move to the next tab stop
+		{"CBT back to the 3 tab", []int{csi_cup, csi_cbt}, 8, "\x1B[21;30H\x1B[3Z"}, // move backward to the previous 3 tab stop
+		{"CHT to the next 4 tab", []int{csi_cup, csi_cht}, 32, "\x1B[21;3H\x1B[4I"}, // move to the next N tab stop
+		{"CHT to the right edge", []int{csi_cup, csi_cht}, 79, "\x1B[21;60H\x1B[4I"},
+		{"CBT back to the left edge", []int{csi_cup, csi_cbt}, 0, "\x1B[21;3H\x1B[3Z"},
+	}
+
+	p := NewParser()
+	emu := NewEmulator3(80, 40, 5)
+	var place strings.Builder
+	emu.logI.SetOutput(&place)
+	emu.logT.SetOutput(&place)
+
+	for _, v := range tc {
+
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) != 2 {
+			t.Errorf("%s expect %d handlers, got %d handlers.", v.name, 2, len(hds))
+		}
+
+		// handle the control sequence
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+			}
+		}
+
+		// get the result
+		gotX := emu.posX
+		if gotX != v.posX {
+			t.Errorf("%s seq=%q expect cursor cols: %d, got %d)\n", v.name, v.seq, v.posX, gotX)
 		}
 	}
 }

@@ -520,7 +520,7 @@ func (p *Parser) handle_CHT() (hd *Handler) {
 	return hd
 }
 
-// move bcursor ackward to the N tab stop position
+// move cursor backward to the N tab stop position
 func (p *Parser) handle_CBT() (hd *Handler) {
 	count := p.getPs(0, 1)
 
