@@ -104,6 +104,18 @@ func fillCells(fb *Framebuffer, rows ...int) {
 			}
 		}
 	}
+	//
+	// // fill the historyRows if necessary
+	// if len(rows) == 0 && fb.historyRows > 0 {
+	// 	for pY := -fb.historyRows; pY < 0; pY++ {
+	// 		start := fb.getIdx(pY, 0)
+	// 		end := start + fb.nCols
+	// 		for k := start; k < end; k++ {
+	// 			ch := rune(A + (k % 26))
+	// 			fb.cells[k].contents = string(ch)
+	// 		}
+	// 	}
+	// }
 }
 
 // print the screen with specified rows. if the row list is empty, print the whole screen.
@@ -116,11 +128,27 @@ func printCells(fb *Framebuffer, rows ...int) string {
 			end := start + fb.nCols
 			fmt.Fprintf(&output, "[%3d] ", r)
 			for k := start; k < end; k++ {
-				output.WriteString(fb.cells[k].contents)
+				if fb.cells[k].contents != "" {
+					output.WriteString(fb.cells[k].contents)
+				} else {
+					output.WriteString("*")
+				}
 			}
 			output.WriteString("\n")
 		}
 	}
+	// // print the historyRows if necessary
+	// if len(rows) == 0 && fb.historyRows > 0 {
+	// 	for pY := -fb.historyRows; pY < 0; pY++ {
+	// 		start := fb.getIdx(pY, 0)
+	// 		end := start + fb.nCols
+	// 		fmt.Fprintf(&output, "[%3d] ", pY)
+	// 		for k := start; k < end; k++ {
+	// 			output.WriteString(fb.cells[k].contents)
+	// 		}
+	// 		output.WriteString("\n")
+	// 	}
+	// }
 	return output.String()
 }
 
@@ -295,46 +323,46 @@ func TestFramebufferGetCell(t *testing.T) {
 	}
 }
 
-func TestFramebufferResize(t *testing.T) {
-	tc := []struct {
-		name   string
-		width  int
-		height int
-	}{
-		{"expand both", 12, 10},
-		{"expand height", 8, 10},
-		{"expand width", 12, 8},
-		{"shrink both", 6, 6},
-		{"shrink height", 8, 2},
-		{"shrink width", 2, 8},
-		{"invalid both", -1, -1},
-	}
-
-	// initial framebuffer size
-	width := 8
-	height := 8
-
-	for _, v := range tc {
-		fb := NewFramebuffer(width, height)
-		// fill the contents
-		fillinRows(fb)
-
-		// save the contents: before
-		before := printRows(fb)
-
-		if !fb.Resize(v.width, v.height) {
-			continue
-		}
-
-		after := printRows(fb)
-
-		if len(fb.rows) != v.height || len(fb.rows[v.height-1].cells) != v.width {
-			t.Logf("\nBefore Delete:\n%s", before)
-			t.Logf("\nAfter  Delete:\n%s", after)
-			t.Errorf("%s:\t expect (%d,%d)\n", v.name, v.width, v.height)
-		}
-	}
-}
+// func TestFramebufferResize(t *testing.T) {
+// 	tc := []struct {
+// 		name   string
+// 		width  int
+// 		height int
+// 	}{
+// 		{"expand both", 12, 10},
+// 		{"expand height", 8, 10},
+// 		{"expand width", 12, 8},
+// 		{"shrink both", 6, 6},
+// 		{"shrink height", 8, 2},
+// 		{"shrink width", 2, 8},
+// 		{"invalid both", -1, -1},
+// 	}
+//
+// 	// initial framebuffer size
+// 	width := 8
+// 	height := 8
+//
+// 	for _, v := range tc {
+// 		fb := NewFramebuffer(width, height)
+// 		// fill the contents
+// 		fillinRows(fb)
+//
+// 		// save the contents: before
+// 		before := printRows(fb)
+//
+// 		if !fb.Resize(v.width, v.height) {
+// 			continue
+// 		}
+//
+// 		after := printRows(fb)
+//
+// 		if len(fb.rows) != v.height || len(fb.rows[v.height-1].cells) != v.width {
+// 			t.Logf("\nBefore Delete:\n%s", before)
+// 			t.Logf("\nAfter  Delete:\n%s", after)
+// 			t.Errorf("%s:\t expect (%d,%d)\n", v.name, v.width, v.height)
+// 		}
+// 	}
+// }
 
 func TestFramebufferIconNameWindowTitle(t *testing.T) {
 	windowTitle := "aprilsh"
@@ -824,6 +852,49 @@ func TestFramebufferMoveInRow(t *testing.T) {
 			t.Errorf("[expect row=%d, x=%d, count=%d] %s", v.row, v.startX, v.count, before)
 			t.Errorf("[got    row=%d, x=%d, count=%d] %s", v.row, v.startX, v.count, after)
 			t.Errorf("expect damage %v, got %v\n", dmg, fb.damage)
+		}
+	}
+}
+
+func TestFramebufferResize(t *testing.T) {
+	tc := []struct {
+		name                    string
+		nCols, nRows, saveLines int
+		newCols, newRows        int
+	}{
+		{"saveLines over limitation  ", 8, 7, 50001, 8, 7},
+		{"expand both : expand 4 cols, 3 rows", 8, 4, 50, 12, 7},
+		{"expand rows : expand 3 rows", 8, 4, 50, 8, 7},
+		{"expand cols : expand 4 cols", 8, 4, 50, 12, 4},
+		{"resize none : expand 4 cols, 3 rows", 8, 4, 50, 8, 4},
+		{"shrink both : shrink 4 cols, 3 rows", 12, 7, 50, 8, 4},
+		{"shrink rows : shrink 3 rows", 12, 7, 50, 12, 4},
+		{"shrink cols : shrink 4 cols", 12, 7, 50, 8, 7},
+	}
+
+	for j, v := range tc {
+		fb, _, _ := NewFramebuffer3(v.nCols, v.nRows, v.saveLines)
+		fb.damage.reset()
+		fillCells(fb)
+
+		before := printCells(fb)
+
+		fb.resize(v.newCols, v.newRows)
+
+		after := printCells(fb)
+		gotCols := fb.nCols
+		gotRows := fb.nRows
+		if gotCols != v.newCols || gotRows != v.newRows {
+			t.Errorf("%q:\n", v.name)
+			t.Errorf("[before resize rows=%d, cols=%d]\n%s", v.nRows, v.nCols, before)
+			t.Errorf("[after resize  rows=%d, cols=%d]\n%s", v.newRows, v.newCols, after)
+		}
+		switch j {
+		case 0:
+			gotSaveLines := fb.saveLines
+			if gotSaveLines != SaveLineUpperLimit {
+				t.Errorf("%s expect saveLines limitation %d, got %d\n", v.name, SaveLineUpperLimit, gotSaveLines)
+			}
 		}
 	}
 }

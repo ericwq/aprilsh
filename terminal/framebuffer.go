@@ -26,6 +26,10 @@ SOFTWARE.
 
 package terminal
 
+const (
+	SaveLineUpperLimit = 50000
+)
+
 type Framebuffer struct {
 	rows             []Row
 	iconName         string
@@ -80,8 +84,8 @@ func NewFramebuffer3(nCols, nRows, saveLines int) (fb *Framebuffer, marginTop in
 	fb.nRows = nRows
 
 	// saveLines limitation is 50000
-	if saveLines > 50000 {
-		saveLines = 50000
+	if saveLines > SaveLineUpperLimit {
+		saveLines = SaveLineUpperLimit
 	}
 	fb.saveLines = saveLines
 	fb.scrollHead = 0
