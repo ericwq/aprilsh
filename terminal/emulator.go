@@ -456,8 +456,16 @@ func (emu *emulator) lookupCharset(p rune) (r rune) {
 	return r
 }
 
-func (emu *emulator) resize(width, height int) {
-	emu.cf.Resize(width, height)
+func (emu *emulator) resize(nCols, nRows int) {
+	// emu.cf.Resize(width, height)
+	if emu.nCols == nCols && emu.nRows == nRows {
+		return
+	}
+
+	// emu.hideCursor()
+	// if emu.altScreenBufferMode {
+	// 	emu.alternateFrame, emu.marginTop, emu.marginBottom = *NewFramebuffer3(nCols, nRows, 0)
+	// }
 }
 
 func (emu *emulator) switchScreenBufferMode(altScreenBufferMode bool) {
@@ -511,7 +519,7 @@ func (emu *emulator) normalizeCursorPos() {
 }
 
 func (emu *emulator) isCursorInsideMargins() bool {
-	return emu.posX >= emu.cf.DS.hMargin && emu.posX < emu.cf.DS.nColsEff &&
+	return emu.posX >= emu.hMargin && emu.posX < emu.nColsEff &&
 		emu.posY >= emu.marginTop && emu.posY < emu.marginBottom
 }
 
