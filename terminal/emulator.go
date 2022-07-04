@@ -197,9 +197,9 @@ type CharsetState struct {
 type emulator struct {
 	dispatcher Dispatcher
 
-	cf             *Framebuffer // current frame buffer
-	primaryFrame   Framebuffer  // normal screen buffer
-	alternateFrame Framebuffer  // alternate screen buffer
+	cf        *Framebuffer // current frame buffer
+	frame_pri Framebuffer  // normal screen buffer
+	frame_alt Framebuffer  // alternate screen buffer
 
 	charsetState CharsetState
 	user         UserInput
@@ -274,8 +274,8 @@ func NewEmulator() *emulator {
 	emu.resetCharsetState()
 
 	// defalult size 80x40
-	emu.primaryFrame = *NewFramebuffer(80, 40)
-	emu.cf = &emu.primaryFrame
+	emu.frame_pri = *NewFramebuffer(80, 40)
+	emu.cf = &emu.frame_pri
 
 	emu.initSelectionData()
 	emu.initLog()
@@ -287,7 +287,7 @@ func NewEmulator3(nCols, nRows, saveLines int) *emulator {
 
 	emu := &emulator{}
 	emu.cf, emu.marginTop, emu.marginBottom = NewFramebuffer3(nCols, nRows, saveLines)
-	emu.primaryFrame = *emu.cf
+	emu.frame_pri = *emu.cf
 
 	emu.nCols = nCols
 	emu.nRows = nRows
@@ -456,16 +456,51 @@ func (emu *emulator) lookupCharset(p rune) (r rune) {
 	return r
 }
 
-func (emu *emulator) resize(nCols, nRows int) {
-	// emu.cf.Resize(width, height)
-	if emu.nCols == nCols && emu.nRows == nRows {
+func (emu *emulator) resize(nCols_, nRows_ int) {
+	if emu.nCols == nCols_ && emu.nRows == nRows_ {
 		return
 	}
 
-	// emu.hideCursor()
-	// if emu.altScreenBufferMode {
-	// 	emu.alternateFrame, emu.marginTop, emu.marginBottom = *NewFramebuffer3(nCols, nRows, 0)
-	// }
+	emu.hideCursor()
+
+	if emu.altScreenBufferMode {
+		// create a ne frame buffer
+		var alt *Framebuffer
+		alt, emu.marginTop, emu.marginBottom = NewFramebuffer3(nCols_, nRows_, 0)
+		emu.frame_alt = *alt
+	} else {
+		// adjust the cursor position if the nRow shrinked
+		if nRows_ < emu.posY+1 {
+			nScroll := emu.nRows - nRows_
+			emu.cf.scrollUp(nScroll)
+			emu.posY -= nScroll
+		}
+
+		emu.frame_pri.resize(nCols_, nRows_)
+
+		// adjust the cursor position if the nRow expanded
+		if emu.nRows < nRows_ {
+			nScroll := min(nRows_-emu.nRows, emu.cf.getHistroryRows())
+			emu.cf.scrollDown(nScroll)
+			emu.posY += nScroll
+		}
+	}
+
+	emu.nCols = nCols_
+	emu.nRows = nRows_
+
+	if emu.horizMarginMode {
+		emu.nColsEff = min(emu.nColsEff, emu.nCols)
+		emu.hMargin = max(0, min(emu.hMargin, emu.nColsEff-2))
+	} else {
+		emu.nColsEff = emu.nCols
+		emu.hMargin = 0
+	}
+
+	emu.normalizeCursorPos()
+	emu.showCursor()
+
+	// TODO pty resize
 }
 
 func (emu *emulator) switchScreenBufferMode(altScreenBufferMode bool) {
@@ -475,12 +510,12 @@ func (emu *emulator) switchScreenBufferMode(altScreenBufferMode bool) {
 
 	if altScreenBufferMode {
 		emu.cf, emu.marginTop, emu.marginBottom = NewFramebuffer3(emu.nCols, emu.nRows, 0)
-		emu.alternateFrame = *emu.cf
+		emu.frame_alt = *emu.cf
 
 		emu.savedCursor_DEC = &emu.savedCursor_DEC_alt
 		emu.altScreenBufferMode = true
 	} else {
-		emu.cf = &emu.primaryFrame
+		emu.cf = &emu.frame_pri
 		emu.marginTop, emu.marginBottom = emu.cf.resize(emu.nCols, emu.nRows)
 		emu.cf.expose()
 
@@ -599,6 +634,15 @@ func (emu *emulator) jumpToNextTabStop() {
 		}
 	}
 	emu.lastCol = false
+}
+
+// TODO need implementation
+func (emu *emulator) showCursor() {
+	// if emu.showCursorMode &&
+}
+
+// TODO need implementation
+func (emu *emulator) hideCursor() {
 }
 
 /*

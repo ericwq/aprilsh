@@ -96,7 +96,7 @@ func fillCells(fb *Framebuffer, rows ...int) {
 
 	for r := 0; r < fb.nRows; r++ {
 		if len(rows) == 0 || inScope(rows, r) {
-			start := fb.getIdx(r, 0)
+			start := fb.nCols * r // fb.getIdx(r, 0)
 			end := start + fb.nCols
 			for k := start; k < end; k++ {
 				ch := rune(A + (k % 26))
@@ -124,7 +124,7 @@ func printCells(fb *Framebuffer, rows ...int) string {
 
 	for r := 0; r < fb.nRows; r++ {
 		if len(rows) == 0 || inScope(rows, r) {
-			start := fb.getIdx(r, 0)
+			start := fb.nCols * r // fb.getIdx(r, 0)
 			end := start + fb.nCols
 			fmt.Fprintf(&output, "[%3d] ", r)
 			for k := start; k < end; k++ {
@@ -137,18 +137,22 @@ func printCells(fb *Framebuffer, rows ...int) string {
 			output.WriteString("\n")
 		}
 	}
-	// // print the historyRows if necessary
-	// if len(rows) == 0 && fb.historyRows > 0 {
-	// 	for pY := -fb.historyRows; pY < 0; pY++ {
-	// 		start := fb.getIdx(pY, 0)
-	// 		end := start + fb.nCols
-	// 		fmt.Fprintf(&output, "[%3d] ", pY)
-	// 		for k := start; k < end; k++ {
-	// 			output.WriteString(fb.cells[k].contents)
-	// 		}
-	// 		output.WriteString("\n")
-	// 	}
-	// }
+	// print the historyRows if it has
+	if len(rows) == 0 && fb.historyRows > 0 {
+		for pY := fb.nRows; pY < fb.nRows+fb.historyRows; pY++ {
+			start := pY*fb.nCols + 0
+			end := start + fb.nCols
+			fmt.Fprintf(&output, "[%3d] ", pY)
+			for k := start; k < end; k++ {
+				if fb.cells[k].contents != "" {
+					output.WriteString(fb.cells[k].contents)
+				} else {
+					output.WriteString("*")
+				}
+			}
+			output.WriteString("\n")
+		}
+	}
 	return output.String()
 }
 
@@ -859,23 +863,64 @@ func TestFramebufferMoveInRow(t *testing.T) {
 func TestFramebufferResize(t *testing.T) {
 	tc := []struct {
 		name                    string
+		historyRows             int
 		nCols, nRows, saveLines int
 		newCols, newRows        int
 	}{
-		{"saveLines over limitation  ", 8, 7, 50001, 8, 7},
-		{"expand both : expand 4 cols, 3 rows", 8, 4, 50, 12, 7},
-		{"expand rows : expand 3 rows", 8, 4, 50, 8, 7},
-		{"expand cols : expand 4 cols", 8, 4, 50, 12, 4},
-		{"resize none : expand 4 cols, 3 rows", 8, 4, 50, 8, 4},
-		{"shrink both : shrink 4 cols, 3 rows", 12, 7, 50, 8, 4},
-		{"shrink rows : shrink 3 rows", 12, 7, 50, 12, 4},
-		{"shrink cols : shrink 4 cols", 12, 7, 50, 8, 7},
+		// {"saveLines over limitation  ", 7, 8, 7, 50001, 8, 7},
+		{
+			"expand both : expand 4 cols, 3 rows", 4,
+			8, 4, 4,
+			12, 7,
+		},
+		// {"expand rows : expand 3 rows", 7, 8, 4, 50, 8, 7},
+		// {"expand cols : expand 4 cols", 7, 8, 4, 50, 12, 4},
+		// {"resize none : expand 4 cols, 3 rows", 7, 8, 4, 50, 8, 4},
+		// {"shrink both : shrink 4 cols, 3 rows", 7, 12, 7, 50, 8, 4},
+		// {"shrink rows : shrink 3 rows", 7, 12, 7, 50, 12, 4},
+		// {"shrink cols : shrink 4 cols", 7, 12, 7, 50, 8, 7},
 	}
 
-	for j, v := range tc {
-		fb, _, _ := NewFramebuffer3(v.nCols, v.nRows, v.saveLines)
+	for _, v := range tc {
+		// if j == 0 {
+		// 	gotSaveLines := fb.saveLines
+		// 	if gotSaveLines != SaveLineUpperLimit {
+		// 		t.Errorf("%s expect saveLines limitation %d, got %d\n", v.name, SaveLineUpperLimit, gotSaveLines)
+		// 	}
+		// 	continue
+		// }
+		// this is the pre-condidtion for the test case.
+		emu := NewEmulator3(v.nCols, v.nRows, v.saveLines)
+		var place strings.Builder
+		emu.logI.SetOutput(&place)
+		emu.logT.SetOutput(&place)
+
+		fb := emu.cf
 		fb.damage.reset()
 		fillCells(fb)
+
+		place.Reset()
+		// sequence: move cursor to the last row on screen
+		place.WriteString(fmt.Sprintf("\x1B[%d;%dH", v.nRows, v.nCols))
+		// sequence: print line number: add history row and move scrollHead down
+		for r := 0; r < v.saveLines; r++ {
+			place.WriteString("\n") // fmt.Sprintf("line%d:\n", r+v.nRows))
+		}
+		// parse the sequence
+		p := NewParser()
+		hds := make([]*Handler, 0, 16)
+		// t.Logf("%s seq=%q\n", v.name, place.String())
+
+		hds = p.processStream(place.String(), hds)
+		place.Reset()
+
+		// handle the sequence
+		for _, hd := range hds {
+			hd.handle(emu)
+			// t.Logf("%s handle %s\n", v.name, strHandlerID[hd.id])
+		}
+
+		// t.Errorf("%s got %d handlers.", v.name, len(hds))
 
 		before := printCells(fb)
 
@@ -884,17 +929,10 @@ func TestFramebufferResize(t *testing.T) {
 		after := printCells(fb)
 		gotCols := fb.nCols
 		gotRows := fb.nRows
-		if gotCols != v.newCols || gotRows != v.newRows {
-			t.Errorf("%q:\n", v.name)
-			t.Errorf("[before resize rows=%d, cols=%d]\n%s", v.nRows, v.nCols, before)
-			t.Errorf("[after resize  rows=%d, cols=%d]\n%s", v.newRows, v.newCols, after)
-		}
-		switch j {
-		case 0:
-			gotSaveLines := fb.saveLines
-			if gotSaveLines != SaveLineUpperLimit {
-				t.Errorf("%s expect saveLines limitation %d, got %d\n", v.name, SaveLineUpperLimit, gotSaveLines)
-			}
+		if gotCols == v.newCols || gotRows != v.newRows {
+			t.Errorf("%s:\n", v.name)
+			t.Errorf("[before resize rows=%d, cols=%d historyRows=%d]\n%s", v.nRows, v.nCols, fb.historyRows, before)
+			t.Errorf("[after resize  rows=%d, cols=%d historyRows=%d]\n%s", v.newRows, v.newCols, fb.historyRows, after)
 		}
 	}
 }
