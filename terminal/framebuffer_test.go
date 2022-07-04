@@ -144,10 +144,13 @@ func printCells(fb *Framebuffer, rows ...int) string {
 			end := start + fb.nCols
 			fmt.Fprintf(&output, "[%3d] ", pY)
 			for k := start; k < end; k++ {
-				if fb.cells[k].contents != "" {
-					output.WriteString(fb.cells[k].contents)
-				} else {
+				switch fb.cells[k].contents {
+				case " ":
+					output.WriteString(".")
+				case "":
 					output.WriteString("*")
+				default:
+					output.WriteString(fb.cells[k].contents)
 				}
 			}
 			output.WriteString("\n")
@@ -922,7 +925,8 @@ func TestFramebufferResize(t *testing.T) {
 
 		// t.Errorf("%s got %d handlers.", v.name, len(hds))
 
-		before := printCells(fb)
+		before := fmt.Sprintf("%s scrollHead=%d, marginTop=%d, marginBottom=%d\n",
+			printCells(fb), fb.scrollHead, fb.marginTop, fb.marginBottom)
 
 		fb.resize(v.newCols, v.newRows)
 
@@ -931,8 +935,9 @@ func TestFramebufferResize(t *testing.T) {
 		gotRows := fb.nRows
 		if gotCols == v.newCols || gotRows != v.newRows {
 			t.Errorf("%s:\n", v.name)
-			t.Errorf("[before resize rows=%d, cols=%d historyRows=%d]\n%s", v.nRows, v.nCols, fb.historyRows, before)
-			t.Errorf("[after resize  rows=%d, cols=%d historyRows=%d]\n%s", v.newRows, v.newCols, fb.historyRows, after)
+			t.Errorf("[before resize rows=%d, cols=%d]\n%s", v.nRows, v.nCols, before)
+			t.Errorf("[after resize  rows=%d, cols=%d]\n%s scrollHead=%d, marginTop=%d, marginBottom=%d\n",
+				v.newRows, v.newCols, after, fb.scrollHead, fb.marginTop, fb.marginBottom)
 		}
 	}
 }

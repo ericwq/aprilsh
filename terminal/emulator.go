@@ -456,38 +456,38 @@ func (emu *emulator) lookupCharset(p rune) (r rune) {
 	return r
 }
 
-func (emu *emulator) resize(nCols_, nRows_ int) {
-	if emu.nCols == nCols_ && emu.nRows == nRows_ {
+func (emu *emulator) resize(nCols, nRows int) {
+	if emu.nCols == nCols && emu.nRows == nRows {
 		return
 	}
 
 	emu.hideCursor()
 
 	if emu.altScreenBufferMode {
-		// create a ne frame buffer
+		// create a new frame buffer
 		var alt *Framebuffer
-		alt, emu.marginTop, emu.marginBottom = NewFramebuffer3(nCols_, nRows_, 0)
+		alt, emu.marginTop, emu.marginBottom = NewFramebuffer3(nCols, nRows, 0)
 		emu.frame_alt = *alt
 	} else {
 		// adjust the cursor position if the nRow shrinked
-		if nRows_ < emu.posY+1 {
-			nScroll := emu.nRows - nRows_
+		if nRows < emu.posY+1 {
+			nScroll := emu.nRows - nRows
 			emu.cf.scrollUp(nScroll)
 			emu.posY -= nScroll
 		}
 
-		emu.frame_pri.resize(nCols_, nRows_)
+		emu.marginTop, emu.marginBottom = emu.frame_pri.resize(nCols, nRows)
 
 		// adjust the cursor position if the nRow expanded
-		if emu.nRows < nRows_ {
-			nScroll := min(nRows_-emu.nRows, emu.cf.getHistroryRows())
+		if emu.nRows < nRows {
+			nScroll := min(nRows-emu.nRows, emu.cf.getHistroryRows())
 			emu.cf.scrollDown(nScroll)
 			emu.posY += nScroll
 		}
 	}
 
-	emu.nCols = nCols_
-	emu.nRows = nRows_
+	emu.nCols = nCols
+	emu.nRows = nRows
 
 	if emu.horizMarginMode {
 		emu.nColsEff = min(emu.nColsEff, emu.nCols)

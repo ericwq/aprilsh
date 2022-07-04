@@ -26,6 +26,8 @@ SOFTWARE.
 
 package terminal
 
+import "fmt"
+
 const (
 	SaveLineUpperLimit = 50000
 )
@@ -138,7 +140,7 @@ func (fb *Framebuffer) resize(nCols, nRows int) (marginTop, marginBottom int) {
 		return
 	}
 
-	// adjust the internal cell storage according to the new columns an rows
+	// adjust the internal cell storage according to the new size
 	newCells := make([]Cell, nCols*(nRows+fb.saveLines))
 
 	rowLen := min(fb.nCols, nCols)    // minimal row length
@@ -150,6 +152,7 @@ func (fb *Framebuffer) resize(nCols, nRows int) (marginTop, marginBottom int) {
 		srcEndIdx := srcStartIdx + rowLen
 		dstStartIdx := nCols * pY
 		copy(newCells[dstStartIdx:], fb.cells[srcStartIdx:srcEndIdx])
+		fmt.Printf("copy active area from row %d to %d\n", srcStartIdx, dstStartIdx)
 	}
 	// copy the history rows
 	for pY := -fb.historyRows; pY < 0; pY++ {
@@ -157,6 +160,7 @@ func (fb *Framebuffer) resize(nCols, nRows int) (marginTop, marginBottom int) {
 		srcEndIdx := srcStartIdx + rowLen
 		dstStartIdx := nCols * abs(pY)
 		copy(newCells[dstStartIdx:], fb.cells[srcStartIdx:srcEndIdx])
+		fmt.Printf("copy history rows from row %d to %d\n", srcStartIdx, dstStartIdx)
 	}
 
 	fb.cells = newCells
