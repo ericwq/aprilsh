@@ -1349,19 +1349,19 @@ func TestHandle_SU_SD(t *testing.T) {
 		emptyRows []int
 		seq       string
 	}{
-		// move cursor to the start place, then scroll up/down
+		// the CUP sequence doesn't impact the SD/SU sequence. should consider remove it from the test case.
 		{"SU scroll up   2 lines", []int{csi_cup, csi_su}, []int{38, 39}, "\x1B[40;1H\x1B[2S"},
-		{"SD scroll down 3 lines", []int{csi_cup, csi_sd}, []int{0, 1, 2}, "\x1B[1;1H\x1B[3T"},
+		{"SD scroll down 3 lines", []int{csi_cup, csi_sd}, []int{0, 1, 2}, "\x1B[3;1H\x1B[3T"},
 	}
 
 	p := NewParser()
-	// the default size of emu is 80x40 [colxrow]
-	emu := NewEmulator3(80, 40, 5)
-	var place strings.Builder
-	emu.logI.SetOutput(&place)
-	emu.logT.SetOutput(&place)
 
-	for _, v := range tc {
+	for i, v := range tc {
+		// the default size of emu is 80x40 [colxrow]
+		emu := NewEmulator3(80, 40, 5)
+		var place strings.Builder
+		emu.logI.SetOutput(&place)
+		emu.logT.SetOutput(&place)
 
 		hds := make([]*Handler, 0, 16)
 		hds = p.processStream(v.seq, hds)
@@ -1378,6 +1378,10 @@ func TestHandle_SU_SD(t *testing.T) {
 			hd.handle(emu)
 			if hd.id != v.hdIDs[j] { // validate the control sequences id
 				t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+			}
+			if i == 1 {
+				t.Logf("%s [frame] scrollHead=%d historyRows=%d [emulator] posY=%d\n",
+					v.name, emu.cf.scrollHead, emu.cf.historyRows, emu.posY)
 			}
 		}
 
