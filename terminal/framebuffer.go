@@ -299,6 +299,15 @@ func (fb *Framebuffer) scrollDown(count int) {
 	fb.damage.add(fb.marginTop*fb.nCols, fb.marginBottom*fb.nCols)
 }
 
+func (fb *Framebuffer) getCell(pY, pX int) (cell *Cell) {
+	idx := fb.getIdx(pY, pX)
+	fb.damage.add(idx, idx+1)
+	fb.invalidateSelection(NewRect4(pX, pY, pX+1, pY))
+
+	cell = &(fb.cells[idx])
+	return
+}
+
 // erase (reset) fromt start to end with specified renditions
 func (fb *Framebuffer) eraseRange(start, end int, attrs Cell) {
 	for i := range fb.cells[start:end] {
