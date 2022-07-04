@@ -1499,3 +1499,51 @@ func TestHandle_HT_CHT_CBT(t *testing.T) {
 		}
 	}
 }
+
+func TestHandle_LF_ScrollUp(t *testing.T) {
+	tc := []struct {
+		name             string
+		posY             int
+		expectScrollHead int
+		seq              string
+	}{
+		{"LF within active area", 3, 0, "\x0A\x0A\x0A"},
+		{"LF outof active area", 3, 2, "\x0A\x0A\x0A\x0A\x0A"},
+		{"wrap around margin bottom", 3, 1, "\n\n\n\n\n\n\n\n\n\n\n\n"},
+	}
+
+	p := NewParser()
+	emu := NewEmulator3(8, 4, 4) // this is the pre-condidtion for the test case.
+	var place strings.Builder
+	emu.logI.SetOutput(&place)
+	emu.logT.SetOutput(&place)
+
+	for i, v := range tc {
+		emu.resetTerminal()
+
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) == 0 {
+			t.Errorf("%s got %d handlers.", v.name, len(hds))
+		}
+
+		// handle the control sequence
+		for _, hd := range hds {
+			hd.handle(emu)
+			if i == 2 {
+				t.Logf("%s [frame] scrollHead=%d historyRows=%d [emulator] posY=%d\n",
+					v.name, emu.cf.scrollHead, emu.cf.historyRows, emu.posY)
+			}
+		}
+
+		gotY := emu.posY
+		gotHead := emu.cf.scrollHead
+		if gotY != v.posY || gotHead != v.expectScrollHead {
+			t.Errorf("%s marginTop=%d, marginBottom=%d scrollHead=%d\n",
+				v.name, emu.cf.marginTop, emu.cf.marginBottom, emu.cf.scrollHead)
+			t.Errorf("%s seq=%q expect posY=%d, scrollHead=%d, got posY=%d, scrollHead=%d\n",
+				v.name, v.seq, v.posY, v.expectScrollHead, gotY, gotHead)
+		}
+	}
+}
