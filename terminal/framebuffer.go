@@ -51,6 +51,7 @@ type Framebuffer struct {
 	cursor       Cursor // current cursor style, color and position
 }
 
+// Deprecated: please don't use this function to get a new framebuffer.
 func NewFramebuffer(width, height int) *Framebuffer {
 	if width <= 0 || height <= 0 {
 		return nil
@@ -66,7 +67,9 @@ func NewFramebuffer(width, height int) *Framebuffer {
 	return &fb
 }
 
+// create a framebuffer according to the specified nCols, nRows and saveLines.
 // saveLines: for alternate screen buffer default is 0, for normal screen buffer the default is 500, max 50000
+// return the framebuffer pointer and external marginTop,marginBottom.
 func NewFramebuffer3(nCols, nRows, saveLines int) (fb *Framebuffer, marginTop int, marginBottom int) {
 	fb = &Framebuffer{}
 
@@ -76,6 +79,10 @@ func NewFramebuffer3(nCols, nRows, saveLines int) (fb *Framebuffer, marginTop in
 	fb.nCols = nCols
 	fb.nRows = nRows
 
+	// saveLines limitation is 50000
+	if saveLines > 50000 {
+		saveLines = 50000
+	}
 	fb.saveLines = saveLines
 	fb.scrollHead = 0
 	fb.marginTop = 0
@@ -128,7 +135,8 @@ func (fb *Framebuffer) resize(nCols, nRows int) (marginTop, marginBottom int) {
 	}
 
 	// adjust the internal cell storage according to the new columns an rows
-	newCells := make([]Cell, fb.nCols*(fb.nRows+fb.saveLines))
+	newCells := make([]Cell, nCols*(nRows+fb.saveLines))
+
 	rowLen := min(fb.nCols, nCols)    // minimal row length
 	nCopyRows := min(fb.nRows, nRows) // minimal row number
 
@@ -336,7 +344,7 @@ func (fb *Framebuffer) getIdx(pY, pX int) int {
 	return fb.nCols*fb.getPhysicalRow(pY-fb.viewOffset) + pX
 }
 
-// TODO the relationship between viewOffset and scrollHead
+// TODO check the relationship between viewOffset and scrollHead
 func (fb *Framebuffer) getPhysicalRow(pY int) int {
 	if pY < 0 {
 		if !fb.margin {
