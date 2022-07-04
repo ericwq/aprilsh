@@ -238,3 +238,22 @@ func TestLowerBound(t *testing.T) {
 		})
 	}
 }
+
+func TestAbs(t *testing.T) {
+	tc := []struct {
+		name          string
+		value, expect int
+	}{
+		{"positive value", 23, 23},
+		{"negative value", -23, 23},
+		{"zero negative value", -0, 0},
+		{"zero value", 0, 0},
+	}
+
+	for _, v := range tc {
+		got := abs(v.value)
+		if got != v.expect {
+			t.Errorf("%s expect abs(%d)=%d, got %d\n", v.name, v.value, v.expect, got)
+		}
+	}
+}
