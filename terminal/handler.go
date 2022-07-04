@@ -246,6 +246,7 @@ func hdl_c0_bel(emu *emulator) {
 // move cursor to the next row, scroll down if necessary.
 func hdl_c0_lf(emu *emulator) (scrolled bool) {
 	if emu.posY == emu.marginBottom-1 {
+		// text up, viewpoint down if reach the last row in active area
 		hdl_csi_su(emu, 1)
 		scrolled = true
 	} else if emu.posY < emu.nRows-1 {
