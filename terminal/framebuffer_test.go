@@ -126,37 +126,33 @@ func printCells(fb *Framebuffer, rows ...int) string {
 		if len(rows) == 0 || inScope(rows, r) {
 			start := fb.nCols * r // fb.getIdx(r, 0)
 			end := start + fb.nCols
-			fmt.Fprintf(&output, "[%3d] ", r)
-			for k := start; k < end; k++ {
-				if fb.cells[k].contents != "" {
-					output.WriteString(fb.cells[k].contents)
-				} else {
-					output.WriteString("*")
-				}
-			}
-			output.WriteString("\n")
+			printRowAt(r, start, end, fb, &output)
 		}
 	}
 	// print the historyRows if it has
 	if len(rows) == 0 && fb.historyRows > 0 {
-		for pY := fb.nRows; pY < fb.nRows+fb.historyRows; pY++ {
-			start := pY*fb.nCols + 0
+		for r := fb.nRows; r < fb.nRows+fb.historyRows; r++ {
+			start := r*fb.nCols + 0
 			end := start + fb.nCols
-			fmt.Fprintf(&output, "[%3d] ", pY)
-			for k := start; k < end; k++ {
-				switch fb.cells[k].contents {
-				case " ":
-					output.WriteString(".")
-				case "":
-					output.WriteString("*")
-				default:
-					output.WriteString(fb.cells[k].contents)
-				}
-			}
-			output.WriteString("\n")
+			printRowAt(r, start, end, fb, &output)
 		}
 	}
 	return output.String()
+}
+
+func printRowAt(r int, start int, end int, fb *Framebuffer, output *strings.Builder) {
+	fmt.Fprintf(output, "[%3d] ", r)
+	for k := start; k < end; k++ {
+		switch fb.cells[k].contents {
+		case " ":
+			output.WriteString(".")
+		case "":
+			output.WriteString("*")
+		default:
+			output.WriteString(fb.cells[k].contents)
+		}
+	}
+	output.WriteString("\n")
 }
 
 // check the specified rows is empty, if so return true, otherwise return false.
@@ -871,17 +867,41 @@ func TestFramebufferResize(t *testing.T) {
 		newCols, newRows        int
 	}{
 		// {"saveLines over limitation  ", 7, 8, 7, 50001, 8, 7},
+		// {
+		// 	"expand both : expand 4 cols, 3 rows", 4,
+		// 	8, 4, 4,
+		// 	12, 7,
+		// },
+		// {
+		// 	"expand rows : expand 3 rows", 7,
+		// 	8, 4, 4,
+		// 	8, 7,
+		// },
+		// {
+		// 	"expand cols : expand 4 cols", 7,
+		// 	8, 4, 4,
+		// 	12, 4,
+		// },
+		// {
+		// 	"resize none : expand 4 cols, 3 rows", 7,
+		// 	8, 4, 4,
+		// 	8, 4,
+		// },
+		// {
+		// 	"shrink both : shrink 4 cols, 3 rows", 7,
+		// 	12, 7, 4,
+		// 	8, 4,
+		// },
+		// {
+		// 	"shrink rows : shrink 3 rows", 7,
+		// 	12, 7, 4,
+		// 	12, 4,
+		// },
 		{
-			"expand both : expand 4 cols, 3 rows", 4,
-			8, 4, 4,
-			12, 7,
+			"shrink cols : shrink 4 cols", 7,
+			12, 7, 4,
+			8, 7,
 		},
-		// {"expand rows : expand 3 rows", 7, 8, 4, 50, 8, 7},
-		// {"expand cols : expand 4 cols", 7, 8, 4, 50, 12, 4},
-		// {"resize none : expand 4 cols, 3 rows", 7, 8, 4, 50, 8, 4},
-		// {"shrink both : shrink 4 cols, 3 rows", 7, 12, 7, 50, 8, 4},
-		// {"shrink rows : shrink 3 rows", 7, 12, 7, 50, 12, 4},
-		// {"shrink cols : shrink 4 cols", 7, 12, 7, 50, 8, 7},
 	}
 
 	for _, v := range tc {

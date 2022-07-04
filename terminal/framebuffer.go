@@ -155,11 +155,14 @@ func (fb *Framebuffer) resize(nCols, nRows int) (marginTop, marginBottom int) {
 		fmt.Printf("copy active area from row %d to %d\n", srcStartIdx, dstStartIdx)
 	}
 	// copy the history rows
+	base:= (nRows+fb.saveLines-fb.historyRows)*nCols
+	j:=0
 	for pY := -fb.historyRows; pY < 0; pY++ {
 		srcStartIdx := fb.getPhysicalRowIndex(pY)
 		srcEndIdx := srcStartIdx + rowLen
-		dstStartIdx := nCols * abs(pY)
+		dstStartIdx := base + nCols*j
 		copy(newCells[dstStartIdx:], fb.cells[srcStartIdx:srcEndIdx])
+		j++
 		fmt.Printf("copy history rows from row %d to %d\n", srcStartIdx, dstStartIdx)
 	}
 
