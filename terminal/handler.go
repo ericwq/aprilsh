@@ -67,6 +67,9 @@ const (
 	csi_decslrm
 	csi_decstbm
 	csi_decstr
+	csi_dl
+	csi_el
+	csi_il
 	csi_rm
 	csi_sd
 	csi_sm
@@ -83,36 +86,39 @@ const (
 
 var strHandlerID = [...]string{
 	"",
-	"c0-cr",
-	"c0-ht",
-	"c0-lf",
-	"csi-cbt",
-	"csi-cht",
-	"csi-cub",
-	"csi-cud",
-	"csi-cuf",
-	"csi-cup",
-	"csi-cuu",
-	"csi-decic",
-	"csi-decdc",
-	"csi-decrst",
-	"csi-decscl",
-	"csi-decset",
-	"csi-decslrm",
-	"csi-decstbm",
-	"csi-decstr",
-	"csi-rm",
-	"csi-sd",
-	"csi-sm",
-	"csi-su",
-	"csi-scorc",
-	"csi-scosc",
-	"csi-tbc",
-	"esc-decrc",
-	"esc-decsc",
-	"esc-docs-utf-8",
-	"esc-docs-iso8859-1",
-	"esc-hts",
+	"c0_cr",
+	"c0_ht",
+	"c0_lf",
+	"csi_cbt",
+	"csi_cht",
+	"csi_cub",
+	"csi_cud",
+	"csi_cuf",
+	"csi_cup",
+	"csi_cuu",
+	"csi_decic",
+	"csi_decdc",
+	"csi_decrst",
+	"csi_decscl",
+	"csi_decset",
+	"csi_decslrm",
+	"csi_decstbm",
+	"csi_decstr",
+	"csi_dl",
+	"csi_el",
+	"csi_il",
+	"csi_rm",
+	"csi_sd",
+	"csi_sm",
+	"csi_su",
+	"csi_scorc",
+	"csi_scosc",
+	"csi_tbc",
+	"esc_decrc",
+	"esc_decsc",
+	"esc_docs-utf-8",
+	"esc_docs-iso8859-1",
+	"esc_hts",
 }
 
 // Handler is the outcome of parsering input, it can be used to perform control sequence on emulator.
@@ -503,36 +509,37 @@ func hdl_csi_ed(emu *emulator, cmd int) {
 // * Ps = 1  ⇒  Erase to Left.
 // * Ps = 2  ⇒  Erase All.
 func hdl_csi_el(emu *emulator, cmd int) {
-	fb := emu.cf
+	emu.normalizeCursorPos()
 	switch cmd {
-	case 0:
-		clearline(fb, -1, fb.DS.GetCursorCol(), fb.DS.GetWidth()-1)
-	case 1:
-		clearline(fb, -1, 0, fb.DS.GetCursorCol())
-	case 2:
-		fb.ResetRow(fb.GetRow(-1))
+	case 0: // clear from cursor to end of line
+		emu.cf.eraseInRow(emu.posY, emu.posX, emu.nCols-emu.posX, emu.attrs)
+	case 1: // clear from cursor to beginning of line
+		emu.cf.eraseInRow(emu.posY, 0, emu.posX+1, emu.attrs)
+	case 2: // clear entire line
+		emu.cf.eraseInRow(emu.posY, 0, emu.nCols, emu.attrs)
+	default:
+		emu.logI.Printf("Erase in Line with illegal param: %d\n", cmd)
 	}
 }
 
 // CSI Ps L  Insert Ps Line(s) (default = 1) (IL).
 // insert N lines in cursor position
 func hdl_csi_il(emu *emulator, lines int) {
-	fb := emu.cf
-	fb.InsertLine(fb.DS.GetCursorRow(), lines)
-
-	// vt220 manual and Ecma-48 say to move to first column */
-	fb.DS.MoveCol(0, false, false)
+	if emu.isCursorInsideMargins() {
+		lines = min(lines, emu.marginBottom-emu.posY)
+		emu.insertRows(emu.posY, lines)
+		hdl_c0_cr(emu)
+	}
 }
 
 // CSI Ps M  Delete Ps Line(s) (default = 1) (DL).
 // delete N lines in cursor position
 func hdl_csi_dl(emu *emulator, lines int) {
-	fb := emu.cf
-
-	fb.DeleteLine(fb.DS.GetCursorRow(), lines)
-
-	// vt220 manual and Ecma-48 say to move to first column */
-	fb.DS.MoveCol(0, false, false)
+	if emu.isCursorInsideMargins() {
+		lines = min(lines, emu.marginBottom-emu.posY)
+		emu.deleteRows(emu.posY, lines)
+		hdl_c0_cr(emu)
+	}
 }
 
 // CSI Ps P  Delete Ps Character(s) (default = 1) (DCH).
