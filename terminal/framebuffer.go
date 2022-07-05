@@ -139,6 +139,7 @@ func (fb *Framebuffer) resize(nCols, nRows int) (marginTop, marginBottom int) {
 	}
 
 	// adjust the internal cell storage according to the new size
+	// TODO the defalt constructor of Cell set the contents field to ""
 	newCells := make([]Cell, nCols*(nRows+fb.saveLines))
 
 	rowLen := min(fb.nCols, nCols)    // minimal row length
