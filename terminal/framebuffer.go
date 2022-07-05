@@ -26,6 +26,8 @@ SOFTWARE.
 
 package terminal
 
+import "fmt"
+
 const (
 	SaveLineUpperLimit = 50000
 )
@@ -380,10 +382,12 @@ func (fb *Framebuffer) getPhysicalRow(pY int) int {
 			pY += fb.nRows + fb.saveLines
 		}
 
+		fmt.Printf("- scrollHead=%d, nRows=%d, saveLines=%d -> pY=%d\n", fb.scrollHead, fb.nRows, fb.saveLines, pY)
 		return pY
 	}
 
 	if fb.margin && (pY < fb.marginTop || pY >= fb.marginBottom) {
+		fmt.Printf("* marginTop=%d, marginBottom=%d -> pY=%d\n", fb.marginTop, fb.marginBottom, pY)
 		return pY
 	}
 
@@ -392,6 +396,7 @@ func (fb *Framebuffer) getPhysicalRow(pY int) int {
 		pY -= fb.marginBottom - fb.marginTop
 	}
 
+	fmt.Printf("+ scrollHead=%d, marginTop=%d, marginBottom=%d -> pY=%d\n", fb.scrollHead, fb.marginTop, fb.marginBottom, pY)
 	return pY
 }
 

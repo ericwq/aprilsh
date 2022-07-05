@@ -964,3 +964,45 @@ func TestFramebufferResize(t *testing.T) {
 		}
 	}
 }
+
+func TestFramebufferGetPhysicalRow(t *testing.T) {
+	nCols := 8
+	nRows := 8
+	saveLines := 4
+	top := 2
+
+	fb, _, _ := NewFramebuffer3(nCols, nRows, saveLines)
+	fb.setMargins(top, top+nRows-2)
+	fb.scrollHead = 6
+	/*
+		tc := []struct {
+			name string
+			pY   int
+			idx  int
+		}{
+			{"outof active area \t\t", 0, 0}, // out of active area
+			{"inside active area\t\t", 4, 7},
+			{"bottom active area\t\t", nRows - 2, nRows - 2},
+			{"outside top active area\t", top - 1, top - 1},
+			{"outside bottom active area\t", nRows, nRows},
+			{"history row case -4\t", -4, nRows},
+			{"history row case -3\t", -3, nRows},
+			{"history row case -2\t", -2, nRows},
+			{"history row case -1\t", -1, nRows},
+		}
+		for _, v := range tc {
+			gotIdx := fb.getPhysicalRow(v.pY)
+			// if gotIdx != v.idx {
+			t.Errorf("%s for row %d->%d, expect idx=%d | scrollHead=%d, marginTop=%d, marginBottom=%d\n",
+				v.name, v.pY, gotIdx, v.idx, fb.scrollHead, fb.marginTop, fb.marginBottom)
+			// t.Errorf("scrollHead=%d, marginTop=%d, marginBottom=%d\n", )
+			// }
+
+		}
+	*/
+	for i := -saveLines; i < (nRows + saveLines); i++ {
+		gotIdx := fb.getPhysicalRow(i)
+		t.Errorf("row %d->%d | scrollHead=%d, marginTop=%d, marginBottom=%d\n",
+			i, gotIdx, fb.scrollHead, fb.marginTop, fb.marginBottom)
+	}
+}
