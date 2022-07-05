@@ -104,18 +104,6 @@ func fillCells(fb *Framebuffer, rows ...int) {
 			}
 		}
 	}
-	//
-	// // fill the historyRows if necessary
-	// if len(rows) == 0 && fb.historyRows > 0 {
-	// 	for pY := -fb.historyRows; pY < 0; pY++ {
-	// 		start := fb.getIdx(pY, 0)
-	// 		end := start + fb.nCols
-	// 		for k := start; k < end; k++ {
-	// 			ch := rune(A + (k % 26))
-	// 			fb.cells[k].contents = string(ch)
-	// 		}
-	// 	}
-	// }
 }
 
 // print the screen with specified rows. if the row list is empty, print the whole screen.
@@ -862,43 +850,42 @@ func TestFramebufferMoveInRow(t *testing.T) {
 func TestFramebufferResize(t *testing.T) {
 	tc := []struct {
 		name                    string
-		historyRows             int
 		nCols, nRows, saveLines int
 		newCols, newRows        int
 	}{
 		// {"saveLines over limitation  ", 7, 8, 7, 50001, 8, 7},
-		// {
-		// 	"expand both : expand 4 cols, 3 rows", 4,
-		// 	8, 4, 4,
-		// 	12, 7,
-		// },
-		// {
-		// 	"expand rows : expand 3 rows", 7,
-		// 	8, 4, 4,
-		// 	8, 7,
-		// },
-		// {
-		// 	"expand cols : expand 4 cols", 7,
-		// 	8, 4, 4,
-		// 	12, 4,
-		// },
-		// {
-		// 	"resize none : expand 4 cols, 3 rows", 7,
-		// 	8, 4, 4,
-		// 	8, 4,
-		// },
-		// {
-		// 	"shrink both : shrink 4 cols, 3 rows", 7,
-		// 	12, 7, 4,
-		// 	8, 4,
-		// },
-		// {
-		// 	"shrink rows : shrink 3 rows", 7,
-		// 	12, 7, 4,
-		// 	12, 4,
-		// },
 		{
-			"shrink cols : shrink 4 cols", 7,
+			"expand both : expand 4 cols, 3 rows",
+			8, 4, 4,
+			12, 7,
+		},
+		{
+			"expand rows : expand 3 rows",
+			8, 4, 4,
+			8, 7,
+		},
+		{
+			"expand cols : expand 4 cols",
+			8, 4, 4,
+			12, 4,
+		},
+		{
+			"resize none : keep the size",
+			8, 4, 4,
+			8, 4,
+		},
+		{
+			"shrink both : shrink 4 cols, 3 rows",
+			12, 7, 4,
+			8, 4,
+		},
+		{
+			"shrink rows : shrink 3 rows",
+			12, 7, 4,
+			12, 4,
+		},
+		{
+			"shrink cols : shrink 4 cols",
 			12, 7, 4,
 			8, 7,
 		},
@@ -926,13 +913,13 @@ func TestFramebufferResize(t *testing.T) {
 		// sequence: move cursor to the last row on screen
 		place.WriteString(fmt.Sprintf("\x1B[%d;%dH", v.nRows, v.nCols))
 		// sequence: print line number: add history row and move scrollHead down
+		// historyRows = saveLines
 		for r := 0; r < v.saveLines; r++ {
 			place.WriteString("\n") // fmt.Sprintf("line%d:\n", r+v.nRows))
 		}
 		// parse the sequence
 		p := NewParser()
 		hds := make([]*Handler, 0, 16)
-		// t.Logf("%s seq=%q\n", v.name, place.String())
 
 		hds = p.processStream(place.String(), hds)
 		place.Reset()
@@ -940,10 +927,7 @@ func TestFramebufferResize(t *testing.T) {
 		// handle the sequence
 		for _, hd := range hds {
 			hd.handle(emu)
-			// t.Logf("%s handle %s\n", v.name, strHandlerID[hd.id])
 		}
-
-		// t.Errorf("%s got %d handlers.", v.name, len(hds))
 
 		before := fmt.Sprintf("%s scrollHead=%d, marginTop=%d, marginBottom=%d\n",
 			printCells(fb), fb.scrollHead, fb.marginTop, fb.marginBottom)
@@ -953,7 +937,7 @@ func TestFramebufferResize(t *testing.T) {
 		after := printCells(fb)
 		gotCols := fb.nCols
 		gotRows := fb.nRows
-		if gotCols == v.newCols || gotRows != v.newRows {
+		if gotCols != v.newCols || gotRows != v.newRows {
 			t.Errorf("%s:\n", v.name)
 			t.Errorf("[before resize rows=%d, cols=%d]\n%s", v.nRows, v.nCols, before)
 			t.Errorf("[after resize  rows=%d, cols=%d]\n%s scrollHead=%d, marginTop=%d, marginBottom=%d\n",
