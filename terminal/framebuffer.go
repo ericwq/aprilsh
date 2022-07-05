@@ -239,6 +239,15 @@ func (fb *Framebuffer) getSelection() *Rect {
 	return &fb.selection
 }
 
+func (fb *Framebuffer) setCursorPos(pY, pX int) {
+	fb.cursor.posY = pY + fb.viewOffset
+	fb.cursor.posX = pX
+}
+
+func (fb *Framebuffer) setCursorStyle(cs CursorStyle) {
+	fb.cursor.style = cs
+}
+
 // text up, screen down count rows
 func (fb *Framebuffer) pageUp(count int) {
 	viewOffset := min(fb.viewOffset+count, fb.historyRows)

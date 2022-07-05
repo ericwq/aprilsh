@@ -152,14 +152,28 @@ func isEmptyRows(fb *Framebuffer, rows ...int) bool {
 	if len(rows) == 0 {
 		return false
 	}
-	for r := 0; r < fb.nRows; r++ {
-		if inScope(rows, r) {
-			start := fb.getIdx(r, 0)
-			end := start + fb.nCols
-			for k := start; k < end; k++ {
-				if fb.cells[k].contents != " " {
-					return false
-				}
+
+	for _, r := range rows {
+		for c := 0; c < fb.nCols; c++ {
+			idx := fb.getIdx(r, c)
+			if fb.cells[idx].contents != " " {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func isEmptyCols(fb *Framebuffer, cols ...int) bool {
+	if len(cols) == 0 {
+		return false
+	}
+	for _, c := range cols {
+		for r := 0; r < fb.nRows; r++ {
+			idx := fb.getIdx(r, c)
+			if fb.cells[idx].contents != " " {
+				// fmt.Printf("isEmptyCols() row=%d col=%d is %s\n", r, c, fb.cells[idx].contents)
+				return false
 			}
 		}
 	}

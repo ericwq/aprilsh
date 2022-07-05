@@ -1551,3 +1551,54 @@ func TestHandle_LF_ScrollUp(t *testing.T) {
 		}
 	}
 }
+
+func TestHandle_DECIC_DECDC(t *testing.T) {
+	tc := []struct {
+		name      string
+		seq       string
+		emptyCols []int
+		hdIDs     []int
+	}{
+		// move cursor to start position, and perform insert and delete
+		{"insert at left side ", "\x1B[2;1H\x1B[3'}", []int{0, 1, 2}, []int{csi_cup, csi_decic}},
+		{"insert at middle    ", "\x1B[2;4H\x1B[2'}", []int{3, 4}, []int{csi_cup, csi_decic}},
+		{"insert at right side", "\x1B[1;8H\x1B[2'}", []int{7}, []int{csi_cup, csi_decic}},
+		{"delete at left side ", "\x1B[1;1H\x1B[3'~", []int{5, 6, 7}, []int{csi_cup, csi_decdc}},
+		{"delete at middle    ", "\x1B[1;4H\x1B[2'~", []int{6, 7}, []int{csi_cup, csi_decdc}},
+		{"delete at right side", "\x1B[1;8H\x1B[2'~", []int{7}, []int{csi_cup, csi_decdc}},
+	}
+
+	for _, v := range tc {
+		p := NewParser()
+		emu := NewEmulator3(8, 4, 4) // this is the pre-condidtion for the test case.
+		var place strings.Builder
+		emu.logI.SetOutput(&place)
+		emu.logT.SetOutput(&place)
+
+		fillCells(emu.cf)
+		before := printCells(emu.cf)
+
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) == 0 {
+			t.Errorf("%s got %d handlers.", v.name, len(hds))
+		}
+
+		// handle the control sequence
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+			}
+		}
+
+		after := printCells(emu.cf)
+		// validate the empty cell
+		if !isEmptyCols(emu.cf, v.emptyCols...) {
+			t.Errorf("%s:\n", v.name)
+			t.Errorf("[before]\n%s", before)
+			t.Errorf("[after ]\n%s", after)
+		}
+	}
+}

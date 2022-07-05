@@ -28,9 +28,9 @@ package terminal
 type CursorStyle uint
 
 const (
-	CursorHidden CursorStyle = iota
-	CursorFillBlock
-	CursorHollowBlock
+	CursorStyle_Hidden CursorStyle = iota
+	CursorStyle_FillBlock
+	CursorStyle_HollowBlock
 )
 
 type Cursor struct {

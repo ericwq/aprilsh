@@ -134,6 +134,10 @@ func NewParser() *Parser {
 	return p
 }
 
+func (p *Parser) getState() int {
+	return p.inputState
+}
+
 // add rune to the history cache, store max 5 recent runes.
 func (p *Parser) appendToHistory(r rune) {
 	// max history = DCS/OSC buffer limitation 4095 + 2

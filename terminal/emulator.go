@@ -196,6 +196,7 @@ type CharsetState struct {
 
 type emulator struct {
 	dispatcher Dispatcher
+	parser     *Parser
 
 	cf        *Framebuffer // current frame buffer
 	frame_pri Framebuffer  // normal screen buffer
@@ -286,6 +287,7 @@ func NewEmulator3(nCols, nRows, saveLines int) *emulator {
 	// TODO makePalette256 (palette256);
 
 	emu := &emulator{}
+	emu.parser = NewParser()
 	emu.cf, emu.marginTop, emu.marginBottom = NewFramebuffer3(nCols, nRows, saveLines)
 	emu.frame_pri = *emu.cf
 
@@ -638,11 +640,16 @@ func (emu *emulator) jumpToNextTabStop() {
 
 // TODO need implementation
 func (emu *emulator) showCursor() {
-	// if emu.showCursorMode &&
+	if emu.showCursorMode && emu.parser.getState() == InputState_Normal {
+		emu.cf.setCursorPos(emu.posY, emu.posX)
+		emu.cf.setCursorStyle(CursorStyle_FillBlock)
+		// TODO set HollowBlock for no focus case
+	}
 }
 
 // TODO need implementation
 func (emu *emulator) hideCursor() {
+	emu.cf.setCursorStyle(CursorStyle_Hidden)
 }
 
 /*
