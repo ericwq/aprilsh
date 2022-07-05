@@ -117,9 +117,9 @@ func printCells(fb *Framebuffer, rows ...int) string {
 			printRowAt(r, start, end, fb, &output)
 		}
 	}
-	// print the historyRows if it has
-	if len(rows) == 0 && fb.historyRows > 0 {
-		for r := fb.nRows; r < fb.nRows+fb.historyRows; r++ {
+	// print the saveLines if it has
+	if len(rows) == 0 && fb.saveLines > 0 {
+		for r := fb.nRows; r < fb.nRows+fb.saveLines; r++ {
 			start := r*fb.nCols + 0
 			end := start + fb.nCols
 			printRowAt(r, start, end, fb, &output)
@@ -129,7 +129,11 @@ func printCells(fb *Framebuffer, rows ...int) string {
 }
 
 func printRowAt(r int, start int, end int, fb *Framebuffer, output *strings.Builder) {
-	fmt.Fprintf(output, "[%3d] ", r)
+	if fb.scrollHead == r {
+		fmt.Fprintf(output, "[%3d]-", r)
+	} else {
+		fmt.Fprintf(output, "[%3d] ", r)
+	}
 	for k := start; k < end; k++ {
 		switch fb.cells[k].contents {
 		case " ":

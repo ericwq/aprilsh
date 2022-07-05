@@ -1343,22 +1343,24 @@ func TestHandle_CUU_CUD_CUF_CUB_CUP(t *testing.T) {
 }
 
 func TestHandle_SU_SD(t *testing.T) {
+	nCols := 8
+	nRows := 5
+	saveLines := 5
 	tc := []struct {
 		name      string
 		hdIDs     []int
 		emptyRows []int
 		seq       string
 	}{
-		// the CUP sequence doesn't impact the SD/SU sequence. should consider remove it from the test case.
-		{"SU scroll up   2 lines", []int{csi_cup, csi_su}, []int{38, 39}, "\x1B[40;1H\x1B[2S"},
-		{"SD scroll down 3 lines", []int{csi_cup, csi_sd}, []int{0, 1, 2}, "\x1B[3;1H\x1B[3T"},
+		{"SU scroll up   2 lines", []int{csi_su}, []int{nRows - 2, nRows - 1}, "\x1B[2S"}, // bottom 2 is erased
+		{"SD scroll down 3 lines", []int{csi_sd}, []int{0, 1, 2}, "\x1B[3T"},              // top three is erased.
 	}
 
 	p := NewParser()
 
-	for i, v := range tc {
-		// the default size of emu is 80x40 [colxrow]
-		emu := NewEmulator3(80, 40, 5)
+	for _, v := range tc {
+		// the terminal size is 8x4 [colxrow]
+		emu := NewEmulator3(nCols, nRows, saveLines)
 		var place strings.Builder
 		emu.logI.SetOutput(&place)
 		emu.logT.SetOutput(&place)
@@ -1379,16 +1381,14 @@ func TestHandle_SU_SD(t *testing.T) {
 			if hd.id != v.hdIDs[j] { // validate the control sequences id
 				t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 			}
-			if i == 1 {
-				t.Logf("%s [frame] scrollHead=%d historyRows=%d [emulator] posY=%d\n",
-					v.name, emu.cf.scrollHead, emu.cf.historyRows, emu.posY)
-			}
 		}
 
 		after := printCells(emu.cf)
 
 		if !isEmptyRows(emu.cf, v.emptyRows...) {
-			t.Errorf("%q:\n", v.name)
+			t.Errorf("%s:\n", v.name)
+			t.Logf("[frame] scrollHead=%d marginTop=%d marginBottom=%d [emulator] marginTop=%d marginBottom=%d\n",
+				emu.cf.scrollHead, emu.cf.marginTop, emu.cf.marginBottom, emu.marginTop, emu.marginBottom)
 			t.Errorf("before:\n%s", before)
 			t.Errorf("after:\n%s", after)
 		}
