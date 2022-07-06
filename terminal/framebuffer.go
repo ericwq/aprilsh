@@ -312,12 +312,20 @@ func (fb *Framebuffer) scrollDown(count int) {
 	fb.damage.add(fb.marginTop*fb.nCols, fb.marginBottom*fb.nCols)
 }
 
-func (fb *Framebuffer) getCell(pY, pX int) (cell *Cell) {
+// retrun a reference of the specified cell
+func (fb *Framebuffer) getMutableCell(pY, pX int) (cell *Cell) {
 	idx := fb.getIdx(pY, pX)
 	fb.damage.add(idx, idx+1)
 	fb.invalidateSelection(NewRect4(pX, pY, pX+1, pY))
 
 	cell = &(fb.cells[idx])
+	return
+}
+
+// return a copy of the specified cell
+func (fb *Framebuffer) getCell(pY, pX int) (cell Cell) {
+	idx := fb.getIdx(pY, pX)
+	cell = fb.cells[idx]
 	return
 }
 
@@ -470,7 +478,7 @@ func (fb *Framebuffer) fillCells(ch rune, attrs Cell) {
 		start := fb.getIdx(r, 0)
 		end := start + fb.nCols
 		for k := start; k < end; k++ {
-			fb.cells[k].renditions = attrs.renditions
+			fb.cells[k] = attrs
 			fb.cells[k].contents = string(ch)
 		}
 		fb.damage.add(start, end)
