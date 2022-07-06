@@ -1056,7 +1056,7 @@ func TestHandle_SGR_RGBcolor(t *testing.T) {
 			}
 
 			// reset the renditions
-			emu.attrs.renditions.ClearAttributes()
+			emu.attrs.renditions = Renditions{}
 
 			// handle the control sequence
 			for j, hd := range hds {
@@ -1146,6 +1146,7 @@ func TestHandle_SGR_Break(t *testing.T) {
 		hdIDs []int
 		seq   string
 	}{
+		// the folloiwng test the break case for SGR
 		{"break 38    ", []int{csi_sgr}, "\x1B[38m"},
 		{"break 38;   ", []int{csi_sgr}, "\x1B[38;m"},
 		{"break 38:5  ", []int{csi_sgr}, "\x1B[38;5m"},
@@ -1173,7 +1174,7 @@ func TestHandle_SGR_Break(t *testing.T) {
 			}
 
 			// reset the renditions
-			emu.cf.DS.AddRenditions()
+			emu.attrs.renditions = Renditions{}
 
 			// handle the control sequence
 			for j, hd := range hds {
@@ -1184,11 +1185,11 @@ func TestHandle_SGR_Break(t *testing.T) {
 				}
 			}
 
-			// validate the result
-			got := emu.cf.DS.GetRenditions()
-			want := &Renditions{}
+			// the break case should not affect the renditions, it will keep the same.
+			got := emu.attrs.renditions
+			want := Renditions{}
 
-			if *got != *want {
+			if got != want {
 				t.Errorf("%s:\t %q expect renditions \n%v, got \n%v\n", v.name, v.seq, want, got)
 			}
 		})
