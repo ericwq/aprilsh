@@ -436,11 +436,14 @@ func (fb *Framebuffer) copyAllCells(dst []Cell) {
 		copy(dst[dstStartIdx:], fb.cells[srcStartIdx:srcEndIdx])
 	}
 	// copy the history rows
+	base := (fb.nRows + fb.saveLines - fb.historyRows) * fb.nCols
+	j := 0
 	for pY := -fb.historyRows; pY < 0; pY++ {
 		srcStartIdx := fb.nCols * fb.getPhysicalRow(pY)
 		srcEndIdx := srcStartIdx + fb.nCols
-		dstStartIdx := fb.nCols * abs(pY)
+		dstStartIdx := base + fb.nCols*j
 		copy(dst[dstStartIdx:], fb.cells[srcStartIdx:srcEndIdx])
+		j++
 	}
 }
 

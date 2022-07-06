@@ -965,7 +965,7 @@ func TestFramebufferResize(t *testing.T) {
 	}
 }
 
-func TestFramebufferGetPhysicalRow(t *testing.T) {
+func testFramebufferGetPhysicalRow(t *testing.T) {
 	nCols := 8
 	nRows := 8
 	saveLines := 4
