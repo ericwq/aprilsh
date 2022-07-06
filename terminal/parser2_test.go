@@ -1797,3 +1797,74 @@ func fillRowWith(row *Row, r rune) {
 		row.cells[i].contents = string(r)
 	}
 }
+
+func TestHandle_ICH_EL_DCH_ECH(t *testing.T) {
+	tc := []struct {
+		name       string
+		wantName   string
+		seq        string
+		startY     int // start Y
+		startX     int // start X
+		blankStart int // count number
+		blankEnd   int // count number
+	}{
+		{"ICH  left side", "csi-ich", "\x1B[2@", 7, 0, 0, 1},      // insert 2 cell at col 0~1
+		{"ICH right side", "csi-ich", "\x1B[3@", 8, 78, 78, 79},   // insert 3 cell at col 78
+		{"ICH in  middle", "csi-ich", "\x1B[10@", 9, 40, 40, 49},  // insert 10 cell at col 40
+		{"   EL to right", "csi-el", "\x1B[0K", 10, 9, 9, 79},     // erase to right from col 9
+		{"   EL  to left", "csi-el", "\x1B[1K", 11, 9, 0, 9},      // erase to left from col 9
+		{"   EL      all", "csi-el", "\x1B[2K", 12, 9, 0, 79},     // erase the how line
+		{"  DCH  at left", "csi-dch", "\x1B[2P", 20, 9, 78, 79},   // delete 2 cell at 9 col
+		{"  DCH at right", "csi-dch", "\x1B[3P", 21, 77, 77, 79},  // delete 3 cell at 77 col
+		{" DCH in middle", "csi-dch", "\x1B[20P", 22, 40, 60, 79}, // delete 20 cell at 40 col
+		{" ECH in middle", "csi-ech", "\x1B[2X", 30, 40, 40, 41},  // erase 2 cell at col 40
+		{"   ECH at left", "csi-ech", "\x1B[5X", 30, 1, 1, 5},     // erase 5 cell at col 1
+		{"  ECH at right", "csi-ech", "\x1B[5X", 30, 76, 76, 79},  // erase 5 cell at col 76
+	}
+	p := NewParser()
+	// the default size of emu is 80x40 [colxrow]
+	emu := NewEmulator()
+	for _, v := range tc {
+
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) == 0 {
+			t.Errorf("%s got zero handlers.", v.name)
+		}
+
+		// fill the row with content
+		row := emu.cf.GetRow(v.startY)
+		fillRowWith(row, 'H')
+
+		// move cursor to the active row
+		emu.cf.DS.MoveRow(v.startY, false)
+		emu.cf.DS.MoveCol(v.startX, false, false)
+
+		// call the handler
+		for _, hd := range hds {
+			hd.handle(emu)
+			if hd.name != v.wantName {
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+			}
+		}
+
+		// print the row
+		t.Logf("%2d %s\n", v.startY, row.String())
+
+		// prepare the validate tool
+		isEmpty := func(col int) bool {
+			return inRange(v.startY, v.blankStart, v.startY, v.blankEnd, v.startY, col, 80)
+		}
+
+		// validate the result
+		for col := 0; col < emu.cf.DS.width; col++ {
+			cell := emu.cf.GetCell(v.startY, col)
+			if isEmpty(col) && cell.contents == "H" {
+				t.Errorf("%s seq=%q cols=%d expect empty cell, got 'H' cell\n", v.name, v.seq, col)
+			} else if !isEmpty(col) && cell.contents == "" {
+				t.Errorf("%s seq=%q cols=%d expect 'H' cell, got empty cell\n", v.name, v.seq, col)
+			}
+		}
+	}
+}

@@ -689,6 +689,7 @@ func (fb *Framebuffer) PrefixWindowTitle(s string) {
 	fb.windowTitle = s + fb.windowTitle
 }
 
+/*
 func (fb *Framebuffer) Resize(width, height int) bool {
 	if width <= 0 || height <= 0 {
 		return false
@@ -755,7 +756,7 @@ func (fb *Framebuffer) resizeCols(width, oldWidth int) {
 		}
 	}
 }
-
+*/
 func (fb *Framebuffer) ResetCell(c *Cell) { c.Reset(uint32(fb.DS.GetBackgroundRendition())) }
 func (fb *Framebuffer) ResetRow(r *Row)   { r.Reset(uint32(fb.DS.GetBackgroundRendition())) }
 func (fb *Framebuffer) RingBell()         { fb.bellCount += 1 }

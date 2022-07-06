@@ -59,6 +59,7 @@ const (
 	csi_cuf
 	csi_cup
 	csi_cuu
+	csi_dch
 	csi_decic
 	csi_decdc
 	csi_decrst
@@ -68,8 +69,10 @@ const (
 	csi_decstbm
 	csi_decstr
 	csi_dl
+	csi_ech
 	csi_ed
 	csi_el
+	csi_ich
 	csi_il
 	csi_rm
 	csi_sd
@@ -99,6 +102,7 @@ var strHandlerID = [...]string{
 	"csi_cuf",
 	"csi_cup",
 	"csi_cuu",
+	"csi_dch",
 	"csi_decic",
 	"csi_decdc",
 	"csi_decrst",
@@ -108,8 +112,10 @@ var strHandlerID = [...]string{
 	"csi_decstbm",
 	"csi_decstr",
 	"csi_dl",
+	"csi_ech",
 	"csi_ed",
 	"csi_el",
+	"csi_ich",
 	"csi_il",
 	"csi_rm",
 	"csi_sd",
@@ -480,11 +486,22 @@ func hdl_csi_cbt(emu *emulator, count int) {
 }
 
 // CSI Ps @  Insert Ps (Blank) Character(s) (default = 1) (ICH).
-func hdl_csi_ich(emu *emulator, count int) {
-	fb := emu.cf
-	for i := 0; i < count; i++ {
-		fb.InsertCell(fb.DS.GetCursorRow(), fb.DS.GetCursorCol())
+func hdl_csi_ich(emu *emulator, arg int) {
+	if emu.isCursorInsideMargins() {
+		length := emu.nColsEff - emu.posX
+		arg = min(arg, length)
+		length -= arg
+
+		if emu.cf.getCell(emu.posY, emu.posX+arg+length-1).wrap {
+			// maintain wrap bit invariance at EOL
+			emu.cf.getMutableCell(emu.posY, emu.posX+arg+length-1).wrap = false
+			emu.cf.getMutableCell(emu.posY, emu.posX+length-1).wrap = true
+		}
+
+		emu.cf.moveInRow(emu.posY, emu.posX+arg, emu.posX, length)
+		emu.cf.eraseInRow(emu.posY, emu.posX, arg, emu.attrs)
 	}
+	emu.lastCol = false
 }
 
 // CSI Ps J Erase in Display (ED), VT100.
@@ -556,12 +573,16 @@ func hdl_csi_dl(emu *emulator, lines int) {
 }
 
 // CSI Ps P  Delete Ps Character(s) (default = 1) (DCH).
-func hdl_csi_dch(emu *emulator, cells int) {
-	fb := emu.cf
+func hdl_csi_dch(emu *emulator, arg int) {
+	if emu.isCursorInsideMargins() {
+		length := emu.nColsEff - emu.posX
+		arg = min(arg, length)
+		length -= arg
 
-	for i := 0; i < cells; i++ {
-		fb.DeleteCell(fb.DS.GetCursorRow(), fb.DS.GetCursorCol())
+		emu.cf.moveInRow(emu.posY, emu.posX, emu.posX+arg, length)
+		emu.cf.eraseInRow(emu.posY, emu.posX+length, arg, emu.attrs)
 	}
+	emu.lastCol = false
 }
 
 // CSI Ps S  Scroll up Ps lines (default = 1) (SU), VT420, ECMA-48.
@@ -596,16 +617,12 @@ func clearline(fb *Framebuffer, row int, start int, end int) {
 }
 
 // CSI Ps X  Erase Ps Character(s) (default = 1) (ECH).
-func hdl_csi_ech(emu *emulator, num int) {
-	fb := emu.cf
+func hdl_csi_ech(emu *emulator, arg int) {
+	length := emu.nColsEff - emu.posX
+	arg = min(arg, length)
 
-	limit := fb.DS.GetCursorCol() + num - 1
-
-	if limit >= fb.DS.GetWidth() {
-		limit = fb.DS.GetWidth() - 1
-	}
-
-	clearline(fb, -1, fb.DS.GetCursorCol(), limit)
+	emu.cf.eraseInRow(emu.posY, emu.posX, arg, emu.attrs)
+	emu.lastCol = false
 }
 
 // CSI Ps c  Send Device Attributes (Primary DA).

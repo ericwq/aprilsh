@@ -556,7 +556,7 @@ func (p *Parser) handle_TBC() (hd *Handler) {
 func (p *Parser) handle_ICH() (hd *Handler) {
 	count := p.getPs(0, 1)
 
-	hd = &Handler{name: "csi-ich", ch: p.ch}
+	hd = &Handler{id: csi_ich, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_ich(emu, count)
 	}
@@ -649,7 +649,7 @@ func (p *Parser) handle_DL() (hd *Handler) {
 func (p *Parser) handle_DCH() (hd *Handler) {
 	cells := p.getPs(0, 1)
 
-	hd = &Handler{name: "csi-dch", ch: p.ch}
+	hd = &Handler{id: csi_dch, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_dch(emu, cells)
 	}
@@ -694,7 +694,7 @@ func (p *Parser) handle_SD() (hd *Handler) {
 func (p *Parser) handle_ECH() (hd *Handler) {
 	num := p.getPs(0, 1)
 
-	hd = &Handler{name: "csi-ech", ch: p.ch}
+	hd = &Handler{id: csi_ech, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_ech(emu, num)
 	}
