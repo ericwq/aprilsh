@@ -164,6 +164,7 @@ func isEmptyRows(fb *Framebuffer, rows ...int) bool {
 	return true
 }
 
+// check the specified cols is empty, if so return true, otherwise return false.
 func isEmptyCols(fb *Framebuffer, cols ...int) bool {
 	if len(cols) == 0 {
 		return false
@@ -175,6 +176,18 @@ func isEmptyCols(fb *Framebuffer, cols ...int) bool {
 				// fmt.Printf("isEmptyCols() row=%d col=%d is %s\n", r, c, fb.cells[idx].contents)
 				return false
 			}
+		}
+	}
+	return true
+}
+
+// check the specified cells is empty, if so return true, otherwise return false.
+// the cells start at (pY,pX), counting sucessive number .
+func isEmptyCells(fb *Framebuffer, pY, pX, count int) bool {
+	for i := 0; i < count; i++ {
+		idx := fb.getIdx(pY, pX+i)
+		if fb.cells[idx].contents != " " {
+			return false
 		}
 	}
 	return true

@@ -1659,51 +1659,15 @@ func TestHandle_ED_IL_DL(t *testing.T) {
 		seq      string
 	}{
 		// use CUP to move cursor to start position, use DECALN to fill the screen, then call ED,IL or DL
-		{
-			"ED erase below @ 1,0  ",
-			[]int{csi_cup, esc_decaln, csi_ed},
-			1, 0, 3, 7, "\x1B[2;1H\x1B#8\x1B[J",
-		}, // Erase Below (default).
-		{
-			"ED erase below @ 3,7  ",
-			[]int{csi_cup, esc_decaln, csi_ed},
-			3, 6, 3, 7, "\x1B[4;7H\x1B#8\x1B[0J",
-		}, // Ps = 0  ⇒  Erase Below (default).
-		{
-			"ED erase above @ 3,6",
-			[]int{csi_cup, esc_decaln, csi_ed},
-			0, 0, 3, 6, "\x1B[4;7H\x1B#8\x1B[1J",
-		}, // Ps = 1  ⇒  Erase Above.
-		{
-			"ED erase all",
-			[]int{csi_cup, esc_decaln, csi_ed},
-			0, 0, 3, 7, "\x1B[4;7H\x1B#8\x1B[2J",
-		}, // Ps = 2  ⇒  Erase All.
-		{
-			"IL 1 lines @ 2,2 mid",
-			[]int{csi_cup, esc_decaln, csi_il},
-			2, 0, 3, 7, "\x1B[3;3H\x1B#8\x1B[L",
-		},
-		{
-			"IL 2 lines @ 1,0 bottom",
-			[]int{csi_cup, esc_decaln, csi_il},
-			1, 0, 3, 7, "\x1B[2;1H\x1B#8\x1B[2L",
-		},
-		{
-			"IL 4 lines @ 0,0 top",
-			[]int{esc_decaln, csi_cup, csi_il},
-			0, 0, 3, 7, "\x1B#8\x1B[1;1H\x1B[4L",
-		},
-		{
-			"DL 2 lines @ 1,0 top",
-			[]int{esc_decaln, csi_cup, csi_dl},
-			1, 0, 3, 7, "\x1B#8\x1B[2;1H\x1B[2M",
-		},
-		{
-			"DL 1 lines @ 3,0 bottom",
-			[]int{esc_decaln, csi_cup, csi_dl},
-			3, 0, 3, 7, "\x1B#8\x1B[4;1H\x1B[1M",
-		},
+		{"ED erase below @ 1,0", []int{csi_cup, esc_decaln, csi_ed}, 1, 0, 3, 7, "\x1B[2;1H\x1B#8\x1B[J"},  // Erase Below (default).
+		{"ED erase below @ 3,7", []int{csi_cup, esc_decaln, csi_ed}, 3, 6, 3, 7, "\x1B[4;7H\x1B#8\x1B[0J"}, // Ps = 0  ⇒  Erase Below (default).
+		{"ED erase above @ 3,6", []int{csi_cup, esc_decaln, csi_ed}, 0, 0, 3, 6, "\x1B[4;7H\x1B#8\x1B[1J"}, // Ps = 1  ⇒  Erase Above.
+		{"ED erase all", []int{csi_cup, esc_decaln, csi_ed}, 0, 0, 3, 7, "\x1B[4;7H\x1B#8\x1B[2J"},         // Ps = 2  ⇒  Erase All.
+		{"IL 1 lines @ 2,2 mid", []int{csi_cup, esc_decaln, csi_il}, 2, 0, 3, 7, "\x1B[3;3H\x1B#8\x1B[L"},
+		{"IL 2 lines @ 1,0 bottom", []int{csi_cup, esc_decaln, csi_il}, 1, 0, 3, 7, "\x1B[2;1H\x1B#8\x1B[2L"},
+		{"IL 4 lines @ 0,0 top", []int{esc_decaln, csi_cup, csi_il}, 0, 0, 3, 7, "\x1B#8\x1B[1;1H\x1B[4L"},
+		{"DL 2 lines @ 1,0 top", []int{esc_decaln, csi_cup, csi_dl}, 1, 0, 3, 7, "\x1B#8\x1B[2;1H\x1B[2M"},
+		{"DL 1 lines @ 3,0 bottom", []int{esc_decaln, csi_cup, csi_dl}, 3, 0, 3, 7, "\x1B#8\x1B[4;1H\x1B[1M"},
 	}
 
 	p := NewParser()
@@ -1747,29 +1711,6 @@ func TestHandle_ED_IL_DL(t *testing.T) {
 			t.Errorf("[before]\n%s", before)
 			t.Errorf("[after ]\n%s", after)
 		}
-
-		// // prepare the validate tools
-		// ds := emu.cf.DS
-		// isEmpty := func(row, col int) bool {
-		// 	return inRange(v.emptyY1, v.emptyX1, v.emptyY2, v.emptyX2, row, col, 80)
-		// }
-		//
-		// // validate the whole screen.
-		// for i := 0; i < ds.GetHeight(); i++ {
-		// 	// print the row
-		// 	row := emu.cf.GetRow(i)
-		// 	t.Logf("%2d %s\n", i, row.String())
-		//
-		// 	// validate the cell should be empty
-		// 	for j := 0; j < ds.GetWidth(); j++ {
-		// 		cell := emu.cf.GetCell(i, j)
-		// 		if isEmpty(i, j) && cell.contents == "E" {
-		// 			t.Errorf("%s seq=%q expect empty cell at (%d,%d), got %q.\n", v.name, v.seq, i, j, cell.contents)
-		// 		} else if !isEmpty(i, j) && cell.contents == "" {
-		// 			t.Errorf("%s seq=%q expect 'E' cell at (%d,%d), got empty.\n", v.name, v.seq, i, j)
-		// 		}
-		// 	}
-		// }
 	}
 }
 
@@ -1800,30 +1741,35 @@ func fillRowWith(row *Row, r rune) {
 
 func TestHandle_ICH_EL_DCH_ECH(t *testing.T) {
 	tc := []struct {
-		name       string
-		wantName   string
-		seq        string
-		startY     int // start Y
-		startX     int // start X
-		blankStart int // count number
-		blankEnd   int // count number
+		name     string
+		hdIDs    []int
+		tlY, tlX int // damage area top/left
+		brY, brX int // damage area bottom/right
+		seq      string
+		emptyY   int // empty cell starting Y
+		emptyX   int // empty cell starting X
+		count    int // empty cells count number
 	}{
-		{"ICH  left side", "csi-ich", "\x1B[2@", 7, 0, 0, 1},      // insert 2 cell at col 0~1
-		{"ICH right side", "csi-ich", "\x1B[3@", 8, 78, 78, 79},   // insert 3 cell at col 78
-		{"ICH in  middle", "csi-ich", "\x1B[10@", 9, 40, 40, 49},  // insert 10 cell at col 40
-		{"   EL to right", "csi-el", "\x1B[0K", 10, 9, 9, 79},     // erase to right from col 9
-		{"   EL  to left", "csi-el", "\x1B[1K", 11, 9, 0, 9},      // erase to left from col 9
-		{"   EL      all", "csi-el", "\x1B[2K", 12, 9, 0, 79},     // erase the how line
-		{"  DCH  at left", "csi-dch", "\x1B[2P", 20, 9, 78, 79},   // delete 2 cell at 9 col
-		{"  DCH at right", "csi-dch", "\x1B[3P", 21, 77, 77, 79},  // delete 3 cell at 77 col
-		{" DCH in middle", "csi-dch", "\x1B[20P", 22, 40, 60, 79}, // delete 20 cell at 40 col
-		{" ECH in middle", "csi-ech", "\x1B[2X", 30, 40, 40, 41},  // erase 2 cell at col 40
-		{"   ECH at left", "csi-ech", "\x1B[5X", 30, 1, 1, 5},     // erase 5 cell at col 1
-		{"  ECH at right", "csi-ech", "\x1B[5X", 30, 76, 76, 79},  // erase 5 cell at col 76
+		// use DECALN to fill the screen, use CUP to move cursor to start position, then call the sequence
+		{"ICH  in middle", []int{esc_decaln, csi_cup, csi_ich}, 0, 2, 0, 7, "\x1B#8\x1B[1;3H\x1B[2@", 0, 2, 2},
+		{"ICH right side", []int{esc_decaln, csi_cup, csi_ich}, 1, 5, 1, 7, "\x1B#8\x1B[2;6H\x1B[3@", 1, 5, 3},
+		{"ICH left side ", []int{esc_decaln, csi_cup, csi_ich}, 0, 0, 0, 7, "\x1B#8\x1B[1;1H\x1B[2@", 0, 0, 2},
+		{"   EL to right", []int{esc_decaln, csi_cup, csi_el}, 3, 3, 3, 7, "\x1B#8\x1B[4;4H\x1B[0K", 3, 3, 5},
+		{"   EL  to left", []int{esc_decaln, csi_cup, csi_el}, 3, 0, 3, 3, "\x1B#8\x1B[4;4H\x1B[1K", 3, 0, 4},
+		{"   EL      all", []int{esc_decaln, csi_cup, csi_el}, 3, 0, 3, 7, "\x1B#8\x1B[4;4H\x1B[2K", 3, 0, 8},
+		{"  DCH  at left", []int{esc_decaln, csi_cup, csi_dch}, 0, 0, 0, 7, "\x1B#8\x1B[1;1H\x1B[2P", 0, 6, 2},
+		{"  DCH at right", []int{esc_decaln, csi_cup, csi_dch}, 0, 5, 0, 7, "\x1B#8\x1B[1;6H\x1B[3P", 0, 5, 3},
+		{" DCH in middle", []int{esc_decaln, csi_cup, csi_dch}, 3, 3, 3, 7, "\x1B#8\x1B[4;4H\x1B[20P", 3, 3, 5},
+		{" ECH in middle", []int{esc_decaln, csi_cup, csi_ech}, 3, 3, 3, 4, "\x1B#8\x1B[4;4H\x1B[2X", 3, 3, 2},
+		{"   ECH at left", []int{esc_decaln, csi_cup, csi_ech}, 0, 0, 0, 4, "\x1B#8\x1B[1;1H\x1B[5X", 0, 0, 5},
+		{"  ECH at right", []int{esc_decaln, csi_cup, csi_ech}, 1, 5, 1, 7, "\x1B#8\x1B[2;6H\x1B[5X", 1, 5, 3},
 	}
 	p := NewParser()
-	// the default size of emu is 80x40 [colxrow]
-	emu := NewEmulator()
+	emu := NewEmulator3(8, 4, 4) // this is the pre-condidtion for the test case.
+	var place strings.Builder
+	emu.logI.SetOutput(&place)
+	emu.logT.SetOutput(&place)
+
 	for _, v := range tc {
 
 		hds := make([]*Handler, 0, 16)
@@ -1832,39 +1778,33 @@ func TestHandle_ICH_EL_DCH_ECH(t *testing.T) {
 		if len(hds) == 0 {
 			t.Errorf("%s got zero handlers.", v.name)
 		}
-
-		// fill the row with content
-		row := emu.cf.GetRow(v.startY)
-		fillRowWith(row, 'H')
-
-		// move cursor to the active row
-		emu.cf.DS.MoveRow(v.startY, false)
-		emu.cf.DS.MoveCol(v.startX, false, false)
+		before := ""
 
 		// call the handler
-		for _, hd := range hds {
+		for j, hd := range hds {
 			hd.handle(emu)
-			if hd.name != v.wantName {
-				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s: seq=%q expect %s, got %s\n",
+					v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+			}
+			if j == 1 {
+				before = printCells(emu.cf, v.emptyY)
+				emu.cf.damage.reset()
 			}
 		}
+		after := printCells(emu.cf, v.emptyY)
 
-		// print the row
-		t.Logf("%2d %s\n", v.startY, row.String())
+		// calculate the expected dmage area
+		dmg := Damage{}
+		dmg.totalCells = emu.cf.damage.totalCells
+		dmg.start, dmg.end = damageArea(emu.cf, v.tlY, v.tlX, v.brY, v.brX+1) // the end point is exclusive.
 
-		// prepare the validate tool
-		isEmpty := func(col int) bool {
-			return inRange(v.startY, v.blankStart, v.startY, v.blankEnd, v.startY, col, 80)
-		}
-
-		// validate the result
-		for col := 0; col < emu.cf.DS.width; col++ {
-			cell := emu.cf.GetCell(v.startY, col)
-			if isEmpty(col) && cell.contents == "H" {
-				t.Errorf("%s seq=%q cols=%d expect empty cell, got 'H' cell\n", v.name, v.seq, col)
-			} else if !isEmpty(col) && cell.contents == "" {
-				t.Errorf("%s seq=%q cols=%d expect 'H' cell, got empty cell\n", v.name, v.seq, col)
-			}
+		if emu.cf.damage != dmg || !isEmptyCells(emu.cf, v.emptyY, v.emptyX, v.count) {
+			t.Errorf("%s seq=%q\n", v.name, v.seq)
+			t.Errorf("expect damage %v, got %v\n", dmg, emu.cf.damage)
+			t.Errorf("empty cells start (%d,%d) count=%d\n", v.emptyY, v.emptyX, v.count)
+			t.Errorf("[before] %s", before)
+			t.Errorf("[after ] %s", after)
 		}
 	}
 }
