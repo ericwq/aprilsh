@@ -1030,39 +1030,20 @@ func TestHandle_VPA_CHA_HPA(t *testing.T) {
 func TestHandle_SGR_RGBcolor(t *testing.T) {
 	tc := []struct {
 		name       string
-		wantName   string
+		hdIDs      []int
 		fr, fg, fb int
 		br, bg, bb int
 		attr       charAttribute
 		seq        string
 	}{
-		{
-			"RGB Color 1", "csi-sgr",
-			33, 47, 12,
-			123, 24, 34,
-			Bold,
-			"\x1B[0;1;38;2;33;47;12;48;2;123;24;34m",
-		},
-		{
-			"RGB Color 2", "csi-sgr",
-			0, 0, 0,
-			0, 0, 0,
-			Italic,
-			"\x1B[0;3;38:2:0:0:0;48:2:0:0:0m",
-		},
-		{
-			"RGB Color 3", "csi-sgr",
-			12, 34, 128,
-			59, 190, 155,
-			Underlined,
-			"\x1B[0;4;38:2:12:34:128;48:2:59:190:155m",
-		},
+		{"RGB Color 1", []int{csi_sgr}, 33, 47, 12, 123, 24, 34, Bold, "\x1B[0;1;38;2;33;47;12;48;2;123;24;34m"},
+		{"RGB Color 2", []int{csi_sgr}, 0, 0, 0, 0, 0, 0, Italic, "\x1B[0;3;38:2:0:0:0;48:2:0:0:0m"},
+		{"RGB Color 3", []int{csi_sgr}, 12, 34, 128, 59, 190, 155, Underlined, "\x1B[0;4;38:2:12:34:128;48:2:59:190:155m"},
 	}
 
 	p := NewParser()
 	// the default size of emu is 80x40 [colxrow]
-	emu := NewEmulator()
-	// rend0 := new(Renditions)
+	emu := NewEmulator3(8, 4, 4) // this is the pre-condidtion for the test case.
 
 	for _, v := range tc {
 		t.Run(v.name, func(t *testing.T) {
@@ -1075,24 +1056,25 @@ func TestHandle_SGR_RGBcolor(t *testing.T) {
 			}
 
 			// reset the renditions
-			emu.cf.DS.GetRenditions().ClearAttributes()
+			emu.attrs.renditions.ClearAttributes()
 
 			// handle the control sequence
-			for _, hd := range hds {
+			for j, hd := range hds {
 				hd.handle(emu)
-				if hd.name != v.wantName {
-					t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+				if hd.id != v.hdIDs[j] { // validate the control sequences id
+					t.Errorf("%s: seq=%q expect %s, got %s\n",
+						v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 				}
 			}
 
 			// validate the result
-			got := emu.cf.DS.GetRenditions()
-			want := &Renditions{}
+			got := emu.attrs.renditions
+			want := Renditions{}
 			want.SetBgColor(v.br, v.bg, v.bb)
 			want.SetFgColor(v.fr, v.fg, v.fb)
 			want.SetAttributes(v.attr, true)
 
-			if *got != *want {
+			if got != want {
 				t.Errorf("%s:\t %q expect renditions %v, got %v", v.name, v.seq, want, got)
 			}
 		})
@@ -1101,49 +1083,27 @@ func TestHandle_SGR_RGBcolor(t *testing.T) {
 
 func TestHandle_SGR_ANSIcolor(t *testing.T) {
 	tc := []struct {
-		name     string
-		wantName string
-		fg       Color
-		bg       Color
-		attr     charAttribute
-		seq      string
+		name  string
+		hdIDs []int
+		fg    Color
+		bg    Color
+		attr  charAttribute
+		seq   string
 	}{
-		{
-			"default Color", "csi-sgr",
-			ColorDefault, ColorDefault, charAttribute(38), // 38,48 is empty charAttribute
-			"\x1B[200m",
-		},
-		{
-			"8 Color", "csi-sgr",
-			ColorSilver, ColorBlack, Bold,
-			"\x1B[1;37;40m",
-		},
-		{
-			"8 Color 2", "csi-sgr",
-			ColorMaroon, ColorMaroon, Italic,
-			"\x1B[3;31;41m",
-		},
-		{
-			"16 Color", "csi-sgr",
-			ColorRed, ColorWhite, Underlined,
-			"\x1B[4;91;107m",
-		},
-		{
-			"256 Color 1", "csi-sgr",
-			Color33, Color47, Bold,
-			"\x1B[0;1;38:5:33;48:5:47m",
-		},
-		{
-			"256 Color 3", "csi-sgr",
-			Color128, Color155, Underlined,
-			"\x1B[0;4;38:5:128;48:5:155m",
-		},
+		// here the charAttribute(38) is an unused value, which means nothing for the result.
+		{"default Color", []int{csi_sgr}, ColorDefault, ColorDefault, charAttribute(38), "\x1B[200m"}, // 38,48 is empty charAttribute
+		{"8 Color", []int{csi_sgr}, ColorSilver, ColorBlack, Bold, "\x1B[1;37;40m"},
+		{"8 Color 2", []int{csi_sgr}, ColorMaroon, ColorMaroon, Italic, "\x1B[3;31;41m"},
+		{"16 Color", []int{csi_sgr}, ColorRed, ColorWhite, Underlined, "\x1B[4;91;107m"},
+		{"256 Color 1", []int{csi_sgr}, Color33, Color47, Bold, "\x1B[0;1;38:5:33;48:5:47m"},
+		{"256 Color 3", []int{csi_sgr}, Color128, Color155, Underlined, "\x1B[0;4;38:5:128;48:5:155m"},
 	}
 
 	p := NewParser()
-	// the default size of emu is 80x40 [colxrow]
-	emu := NewEmulator()
-	emu.logU.SetOutput(ioutil.Discard) // supress the log output
+	emu := NewEmulator3(8, 4, 4)
+	var place strings.Builder
+	// this will swallow the output from SGR, such as : attribute not supported.
+	emu.logU.SetOutput(&place)
 
 	for _, v := range tc {
 		t.Run(v.name, func(t *testing.T) {
@@ -1155,24 +1115,25 @@ func TestHandle_SGR_ANSIcolor(t *testing.T) {
 				t.Errorf("%s got zero handlers.", v.name)
 			}
 
-			emu.cf.DS.AddRenditions()
+			emu.attrs.renditions = Renditions{}
 
 			// handle the control sequence
-			for _, hd := range hds {
+			for j, hd := range hds {
 				hd.handle(emu)
-				if hd.name != v.wantName {
-					t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+				if hd.id != v.hdIDs[j] { // validate the control sequences id
+					t.Errorf("%s: seq=%q expect %s, got %s\n",
+						v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 				}
 			}
 
 			// validate the result
-			got := emu.cf.DS.GetRenditions()
-			want := &Renditions{}
+			got := emu.attrs.renditions
+			want := Renditions{}
 			want.setAnsiForeground(v.fg)
 			want.setAnsiBackground(v.bg)
 			want.buildRendition(int(v.attr))
 
-			if *got != *want {
+			if got != want {
 				t.Errorf("%s:\t %q expect renditions %v, got %v", v.name, v.seq, want, got)
 			}
 		})
@@ -1181,26 +1142,25 @@ func TestHandle_SGR_ANSIcolor(t *testing.T) {
 
 func TestHandle_SGR_Break(t *testing.T) {
 	tc := []struct {
-		name     string
-		wantName string
-		seq      string
+		name  string
+		hdIDs []int
+		seq   string
 	}{
-		{"break 38    ", "csi-sgr", "\x1B[38m"},
-		{"break 38;   ", "csi-sgr", "\x1B[38;m"},
-		{"break 38:5  ", "csi-sgr", "\x1B[38;5m"},
-		{"break 38:2-1", "csi-sgr", "\x1B[38:2:23m"},
-		{"break 38:2-2", "csi-sgr", "\x1B[38:2:23:24m"},
-		{"break 38:7  ", "csi-sgr", "\x1B[38;7m"},
-		{"break 48    ", "csi-sgr", "\x1B[48m"},
-		{"break 48;   ", "csi-sgr", "\x1B[48;m"},
-		{"break 48:5  ", "csi-sgr", "\x1B[48;5m"},
-		{"break 48:2-1", "csi-sgr", "\x1B[48:2:23m"},
-		{"break 48:2-2", "csi-sgr", "\x1B[48:2:23:22m"},
-		{"break 48:7  ", "csi-sgr", "\x1B[48;7m"},
+		{"break 38    ", []int{csi_sgr}, "\x1B[38m"},
+		{"break 38;   ", []int{csi_sgr}, "\x1B[38;m"},
+		{"break 38:5  ", []int{csi_sgr}, "\x1B[38;5m"},
+		{"break 38:2-1", []int{csi_sgr}, "\x1B[38:2:23m"},
+		{"break 38:2-2", []int{csi_sgr}, "\x1B[38:2:23:24m"},
+		{"break 38:7  ", []int{csi_sgr}, "\x1B[38;7m"},
+		{"break 48    ", []int{csi_sgr}, "\x1B[48m"},
+		{"break 48;   ", []int{csi_sgr}, "\x1B[48;m"},
+		{"break 48:5  ", []int{csi_sgr}, "\x1B[48;5m"},
+		{"break 48:2-1", []int{csi_sgr}, "\x1B[48:2:23m"},
+		{"break 48:2-2", []int{csi_sgr}, "\x1B[48:2:23:22m"},
+		{"break 48:7  ", []int{csi_sgr}, "\x1B[48;7m"},
 	}
-	p := NewParser() // the default size of emu is 80x40 [colxrow]
-	emu := NewEmulator()
-	// emu.logU.SetOutput(ioutil.Discard) // supress the log output
+	p := NewParser()
+	emu := NewEmulator3(8, 4, 4)
 
 	for _, v := range tc {
 		t.Run(v.name, func(t *testing.T) {
@@ -1216,10 +1176,11 @@ func TestHandle_SGR_Break(t *testing.T) {
 			emu.cf.DS.AddRenditions()
 
 			// handle the control sequence
-			for _, hd := range hds {
+			for j, hd := range hds {
 				hd.handle(emu)
-				if hd.name != v.wantName {
-					t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+				if hd.id != v.hdIDs[j] { // validate the control sequences id
+					t.Errorf("%s: seq=%q expect %s, got %s\n",
+						v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 				}
 			}
 

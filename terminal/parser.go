@@ -751,7 +751,7 @@ func (p *Parser) handle_SGR() (hd *Handler) {
 	params := make([]int, p.nInputOps)
 	copy(params, p.inputOps)
 
-	hd = &Handler{name: "csi-sgr", ch: p.ch}
+	hd = &Handler{id: csi_sgr, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_sgr(emu, params)
 	}
