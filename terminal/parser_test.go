@@ -786,25 +786,40 @@ func TestHandle_OSC_Abort(t *testing.T) {
 }
 
 func TestHandle_BEL(t *testing.T) {
-	p := NewParser()
+	seq := "\x07"
 	emu := NewEmulator3(8, 4, 4)
 
-	// process the bell sequence
-	hd := p.processInput('\x07')
+	hds := emu.handleStream(seq)
 
-	if hd != nil {
-		// handle the bell
-		hd.handle(emu)
-
-		// theck the handler name and bell count
-		bellCount := emu.cf.GetBellCount()
-		if bellCount == 0 || hd.id != c0_bel {
-			t.Errorf("BEL expect %d, got %d\n", 1, bellCount)
-			t.Errorf("BEL expect %s, got %s\n", strHandlerID[c0_bel], strHandlerID[hd.id])
-		}
-	} else {
-		t.Errorf("%s got nil return\n", hd.name)
+	if len(hds) == 0 {
+		t.Errorf("BEL got nil for seq=%q\n", seq)
 	}
+
+	bellCount := emu.cf.GetBellCount()
+	if bellCount == 0 || hds[0].id != c0_bel {
+		t.Errorf("BEL expect %d, got %d\n", 1, bellCount)
+		t.Errorf("BEL expect %s, got %s\n", strHandlerID[c0_bel], strHandlerID[hds[0].id])
+	}
+
+	/*
+		p := NewParser()
+		// process the bell sequence
+		hd := p.processInput('\x07')
+
+		if hd != nil {
+			// handle the bell
+			hd.handle(emu)
+
+			// theck the handler name and bell count
+			bellCount := emu.cf.GetBellCount()
+			if bellCount == 0 || hd.id != c0_bel {
+				t.Errorf("BEL expect %d, got %d\n", 1, bellCount)
+				t.Errorf("BEL expect %s, got %s\n", strHandlerID[c0_bel], strHandlerID[hd.id])
+			}
+		} else {
+			t.Errorf("%s got nil return\n", hd.name)
+		}
+	*/
 }
 
 func TestHandle_RI_NEL(t *testing.T) {
