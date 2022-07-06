@@ -583,10 +583,11 @@ func (p *Parser) handle_CHA_HPA() (hd *Handler) {
 // When you erase complete lines, they become single-height, single-width
 // lines, with all visual character attributes cleared. ED works inside or
 // outside the scrolling margins.
+// Erase in Display
 func (p *Parser) handle_ED() (hd *Handler) {
 	cmd := p.getPs(0, 0)
 
-	hd = &Handler{name: "csi-ed", ch: p.ch}
+	hd = &Handler{id: csi_ed, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_ed(emu, cmd)
 	}
@@ -598,6 +599,7 @@ func (p *Parser) handle_ED() (hd *Handler) {
 // This control function erases characters on the line that has the cursor.
 // EL clears all character attributes from erased character positions. EL
 // works inside or outside the scrolling margins.
+// Erase in Line
 func (p *Parser) handle_EL() (hd *Handler) {
 	cmd := p.getPs(0, 0)
 
@@ -612,6 +614,7 @@ func (p *Parser) handle_EL() (hd *Handler) {
 
 // This control function inserts one or more blank lines, starting at the
 // cursor.
+// Insert Line
 func (p *Parser) handle_IL() (hd *Handler) {
 	lines := p.getPs(0, 1)
 
@@ -626,6 +629,7 @@ func (p *Parser) handle_IL() (hd *Handler) {
 
 // This control function deletes one or more lines in the scrolling region,
 // starting with the line that has the cursor.
+// Delete Line
 func (p *Parser) handle_DL() (hd *Handler) {
 	lines := p.getPs(0, 1)
 
@@ -898,8 +902,9 @@ func (p *Parser) handle_NEL() (hd *Handler) {
 }
 
 // reset the screen
+// Reset to Initial State
 func (p *Parser) handle_RIS() (hd *Handler) {
-	hd = &Handler{name: "esc-ris", ch: p.ch}
+	hd = &Handler{id: esc_ris, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_esc_ris(emu)
 	}
@@ -931,8 +936,9 @@ func (p *Parser) handle_DECRC() (hd *Handler) {
 }
 
 // fill the screen with 'E'
+// DEC Alignment Pattern Generator
 func (p *Parser) handle_DECALN() (hd *Handler) {
-	hd = &Handler{name: "esc-decaln", ch: p.ch}
+	hd = &Handler{id: esc_decaln, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_esc_decaln(emu)
 	}

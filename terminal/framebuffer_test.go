@@ -854,14 +854,13 @@ func TestFramebufferMoveInRow(t *testing.T) {
 		after := printCells(fb, v.row, v.row+1)
 
 		// calculate the expected dmage area
-		dmg.start = fb.nCols*v.row + v.startX
-		dmg.end = dmg.start + v.count*2
+		dmg.start, dmg.end = damageArea(fb, v.row, v.startX, v.row, v.startX+v.count*2)
 
 		if fb.damage != dmg {
 			t.Errorf("%q:\n", v.name)
+			t.Errorf("expect damage %v, got %v\n", dmg, fb.damage)
 			t.Errorf("[before row=%d, startX=%d, count=%d]\n%s", v.row, v.startX, v.count, before)
 			t.Errorf("[after  row=%d, startX=%d, count=%d]\n%s", v.row, v.startX, v.count, after)
-			t.Errorf("expect damage %v, got %v\n", dmg, fb.damage)
 		}
 	}
 }

@@ -919,41 +919,6 @@ func TestHandle_ENQ_CAN_SUB_ESC(t *testing.T) {
 	}
 }
 
-func TestHandle_DECALN_RIS(t *testing.T) {
-	tc := []struct {
-		name     string
-		seq      string
-		y, x     int
-		wantName string
-		want     string
-	}{
-		{"ESC DECLAN", "\x1B#8", 10, 10, "esc-decaln", "E"}, // the whole screen is filled with 'E'
-		{"ESC RIS   ", "\x1Bc", 10, 10, "esc-ris", ""},      // after reset, the screen is empty
-	}
-
-	p := NewParser()
-	// p.logTrace = true // open the trace
-	var hd *Handler
-	emu := NewEmulator()
-	for _, v := range tc {
-		for _, ch := range v.seq {
-			hd = p.processInput(ch)
-		}
-
-		if hd != nil {
-			hd.handle(emu)
-
-			theCell := emu.cf.GetCell(v.y, v.x)
-			if v.want != theCell.contents || hd.name != v.wantName {
-				t.Errorf("%s:\t [%s vs %s] expect (10,10) %q, got %q",
-					v.name, v.wantName, hd.name, v.want, theCell.contents)
-			}
-		} else {
-			t.Errorf("%s expect valid Handler, got nil", v.name)
-		}
-	}
-}
-
 func TestHandle_DA1_DA2_DSR(t *testing.T) {
 	tc := []struct {
 		name     string
@@ -996,93 +961,6 @@ func TestHandle_DA1_DA2_DSR(t *testing.T) {
 				t.Errorf("%s seq:%q expect %q, got %q\n", v.name, v.seq, v.want, got)
 			}
 		})
-	}
-}
-
-// use DECALN to fill the screen, then call ED to erase part of it.
-func TestHandle_ED_IL_DL(t *testing.T) {
-	tc := []struct {
-		name             string
-		wantName         string
-		activeY, activeX int
-		emptyY1, emptyX1 int
-		emptyY2, emptyX2 int
-		seq              string
-	}{
-		{"ED erase below @ 20,10  ", "csi-ed", 20, 10, 20, 10, 39, 79, "\x1B#8\x1B[J"},  // Erase Below (default).
-		{"ED erase below @ 35,20  ", "csi-ed", 35, 20, 35, 20, 39, 79, "\x1B#8\x1B[0J"}, // Ps = 0  ⇒  Erase Below (default).
-		{"ED erase above @ 12,5   ", "csi-ed", 12, 5, 0, 0, 12, 5, "\x1B#8\x1B[1J"},     // Ps = 1  ⇒  Erase Above.
-		{"ED erase all            ", "csi-ed", 42, 5, 0, 0, 39, 79, "\x1B#8\x1B[2J"},    // Ps = 2  ⇒  Erase All.
-		{"IL 1 lines @ 34,2 mid   ", "csi-il", 34, 2, 34, 0, 34, 79, "\x1B#8\x1B[L"},
-		{"IL 2 lines @ 39,2 bottom", "csi-il", 39, 2, 39, 0, 39, 79, "\x1B#8\x1B[2L"},
-		{"IL 5 lines @ 0,2 top    ", "csi-il", 0, 2, 0, 0, 4, 79, "\x1B#8\x1B[5L"},
-		{"DL 5 lines @ 5,2 top    ", "csi-dl", 5, 2, 35, 0, 39, 79, "\x1B#8\x1B[5M"},
-		{"DL 5 lines @ 36,2 bottom", "csi-dl", 36, 2, 36, 0, 39, 79, "\x1B#8\x1B[5M"},
-	}
-
-	p := NewParser()
-	// the default size of emu is 80x40 [colxrow]
-	emu := NewEmulator()
-	for _, v := range tc {
-
-		hds := make([]*Handler, 0, 16)
-		hds = p.processStream(v.seq, hds)
-
-		if len(hds) == 0 {
-			t.Errorf("%s got zero handlers.", v.name)
-		}
-
-		// move cursor to the active row
-		emu.cf.DS.MoveRow(v.activeY, false)
-		emu.cf.DS.MoveCol(v.activeX, false, false)
-		for i, hd := range hds {
-			hd.handle(emu)
-			if i == 1 && hd.name != v.wantName {
-				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
-			}
-		}
-
-		// prepare the validate tools
-		ds := emu.cf.DS
-		isEmpty := func(row, col int) bool {
-			return inRange(v.emptyY1, v.emptyX1, v.emptyY2, v.emptyX2, row, col, 80)
-		}
-
-		// validate the whole screen.
-		for i := 0; i < ds.GetHeight(); i++ {
-			// print the row
-			row := emu.cf.GetRow(i)
-			t.Logf("%2d %s\n", i, row.String())
-
-			// validate the cell should be empty
-			for j := 0; j < ds.GetWidth(); j++ {
-				cell := emu.cf.GetCell(i, j)
-				if isEmpty(i, j) && cell.contents == "E" {
-					t.Errorf("%s seq=%q expect empty cell at (%d,%d), got %q.\n", v.name, v.seq, i, j, cell.contents)
-				} else if !isEmpty(i, j) && cell.contents == "" {
-					t.Errorf("%s seq=%q expect 'E' cell at (%d,%d), got empty.\n", v.name, v.seq, i, j)
-				}
-			}
-		}
-	}
-}
-
-// if the y,x is in the range, return true, otherwise return false
-func inRange(startY, startX, endY, endX, y, x, width int) bool {
-	pStart := startY*width + startX
-	pEnd := endY*width + endX
-
-	p := y*width + x
-
-	if pStart <= p && p <= pEnd {
-		return true
-	}
-	return false
-}
-
-func fillRowWith(row *Row, r rune) {
-	for i := range row.cells {
-		row.cells[i].contents = string(r)
 	}
 }
 

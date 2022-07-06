@@ -1602,3 +1602,198 @@ func TestHandle_DECIC_DECDC(t *testing.T) {
 		}
 	}
 }
+
+func TestHandle_DECALN_RIS(t *testing.T) {
+	tc := []struct {
+		name  string
+		seq   string
+		y, x  int // check the last cell on the screen
+		hdIDs []int
+		want  string
+	}{
+		{"ESC DECLAN", "\x1B#8", 3, 7, []int{esc_decaln}, "E"}, // the whole screen is filled with 'E'
+		{"ESC RIS   ", "\x1Bc", 3, 7, []int{esc_ris}, " "},     // after reset, the screen is empty
+	}
+
+	p := NewParser()
+	emu := NewEmulator3(8, 4, 4) // this is the pre-condidtion for the test case.
+	var place strings.Builder
+	emu.logI.SetOutput(&place)
+	emu.logT.SetOutput(&place)
+
+	for _, v := range tc {
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) == 0 {
+			t.Errorf("%s expect %d handlers, got %d handlers.", v.name, 2, len(hds))
+		}
+
+		before := printCells(emu.cf)
+		// handle the control sequence
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s: seq=%q expect %s, got %s\n",
+					v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+			}
+		}
+
+		after := printCells(emu.cf)
+		theCell := emu.cf.getCell(v.y, v.x)
+		if v.want != theCell.contents {
+			t.Errorf("%s seq=%q expect %q on position (%d,%d), got %q\n", v.name, v.seq, v.want, v.y, v.x, theCell.contents)
+			t.Errorf("[before]\n%s", before)
+			t.Errorf("[after ]\n%s", after)
+		}
+	}
+}
+
+// use DECALN to fill the screen, then call ED to erase part of it.
+func TestHandle_ED_IL_DL(t *testing.T) {
+	tc := []struct {
+		name     string
+		hdIDs    []int
+		tlY, tlX int
+		brY, brX int
+		seq      string
+	}{
+		// use CUP to move cursor to start position, use DECALN to fill the screen, then call ED,IL or DL
+		{
+			"ED erase below @ 1,0  ",
+			[]int{csi_cup, esc_decaln, csi_ed},
+			1, 0, 3, 7, "\x1B[2;1H\x1B#8\x1B[J",
+		}, // Erase Below (default).
+		{
+			"ED erase below @ 3,7  ",
+			[]int{csi_cup, esc_decaln, csi_ed},
+			3, 6, 3, 7, "\x1B[4;7H\x1B#8\x1B[0J",
+		}, // Ps = 0  ⇒  Erase Below (default).
+		{
+			"ED erase above @ 3,6",
+			[]int{csi_cup, esc_decaln, csi_ed},
+			0, 0, 3, 6, "\x1B[4;7H\x1B#8\x1B[1J",
+		}, // Ps = 1  ⇒  Erase Above.
+		{
+			"ED erase all",
+			[]int{csi_cup, esc_decaln, csi_ed},
+			0, 0, 3, 7, "\x1B[4;7H\x1B#8\x1B[2J",
+		}, // Ps = 2  ⇒  Erase All.
+		{
+			"IL 1 lines @ 2,2 mid",
+			[]int{csi_cup, esc_decaln, csi_il},
+			2, 0, 3, 7, "\x1B[3;3H\x1B#8\x1B[L",
+		},
+		{
+			"IL 2 lines @ 1,0 bottom",
+			[]int{csi_cup, esc_decaln, csi_il},
+			1, 0, 3, 7, "\x1B[2;1H\x1B#8\x1B[2L",
+		},
+		{
+			"IL 4 lines @ 0,0 top",
+			[]int{esc_decaln, csi_cup, csi_il},
+			0, 0, 3, 7, "\x1B#8\x1B[1;1H\x1B[4L",
+		},
+		{
+			"DL 2 lines @ 1,0 top",
+			[]int{esc_decaln, csi_cup, csi_dl},
+			1, 0, 3, 7, "\x1B#8\x1B[2;1H\x1B[2M",
+		},
+		{
+			"DL 1 lines @ 3,0 bottom",
+			[]int{esc_decaln, csi_cup, csi_dl},
+			3, 0, 3, 7, "\x1B#8\x1B[4;1H\x1B[1M",
+		},
+	}
+
+	p := NewParser()
+	// the default size of emu is 80x40 [colxrow]
+	emu := NewEmulator3(8, 4, 4) // this is the pre-condidtion for the test case.
+	var place strings.Builder
+	emu.logI.SetOutput(&place)
+	emu.logT.SetOutput(&place)
+
+	for _, v := range tc {
+
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) == 0 {
+			t.Errorf("%s got zero handlers.", v.name)
+		}
+
+		before := ""
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s: seq=%q expect %s, got %s\n",
+					v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+			}
+			if j == 1 {
+				before = printCells(emu.cf)
+				emu.cf.damage.reset()
+			}
+		}
+
+		after := printCells(emu.cf)
+		// calculate the expected dmage area
+		dmg := Damage{}
+		dmg.totalCells = emu.cf.damage.totalCells
+		dmg.start, dmg.end = damageArea(emu.cf, v.tlY, v.tlX, v.brY, v.brX+1) // the end point is exclusive.
+
+		if emu.cf.damage != dmg {
+			t.Errorf("%s seq=%q\n", v.name, v.seq)
+			t.Errorf("expect damage %v, got %v\n", dmg, emu.cf.damage)
+			t.Errorf("[before]\n%s", before)
+			t.Errorf("[after ]\n%s", after)
+		}
+
+		// // prepare the validate tools
+		// ds := emu.cf.DS
+		// isEmpty := func(row, col int) bool {
+		// 	return inRange(v.emptyY1, v.emptyX1, v.emptyY2, v.emptyX2, row, col, 80)
+		// }
+		//
+		// // validate the whole screen.
+		// for i := 0; i < ds.GetHeight(); i++ {
+		// 	// print the row
+		// 	row := emu.cf.GetRow(i)
+		// 	t.Logf("%2d %s\n", i, row.String())
+		//
+		// 	// validate the cell should be empty
+		// 	for j := 0; j < ds.GetWidth(); j++ {
+		// 		cell := emu.cf.GetCell(i, j)
+		// 		if isEmpty(i, j) && cell.contents == "E" {
+		// 			t.Errorf("%s seq=%q expect empty cell at (%d,%d), got %q.\n", v.name, v.seq, i, j, cell.contents)
+		// 		} else if !isEmpty(i, j) && cell.contents == "" {
+		// 			t.Errorf("%s seq=%q expect 'E' cell at (%d,%d), got empty.\n", v.name, v.seq, i, j)
+		// 		}
+		// 	}
+		// }
+	}
+}
+
+func damageArea(cf *Framebuffer, y1, x1, y2, x2 int) (start, end int) {
+	start = cf.getIdx(y1, x1)
+	end = cf.getIdx(y2, x2)
+	return
+}
+
+// if the y,x is in the range, return true, otherwise return false
+func inRange(startY, startX, endY, endX, y, x, width int) bool {
+	pStart := startY*width + startX
+	pEnd := endY*width + endX
+
+	p := y*width + x
+
+	if pStart <= p && p <= pEnd {
+		return true
+	}
+	return false
+}
+
+func fillRowWith(row *Row, r rune) {
+	for i := range row.cells {
+		row.cells[i].contents = string(r)
+	}
+}

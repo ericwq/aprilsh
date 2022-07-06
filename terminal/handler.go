@@ -68,6 +68,7 @@ const (
 	csi_decstbm
 	csi_decstr
 	csi_dl
+	csi_ed
 	csi_el
 	csi_il
 	csi_rm
@@ -77,11 +78,13 @@ const (
 	csi_scorc
 	csi_scosc
 	csi_tbc
+	esc_decaln
 	esc_decrc
 	esc_decsc
 	esc_docs_utf8
 	esc_docs_iso8859_1
 	esc_hts
+	esc_ris
 )
 
 var strHandlerID = [...]string{
@@ -105,6 +108,7 @@ var strHandlerID = [...]string{
 	"csi_decstbm",
 	"csi_decstr",
 	"csi_dl",
+	"csi_ed",
 	"csi_el",
 	"csi_il",
 	"csi_rm",
@@ -114,11 +118,13 @@ var strHandlerID = [...]string{
 	"csi_scorc",
 	"csi_scosc",
 	"csi_tbc",
+	"esc_decaln",
 	"esc_decrc",
 	"esc_decsc",
 	"esc_docs-utf-8",
 	"esc_docs-iso8859-1",
 	"esc_hts",
+	"esc_ris",
 }
 
 // Handler is the outcome of parsering input, it can be used to perform control sequence on emulator.
@@ -370,7 +376,7 @@ func hdl_esc_nel(emu *emulator) {
 // ESC c     Full Reset (RIS), VT100.
 // reset the screen
 func hdl_esc_ris(emu *emulator) {
-	emu.cf.Reset()
+	emu.resetTerminal()
 }
 
 // ESC 7     Save Cursor (DECSC), VT100.
@@ -403,13 +409,18 @@ func hdl_esc_decrc(emu *emulator) {
 // ESC # 8   DEC Screen Alignment Test (DECALN), VT100.
 // fill the screen with 'E'
 func hdl_esc_decaln(emu *emulator) {
-	fb := emu.cf
-	for y := 0; y < fb.DS.GetHeight(); y++ {
-		for x := 0; x < fb.DS.GetWidth(); x++ {
-			fb.ResetCell(fb.GetCell(y, x))
-			fb.GetCell(y, x).Append('E')
-		}
-	}
+	// Save current attrs
+	origAttrs := emu.attrs
+
+	origFg := emu.attrs.renditions.fgColor
+	origBg := emu.attrs.renditions.bgColor
+
+	emu.resetAttrs()
+	emu.fillScreen('E')
+
+	emu.fg = origFg
+	emu.bg = origBg
+	emu.attrs = origAttrs
 }
 
 // CSI Ps g  Tab Clear (TBC).
@@ -482,25 +493,27 @@ func hdl_csi_ich(emu *emulator, count int) {
 // * Ps = 2  ⇒  Erase All.
 // * Ps = 3  ⇒  Erase Saved Lines, xterm.
 func hdl_csi_ed(emu *emulator, cmd int) {
-	fb := emu.cf
+	emu.normalizeCursorPos()
 	switch cmd {
-	case 0:
-		// active position down to end of screen, inclusive
-		clearline(fb, -1, fb.DS.GetCursorCol(), fb.DS.GetWidth()-1)
-		for y := fb.DS.GetCursorRow() + 1; y < fb.DS.GetHeight(); y++ {
-			fb.ResetRow(fb.GetRow(y))
+	case 0: // clear from cursor to end of screen
+		emu.cf.eraseInRow(emu.posY, emu.posX, emu.nCols-emu.posX, emu.attrs)
+		for pY := emu.posY + 1; pY < emu.nRows; pY++ {
+			emu.eraseRow(pY)
 		}
-	case 1:
-		// start of screen to active position, inclusive
-		for y := 0; y < fb.DS.GetCursorRow(); y++ {
-			fb.ResetRow(fb.GetRow(y))
+	case 1: // clear from beginning of screen to cursor
+		for pY := 0; pY < emu.posY; pY++ {
+			emu.eraseRow(pY)
 		}
-		clearline(fb, -1, 0, fb.DS.GetCursorCol())
-	case 2:
-		//  entire screen
-		for y := 0; y < fb.DS.GetHeight(); y++ {
-			fb.ResetRow(fb.GetRow(y))
+		emu.cf.eraseInRow(emu.posY, 0, emu.posX+1, emu.attrs)
+	case 3: // clear entire screen including scrollback buffer (xterm)
+		emu.cf.dropScrollbackHistory()
+		fallthrough
+	case 2: // clear entire screen
+		for pY := 0; pY < emu.nRows; pY++ {
+			emu.eraseRow(pY)
 		}
+	default:
+		emu.logI.Printf("Erase in Display with illegal param: %d\n", cmd)
 	}
 }
 
@@ -718,7 +731,7 @@ func hdl_csi_dsr(emu *emulator, cmd int) {
 // support 8, 16, 256 color, RGB color.
 func hdl_csi_sgr(emu *emulator, params []int) {
 	// we need to change the field, get the field pointer
-	rend := &emu.cf.DS.renditions
+	rend := &emu.attrs.renditions
 	for k := 0; k < len(params); k++ {
 		attr := params[k]
 
