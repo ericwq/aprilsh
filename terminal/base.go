@@ -101,8 +101,8 @@ func (rect *Rect) toggleRectangular() {
 }
 
 type Damage struct {
-	start      int
-	end        int
+	start      int // inclusive
+	end        int // exclusive
 	totalCells int
 }
 
