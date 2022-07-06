@@ -475,7 +475,7 @@ func (p *Parser) handle_HT() (hd *Handler) {
 
 // Bell
 func (p *Parser) handle_BEL() (hd *Handler) {
-	hd = &Handler{name: "c0-bel", ch: p.ch}
+	hd = &Handler{id: c0_bel, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_c0_bel(emu)
 	}
@@ -484,7 +484,7 @@ func (p *Parser) handle_BEL() (hd *Handler) {
 
 // SI - switch to standard character set
 func (p *Parser) handle_SI() (hd *Handler) {
-	hd = &Handler{name: "c0-si", ch: p.ch}
+	hd = &Handler{id: c0_si, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_c0_si(emu)
 	}
@@ -493,7 +493,7 @@ func (p *Parser) handle_SI() (hd *Handler) {
 
 // SO - switch to alternate character set
 func (p *Parser) handle_SO() (hd *Handler) {
-	hd = &Handler{name: "c0-so", ch: p.ch}
+	hd = &Handler{id: c0_so, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_c0_so(emu)
 	}

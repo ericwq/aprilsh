@@ -49,9 +49,12 @@ const (
 
 const (
 	unused_handlerID = iota
+	c0_bel
 	c0_cr
 	c0_ht
 	c0_lf
+	c0_si
+	c0_so
 	csi_cbt
 	csi_cht
 	csi_cub
@@ -93,9 +96,12 @@ const (
 
 var strHandlerID = [...]string{
 	"",
+	"c0_bel",
 	"c0_cr",
 	"c0_ht",
 	"c0_lf",
+	"c0_si",
+	"c0_so",
 	"csi_cbt",
 	"csi_cht",
 	"csi_cub",
