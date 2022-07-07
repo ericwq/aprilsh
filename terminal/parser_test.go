@@ -925,46 +925,54 @@ func TestHandle_ENQ_CAN_SUB_ESC(t *testing.T) {
 	}
 }
 
-func TestHandle_DA1_DA2_DSR(t *testing.T) {
+func TestHandle_priDA_secDA_DSR(t *testing.T) {
 	tc := []struct {
 		name     string
 		seq      string
-		want     string
-		wantName string
+		wantResp string
+		hdIDs    []int
 	}{
-		{"Primary DA  ", "\x1B[c", fmt.Sprintf("\x1B[?%s", DEVICE_ID), "csi-da1"},
-		{"Secondary DA", "\x1B[>c", "\x1B[>64;0;0c", "csi-da2"},
-		{"Operating Status report ", "\x1B[5n", "\x1B[0n", "csi-dsr"},
+		{"Primary DA  ", "\x1B[c", fmt.Sprintf("\x1B[?%s", DEVICE_ID), []int{csi_priDA}},
+		{"Secondary DA", "\x1B[>c", "\x1B[>64;0;0c", []int{csi_secDA}},
+		{"DSR device status report ", "\x1B[5n", "\x1B[0n", []int{csi_dsr}},
+		// use DECSET 6 to set  originMode, use CUP to set the active position, then call DSR 6
+		{"DSR OriginMode_ScrollingRegion", "\x1B[?6h\x1B[9;9H\x1B[6n", "\x1B[9;9R", []int{csi_decset, csi_cup, csi_dsr}},
+		// use DECRST 6 to set  originMode, use CUP to set the active position, then call DSR 6
+		{"DSR OriginMode_Absolute", "\x1B[?6l\x1B[10;10H\x1B[6n", "\x1B[10;10R", []int{csi_decrst, csi_cup, csi_dsr}},
+		// TODO full test for scrolling mode
 	}
 
 	p := NewParser()
-	// p.logTrace = true // open the trace
-	var hd *Handler
-	emu := NewEmulator()
+	emu := NewEmulator3(80, 40, 0)
+
+	var place strings.Builder
+	emu.logI.SetOutput(&place) // redirect the output to the string builder
+	emu.logT.SetOutput(&place) // redirect the output to the string builder
 
 	for _, v := range tc {
 		// reset the target content
-		emu.dispatcher.terminalToHost.Reset()
+		emu.terminalToHost.Reset()
 
 		t.Run(v.name, func(t *testing.T) {
-			// parse the sequence
-			for _, ch := range v.seq {
-				hd = p.processInput(ch)
+			// parse control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) < 1 {
+				t.Errorf("%s got %d handlers.", v.name, len(hds))
 			}
 
-			// execute the sequence handler
-			if hd != nil {
+			// handle the control sequence
+			for j, hd := range hds {
 				hd.handle(emu)
-				if hd.name != v.wantName {
-					t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+				if hd.id != v.hdIDs[j] { // validate the control sequences id
+					t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 				}
-			} else {
-				t.Errorf("%s got nil Handler.", v.name)
 			}
 
-			got := emu.dispatcher.terminalToHost.String()
-			if v.want != got {
-				t.Errorf("%s seq:%q expect %q, got %q\n", v.name, v.seq, v.want, got)
+			got := emu.terminalToHost.String()
+			if v.wantResp != got {
+				t.Errorf("%s seq:%q expect %q, got %q\n", v.name, v.seq, v.wantResp, got)
 			}
 		})
 	}
@@ -1194,60 +1202,6 @@ func TestHandle_SGR_Break(t *testing.T) {
 
 			if got != want {
 				t.Errorf("%s:\t %q expect renditions \n%v, got \n%v\n", v.name, v.seq, want, got)
-			}
-		})
-	}
-}
-
-// TODO full test for scrolling mode
-func TestHandle_DSR6(t *testing.T) {
-	tc := []struct {
-		name           string
-		startX, startY int
-		originMode     bool
-		seq            string
-		wantResp       string
-		wantName       string
-	}{
-		{"Report Cursor Position originMode=true ", 8, 8, true, "\x1B[6n", "\x1B[9;9R", "csi-dsr"},
-		{"Report Cursor Position originMode=false", 9, 9, false, "\x1B[6n", "\x1B[10;10R", "csi-dsr"},
-	}
-
-	p := NewParser()
-	// p.logTrace = true // open the trace
-	var hd *Handler
-	emu := NewEmulator()
-
-	for _, v := range tc {
-		// reset the target content
-		emu.dispatcher.terminalToHost.Reset()
-
-		t.Run(v.name, func(t *testing.T) {
-			// parse the sequence
-			for _, ch := range v.seq {
-				hd = p.processInput(ch)
-			}
-
-			// set condition
-			emu.cf.DS.OriginMode = v.originMode
-			// move to the start position
-			emu.cf.DS.MoveRow(v.startY, false)
-			emu.cf.DS.MoveCol(v.startX, false, false)
-
-			// execute the sequence handler
-			if hd != nil {
-				hd.handle(emu)
-				if hd.name != v.wantName {
-					t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
-				}
-			} else {
-				t.Errorf("%s got nil Handler.", v.name)
-			}
-
-			// validate the response
-			got := emu.dispatcher.terminalToHost.String()
-			if v.wantResp != got {
-				t.Errorf("%s seq:%q expect %q, got %q\n", v.name, v.seq, v.wantResp, got)
 			}
 		})
 	}

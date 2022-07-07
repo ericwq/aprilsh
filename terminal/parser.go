@@ -723,10 +723,11 @@ func (p *Parser) handle_ECH() (hd *Handler) {
 // The terminal responds by sending its architectural class and basic
 // attributes to the host. This response depends on the terminal's
 // current operating VT level.
-func (p *Parser) handle_DA1() (hd *Handler) {
-	hd = &Handler{name: "csi-da1", ch: p.ch}
+// Device Attributes (Primary)
+func (p *Parser) handle_priDA() (hd *Handler) {
+	hd = &Handler{id: csi_priDA, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
-		hdl_csi_da1(emu)
+		hdl_csi_priDA(emu)
 	}
 
 	p.setState(InputState_Normal)
@@ -735,10 +736,11 @@ func (p *Parser) handle_DA1() (hd *Handler) {
 
 // In this DA exchange, the host requests the terminal's identification
 // code, firmware version level, and hardware options.
-func (p *Parser) handle_DA2() (hd *Handler) {
-	hd = &Handler{name: "csi-da2", ch: p.ch}
+// Device Attributes (Secondary)
+func (p *Parser) handle_secDA() (hd *Handler) {
+	hd = &Handler{id: csi_secDA, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
-		hdl_csi_da2(emu)
+		hdl_csi_secDA(emu)
 	}
 
 	p.setState(InputState_Normal)
@@ -775,13 +777,13 @@ func (p *Parser) handle_SGR() (hd *Handler) {
 	return hd
 }
 
-// Device Status Reports
 // Operating Status: https://www.vt100.net/docs/vt510-rm/DSR-OS.html
 // Cursor Position Report: https://www.vt100.net/docs/vt510-rm/DSR-CPR.html
+// Device Status Reports
 func (p *Parser) handle_DSR() (hd *Handler) {
 	cmd := p.getPs(0, 0)
 
-	hd = &Handler{name: "csi-dsr", ch: p.ch}
+	hd = &Handler{id: csi_dsr, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_dsr(emu, cmd)
 	}
@@ -1502,7 +1504,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case '`':
 			hd = p.handle_HPA()
 		case 'c':
-			hd = p.handle_DA1()
+			hd = p.handle_priDA()
 		case 'd':
 			hd = p.handle_VPA()
 		case 'g':
@@ -1580,7 +1582,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		}
 		switch ch {
 		case 'c':
-			hd = p.handle_DA2()
+			hd = p.handle_secDA()
 		default:
 			p.unhandledInput()
 		}

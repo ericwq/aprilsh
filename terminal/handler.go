@@ -73,13 +73,16 @@ const (
 	csi_decstbm
 	csi_decstr
 	csi_dl
+	csi_dsr
 	csi_ech
 	csi_ed
 	csi_el
 	csi_hpa
 	csi_ich
 	csi_il
+	csi_priDA
 	csi_rm
+	csi_secDA
 	csi_sd
 	csi_sm
 	csi_su
@@ -133,13 +136,16 @@ var strHandlerID = [...]string{
 	"csi_decstbm",
 	"csi_decstr",
 	"csi_dl",
+	"csi_dsr",
 	"csi_ech",
 	"csi_ed",
 	"csi_el",
 	"csi_hpa",
 	"csi_ich",
 	"csi_il",
+	"csi_priDA",
 	"csi_rm",
+	"csi_secDA",
 	"csi_sd",
 	"csi_sm",
 	"csi_su",
@@ -668,10 +674,10 @@ func hdl_csi_ech(emu *emulator, arg int) {
 // CSI Ps c  Send Device Attributes (Primary DA).
 // CSI ? 6 2 ; Ps c  ("VT220")
 // DA response
-func hdl_csi_da1(emu *emulator) {
+func hdl_csi_priDA(emu *emulator) {
 	// mosh only reply "\x1B[?62c" plain vt220
-	da1Response := fmt.Sprintf("\x1B[?%s", DEVICE_ID)
-	emu.dispatcher.terminalToHost.WriteString(da1Response)
+	resp := fmt.Sprintf("\x1B[?%s", DEVICE_ID)
+	emu.writePty(resp)
 }
 
 // CSI > Ps c Send Device Attributes (Secondary DA).
@@ -680,10 +686,10 @@ func hdl_csi_da1(emu *emulator) {
 // Pp = 1  ⇒  "VT220".
 // Pv is the firmware version.
 // Pc indicates the ROM cartridge registration number and is always zero.
-func hdl_csi_da2(emu *emulator) {
+func hdl_csi_secDA(emu *emulator) {
 	// mosh only reply "\033[>1;10;0c" plain vt220
-	da2Response := "\x1B[>64;0;0c" // VT520
-	emu.dispatcher.terminalToHost.WriteString(da2Response)
+	resp := "\x1B[>64;0;0c" // VT520
+	emu.writePty(resp)
 }
 
 // CSI Ps d  Line Position Absolute  [row] (default = [1,column]) (VPA).
@@ -775,20 +781,17 @@ func hdl_csi_cup(emu *emulator, row int, col int) {
 //   Ps = 6  ⇒  Report Cursor Position (CPR) [row;column]. Result is CSI r ; c R
 func hdl_csi_dsr(emu *emulator, cmd int) {
 	switch cmd {
-	case 5:
-		// device status report requested
-		emu.dispatcher.terminalToHost.WriteString("\x1B[0n") // device OK
-	case 6:
+	case 5: // device status report requested
+		emu.writePty("\x1B[0n") // device OK
+	case 6: // report of active position requested
 		resp := ""
-		// report of active position requested
-		if emu.cf.DS.OriginMode { // original mode
-			resp = fmt.Sprintf("\x1B[%d;%dR", emu.cf.DS.GetCursorRow()+1,
-				emu.cf.DS.GetCursorCol()+1)
-		} else { // scrolling region mode
-			resp = fmt.Sprintf("\x1B[%d;%dR", emu.cf.DS.GetCursorRow()-emu.cf.DS.GetScrollingRegionTopRow()+1,
-				emu.cf.DS.GetCursorCol()+1)
+		if emu.originMode == OriginMode_Absolute {
+			resp = fmt.Sprintf("\x1B[%d;%dR", emu.posY+1, emu.posX+1)
+		} else {
+			// scrolling region mode
+			resp = fmt.Sprintf("\x1B[%d;%dR", emu.posY-emu.marginTop+1, emu.posX+1)
 		}
-		emu.dispatcher.terminalToHost.WriteString(resp)
+		emu.writePty(resp)
 	default:
 	}
 }

@@ -29,6 +29,7 @@ package terminal
 import (
 	"log"
 	"os"
+	"strings"
 )
 
 type CharsetState struct {
@@ -48,8 +49,9 @@ type CharsetState struct {
 }
 
 type emulator struct {
-	dispatcher Dispatcher
-	parser     *Parser
+	dispatcher     Dispatcher
+	parser         *Parser
+	terminalToHost strings.Builder
 
 	cf        *Framebuffer // current frame buffer
 	frame_pri Framebuffer  // normal screen buffer
@@ -309,6 +311,11 @@ func (emu *emulator) lookupCharset(p rune) (r rune) {
 
 	r = lookupTable(cs, byte(p))
 	return r
+}
+
+// hide the implementation of write back
+func (emu *emulator) writePty(resp string) {
+	emu.terminalToHost.WriteString(resp)
 }
 
 // parse and handle the stream together.
