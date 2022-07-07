@@ -361,22 +361,22 @@ func TestHandle_ESC_DCS(t *testing.T) {
 	tc := []struct {
 		name        string
 		seq         string
-		wantName    string
+		hdIDs       []int
 		wantIndex   int
 		wantCharset *map[byte]rune
 	}{
-		{"VT100 G0", "\x1B(A", "esc-dcs", 0, &vt_ISO_UK},
-		{"VT100 G1", "\x1B)B", "esc-dcs", 1, nil},
-		{"VT220 G2", "\x1B*5", "esc-dcs", 2, nil},
-		{"VT220 G3", "\x1B+%5", "esc-dcs", 3, &vt_DEC_Supplement},
-		{"VT300 G1", "\x1B-0", "esc-dcs", 1, &vt_DEC_Special},
-		{"VT300 G2", "\x1B.<", "esc-dcs", 2, &vt_DEC_Supplement},
-		{"VT300 G3", "\x1B/>", "esc-dcs", 3, &vt_DEC_Technical},
-		{"VT300 G3", "\x1B/A", "esc-dcs", 3, &vt_ISO_8859_1},
-		{"ISO/IEC 2022 G0 A", "\x1B,A", "esc-dcs", 0, &vt_ISO_UK},
-		{"ISO/IEC 2022 G0 >", "\x1B$>", "esc-dcs", 0, &vt_DEC_Technical},
+		{"VT100 G0", "\x1B(A", []int{esc_dcs}, 0, &vt_ISO_UK},
+		{"VT100 G1", "\x1B)B", []int{esc_dcs}, 1, nil},
+		{"VT220 G2", "\x1B*5", []int{esc_dcs}, 2, nil},
+		{"VT220 G3", "\x1B+%5", []int{esc_dcs}, 3, &vt_DEC_Supplement},
+		{"VT300 G1", "\x1B-0", []int{esc_dcs}, 1, &vt_DEC_Special},
+		{"VT300 G2", "\x1B.<", []int{esc_dcs}, 2, &vt_DEC_Supplement},
+		{"VT300 G3", "\x1B/>", []int{esc_dcs}, 3, &vt_DEC_Technical},
+		{"VT300 G3", "\x1B/A", []int{esc_dcs}, 3, &vt_ISO_8859_1},
+		{"ISO/IEC 2022 G0 A", "\x1B,A", []int{esc_dcs}, 0, &vt_ISO_UK},
+		{"ISO/IEC 2022 G0 >", "\x1B$>", []int{esc_dcs}, 0, &vt_DEC_Technical},
 		// for other charset, just replace it with UTF-8
-		{"ISO/IEC 2022 G0 None", "\x1B$%9", "esc-dcs", 0, nil},
+		{"ISO/IEC 2022 G0 None", "\x1B$%9", []int{esc_dcs}, 0, nil},
 	}
 
 	p := NewParser()
@@ -385,7 +385,7 @@ func TestHandle_ESC_DCS(t *testing.T) {
 	p.logT.SetOutput(ioutil.Discard)
 	p.logTrace = true
 
-	emu := NewEmulator()
+	emu := NewEmulator3(8, 4, 0)
 	for _, v := range tc {
 		t.Run(v.name, func(t *testing.T) {
 			// set different value for compare
@@ -401,8 +401,9 @@ func TestHandle_ESC_DCS(t *testing.T) {
 				hd.handle(emu)
 
 				cs := emu.charsetState.g[v.wantIndex]
-				if v.wantName != hd.name || cs != v.wantCharset {
-					t.Errorf("%s: [%s vs %s] expect %p, got %p", v.name, hd.name, v.wantName, v.wantCharset, cs)
+				if v.hdIDs[0] != hd.id || cs != v.wantCharset {
+					t.Errorf("%s: seq=%q handler expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[0]], strHandlerID[hd.id])
+					t.Errorf("charset expect %p, got %p", v.wantCharset, cs)
 				}
 			} else {
 				t.Errorf("%s got nil return\n", v.name)
@@ -433,7 +434,7 @@ func TestHandle_DOCS(t *testing.T) {
 	p.logU.SetOutput(&place)
 	p.logT.SetOutput(&place)
 
-	emu := NewEmulator()
+	emu := NewEmulator3(8, 4, 0)
 	for _, v := range tc {
 
 		place.Reset()

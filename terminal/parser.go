@@ -1005,7 +1005,7 @@ func (p *Parser) handle_ESC_DCS() (hd *Handler) {
 		charset = &vt_DEC_Technical // Charset_DecTechn
 	}
 
-	hd = &Handler{name: "esc-dcs", ch: p.ch}
+	hd = &Handler{id: esc_dcs, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_esc_dcs(emu, index, charset)
 	}

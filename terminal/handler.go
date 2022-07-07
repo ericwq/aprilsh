@@ -85,6 +85,7 @@ const (
 	csi_scosc
 	csi_sgr
 	csi_tbc
+	esc_dcs
 	esc_decaln
 	esc_decrc
 	esc_decsc
@@ -141,6 +142,7 @@ var strHandlerID = [...]string{
 	"csi_scosc",
 	"csi_sgr",
 	"csi_tbc",
+	"esc_dcs",
 	"esc_decaln",
 	"esc_decrc",
 	"esc_decsc",
