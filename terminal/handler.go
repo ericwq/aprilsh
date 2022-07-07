@@ -56,6 +56,7 @@ const (
 	c0_si
 	c0_so
 	csi_cbt
+	csi_cha
 	csi_cht
 	csi_cub
 	csi_cud
@@ -75,6 +76,7 @@ const (
 	csi_ech
 	csi_ed
 	csi_el
+	csi_hpa
 	csi_ich
 	csi_il
 	csi_rm
@@ -85,6 +87,7 @@ const (
 	csi_scosc
 	csi_sgr
 	csi_tbc
+	csi_vpa
 	esc_dcs
 	esc_decaln
 	esc_decrc
@@ -113,6 +116,7 @@ var strHandlerID = [...]string{
 	"c0_si",
 	"c0_so",
 	"csi_cbt",
+	"csi_cha",
 	"csi_cht",
 	"csi_cub",
 	"csi_cud",
@@ -132,6 +136,7 @@ var strHandlerID = [...]string{
 	"csi_ech",
 	"csi_ed",
 	"csi_el",
+	"csi_hpa",
 	"csi_ich",
 	"csi_il",
 	"csi_rm",
@@ -142,6 +147,7 @@ var strHandlerID = [...]string{
 	"csi_scosc",
 	"csi_sgr",
 	"csi_tbc",
+	"csi_vpa",
 	"esc_dcs",
 	"esc_decaln",
 	"esc_decrc",
@@ -681,16 +687,26 @@ func hdl_csi_da2(emu *emulator) {
 }
 
 // CSI Ps d  Line Position Absolute  [row] (default = [1,column]) (VPA).
+// Move cursor to line Pn.
 func hdl_csi_vpa(emu *emulator, row int) {
-	emu.cf.DS.MoveRow(row-1, false)
+	row = max(1, min(row, emu.nRows))
+	emu.posY = row - 1
+	emu.lastCol = false
 }
 
 // Move the active position to the n-th character of the active line.
-// CHA—Cursor Horizontal Absolute
 // CSI Ps G  Cursor Character Absolute  [column] (default = [row,1]) (CHA).
+func hdl_csi_cha(emu *emulator, count int) {
+	count = max(1, min(count, emu.nCols))
+	emu.posX = count - 1
+	emu.lastCol = false
+}
+
+// Move the active position to the n-th character of the active line.
 // CSI Ps `  Character Position Absolute  [column] (default = [row,1]) (HPA).
-func hdl_csi_cha_hpa(emu *emulator, count int) {
-	emu.cf.DS.MoveCol(count-1, false, false)
+// same as CHA
+func hdl_csi_hpa(emu *emulator, count int) {
+	hdl_csi_cha(emu, count)
 }
 
 // CSI Ps A  Cursor Up Ps Times (default = 1) (CUU).

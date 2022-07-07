@@ -987,22 +987,23 @@ func getCellAtRow(y1, y2 int, row int) string {
 
 func TestHandle_VPA_CHA_HPA(t *testing.T) {
 	tc := []struct {
-		name           string
-		wantName       string
-		startX, startY int
-		wantX, wantY   int
-		seq            string
+		name         string
+		hdIDs        []int
+		wantX, wantY int
+		seq          string
 	}{
-		{"VPA move cursor to row 3-1 ", "csi-vpa", 9, 8, 9, 2, "\x1B[3d"},
-		{"VPA move cursor to row 34-1", "csi-vpa", 8, 8, 8, 33, "\x1B[34d"},
-		{"SHA move cursor to col 1-1 ", "csi-cha-hpa", 7, 7, 0, 7, "\x1B[G"}, // default Ps is 1
-		{"SHA move cursor to col 79-1", "csi-cha-hpa", 6, 6, 78, 6, "\x1B[79G"},
-		{"HPA move cursor to col 9-1", "csi-cha-hpa", 5, 5, 8, 5, "\x1B[9`"},
-		{"HPA move cursor to col 49-1", "csi-cha-hpa", 4, 4, 48, 4, "\x1B[49`"},
+		{"VPA move cursor to row 3-1 ", []int{csi_cup, csi_vpa}, 9, 2, "\x1B[9;10H\x1B[3d"},
+		{"VPA move cursor to row 34-1", []int{csi_cup, csi_vpa}, 8, 33, "\x1B[9;9H\x1B[34d"},
+		{"CHA move cursor to col 1-1 ", []int{csi_cup, csi_cha}, 0, 7, "\x1B[8;8H\x1B[G"}, // default Ps is 1
+		{"CHA move cursor to col 79-1", []int{csi_cup, csi_cha}, 78, 6, "\x1B[7;7H\x1B[79G"},
+		{"HPA move cursor to col 9-1 ", []int{csi_cup, csi_hpa}, 8, 5, "\x1B[6;6H\x1B[9`"},
+		{"HPA move cursor to col 49-1", []int{csi_cup, csi_hpa}, 48, 4, "\x1B[5;5H\x1B[49`"},
 	}
 	p := NewParser()
-	// the default size of emu is 80x40 [colxrow]
-	emu := NewEmulator()
+	emu := NewEmulator3(80, 40, 0)
+	var place strings.Builder
+	emu.logT.SetOutput(&place) // swallow the output
+
 	for _, v := range tc {
 
 		hds := make([]*Handler, 0, 16)
@@ -1012,23 +1013,19 @@ func TestHandle_VPA_CHA_HPA(t *testing.T) {
 			t.Errorf("%s got zero handlers.", v.name)
 		}
 
-		// move cursor to the active row
-		emu.cf.DS.MoveRow(v.startY, false)
-		emu.cf.DS.MoveCol(v.startX, false, false)
-
 		// handle the control sequence
-		for _, hd := range hds {
+		for j, hd := range hds {
 			hd.handle(emu)
-			if hd.name != v.wantName {
-				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 			}
 		}
 
-		gotX := emu.cf.DS.GetCursorCol()
-		gotY := emu.cf.DS.GetCursorRow()
+		gotX := emu.posX
+		gotY := emu.posY
 
 		if v.wantX != gotX || v.wantY != gotY {
-			t.Errorf("%s seq=%q expect (%d,%d), got (%d,%d)\n", v.name, v.seq, v.wantY, v.wantX, gotY, gotX)
+			t.Errorf("%s seq=%q cursor expect (%d,%d), got (%d,%d)\n", v.name, v.seq, v.wantY, v.wantX, gotY, gotX)
 		}
 	}
 }

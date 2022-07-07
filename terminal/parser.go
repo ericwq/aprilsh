@@ -565,14 +565,28 @@ func (p *Parser) handle_ICH() (hd *Handler) {
 	return hd
 }
 
-// CHA—Cursor Horizontal Absolute
 // Cursor moves to <n>th position horizontally in the current line
-func (p *Parser) handle_CHA_HPA() (hd *Handler) {
+// Character Position Absolute
+func (p *Parser) handle_HPA() (hd *Handler) {
 	count := p.getPs(0, 1)
 
-	hd = &Handler{name: "csi-cha-hpa", ch: p.ch}
+	hd = &Handler{id: csi_hpa, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
-		hdl_csi_cha_hpa(emu, count)
+		hdl_csi_hpa(emu, count)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// Cursor moves to <n>th position horizontally in the current line
+// Cursor Character Absolute_
+func (p *Parser) handle_CHA() (hd *Handler) {
+	count := p.getPs(0, 1)
+
+	hd = &Handler{id: csi_cha, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_cha(emu, count)
 	}
 
 	p.setState(InputState_Normal)
@@ -733,10 +747,11 @@ func (p *Parser) handle_DA2() (hd *Handler) {
 
 // VPA causes the active position to be moved to the corresponding horizontal position.
 // Cursor moves to the <n>th position vertically in the current column
+// Line Position Absolute
 func (p *Parser) handle_VPA() (hd *Handler) {
 	row := p.getPs(0, 1)
 
-	hd = &Handler{name: "csi-vpa", ch: p.ch}
+	hd = &Handler{id: csi_vpa, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_vpa(emu, row)
 	}
@@ -1459,7 +1474,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case 'D':
 			hd = p.handle_CUB()
 		case 'G':
-			hd = p.handle_CHA_HPA()
+			hd = p.handle_CHA()
 		case 'H':
 			hd = p.handle_CUP()
 		case 'I':
@@ -1485,7 +1500,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case '@':
 			hd = p.handle_ICH()
 		case '`':
-			hd = p.handle_CHA_HPA()
+			hd = p.handle_HPA()
 		case 'c':
 			hd = p.handle_DA1()
 		case 'd':
