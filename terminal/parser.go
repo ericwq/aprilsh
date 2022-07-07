@@ -1383,10 +1383,20 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			p.setState(InputState_DCS)
 		case 'c':
 			hd = p.handle_RIS()
+		case '6':
+			hd = p.handle_BI() // TODO depends on csi_ecma48_SR
 		case '7':
 			hd = p.handle_DECSC()
 		case '8':
 			hd = p.handle_DECRC()
+		case '9':
+			hd = p.handle_FI() // TODO depends on csi_ecma48_SL
+		case '=':
+			hd = p.handle_DECKPAM() // TODO no depends
+		case '>':
+			hd = p.handle_DECKPNM() // TODO no depends
+		case '<':
+			hd = p.handle_DECANM() // TODO no depends
 		case '~':
 			hd = p.handle_LS1R()
 		case 'n':
@@ -1475,6 +1485,10 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_CUF()
 		case 'D':
 			hd = p.handle_CUB()
+		case 'E':
+			hd = p.handle_CNL() // TODO depends CUD,CR
+		case 'F':
+			hd = p.handle_CPL() // TODO depends CUU,CR
 		case 'G':
 			hd = p.handle_CHA()
 		case 'H':
@@ -1503,10 +1517,16 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_ICH()
 		case '`':
 			hd = p.handle_HPA()
+		case 'a':
+			hd = p.handle_HPR() // TODO depends on HPA
+		case 'b':
+			hd = p.handle_REP() // TODO depends on hdl_graphemes()
 		case 'c':
 			hd = p.handle_priDA()
 		case 'd':
 			hd = p.handle_VPA()
+		case 'e':
+			hd = p.handle_VPR() // no depends
 		case 'g':
 			hd = p.handle_TBC()
 		case 'h':
@@ -1521,6 +1541,8 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_DECSTBM()
 		case 's':
 			hd = p.handle_SLRM_SCOSC()
+		case 't':
+			hd = p.handle_XTWINOPS() // TODO no depends
 		case 'u':
 			hd = p.handle_SCORC()
 		case '\'':
@@ -1576,6 +1598,15 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		default:
 			p.unhandledInput()
 		}
+	case InputState_CSI_SPC:
+		switch ch {
+		case '@':
+			hd = p.handle_ecma48_SL() // TODO no depends
+		case 'A':
+			hd = p.handle_ecma48_SR() // TODO no depends
+		default:
+			p.unhandledInput()
+		}
 	case InputState_CSI_GT:
 		if p.collectNumericParameters(ch) {
 			break
@@ -1583,6 +1614,8 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		switch ch {
 		case 'c':
 			hd = p.handle_secDA()
+		case 'm':
+			hd = p.handle_XTMODKEYS() // TODO no depends
 		default:
 			p.unhandledInput()
 		}
