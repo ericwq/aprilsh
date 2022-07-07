@@ -415,22 +415,22 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 		switch cmd {
 		// create the ActOn
 		case 0, 1, 2:
-			hd = &Handler{name: "osc-0,1,2", ch: p.ch}
+			hd = &Handler{id: osc_0_1_2, ch: p.ch, sequence: p.historyString()}
 			hd.handle = func(emu *emulator) {
 				hdl_osc_0_1_2(emu, cmd, arg)
 			}
 		case 4:
-			hd = &Handler{name: "osc-4", ch: p.ch}
+			hd = &Handler{id: osc_4, ch: p.ch, sequence: p.historyString()}
 			hd.handle = func(emu *emulator) {
 				hdl_osc_4(emu, cmd, arg)
 			}
 		case 52:
-			hd = &Handler{name: "osc-52", ch: p.ch}
+			hd = &Handler{id: osc_52, ch: p.ch, sequence: p.historyString()}
 			hd.handle = func(emu *emulator) {
 				hdl_osc_52(emu, cmd, arg)
 			}
 		case 10, 11, 12, 17, 19:
-			hd = &Handler{name: "osc-10,11,12,17,19", ch: p.ch}
+			hd = &Handler{id: osc_10_11_12_17_19, ch: p.ch, sequence: p.historyString()}
 			hd.handle = func(emu *emulator) {
 				hdl_osc_10x(emu, cmd, arg)
 			}

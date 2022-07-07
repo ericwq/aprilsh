@@ -109,6 +109,10 @@ const (
 	esc_ris
 	esc_ss2
 	esc_ss3
+	osc_4
+	osc_52
+	osc_0_1_2
+	osc_10_11_12_17_19
 )
 
 var strHandlerID = [...]string{
@@ -173,6 +177,10 @@ var strHandlerID = [...]string{
 	"esc_ris",
 	"esc_ss2",
 	"esc_ss3",
+	"osc_4",
+	"osc_52",
+	"osc_0_1_2",
+	"osc_10_11_12_17_19",
 }
 
 // Handler is the outcome of parsering input, it can be used to perform control sequence on emulator.
@@ -938,7 +946,7 @@ func hdl_osc_10x(emu *emulator, cmd int, arg string) {
 					color = emu.cf.DS.cursorColor
 				}
 				response := fmt.Sprintf("\x1B]%d;%s\x1B\\", colorIdx, color) // the String() method of Color will be called.
-				emu.dispatcher.terminalToHost.WriteString(response)
+				emu.writePty(response)
 			}
 		}
 	} else {
@@ -996,7 +1004,7 @@ func hdl_osc_52(emu *emulator, cmd int, arg string) {
 			if data, ok := emu.selectionData[ch]; ok && data != "" {
 				// response to the host
 				response := fmt.Sprintf("\x1B]%d;%c;%s\x1B\\", cmd, ch, data)
-				emu.dispatcher.terminalToHost.WriteString(response)
+				emu.writePty(response)
 				break
 			}
 		}
@@ -1036,6 +1044,7 @@ func hdl_osc_52(emu *emulator, cmd int, arg string) {
 			}
 			if set {
 				// save the selection in framebuffer, later it will be sent to terminal.
+				// TODO cf?
 				emu.cf.selectionData = fmt.Sprintf("\x1B]%d;%s;%s\x1B\\", cmd, Pc, Pd)
 			}
 		}
@@ -1099,7 +1108,7 @@ func hdl_osc_4(emu *emulator, cmd int, arg string) {
 				}
 				color := PaletteColor(colorIdx)
 				response := fmt.Sprintf("\x1B]%d;%d;%s\x1B\\", cmd, colorIdx, color)
-				emu.dispatcher.terminalToHost.WriteString(response)
+				emu.writePty(response)
 			} // TODO set the screen colors palette values to any RGB value.
 		}
 	} else {

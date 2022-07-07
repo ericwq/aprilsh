@@ -29,7 +29,6 @@ package terminal
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 	"strings"
 	"testing"
 
@@ -703,21 +702,22 @@ func TestHandle_CUP(t *testing.T) {
 
 func TestHandle_OSC_0_1_2(t *testing.T) {
 	tc := []struct {
-		name     string
-		wantName string
-		icon     bool
-		title    bool
-		seq      string
-		wantStr  string
+		name    string
+		hdIDs   []int
+		icon    bool
+		title   bool
+		seq     string
+		wantStr string
 	}{
-		{"OSC 0;Pt BEL        ", "osc-0,1,2", true, true, "\x1B]0;ada\x07", "ada"},
-		{"OSC 1;Pt 7bit ST    ", "osc-0,1,2", true, false, "\x1B]1;adas\x1B\\", "adas"},
-		{"OSC 2;Pt BEL chinese", "osc-0,1,2", false, true, "\x1B]2;[道德经]\x07", "[道德经]"},
-		{"OSC 2;Pt BEL unusual", "osc-0,1,2", false, true, "\x1B]2;[neovim]\x1B78\x07", "[neovim]\x1B78"},
+		{"OSC 0;Pt BEL        ", []int{osc_0_1_2}, true, true, "\x1B]0;ada\x07", "ada"},
+		{"OSC 1;Pt 7bit ST    ", []int{osc_0_1_2}, true, false, "\x1B]1;adas\x1B\\", "adas"},
+		{"OSC 2;Pt BEL chinese", []int{osc_0_1_2}, false, true, "\x1B]2;[道德经]\x07", "[道德经]"},
+		{"OSC 2;Pt BEL unusual", []int{osc_0_1_2}, false, true, "\x1B]2;[neovim]\x1B78\x07", "[neovim]\x1B78"},
 	}
 
 	p := NewParser()
-	emu := NewEmulator()
+	emu := NewEmulator3(8, 4, 4) // this is the pre-condidtion for the test case.
+
 	for _, v := range tc {
 		var hd *Handler
 		p.reset()
@@ -734,8 +734,8 @@ func TestHandle_OSC_0_1_2(t *testing.T) {
 			windowTitle := emu.cf.windowTitle
 			iconName := emu.cf.iconName
 
-			if hd.name != v.wantName {
-				t.Errorf("%s seq=%q expect handler name %q, got %q\n", v.name, v.seq, v.wantName, hd.name)
+			if hd.id != v.hdIDs[0] {
+				t.Errorf("%s seq=%q handler expect %q, got %q\n", v.name, v.seq, strHandlerID[v.hdIDs[0]], strHandlerID[hd.id])
 			}
 			if v.title && !v.icon && windowTitle != v.wantStr {
 				t.Errorf("%s seq=%q only title should be set.\nexpect %q, \ngot %q\n", v.name, v.seq, v.wantStr, windowTitle)
@@ -1310,7 +1310,7 @@ func TestHandle_DECSTBM(t *testing.T) {
 func TestHandle_OSC_52(t *testing.T) {
 	tc := []struct {
 		name       string
-		wantName   []string
+		hdIDs      []int
 		wantPc     string
 		wantPd     string
 		wantString string
@@ -1319,28 +1319,28 @@ func TestHandle_OSC_52(t *testing.T) {
 	}{
 		{
 			"new selection in c",
-			[]string{"osc-52"},
+			[]int{osc_52},
 			"c", "YXByaWxzaAo=",
 			"\x1B]52;c;YXByaWxzaAo=\x1B\\", true,
 			"\x1B]52;c;YXByaWxzaAo=\x1B\\",
 		},
 		{
 			"clear selection in cs",
-			[]string{"osc-52", "osc-52"},
+			[]int{osc_52, osc_52},
 			"cs", "",
 			"\x1B]52;cs;x\x1B\\", true, // echo "aprilsh" | base64
 			"\x1B]52;cs;YXByaWxzaAo=\x1B\\\x1B]52;cs;x\x1B\\",
 		},
 		{
 			"empty selection",
-			[]string{"osc-52"},
+			[]int{osc_52},
 			"s0", "5Zub5aeR5aiY5bGxCg==", // echo "四姑娘山" | base64
 			"\x1B]52;s0;5Zub5aeR5aiY5bGxCg==\x1B\\", true,
 			"\x1B]52;;5Zub5aeR5aiY5bGxCg==\x1B\\",
 		},
 		{
 			"question selection",
-			[]string{"osc-52", "osc-52"},
+			[]int{osc_52, osc_52},
 			"", "", // don't care these values
 			"\x1B]52;c;5Zub5aeR5aiY5bGxCg==\x1B\\", false,
 			"\x1B]52;c0;5Zub5aeR5aiY5bGxCg==\x1B\\\x1B]52;c0;?\x1B\\",
@@ -1365,8 +1365,8 @@ func TestHandle_OSC_52(t *testing.T) {
 			// execute the control sequence
 			for j, hd := range hds {
 				hd.handle(emu)
-				if hd.name != v.wantName[j] { // validate the control sequences name
-					t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName[j], hd.name)
+				if hd.id != v.hdIDs[j] { // validate the control sequences id
+					t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 				}
 			}
 
@@ -1382,7 +1382,7 @@ func TestHandle_OSC_52(t *testing.T) {
 					}
 				}
 			} else {
-				got := emu.dispatcher.terminalToHost.String()
+				got := emu.terminalToHost.String()
 				if got != v.wantString {
 					t.Errorf("%s: seq=%q, expect %q, got %q\n", v.name, v.seq, v.wantString, got)
 				}
@@ -1393,18 +1393,18 @@ func TestHandle_OSC_52(t *testing.T) {
 
 func TestHandle_OSC_52_abort(t *testing.T) {
 	tc := []struct {
-		name     string
-		wantName string
-		wantStr  string
-		seq      string
+		name    string
+		hdIDs   []int
+		wantStr string
+		seq     string
 	}{
-		{"malform OSC 52 ", "osc-52", "OSC 52: can't find Pc parameter.", "\x1B]52;23\x1B\\"},
-		{"Pc not in range", "osc-52", "invalid Pc parameters.", "\x1B]52;se;\x1B\\"},
+		{"malform OSC 52 ", []int{osc_52}, "OSC 52: can't find Pc parameter.", "\x1B]52;23\x1B\\"},
+		{"Pc not in range", []int{osc_52}, "invalid Pc parameters.", "\x1B]52;se;\x1B\\"},
 	}
 	p := NewParser()
 	emu := NewEmulator()
 	var place strings.Builder
-	emu.logW = log.New(&place, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	emu.logW.SetOutput(&place)
 
 	for _, v := range tc {
 		place.Reset()
@@ -1418,10 +1418,10 @@ func TestHandle_OSC_52_abort(t *testing.T) {
 			}
 
 			// execute the control sequence
-			for _, hd := range hds {
+			for j, hd := range hds {
 				hd.handle(emu)
-				if hd.name != v.wantName { // validate the control sequences name
-					t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName, hd.name)
+				if hd.id != v.hdIDs[j] { // validate the control sequences id
+					t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 				}
 			}
 
@@ -1436,38 +1436,38 @@ func TestHandle_OSC_4(t *testing.T) {
 	// color.Palette.Index(c color.Color)
 	tc := []struct {
 		name       string
-		wantName   []string
+		hdIDs      []int
 		wantString string
 		warn       bool
 		seq        string
 	}{
 		{
 			"query one color number",
-			[]string{"osc-4"},
+			[]int{osc_4},
 			"\x1B]4;1;rgb:8080/0000/0000\x1B\\", false,
 			"\x1B]4;1;?\x1B\\",
 		},
 		{
 			"query two color number",
-			[]string{"osc-4"},
+			[]int{osc_4},
 			"\x1B]4;250;rgb:bcbc/bcbc/bcbc\x1B\\\x1B]4;1;rgb:8080/0000/0000\x1B\\", false,
 			"\x1B]4;250;?;1;?\x1B\\",
 		},
 		{
 			"query 8 color number",
-			[]string{"osc-4"},
+			[]int{osc_4},
 			"\x1B]4;0;rgb:0000/0000/0000\x1B\\\x1B]4;1;rgb:8080/0000/0000\x1B\\\x1B]4;2;rgb:0000/8080/0000\x1B\\\x1B]4;3;rgb:8080/8080/0000\x1B\\\x1B]4;4;rgb:0000/0000/8080\x1B\\\x1B]4;5;rgb:8080/0000/8080\x1B\\\x1B]4;6;rgb:0000/8080/8080\x1B\\\x1B]4;7;rgb:c0c0/c0c0/c0c0\x1B\\", false,
 			"\x1B]4;0;?;1;?;2;?;3;?;4;?;5;?;6;?;7;?\x1B\\",
 		},
 		{
 			"missing ';' abort",
-			[]string{"osc-4"},
+			[]int{osc_4},
 			"OSC 4: malformed argument, missing ';'.", true,
 			"\x1B]4;1?\x1B\\",
 		},
 		{
 			"Ps malform abort",
-			[]string{"osc-4"},
+			[]int{osc_4},
 			"OSC 4: can't parse c parameter.", true,
 			"\x1B]4;m;?\x1B\\",
 		},
@@ -1475,11 +1475,11 @@ func TestHandle_OSC_4(t *testing.T) {
 	p := NewParser()
 	emu := NewEmulator()
 	var place strings.Builder
-	emu.logW = log.New(&place, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	emu.logW.SetOutput(&place)
 
 	for _, v := range tc {
 		place.Reset()
-		emu.dispatcher.terminalToHost.Reset()
+		emu.terminalToHost.Reset()
 
 		t.Run(v.name, func(t *testing.T) {
 			// process control sequence
@@ -1494,8 +1494,8 @@ func TestHandle_OSC_4(t *testing.T) {
 
 			for j, hd := range hds {
 				hd.handle(emu)
-				if hd.name != v.wantName[j] { // validate the control sequences name
-					t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName[j], hd.name)
+				if hd.id != v.hdIDs[j] { // validate the control sequences id
+					t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 				}
 			}
 
@@ -1504,7 +1504,7 @@ func TestHandle_OSC_4(t *testing.T) {
 					t.Errorf("%s: seq=%q expect %q, got %q\n", v.name, v.seq, v.wantString, place.String())
 				}
 			} else {
-				got := emu.dispatcher.terminalToHost.String()
+				got := emu.terminalToHost.String()
 				if got != v.wantString {
 					t.Errorf("%s: seq=%q, \nexpect\t %q, \ngot\t\t %q\n", v.name, v.seq, v.wantString, got)
 				}
@@ -1522,7 +1522,7 @@ func TestHandle_OSC_10x(t *testing.T) {
 		fgColor     Color
 		bgColor     Color
 		cursorColor Color
-		wantName    []string
+		hdIDs       []int
 		wantString  string
 		warn        bool
 		seq         string
@@ -1530,61 +1530,61 @@ func TestHandle_OSC_10x(t *testing.T) {
 		{
 			"query 6 color",
 			ColorWhite, ColorGreen, ColorOlive,
-			[]string{"osc-10,11,12,17,19"},
+			[]int{osc_10_11_12_17_19},
 			"\x1B]10;rgb:ffff/ffff/ffff\x1B\\\x1B]11;rgb:0000/8080/0000\x1B\\\x1B]17;rgb:0000/8080/0000\x1B\\\x1B]19;rgb:ffff/ffff/ffff\x1B\\\x1B]12;rgb:8080/8080/0000\x1B\\", false,
 			"\x1B]10;?;11;?;17;?;19;?;12;?\x1B\\",
 		},
 		{
 			"parse color parameter error",
 			invalidColor, invalidColor, invalidColor,
-			[]string{"osc-10,11,12,17,19"},
+			[]int{osc_10_11_12_17_19},
 			"OSC 10x: can't parse color index.", true,
 			"\x1B]10;?;m;?\x1B\\",
 		},
 		{
 			"malform parameter",
 			invalidColor, invalidColor, invalidColor,
-			[]string{"osc-10,11,12,17,19"},
+			[]int{osc_10_11_12_17_19},
 			"OSC 10x: malformed argument, missing ';'.", true,
 			"\x1B]10;?;\x1B\\",
 		},
 		{
 			"VT100 text foreground color: regular color",
 			ColorWhite, invalidColor, invalidColor,
-			[]string{"osc-10,11,12,17,19"},
+			[]int{osc_10_11_12_17_19},
 			"\x1B]10;rgb:ffff/ffff/ffff\x1B\\", false,
 			"\x1B]10;?\x1B\\",
 		},
 		{
 			"VT100 text background color: default color",
 			invalidColor, ColorDefault, invalidColor,
-			[]string{"osc-10,11,12,17,19"},
+			[]int{osc_10_11_12_17_19},
 			"\x1B]11;rgb:0000/0000/0000\x1B\\", false,
 			"\x1B]11;?\x1B\\",
 		},
 		{
 			"text cursor color: regular color",
 			invalidColor, invalidColor, ColorGreen,
-			[]string{"osc-10,11,12,17,19"},
+			[]int{osc_10_11_12_17_19},
 			"\x1B]12;rgb:0000/8080/0000\x1B\\", false,
 			"\x1B]12;?\x1B\\",
 		},
 		{
 			"text cursor color: default color",
 			invalidColor, invalidColor, ColorDefault,
-			[]string{"osc-10,11,12,17,19"},
+			[]int{osc_10_11_12_17_19},
 			"\x1B]12;rgb:0000/0000/0000\x1B\\", false,
 			"\x1B]12;?\x1B\\",
 		},
 	}
 	p := NewParser()
-	emu := NewEmulator()
+	emu := NewEmulator3(80, 40, 5)
 	var place strings.Builder
-	emu.logW = log.New(&place, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	emu.logW.SetOutput(&place)
 
 	for _, v := range tc {
 		place.Reset()
-		emu.dispatcher.terminalToHost.Reset()
+		emu.terminalToHost.Reset()
 
 		t.Run(v.name, func(t *testing.T) {
 			// process control sequence
@@ -1609,8 +1609,8 @@ func TestHandle_OSC_10x(t *testing.T) {
 			// execute the control sequence
 			for j, hd := range hds {
 				hd.handle(emu)
-				if hd.name != v.wantName[j] { // validate the control sequences name
-					t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName[j], hd.name)
+				if hd.id != v.hdIDs[j] { // validate the control sequences id
+					t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 				}
 			}
 
@@ -1619,7 +1619,7 @@ func TestHandle_OSC_10x(t *testing.T) {
 					t.Errorf("%s: seq=%q expect %q, got %q\n", v.name, v.seq, v.wantString, place.String())
 				}
 			} else {
-				got := emu.dispatcher.terminalToHost.String()
+				got := emu.terminalToHost.String()
 				if got != v.wantString {
 					t.Errorf("%s: seq=%q, \nexpect\t %q, \ngot\t\t %q\n", v.name, v.seq, v.wantString, got)
 				}
