@@ -102,7 +102,7 @@ func TestHandle_SCOSC_SCORC(t *testing.T) {
 	}
 }
 
-func TestHandle_DECSC_DECRC_DECSET_1048(t *testing.T) {
+func TestHandle_DECSC_DECRC_privSM_1048(t *testing.T) {
 	tc := []struct {
 		name       string
 		seq        string
@@ -115,15 +115,15 @@ func TestHandle_DECSC_DECRC_DECSET_1048(t *testing.T) {
 		{
 			"ESC DECSC/DECRC",
 			"\x1B[?6h\x1B[9;9H\x1B7\x1B[24;14H\x1B[?6l\x1B8",
-			[]int{csi_decset, csi_cup, esc_decsc, csi_cup, csi_decrst, esc_decrc},
+			[]int{csi_privSM, csi_cup, esc_decsc, csi_cup, csi_privRM, esc_decrc},
 			8, 8, OriginMode_ScrollingRegion,
 		},
-		// move cursor to (9,9), set originMode absolute, DECSET 1048
-		// move cursor to (21,11), set originMode scrolling, DECRST 1048
+		// move cursor to (9,9), set originMode absolute, privSM 1048
+		// move cursor to (21,11), set originMode scrolling, privRM 1048
 		{
-			"CSI DECSET/DECRST 1048",
+			"CSI privSM/privRM 1048",
 			"\x1B[10;10H\x1B[?6l\x1B[?1048h\x1B[22;12H\x1B[?6h\x1B[?1048l",
-			[]int{csi_cup, csi_decrst, csi_decset, csi_cup, csi_decset, csi_decrst},
+			[]int{csi_cup, csi_privRM, csi_privSM, csi_cup, csi_privSM, csi_privRM},
 			9, 9, OriginMode_Absolute,
 		},
 	}
@@ -161,15 +161,15 @@ func TestHandle_DECSC_DECRC_DECSET_1048(t *testing.T) {
 	}
 }
 
-func TestHandle_DECSET_DECRST_1049(t *testing.T) {
-	name := "DECSET/RST 1049"
+func TestHandle_privSM_privRM_1049(t *testing.T) {
+	name := "privSM/RST 1049"
 	// move cursor to 23,13
-	// DECSET 1049 enable altenate screen buffer
+	// privSM 1049 enable altenate screen buffer
 	// move cursor to 33,23
-	// DECRST 1049 disable normal screen buffer (false)
-	// DECRST 1049 set normal screen buffer (again for fast return)
+	// privRM 1049 disable normal screen buffer (false)
+	// privRM 1049 set normal screen buffer (again for fast return)
 	seq := "\x1B[24;14H\x1B[?1049h\x1B[34;24H\x1B[?1049l\x1B[?1049l"
-	hdIDs := []int{csi_cup, csi_decset, csi_cup, csi_decrst, csi_decrst}
+	hdIDs := []int{csi_cup, csi_privSM, csi_cup, csi_privRM, csi_privRM}
 
 	p := NewParser()
 	emu := NewEmulator3(80, 40, 500)
@@ -245,16 +245,16 @@ func TestHandle_DECSET_DECRST_1049(t *testing.T) {
 	}
 }
 
-func TestHandle_DECSET_DECRST_3(t *testing.T) {
+func TestHandle_privSM_privRM_3(t *testing.T) {
 	tc := []struct {
 		name  string
 		seq   string
 		hdIDs []int
 		mode  ColMode
 	}{
-		{"change to column Mode    132", "\x1B[?3h", []int{csi_decset}, ColMode_C132},
-		{"change to column Mode     80", "\x1B[?3l", []int{csi_decrst}, ColMode_C80},
-		{"change to column Mode repeat", "\x1B[?3h\x1B[?3h", []int{csi_decset, csi_decset}, ColMode_C132},
+		{"change to column Mode    132", "\x1B[?3h", []int{csi_privSM}, ColMode_C132},
+		{"change to column Mode     80", "\x1B[?3l", []int{csi_privRM}, ColMode_C80},
+		{"change to column Mode repeat", "\x1B[?3h\x1B[?3h", []int{csi_privSM, csi_privSM}, ColMode_C132},
 	}
 
 	p := NewParser()
@@ -288,7 +288,7 @@ func TestHandle_DECSET_DECRST_3(t *testing.T) {
 	}
 }
 
-func TestHandle_DECSET_DECRST_2(t *testing.T) {
+func TestHandle_privSM_privRM_2(t *testing.T) {
 	tc := []struct {
 		name                string
 		seq                 string
@@ -296,8 +296,8 @@ func TestHandle_DECSET_DECRST_2(t *testing.T) {
 		compatLevel         CompatibilityLevel
 		isResetCharsetState bool
 	}{
-		{"DECSET 2", "\x1B[?2h", []int{csi_decset}, CompatLevel_VT400, true},
-		{"DECRST 2", "\x1B[?2l", []int{csi_decrst}, CompatLevel_VT52, true},
+		{"privSM 2", "\x1B[?2h", []int{csi_privSM}, CompatLevel_VT400, true},
+		{"privRM 2", "\x1B[?2l", []int{csi_privRM}, CompatLevel_VT52, true},
 	}
 
 	p := NewParser()
@@ -353,15 +353,15 @@ func isResetCharsetState(cs CharsetState) (ret bool) {
 	return ret
 }
 
-func TestHandle_DECSET_DECRST_67(t *testing.T) {
+func TestHandle_privSM_privRM_67(t *testing.T) {
 	tc := []struct {
 		name         string
 		seq          string
 		hdIDs        []int
 		bkspSendsDel bool
 	}{
-		{"enable DECBKM—Backarrow Key Mode", "\x1B[?67h", []int{csi_decset}, false},
-		{"disable DECBKM—Backarrow Key Mode", "\x1B[?67l", []int{csi_decrst}, true},
+		{"enable DECBKM—Backarrow Key Mode", "\x1B[?67h", []int{csi_privSM}, false},
+		{"disable DECBKM—Backarrow Key Mode", "\x1B[?67l", []int{csi_privRM}, true},
 	}
 
 	p := NewParser()
@@ -406,19 +406,19 @@ func TestHandle_DECSLRM(t *testing.T) {
 		{
 			"set left right margin, normal",
 			"\x1B[?69h\x1B[4;70s",
-			[]int{csi_decset, csi_decslrm},
+			[]int{csi_privSM, csi_decslrm},
 			3, 70, 0, 0,
 		},
 		{
 			"set left right margin, missing right parameter",
 			"\x1B[?69h\x1B[1s",
-			[]int{csi_decset, csi_decslrm},
+			[]int{csi_privSM, csi_decslrm},
 			0, 80, 0, 0,
 		},
 		{
 			"set left right margin, left parameter is zero",
 			"\x1B[?69h\x1B[0s",
-			[]int{csi_decset, csi_decslrm},
+			[]int{csi_privSM, csi_decslrm},
 			0, 80, 0, 0,
 		},
 	}
@@ -482,17 +482,17 @@ func TestHandle_DECSLRM_Others(t *testing.T) {
 	}{
 		{
 			"DECLRMM disable", "\x1B[?69l\x1B[4;49s",
-			[]int{csi_decrst, csi_decslrm},
+			[]int{csi_privRM, csi_decslrm},
 			"", 0, 0, 0, 0,
 		},
 		{
 			"DECLRMM enable, outof range", "\x1B[?69h\x1B[4;89s",
-			[]int{csi_decset, csi_decslrm},
+			[]int{csi_privSM, csi_decslrm},
 			"Illegal arguments to SetLeftRightMargins:", 0, 0, 0, 0,
 		},
 		{
 			"DECLRMM OriginMode_ScrollingRegion, enable", "\x1B[?6h\x1B[?69h\x1B[4;69s", // DECLRMM: Set Left and Right Margins
-			[]int{csi_decset, csi_decset, csi_decslrm},
+			[]int{csi_privSM, csi_privSM, csi_decslrm},
 			"", 3, 69, 0, 3,
 		},
 	}
@@ -710,7 +710,7 @@ func TestHandle_DECSTR(t *testing.T) {
 				(finally) soft terminal reset, check the opposite result for the soft reset sequence.
 			*/
 			"\x1B[4h\x1B[?6h\x1B[?25l\x1B[?1h\x1B[2;30r\x1B[!p",
-			[]int{csi_sm, csi_decset, csi_decrst, csi_decset, csi_decstbm, csi_decstr},
+			[]int{csi_sm, csi_privSM, csi_privRM, csi_privSM, csi_decstbm, csi_decstr},
 			false, OriginMode_Absolute, true, CursorKeyMode_ANSI, false,
 		},
 	}
@@ -763,7 +763,7 @@ func TestHandle_DECSTR(t *testing.T) {
 	}
 }
 
-func TestHandle_DECSET_DECRST_BOOL(t *testing.T) {
+func TestHandle_privSM_privRM_BOOL(t *testing.T) {
 	tc := []struct {
 		name  string
 		seq   string
@@ -771,23 +771,23 @@ func TestHandle_DECSET_DECRST_BOOL(t *testing.T) {
 		hdIDs []int
 		want  bool
 	}{
-		{"DECSET: reverseVideo", "\x1B[?5l\x1B[?5h", t_reverseVideo, []int{csi_decrst, csi_decset}, true},
-		{"DECSET: autoWrapMode", "\x1B[?7l\x1B[?7h", t_autoWrapMode, []int{csi_decrst, csi_decset}, true},
-		{"DECSET: CursorVisible", "\x1B[?25l\x1B[?25h", t_showCursorMode, []int{csi_decrst, csi_decset}, true},
-		{"DECSET: focusEventMode", "\x1B[?1004l\x1B[?1004h", t_focusEventMode, []int{csi_decrst, csi_decset}, true},
-		{"DECSET: MouseAlternateScroll", "\x1B[?1007l\x1B[?1007h", t_altScrollMode, []int{csi_decrst, csi_decset}, true},
-		{"DECSET: altSendsEscape", "\x1B[?1036l\x1B[?1036h", t_altSendsEscape, []int{csi_decrst, csi_decset}, true},
-		{"DECSET: altSendsEscape", "\x1B[?1039l\x1B[?1039h", t_altSendsEscape, []int{csi_decrst, csi_decset}, true},
-		{"DECSET: BracketedPaste", "\x1B[?2004l\x1B[?2004h", t_bracketedPasteMode, []int{csi_decrst, csi_decset}, true},
+		{"privSM: reverseVideo", "\x1B[?5l\x1B[?5h", t_reverseVideo, []int{csi_privRM, csi_privSM}, true},
+		{"privSM: autoWrapMode", "\x1B[?7l\x1B[?7h", t_autoWrapMode, []int{csi_privRM, csi_privSM}, true},
+		{"privSM: CursorVisible", "\x1B[?25l\x1B[?25h", t_showCursorMode, []int{csi_privRM, csi_privSM}, true},
+		{"privSM: focusEventMode", "\x1B[?1004l\x1B[?1004h", t_focusEventMode, []int{csi_privRM, csi_privSM}, true},
+		{"privSM: MouseAlternateScroll", "\x1B[?1007l\x1B[?1007h", t_altScrollMode, []int{csi_privRM, csi_privSM}, true},
+		{"privSM: altSendsEscape", "\x1B[?1036l\x1B[?1036h", t_altSendsEscape, []int{csi_privRM, csi_privSM}, true},
+		{"privSM: altSendsEscape", "\x1B[?1039l\x1B[?1039h", t_altSendsEscape, []int{csi_privRM, csi_privSM}, true},
+		{"privSM: BracketedPaste", "\x1B[?2004l\x1B[?2004h", t_bracketedPasteMode, []int{csi_privRM, csi_privSM}, true},
 
-		{"DECRST: ReverseVideo", "\x1B[?5h\x1B[?5l", t_reverseVideo, []int{csi_decset, csi_decrst}, false},
-		{"DECRST: AutoWrapMode", "\x1B[?7h\x1B[?7l", t_autoWrapMode, []int{csi_decset, csi_decrst}, false},
-		{"DECRST: CursorVisible", "\x1B[?25h\x1B[?25l", t_showCursorMode, []int{csi_decset, csi_decrst}, false},
-		{"DECRST: focusEventMode", "\x1B[?1004h\x1B[?1004l", t_focusEventMode, []int{csi_decset, csi_decrst}, false},
-		{"DECRST: MouseAlternateScroll", "\x1B[?1007h\x1B[?1007l", t_altScrollMode, []int{csi_decset, csi_decrst}, false},
-		{"DECRST: altSendsEscape", "\x1B[?1036h\x1B[?1036l", t_altSendsEscape, []int{csi_decset, csi_decrst}, false},
-		{"DECRST: altSendsEscape", "\x1B[?1039h\x1B[?1039l", t_altSendsEscape, []int{csi_decset, csi_decrst}, false},
-		{"DECRST: BracketedPaste", "\x1B[?2004h\x1B[?2004l", t_bracketedPasteMode, []int{csi_decset, csi_decrst}, false},
+		{"privRM: ReverseVideo", "\x1B[?5h\x1B[?5l", t_reverseVideo, []int{csi_privSM, csi_privRM}, false},
+		{"privRM: AutoWrapMode", "\x1B[?7h\x1B[?7l", t_autoWrapMode, []int{csi_privSM, csi_privRM}, false},
+		{"privRM: CursorVisible", "\x1B[?25h\x1B[?25l", t_showCursorMode, []int{csi_privSM, csi_privRM}, false},
+		{"privRM: focusEventMode", "\x1B[?1004h\x1B[?1004l", t_focusEventMode, []int{csi_privSM, csi_privRM}, false},
+		{"privRM: MouseAlternateScroll", "\x1B[?1007h\x1B[?1007l", t_altScrollMode, []int{csi_privSM, csi_privRM}, false},
+		{"privRM: altSendsEscape", "\x1B[?1036h\x1B[?1036l", t_altSendsEscape, []int{csi_privSM, csi_privRM}, false},
+		{"privRM: altSendsEscape", "\x1B[?1039h\x1B[?1039l", t_altSendsEscape, []int{csi_privSM, csi_privRM}, false},
+		{"privRM: BracketedPaste", "\x1B[?2004h\x1B[?2004l", t_bracketedPasteMode, []int{csi_privSM, csi_privRM}, false},
 	}
 
 	p := NewParser()
@@ -860,24 +860,24 @@ func t_getDECmode(emu *emulator, which DECmode) bool {
 // 	}
 // }
 
-func TestHandle_DECSET_DECRST_Log(t *testing.T) {
+func TestHandle_privSM_privRM_Log(t *testing.T) {
 	tc := []struct {
 		name string
 		seq  string
 		hdID int
 		want string
 	}{
-		{"DECSET:   4", "\x1B[?4h", csi_decset, "DECSCLM: Set smooth scroll"},
-		{"DECSET:   8", "\x1B[?8h", csi_decset, "DECARM: Set auto-repeat mode"},
-		{"DECSET:  12", "\x1B[?12h", csi_decset, "Start blinking cursor"},
-		{"DECSET:1001", "\x1B[?1001h", csi_decset, "Set VT200 Highlight Mouse mode"},
-		{"DECSET:unknow", "\x1B[?2022h", csi_decset, "set priv mode"},
+		{"privSM:   4", "\x1B[?4h", csi_privSM, "DECSCLM: Set smooth scroll"},
+		{"privSM:   8", "\x1B[?8h", csi_privSM, "DECARM: Set auto-repeat mode"},
+		{"privSM:  12", "\x1B[?12h", csi_privSM, "Start blinking cursor"},
+		{"privSM:1001", "\x1B[?1001h", csi_privSM, "Set VT200 Highlight Mouse mode"},
+		{"privSM:unknow", "\x1B[?2022h", csi_privSM, "set priv mode"},
 
-		{"DECRST:   4", "\x1B[?4l", csi_decrst, "DECSCLM: Set jump scroll"},
-		{"DECRST:   8", "\x1B[?8l", csi_decrst, "DECARM: Reset auto-repeat mode"},
-		{"DECRST:  12", "\x1B[?12l", csi_decrst, "Stop blinking cursor"},
-		{"DECRST:1001", "\x1B[?1001l", csi_decrst, "Reset VT200 Highlight Mouse mode"},
-		{"DECRST:unknow", "\x1B[?2022l", csi_decrst, "reset priv mode"},
+		{"privRM:   4", "\x1B[?4l", csi_privRM, "DECSCLM: Set jump scroll"},
+		{"privRM:   8", "\x1B[?8l", csi_privRM, "DECARM: Reset auto-repeat mode"},
+		{"privRM:  12", "\x1B[?12l", csi_privRM, "Stop blinking cursor"},
+		{"privRM:1001", "\x1B[?1001l", csi_privRM, "Reset VT200 Highlight Mouse mode"},
+		{"privRM:unknow", "\x1B[?2022l", csi_privRM, "reset priv mode"},
 	}
 
 	p := NewParser()
@@ -911,15 +911,15 @@ func TestHandle_DECSET_DECRST_Log(t *testing.T) {
 	}
 }
 
-func TestHandle_DECSET_DECRST_6(t *testing.T) {
+func TestHandle_privSM_privRM_6(t *testing.T) {
 	tc := []struct {
 		name       string
 		seq        string
 		hdIDs      []int
 		originMode OriginMode
 	}{
-		{"DECSET:   6", "\x1B[?6l\x1B[?6h", []int{csi_decrst, csi_decset}, OriginMode_ScrollingRegion},
-		{"DECRST:   6", "\x1B[?6h\x1B[?6l", []int{csi_decset, csi_decrst}, OriginMode_Absolute},
+		{"privSM:   6", "\x1B[?6l\x1B[?6h", []int{csi_privRM, csi_privSM}, OriginMode_ScrollingRegion},
+		{"privRM:   6", "\x1B[?6h\x1B[?6l", []int{csi_privSM, csi_privRM}, OriginMode_Absolute},
 	}
 
 	p := NewParser()
@@ -954,15 +954,15 @@ func TestHandle_DECSET_DECRST_6(t *testing.T) {
 	}
 }
 
-func TestHandle_DECSET_DECRST_1(t *testing.T) {
+func TestHandle_privSM_privRM_1(t *testing.T) {
 	tc := []struct {
 		name          string
 		seq           string
 		hdIDs         []int
 		cursorKeyMode CursorKeyMode
 	}{
-		{"DECSET:   1", "\x1B[?1l\x1B[?1h", []int{csi_decrst, csi_decset}, CursorKeyMode_Application},
-		{"DECRST:   1", "\x1B[?1h\x1B[?1l", []int{csi_decset, csi_decrst}, CursorKeyMode_ANSI},
+		{"privSM:   1", "\x1B[?1l\x1B[?1h", []int{csi_privRM, csi_privSM}, CursorKeyMode_Application},
+		{"privRM:   1", "\x1B[?1h\x1B[?1l", []int{csi_privSM, csi_privRM}, CursorKeyMode_ANSI},
 	}
 
 	p := NewParser()
@@ -997,22 +997,22 @@ func TestHandle_DECSET_DECRST_1(t *testing.T) {
 	}
 }
 
-func TestHandle_DECSET_DECRST_MouseTrackingMode(t *testing.T) {
+func TestHandle_privSM_privRM_MouseTrackingMode(t *testing.T) {
 	tc := []struct {
 		name  string
 		seq   string
 		hdIDs []int
 		want  MouseTrackingMode
 	}{
-		{"DECSET:   9", "\x1B[?9l\x1B[?9h", []int{csi_decrst, csi_decset}, MouseTrackingMode_X10_Compat},
-		{"DECSET:1000", "\x1B[?1000l\x1B[?1000h", []int{csi_decrst, csi_decset}, MouseTrackingMode_VT200},
-		{"DECSET:1002", "\x1B[?1002l\x1B[?1002h", []int{csi_decrst, csi_decset}, MouseTrackingMode_VT200_ButtonEvent},
-		{"DECSET:1003", "\x1B[?1003l\x1B[?1003h", []int{csi_decrst, csi_decset}, MouseTrackingMode_VT200_AnyEvent},
+		{"privSM:   9", "\x1B[?9l\x1B[?9h", []int{csi_privRM, csi_privSM}, MouseTrackingMode_X10_Compat},
+		{"privSM:1000", "\x1B[?1000l\x1B[?1000h", []int{csi_privRM, csi_privSM}, MouseTrackingMode_VT200},
+		{"privSM:1002", "\x1B[?1002l\x1B[?1002h", []int{csi_privRM, csi_privSM}, MouseTrackingMode_VT200_ButtonEvent},
+		{"privSM:1003", "\x1B[?1003l\x1B[?1003h", []int{csi_privRM, csi_privSM}, MouseTrackingMode_VT200_AnyEvent},
 
-		{"DECRST:   9", "\x1B[?9h\x1B[?9l", []int{csi_decset, csi_decrst}, MouseTrackingMode_Disable},
-		{"DECRST:1000", "\x1B[?1000h\x1B[?1000l", []int{csi_decset, csi_decrst}, MouseTrackingMode_Disable},
-		{"DECRST:1002", "\x1B[?1002h\x1B[?1002l", []int{csi_decset, csi_decrst}, MouseTrackingMode_Disable},
-		{"DECRST:1003", "\x1B[?1003h\x1B[?1003l", []int{csi_decset, csi_decrst}, MouseTrackingMode_Disable},
+		{"privRM:   9", "\x1B[?9h\x1B[?9l", []int{csi_privSM, csi_privRM}, MouseTrackingMode_Disable},
+		{"privRM:1000", "\x1B[?1000h\x1B[?1000l", []int{csi_privSM, csi_privRM}, MouseTrackingMode_Disable},
+		{"privRM:1002", "\x1B[?1002h\x1B[?1002l", []int{csi_privSM, csi_privRM}, MouseTrackingMode_Disable},
+		{"privRM:1003", "\x1B[?1003h\x1B[?1003l", []int{csi_privSM, csi_privRM}, MouseTrackingMode_Disable},
 	}
 
 	p := NewParser()
@@ -1047,20 +1047,20 @@ func TestHandle_DECSET_DECRST_MouseTrackingMode(t *testing.T) {
 	}
 }
 
-func TestHandle_DECSET_DECRST_MouseTrackingEnc(t *testing.T) {
+func TestHandle_privSM_privRM_MouseTrackingEnc(t *testing.T) {
 	tc := []struct {
 		name  string
 		seq   string
 		hdIDs []int
 		want  MouseTrackingEnc
 	}{
-		{"DECSET:1005", "\x1B[?1005l\x1B[?1005h", []int{csi_decrst, csi_decset}, MouseTrackingEnc_UTF8},
-		{"DECSET:1006", "\x1B[?1006l\x1B[?1006h", []int{csi_decrst, csi_decset}, MouseTrackingEnc_SGR},
-		{"DECSET:1015", "\x1B[?1015l\x1B[?1015h", []int{csi_decrst, csi_decset}, MouseTrackingEnc_URXVT},
+		{"privSM:1005", "\x1B[?1005l\x1B[?1005h", []int{csi_privRM, csi_privSM}, MouseTrackingEnc_UTF8},
+		{"privSM:1006", "\x1B[?1006l\x1B[?1006h", []int{csi_privRM, csi_privSM}, MouseTrackingEnc_SGR},
+		{"privSM:1015", "\x1B[?1015l\x1B[?1015h", []int{csi_privRM, csi_privSM}, MouseTrackingEnc_URXVT},
 
-		{"DECRST:1005", "\x1B[?1005h\x1B[?1005l", []int{csi_decset, csi_decrst}, MouseTrackingEnc_Default},
-		{"DECRST:1006", "\x1B[?1006h\x1B[?1006l", []int{csi_decset, csi_decrst}, MouseTrackingEnc_Default},
-		{"DECRST:1015", "\x1B[?1015h\x1B[?1015l", []int{csi_decset, csi_decrst}, MouseTrackingEnc_Default},
+		{"privRM:1005", "\x1B[?1005h\x1B[?1005l", []int{csi_privSM, csi_privRM}, MouseTrackingEnc_Default},
+		{"privRM:1006", "\x1B[?1006h\x1B[?1006l", []int{csi_privSM, csi_privRM}, MouseTrackingEnc_Default},
+		{"privRM:1015", "\x1B[?1015h\x1B[?1015l", []int{csi_privSM, csi_privRM}, MouseTrackingEnc_Default},
 	}
 
 	p := NewParser()
@@ -1095,7 +1095,7 @@ func TestHandle_DECSET_DECRST_MouseTrackingEnc(t *testing.T) {
 	}
 }
 
-func TestHandle_DECSET_DECRST_47_1047(t *testing.T) {
+func TestHandle_privSM_privRM_47_1047(t *testing.T) {
 	tc := []struct {
 		name      string
 		seq       string
@@ -1103,8 +1103,8 @@ func TestHandle_DECSET_DECRST_47_1047(t *testing.T) {
 		setMode   bool
 		unsetMode bool
 	}{
-		{"DECSET/RST 47", "\x1B[?47h\x1B[?47l", []int{csi_decset, csi_decrst}, true, false},
-		{"DECSET/RST 1047", "\x1B[?1047h\x1B[?1047l", []int{csi_decset, csi_decrst}, true, false},
+		{"privSM/RST 47", "\x1B[?47h\x1B[?47l", []int{csi_privSM, csi_privRM}, true, false},
+		{"privSM/RST 1047", "\x1B[?1047h\x1B[?1047l", []int{csi_privSM, csi_privRM}, true, false},
 	}
 
 	p := NewParser()
@@ -1144,14 +1144,14 @@ func TestHandle_DECSET_DECRST_47_1047(t *testing.T) {
 	}
 }
 
-func TestHandle_DECSET_DECRST_69(t *testing.T) {
+func TestHandle_privSM_privRM_69(t *testing.T) {
 	tc := []struct {
 		name            string
 		seq             string
 		hdIDs           []int
 		horizMarginMode bool
 	}{
-		{"DECSET/DECRST 69 combining", "\x1B[?69h\x1B[?69l", []int{csi_decset, csi_decrst}, true},
+		{"privSM/privRM 69 combining", "\x1B[?69h\x1B[?69l", []int{csi_privSM, csi_privRM}, true},
 	}
 
 	p := NewParser()
@@ -1248,8 +1248,8 @@ func TestHandle_CSI_BS_FF_VT_CR_TAB(t *testing.T) {
 		wantY, wantX int
 	}{
 		// call CUP first to set the start position
-		{"CSI backspace number    ", []int{csi_cup, csi_cup}, "\x1B[1;1H\x1B[23;12\bH", 22, 0},     // undo last character in CSI sequence
-		{"CSI backspace semicolon ", []int{csi_cup, csi_cup}, "\x1B[1;1H\x1B[23;\b;12H", 22, 11},   // undo last character in CSI sequence
+		{"CSI backspace number    ", []int{csi_cup, csi_cup}, "\x1B[1;1H\x1B[23;12\bH", 22, 0},      // undo last character in CSI sequence
+		{"CSI backspace semicolon ", []int{csi_cup, csi_cup}, "\x1B[1;1H\x1B[23;\b;12H", 22, 11},    // undo last character in CSI sequence
 		{"cursor down 1+3 rows VT ", []int{csi_cup, c0_ind, csi_cud}, "\x1B[9;10H\x1B[3\vB", 12, 9}, //(8,9)->(9.9)->(12,9)
 		{"cursor down 1+3 rows FF ", []int{csi_cup, c0_ind, csi_cud}, "\x1B[9;10H\x1B[\f3B", 12, 9},
 		{"cursor up 2 rows and CR ", []int{csi_cup, c0_cr, csi_cuu}, "\x1B[8;9H\x1B[\r2A", 5, 0},

@@ -936,9 +936,9 @@ func TestHandle_priDA_secDA_DSR(t *testing.T) {
 		{"Secondary DA", "\x1B[>c", "\x1B[>64;0;0c", []int{csi_secDA}},
 		{"DSR device status report ", "\x1B[5n", "\x1B[0n", []int{csi_dsr}},
 		// use DECSET 6 to set  originMode, use CUP to set the active position, then call DSR 6
-		{"DSR OriginMode_ScrollingRegion", "\x1B[?6h\x1B[9;9H\x1B[6n", "\x1B[9;9R", []int{csi_decset, csi_cup, csi_dsr}},
+		{"DSR OriginMode_ScrollingRegion", "\x1B[?6h\x1B[9;9H\x1B[6n", "\x1B[9;9R", []int{csi_privSM, csi_cup, csi_dsr}},
 		// use DECRST 6 to set  originMode, use CUP to set the active position, then call DSR 6
-		{"DSR OriginMode_Absolute", "\x1B[?6l\x1B[10;10H\x1B[6n", "\x1B[10;10R", []int{csi_decrst, csi_cup, csi_dsr}},
+		{"DSR OriginMode_Absolute", "\x1B[?6l\x1B[10;10H\x1B[6n", "\x1B[10;10R", []int{csi_privRM, csi_cup, csi_dsr}},
 		// TODO full test for scrolling mode
 	}
 

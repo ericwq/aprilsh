@@ -1068,14 +1068,14 @@ func (p *Parser) handle_RM() (hd *Handler) {
 
 // Set Mode (private)
 // csi_privSM
-func (p *Parser) handle_DECSET() (hd *Handler) {
+func (p *Parser) handle_privSM() (hd *Handler) {
 	// prepare the parameters
 	params := make([]int, p.nInputOps)
 	copy(params, p.inputOps)
 
-	hd = &Handler{id: csi_decset, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: csi_privSM, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
-		hdl_csi_decset(emu, params)
+		hdl_csi_privSM(emu, params)
 	}
 
 	p.setState(InputState_Normal)
@@ -1084,14 +1084,14 @@ func (p *Parser) handle_DECSET() (hd *Handler) {
 
 // Reset Mode (private)
 // csi_privRM
-func (p *Parser) handle_DECRST() (hd *Handler) {
+func (p *Parser) handle_privRM() (hd *Handler) {
 	// prepare the parameters
 	params := make([]int, p.nInputOps)
 	copy(params, p.inputOps)
 
-	hd = &Handler{id: csi_decrst, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: csi_privRM, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
-		hdl_csi_decrst(emu, params)
+		hdl_csi_privRM(emu, params)
 	}
 
 	p.setState(InputState_Normal)
@@ -1594,9 +1594,9 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case '\x1B':
 			p.setState(InputState_Normal)
 		case 'h':
-			hd = p.handle_DECSET() // csi-privSM
+			hd = p.handle_privSM() // DECSET
 		case 'l':
-			hd = p.handle_DECRST() // csi_privRM
+			hd = p.handle_privRM() // DECRST
 		default:
 			p.unhandledInput()
 		}

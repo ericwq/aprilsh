@@ -66,9 +66,9 @@ const (
 	csi_dch
 	csi_decic
 	csi_decdc
-	csi_decrst
+	csi_privRM
 	csi_decscl
-	csi_decset
+	csi_privSM
 	csi_decslrm
 	csi_decstbm
 	csi_decstr
@@ -1173,7 +1173,7 @@ func hdl_csi_rm(emu *emulator, params []int) {
 
 // CSI ? Pm h
 // DEC Private Mode Set (DECSET).
-func hdl_csi_decset(emu *emulator, params []int) {
+func hdl_csi_privSM(emu *emulator, params []int) {
 	for _, param := range params {
 		switch param {
 		case 1:
@@ -1267,7 +1267,7 @@ func hdl_csi_decset(emu *emulator, params []int) {
 
 // CSI ? Pm l
 // DEC Private Mode Reset (DECRST).
-func hdl_csi_decrst(emu *emulator, params []int) {
+func hdl_csi_privRM(emu *emulator, params []int) {
 	for _, param := range params {
 		switch param {
 		case 1:
