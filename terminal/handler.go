@@ -72,6 +72,8 @@ const (
 	csi_decslrm
 	csi_decstbm
 	csi_decstr
+	csi_ecma48_SL
+	csi_ecma48_SR
 	csi_dl
 	csi_dsr
 	csi_ech
@@ -140,6 +142,8 @@ var strHandlerID = [...]string{
 	"csi_decslrm",
 	"csi_decstbm",
 	"csi_decstr",
+	"csi_ecma48_SL",
+	"csi_ecma48_SR",
 	"csi_dl",
 	"csi_dsr",
 	"csi_ech",
@@ -1545,4 +1549,18 @@ func hdl_csi_decdc(emu *emulator, num int) {
 		num = min(num, emu.nColsEff-emu.posX)
 		emu.deleteCols(emu.posX, num)
 	}
+}
+
+// CSI Ps SP @
+//           Shift left Ps columns(s) (default = 1) (SL), ECMA-48.
+func hdl_csi_ecma48_SL(emu *emulator, arg int) {
+	arg = min(arg, emu.nColsEff-emu.hMargin)
+	emu.deleteCols(emu.hMargin, arg)
+}
+
+// CSI Ps SP A
+//           Shift right Ps columns(s) (default = 1) (SR), ECMA-48.
+func hdl_csi_ecma48_SR(emu *emulator, arg int) {
+	arg = min(arg, emu.nColsEff-emu.hMargin)
+	emu.insertCols(emu.hMargin, arg)
 }

@@ -1221,6 +1221,32 @@ func (p *Parser) handle_DECDC() (hd *Handler) {
 	return hd
 }
 
+// Shift Left
+func (p *Parser) handle_ecma48_SL() (hd *Handler) {
+	arg := p.getPs(0, 1)
+
+	hd = &Handler{id: csi_ecma48_SL, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_ecma48_SL(emu, arg)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// Shift Right
+func (p *Parser) handle_ecma48_SR() (hd *Handler) {
+	arg := p.getPs(0, 1)
+
+	hd = &Handler{id: csi_ecma48_SR, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_ecma48_SR(emu, arg)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
 // process data stream from outside. for VT mode, character set can be changed
 // according to control sequences. for UTF-8 mode, no need to change character set.
 // the result is a *Handler list. waiting to be executed later.
@@ -1601,9 +1627,9 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 	case InputState_CSI_SPC:
 		switch ch {
 		case '@':
-			hd = p.handle_ecma48_SL() // TODO no depends
+			hd = p.handle_ecma48_SL()
 		case 'A':
-			hd = p.handle_ecma48_SR() // TODO no depends
+			hd = p.handle_ecma48_SR()
 		default:
 			p.unhandledInput()
 		}
