@@ -487,17 +487,20 @@ func TestHandle_DOCS(t *testing.T) {
 
 func TestHandle_LS2_LS3(t *testing.T) {
 	tc := []struct {
-		name     string
-		seq      string
-		wantName string
-		want     int
+		name  string
+		seq   string
+		hdIDs []int
+		want  int
 	}{
-		{"LS2", "\x1Bn", "esc-ls2", 2},
-		{"LS3", "\x1Bo", "esc-ls3", 3},
+		{"LS2", "\x1Bn", []int{esc_ls2}, 2},
+		{"LS3", "\x1Bo", []int{esc_ls3}, 3},
 	}
 
 	p := NewParser()
-	emu := NewEmulator()
+	emu := NewEmulator3(80, 40, 500)
+	var place strings.Builder
+	emu.logT.SetOutput(&place)
+
 	for _, v := range tc {
 
 		// reset the charsetState
@@ -514,31 +517,33 @@ func TestHandle_LS2_LS3(t *testing.T) {
 			hd.handle(emu)
 
 			// verify the result
-			if emu.charsetState.gl != v.want || hd.name != v.wantName {
-				t.Errorf("%s [%s vs %s] expect %d, got %d\n", v.name, hd.name, v.wantName, v.want, emu.charsetState.gl)
+			if emu.charsetState.gl != v.want || hd.id != v.hdIDs[0] {
+				t.Errorf("%s seq=%q handler expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[0]], strHandlerID[hd.id])
+				t.Errorf("%s GL expect %d, got %d\n", v.name, v.want, emu.charsetState.gl)
 			}
-
 		} else {
 			t.Errorf("%s got nil return\n", v.name)
 		}
-
 	}
 }
 
 func TestHandle_LS1R_LS2R_LS3R(t *testing.T) {
 	tc := []struct {
-		name     string
-		seq      string
-		wantName string
-		want     int
+		name  string
+		seq   string
+		hdIDs []int
+		want  int
 	}{
-		{"LS1R", "\x1B~", "esc-ls1r", 1},
-		{"LS2R", "\x1B}", "esc-ls2r", 2},
-		{"LS3R", "\x1B|", "esc-ls3r", 3},
+		{"LS1R", "\x1B~", []int{esc_ls1r}, 1},
+		{"LS2R", "\x1B}", []int{esc_ls2r}, 2},
+		{"LS3R", "\x1B|", []int{esc_ls3r}, 3},
 	}
 
 	p := NewParser()
-	emu := NewEmulator()
+	emu := NewEmulator3(80, 40, 500)
+	var place strings.Builder
+	emu.logT.SetOutput(&place)
+
 	for _, v := range tc {
 
 		// reset the charsetState
@@ -555,8 +560,9 @@ func TestHandle_LS1R_LS2R_LS3R(t *testing.T) {
 			hd.handle(emu)
 
 			// verify the result
-			if emu.charsetState.gr != v.want || hd.name != v.wantName {
-				t.Errorf("%s [%s vs %s] expect %d, got %d\n", v.name, hd.name, v.wantName, v.want, emu.charsetState.gr)
+			if emu.charsetState.gr != v.want || hd.id != v.hdIDs[0] {
+				t.Errorf("%s seq=%q handler expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[0]], strHandlerID[hd.id])
+				t.Errorf("%s GR expect %d, got %d\n", v.name, v.want, emu.charsetState.gr)
 			}
 
 		} else {

@@ -799,7 +799,7 @@ func (p *Parser) handle_SS3() (hd *Handler) {
 
 // LS1R gr = 1
 func (p *Parser) handle_LS1R() (hd *Handler) {
-	hd = &Handler{name: "esc-ls1r", ch: p.ch}
+	hd = &Handler{id: esc_ls1r, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_esc_ls1r(emu)
 	}
@@ -810,7 +810,7 @@ func (p *Parser) handle_LS1R() (hd *Handler) {
 
 // LS2 gl = 2
 func (p *Parser) handle_LS2() (hd *Handler) {
-	hd = &Handler{name: "esc-ls2", ch: p.ch}
+	hd = &Handler{id: esc_ls2, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_esc_ls2(emu)
 	}
@@ -821,7 +821,7 @@ func (p *Parser) handle_LS2() (hd *Handler) {
 
 // LS2R gr = 2
 func (p *Parser) handle_LS2R() (hd *Handler) {
-	hd = &Handler{name: "esc-ls2r", ch: p.ch}
+	hd = &Handler{id: esc_ls2r, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_esc_ls2r(emu)
 	}
@@ -832,7 +832,7 @@ func (p *Parser) handle_LS2R() (hd *Handler) {
 
 // LS3 gl = 3
 func (p *Parser) handle_LS3() (hd *Handler) {
-	hd = &Handler{name: "esc-ls3", ch: p.ch}
+	hd = &Handler{id: esc_ls3, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_esc_ls3(emu)
 	}
@@ -843,7 +843,7 @@ func (p *Parser) handle_LS3() (hd *Handler) {
 
 // LS3R gr = 3
 func (p *Parser) handle_LS3R() (hd *Handler) {
-	hd = &Handler{name: "esc-ls3r", ch: p.ch}
+	hd = &Handler{id: esc_ls3r, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_esc_ls3r(emu)
 	}

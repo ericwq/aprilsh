@@ -91,6 +91,11 @@ const (
 	esc_docs_utf8
 	esc_docs_iso8859_1
 	esc_hts
+	esc_ls1r
+	esc_ls2
+	esc_ls2r
+	esc_ls3
+	esc_ls3r
 	esc_nel
 	esc_ri
 	esc_ris
@@ -142,6 +147,11 @@ var strHandlerID = [...]string{
 	"esc_docs-utf-8",
 	"esc_docs-iso8859-1",
 	"esc_hts",
+	"esc_ls1r",
+	"esc_ls2",
+	"esc_ls2r",
+	"esc_ls3",
+	"esc_ls3r",
 	"esc_nel",
 	"esc_ri",
 	"esc_ris",
