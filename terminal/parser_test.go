@@ -1630,65 +1630,51 @@ func TestHandle_OSC_10x(t *testing.T) {
 
 func TestHandle_DCS(t *testing.T) {
 	tc := []struct {
-		name       string
-		wantName   []string
-		wantString string
-		warn       bool
-		seq        string
+		name    string
+		hdIDs   []int
+		wantMsg string
+		warn    bool
+		seq     string
 	}{
-		{
-			"DECRQSS normal",
-			[]string{"dcs-decrqss"},
-			"\x1BP1$r" + DEVICE_ID + "\x1B\\", false,
-			"\x1BP$q\"p\x1B\\",
-		},
-		{
-			"decrqss others",
-			[]string{"dcs-decrqss"},
-			"\x1BP0$rother\x1B\\", false,
-			"\x1BP$qother\x1B\\",
-		},
-		{
-			"DCS unimplement",
-			[]string{"dcs-decrqss"},
-			"DCS:", true,
-			"\x1BPunimplement\x1B78\x1B\\",
-		},
+		{"DECRQSS normal", []int{dcs_decrqss}, "\x1BP1$r" + DEVICE_ID + "\x1B\\", false, "\x1BP$q\"p\x1B\\"},
+		{"decrqss others", []int{dcs_decrqss}, "\x1BP0$rother\x1B\\", false, "\x1BP$qother\x1B\\"},
+		{"DCS unimplement", []int{dcs_decrqss}, "DCS:", true, "\x1BPunimplement\x1B78\x1B\\"},
 	}
 	p := NewParser()
-	emu := NewEmulator()
+	// p.logU = log.New(&place, "(Uimplemented): ", log.Ldate|log.Ltime|log.Lshortfile)
+	emu := NewEmulator3(8, 4, 0)
 	var place strings.Builder
-	p.logU = log.New(&place, "(Uimplemented): ", log.Ldate|log.Ltime|log.Lshortfile)
+	p.logU.SetOutput(&place) // redirect the output to the string builder
 
 	for _, v := range tc {
 		place.Reset()
-		emu.dispatcher.terminalToHost.Reset()
+		emu.terminalToHost.Reset()
 
 		t.Run(v.name, func(t *testing.T) {
 			// process control sequence
 			hds := make([]*Handler, 0, 16)
 			hds = p.processStream(v.seq, hds)
 
-			// if len(hds) == 0 {
-			// 	t.Errorf("%s got zero handlers.", v.name)
-			// }
+			if !v.warn && len(hds) == 0 {
+				t.Errorf("%s got zero handlers.", v.name)
+			}
 
 			// execute the control sequence
 			for j, hd := range hds {
 				hd.handle(emu)
-				if hd.name != v.wantName[j] { // validate the control sequences name
-					t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.wantName[j], hd.name)
+				if hd.id != v.hdIDs[j] { // validate the control sequences name
+					t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 				}
 			}
 
 			if v.warn {
-				if !strings.Contains(place.String(), v.wantString) {
-					t.Errorf("%s: seq=%q expect %q, got %q\n", v.name, v.seq, v.wantString, place.String())
+				if !strings.Contains(place.String(), v.wantMsg) {
+					t.Errorf("%s: seq=%q expect %q, got %q\n", v.name, v.seq, v.wantMsg, place.String())
 				}
 			} else {
-				got := emu.dispatcher.terminalToHost.String()
-				if got != v.wantString {
-					t.Errorf("%s: seq=%q, \nexpect\t %q, \ngot\t\t %q\n", v.name, v.seq, v.wantString, got)
+				got := emu.terminalToHost.String()
+				if got != v.wantMsg {
+					t.Errorf("%s: seq=%q, \nexpect\t %q, \ngot\t\t %q\n", v.name, v.seq, v.wantMsg, got)
 				}
 			}
 		})

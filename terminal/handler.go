@@ -91,6 +91,7 @@ const (
 	csi_sgr
 	csi_tbc
 	csi_vpa
+	dcs_decrqss
 	esc_dcs
 	esc_decaln
 	esc_decrc
@@ -154,6 +155,7 @@ var strHandlerID = [...]string{
 	"csi_sgr",
 	"csi_tbc",
 	"csi_vpa",
+	"dcs_decrqss",
 	"esc_dcs",
 	"esc_decaln",
 	"esc_decrc",
@@ -1411,12 +1413,12 @@ func hdl_csi_decstr(emu *emulator) {
 func hdl_dcs_decrqss(emu *emulator, arg string) {
 	// only response to DECSCL
 	if arg == "$q\"p" {
-		emu.cf.DS.compatLevel = CompatLevel_VT400
-		response := fmt.Sprintf("\x1BP1$r%s\x1B\\", DEVICE_ID)
-		emu.dispatcher.terminalToHost.WriteString(response)
+		emu.compatLevel = CompatLevel_VT400
+		resp := fmt.Sprintf("\x1BP1$r%s\x1B\\", DEVICE_ID)
+		emu.writePty(resp)
 	} else {
-		response := fmt.Sprintf("\x1BP0$r%s\x1B\\", arg[2:])
-		emu.dispatcher.terminalToHost.WriteString(response)
+		resp := fmt.Sprintf("\x1BP0$r%s\x1B\\", arg[2:])
+		emu.writePty(resp)
 	}
 }
 

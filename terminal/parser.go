@@ -1134,7 +1134,7 @@ func (p *Parser) handle_DCS() (hd *Handler) {
 	arg := p.getArg()
 
 	if strings.HasPrefix(arg, "$q") { // only process DECRQSS
-		hd = &Handler{name: "dcs-decrqss", ch: p.ch}
+		hd = &Handler{id: dcs_decrqss, ch: p.ch, sequence: p.historyString()}
 		hd.handle = func(emu *emulator) {
 			hdl_dcs_decrqss(emu, arg)
 		}
