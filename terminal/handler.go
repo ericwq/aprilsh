@@ -94,6 +94,8 @@ const (
 	esc_nel
 	esc_ri
 	esc_ris
+	esc_ss2
+	esc_ss3
 )
 
 var strHandlerID = [...]string{
@@ -143,6 +145,8 @@ var strHandlerID = [...]string{
 	"esc_nel",
 	"esc_ri",
 	"esc_ris",
+	"esc_ss2",
+	"esc_ss3",
 }
 
 // Handler is the outcome of parsering input, it can be used to perform control sequence on emulator.

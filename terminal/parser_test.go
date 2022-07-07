@@ -568,17 +568,17 @@ func TestHandle_LS1R_LS2R_LS3R(t *testing.T) {
 
 func TestHandle_SS2_SS3(t *testing.T) {
 	tc := []struct {
-		name     string
-		seq      string
-		wantName string
-		want     int
+		name  string
+		seq   string
+		hdIDs []int
+		want  int
 	}{
-		{"SS2", "\x1BN", "esc-ss2", 2}, // G2 single shift
-		{"SS3", "\x1BO", "esc-ss3", 3}, // G3 single shift
+		{"SS2", "\x1BN", []int{esc_ss2}, 2}, // G2 single shift
+		{"SS3", "\x1BO", []int{esc_ss3}, 3}, // G3 single shift
 	}
 
 	p := NewParser()
-	emu := NewEmulator()
+	emu := NewEmulator3(8, 4, 4)
 	for _, v := range tc {
 
 		// reset the charsetState
@@ -595,8 +595,9 @@ func TestHandle_SS2_SS3(t *testing.T) {
 			hd.handle(emu)
 
 			// verify the result
-			if emu.charsetState.ss != v.want || hd.name != v.wantName {
-				t.Errorf("%s [%s vs %s] expect %d, got %d\n", v.name, hd.name, v.wantName, v.want, emu.charsetState.ss)
+			if emu.charsetState.ss != v.want || hd.id != v.hdIDs[0] {
+				t.Errorf("%s seq=%q expect handler %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[0]], strHandlerID[hd.id])
+				t.Errorf("SS expect %d, got %d\n", v.want, emu.charsetState.ss)
 			}
 
 		} else {
@@ -617,7 +618,7 @@ func TestHandle_SO_SI(t *testing.T) {
 	}
 
 	p := NewParser()
-	emu := NewEmulator()
+	emu := NewEmulator3(8, 4, 4)
 	for _, v := range tc {
 		hd := p.processInput(v.r)
 		if hd != nil {
@@ -800,67 +801,49 @@ func TestHandle_BEL(t *testing.T) {
 		t.Errorf("BEL expect %d, got %d\n", 1, bellCount)
 		t.Errorf("BEL expect %s, got %s\n", strHandlerID[c0_bel], strHandlerID[hds[0].id])
 	}
-
-	/*
-		p := NewParser()
-		// process the bell sequence
-		hd := p.processInput('\x07')
-
-		if hd != nil {
-			// handle the bell
-			hd.handle(emu)
-
-			// theck the handler name and bell count
-			bellCount := emu.cf.GetBellCount()
-			if bellCount == 0 || hd.id != c0_bel {
-				t.Errorf("BEL expect %d, got %d\n", 1, bellCount)
-				t.Errorf("BEL expect %s, got %s\n", strHandlerID[c0_bel], strHandlerID[hd.id])
-			}
-		} else {
-			t.Errorf("%s got nil return\n", hd.name)
-		}
-	*/
 }
 
 func TestHandle_RI_NEL(t *testing.T) {
 	tc := []struct {
-		name     string
-		startY   int // startX is always 5
-		seq      string
-		wantX    int
-		wantY    int
-		wantName string
+		name  string
+		seq   string
+		wantX int
+		wantY int
+		hdIDs []int
 	}{
-		{"RI ", 10, "\x1BM", 5, 9, "esc-ri"},   // move cursor up to the previouse row, may scroll up
-		{"NEL", 10, "\x1BE", 0, 11, "esc-nel"}, // move cursor down to next row, may scroll down
+		{"RI ", "\x1B[11;6H\x1BM", 5, 9, []int{csi_cup, esc_ri}},   // move cursor up to the previouse row, may scroll up
+		{"NEL", "\x1B[11;6H\x1BE", 0, 11, []int{csi_cup, esc_nel}}, // move cursor down to next row, may scroll down
 	}
 
 	p := NewParser()
-	var hd *Handler
-	emu := NewEmulator()
+	emu := NewEmulator3(40, 20, 0)
+	var place strings.Builder
+	emu.logI.SetOutput(&place) // redirect the output to the string builder
+	emu.logT.SetOutput(&place) // redirect the output to the string builder
+
 	for _, v := range tc {
+		// parse control sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
 
-		for _, ch := range v.seq {
-			hd = p.processInput(ch)
+		if len(hds) < 2 {
+			t.Errorf("%s got %d handlers.", v.name, len(hds))
 		}
-		// set the start position
-		emu.cf.DS.MoveRow(v.startY, false)
-		emu.cf.DS.MoveCol(5, false, false)
 
-		// get the result
-		if hd != nil {
-			// handle the instruction
+		// handle the control sequence
+		for j, hd := range hds {
 			hd.handle(emu)
-
-			gotY := emu.cf.DS.GetCursorRow()
-			gotX := emu.cf.DS.GetCursorCol()
-
-			if gotX != v.wantX || gotY != v.wantY || hd.name != v.wantName {
-				t.Errorf("%s [%s vs %s] expect cursor position (%d,%d), got (%d,%d)\n",
-					v.name, v.wantName, hd.name, v.wantX, v.wantY, gotX, gotY)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 			}
-		} else {
-			t.Errorf("%s got nil return\n", v.name)
+		}
+
+		gotY := emu.posY
+		gotX := emu.posX
+
+		if gotX != v.wantX || gotY != v.wantY {
+			t.Errorf("%s seq=%q expect cursor position (%d,%d), got (%d,%d)\n",
+				v.name, v.seq, v.wantY, v.wantX, gotY, gotX)
 		}
 	}
 }

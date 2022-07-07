@@ -777,7 +777,7 @@ func (p *Parser) handle_DSR() (hd *Handler) {
 
 // ESC N Single Shift Select of G2 Character Set (SS2  is 0x8e), VT220.
 func (p *Parser) handle_SS2() (hd *Handler) {
-	hd = &Handler{name: "esc-ss2", ch: p.ch}
+	hd = &Handler{id: esc_ss2, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_esc_ss2(emu)
 	}
@@ -788,7 +788,7 @@ func (p *Parser) handle_SS2() (hd *Handler) {
 
 // ESC O Single Shift Select of G3 Character Set (SS3  is 0x8f), VT220.
 func (p *Parser) handle_SS3() (hd *Handler) {
-	hd = &Handler{name: "esc-ss3", ch: p.ch}
+	hd = &Handler{id: esc_ss3, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_esc_ss3(emu)
 	}
