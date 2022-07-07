@@ -1347,11 +1347,10 @@ func TestHandle_OSC_52(t *testing.T) {
 		},
 	}
 	p := NewParser()
-	emu := NewEmulator()
-
+	emu := NewEmulator3(8, 4, 0)
 	for _, v := range tc {
 		emu.cf.selectionData = ""
-		emu.dispatcher.terminalToHost.Reset()
+		emu.terminalToHost.Reset()
 
 		t.Run(v.name, func(t *testing.T) {
 			// process control sequence
@@ -1402,7 +1401,7 @@ func TestHandle_OSC_52_abort(t *testing.T) {
 		{"Pc not in range", []int{osc_52}, "invalid Pc parameters.", "\x1B]52;se;\x1B\\"},
 	}
 	p := NewParser()
-	emu := NewEmulator()
+	emu := NewEmulator3(8, 4, 0)
 	var place strings.Builder
 	emu.logW.SetOutput(&place)
 
@@ -1473,7 +1472,7 @@ func TestHandle_OSC_4(t *testing.T) {
 		},
 	}
 	p := NewParser()
-	emu := NewEmulator()
+	emu := NewEmulator3(8, 4, 0)
 	var place strings.Builder
 	emu.logW.SetOutput(&place)
 
@@ -1597,10 +1596,10 @@ func TestHandle_OSC_10x(t *testing.T) {
 
 			// set pre-condition
 			if v.fgColor != invalidColor {
-				emu.cf.DS.renditions.fgColor = v.fgColor
+				emu.attrs.renditions.fgColor = v.fgColor
 			}
 			if v.bgColor != invalidColor {
-				emu.cf.DS.renditions.bgColor = v.bgColor
+				emu.attrs.renditions.bgColor = v.bgColor
 			}
 			if v.cursorColor != invalidColor {
 				emu.cf.DS.cursorColor = v.cursorColor
@@ -1719,50 +1718,21 @@ func TestHandle_DECSCL(t *testing.T) {
 		cmpLevel CompatibilityLevel
 		warnStr  string
 	}{
-		{"set CompatLevel VT100", "\x1B[61\"p", []int{csi_decscl}, CompatLevel_VT100, ""},
-		{"set CompatLevel VT400", "\x1B[62\"p", []int{csi_decscl}, CompatLevel_VT400, ""},
-		{"set CompatLevel VT400", "\x1B[63\"p", []int{csi_decscl}, CompatLevel_VT400, ""},
-		{"set CompatLevel VT400", "\x1B[64\"p", []int{csi_decscl}, CompatLevel_VT400, ""},
-		{"set CompatLevel VT400", "\x1B[65\"p", []int{csi_decscl}, CompatLevel_VT400, ""},
-		{
-			"set CompatLevel others", "\x1B[66\"p",
-			[]int{csi_decscl},
-			CompatLevel_VT52,
-			"compatibility mode:",
-		}, // here CompatLevelVT52 is unused
-		{
-			"set CompatLevel 8-bit control", "\x1B[65;0\"p",
-			[]int{csi_decscl},
-			CompatLevel_VT52,
-			"DECSCL: 8-bit controls",
-		}, // here CompatLevelVT52 is unused
-		{
-			"set CompatLevel 8-bit control", "\x1B[61;2\"p",
-			[]int{csi_decscl},
-			CompatLevel_VT52,
-			"DECSCL: 8-bit controls",
-		}, // here CompatLevelVT52 is unused
-		{
-			"set CompatLevel 7-bit control", "\x1B[65;1\"p",
-			[]int{csi_decscl},
-			CompatLevel_VT52,
-			"DECSCL: 7-bit controls",
-		}, // here CompatLevelVT52 is unused
-		{
-			"set CompatLevel outof range  ", "\x1B[65;3\"p",
-			[]int{csi_decscl},
-			CompatLevel_VT52,
-			"DECSCL: C1 control transmission mode:",
-		}, // here CompatLevelVT52 is unused
-		{
-			"set CompatLevel unhandled", "\x1B[65;3\"q",
-			[]int{csi_decscl},
-			CompatLevel_VT52,
-			"Unhandled input:",
-		}, // here CompatLevelVT52 is unused
+		{"CompatLevel VT100", "\x1B[61\"p", []int{csi_decscl}, CompatLevel_VT100, ""},
+		{"CompatLevel VT400", "\x1B[62\"p", []int{csi_decscl}, CompatLevel_VT400, ""},
+		{"CompatLevel VT400", "\x1B[63\"p", []int{csi_decscl}, CompatLevel_VT400, ""},
+		{"CompatLevel VT400", "\x1B[64\"p", []int{csi_decscl}, CompatLevel_VT400, ""},
+		{"CompatLevel VT400", "\x1B[65\"p", []int{csi_decscl}, CompatLevel_VT400, ""},
+		// here CompatLevelVT52 is unused
+		{"CompatLevel others", "\x1B[66\"p", []int{csi_decscl}, CompatLevel_VT52, "compatibility mode:"},
+		{"CompatLevel 8-bit control", "\x1B[65;0\"p", []int{csi_decscl}, CompatLevel_VT52, "DECSCL: 8-bit controls"},
+		{"CompatLevel 8-bit control", "\x1B[61;2\"p", []int{csi_decscl}, CompatLevel_VT52, "DECSCL: 8-bit controls"},
+		{"CompatLevel 7-bit control", "\x1B[65;1\"p", []int{csi_decscl}, CompatLevel_VT52, "DECSCL: 7-bit controls"},
+		{"CompatLevel outof range  ", "\x1B[65;3\"p", []int{csi_decscl}, CompatLevel_VT52, "DECSCL: C1 control transmission mode:"},
+		{"CompatLevel unhandled", "\x1B[65;3\"q", []int{csi_decscl}, CompatLevel_VT52, "Unhandled input:"},
 	}
 
-	emu := NewEmulator()
+	emu := NewEmulator3(8, 4, 0)
 	p := NewParser()
 	var place strings.Builder
 	// redirect the output to the string builder

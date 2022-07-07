@@ -57,11 +57,10 @@ type emulator struct {
 	frame_pri Framebuffer  // normal screen buffer
 	frame_alt Framebuffer  // alternate screen buffer
 
-	charsetState CharsetState
-	user         UserInput
+	charsetState  CharsetState
+	user          UserInput
+	selectionData map[rune]string // local buffer for selection data
 
-	// local buffer for selection data
-	selectionData map[rune]string
 	// logger
 	logE *log.Logger
 	logT *log.Logger // trace

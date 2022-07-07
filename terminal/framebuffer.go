@@ -37,7 +37,7 @@ type Framebuffer struct {
 	bellCount        int
 	titleInitialized bool
 	DS               *DrawState
-	selectionData    string
+	selectionData    string // store the selection data
 
 	// support both (scrollable) normal screen buffer and alternate screen buffer
 	cells        []Cell // the cells

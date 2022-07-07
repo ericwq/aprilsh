@@ -939,9 +939,9 @@ func hdl_osc_10x(emu *emulator, cmd int, arg string) {
 				color := ColorDefault
 				switch colorIdx {
 				case 11, 17: // 11: VT100 text background color  17: highlight background color
-					color = emu.cf.DS.renditions.bgColor
+					color = emu.attrs.renditions.bgColor
 				case 10, 19: // 10: VT100 text foreground color; 19: highlight foreground color
-					color = emu.cf.DS.renditions.fgColor
+					color = emu.attrs.renditions.fgColor
 				case 12: // 12: text cursor color
 					color = emu.cf.DS.cursorColor
 				}
@@ -1002,9 +1002,9 @@ func hdl_osc_52(emu *emulator, cmd int, arg string) {
 		*/
 		for _, ch := range Pc {
 			if data, ok := emu.selectionData[ch]; ok && data != "" {
-				// response to the host
-				response := fmt.Sprintf("\x1B]%d;%c;%s\x1B\\", cmd, ch, data)
-				emu.writePty(response)
+				// resp to the host
+				resp := fmt.Sprintf("\x1B]%d;%c;%s\x1B\\", cmd, ch, data)
+				emu.writePty(resp)
 				break
 			}
 		}
@@ -1028,7 +1028,7 @@ func hdl_osc_52(emu *emulator, cmd int, arg string) {
 			}
 			if set {
 				// save the selection in framebuffer, later it will be sent to terminal.
-				emu.cf.selectionData += fmt.Sprintf("\x1B]%d;%s;%s\x1B\\", cmd, Pc, Pd)
+				emu.cf.selectionData = fmt.Sprintf("\x1B]%d;%s;%s\x1B\\", cmd, Pc, Pd)
 			}
 		} else {
 			/*
@@ -1044,7 +1044,6 @@ func hdl_osc_52(emu *emulator, cmd int, arg string) {
 			}
 			if set {
 				// save the selection in framebuffer, later it will be sent to terminal.
-				// TODO cf?
 				emu.cf.selectionData = fmt.Sprintf("\x1B]%d;%s;%s\x1B\\", cmd, Pc, Pd)
 			}
 		}
