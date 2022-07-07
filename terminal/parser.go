@@ -454,9 +454,9 @@ func (p *Parser) handle_CR() (hd *Handler) {
 
 // Line Feed
 func (p *Parser) handle_IND() (hd *Handler) {
-	hd = &Handler{id: c0_lf, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: c0_ind, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
-		hdl_c0_lf(emu)
+		hdl_c0_ind(emu)
 	}
 	// Do NOT reset the state
 	return hd
@@ -880,7 +880,7 @@ func (p *Parser) handle_DOCS_ISO8859_1() (hd *Handler) {
 // horizontal position, scrolls buffer if necessary
 // Reverse Index
 func (p *Parser) handle_RI() (hd *Handler) {
-	hd = &Handler{name: "esc-ri", ch: p.ch}
+	hd = &Handler{id: esc_ri, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_esc_ri(emu)
 	}
@@ -892,7 +892,7 @@ func (p *Parser) handle_RI() (hd *Handler) {
 // move cursor to the next row, scroll down if necessary. move cursor to row head
 // Next Line
 func (p *Parser) handle_NEL() (hd *Handler) {
-	hd = &Handler{name: "esc-nel", ch: p.ch}
+	hd = &Handler{id: esc_nel, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_esc_nel(emu)
 	}

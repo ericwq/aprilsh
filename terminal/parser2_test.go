@@ -1201,10 +1201,10 @@ func TestHandle_CR_LF_VT_FF(t *testing.T) {
 	}{
 		{"CR 1 ", []int{csi_cup, c0_cr}, 0, 2, "\x1B[3;2H\x0D"},
 		{"CR 2 ", []int{csi_cup, c0_cr}, 0, 4, "\x1B[5;10H\x0D"},
-		{"LF   ", []int{csi_cup, c0_lf}, 1, 3, "\x1B[3;2H\x0C"},
-		{"VT   ", []int{csi_cup, c0_lf}, 2, 4, "\x1B[4;3H\x0B"},
-		{"FF   ", []int{csi_cup, c0_lf}, 3, 5, "\x1B[5;4H\x0C"},
-		{"ESC D", []int{csi_cup, c0_lf}, 4, 6, "\x1B[6;5H\x1BD"},
+		{"LF   ", []int{csi_cup, c0_ind}, 1, 3, "\x1B[3;2H\x0C"},
+		{"VT   ", []int{csi_cup, c0_ind}, 2, 4, "\x1B[4;3H\x0B"},
+		{"FF   ", []int{csi_cup, c0_ind}, 3, 5, "\x1B[5;4H\x0C"},
+		{"ESC D", []int{csi_cup, c0_ind}, 4, 6, "\x1B[6;5H\x1BD"},
 	}
 
 	p := NewParser()
@@ -1250,8 +1250,8 @@ func TestHandle_CSI_BS_FF_VT_CR_TAB(t *testing.T) {
 		// call CUP first to set the start position
 		{"CSI backspace number    ", []int{csi_cup, csi_cup}, "\x1B[1;1H\x1B[23;12\bH", 22, 0},     // undo last character in CSI sequence
 		{"CSI backspace semicolon ", []int{csi_cup, csi_cup}, "\x1B[1;1H\x1B[23;\b;12H", 22, 11},   // undo last character in CSI sequence
-		{"cursor down 1+3 rows VT ", []int{csi_cup, c0_lf, csi_cud}, "\x1B[9;10H\x1B[3\vB", 12, 9}, //(8,9)->(9.9)->(12,9)
-		{"cursor down 1+3 rows FF ", []int{csi_cup, c0_lf, csi_cud}, "\x1B[9;10H\x1B[\f3B", 12, 9},
+		{"cursor down 1+3 rows VT ", []int{csi_cup, c0_ind, csi_cud}, "\x1B[9;10H\x1B[3\vB", 12, 9}, //(8,9)->(9.9)->(12,9)
+		{"cursor down 1+3 rows FF ", []int{csi_cup, c0_ind, csi_cud}, "\x1B[9;10H\x1B[\f3B", 12, 9},
 		{"cursor up 2 rows and CR ", []int{csi_cup, c0_cr, csi_cuu}, "\x1B[8;9H\x1B[\r2A", 5, 0},
 		{"cursor up 3 rows and CR ", []int{csi_cup, c0_cr, csi_cuu}, "\x1B[7;7H\x1B[3\rA", 3, 0},
 		{"cursor forward 2cols +HT", []int{csi_cup, c0_ht, csi_cuf}, "\x1B[4;6H\x1B[2\tC", 3, 10},

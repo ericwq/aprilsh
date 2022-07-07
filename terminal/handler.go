@@ -52,7 +52,7 @@ const (
 	c0_bel
 	c0_cr
 	c0_ht
-	c0_lf
+	c0_ind
 	c0_si
 	c0_so
 	csi_cbt
@@ -91,6 +91,8 @@ const (
 	esc_docs_utf8
 	esc_docs_iso8859_1
 	esc_hts
+	esc_nel
+	esc_ri
 	esc_ris
 )
 
@@ -99,7 +101,7 @@ var strHandlerID = [...]string{
 	"c0_bel",
 	"c0_cr",
 	"c0_ht",
-	"c0_lf",
+	"c0_ind",
 	"c0_si",
 	"c0_so",
 	"csi_cbt",
@@ -138,6 +140,8 @@ var strHandlerID = [...]string{
 	"esc_docs-utf-8",
 	"esc_docs-iso8859-1",
 	"esc_hts",
+	"esc_nel",
+	"esc_ri",
 	"esc_ris",
 }
 
@@ -270,7 +274,7 @@ func hdl_c0_bel(emu *emulator) {
 
 // FF, VT same as LF a.k.a IND Index
 // move cursor to the next row, scroll down if necessary.
-func hdl_c0_lf(emu *emulator) (scrolled bool) {
+func hdl_c0_ind(emu *emulator) (scrolled bool) {
 	if emu.posY == emu.marginBottom-1 {
 		// text up, viewpoint down if it reaches the last row in active area
 		hdl_csi_su(emu, 1)
@@ -378,13 +382,19 @@ func hdl_esc_hts(emu *emulator) {
 // ESC M  Reverse Index (RI  is 0x8d).
 // reverse index -- like a backwards line feed
 func hdl_esc_ri(emu *emulator) {
-	emu.cf.MoveRowsAutoscroll(-1)
+	if emu.posY == emu.marginTop {
+		// scroll down 1 row
+		hdl_csi_sd(emu, 1)
+	} else if emu.posY > 0 {
+		emu.posY--
+		emu.lastCol = false
+	}
 }
 
 // ESC E  Next Line (NEL  is 0x85).
 func hdl_esc_nel(emu *emulator) {
-	emu.cf.DS.MoveCol(0, false, false)
-	emu.cf.MoveRowsAutoscroll(1)
+	hdl_c0_ind(emu)
+	hdl_c0_cr(emu)
 }
 
 // ESC c     Full Reset (RIS), VT100.
