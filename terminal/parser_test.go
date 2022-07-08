@@ -993,19 +993,27 @@ func getCellAtRow(y1, y2 int, row int) string {
 	return string(ch)
 }
 
-func TestHandle_VPA_CHA_HPA(t *testing.T) {
+func TestHandle_VPA_VPR_CHA_HPA_HPR_CNL_CPL(t *testing.T) {
 	tc := []struct {
 		name         string
 		hdIDs        []int
-		wantX, wantY int
+		wantY, wantX int
 		seq          string
 	}{
-		{"VPA move cursor to row 3-1 ", []int{csi_cup, csi_vpa}, 9, 2, "\x1B[9;10H\x1B[3d"},
-		{"VPA move cursor to row 34-1", []int{csi_cup, csi_vpa}, 8, 33, "\x1B[9;9H\x1B[34d"},
-		{"CHA move cursor to col 1-1 ", []int{csi_cup, csi_cha}, 0, 7, "\x1B[8;8H\x1B[G"}, // default Ps is 1
-		{"CHA move cursor to col 79-1", []int{csi_cup, csi_cha}, 78, 6, "\x1B[7;7H\x1B[79G"},
-		{"HPA move cursor to col 9-1 ", []int{csi_cup, csi_hpa}, 8, 5, "\x1B[6;6H\x1B[9`"},
-		{"HPA move cursor to col 49-1", []int{csi_cup, csi_hpa}, 48, 4, "\x1B[5;5H\x1B[49`"},
+		{"VPA move cursor to row 2 ", []int{csi_cup, csi_vpa}, 2, 9, "\x1B[9;10H\x1B[3d"},
+		{"VPA move cursor to row 33", []int{csi_cup, csi_vpa}, 33, 8, "\x1B[9;9H\x1B[34d"},
+		{"VPR move cursor to row 12", []int{csi_cup, csi_vpr}, 9, 8, "\x1B[9;9H\x1B[e"},
+		{"VPR move cursor to row 39", []int{csi_cup, csi_vpr}, 39, 8, "\x1B[9;9H\x1B[40e"},
+		{"CHA move cursor to col 0 ", []int{csi_cup, csi_cha}, 7, 0, "\x1B[8;8H\x1B[G"}, // default Ps is 1
+		{"CHA move cursor to col 78", []int{csi_cup, csi_cha}, 6, 78, "\x1B[7;7H\x1B[79G"},
+		{"HPA move cursor to col 8 ", []int{csi_cup, csi_hpa}, 5, 8, "\x1B[6;6H\x1B[9`"},
+		{"HPA move cursor to col 79", []int{csi_cup, csi_hpa}, 4, 79, "\x1B[5;5H\x1B[99`"},
+		{"HPR move cursor to col 5 ", []int{csi_cup, csi_hpr}, 4, 5, "\x1B[5;5H\x1B[a"},
+		{"HPR move cursor to col 39", []int{csi_cup, csi_hpr}, 4, 79, "\x1B[5;5H\x1B[79a"},
+		{"CNL move cursor to (5,0) ", []int{csi_cup, csi_cnl}, 5, 0, "\x1B[5;5H\x1B[E"},
+		{"CNL move cursor to (39,0)", []int{csi_cup, csi_cnl}, 39, 0, "\x1B[5;5H\x1B[79E"},
+		{"CPL move cursor to (3,0) ", []int{csi_cup, csi_cpl}, 3, 0, "\x1B[5;5H\x1B[F"},
+		{"CPL move cursor to (0,0) ", []int{csi_cup, csi_cpl}, 0, 0, "\x1B[5;5H\x1B[20F"},
 	}
 	p := NewParser()
 	emu := NewEmulator3(80, 40, 0)

@@ -77,11 +77,6 @@ var strInputState = [...]string{
 }
 
 type Parser struct {
-	// state State
-
-	// parsing error
-	// perror error
-
 	// big switch state machine
 	inputState int
 	ch         rune
