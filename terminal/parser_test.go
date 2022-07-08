@@ -1781,3 +1781,66 @@ func TestHandle_DECSCL(t *testing.T) {
 		}
 	}
 }
+
+func TestHandle_ecma48_SL_SR(t *testing.T) {
+	tc := []struct {
+		name      string
+		hdIDs     []int
+		tlY, tlX  int // damage area top/left
+		brY, brX  int // damage area bottom/right
+		seq       string
+		emptyCols []int // empty columens
+	}{
+		{"ecma48 SL 2 cols", []int{esc_decaln, csi_ecma48_SL}, 0, 0, 3, 7, "\x1B#8\x1B[2 @", []int{6, 7}},
+		{"ecma48 SL 1 col ", []int{esc_decaln, csi_ecma48_SL}, 0, 0, 3, 7, "\x1B#8\x1B[ @", []int{7}},
+		{"ecma48 SL all cols", []int{esc_decaln, csi_ecma48_SL}, 0, 0, 3, 7, "\x1B#8\x1B[9 @", []int{0, 1, 2, 3, 4, 5, 6, 7}},
+		{"ecma48 SR 4 cols", []int{esc_decaln, csi_ecma48_SR}, 0, 0, 3, 7, "\x1B#8\x1B[4 A", []int{0, 1, 2, 3}},
+		{"ecma48 SR 1 cols", []int{esc_decaln, csi_ecma48_SR}, 0, 0, 3, 7, "\x1B#8\x1B[ A", []int{0}},
+		{"ecma48 SR all cols", []int{esc_decaln, csi_ecma48_SR}, 0, 0, 3, 7, "\x1B#8\x1B[9 A", []int{0, 1, 2, 3, 4, 5, 6, 7}},
+	}
+
+	p := NewParser()
+	emu := NewEmulator3(8, 4, 4) // this is the pre-condidtion for the test case.
+	var place strings.Builder
+	emu.logI.SetOutput(&place)
+	emu.logT.SetOutput(&place)
+
+	for _, v := range tc {
+
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) == 0 {
+			t.Errorf("%s got zero handlers.", v.name)
+		}
+
+		before := ""
+
+		// call the handler
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s: seq=%q expect %s, got %s\n",
+					v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+			}
+			if j == 0 { // print the screen before modify it.
+				before = printCells(emu.cf)
+				emu.cf.damage.reset()
+			}
+		}
+		after := printCells(emu.cf)
+
+		// calculate the expected dmage area
+		dmg := Damage{}
+		dmg.totalCells = emu.cf.damage.totalCells
+		dmg.start, dmg.end = damageArea(emu.cf, v.tlY, v.tlX, v.brY, v.brX+1) // the end point is exclusive.
+
+		if emu.cf.damage != dmg || !isEmptyCols(emu.cf, v.emptyCols...) {
+			t.Errorf("%s seq=%q\n", v.name, v.seq)
+			t.Errorf("expect damage %v, got %v\n", dmg, emu.cf.damage)
+			t.Errorf("columens %v is empty = %t\n", v.emptyCols, isEmptyCols(emu.cf, v.emptyCols...))
+			t.Errorf("[before]\n%s", before)
+			t.Errorf("[after ]\n%s", after)
+		}
+	}
+}

@@ -1729,6 +1729,8 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			p.setState(InputState_CSI_Bang)
 		case '?':
 			p.setState(InputState_CSI_Priv)
+		case ' ':
+			p.setState(InputState_CSI_SPC)
 		case '>':
 			p.setState(InputState_CSI_GT)
 		case '\x07': // BEL is ignored \a in c++
