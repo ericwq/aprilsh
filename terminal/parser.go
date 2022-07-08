@@ -86,6 +86,7 @@ type Parser struct {
 	inputState int
 	ch         rune
 	chs        []rune
+	lastChs    []rune // last graphic character
 
 	// numeric parameters
 	inputOps  []int
@@ -308,7 +309,11 @@ func (p *Parser) getArg() (arg string) {
 func (p *Parser) handle_Graphemes() (hd *Handler) {
 	hd = &Handler{name: "graphemes", ch: p.ch}
 
+	// store the last graphic character
 	r := p.chs
+	p.lastChs = make([]rune, len(r))
+	copy(p.lastChs[0:], r[0:])
+
 	hd.handle = func(emu *emulator) {
 		hdl_graphemes(emu, r...)
 	}
@@ -1354,6 +1359,44 @@ func (p *Parser) handle_DECANM() (hd *Handler) {
 	return hd
 }
 
+// Xterm window operations
+func (p *Parser) handle_XTWINOPS() (hd *Handler) {
+	// ignore
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// Xterm key modifier options
+func (p *Parser) handle_XTMODKEYS() (hd *Handler) {
+	// prepare the parameters
+	params := make([]int, p.nInputOps)
+	copy(params, p.inputOps)
+
+	hd = &Handler{id: csi_xtmodkeys, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_xtmodkeys(emu, params)
+	}
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// Repeat last graphic character
+func (p *Parser) handle_REP() (hd *Handler) {
+	arg := p.getPs(0, 1)
+
+	// copy the last graphic character
+	chs := make([]rune, len(p.lastChs))
+	copy(chs[0:], p.lastChs[0:])
+
+	hd = &Handler{id: csi_rep, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_rep(emu, arg, chs)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
 // process data stream from outside. for VT mode, character set can be changed
 // according to control sequences. for UTF-8 mode, no need to change character set.
 // the result is a *Handler list. waiting to be executed later.
@@ -1675,7 +1718,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case 's':
 			hd = p.handle_SLRM_SCOSC()
 		case 't':
-			hd = p.handle_XTWINOPS() // TODO no depends
+			hd = p.handle_XTWINOPS()
 		case 'u':
 			hd = p.handle_SCORC()
 		case '\'':

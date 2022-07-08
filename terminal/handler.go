@@ -86,6 +86,7 @@ const (
 	csi_ich
 	csi_il
 	csi_priDA
+	csi_rep
 	csi_rm
 	csi_secDA
 	csi_sd
@@ -97,6 +98,7 @@ const (
 	csi_tbc
 	csi_vpa
 	csi_vpr
+	csi_xtmodkeys
 	dcs_decrqss
 	esc_bi
 	esc_dcs
@@ -165,6 +167,7 @@ var strHandlerID = [...]string{
 	"csi_ich",
 	"csi_il",
 	"csi_priDA",
+	"csi_rep",
 	"csi_rm",
 	"csi_secDA",
 	"csi_sd",
@@ -176,6 +179,7 @@ var strHandlerID = [...]string{
 	"csi_tbc",
 	"csi_vpa",
 	"csi_vpr",
+	"csi_xtmodkeys",
 	"dcs_decrqss",
 	"esc_bi",
 	"esc_dcs",
@@ -1656,4 +1660,66 @@ func hdl_csi_cnl(emu *emulator, arg int) {
 func hdl_csi_cpl(emu *emulator, arg int) {
 	hdl_csi_cuu(emu, arg)
 	hdl_c0_cr(emu)
+}
+
+// CSI > Pp ; Pv m
+// CSI > Pp m
+//           Set/reset key modifier options (XTMODKEYS), xterm.  Set or
+//           reset resource-values used by xterm to decide whether to
+//           construct escape sequences holding information about the
+//           modifiers pressed with a given key.
+//
+//           The first parameter Pp identifies the resource to set/reset.
+//           The second parameter Pv is the value to assign to the
+//           resource.
+//
+//           If the second parameter is omitted, the resource is reset to
+//           its initial value.  Values 3  and 5  are reserved for keypad-
+//           keys and string-keys.
+//
+//             Pp = 0  ⇒  modifyKeyboard.
+//             Pp = 1  ⇒  modifyCursorKeys.
+//             Pp = 2  ⇒  modifyFunctionKeys.
+//             Pp = 4  ⇒  modifyOtherKeys.
+//
+//           If no parameters are given, all resources are reset to their
+//           initial values.
+func hdl_csi_xtmodkeys(emu *emulator, params []int) {
+	switch len(params) {
+	case 0:
+		// Reset all options to initial values
+		break
+	case 1:
+		params = append(params, 0)
+		fallthrough
+	case 2:
+		switch params[0] { // TODO the meaning of second parameters.
+		case 0:
+			if params[1] != 0 {
+				emu.logU.Printf("XTMODKEYS: modifyKeyboard = %d\n", params[1])
+			}
+		case 1:
+			if params[1] != 2 {
+				emu.logU.Printf("XTMODKEYS: modifyCursorKeys = %d\n", params[1])
+			}
+		case 2:
+			if params[1] != 2 {
+				emu.logU.Printf("XTMODKEYS: modifyFunctionKeys = %d\n", params[1])
+			}
+		case 4:
+			if params[1] <= 2 {
+				emu.modifyOtherKeys = uint(params[1])
+				emu.logT.Printf("XTMODKEYS: modifyFunctionKeys set to %d\n", emu.modifyOtherKeys)
+			} else {
+				emu.logI.Printf("XTMODKEYS: illegal argument for modifyOtherKeys: %d\n", params[1])
+			}
+		}
+	}
+}
+
+// CSI Ps b  Repeat the preceding graphic character Ps times (REP).
+func hdl_csi_rep(emu *emulator, arg int, chs []rune) {
+	for k := 0; k < arg; k++ {
+		hdl_graphemes(emu, chs...)
+	}
 }

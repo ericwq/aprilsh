@@ -93,6 +93,7 @@ type emulator struct {
 	bracketedPasteMode  bool // true/false
 	altScrollMode       bool
 	altSendsEscape      bool
+	modifyOtherKeys     uint
 
 	horizMarginMode bool // left and right margins support
 	hMargin         int  // left margins
@@ -157,8 +158,8 @@ func NewEmulator3(nCols, nRows, saveLines int) *emulator {
 	emu.bkspSendsDel = true
 	emu.localEcho = false
 	emu.bracketedPasteMode = false
-	emu.altScrollMode = false
-	emu.altSendsEscape = true
+	// emu.altScrollMode = false
+	// emu.altSendsEscape = true
 
 	emu.horizMarginMode = false
 	emu.nColsEff = emu.nCols
@@ -194,8 +195,10 @@ func (emu *emulator) resetTerminal() {
 	emu.clearScreen()
 
 	emu.switchScreenBufferMode(false)
+	emu.altSendsEscape = true
+	emu.altScrollMode = false
+	emu.modifyOtherKeys = 1
 	// TODO consider how to implemnt options parameters
-	// emu.altScrollMode
 
 	emu.horizMarginMode = false
 	emu.hMargin = 0
