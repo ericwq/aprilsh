@@ -1290,22 +1290,24 @@ func TestHandle_CSI_BS_FF_VT_CR_TAB(t *testing.T) {
 	}
 }
 
-func TestHandle_CUU_CUD_CUF_CUB_CUP(t *testing.T) {
+func TestHandle_CUU_CUD_CUF_CUB_CUP_FI_BI(t *testing.T) {
 	tc := []struct {
 		name  string
 		hdIDs []int
-		wantX int
 		wantY int
+		wantX int
 		seq   string
 	}{
 		// call CUP first to set the start position
-		{"CSI Ps A  ", []int{csi_cup, csi_cuu}, 10, 14, "\x1B[21;11H\x1B[6A"},
-		{"CSI Ps B  ", []int{csi_cup, csi_cud}, 10, 13, "\x1B[11;11H\x1B[3B"},
-		{"CSI Ps C  ", []int{csi_cup, csi_cuf}, 12, 10, "\x1B[11;11H\x1B[2C"},
-		{"CSI Ps D  ", []int{csi_cup, csi_cub}, 12, 10, "\x1B[11;21H\x1B[8D"},
-		{"BS        ", []int{csi_cup, csi_cub}, 11, 12, "\x1B[13;13H\x08"}, // \x08 calls CUB
-		{"CUB       ", []int{csi_cup, csi_cub}, 11, 12, "\x1B[13;13H\x1B[1D"},
-		{"BS agin   ", []int{csi_cup, csi_cub}, 10, 12, "\x1B[13;12H\x08"}, // \x08 calls CUB
+		{"CSI Ps A  ", []int{csi_cup, csi_cuu}, 14, 10, "\x1B[21;11H\x1B[6A"},
+		{"CSI Ps B  ", []int{csi_cup, csi_cud}, 13, 10, "\x1B[11;11H\x1B[3B"},
+		{"CSI Ps C  ", []int{csi_cup, csi_cuf}, 10, 12, "\x1B[11;11H\x1B[2C"},
+		{"CSI Ps D  ", []int{csi_cup, csi_cub}, 10, 12, "\x1B[11;21H\x1B[8D"},
+		{"BS        ", []int{csi_cup, csi_cub}, 12, 11, "\x1B[13;13H\x08"}, // \x08 calls CUB
+		{"CUB       ", []int{csi_cup, csi_cub}, 12, 11, "\x1B[13;13H\x1B[1D"},
+		{"BS agin   ", []int{csi_cup, csi_cub}, 12, 10, "\x1B[13;12H\x08"}, // \x08 calls CUB
+		{"DECFI     ", []int{csi_cup, esc_fi}, 12, 22, "\x1B[13;22H\x1b9"},
+		{"DECBI     ", []int{csi_cup, esc_bi}, 12, 20, "\x1B[13;22H\x1b6"},
 	}
 
 	p := NewParser()

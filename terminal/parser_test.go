@@ -1790,7 +1790,7 @@ func TestHandle_DECSCL(t *testing.T) {
 	}
 }
 
-func TestHandle_ecma48_SL_SR(t *testing.T) {
+func TestHandle_ecma48_SL_SR_FI_BI(t *testing.T) {
 	tc := []struct {
 		name      string
 		hdIDs     []int
@@ -1805,6 +1805,8 @@ func TestHandle_ecma48_SL_SR(t *testing.T) {
 		{"ecma48 SR 4 cols", []int{esc_decaln, csi_ecma48_SR}, 0, 0, 3, 7, "\x1B#8\x1B[4 A", []int{0, 1, 2, 3}},
 		{"ecma48 SR 1 cols", []int{esc_decaln, csi_ecma48_SR}, 0, 0, 3, 7, "\x1B#8\x1B[ A", []int{0}},
 		{"ecma48 SR all cols", []int{esc_decaln, csi_ecma48_SR}, 0, 0, 3, 7, "\x1B#8\x1B[9 A", []int{0, 1, 2, 3, 4, 5, 6, 7}},
+		{"DECFI 1 cols", []int{esc_decaln, csi_cup, esc_fi}, 0, 0, 3, 7, "\x1B#8\x1B[4;8H\x1B9", []int{7}},
+		{"DECBI 1 cols", []int{esc_decaln, csi_cup, esc_bi}, 0, 0, 3, 7, "\x1B#8\x1B[4;1H\x1B6", []int{0}},
 	}
 
 	p := NewParser()
