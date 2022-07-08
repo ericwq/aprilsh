@@ -101,6 +101,9 @@ const (
 	esc_bi
 	esc_dcs
 	esc_decaln
+	esc_decanm
+	esc_deckpam
+	esc_deckpnm
 	esc_decrc
 	esc_decsc
 	esc_docs_utf8
@@ -177,6 +180,9 @@ var strHandlerID = [...]string{
 	"esc_bi",
 	"esc_dcs",
 	"esc_decaln",
+	"esc_decanm",
+	"esc_deckpam",
+	"esc_deckpnm",
 	"esc_decrc",
 	"esc_decsc",
 	"esc_docs_utf_8",
@@ -525,6 +531,28 @@ func hdl_esc_bi(emu *emulator) {
 	} else {
 		hdl_csi_ecma48_SR(emu, arg)
 	}
+}
+
+// DECKPAM—Keypad Application Mode
+// DECKPAM enables the numeric keypad to send application sequences to the host.
+// DECKPNM enables the numeric keypad to send numeric characters.
+// ESC = Send application sequences.
+func hdl_esc_deckpam(emu *emulator) {
+	emu.keypadMode = KeypadMode_Application
+}
+
+// DECKPNM—Keypad Numeric Mode
+// DECKPNM enables the keypad to send numeric characters to the host.
+// DECKPAM enables the keypad to send application sequences.
+// ESC > Send numeric keypad characters.
+func hdl_esc_deckpnm(emu *emulator) {
+	emu.keypadMode = KeypadMode_Normal
+}
+
+// DECANM—ANSI Mode
+// ESC <	Exit VT52 mode. Enter VT100 mode.
+func hdl_esc_decanm(emu *emulator) {
+	emu.compatLevel = CompatLevel_VT400
 }
 
 // CSI Ps g  Tab Clear (TBC).

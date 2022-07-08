@@ -1321,6 +1321,39 @@ func (p *Parser) handle_FI() (hd *Handler) {
 	return hd
 }
 
+// set keypad mode to application
+func (p *Parser) handle_DECKPAM() (hd *Handler) {
+	hd = &Handler{id: esc_deckpam, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *emulator) {
+		hdl_esc_deckpam(emu)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// set keypad mode to normal
+func (p *Parser) handle_DECKPNM() (hd *Handler) {
+	hd = &Handler{id: esc_deckpnm, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *emulator) {
+		hdl_esc_deckpnm(emu)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// set compatibility level
+func (p *Parser) handle_DECANM() (hd *Handler) {
+	hd = &Handler{id: esc_decanm, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *emulator) {
+		hdl_esc_decanm(emu)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
 // process data stream from outside. for VT mode, character set can be changed
 // according to control sequences. for UTF-8 mode, no need to change character set.
 // the result is a *Handler list. waiting to be executed later.
