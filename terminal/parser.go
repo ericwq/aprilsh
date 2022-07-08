@@ -579,6 +579,19 @@ func (p *Parser) handle_HPA() (hd *Handler) {
 	return hd
 }
 
+// Character Position Relative
+func (p *Parser) handle_HPR() (hd *Handler) {
+	count := p.getPs(0, 1)
+
+	hd = &Handler{id: csi_hpr, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_hpr(emu, count)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
 // Cursor moves to <n>th position horizontally in the current line
 // Cursor Character Absolute_
 func (p *Parser) handle_CHA() (hd *Handler) {
@@ -756,6 +769,19 @@ func (p *Parser) handle_VPA() (hd *Handler) {
 	hd = &Handler{id: csi_vpa, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_vpa(emu, row)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// Line Position Relative
+func (p *Parser) handle_VPR() (hd *Handler) {
+	row := p.getPs(0, 1)
+
+	hd = &Handler{id: csi_vpr, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_vpr(emu, row)
 	}
 
 	p.setState(InputState_Normal)
@@ -1247,6 +1273,32 @@ func (p *Parser) handle_ecma48_SR() (hd *Handler) {
 	return hd
 }
 
+// Cursor Next Line
+func (p *Parser) handle_CNL() (hd *Handler) {
+	arg := p.getPs(0, 1)
+
+	hd = &Handler{id: csi_cnl, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_cnl(emu, arg)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// Cursor Previous Line
+func (p *Parser) handle_CPL() (hd *Handler) {
+	arg := p.getPs(0, 1)
+
+	hd = &Handler{id: csi_cpl, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_cpl(emu, arg)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
 // process data stream from outside. for VT mode, character set can be changed
 // according to control sequences. for UTF-8 mode, no need to change character set.
 // the result is a *Handler list. waiting to be executed later.
@@ -1496,7 +1548,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			// the second byte or the third byte
 			hd = p.handle_ESC_DCS()
 		}
-	case InputState_CSI: // TODO CNL, CPL
+	case InputState_CSI:
 		if p.collectNumericParameters(ch) {
 			break
 		}
@@ -1512,9 +1564,9 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case 'D':
 			hd = p.handle_CUB()
 		case 'E':
-			hd = p.handle_CNL() // TODO depends CUD,CR
+			hd = p.handle_CNL()
 		case 'F':
-			hd = p.handle_CPL() // TODO depends CUU,CR
+			hd = p.handle_CPL()
 		case 'G':
 			hd = p.handle_CHA()
 		case 'H':
@@ -1544,7 +1596,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case '`':
 			hd = p.handle_HPA()
 		case 'a':
-			hd = p.handle_HPR() // TODO depends on HPA
+			hd = p.handle_HPR()
 		case 'b':
 			hd = p.handle_REP() // TODO depends on hdl_graphemes()
 		case 'c':
@@ -1552,7 +1604,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case 'd':
 			hd = p.handle_VPA()
 		case 'e':
-			hd = p.handle_VPR() // no depends
+			hd = p.handle_VPR()
 		case 'g':
 			hd = p.handle_TBC()
 		case 'h':

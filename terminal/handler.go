@@ -58,6 +58,8 @@ const (
 	csi_cbt
 	csi_cha
 	csi_cht
+	csi_cnl
+	csi_cpl
 	csi_cub
 	csi_cud
 	csi_cuf
@@ -80,6 +82,7 @@ const (
 	csi_ed
 	csi_el
 	csi_hpa
+	csi_hpr
 	csi_ich
 	csi_il
 	csi_priDA
@@ -93,6 +96,7 @@ const (
 	csi_sgr
 	csi_tbc
 	csi_vpa
+	csi_vpr
 	dcs_decrqss
 	esc_dcs
 	esc_decaln
@@ -128,6 +132,8 @@ var strHandlerID = [...]string{
 	"csi_cbt",
 	"csi_cha",
 	"csi_cht",
+	"csi_cnl",
+	"csi_cpl",
 	"csi_cub",
 	"csi_cud",
 	"csi_cuf",
@@ -150,6 +156,7 @@ var strHandlerID = [...]string{
 	"csi_ed",
 	"csi_el",
 	"csi_hpa",
+	"csi_hpr",
 	"csi_ich",
 	"csi_il",
 	"csi_priDA",
@@ -163,6 +170,7 @@ var strHandlerID = [...]string{
 	"csi_sgr",
 	"csi_tbc",
 	"csi_vpa",
+	"csi_vpr",
 	"dcs_decrqss",
 	"esc_dcs",
 	"esc_decaln",
@@ -714,6 +722,15 @@ func hdl_csi_vpa(emu *emulator, row int) {
 	emu.lastCol = false
 }
 
+// CSI Ps e  Line Position Relative  [rows] (default = [row+1,column]) (VPR).
+// Move cursor to the n-th line relative to active row
+func hdl_csi_vpr(emu *emulator, row int) {
+	row += emu.posY + 1
+	row = max(1, min(row, emu.nRows))
+	emu.posY = row - 1
+	emu.lastCol = false
+}
+
 // Move the active position to the n-th character of the active line.
 // CSI Ps G  Cursor Character Absolute  [column] (default = [row,1]) (CHA).
 func hdl_csi_cha(emu *emulator, count int) {
@@ -727,6 +744,12 @@ func hdl_csi_cha(emu *emulator, count int) {
 // same as CHA
 func hdl_csi_hpa(emu *emulator, count int) {
 	hdl_csi_cha(emu, count)
+}
+
+// CSI Ps a  Character Position Relative  [columns] (default = [row,col+1]) (HPR).
+// move to the n-th character relative to the active position
+func hdl_csi_hpr(emu *emulator, arg int) {
+	hdl_csi_cha(emu, emu.posX+arg+1)
 }
 
 // CSI Ps A  Cursor Up Ps Times (default = 1) (CUU).
@@ -1563,4 +1586,16 @@ func hdl_csi_ecma48_SL(emu *emulator, arg int) {
 func hdl_csi_ecma48_SR(emu *emulator, arg int) {
 	arg = min(arg, emu.nColsEff-emu.hMargin)
 	emu.insertCols(emu.hMargin, arg)
+}
+
+// CSI Ps E  Cursor Next Line Ps Times (default = 1) (CNL).
+func hdl_csi_cnl(emu *emulator, arg int) {
+	hdl_csi_cud(emu, arg)
+	hdl_c0_cr(emu)
+}
+
+// CSI Ps F  Cursor Preceding Line Ps Times (default = 1) (CPL).
+func hdl_csi_cpl(emu *emulator, arg int) {
+	hdl_csi_cuu(emu, arg)
+	hdl_c0_cr(emu)
 }
