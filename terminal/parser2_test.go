@@ -1810,3 +1810,49 @@ func TestHandle_ICH_EL_DCH_ECH(t *testing.T) {
 		}
 	}
 }
+
+func TestHandle_DEC_KPNM_KPAM(t *testing.T) {
+	tc := []struct {
+		name       string
+		hdIDs      []int
+		seq        string
+		keypadMode0 KeypadMode
+		keypadMode1 KeypadMode
+	}{
+		{"DEC KPNM application mode", []int{esc_deckpnm, esc_deckpam}, "\x1b>\x1b=", KeypadMode_Normal, KeypadMode_Application},
+		{"DEC KPAM numeric mode", []int{esc_deckpam, esc_deckpnm}, "\x1b=\x1b>", KeypadMode_Application, KeypadMode_Normal},
+	}
+
+	p := NewParser()
+	emu := NewEmulator3(8, 4, 4) // this is the pre-condidtion for the test case.
+
+	for _, v := range tc {
+
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) == 0 {
+			t.Errorf("%s got zero handlers.", v.name)
+		}
+
+		// call the handler
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s: seq=%q expect %s, got %s\n",
+					v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+			}
+			got := emu.keypadMode
+			switch j {
+			case 0:
+				if got != v.keypadMode0 {
+					t.Errorf("%s seq=%q keypadmode expect %d, got %d\n", v.name, v.seq, v.keypadMode0, got)
+				}
+			case 1:
+				if got != v.keypadMode1 {
+					t.Errorf("%s seq=%q keypadmode expect %d, got %d\n", v.name, v.seq, v.keypadMode1, got)
+				}
+			}
+		}
+	}
+}

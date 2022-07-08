@@ -117,7 +117,8 @@ const (
 )
 
 const (
-	CompatLevel_VT52 CompatibilityLevel = iota
+	CompatLevel_Unused CompatibilityLevel = iota
+	CompatLevel_VT52
 	CompatLevel_VT100
 	CompatLevel_VT400
 )

@@ -1599,9 +1599,9 @@ func hdl_csi_decscl(emu *emulator, params []int) {
 	if len(params) > 0 {
 		switch params[0] {
 		case 61:
-			emu.cf.DS.compatLevel = CompatLevel_VT100
+			emu.compatLevel = CompatLevel_VT100
 		case 62, 63, 64, 65: // treat VT200,VT300,VT500 as VT400
-			emu.cf.DS.compatLevel = CompatLevel_VT400
+			emu.compatLevel = CompatLevel_VT400
 		default:
 			emu.logU.Printf("compatibility mode: %d", params[0])
 		}

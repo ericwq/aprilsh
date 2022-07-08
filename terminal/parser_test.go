@@ -1731,13 +1731,13 @@ func TestHandle_DECSCL(t *testing.T) {
 		{"CompatLevel VT400", "\x1B[63\"p", []int{csi_decscl}, CompatLevel_VT400, ""},
 		{"CompatLevel VT400", "\x1B[64\"p", []int{csi_decscl}, CompatLevel_VT400, ""},
 		{"CompatLevel VT400", "\x1B[65\"p", []int{csi_decscl}, CompatLevel_VT400, ""},
-		// here CompatLevelVT52 is unused
-		{"CompatLevel others", "\x1B[66\"p", []int{csi_decscl}, CompatLevel_VT52, "compatibility mode:"},
-		{"CompatLevel 8-bit control", "\x1B[65;0\"p", []int{csi_decscl}, CompatLevel_VT52, "DECSCL: 8-bit controls"},
-		{"CompatLevel 8-bit control", "\x1B[61;2\"p", []int{csi_decscl}, CompatLevel_VT52, "DECSCL: 8-bit controls"},
-		{"CompatLevel 7-bit control", "\x1B[65;1\"p", []int{csi_decscl}, CompatLevel_VT52, "DECSCL: 7-bit controls"},
-		{"CompatLevel outof range  ", "\x1B[65;3\"p", []int{csi_decscl}, CompatLevel_VT52, "DECSCL: C1 control transmission mode:"},
-		{"CompatLevel unhandled", "\x1B[65;3\"q", []int{csi_decscl}, CompatLevel_VT52, "Unhandled input:"},
+		{"CompatLevel VT400 DECANM", "\x1B<", []int{esc_decanm}, CompatLevel_VT400, ""},
+		{"CompatLevel others", "\x1B[66\"p", []int{csi_decscl}, CompatLevel_Unused, "compatibility mode:"},
+		{"CompatLevel 8-bit control", "\x1B[65;0\"p", []int{csi_decscl}, CompatLevel_Unused, "DECSCL: 8-bit controls"},
+		{"CompatLevel 8-bit control", "\x1B[61;2\"p", []int{csi_decscl}, CompatLevel_Unused, "DECSCL: 8-bit controls"},
+		{"CompatLevel 7-bit control", "\x1B[65;1\"p", []int{csi_decscl}, CompatLevel_Unused, "DECSCL: 7-bit controls"},
+		{"CompatLevel outof range  ", "\x1B[65;3\"p", []int{csi_decscl}, CompatLevel_Unused, "DECSCL: C1 control transmission mode:"},
+		{"CompatLevel unhandled", "\x1B[65;3\"q", []int{csi_decscl}, CompatLevel_Unused, "Unhandled input:"},
 	}
 
 	emu := NewEmulator3(8, 4, 0)
@@ -1752,6 +1752,7 @@ func TestHandle_DECSCL(t *testing.T) {
 	for i, v := range tc {
 		// reset the output
 		place.Reset()
+		emu.compatLevel = CompatLevel_Unused
 
 		// process control sequence
 		hds := make([]*Handler, 0, 16)
@@ -1777,8 +1778,8 @@ func TestHandle_DECSCL(t *testing.T) {
 		}
 
 		switch i {
-		case 0, 1, 2, 3, 4:
-			got := emu.cf.DS.compatLevel
+		case 0, 1, 2, 3, 4, 5:
+			got := emu.compatLevel
 			if got != v.cmpLevel {
 				t.Errorf("%s:\t %q, expect %d, got %d\n", v.name, v.seq, v.cmpLevel, got)
 			}
