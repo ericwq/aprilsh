@@ -1299,6 +1299,28 @@ func (p *Parser) handle_CPL() (hd *Handler) {
 	return hd
 }
 
+// Back Index
+func (p *Parser) handle_BI() (hd *Handler) {
+	hd = &Handler{id: esc_bi, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *emulator) {
+		hdl_esc_bi(emu)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// Forward Index
+func (p *Parser) handle_FI() (hd *Handler) {
+	hd = &Handler{id: esc_fi, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *emulator) {
+		hdl_esc_fi(emu)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
 // process data stream from outside. for VT mode, character set can be changed
 // according to control sequences. for UTF-8 mode, no need to change character set.
 // the result is a *Handler list. waiting to be executed later.
@@ -1462,13 +1484,13 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case 'c':
 			hd = p.handle_RIS()
 		case '6':
-			hd = p.handle_BI() // TODO depends on csi_ecma48_SR
+			hd = p.handle_BI()
 		case '7':
 			hd = p.handle_DECSC()
 		case '8':
 			hd = p.handle_DECRC()
 		case '9':
-			hd = p.handle_FI() // TODO depends on csi_ecma48_SL
+			hd = p.handle_FI()
 		case '=':
 			hd = p.handle_DECKPAM() // TODO no depends
 		case '>':

@@ -98,12 +98,14 @@ const (
 	csi_vpa
 	csi_vpr
 	dcs_decrqss
+	esc_bi
 	esc_dcs
 	esc_decaln
 	esc_decrc
 	esc_decsc
 	esc_docs_utf8
 	esc_docs_iso8859_1
+	esc_fi
 	esc_hts
 	esc_ls1r
 	esc_ls2
@@ -172,12 +174,14 @@ var strHandlerID = [...]string{
 	"csi_vpa",
 	"csi_vpr",
 	"dcs_decrqss",
+	"esc_bi",
 	"esc_dcs",
 	"esc_decaln",
 	"esc_decrc",
 	"esc_decsc",
-	"esc_docs-utf-8",
-	"esc_docs-iso8859-1",
+	"esc_docs_utf_8",
+	"esc_docs_iso8859_1",
+	"esc_fi",
 	"esc_hts",
 	"esc_ls1r",
 	"esc_ls2",
@@ -495,6 +499,32 @@ func hdl_esc_decaln(emu *emulator) {
 	emu.fg = origFg
 	emu.bg = origBg
 	emu.attrs = origAttrs
+}
+
+// DECFI—Forward Index
+// This control function moves the cursor forward one column. If the cursor is
+// at the right margin, then all screen data within the margins moves one column
+// to the left. The column shifted past the left margin is lost.
+func hdl_esc_fi(emu *emulator) {
+	arg := 1
+	if emu.posX < emu.nColsEff-1 {
+		hdl_csi_cuf(emu, arg)
+	} else {
+		hdl_csi_ecma48_SL(emu, arg)
+	}
+}
+
+// DECBI—Back Index
+// This control function moves the cursor backward one column. If the cursor is
+// at the left margin, then all screen data within the margin moves one column
+// to the right. The column that shifted past the right margin is lost.
+func hdl_esc_bi(emu *emulator) {
+	arg := 1
+	if emu.posX > emu.hMargin {
+		hdl_csi_cub(emu, arg)
+	} else {
+		hdl_csi_ecma48_SR(emu, arg)
+	}
 }
 
 // CSI Ps g  Tab Clear (TBC).
