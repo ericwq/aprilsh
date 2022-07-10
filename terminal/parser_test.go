@@ -1264,6 +1264,7 @@ func TestHandle_DECSTBM(t *testing.T) {
 			[]int{csi_cup, csi_decstbm, csi_decstbm},
 			3 - 1, 32, 0, 0, "Illegal arguments to SetTopBottomMargins:",
 		},
+		{"DECSTBM no parameters", "\x1B[2;6H\x1B[r", []int{csi_cup, csi_decstbm}, 0, 40, 0, 0, ""},
 	}
 
 	p := NewParser()

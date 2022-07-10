@@ -1447,7 +1447,7 @@ func hdl_csi_privRM(emu *emulator, params []int) {
 // Set Scrolling Region [top;bottom] (default = full size of  window) (DECSTBM), VT100.
 func hdl_csi_decstbm(emu *emulator, params []int) {
 	// only top is set to 0
-	if len(params) == 1 && params[0] == 0 {
+	if len(params) == 0 {
 		if emu.marginTop != 0 || emu.marginBottom != emu.nRows {
 			emu.marginTop, emu.marginBottom = emu.cf.resetMargins()
 		}
@@ -1527,7 +1527,7 @@ func hdl_csi_decslrm(emu *emulator, params []int) {
 		return
 	}
 
-	if len(params) == 1 && params[0] == 0 {
+	if len(params) == 0 {
 		emu.hMargin = 0
 		emu.nColsEff = emu.nCols
 	} else if len(params) == 2 {

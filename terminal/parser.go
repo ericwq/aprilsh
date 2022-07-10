@@ -232,9 +232,9 @@ func (p *Parser) setState(newState int) {
 }
 
 // collect numeric parameter and stor them in inputOps array.
-func (p *Parser) collectNumericParameters(ch rune) (isBreak bool) {
+func (p *Parser) collectNumericParameters(ch rune) (isNumeric bool) {
 	if '0' <= ch && ch <= '9' {
-		isBreak = true
+		isNumeric = true
 		// max value for numeric parameter
 		p.inputOps[p.nInputOps-1] *= 10
 		p.inputOps[p.nInputOps-1] += int(ch - '0')
@@ -245,7 +245,7 @@ func (p *Parser) collectNumericParameters(ch rune) (isBreak bool) {
 			p.setState(InputState_Normal)
 		}
 	} else if ch == ';' || ch == ':' {
-		isBreak = true
+		isNumeric = true
 		if p.nInputOps < p.maxEscOps { // move to the next parameter
 			p.inputOps[p.nInputOps] = 0
 			p.nInputOps += 1
@@ -255,7 +255,7 @@ func (p *Parser) collectNumericParameters(ch rune) (isBreak bool) {
 			p.setState(InputState_Normal)
 		}
 	}
-	return isBreak
+	return isNumeric
 }
 
 // get number n parameter from parser
@@ -279,6 +279,17 @@ func (p *Parser) getArg() (arg string) {
 	}
 
 	return arg
+}
+
+// copy the numeric parameters slice
+func (p *Parser) copyArgs() (args []int) {
+	if p.nInputOps == 1 && p.inputOps[0] == 0 {
+		args = nil
+	} else {
+		args = make([]int, p.nInputOps)
+		copy(args, p.inputOps)
+	}
+	return
 }
 
 // func handle_UserByte(ch rune) (hd *Handler) {
@@ -790,9 +801,7 @@ func (p *Parser) handle_VPR() (hd *Handler) {
 
 // select graphics rendition -- e.g., bold, blinking, etc.
 func (p *Parser) handle_SGR() (hd *Handler) {
-	// prepare the parameters for sgr
-	params := make([]int, p.nInputOps)
-	copy(params, p.inputOps)
+	params := p.copyArgs()
 
 	hd = &Handler{id: csi_sgr, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
@@ -1064,9 +1073,7 @@ func (p *Parser) handle_ESC_DCS() (hd *Handler) {
 
 // Set Mode
 func (p *Parser) handle_SM() (hd *Handler) {
-	// prepare the parameters
-	params := make([]int, p.nInputOps)
-	copy(params, p.inputOps)
+	params := p.copyArgs()
 
 	hd = &Handler{id: csi_sm, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
@@ -1079,9 +1086,7 @@ func (p *Parser) handle_SM() (hd *Handler) {
 
 // Reset Mode
 func (p *Parser) handle_RM() (hd *Handler) {
-	// prepare the parameters
-	params := make([]int, p.nInputOps)
-	copy(params, p.inputOps)
+	params := p.copyArgs()
 
 	hd = &Handler{id: csi_rm, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
@@ -1095,9 +1100,7 @@ func (p *Parser) handle_RM() (hd *Handler) {
 // Set Mode (private)
 // csi_privSM
 func (p *Parser) handle_privSM() (hd *Handler) {
-	// prepare the parameters
-	params := make([]int, p.nInputOps)
-	copy(params, p.inputOps)
+	params := p.copyArgs()
 
 	hd = &Handler{id: csi_privSM, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
@@ -1111,9 +1114,7 @@ func (p *Parser) handle_privSM() (hd *Handler) {
 // Reset Mode (private)
 // csi_privRM
 func (p *Parser) handle_privRM() (hd *Handler) {
-	// prepare the parameters
-	params := make([]int, p.nInputOps)
-	copy(params, p.inputOps)
+	params := p.copyArgs()
 
 	hd = &Handler{id: csi_privRM, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
@@ -1126,9 +1127,7 @@ func (p *Parser) handle_privRM() (hd *Handler) {
 
 // Set Top and Bottom Margins
 func (p *Parser) handle_DECSTBM() (hd *Handler) {
-	// prepare the parameters
-	params := make([]int, p.nInputOps)
-	copy(params, p.inputOps)
+	params := p.copyArgs()
 
 	hd = &Handler{id: csi_decstbm, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
@@ -1182,9 +1181,7 @@ func (p *Parser) handle_SLRM_SCOSC() (hd *Handler) {
 			hdl_csi_scosc(emu)
 		}
 	} else {
-		// prepare the parameters
-		params := make([]int, p.nInputOps)
-		copy(params, p.inputOps)
+		params := p.copyArgs()
 
 		hd = &Handler{id: csi_decslrm, ch: p.ch, sequence: p.historyString()}
 		hd.handle = func(emu *emulator) {
@@ -1209,9 +1206,7 @@ func (p *Parser) handle_SCORC() (hd *Handler) {
 
 // DEC Set Compatibility Level
 func (p *Parser) handle_DECSCL() (hd *Handler) {
-	// prepare the parameters
-	params := make([]int, p.nInputOps)
-	copy(params, p.inputOps)
+	params := p.copyArgs()
 
 	hd = &Handler{id: csi_decscl, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
@@ -1365,9 +1360,7 @@ func (p *Parser) handle_XTWINOPS() (hd *Handler) {
 // Xterm key modifier options
 func (p *Parser) handle_XTMODKEYS() (hd *Handler) {
 	// prepare the parameters
-	params := make([]int, p.nInputOps)
-	copy(params, p.inputOps)
-	// fmt.Printf("size of params=%d\n", len(params))
+	params := p.copyArgs()
 
 	hd = &Handler{id: csi_xtmodkeys, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
