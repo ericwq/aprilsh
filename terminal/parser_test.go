@@ -1855,3 +1855,74 @@ func TestHandle_ecma48_SL_SR_FI_BI(t *testing.T) {
 		}
 	}
 }
+
+func TestHandle_XTMMODEKEYS(t *testing.T) {
+	tc := []struct {
+		name            string
+		hdIDs           []int
+		seq             string
+		modifyOtherKeys uint
+		msg             string
+	}{
+		{"XTMODEKEYS 0:x    ", []int{csi_xtmodkeys}, "\x1B[>0;1m", 3, "XTMODKEYS: modifyKeyboard ="},
+		{"XTMODEKEYS 0:break", []int{csi_xtmodkeys}, "\x1B[>0;0m", 3, ""},
+		{"XTMODEKEYS 1:x    ", []int{csi_xtmodkeys}, "\x1B[>1;1m", 3, "XTMODKEYS: modifyCursorKeys ="},
+		{"XTMODEKEYS 1:break", []int{csi_xtmodkeys}, "\x1B[>1;2m", 3, ""},
+		{"XTMODEKEYS 2:x    ", []int{csi_xtmodkeys}, "\x1B[>2;1m", 3, "XTMODKEYS: modifyFunctionKeys ="},
+		{"XTMODEKEYS 2:break", []int{csi_xtmodkeys}, "\x1B[>2;2m", 3, ""},
+		{"XTMODEKEYS 4:x    ", []int{csi_xtmodkeys}, "\x1B[>4;2m", 2, "XTMODKEYS: modifyOtherKeys set to"},
+		{"XTMODEKEYS 4:break", []int{csi_xtmodkeys}, "\x1B[>4;3m", 3, "XTMODKEYS: illegal argument for modifyOtherKeys:"},
+		{"XTMODEKEYS 1 parameter", []int{csi_xtmodkeys}, "\x1B[>4m", 0, "XTMODKEYS: modifyOtherKeys set to"},
+		{"XTMODEKEYS 0 parameter", []int{csi_xtmodkeys}, "\x1B[>m", 3, ""}, // no parameter
+	}
+
+	p := NewParser()
+	emu := NewEmulator3(8, 4, 4)
+	var place strings.Builder // all the message is output to herer
+	emu.logU.SetOutput(&place)
+	emu.logT.SetOutput(&place)
+	emu.logI.SetOutput(&place)
+
+	for _, v := range tc {
+		// reset the output
+		place.Reset()
+
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) == 0 {
+			t.Errorf("%s got zero handlers.", v.name)
+		}
+
+		// call the handler
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s: seq=%q expect %s, got %s\n",
+					v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+			}
+		}
+
+		// validate the output message
+		if v.msg != "" && !strings.Contains(place.String(), v.msg) {
+			t.Errorf("%s seq=%q output: expect %s, got %s\n", v.name, v.seq, v.msg, place.String())
+		}
+
+		// validate the data changed
+		got := emu.modifyOtherKeys
+		if v.modifyOtherKeys != 3 && got != v.modifyOtherKeys {
+			t.Errorf("%s seq=%q modifyOtherKeys: expect %d, got %d\n", v.name, v.seq, v.modifyOtherKeys, got)
+		}
+	}
+}
+
+func TestHandle_XTWINOPS(t *testing.T) {
+	seq := "\x1B[t"
+	p := NewParser()
+	hds := make([]*Handler, 0, 16)
+	hds = p.processStream(seq, hds)
+
+	if len(hds) != 0 {
+		t.Errorf("XTWINOPS seq=%q expect zero handlers.", seq)
+	}
+}

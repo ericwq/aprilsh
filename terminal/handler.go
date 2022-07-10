@@ -1709,7 +1709,7 @@ func hdl_csi_xtmodkeys(emu *emulator, params []int) {
 		case 4:
 			if params[1] <= 2 {
 				emu.modifyOtherKeys = uint(params[1])
-				emu.logT.Printf("XTMODKEYS: modifyFunctionKeys set to %d\n", emu.modifyOtherKeys)
+				emu.logT.Printf("XTMODKEYS: modifyOtherKeys set to %d\n", emu.modifyOtherKeys)
 			} else {
 				emu.logI.Printf("XTMODKEYS: illegal argument for modifyOtherKeys: %d\n", params[1])
 			}

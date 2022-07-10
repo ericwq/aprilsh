@@ -1355,6 +1355,7 @@ func (p *Parser) handle_DECANM() (hd *Handler) {
 }
 
 // Xterm window operations
+// CSI Ps ; Ps ; Ps t
 func (p *Parser) handle_XTWINOPS() (hd *Handler) {
 	// ignore
 	p.setState(InputState_Normal)
@@ -1366,6 +1367,7 @@ func (p *Parser) handle_XTMODKEYS() (hd *Handler) {
 	// prepare the parameters
 	params := make([]int, p.nInputOps)
 	copy(params, p.inputOps)
+	// fmt.Printf("size of params=%d\n", len(params))
 
 	hd = &Handler{id: csi_xtmodkeys, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
