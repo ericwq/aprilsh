@@ -181,10 +181,10 @@ func TestHandle_Graphemes(t *testing.T) {
 		name      string
 		seq       string // data stream with control sequences
 		hdIDs     []int
-		hdNumber  int    // handler size
-		posY      int    // expect row
-		posX      []int  // expect cols for cell on screen.
-		graphemes string // data stream without control sequences
+		hdNumber  int    // expect handler number
+		posY      int    // expect print row
+		posX      []int  // expect print cols
+		graphemes string // data string without control sequences
 	}{
 		// use CUP to set the active cursor position first
 		{
@@ -261,7 +261,7 @@ func TestHandle_Graphemes(t *testing.T) {
 				}
 			}
 
-			// validate the result
+			// validate the result with data string
 			graphemes := uniseg.NewGraphemes(v.graphemes)
 			j := 0
 			for graphemes.Next() {
@@ -286,9 +286,9 @@ func TestHandle_Graphemes_Wrap(t *testing.T) {
 	tc := []struct {
 		name      string
 		seq       string
-		posY      int
-		posX      []int
-		graphemes string // data stream without control sequences
+		posY      int    // expect print row
+		posX      []int  // expect print cols
+		graphemes string // data string without control sequences
 	}{
 		{"plain english wrap", "\x1B[8;79Hap\u0308rish", 7, []int{78, 79, 0, 1, 2, 3}, "ap\u0308rish"},
 		{"chinese even wrap", "\x1B[9;79H@@四姑娘山", 8, []int{78, 79, 0, 2, 4, 6}, "@@四姑娘山"},
@@ -318,6 +318,7 @@ func TestHandle_Graphemes_Wrap(t *testing.T) {
 			// t.Logf("%s expect %s, got \n%s", v.name, v.graphemes, printCells(emu.cf, v.posY))
 			// t.Logf("%s expect %s, got \n%s", v.name, v.graphemes, printCells(emu.cf, v.posY+1))
 
+			// validate the result with data string
 			graphemes := uniseg.NewGraphemes(v.graphemes)
 			rows := v.posY
 			index := 0

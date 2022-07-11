@@ -260,7 +260,7 @@ func hdl_graphemes(emu *emulator, chs ...rune) {
 		return
 	}
 
-	// the new graphemes should be printed on next row
+	// the first condition deal with the new graphemes should wrap on next row
 	// the second condition deal with widh graphemes in special position: posX = nColsEff-1
 	if (emu.autoWrapMode && emu.lastCol) || (w == 2 && emu.posX == emu.nColsEff-1) {
 		emu.cf.getMutableCell(emu.posY, emu.posX).wrap = true
@@ -277,10 +277,7 @@ func hdl_graphemes(emu *emulator, chs ...rune) {
 	c := emu.cf.getMutableCell(emu.posY, emu.posX)
 	*c = emu.attrs
 
-	c.Clear()
-	for _, r := range chs {
-		c.Append(r) // TODO continue use Append()?
-	}
+	c.contents = string(chs)
 
 	/// for double width graphemes
 	if w == 2 && emu.posX < emu.nColsEff-1 {
@@ -298,66 +295,6 @@ func hdl_graphemes(emu *emulator, chs ...rune) {
 	} else {
 		emu.posX++
 	}
-	/*
-		// get current cursor cell
-		fb := emu.cf
-		thisCell := fb.GetCell(-1, -1)
-		chWidth := runesWidth(chs)
-
-		if fb.DS.AutoWrapMode && fb.DS.NextPrintWillWrap {
-			fb.GetRow(-1).SetWrap(true)
-			fb.DS.MoveCol(0, false, false)
-			fb.MoveRowsAutoscroll(1)
-			thisCell = nil
-		} else if fb.DS.AutoWrapMode && chWidth == 2 && fb.DS.GetCursorCol() == fb.DS.GetWidth()-1 {
-			// wrap 2-cell chars if no room, even without will-wrap flag
-			fb.ResetCell(thisCell)
-			fb.GetRow(-1).SetWrap(false)
-
-			// There doesn't seem to be a consistent way to get the
-			// downstream terminal emulator to set the wrap-around
-			// copy-and-paste flag on a row that ends with an empty cell
-			// because a wide char was wrapped to the next line.
-
-			fb.DS.MoveCol(0, false, false)
-			fb.MoveRowsAutoscroll(1)
-			thisCell = nil
-		}
-
-		if fb.DS.InsertMode {
-			for i := 0; i < chWidth; i++ {
-				fb.InsertCell(fb.DS.GetCursorRow(), fb.DS.GetCursorCol())
-			}
-			thisCell = nil
-		}
-
-		// fmt.Printf("print@(%d,%d) chs=%q\n", emu.framebuffer.DS.GetCursorRow(), emu.framebuffer.DS.GetCursorCol(), chs)
-		if thisCell == nil {
-			thisCell = fb.GetCell(-1, -1)
-		}
-
-		// set the cell: content, wide and rendition
-		fb.ResetCell(thisCell)
-		for _, r := range chs {
-			thisCell.Append(r)
-		}
-		if chWidth == 2 {
-			thisCell.SetWide(true)
-		} else {
-			thisCell.SetWide(false)
-		}
-		fb.ApplyRenditionsToCell(thisCell)
-
-		if chWidth == 2 { // erase overlapped cell
-			if fb.DS.GetCursorCol()+1 < fb.DS.GetWidth() {
-				nextCell := fb.GetCell(fb.DS.GetCursorRow(), fb.DS.GetCursorCol()+1)
-				fb.ResetCell(nextCell)
-			}
-		}
-
-		// move cursor to the next position
-		fb.DS.MoveCol(chWidth, true, true)
-	*/
 }
 
 // func hdl_userbyte(emu *emulator, u UserByte) {

@@ -125,19 +125,6 @@ type emulator struct {
 	*/
 }
 
-func NewEmulator() *emulator {
-	emu := &emulator{}
-	emu.resetCharsetState()
-
-	// defalult size 80x40
-	emu.frame_pri = *NewFramebuffer(80, 40)
-	emu.cf = &emu.frame_pri
-
-	emu.initSelectionData()
-	emu.initLog()
-	return emu
-}
-
 func NewEmulator3(nCols, nRows, saveLines int) *emulator {
 	// TODO makePalette256 (palette256);
 
@@ -158,8 +145,6 @@ func NewEmulator3(nCols, nRows, saveLines int) *emulator {
 	emu.bkspSendsDel = true
 	emu.localEcho = false
 	emu.bracketedPasteMode = false
-	// emu.altScrollMode = false
-	// emu.altSendsEscape = true
 
 	emu.horizMarginMode = false
 	emu.nColsEff = emu.nCols
