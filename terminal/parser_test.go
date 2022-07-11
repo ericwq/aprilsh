@@ -352,10 +352,34 @@ func TestHandle_REP(t *testing.T) {
 		posX      []int  // expect print cols
 		graphemes string // data string without control sequences
 	}{
-		{"plain english REP+wrap", "\x1B[8;79Hp\u0308\x1B[b", []int{csi_cup, graphemes, csi_rep}, 7, []int{78, 79}, "p\u0308p\u0308"},
-		{"chinese even REP+wrap", "\x1B[9;79H四\x1B[5b", []int{csi_cup, graphemes, csi_rep}, 8, []int{78, 0, 2, 4, 6, 8}, "四四四四四四"},
-		{"chinese odd REP+wrap", "\x1B[10;79H#海\x1B[5b", []int{csi_cup, graphemes, graphemes, csi_rep}, 9, []int{78, 0, 2, 4, 6, 8, 10}, "#海海海海海海"},
-		{"insert REP+wrap", "\x1B[4h\x1B[11;78H#\x1B[5b", []int{csi_sm, csi_cup, graphemes, csi_rep}, 10, []int{77, 78, 79, 0, 1, 2}, "######"},
+		{
+			"plain english REP+wrap", "\x1B[8;79Hp\u0308\x1B[b",
+			[]int{csi_cup, graphemes, csi_rep},
+			7,
+			[]int{78, 79},
+			"p\u0308p\u0308",
+		},
+		{
+			"chinese even REP+wrap", "\x1B[9;79H四\x1B[5b",
+			[]int{csi_cup, graphemes, csi_rep},
+			8,
+			[]int{78, 0, 2, 4, 6, 8},
+			"四四四四四四",
+		},
+		{
+			"chinese odd REP+wrap", "\x1B[10;79H#海\x1B[5b",
+			[]int{csi_cup, graphemes, graphemes, csi_rep},
+			9,
+			[]int{78, 0, 2, 4, 6, 8, 10},
+			"#海海海海海海",
+		},
+		{
+			"insert REP+wrap", "\x1B[4h\x1B[11;78H#\x1B[5b",
+			[]int{csi_sm, csi_cup, graphemes, csi_rep},
+			10,
+			[]int{77, 78, 79, 0, 1, 2},
+			"######",
+		},
 	}
 
 	p := NewParser()
@@ -384,8 +408,11 @@ func TestHandle_REP(t *testing.T) {
 				if hd.id != hdID { // validate the control sequences id
 					t.Errorf("%s seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[hdID], strHandlerID[hd.id])
 				}
+				// t.Logf("%s seq=%q history=%q\n", v.name, v.seq, hd.sequence)
 			}
 
+			// t.Errorf("%s expect %s, got \n%s", v.name, v.graphemes, printCells(emu.cf, v.posY))
+			// t.Errorf("%s expect %s, got \n%s", v.name, v.graphemes, printCells(emu.cf, v.posY+1))
 			// validate the result with data string
 			graphemes := uniseg.NewGraphemes(v.graphemes)
 			rows := v.posY
@@ -403,8 +430,6 @@ func TestHandle_REP(t *testing.T) {
 				if cell.contents != string(chs) {
 					t.Errorf("%s seq=%q", v.name, v.seq)
 					t.Errorf("%s [%2d,%2d] expect %q, got %q\n", v.name, rows, cols, string(chs), cell.contents)
-					t.Errorf("%s expect %s, got \n%s", v.name, v.graphemes, printCells(emu.cf, v.posY))
-					t.Errorf("%s expect %s, got \n%s", v.name, v.graphemes, printCells(emu.cf, v.posY+1))
 				}
 			}
 		})

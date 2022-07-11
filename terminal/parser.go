@@ -82,6 +82,7 @@ type Parser struct {
 	ch         rune
 	chs        []rune
 	lastChs    []rune // last graphic character
+	handleDone  bool
 
 	// numeric parameters
 	inputOps  []int
@@ -143,6 +144,13 @@ func (p *Parser) appendToHistory(r rune) {
 		p.logE.Printf("Parser histroy string overflow (>4097). %q[%c]\n", p.historyString(), r)
 	}
 	// p.history.Remove(p.history.Front())
+}
+
+func (p *Parser) replaceHistory(chs ...rune) {
+	p.resetHistory()
+	for _, r := range chs {
+		p.appendToHistory(r)
+	}
 }
 
 // return the history string representation
@@ -1450,17 +1458,25 @@ func (p *Parser) processStream(str string, hds []*Handler) []*Handler {
 func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 	var ch rune
 
+	defer func() {
+		if hd != nil {
+			p.handleDone = true
+		}
+	}()
+
 	// for multi runes, it should be grapheme.
 	if len(chs) > 1 {
 		p.chs = chs
-		for _, r := range chs {
-			p.appendToHistory(r)
-		}
+		p.replaceHistory(chs...)
 		hd = p.handle_Graphemes()
 		return hd
 	} else if len(chs) == 1 { // it's either grapheme or control sequence
 		p.chs = chs
 		ch = chs[0]
+		if p.handleDone {
+			p.resetHistory()
+			p.handleDone = false
+		}
 		p.appendToHistory(ch)
 	} else { // empty chs
 		return hd
@@ -1509,6 +1525,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			// one stop https://www.cl.cam.ac.uk/~mgk25/unicode.html
 			// https://harjit.moe/charsetramble.html
 			// need to understand the relationship between utf-8 and  ECMA-35 charset
+			p.replaceHistory(ch)
 			hd = p.handle_Graphemes()
 		}
 	case InputState_Escape:
@@ -1692,7 +1709,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case 'a':
 			hd = p.handle_HPR()
 		case 'b':
-			hd = p.handle_REP() // TODO depends on hdl_graphemes()
+			hd = p.handle_REP()
 		case 'c':
 			hd = p.handle_priDA()
 		case 'd':
