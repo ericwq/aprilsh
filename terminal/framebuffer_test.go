@@ -137,9 +137,13 @@ func printRowAt(r int, start int, end int, fb *Framebuffer, output *strings.Buil
 	for k := start; k < end; k++ {
 		switch fb.cells[k].contents {
 		case " ":
-			output.WriteString(".")
+			if !fb.cells[k].dwidthCont {
+				output.WriteString(".")
+			}
 		case "":
-			output.WriteString("*")
+			if !fb.cells[k].dwidthCont {
+				output.WriteString("*")
+			}
 		default:
 			output.WriteString(fb.cells[k].contents)
 		}

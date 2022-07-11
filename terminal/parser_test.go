@@ -291,15 +291,18 @@ func TestHandle_Graphemes_Wrap(t *testing.T) {
 		graphemes string // data stream without control sequences
 	}{
 		{"plain english wrap", "\x1B[8;79Hap\u0308rish", 7, []int{78, 79, 0, 1, 2, 3}, "ap\u0308rish"},
-		// {"chinese even wrap", "\x1B[9;79H@@四姑娘山", 8, []int{78, 79, 0, 2, 4, 6},"@@四姑娘山"},
-		// {"chinese odd wrap", "\x1B[10;79H#海螺沟", 9, []int{78, 0, 2, 4, 6}, "#海螺沟"},
-		// {"insert wrap", "\x1B[4h\x1B[8;78H#th#", 7, []int{77, 78, 79, 0},"#th#"},
+		{"chinese even wrap", "\x1B[9;79H@@四姑娘山", 8, []int{78, 79, 0, 2, 4, 6}, "@@四姑娘山"},
+		{"chinese odd wrap", "\x1B[10;79H#海螺沟", 9, []int{78, 0, 2, 4, 6}, "#海螺沟"},
+		{"insert wrap", "\x1B[4h\x1B[11;78H#th#", 10, []int{77, 78, 79, 0}, "#th#"},
 	}
 
 	p := NewParser()
 	emu := NewEmulator3(80, 40, 40)
+	var place strings.Builder
+	emu.logT.SetOutput(&place)
 
 	for _, v := range tc {
+		place.Reset()
 		t.Run(v.name, func(t *testing.T) {
 			hds := make([]*Handler, 0, 16)
 			hds = p.processStream(v.seq, hds)
@@ -311,6 +314,9 @@ func TestHandle_Graphemes_Wrap(t *testing.T) {
 			for _, hd := range hds {
 				hd.handle(emu)
 			}
+
+			// t.Logf("%s expect %s, got \n%s", v.name, v.graphemes, printCells(emu.cf, v.posY))
+			// t.Logf("%s expect %s, got \n%s", v.name, v.graphemes, printCells(emu.cf, v.posY+1))
 
 			graphemes := uniseg.NewGraphemes(v.graphemes)
 			rows := v.posY

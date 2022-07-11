@@ -247,6 +247,7 @@ func runesWidth(runes []rune) (width int) {
 func hdl_graphemes(emu *emulator, chs ...rune) {
 	// fmt.Printf("hdl_graphemes got %q", chs)
 
+	w := runesWidth(chs)
 	if len(chs) == 1 && emu.charsetState.vtMode {
 		chs[0] = emu.lookupCharset(chs[0])
 	}
@@ -255,11 +256,16 @@ func hdl_graphemes(emu *emulator, chs ...rune) {
 	// 	fmt.Printf("   UTF-8: %q, %U, %x w=%d\n", chs, chs, chs, runesWidth(chs))
 	// }
 
+	if w == 0 {
+		return
+	}
+
 	// the new graphemes should be printed on next row
-	if emu.autoWrapMode && emu.lastCol {
+	// the second condition deal with widh graphemes in special position: posX = nColsEff-1
+	if (emu.autoWrapMode && emu.lastCol) || (w == 2 && emu.posX == emu.nColsEff-1) {
 		emu.cf.getMutableCell(emu.posY, emu.posX).wrap = true
 		hdl_c0_cr(emu)
-		hdl_esc_ind(emu)
+		hdl_c0_lf(emu)
 	}
 
 	// insert a blank cell for insert mode
@@ -275,7 +281,6 @@ func hdl_graphemes(emu *emulator, chs ...rune) {
 	for _, r := range chs {
 		c.Append(r) // TODO continue use Append()?
 	}
-	w := runesWidth(chs)
 
 	/// for double width graphemes
 	if w == 2 && emu.posX < emu.nColsEff-1 {
@@ -378,20 +383,6 @@ func hdl_c0_bel(emu *emulator) {
 	emu.cf.RingBell()
 }
 
-// FF, VT same as LF a.k.a IND Index
-// move cursor to the next row, scroll down if necessary.
-func hdl_esc_ind(emu *emulator) (scrolled bool) {
-	if emu.posY == emu.marginBottom-1 {
-		// text up, viewpoint down if it reaches the last row in active area
-		hdl_csi_su(emu, 1)
-		scrolled = true
-	} else if emu.posY < emu.nRows-1 {
-		emu.posY++
-		emu.lastCol = false
-	}
-	return
-}
-
 // Carriage Return (CR  is Ctrl-M).
 // move cursor to the head of the same row
 func hdl_c0_cr(emu *emulator) {
@@ -423,6 +414,20 @@ func hdl_c0_si(emu *emulator) {
 //          VT200 and up implement LS1.
 func hdl_c0_so(emu *emulator) {
 	emu.charsetState.gl = 1
+}
+
+// FF, VT same as LF a.k.a IND Index
+// move cursor to the next row, scroll down if necessary.
+func hdl_esc_ind(emu *emulator) (scrolled bool) {
+	if emu.posY == emu.marginBottom-1 {
+		// text up, viewpoint down if it reaches the last row in active area
+		hdl_csi_su(emu, 1)
+		scrolled = true
+	} else if emu.posY < emu.nRows-1 {
+		emu.posY++
+		emu.lastCol = false
+	}
+	return
 }
 
 // ESC N
