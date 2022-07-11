@@ -313,7 +313,7 @@ func (p *Parser) copyArgs() (args []int) {
 
 // print graphemes on screen
 func (p *Parser) handle_Graphemes() (hd *Handler) {
-	hd = &Handler{name: "graphemes", ch: p.ch}
+	hd = &Handler{id: graphemes, ch: p.ch, sequence: p.historyString()}
 
 	// store the last graphic character
 	r := p.chs

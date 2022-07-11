@@ -122,6 +122,7 @@ const (
 	esc_ris
 	esc_ss2
 	esc_ss3
+	graphemes
 	osc_4
 	osc_52
 	osc_0_1_2
@@ -203,6 +204,7 @@ var strHandlerID = [...]string{
 	"esc_ris",
 	"esc_ss2",
 	"esc_ss3",
+	"graphemes",
 	"osc_4",
 	"osc_52",
 	"osc_0_1_2",
@@ -268,6 +270,8 @@ func hdl_graphemes(emu *emulator, chs ...rune) {
 	// print the current cursor cell
 	c := emu.cf.getMutableCell(emu.posY, emu.posX)
 	*c = emu.attrs
+
+	c.Clear()
 	for _, r := range chs {
 		c.Append(r) // TODO continue use Append()?
 	}

@@ -178,87 +178,100 @@ func TestProcessInputEmpty(t *testing.T) {
 
 func TestHandle_Graphemes(t *testing.T) {
 	tc := []struct {
-		name   string
-		raw    string // data stream with control sequences
-		hName  string
-		want   int    // handler size: start cols as print. it's also used as start column.
-		cols   []int  // expect cols for cell on screen.
-		result string // data stream without control sequences
+		name      string
+		seq       string // data stream with control sequences
+		hdIDs     []int
+		hdNumber  int    // handler size
+		posY      int    // expect row
+		posX      []int  // expect cols for cell on screen.
+		graphemes string // data stream without control sequences
 	}{
+		// use CUP to set the active cursor position first
 		{
 			"UTF-8 plain english",
-			"long long ago",
-			"graphemes",
-			13,
+			"\x1B[1;14Hlong long ago",
+			[]int{csi_cup, graphemes},
+			14, 0,
 			[]int{13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
 			"long long ago",
 		},
 		{
 			"UTF-8 chinese, combining character and flags",
-			"Chin\u0308\u0308a 🏖 i国旗🇳🇱Fun 🌈with Flag🇧🇷.s",
-			"graphemes", 29,
+			"\x1B[2;30HChin\u0308\u0308a 🏖 i国旗🇳🇱Fun 🌈with Flag🇧🇷.s",
+			[]int{csi_cup, graphemes},
+			30, 1,
 			[]int{29, 30, 31, 32, 33, 34, 35, 37, 38, 39, 41, 43, 45, 46, 47, 48, 49, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 62, 63},
 			"Chin\u0308\u0308a 🏖 i国旗🇳🇱Fun 🌈with Flag🇧🇷.s",
 		},
 		{
 			"VT mix UTF-8",
-			"中国\x1B%@\xA5AB\xe2\xe3\xe9\x1B%GShanghai\x1B%@CD\xe0\xe1",
-			"graphemes",
-			23,
+			"\x1B[3;24H中国\x1B%@\xA5AB\xe2\xe3\xe9\x1B%GShanghai\x1B%@CD\xe0\xe1",
+			[]int{
+				csi_cup, graphemes, graphemes, esc_docs_iso8859_1, graphemes, graphemes, graphemes, graphemes, graphemes,
+				graphemes, esc_docs_utf8, graphemes, graphemes, graphemes, graphemes, graphemes, graphemes, graphemes,
+				graphemes, esc_docs_iso8859_1, graphemes, graphemes, graphemes, graphemes,
+			},
+			24, 2,
 			[]int{23, 25, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44},
 			"中国¥ABâãéShanghaiCDàá",
 		},
 		{
-			"VT edge",
-			"\x1B%@Beijing\x1B%G",
-			"graphemes",
-			9,
+			"VT edge", "\x1B[4;10H\x1B%@Beijing\x1B%G",
+			[]int{csi_cup, esc_docs_iso8859_1, graphemes, graphemes, graphemes, graphemes, graphemes, graphemes, graphemes, esc_docs_utf8},
+			10, 3,
 			[]int{9, 10, 11, 12, 13, 14, 15},
 			"Beijing",
 		},
 	}
 
 	p := NewParser()
-	p.logE.SetOutput(ioutil.Discard)
-	p.logU.SetOutput(ioutil.Discard)
-	p.logT.SetOutput(ioutil.Discard)
+	var place strings.Builder
+	p.logE.SetOutput(&place)
+	p.logU.SetOutput(&place)
+	p.logT.SetOutput(&place)
 
-	emu := NewEmulator()
-	for i, v := range tc {
+	emu := NewEmulator3(80, 40, 40)
+	emu.logT.SetOutput(&place)
+	for _, v := range tc {
+		place.Reset()
+
 		t.Run(v.name, func(t *testing.T) {
 			hds := make([]*Handler, 0, 16)
-			hds = p.processStream(v.raw, hds)
+			hds = p.processStream(v.seq, hds)
 
-			if len(hds) == 0 {
-				t.Errorf("%s got zero handlers.", v.name)
+			if v.hdNumber != len(hds) {
+				t.Errorf("%s expect %d handlers,got %d handlers\n", v.name, v.hdNumber, len(hds))
 			}
 
-			// move to the new row
-			emu.cf.DS.MoveRow(i, false)
-
-			// move to the start col.
-			emu.cf.DS.MoveCol(v.want, false, false)
-
-			for _, hd := range hds {
+			hdID := 0
+			for j, hd := range hds {
 				hd.handle(emu)
-			}
-			if v.want != len(hds) {
-				t.Errorf("%s expect %d handlers,got %d handlers\n", v.name, v.want, len(hds))
-			}
-			// else {
-			// 	t.Logf("%q end %d.\n", v.name, len(hds))
-			// }
 
-			graphemes := uniseg.NewGraphemes(v.result)
+				if len(v.hdIDs) > 2 {
+					hdID = v.hdIDs[j]
+				} else { // to avoid type more hdID in test case
+					if j == 0 {
+						hdID = v.hdIDs[0]
+					} else {
+						hdID = v.hdIDs[1]
+					}
+				}
+				if hd.id != hdID { // validate the control sequences id
+					t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[hdID], strHandlerID[hd.id])
+				}
+			}
+
+			// validate the result
+			graphemes := uniseg.NewGraphemes(v.graphemes)
 			j := 0
 			for graphemes.Next() {
 				// the expected content
 				chs := graphemes.Runes()
 
 				// get the cell from framebuffer
-				rows := i
-				cols := v.cols[j]
-				cell := emu.cf.GetCell(rows, cols)
+				rows := v.posY
+				cols := v.posX[j]
+				cell := emu.cf.getCell(rows, cols)
 
 				if cell.contents != string(chs) {
 					t.Errorf("%s:\t [row,cols]:[%2d,%2d] expect %q, got %q\n", v.name, rows, cols, string(chs), cell.contents)
@@ -271,83 +284,50 @@ func TestHandle_Graphemes(t *testing.T) {
 
 func TestHandle_Graphemes_Wrap(t *testing.T) {
 	tc := []struct {
-		name string
-		raw  string
-		y, x int
-		cols []int
+		name      string
+		seq       string
+		posY      int
+		posX      []int
+		graphemes string // data stream without control sequences
 	}{
-		{
-			"plain english wrap",
-			"ap\u0308rish",
-			7, 78,
-			[]int{78, 79, 0, 1, 2, 3},
-		},
-		{
-			"chinese even wrap",
-			"@@四姑娘山",
-			8, 78,
-			[]int{78, 79, 0, 2, 4, 6},
-		},
-		{
-			"chinese odd wrap",
-			"#海螺沟",
-			9, 78,
-			[]int{78, 0, 2, 4, 6},
-		},
-		{
-			"insert wrap",
-			"#th#",
-			7, 77,
-			[]int{77, 78, 79, 0},
-		},
+		{"plain english wrap", "\x1B[8;79Hap\u0308rish", 7, []int{78, 79, 0, 1, 2, 3}, "ap\u0308rish"},
+		// {"chinese even wrap", "\x1B[9;79H@@四姑娘山", 8, []int{78, 79, 0, 2, 4, 6},"@@四姑娘山"},
+		// {"chinese odd wrap", "\x1B[10;79H#海螺沟", 9, []int{78, 0, 2, 4, 6}, "#海螺沟"},
+		// {"insert wrap", "\x1B[4h\x1B[8;78H#th#", 7, []int{77, 78, 79, 0},"#th#"},
 	}
 
 	p := NewParser()
-	p.logTrace = true
-	emu := NewEmulator()
+	emu := NewEmulator3(80, 40, 40)
+
 	for _, v := range tc {
 		t.Run(v.name, func(t *testing.T) {
 			hds := make([]*Handler, 0, 16)
-			hds = p.processStream(v.raw, hds)
+			hds = p.processStream(v.seq, hds)
 
 			if len(hds) == 0 {
 				t.Errorf("%s got zero handlers.", v.name)
-			}
-
-			// move to the start row/col
-			emu.cf.DS.MoveRow(v.y, false)
-			emu.cf.DS.MoveCol(v.x, false, false)
-
-			// enable insert mode for this test case
-			if strings.HasPrefix(v.name, "insert") {
-				emu.cf.DS.InsertMode = true
 			}
 
 			for _, hd := range hds {
 				hd.handle(emu)
 			}
 
-			row1 := emu.cf.GetRow(v.y)
-			row2 := emu.cf.GetRow(v.y + 1)
-			t.Logf("%s\n", row1.String())
-			t.Logf("%s\n", row2.String())
-
-			graphemes := uniseg.NewGraphemes(v.raw)
-			rows := v.y
+			graphemes := uniseg.NewGraphemes(v.graphemes)
+			rows := v.posY
 			index := 0
 			for graphemes.Next() {
 				// the expected content
 				chs := graphemes.Runes()
 
 				// get the cell from framebuffer
-				cols := v.cols[index]
-				if cols == 0 { // wrap
+				cols := v.posX[index]
+				if cols == 0 { // change to the next row
 					rows += 1
 				}
-				cell := emu.cf.GetCell(rows, cols)
+				cell := emu.cf.getCell(rows, cols)
 
 				if cell.contents != string(chs) {
-					t.Errorf("%s:\t [row,cols]:[%2d,%2d] expect %q, got %q\n", v.name, rows, cols, string(chs), cell.contents)
+					t.Errorf("%s:\t cell [%2d,%2d] expect %q, got %q\n", v.name, rows, cols, string(chs), cell.contents)
 				}
 
 				index += 1
