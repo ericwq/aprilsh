@@ -281,7 +281,7 @@ func hdl_graphemes(emu *emulator, chs ...rune) {
 		emu.cf.getMutableCell(emu.posY, emu.posX).dwidthCont = true
 	}
 
-	// prepare for the next graphese, move the cursor or set last column flag
+	// prepare for the next graphemes, move the cursor or set last column flag
 	if emu.posX == emu.nColsEff-1 {
 		emu.lastCol = true
 	} else {

@@ -77,19 +77,18 @@ var strInputState = [...]string{
 }
 
 type Parser struct {
-	// big switch state machine
-	inputState int
-	ch         rune
-	chs        []rune
-	lastChs    []rune // last graphic character
-	handleDone  bool
+	inputState int    // parser state
+	ch         rune   // currrent rune
+	chs        []rune // current graphemes
+	lastChs    []rune // last graphemes
+	handleDone bool   // handler is ready
 
 	// numeric parameters
-	inputOps  []int
-	nInputOps int
+	inputOps  []int // numeric parameters
+	nInputOps int   // numeric parameter number
 	maxEscOps int
 
-	// history, up to last 5 rune
+	// history, raw handler sequence
 	history *list.List
 
 	// various indicators
@@ -98,8 +97,7 @@ type Parser struct {
 	lastNormalBegin int
 	lastStopPos     int
 
-	// string parameter
-	argBuf strings.Builder
+	argBuf strings.Builder // string parameter
 
 	// select character set destination and mode
 	scsDst rune
@@ -231,7 +229,6 @@ func (p *Parser) setState(newState int) {
 		p.inputOps[0] = 0
 		p.lastNormalBegin = p.readPos + 1
 
-		p.resetHistory()
 	} else if p.inputState == InputState_Normal {
 		p.traceNormalInput()
 	}
