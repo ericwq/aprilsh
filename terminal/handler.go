@@ -245,20 +245,11 @@ func runesWidth(runes []rune) (width int) {
 // https://pkg.go.dev/golang.org/x/text/encoding/charmap
 // https://github.com/rivo/uniseg
 func hdl_graphemes(emu *emulator, chs ...rune) {
-	// fmt.Printf("hdl_graphemes got %q", chs)
-
 	w := runesWidth(chs)
 	if len(chs) == 1 && emu.charsetState.vtMode {
 		chs[0] = emu.lookupCharset(chs[0])
 	}
-	// 	fmt.Printf("   VT   : %q, %U, %x w=%d\n", chs, chs, chs, runesWidth(chs))
-	// } else {
-	// 	fmt.Printf("   UTF-8: %q, %U, %x w=%d\n", chs, chs, chs, runesWidth(chs))
-	// }
-
-	if w == 0 {
-		return
-	}
+	// fmt.Printf("   UTF-8: %q, %U, %x w=%d\n", chs, chs, chs, runesWidth(chs))
 
 	// the first condition deal with the new graphemes should wrap on next row
 	// the second condition deal with widh graphemes in special position: posX = nColsEff-1
@@ -274,6 +265,7 @@ func hdl_graphemes(emu *emulator, chs ...rune) {
 	}
 
 	// print the current cursor cell
+	// fmt.Printf("hdl_graphemes print %s at (%d,%d)\n", string(chs), emu.posY, emu.posX)
 	c := emu.cf.getMutableCell(emu.posY, emu.posX)
 	*c = emu.attrs
 

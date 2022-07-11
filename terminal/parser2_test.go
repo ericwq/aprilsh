@@ -1248,8 +1248,8 @@ func TestHandle_CSI_BS_FF_VT_CR_TAB(t *testing.T) {
 		wantY, wantX int
 	}{
 		// call CUP first to set the start position
-		{"CSI backspace number    ", []int{csi_cup, csi_cup}, "\x1B[1;1H\x1B[23;12\bH", 22, 0},      // undo last character in CSI sequence
-		{"CSI backspace semicolon ", []int{csi_cup, csi_cup}, "\x1B[1;1H\x1B[23;\b;12H", 22, 11},    // undo last character in CSI sequence
+		{"CSI backspace number    ", []int{csi_cup, csi_cup}, "\x1B[1;1H\x1B[23;12\bH", 22, 0},       // undo last character in CSI sequence
+		{"CSI backspace semicolon ", []int{csi_cup, csi_cup}, "\x1B[1;1H\x1B[23;\b;12H", 22, 11},     // undo last character in CSI sequence
 		{"cursor down 1+3 rows VT ", []int{csi_cup, esc_ind, csi_cud}, "\x1B[9;10H\x1B[3\vB", 12, 9}, //(8,9)->(9.9)->(12,9)
 		{"cursor down 1+3 rows FF ", []int{csi_cup, esc_ind, csi_cud}, "\x1B[9;10H\x1B[\f3B", 12, 9},
 		{"cursor up 2 rows and CR ", []int{csi_cup, c0_cr, csi_cuu}, "\x1B[8;9H\x1B[\r2A", 5, 0},
@@ -1813,9 +1813,9 @@ func TestHandle_ICH_EL_DCH_ECH(t *testing.T) {
 
 func TestHandle_DEC_KPNM_KPAM(t *testing.T) {
 	tc := []struct {
-		name       string
-		hdIDs      []int
-		seq        string
+		name        string
+		hdIDs       []int
+		seq         string
 		keypadMode0 KeypadMode
 		keypadMode1 KeypadMode
 	}{

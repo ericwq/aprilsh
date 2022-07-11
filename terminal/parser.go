@@ -1378,6 +1378,9 @@ func (p *Parser) handle_REP() (hd *Handler) {
 	chs := make([]rune, len(p.lastChs))
 	copy(chs[0:], p.lastChs[0:])
 
+	// fmt.Printf("REP history %q\n", p.historyString())
+	// TODO solve history problem
+
 	hd = &Handler{id: csi_rep, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_rep(emu, arg, chs)
@@ -1450,12 +1453,15 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 	// for multi runes, it should be grapheme.
 	if len(chs) > 1 {
 		p.chs = chs
+		for _, r := range chs {
+			p.appendToHistory(r)
+		}
 		hd = p.handle_Graphemes()
 		return hd
 	} else if len(chs) == 1 { // it's either grapheme or control sequence
 		p.chs = chs
 		ch = chs[0]
-		p.appendToHistory(ch) // save the history, max 5 runes
+		p.appendToHistory(ch)
 	} else { // empty chs
 		return hd
 	}
