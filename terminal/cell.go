@@ -44,6 +44,8 @@ type Cell struct {
 	wide       bool
 	fallback   bool
 	wrap       bool
+	dwidth     bool
+	dwidthCont bool
 }
 
 // reset cell with default renditions, note hte bgColor is not used.

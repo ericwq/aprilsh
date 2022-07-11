@@ -465,9 +465,9 @@ func (p *Parser) handle_CR() (hd *Handler) {
 
 // Line Feed
 func (p *Parser) handle_IND() (hd *Handler) {
-	hd = &Handler{id: c0_ind, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: esc_ind, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
-		hdl_c0_ind(emu)
+		hdl_esc_ind(emu)
 	}
 	// Do NOT reset the state
 	return hd

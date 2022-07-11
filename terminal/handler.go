@@ -52,7 +52,6 @@ const (
 	c0_bel
 	c0_cr
 	c0_ht
-	c0_ind
 	c0_si
 	c0_so
 	csi_cbt
@@ -112,6 +111,7 @@ const (
 	esc_docs_iso8859_1
 	esc_fi
 	esc_hts
+	esc_ind
 	esc_ls1r
 	esc_ls2
 	esc_ls2r
@@ -133,7 +133,6 @@ var strHandlerID = [...]string{
 	"c0_bel",
 	"c0_cr",
 	"c0_ht",
-	"c0_ind",
 	"c0_si",
 	"c0_so",
 	"csi_cbt",
@@ -193,6 +192,7 @@ var strHandlerID = [...]string{
 	"esc_docs_iso8859_1",
 	"esc_fi",
 	"esc_hts",
+	"esc_ind",
 	"esc_ls1r",
 	"esc_ls2",
 	"esc_ls2r",
@@ -253,64 +253,102 @@ func hdl_graphemes(emu *emulator, chs ...rune) {
 	// 	fmt.Printf("   UTF-8: %q, %U, %x w=%d\n", chs, chs, chs, runesWidth(chs))
 	// }
 
-	// get current cursor cell
-	fb := emu.cf
-	thisCell := fb.GetCell(-1, -1)
-	chWidth := runesWidth(chs)
-
-	if fb.DS.AutoWrapMode && fb.DS.NextPrintWillWrap {
-		fb.GetRow(-1).SetWrap(true)
-		fb.DS.MoveCol(0, false, false)
-		fb.MoveRowsAutoscroll(1)
-		thisCell = nil
-	} else if fb.DS.AutoWrapMode && chWidth == 2 && fb.DS.GetCursorCol() == fb.DS.GetWidth()-1 {
-		// wrap 2-cell chars if no room, even without will-wrap flag
-		fb.ResetCell(thisCell)
-		fb.GetRow(-1).SetWrap(false)
-
-		// There doesn't seem to be a consistent way to get the
-		// downstream terminal emulator to set the wrap-around
-		// copy-and-paste flag on a row that ends with an empty cell
-		// because a wide char was wrapped to the next line.
-
-		fb.DS.MoveCol(0, false, false)
-		fb.MoveRowsAutoscroll(1)
-		thisCell = nil
+	// the new graphemes should be printed on next row
+	if emu.autoWrapMode && emu.lastCol {
+		emu.cf.getMutableCell(emu.posY, emu.posX).wrap = true
+		hdl_c0_cr(emu)
+		hdl_esc_ind(emu)
 	}
 
-	if fb.DS.InsertMode {
-		for i := 0; i < chWidth; i++ {
-			fb.InsertCell(fb.DS.GetCursorRow(), fb.DS.GetCursorCol())
-		}
-		thisCell = nil
+	// insert a blank cell for insert mode
+	if emu.insertMode {
+		hdl_csi_ich(emu, 1)
 	}
 
-	// fmt.Printf("print@(%d,%d) chs=%q\n", emu.framebuffer.DS.GetCursorRow(), emu.framebuffer.DS.GetCursorCol(), chs)
-	if thisCell == nil {
-		thisCell = fb.GetCell(-1, -1)
-	}
-
-	// set the cell: content, wide and rendition
-	fb.ResetCell(thisCell)
+	// print the current cursor cell
+	c := emu.cf.getMutableCell(emu.posY, emu.posX)
+	*c = emu.attrs
 	for _, r := range chs {
-		thisCell.Append(r)
+		c.Append(r) // TODO continue use Append()?
 	}
-	if chWidth == 2 {
-		thisCell.SetWide(true)
+	w := runesWidth(chs)
+
+	/// for double width graphemes
+	if w == 2 && emu.posX < emu.nColsEff-1 {
+		// set double width flag
+		c.dwidth = true
+		// the cell after double width cell
+		// set double width continue flag
+		emu.posX++
+		emu.cf.getMutableCell(emu.posY, emu.posX).dwidthCont = true
+	}
+
+	// prepare for the next graphese, move the cursor or set last column flag
+	if emu.posX == emu.nColsEff-1 {
+		emu.lastCol = true
 	} else {
-		thisCell.SetWide(false)
+		emu.posX++
 	}
-	fb.ApplyRenditionsToCell(thisCell)
+	/*
+		// get current cursor cell
+		fb := emu.cf
+		thisCell := fb.GetCell(-1, -1)
+		chWidth := runesWidth(chs)
 
-	if chWidth == 2 { // erase overlapped cell
-		if fb.DS.GetCursorCol()+1 < fb.DS.GetWidth() {
-			nextCell := fb.GetCell(fb.DS.GetCursorRow(), fb.DS.GetCursorCol()+1)
-			fb.ResetCell(nextCell)
+		if fb.DS.AutoWrapMode && fb.DS.NextPrintWillWrap {
+			fb.GetRow(-1).SetWrap(true)
+			fb.DS.MoveCol(0, false, false)
+			fb.MoveRowsAutoscroll(1)
+			thisCell = nil
+		} else if fb.DS.AutoWrapMode && chWidth == 2 && fb.DS.GetCursorCol() == fb.DS.GetWidth()-1 {
+			// wrap 2-cell chars if no room, even without will-wrap flag
+			fb.ResetCell(thisCell)
+			fb.GetRow(-1).SetWrap(false)
+
+			// There doesn't seem to be a consistent way to get the
+			// downstream terminal emulator to set the wrap-around
+			// copy-and-paste flag on a row that ends with an empty cell
+			// because a wide char was wrapped to the next line.
+
+			fb.DS.MoveCol(0, false, false)
+			fb.MoveRowsAutoscroll(1)
+			thisCell = nil
 		}
-	}
 
-	// move cursor to the next position
-	fb.DS.MoveCol(chWidth, true, true)
+		if fb.DS.InsertMode {
+			for i := 0; i < chWidth; i++ {
+				fb.InsertCell(fb.DS.GetCursorRow(), fb.DS.GetCursorCol())
+			}
+			thisCell = nil
+		}
+
+		// fmt.Printf("print@(%d,%d) chs=%q\n", emu.framebuffer.DS.GetCursorRow(), emu.framebuffer.DS.GetCursorCol(), chs)
+		if thisCell == nil {
+			thisCell = fb.GetCell(-1, -1)
+		}
+
+		// set the cell: content, wide and rendition
+		fb.ResetCell(thisCell)
+		for _, r := range chs {
+			thisCell.Append(r)
+		}
+		if chWidth == 2 {
+			thisCell.SetWide(true)
+		} else {
+			thisCell.SetWide(false)
+		}
+		fb.ApplyRenditionsToCell(thisCell)
+
+		if chWidth == 2 { // erase overlapped cell
+			if fb.DS.GetCursorCol()+1 < fb.DS.GetWidth() {
+				nextCell := fb.GetCell(fb.DS.GetCursorRow(), fb.DS.GetCursorCol()+1)
+				fb.ResetCell(nextCell)
+			}
+		}
+
+		// move cursor to the next position
+		fb.DS.MoveCol(chWidth, true, true)
+	*/
 }
 
 // func hdl_userbyte(emu *emulator, u UserByte) {
@@ -338,7 +376,7 @@ func hdl_c0_bel(emu *emulator) {
 
 // FF, VT same as LF a.k.a IND Index
 // move cursor to the next row, scroll down if necessary.
-func hdl_c0_ind(emu *emulator) (scrolled bool) {
+func hdl_esc_ind(emu *emulator) (scrolled bool) {
 	if emu.posY == emu.marginBottom-1 {
 		// text up, viewpoint down if it reaches the last row in active area
 		hdl_csi_su(emu, 1)
@@ -359,6 +397,14 @@ func hdl_c0_cr(emu *emulator) {
 		emu.posX = emu.hMargin
 	}
 	emu.lastCol = false
+}
+
+// Line Feed
+// TODO the difference between IND and LF
+func hdl_c0_lf(emu *emulator) {
+	if hdl_esc_ind(emu) {
+		emu.cf.eraseInRow(emu.posY, emu.posX, emu.nColsEff-emu.posX, emu.attrs)
+	}
 }
 
 // SI       Switch to Standard Character Set (Ctrl-O is Shift In or LS0).
@@ -457,7 +503,7 @@ func hdl_esc_ri(emu *emulator) {
 
 // ESC E  Next Line (NEL  is 0x85).
 func hdl_esc_nel(emu *emulator) {
-	hdl_c0_ind(emu)
+	hdl_esc_ind(emu)
 	hdl_c0_cr(emu)
 }
 
