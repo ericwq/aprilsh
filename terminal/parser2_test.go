@@ -455,16 +455,17 @@ func TestHandle_CR_LF_VT_FF(t *testing.T) {
 	tc := []struct {
 		name  string
 		hdIDs []int
-		wantX int
-		wantY int
+		posY  int
+		posX  int
 		seq   string
 	}{
-		{"CR 1 ", []int{csi_cup, c0_cr}, 0, 2, "\x1B[3;2H\x0D"},
-		{"CR 2 ", []int{csi_cup, c0_cr}, 0, 4, "\x1B[5;10H\x0D"},
-		{"LF   ", []int{csi_cup, esc_ind}, 1, 3, "\x1B[3;2H\x0C"},
-		{"VT   ", []int{csi_cup, esc_ind}, 2, 4, "\x1B[4;3H\x0B"},
-		{"FF   ", []int{csi_cup, esc_ind}, 3, 5, "\x1B[5;4H\x0C"},
-		{"ESC D", []int{csi_cup, esc_ind}, 4, 6, "\x1B[6;5H\x1BD"},
+		{"CR 1 ", []int{csi_cup, c0_cr}, 2, 0, "\x1B[3;2H\x0D"},
+		{"CR 2 ", []int{csi_cup, c0_cr}, 4, 0, "\x1B[5;10H\x0D"},
+		{"LF   ", []int{csi_cup, esc_ind}, 3, 1, "\x1B[3;2H\x0C"},
+		{"VT   ", []int{csi_cup, esc_ind}, 4, 2, "\x1B[4;3H\x0B"},
+		{"FF   ", []int{csi_cup, esc_ind}, 5, 3, "\x1B[5;4H\x0C"},
+		{"ESC D", []int{csi_cup, esc_ind}, 6, 4, "\x1B[6;5H\x1BD"},
+		{"CHA CR", []int{csi_privSM, csi_decslrm, csi_cup, c0_cr}, 4, 0, "\x1B[?69h\x1B[4;70s\x1B[5;1H\x0D"},
 	}
 
 	p := NewParser()
@@ -478,7 +479,7 @@ func TestHandle_CR_LF_VT_FF(t *testing.T) {
 		hds := make([]*Handler, 0, 16)
 		hds = p.processStream(v.seq, hds)
 
-		if len(hds) != 2 {
+		if len(hds) == 0 {
 			t.Errorf("%s got zero handlers.", v.name)
 		}
 
@@ -494,8 +495,8 @@ func TestHandle_CR_LF_VT_FF(t *testing.T) {
 		gotY := emu.posY
 		gotX := emu.posX
 
-		if gotX != v.wantX || gotY != v.wantY {
-			t.Errorf("%s seq=%q expect cursor position (%d,%d), got (%d,%d)\n", v.name, v.seq, v.wantX, v.wantY, gotX, gotY)
+		if gotX != v.posX || gotY != v.posY {
+			t.Errorf("%s seq=%q expect cursor position (%d,%d), got (%d,%d)\n", v.name, v.seq, v.posX, v.posY, gotX, gotY)
 		}
 	}
 }
