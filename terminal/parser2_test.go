@@ -32,6 +32,42 @@ import (
 	"testing"
 )
 
+func damageArea(cf *Framebuffer, y1, x1, y2, x2 int) (start, end int) {
+	start = cf.getIdx(y1, x1)
+	end = cf.getIdx(y2, x2)
+	return
+}
+
+// if the y,x is in the range, return true, otherwise return false
+// func inRange(startY, startX, endY, endX, y, x, width int) bool {
+// 	pStart := startY*width + startX
+// 	pEnd := endY*width + endX
+//
+// 	p := y*width + x
+//
+// 	if pStart <= p && p <= pEnd {
+// 		return true
+// 	}
+// 	return false
+// }
+
+// func fillRowWith(row *Row, r rune) {
+// 	for i := range row.cells {
+// 		row.cells[i].contents = string(r)
+// 	}
+// }
+
+func isTabStop(emu *emulator, x int) bool {
+	data := emu.tabStops
+
+	i := sort.Search(len(data), func(i int) bool { return data[i] >= x })
+	if i < len(data) && data[i] == x {
+		return true
+		// x is present at data[i]
+	}
+	return false
+}
+
 func TestHandle_SCOSC_SCORC(t *testing.T) {
 	tc := []struct {
 		name       string
@@ -178,48 +214,6 @@ func isResetCharsetState(cs CharsetState) (ret bool) {
 		ret = false
 	}
 	return ret
-}
-
-func TestHandle_privSM_privRM_67(t *testing.T) {
-	tc := []struct {
-		name         string
-		seq          string
-		hdIDs        []int
-		bkspSendsDel bool
-	}{
-		{"enable DECBKM—Backarrow Key Mode", "\x1B[?67h", []int{csi_privSM}, false},
-		{"disable DECBKM—Backarrow Key Mode", "\x1B[?67l", []int{csi_privRM}, true},
-	}
-
-	p := NewParser()
-	emu := NewEmulator3(80, 40, 500)
-	var place strings.Builder
-	emu.logI.SetOutput(&place)
-	emu.logT.SetOutput(&place)
-
-	for _, v := range tc {
-
-		// process control sequence
-		hds := make([]*Handler, 0, 16)
-		hds = p.processStream(v.seq, hds)
-
-		if len(hds) != 1 {
-			t.Errorf("%s got %d handlers.", v.name, len(hds))
-		}
-
-		// handle the control sequence
-		for j, hd := range hds {
-			hd.handle(emu)
-			if hd.id != v.hdIDs[j] { // validate the control sequences id
-				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
-			}
-		}
-
-		got := emu.bkspSendsDel
-		if got != v.bkspSendsDel {
-			t.Errorf("%s:\t %q expect %t,got %t\n", v.name, v.seq, v.bkspSendsDel, got)
-		}
-	}
 }
 
 func TestHandle_DECSLRM(t *testing.T) {
@@ -658,17 +652,6 @@ func TestHandle_SU_SD(t *testing.T) {
 	}
 }
 
-func isTabStop(emu *emulator, x int) bool {
-	data := emu.tabStops
-
-	i := sort.Search(len(data), func(i int) bool { return data[i] >= x })
-	if i < len(data) && data[i] == x {
-		return true
-		// x is present at data[i]
-	}
-	return false
-}
-
 func TestHandle_HTS_TBC(t *testing.T) {
 	tc := []struct {
 		name  string
@@ -974,31 +957,6 @@ func TestHandle_ED_IL_DL(t *testing.T) {
 			t.Errorf("[before]\n%s", before)
 			t.Errorf("[after ]\n%s", after)
 		}
-	}
-}
-
-func damageArea(cf *Framebuffer, y1, x1, y2, x2 int) (start, end int) {
-	start = cf.getIdx(y1, x1)
-	end = cf.getIdx(y2, x2)
-	return
-}
-
-// if the y,x is in the range, return true, otherwise return false
-func inRange(startY, startX, endY, endX, y, x, width int) bool {
-	pStart := startY*width + startX
-	pEnd := endY*width + endX
-
-	p := y*width + x
-
-	if pStart <= p && p <= pEnd {
-		return true
-	}
-	return false
-}
-
-func fillRowWith(row *Row, r rune) {
-	for i := range row.cells {
-		row.cells[i].contents = string(r)
 	}
 }
 

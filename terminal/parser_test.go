@@ -442,6 +442,175 @@ func TestHandle_REP(t *testing.T) {
 	}
 }
 
+func TestHandle_SGR_RGBcolor(t *testing.T) {
+	tc := []struct {
+		name       string
+		hdIDs      []int
+		fr, fg, fb int
+		br, bg, bb int
+		attr       charAttribute
+		seq        string
+	}{
+		{"RGB Color 1", []int{csi_sgr}, 33, 47, 12, 123, 24, 34, Bold, "\x1B[0;1;38;2;33;47;12;48;2;123;24;34m"},
+		{"RGB Color 2", []int{csi_sgr}, 0, 0, 0, 0, 0, 0, Italic, "\x1B[0;3;38:2:0:0:0;48:2:0:0:0m"},
+		{"RGB Color 3", []int{csi_sgr}, 12, 34, 128, 59, 190, 155, Underlined, "\x1B[0;4;38:2:12:34:128;48:2:59:190:155m"},
+	}
+
+	p := NewParser()
+	// the default size of emu is 80x40 [colxrow]
+	emu := NewEmulator3(8, 4, 4) // this is the pre-condidtion for the test case.
+
+	for _, v := range tc {
+		t.Run(v.name, func(t *testing.T) {
+			// process control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) == 0 {
+				t.Errorf("%s got zero handlers.", v.name)
+			}
+
+			// reset the renditions
+			emu.attrs.renditions = Renditions{}
+
+			// handle the control sequence
+			for j, hd := range hds {
+				hd.handle(emu)
+				if hd.id != v.hdIDs[j] { // validate the control sequences id
+					t.Errorf("%s: seq=%q expect %s, got %s\n",
+						v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+				}
+			}
+
+			// validate the result
+			got := emu.attrs.renditions
+			want := Renditions{}
+			want.SetBgColor(v.br, v.bg, v.bb)
+			want.SetFgColor(v.fr, v.fg, v.fb)
+			want.SetAttributes(v.attr, true)
+
+			if got != want {
+				t.Errorf("%s:\t %q expect renditions %v, got %v", v.name, v.seq, want, got)
+			}
+		})
+	}
+}
+
+func TestHandle_SGR_ANSIcolor(t *testing.T) {
+	tc := []struct {
+		name  string
+		hdIDs []int
+		fg    Color
+		bg    Color
+		attr  charAttribute
+		seq   string
+	}{
+		// here the charAttribute(38) is an unused value, which means nothing for the result.
+		{"default Color", []int{csi_sgr}, ColorDefault, ColorDefault, charAttribute(38), "\x1B[200m"}, // 38,48 is empty charAttribute
+		{"8 Color", []int{csi_sgr}, ColorSilver, ColorBlack, Bold, "\x1B[1;37;40m"},
+		{"8 Color 2", []int{csi_sgr}, ColorMaroon, ColorMaroon, Italic, "\x1B[3;31;41m"},
+		{"16 Color", []int{csi_sgr}, ColorRed, ColorWhite, Underlined, "\x1B[4;91;107m"},
+		{"256 Color 1", []int{csi_sgr}, Color33, Color47, Bold, "\x1B[0;1;38:5:33;48:5:47m"},
+		{"256 Color 3", []int{csi_sgr}, Color128, Color155, Underlined, "\x1B[0;4;38:5:128;48:5:155m"},
+	}
+
+	p := NewParser()
+	emu := NewEmulator3(8, 4, 4)
+	var place strings.Builder
+	// this will swallow the output from SGR, such as : attribute not supported.
+	emu.logU.SetOutput(&place)
+
+	for _, v := range tc {
+		t.Run(v.name, func(t *testing.T) {
+			// process control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) == 0 {
+				t.Errorf("%s got zero handlers.", v.name)
+			}
+
+			emu.attrs.renditions = Renditions{}
+
+			// handle the control sequence
+			for j, hd := range hds {
+				hd.handle(emu)
+				if hd.id != v.hdIDs[j] { // validate the control sequences id
+					t.Errorf("%s: seq=%q expect %s, got %s\n",
+						v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+				}
+			}
+
+			// validate the result
+			got := emu.attrs.renditions
+			want := Renditions{}
+			want.setAnsiForeground(v.fg)
+			want.setAnsiBackground(v.bg)
+			want.buildRendition(int(v.attr))
+
+			if got != want {
+				t.Errorf("%s:\t %q expect renditions %v, got %v", v.name, v.seq, want, got)
+			}
+		})
+	}
+}
+
+func TestHandle_SGR_Break(t *testing.T) {
+	tc := []struct {
+		name  string
+		hdIDs []int
+		seq   string
+	}{
+		// the folloiwng test the break case for SGR
+		{"break 38    ", []int{csi_sgr}, "\x1B[38m"},
+		{"break 38;   ", []int{csi_sgr}, "\x1B[38;m"},
+		{"break 38:5  ", []int{csi_sgr}, "\x1B[38;5m"},
+		{"break 38:2-1", []int{csi_sgr}, "\x1B[38:2:23m"},
+		{"break 38:2-2", []int{csi_sgr}, "\x1B[38:2:23:24m"},
+		{"break 38:7  ", []int{csi_sgr}, "\x1B[38;7m"},
+		{"break 48    ", []int{csi_sgr}, "\x1B[48m"},
+		{"break 48;   ", []int{csi_sgr}, "\x1B[48;m"},
+		{"break 48:5  ", []int{csi_sgr}, "\x1B[48;5m"},
+		{"break 48:2-1", []int{csi_sgr}, "\x1B[48:2:23m"},
+		{"break 48:2-2", []int{csi_sgr}, "\x1B[48:2:23:22m"},
+		{"break 48:7  ", []int{csi_sgr}, "\x1B[48;7m"},
+	}
+	p := NewParser()
+	emu := NewEmulator3(8, 4, 4)
+
+	for _, v := range tc {
+		t.Run(v.name, func(t *testing.T) {
+			// process control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) == 0 {
+				t.Errorf("%s got zero handlers.", v.name)
+			}
+
+			// reset the renditions
+			emu.attrs.renditions = Renditions{}
+
+			// handle the control sequence
+			for j, hd := range hds {
+				hd.handle(emu)
+				if hd.id != v.hdIDs[j] { // validate the control sequences id
+					t.Errorf("%s: seq=%q expect %s, got %s\n",
+						v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+				}
+			}
+
+			// the break case should not affect the renditions, it will keep the same.
+			got := emu.attrs.renditions
+			want := Renditions{}
+
+			if got != want {
+				t.Errorf("%s:\t %q expect renditions \n%v, got \n%v\n", v.name, v.seq, want, got)
+			}
+		})
+	}
+}
+
 func TestHandle_ESC_DCS(t *testing.T) {
 	tc := []struct {
 		name        string
@@ -792,99 +961,6 @@ func TestHandle_CUP(t *testing.T) {
 	}
 }
 
-func TestHandle_OSC_0_1_2(t *testing.T) {
-	tc := []struct {
-		name    string
-		hdIDs   []int
-		icon    bool
-		title   bool
-		seq     string
-		wantStr string
-	}{
-		{"OSC 0;Pt BEL        ", []int{osc_0_1_2}, true, true, "\x1B]0;ada\x07", "ada"},
-		{"OSC 1;Pt 7bit ST    ", []int{osc_0_1_2}, true, false, "\x1B]1;adas\x1B\\", "adas"},
-		{"OSC 2;Pt BEL chinese", []int{osc_0_1_2}, false, true, "\x1B]2;[道德经]\x07", "[道德经]"},
-		{"OSC 2;Pt BEL unusual", []int{osc_0_1_2}, false, true, "\x1B]2;[neovim]\x1B78\x07", "[neovim]\x1B78"},
-	}
-
-	p := NewParser()
-	emu := NewEmulator3(8, 4, 4) // this is the pre-condidtion for the test case.
-
-	for _, v := range tc {
-		var hd *Handler
-		p.reset()
-		// parse the sequence
-		for _, ch := range v.seq {
-			hd = p.processInput(ch)
-		}
-
-		if hd != nil {
-			// handle the instruction
-			hd.handle(emu)
-
-			// get the result
-			windowTitle := emu.cf.windowTitle
-			iconName := emu.cf.iconName
-
-			if hd.id != v.hdIDs[0] {
-				t.Errorf("%s seq=%q handler expect %q, got %q\n", v.name, v.seq, strHandlerID[v.hdIDs[0]], strHandlerID[hd.id])
-			}
-			if v.title && !v.icon && windowTitle != v.wantStr {
-				t.Errorf("%s seq=%q only title should be set.\nexpect %q, \ngot %q\n", v.name, v.seq, v.wantStr, windowTitle)
-			}
-			if !v.title && v.icon && iconName != v.wantStr {
-				t.Errorf("%s seq=%q only icon name should be set.\nexpect %q, \ngot %q\n", v.name, v.seq, v.wantStr, iconName)
-			}
-			if v.title && v.icon && (iconName != v.wantStr || windowTitle != v.wantStr) {
-				t.Errorf("%s seq=%q both icon name and window title should be set.\nexpect %q, \ngot window title:%q\ngot iconName:%q\n",
-					v.name, v.seq, v.wantStr, windowTitle, iconName)
-			}
-		} else {
-			if p.inputState == InputState_Normal && v.wantStr == "" {
-				continue
-			}
-			t.Errorf("%s got nil return\n", v.name)
-		}
-	}
-}
-
-func TestHandle_OSC_Abort(t *testing.T) {
-	tc := []struct {
-		name string
-		seq  string
-		want string
-	}{
-		{"OSC malform 1         ", "\x1B]ada\x1B\\", "OSC: no ';' exist."},
-		{"OSC malform 2         ", "\x1B]7fy;ada\x1B\\", "OSC: illegal Ps parameter."},
-		{"OSC Ps overflow: >120 ", "\x1B]121;home\x1B\\", "OSC: malformed command string"},
-		{"OSC malform 3         ", "\x1B]7;ada\x1B\\", "unhandled OSC:"},
-	}
-	p := NewParser()
-	var place strings.Builder
-	p.logT.SetOutput(&place) // redirect the output to the string builder
-	p.logU.SetOutput(&place)
-
-	for _, v := range tc {
-		// reset the out put for every test case
-		place.Reset()
-		var hd *Handler
-
-		// parse the sequence
-		for _, ch := range v.seq {
-			hd = p.processInput(ch)
-		}
-
-		if hd != nil {
-			t.Errorf("%s: seq=%q for abort case, hd should be nil. hd=%v\n", v.name, v.seq, hd)
-		}
-
-		got := place.String()
-		if !strings.Contains(got, v.want) {
-			t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, v.want, got)
-		}
-	}
-}
-
 func TestHandle_BEL(t *testing.T) {
 	seq := "\x07"
 	emu := NewEmulator3(8, 4, 4)
@@ -1071,19 +1147,19 @@ func TestHandle_priDA_secDA_DSR(t *testing.T) {
 }
 
 // calculate the cell content in row, based on y2,y1 value
-func getCellAtRow(y1, y2 int, row int) string {
-	if y2 < y1 {
-		return "_"
-	}
-
-	gap := y2 - y1 + 1
-	if y1 == 0 {
-		gap *= -1
-	}
-
-	ch := rune(0x30 + row + gap)
-	return string(ch)
-}
+// func getCellAtRow(y1, y2 int, row int) string {
+// 	if y2 < y1 {
+// 		return "_"
+// 	}
+//
+// 	gap := y2 - y1 + 1
+// 	if y1 == 0 {
+// 		gap *= -1
+// 	}
+//
+// 	ch := rune(0x30 + row + gap)
+// 	return string(ch)
+// }
 
 func TestHandle_VPA_VPR_CHA_HPA_HPR_CNL_CPL(t *testing.T) {
 	tc := []struct {
@@ -1168,6 +1244,36 @@ func TestHistory(t *testing.T) {
 	}
 }
 
+func TestHistoryReset(t *testing.T) {
+	tc := []struct {
+		name    string
+		seq     string
+		history string
+	}{
+		{"unhandled sequence", "\x1B[23;24i", "\x1B[23;24i"},
+	}
+	p := NewParser()
+	var place strings.Builder
+	p.logU.SetOutput(&place) // redirect the output to the string builder
+
+	for _, v := range tc {
+		// reset the output
+		place.Reset()
+
+		// process control sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) != 0 {
+			t.Errorf("%s expect %d handlers.", v.name, len(hds))
+		}
+
+		if !strings.Contains(place.String(), fmt.Sprintf("%q", v.history)) {
+			t.Errorf("%s:\t %q expect %q, got %s\n", v.name, v.seq, v.history, place.String())
+		}
+	}
+}
+
 func TestHandle_DECSTBM(t *testing.T) {
 	tc := []struct {
 		name        string
@@ -1235,36 +1341,6 @@ func TestHandle_DECSTBM(t *testing.T) {
 				t.Errorf("%s seq=%q expect output=%q, got %q\n", v.name, v.seq, v.logMessage, place.String())
 			}
 		default:
-		}
-	}
-}
-
-func TestHistoryReset(t *testing.T) {
-	tc := []struct {
-		name    string
-		seq     string
-		history string
-	}{
-		{"unhandled sequence", "\x1B[23;24i", "\x1B[23;24i"},
-	}
-	p := NewParser()
-	var place strings.Builder
-	p.logU.SetOutput(&place) // redirect the output to the string builder
-
-	for _, v := range tc {
-		// reset the output
-		place.Reset()
-
-		// process control sequence
-		hds := make([]*Handler, 0, 16)
-		hds = p.processStream(v.seq, hds)
-
-		if len(hds) != 0 {
-			t.Errorf("%s expect %d handlers.", v.name, len(hds))
-		}
-
-		if !strings.Contains(place.String(), fmt.Sprintf("%q", v.history)) {
-			t.Errorf("%s:\t %q expect %q, got %s\n", v.name, v.seq, v.history, place.String())
 		}
 	}
 }

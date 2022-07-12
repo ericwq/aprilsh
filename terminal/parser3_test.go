@@ -55,6 +55,72 @@ const (
 	t_bracketedPasteMode
 )
 
+func t_getDECmode(emu *emulator, which DECmode) bool {
+	switch which {
+	case t_reverseVideo:
+		return emu.reverseVideo
+	case t_autoWrapMode:
+		return emu.autoWrapMode
+	case t_showCursorMode:
+		return emu.showCursorMode
+	case t_focusEventMode:
+		return emu.mouseTrk.focusEventMode
+	case t_altScrollMode:
+		return emu.altScrollMode
+	case t_altSendsEscape:
+		return emu.altSendsEscape
+	case t_bracketedPasteMode:
+		return emu.bracketedPasteMode
+	}
+	return false
+}
+
+// func t_resetDECmode(ds *emulator, which DECmode, value bool) {
+// 	switch which {
+// 	case t_reverseVideo:
+// 		ds.reverseVideo = value
+// 	case t_autoWrapMode:
+// 		ds.autoWrapMode = value
+// 	case t_showCursorMode:
+// 		ds.showCursorMode = value
+// 	case t_focusEventMode:
+// 		ds.mouseTrk.focusEventMode = value
+// 	case t_altScrollMode:
+// 		ds.altScrollMode = value
+// 	case t_altSendsEscape:
+// 		ds.altSendsEscape = value
+// 	case t_bracketedPasteMode:
+// 		ds.bracketedPasteMode = value
+// 	}
+// }
+
+func t_getANSImode(emu *emulator, which ANSImode) bool {
+	switch which {
+	case t_keyboardLocked:
+		return emu.keyboardLocked
+	case t_insertMode:
+		return emu.insertMode
+	case t_localEcho:
+		return emu.localEcho
+	case t_autoNewlineMode:
+		return emu.autoNewlineMode
+	}
+	return false
+}
+
+// func t_resetANSImode(emu *emulator, which ANSImode, value bool) {
+// 	switch which {
+// 	case t_keyboardLocked:
+// 		emu.keyboardLocked = value
+// 	case t_insertMode:
+// 		emu.insertMode = value
+// 	case t_localEcho:
+// 		emu.localEcho = value
+// 	case t_autoNewlineMode:
+// 		emu.autoNewlineMode = value
+// 	}
+// }
+
 func TestHandle_SM_RM(t *testing.T) {
 	tc := []struct {
 		name  string
@@ -105,33 +171,6 @@ func TestHandle_SM_RM(t *testing.T) {
 	}
 }
 
-func t_getANSImode(emu *emulator, which ANSImode) bool {
-	switch which {
-	case t_keyboardLocked:
-		return emu.keyboardLocked
-	case t_insertMode:
-		return emu.insertMode
-	case t_localEcho:
-		return emu.localEcho
-	case t_autoNewlineMode:
-		return emu.autoNewlineMode
-	}
-	return false
-}
-
-// func t_resetANSImode(emu *emulator, which ANSImode, value bool) {
-// 	switch which {
-// 	case t_keyboardLocked:
-// 		emu.keyboardLocked = value
-// 	case t_insertMode:
-// 		emu.insertMode = value
-// 	case t_localEcho:
-// 		emu.localEcho = value
-// 	case t_autoNewlineMode:
-// 		emu.autoNewlineMode = value
-// 	}
-// }
-
 func TestHandle_SM_RM_Unknow(t *testing.T) {
 	tc := []struct {
 		name string
@@ -167,6 +206,48 @@ func TestHandle_SM_RM_Unknow(t *testing.T) {
 				t.Errorf("%s: %q\t expect %q, got %q\n", v.name, v.seq, v.want, place.String())
 			}
 		})
+	}
+}
+
+func TestHandle_privSM_privRM_67(t *testing.T) {
+	tc := []struct {
+		name         string
+		seq          string
+		hdIDs        []int
+		bkspSendsDel bool
+	}{
+		{"enable DECBKM—Backarrow Key Mode", "\x1B[?67h", []int{csi_privSM}, false},
+		{"disable DECBKM—Backarrow Key Mode", "\x1B[?67l", []int{csi_privRM}, true},
+	}
+
+	p := NewParser()
+	emu := NewEmulator3(80, 40, 500)
+	var place strings.Builder
+	emu.logI.SetOutput(&place)
+	emu.logT.SetOutput(&place)
+
+	for _, v := range tc {
+
+		// process control sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) != 1 {
+			t.Errorf("%s got %d handlers.", v.name, len(hds))
+		}
+
+		// handle the control sequence
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+			}
+		}
+
+		got := emu.bkspSendsDel
+		if got != v.bkspSendsDel {
+			t.Errorf("%s:\t %q expect %t,got %t\n", v.name, v.seq, v.bkspSendsDel, got)
+		}
 	}
 }
 
@@ -227,45 +308,6 @@ func TestHandle_privSM_privRM_BOOL(t *testing.T) {
 		})
 	}
 }
-
-func t_getDECmode(emu *emulator, which DECmode) bool {
-	switch which {
-	case t_reverseVideo:
-		return emu.reverseVideo
-	case t_autoWrapMode:
-		return emu.autoWrapMode
-	case t_showCursorMode:
-		return emu.showCursorMode
-	case t_focusEventMode:
-		return emu.mouseTrk.focusEventMode
-	case t_altScrollMode:
-		return emu.altScrollMode
-	case t_altSendsEscape:
-		return emu.altSendsEscape
-	case t_bracketedPasteMode:
-		return emu.bracketedPasteMode
-	}
-	return false
-}
-
-// func t_resetDECmode(ds *emulator, which DECmode, value bool) {
-// 	switch which {
-// 	case t_reverseVideo:
-// 		ds.reverseVideo = value
-// 	case t_autoWrapMode:
-// 		ds.autoWrapMode = value
-// 	case t_showCursorMode:
-// 		ds.showCursorMode = value
-// 	case t_focusEventMode:
-// 		ds.mouseTrk.focusEventMode = value
-// 	case t_altScrollMode:
-// 		ds.altScrollMode = value
-// 	case t_altSendsEscape:
-// 		ds.altSendsEscape = value
-// 	case t_bracketedPasteMode:
-// 		ds.bracketedPasteMode = value
-// 	}
-// }
 
 func TestHandle_privSM_privRM_Log(t *testing.T) {
 	tc := []struct {
@@ -771,6 +813,99 @@ func TestHandle_privSM_privRM_2(t *testing.T) {
 	}
 }
 
+func TestHandle_OSC_0_1_2(t *testing.T) {
+	tc := []struct {
+		name    string
+		hdIDs   []int
+		icon    bool
+		title   bool
+		seq     string
+		wantStr string
+	}{
+		{"OSC 0;Pt BEL        ", []int{osc_0_1_2}, true, true, "\x1B]0;ada\x07", "ada"},
+		{"OSC 1;Pt 7bit ST    ", []int{osc_0_1_2}, true, false, "\x1B]1;adas\x1B\\", "adas"},
+		{"OSC 2;Pt BEL chinese", []int{osc_0_1_2}, false, true, "\x1B]2;[道德经]\x07", "[道德经]"},
+		{"OSC 2;Pt BEL unusual", []int{osc_0_1_2}, false, true, "\x1B]2;[neovim]\x1B78\x07", "[neovim]\x1B78"},
+	}
+
+	p := NewParser()
+	emu := NewEmulator3(8, 4, 4) // this is the pre-condidtion for the test case.
+
+	for _, v := range tc {
+		var hd *Handler
+		p.reset()
+		// parse the sequence
+		for _, ch := range v.seq {
+			hd = p.processInput(ch)
+		}
+
+		if hd != nil {
+			// handle the instruction
+			hd.handle(emu)
+
+			// get the result
+			windowTitle := emu.cf.windowTitle
+			iconName := emu.cf.iconName
+
+			if hd.id != v.hdIDs[0] {
+				t.Errorf("%s seq=%q handler expect %q, got %q\n", v.name, v.seq, strHandlerID[v.hdIDs[0]], strHandlerID[hd.id])
+			}
+			if v.title && !v.icon && windowTitle != v.wantStr {
+				t.Errorf("%s seq=%q only title should be set.\nexpect %q, \ngot %q\n", v.name, v.seq, v.wantStr, windowTitle)
+			}
+			if !v.title && v.icon && iconName != v.wantStr {
+				t.Errorf("%s seq=%q only icon name should be set.\nexpect %q, \ngot %q\n", v.name, v.seq, v.wantStr, iconName)
+			}
+			if v.title && v.icon && (iconName != v.wantStr || windowTitle != v.wantStr) {
+				t.Errorf("%s seq=%q both icon name and window title should be set.\nexpect %q, \ngot window title:%q\ngot iconName:%q\n",
+					v.name, v.seq, v.wantStr, windowTitle, iconName)
+			}
+		} else {
+			if p.inputState == InputState_Normal && v.wantStr == "" {
+				continue
+			}
+			t.Errorf("%s got nil return\n", v.name)
+		}
+	}
+}
+
+func TestHandle_OSC_Abort(t *testing.T) {
+	tc := []struct {
+		name string
+		seq  string
+		want string
+	}{
+		{"OSC malform 1         ", "\x1B]ada\x1B\\", "OSC: no ';' exist."},
+		{"OSC malform 2         ", "\x1B]7fy;ada\x1B\\", "OSC: illegal Ps parameter."},
+		{"OSC Ps overflow: >120 ", "\x1B]121;home\x1B\\", "OSC: malformed command string"},
+		{"OSC malform 3         ", "\x1B]7;ada\x1B\\", "unhandled OSC:"},
+	}
+	p := NewParser()
+	var place strings.Builder
+	p.logT.SetOutput(&place) // redirect the output to the string builder
+	p.logU.SetOutput(&place)
+
+	for _, v := range tc {
+		// reset the out put for every test case
+		place.Reset()
+		var hd *Handler
+
+		// parse the sequence
+		for _, ch := range v.seq {
+			hd = p.processInput(ch)
+		}
+
+		if hd != nil {
+			t.Errorf("%s: seq=%q for abort case, hd should be nil. hd=%v\n", v.name, v.seq, hd)
+		}
+
+		got := place.String()
+		if !strings.Contains(got, v.want) {
+			t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, v.want, got)
+		}
+	}
+}
+
 func TestHandle_OSC_52(t *testing.T) {
 	tc := []struct {
 		name       string
@@ -1139,175 +1274,6 @@ func TestHandle_DCS(t *testing.T) {
 				if got != v.wantMsg {
 					t.Errorf("%s: seq=%q, \nexpect\t %q, \ngot\t\t %q\n", v.name, v.seq, v.wantMsg, got)
 				}
-			}
-		})
-	}
-}
-
-func TestHandle_SGR_RGBcolor(t *testing.T) {
-	tc := []struct {
-		name       string
-		hdIDs      []int
-		fr, fg, fb int
-		br, bg, bb int
-		attr       charAttribute
-		seq        string
-	}{
-		{"RGB Color 1", []int{csi_sgr}, 33, 47, 12, 123, 24, 34, Bold, "\x1B[0;1;38;2;33;47;12;48;2;123;24;34m"},
-		{"RGB Color 2", []int{csi_sgr}, 0, 0, 0, 0, 0, 0, Italic, "\x1B[0;3;38:2:0:0:0;48:2:0:0:0m"},
-		{"RGB Color 3", []int{csi_sgr}, 12, 34, 128, 59, 190, 155, Underlined, "\x1B[0;4;38:2:12:34:128;48:2:59:190:155m"},
-	}
-
-	p := NewParser()
-	// the default size of emu is 80x40 [colxrow]
-	emu := NewEmulator3(8, 4, 4) // this is the pre-condidtion for the test case.
-
-	for _, v := range tc {
-		t.Run(v.name, func(t *testing.T) {
-			// process control sequence
-			hds := make([]*Handler, 0, 16)
-			hds = p.processStream(v.seq, hds)
-
-			if len(hds) == 0 {
-				t.Errorf("%s got zero handlers.", v.name)
-			}
-
-			// reset the renditions
-			emu.attrs.renditions = Renditions{}
-
-			// handle the control sequence
-			for j, hd := range hds {
-				hd.handle(emu)
-				if hd.id != v.hdIDs[j] { // validate the control sequences id
-					t.Errorf("%s: seq=%q expect %s, got %s\n",
-						v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
-				}
-			}
-
-			// validate the result
-			got := emu.attrs.renditions
-			want := Renditions{}
-			want.SetBgColor(v.br, v.bg, v.bb)
-			want.SetFgColor(v.fr, v.fg, v.fb)
-			want.SetAttributes(v.attr, true)
-
-			if got != want {
-				t.Errorf("%s:\t %q expect renditions %v, got %v", v.name, v.seq, want, got)
-			}
-		})
-	}
-}
-
-func TestHandle_SGR_ANSIcolor(t *testing.T) {
-	tc := []struct {
-		name  string
-		hdIDs []int
-		fg    Color
-		bg    Color
-		attr  charAttribute
-		seq   string
-	}{
-		// here the charAttribute(38) is an unused value, which means nothing for the result.
-		{"default Color", []int{csi_sgr}, ColorDefault, ColorDefault, charAttribute(38), "\x1B[200m"}, // 38,48 is empty charAttribute
-		{"8 Color", []int{csi_sgr}, ColorSilver, ColorBlack, Bold, "\x1B[1;37;40m"},
-		{"8 Color 2", []int{csi_sgr}, ColorMaroon, ColorMaroon, Italic, "\x1B[3;31;41m"},
-		{"16 Color", []int{csi_sgr}, ColorRed, ColorWhite, Underlined, "\x1B[4;91;107m"},
-		{"256 Color 1", []int{csi_sgr}, Color33, Color47, Bold, "\x1B[0;1;38:5:33;48:5:47m"},
-		{"256 Color 3", []int{csi_sgr}, Color128, Color155, Underlined, "\x1B[0;4;38:5:128;48:5:155m"},
-	}
-
-	p := NewParser()
-	emu := NewEmulator3(8, 4, 4)
-	var place strings.Builder
-	// this will swallow the output from SGR, such as : attribute not supported.
-	emu.logU.SetOutput(&place)
-
-	for _, v := range tc {
-		t.Run(v.name, func(t *testing.T) {
-			// process control sequence
-			hds := make([]*Handler, 0, 16)
-			hds = p.processStream(v.seq, hds)
-
-			if len(hds) == 0 {
-				t.Errorf("%s got zero handlers.", v.name)
-			}
-
-			emu.attrs.renditions = Renditions{}
-
-			// handle the control sequence
-			for j, hd := range hds {
-				hd.handle(emu)
-				if hd.id != v.hdIDs[j] { // validate the control sequences id
-					t.Errorf("%s: seq=%q expect %s, got %s\n",
-						v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
-				}
-			}
-
-			// validate the result
-			got := emu.attrs.renditions
-			want := Renditions{}
-			want.setAnsiForeground(v.fg)
-			want.setAnsiBackground(v.bg)
-			want.buildRendition(int(v.attr))
-
-			if got != want {
-				t.Errorf("%s:\t %q expect renditions %v, got %v", v.name, v.seq, want, got)
-			}
-		})
-	}
-}
-
-func TestHandle_SGR_Break(t *testing.T) {
-	tc := []struct {
-		name  string
-		hdIDs []int
-		seq   string
-	}{
-		// the folloiwng test the break case for SGR
-		{"break 38    ", []int{csi_sgr}, "\x1B[38m"},
-		{"break 38;   ", []int{csi_sgr}, "\x1B[38;m"},
-		{"break 38:5  ", []int{csi_sgr}, "\x1B[38;5m"},
-		{"break 38:2-1", []int{csi_sgr}, "\x1B[38:2:23m"},
-		{"break 38:2-2", []int{csi_sgr}, "\x1B[38:2:23:24m"},
-		{"break 38:7  ", []int{csi_sgr}, "\x1B[38;7m"},
-		{"break 48    ", []int{csi_sgr}, "\x1B[48m"},
-		{"break 48;   ", []int{csi_sgr}, "\x1B[48;m"},
-		{"break 48:5  ", []int{csi_sgr}, "\x1B[48;5m"},
-		{"break 48:2-1", []int{csi_sgr}, "\x1B[48:2:23m"},
-		{"break 48:2-2", []int{csi_sgr}, "\x1B[48:2:23:22m"},
-		{"break 48:7  ", []int{csi_sgr}, "\x1B[48;7m"},
-	}
-	p := NewParser()
-	emu := NewEmulator3(8, 4, 4)
-
-	for _, v := range tc {
-		t.Run(v.name, func(t *testing.T) {
-			// process control sequence
-			hds := make([]*Handler, 0, 16)
-			hds = p.processStream(v.seq, hds)
-
-			if len(hds) == 0 {
-				t.Errorf("%s got zero handlers.", v.name)
-			}
-
-			// reset the renditions
-			emu.attrs.renditions = Renditions{}
-
-			// handle the control sequence
-			for j, hd := range hds {
-				hd.handle(emu)
-				if hd.id != v.hdIDs[j] { // validate the control sequences id
-					t.Errorf("%s: seq=%q expect %s, got %s\n",
-						v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
-				}
-			}
-
-			// the break case should not affect the renditions, it will keep the same.
-			got := emu.attrs.renditions
-			want := Renditions{}
-
-			if got != want {
-				t.Errorf("%s:\t %q expect renditions \n%v, got \n%v\n", v.name, v.seq, want, got)
 			}
 		})
 	}
