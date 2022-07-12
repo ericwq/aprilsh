@@ -118,11 +118,13 @@ func printCells(fb *Framebuffer, rows ...int) string {
 		}
 	}
 	// print the saveLines if it has
-	if len(rows) == 0 && fb.saveLines > 0 {
+	if fb.saveLines > 0 {
 		for r := fb.nRows; r < fb.nRows+fb.saveLines; r++ {
-			start := r*fb.nCols + 0
-			end := start + fb.nCols
-			printRowAt(r, start, end, fb, &output)
+			if len(rows) == 0 || inScope(rows, r) {
+				start := r*fb.nCols + 0
+				end := start + fb.nCols
+				printRowAt(r, start, end, fb, &output)
+			}
 		}
 	}
 	return output.String()

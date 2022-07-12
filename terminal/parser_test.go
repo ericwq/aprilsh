@@ -294,10 +294,11 @@ func TestHandle_Graphemes_Wrap(t *testing.T) {
 		{"chinese even wrap", "\x1B[9;79H@@四姑娘山", 8, []int{78, 79, 0, 2, 4, 6}, "@@四姑娘山"},
 		{"chinese odd wrap", "\x1B[10;79H#海螺沟", 9, []int{78, 0, 2, 4, 6}, "#海螺沟"},
 		{"insert wrap", "\x1B[4h\x1B[11;78H#th#", 10, []int{77, 78, 79, 0}, "#th#"},
+		{"english scroll wrap", "\x1B[40;78H#th#", 39, []int{77, 78, 79, 0}, "#th#"},
 	}
 
 	p := NewParser()
-	emu := NewEmulator3(80, 40, 40)
+	emu := NewEmulator3(80, 40, 10)
 	var place strings.Builder
 	emu.logT.SetOutput(&place)
 
@@ -315,29 +316,34 @@ func TestHandle_Graphemes_Wrap(t *testing.T) {
 				hd.handle(emu)
 			}
 
-			// t.Logf("%s expect %s, got \n%s", v.name, v.graphemes, printCells(emu.cf, v.posY))
-			// t.Logf("%s expect %s, got \n%s", v.name, v.graphemes, printCells(emu.cf, v.posY+1))
-
 			// validate the result with data string
 			graphemes := uniseg.NewGraphemes(v.graphemes)
 			rows := v.posY
 			index := 0
+			// scroll will change the row number
+			if v.posY == 39 {
+				rows = v.posY - 1
+			}
 			for graphemes.Next() {
 				// the expected content
 				chs := graphemes.Runes()
-
-				// get the cell from framebuffer
 				cols := v.posX[index]
-				if cols == 0 { // change to the next row
+				// change to the next row
+				if cols == 0 {
 					rows += 1
 				}
+				// get the cell from framebuffer
 				cell := emu.cf.getCell(rows, cols)
 
 				if cell.contents != string(chs) {
-					t.Errorf("%s:\t cell [%2d,%2d] expect %q, got %q\n", v.name, rows, cols, string(chs), cell.contents)
+					t.Errorf("%s cell [%2d,%2d] expect %q, got %q\n", v.name, rows, cols, string(chs), cell.contents)
 				}
-
 				index += 1
+			}
+
+			if t.Failed() {
+				t.Errorf("%s row=%d\n%s", v.name, v.posY, printCells(emu.cf, v.posY))
+				t.Errorf("%s row=%d\n%s", v.name, v.posY+1, printCells(emu.cf, v.posY+1))
 			}
 		})
 	}

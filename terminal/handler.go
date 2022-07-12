@@ -268,7 +268,6 @@ func hdl_graphemes(emu *emulator, chs ...rune) {
 	// fmt.Printf("hdl_graphemes print %s at (%d,%d)\n", string(chs), emu.posY, emu.posX)
 	c := emu.cf.getMutableCell(emu.posY, emu.posX)
 	*c = emu.attrs
-
 	c.contents = string(chs)
 
 	/// for double width graphemes
