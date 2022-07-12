@@ -323,7 +323,8 @@ func hdl_c0_cr(emu *emulator) {
 }
 
 // Line Feed
-// TODO the difference between IND and LF
+// move cursor to the next row, scroll down if necessary.
+// if the screen scrolled, erase the line from current position.
 func hdl_c0_lf(emu *emulator) {
 	if hdl_esc_ind(emu) {
 		emu.cf.eraseInRow(emu.posY, emu.posX, emu.nColsEff-emu.posX, emu.attrs)
