@@ -81,7 +81,7 @@ type Parser struct {
 	ch         rune   // currrent rune
 	chs        []rune // current graphemes
 	lastChs    []rune // last graphemes
-	handleDone bool   // handler is ready
+	handleReady bool   // handler is ready
 
 	// numeric parameters
 	inputOps  []int // numeric parameters
@@ -1457,7 +1457,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 
 	defer func() {
 		if hd != nil {
-			p.handleDone = true
+			p.handleReady = true
 		}
 	}()
 
@@ -1470,9 +1470,9 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 	} else if len(chs) == 1 { // it's either grapheme or control sequence
 		p.chs = chs
 		ch = chs[0]
-		if p.handleDone {
+		if p.handleReady {
 			p.resetHistory()
-			p.handleDone = false
+			p.handleReady = false
 		}
 		p.appendToHistory(ch)
 	} else { // empty chs
