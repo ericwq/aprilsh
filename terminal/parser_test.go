@@ -980,23 +980,27 @@ func TestHandle_BEL(t *testing.T) {
 
 func TestHandle_RI_NEL(t *testing.T) {
 	tc := []struct {
-		name  string
-		seq   string
-		wantX int
-		wantY int
-		hdIDs []int
+		name       string
+		seq        string
+		wantY      int
+		wantX      int
+		hdIDs      []int
+		scrollHead int
 	}{
-		{"RI ", "\x1B[11;6H\x1BM", 5, 9, []int{csi_cup, esc_ri}},   // move cursor up to the previouse row, may scroll up
-		{"NEL", "\x1B[11;6H\x1BE", 0, 11, []int{csi_cup, esc_nel}}, // move cursor down to next row, may scroll down
+		{"RI ", "\x1B[11;6H\x1BM", 9, 5, []int{csi_cup, esc_ri}, 0},   // move cursor up to the previouse row
+		{"RI ", "\x1B[1;6H\x1BM", 0, 5, []int{csi_cup, esc_ri}, 39},   // move cursor up to the previouse row, scroll down
+		{"NEL", "\x1B[11;6H\x1BE", 11, 0, []int{csi_cup, esc_nel}, 0}, // move cursor down to next row, may scroll up
 	}
 
 	p := NewParser()
-	emu := NewEmulator3(40, 20, 0)
+	emu := NewEmulator3(40, 20, 20)
 	var place strings.Builder
 	emu.logI.SetOutput(&place) // redirect the output to the string builder
 	emu.logT.SetOutput(&place) // redirect the output to the string builder
 
 	for _, v := range tc {
+		emu.resetTerminal()
+
 		// parse control sequence
 		hds := make([]*Handler, 0, 16)
 		hds = p.processStream(v.seq, hds)
@@ -1019,6 +1023,11 @@ func TestHandle_RI_NEL(t *testing.T) {
 		if gotX != v.wantX || gotY != v.wantY {
 			t.Errorf("%s seq=%q expect cursor position (%d,%d), got (%d,%d)\n",
 				v.name, v.seq, v.wantY, v.wantX, gotY, gotX)
+		}
+
+		scrollHead := emu.cf.scrollHead
+		if scrollHead != v.scrollHead {
+			t.Errorf("%s scrollHead expect %d, got %d\n", v.name, v.scrollHead, scrollHead)
 		}
 	}
 }
