@@ -662,7 +662,7 @@ func TestHandle_HTS_TBC(t *testing.T) {
 		{"Set/Clear tab stop 2", []int{csi_cup, esc_hts, csi_tbc}, "\x1B[21;39H\x1BH\x1B[0g"},
 		{"Set/Clear tab stop 3", []int{csi_cup, esc_hts, csi_tbc}, "\x1B[21;47H\x1BH\x1B[3g"},
 	}
-
+	// TODO test to see the HTS same position
 	p := NewParser()
 	emu := NewEmulator3(80, 40, 5)
 	var place strings.Builder
@@ -714,9 +714,16 @@ func TestHandle_HT_CHT_CBT(t *testing.T) {
 		{"HT case 1  ", []int{csi_cup, c0_ht}, 8, "\x1B[21;6H\x09"},                 // move to the next tab stop
 		{"HT case 2  ", []int{csi_cup, c0_ht}, 16, "\x1B[21;10H\x09"},               // move to the next tab stop
 		{"CBT back to the 3 tab", []int{csi_cup, csi_cbt}, 8, "\x1B[21;30H\x1B[3Z"}, // move backward to the previous 3 tab stop
+		{"CHT to the next 1 tab", []int{csi_cup, csi_cht}, 8, "\x1B[21;3H\x1B[I"},   // move to the next N tab stop
 		{"CHT to the next 4 tab", []int{csi_cup, csi_cht}, 32, "\x1B[21;3H\x1B[4I"}, // move to the next N tab stop
 		{"CHT to the right edge", []int{csi_cup, csi_cht}, 79, "\x1B[21;60H\x1B[4I"},
-		{"CBT back to the left edge", []int{csi_cup, csi_cbt}, 0, "\x1B[21;3H\x1B[3Z"},
+		{"CBT rule to left edge", []int{csi_cup, csi_cbt}, 0, "\x1B[21;3H\x1B[3Z"}, // under tab rules
+		{
+			"CBT tab stop to left edge",
+			[]int{csi_cup, esc_hts, csi_cup, esc_hts, csi_cbt}, // set 2 tab stops, CBT 2 backwards
+			0,
+			"\x1B[21;4H\x1BH\x1B[21;7H\x1BH\x1B[2Z",
+		},
 	}
 
 	p := NewParser()
@@ -730,7 +737,7 @@ func TestHandle_HT_CHT_CBT(t *testing.T) {
 		hds := make([]*Handler, 0, 16)
 		hds = p.processStream(v.seq, hds)
 
-		if len(hds) != 2 {
+		if len(hds) < 2 {
 			t.Errorf("%s expect %d handlers, got %d handlers.", v.name, 2, len(hds))
 		}
 
