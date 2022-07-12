@@ -695,14 +695,21 @@ func TestHandle_SO_SI(t *testing.T) {
 		name string
 		r    rune
 		want int
+		msg  string // test traceNormalInput()
 	}{
-		{"SO", 0x0E, 1}, // G1 as GL
-		{"SI", 0x0F, 0}, // G0 as GL
+		{"SO", 0x0E, 1, "Input:['\x0e'] inputOps="}, // G1 as GL
+		{"SI", 0x0F, 0, "Input:['\x0f'] inputOps="}, // G0 as GL
 	}
 
 	p := NewParser()
+	var place strings.Builder // all the message is output to herer
+	p.logTrace = true
+	p.logT.SetOutput(&place)
+
 	emu := NewEmulator3(8, 4, 4)
 	for _, v := range tc {
+		place.Reset()
+
 		hd := p.processInput(v.r)
 		if hd != nil {
 			hd.handle(emu)
@@ -710,7 +717,9 @@ func TestHandle_SO_SI(t *testing.T) {
 			if emu.charsetState.gl != v.want {
 				t.Errorf("%s expect %d, got %d\n", v.name, v.want, emu.charsetState.gl)
 			}
-
+			if strings.Contains(place.String(), v.msg) {
+				t.Errorf("msg expect %s, got %s\n", v.msg, place.String())
+			}
 		} else {
 			t.Errorf("%s got nil return\n", v.name)
 		}

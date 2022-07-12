@@ -1856,3 +1856,44 @@ func TestHandle_DEC_KPNM_KPAM(t *testing.T) {
 		}
 	}
 }
+
+func TestHandle_ESCSpaceHash_Unhandled(t *testing.T) {
+	tc := []struct {
+		name  string
+		seq   string
+		state int
+		msg   string
+	}{
+		{"esc space F", "\x1B F", InputState_Normal, "S7C1T: Send 7-bit controls"},
+		{"esc space G", "\x1B G", InputState_Normal, "S8C1T: Send 8-bit controls"},
+		{"esc space L", "\x1B L", InputState_Normal, "Set ANSI conformance level 1"},
+		{"esc space M", "\x1B M", InputState_Normal, "Set ANSI conformance level 2"},
+		{"esc space N", "\x1B N", InputState_Normal, "Set ANSI conformance level 3"},
+		{"esc space default", "\x1B O", InputState_Normal, "Unhandled input:"}, // esc space unhandle
+		{"esc hash 3", "\x1B#3", InputState_Normal, "DECDHL: Double-height, top half."},
+		{"esc hash 4", "\x1B#4", InputState_Normal, "DECDHL: Double-height, bottom half."},
+		{"esc hash 5", "\x1B#5", InputState_Normal, "DECSWL: Single-width line."},
+		{"esc hash 6", "\x1B#6", InputState_Normal, "DECDWL: Double-width line."},
+		{"esc hash default", "\x1B#9", InputState_Normal, "Unhandled input:"},   // esc hash unhandle
+		{"csi quote default", "\x1B['o", InputState_Normal, "Unhandled input:"}, // csi quote unhandle
+		{"csi space default", "\x1B[ o", InputState_Normal, "Unhandled input:"}, // csi space unhandle
+	}
+
+	p := NewParser()
+	var place strings.Builder // all the message is output to herer
+	p.logU.SetOutput(&place)
+
+	for _, v := range tc {
+		place.Reset()
+
+		hds := make([]*Handler, 0, 16)
+		p.processStream(v.seq, hds)
+
+		state := p.getState()
+		if state != v.state || !strings.Contains(place.String(), v.msg) {
+			t.Errorf("%s seq=%q\n", v.name, v.seq)
+			t.Errorf("state expect %s, got %s\n", strInputState[v.state], strInputState[state])
+			t.Errorf("msg expect %s, got %s\n", v.msg, place.String())
+		}
+	}
+}

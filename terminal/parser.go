@@ -77,10 +77,10 @@ var strInputState = [...]string{
 }
 
 type Parser struct {
-	inputState int    // parser state
-	ch         rune   // currrent rune
-	chs        []rune // current graphemes
-	lastChs    []rune // last graphemes
+	inputState  int    // parser state
+	ch          rune   // currrent rune
+	chs         []rune // current graphemes
+	lastChs     []rune // last graphemes
 	handleReady bool   // handler is ready
 
 	// numeric parameters
@@ -92,10 +92,10 @@ type Parser struct {
 	history *list.List
 
 	// various indicators
-	readPos         int
-	lastEscBegin    int
-	lastNormalBegin int
-	lastStopPos     int
+	// readPos         int
+	// lastEscBegin    int
+	// lastNormalBegin int
+	// lastStopPos     int
 
 	argBuf strings.Builder // string parameter
 
@@ -129,6 +129,7 @@ func NewParser() *Parser {
 	return p
 }
 
+// return the state of parser
 func (p *Parser) getState() int {
 	return p.inputState
 }
@@ -186,6 +187,9 @@ func (p *Parser) getHistoryAt(reverseIdx int) (r rune) {
 func (p *Parser) reset() {
 	p.inputState = InputState_Normal
 	p.ch = 0x00
+	p.chs = nil
+	p.lastChs = nil
+	p.handleReady = false
 
 	// p.perror = nil
 
@@ -197,6 +201,8 @@ func (p *Parser) reset() {
 	p.resetHistory()
 	p.scsDst = 0x00
 	p.scsMod = 0x00
+	p.vtMode = false
+	p.logTrace = false
 }
 
 // trace the input if logTrace is true
@@ -227,7 +233,7 @@ func (p *Parser) setState(newState int) {
 	if newState == InputState_Normal {
 		p.nInputOps = 0
 		p.inputOps[0] = 0
-		p.lastNormalBegin = p.readPos + 1
+		// p.lastNormalBegin = p.readPos + 1
 
 	} else if p.inputState == InputState_Normal {
 		p.traceNormalInput()
@@ -1480,9 +1486,9 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 	}
 
 	// fmt.Printf("processInput got %q\n", chs)
-	p.lastEscBegin = 0
-	p.lastNormalBegin = 0
-	p.lastStopPos = 0
+	// p.lastEscBegin = 0
+	// p.lastNormalBegin = 0
+	// p.lastStopPos = 0
 	p.ch = ch
 
 	// p.logT.Printf(" ch=%q,\t nInputOps=%d, inputOps=%2d\n", ch, p.nInputOps, p.inputOps)
@@ -1494,7 +1500,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			p.setState(InputState_Escape)
 			p.inputOps[0] = 0
 			p.nInputOps = 1
-			p.lastEscBegin = p.readPos // TODO ???
+			// p.lastEscBegin = p.readPos // TODO ???
 		case '\x0D': // CR is \r
 			p.traceNormalInput()
 			hd = p.handle_CR()
@@ -1532,7 +1538,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case '\x1B': // ESC restarts ESC sequence
 			p.inputOps[0] = 0
 			p.nInputOps = 1
-			p.lastEscBegin = p.readPos // TODO ???
+			// p.lastEscBegin = p.readPos // TODO ???
 		case ' ':
 			p.setState(InputState_Esc_Space)
 		case '#':
