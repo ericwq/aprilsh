@@ -910,17 +910,20 @@ func TestHandle_ED_IL_DL(t *testing.T) {
 		tlY, tlX int
 		brY, brX int
 		seq      string
+		msg      string
 	}{
 		// use CUP to move cursor to start position, use DECALN to fill the screen, then call ED,IL or DL
-		{"ED erase below @ 1,0", []int{csi_cup, esc_decaln, csi_ed}, 1, 0, 3, 7, "\x1B[2;1H\x1B#8\x1B[J"},  // Erase Below (default).
-		{"ED erase below @ 3,7", []int{csi_cup, esc_decaln, csi_ed}, 3, 6, 3, 7, "\x1B[4;7H\x1B#8\x1B[0J"}, // Ps = 0  ⇒  Erase Below (default).
-		{"ED erase above @ 3,6", []int{csi_cup, esc_decaln, csi_ed}, 0, 0, 3, 6, "\x1B[4;7H\x1B#8\x1B[1J"}, // Ps = 1  ⇒  Erase Above.
-		{"ED erase all", []int{csi_cup, esc_decaln, csi_ed}, 0, 0, 3, 7, "\x1B[4;7H\x1B#8\x1B[2J"},         // Ps = 2  ⇒  Erase All.
-		{"IL 1 lines @ 2,2 mid", []int{csi_cup, esc_decaln, csi_il}, 2, 0, 3, 7, "\x1B[3;3H\x1B#8\x1B[L"},
-		{"IL 2 lines @ 1,0 bottom", []int{csi_cup, esc_decaln, csi_il}, 1, 0, 3, 7, "\x1B[2;1H\x1B#8\x1B[2L"},
-		{"IL 4 lines @ 0,0 top", []int{esc_decaln, csi_cup, csi_il}, 0, 0, 3, 7, "\x1B#8\x1B[1;1H\x1B[4L"},
-		{"DL 2 lines @ 1,0 top", []int{esc_decaln, csi_cup, csi_dl}, 1, 0, 3, 7, "\x1B#8\x1B[2;1H\x1B[2M"},
-		{"DL 1 lines @ 3,0 bottom", []int{esc_decaln, csi_cup, csi_dl}, 3, 0, 3, 7, "\x1B#8\x1B[4;1H\x1B[1M"},
+		{"ED erase below @ 1,0", []int{csi_cup, esc_decaln, csi_ed}, 1, 0, 3, 7, "\x1B[2;1H\x1B#8\x1B[J", "unused"},  // Erase Below (default).
+		{"ED erase below @ 3,7", []int{csi_cup, esc_decaln, csi_ed}, 3, 6, 3, 7, "\x1B[4;7H\x1B#8\x1B[0J", "unused"}, // Ps = 0  ⇒  Erase Below (default).
+		{"ED erase above @ 3,6", []int{csi_cup, esc_decaln, csi_ed}, 0, 0, 3, 6, "\x1B[4;7H\x1B#8\x1B[1J", "unused"}, // Ps = 1  ⇒  Erase Above.
+		{"ED erase all", []int{csi_cup, esc_decaln, csi_ed}, 0, 0, 3, 7, "\x1B[4;7H\x1B#8\x1B[2J", "unused"},         // Ps = 2  ⇒  Erase All.
+		{"ED saved lines, all", []int{csi_cup, esc_decaln, csi_ed}, 0, 0, 7, 7, "\x1B[4;7H\x1B#8\x1B[3J", "unused"},  // Ps = 3  ⇒  Erase saved lines.
+		{"IL 1 lines @ 2,2 mid", []int{csi_cup, esc_decaln, csi_il}, 2, 0, 3, 7, "\x1B[3;3H\x1B#8\x1B[L", "unused"},
+		{"IL 2 lines @ 1,0 bottom", []int{csi_cup, esc_decaln, csi_il}, 1, 0, 3, 7, "\x1B[2;1H\x1B#8\x1B[2L", "unused"},
+		{"IL 4 lines @ 0,0 top", []int{esc_decaln, csi_cup, csi_il}, 0, 0, 3, 7, "\x1B#8\x1B[1;1H\x1B[4L", "unused"},
+		{"DL 2 lines @ 1,0 top", []int{esc_decaln, csi_cup, csi_dl}, 1, 0, 3, 7, "\x1B#8\x1B[2;1H\x1B[2M", "unused"},
+		{"DL 1 lines @ 3,0 bottom", []int{esc_decaln, csi_cup, csi_dl}, 3, 0, 3, 7, "\x1B#8\x1B[4;1H\x1B[1M", "unused"},
+		{"ED default", []int{csi_cup, esc_decaln, csi_ed}, 0, 0, 0, 0, "\x1B[4;7H\x1B#8\x1B[4J", "Erase in Display with illegal param:"}, // Unhandled case
 	}
 
 	p := NewParser()
@@ -931,6 +934,7 @@ func TestHandle_ED_IL_DL(t *testing.T) {
 	emu.logT.SetOutput(&place)
 
 	for _, v := range tc {
+		place.Reset()
 
 		hds := make([]*Handler, 0, 16)
 		hds = p.processStream(v.seq, hds)
@@ -953,16 +957,27 @@ func TestHandle_ED_IL_DL(t *testing.T) {
 		}
 
 		after := printCells(emu.cf)
-		// calculate the expected dmage area
-		dmg := Damage{}
-		dmg.totalCells = emu.cf.damage.totalCells
-		dmg.start, dmg.end = damageArea(emu.cf, v.tlY, v.tlX, v.brY, v.brX+1) // the end point is exclusive.
 
-		if emu.cf.damage != dmg {
-			t.Errorf("%s seq=%q\n", v.name, v.seq)
-			t.Errorf("expect damage %v, got %v\n", dmg, emu.cf.damage)
-			t.Errorf("[before]\n%s", before)
-			t.Errorf("[after ]\n%s", after)
+		if v.tlX == 0 && v.tlY == 0 && v.brX == 0 && v.brY == 0 {
+			if !strings.Contains(place.String(), v.msg) {
+
+				t.Errorf("%s seq=%q\n", v.name, v.seq)
+				t.Errorf("expect msg %s, got %s\n", v.msg, place.String())
+
+			}
+		} else {
+
+			// calculate the expected dmage area
+			dmg := Damage{}
+			dmg.totalCells = emu.cf.damage.totalCells
+			dmg.start, dmg.end = damageArea(emu.cf, v.tlY, v.tlX, v.brY, v.brX+1) // the end point is exclusive.
+
+			if emu.cf.damage != dmg {
+				t.Errorf("%s seq=%q\n", v.name, v.seq)
+				t.Errorf("expect damage %v, got %v\n", dmg, emu.cf.damage)
+				t.Errorf("[before]\n%s", before)
+				t.Errorf("[after ]\n%s", after)
+			}
 		}
 	}
 }
@@ -977,31 +992,37 @@ func TestHandle_ICH_EL_DCH_ECH(t *testing.T) {
 		emptyY   int // empty cell starting Y
 		emptyX   int // empty cell starting X
 		count    int // empty cells count number
+		msg      string
 	}{
 		// use DECALN to fill the screen, use CUP to move cursor to start position, then call the sequence
-		{"ICH  in middle", []int{esc_decaln, csi_cup, csi_ich}, 0, 2, 0, 7, "\x1B#8\x1B[1;3H\x1B[2@", 0, 2, 2},
-		{"ICH right side", []int{esc_decaln, csi_cup, csi_ich}, 1, 5, 1, 7, "\x1B#8\x1B[2;6H\x1B[3@", 1, 5, 3},
-		{"ICH left side ", []int{esc_decaln, csi_cup, csi_ich}, 0, 0, 0, 7, "\x1B#8\x1B[1;1H\x1B[2@", 0, 0, 2},
-		{"   EL to right", []int{esc_decaln, csi_cup, csi_el}, 3, 3, 3, 7, "\x1B#8\x1B[4;4H\x1B[0K", 3, 3, 5},
-		{"   EL  to left", []int{esc_decaln, csi_cup, csi_el}, 3, 0, 3, 3, "\x1B#8\x1B[4;4H\x1B[1K", 3, 0, 4},
-		{"   EL      all", []int{esc_decaln, csi_cup, csi_el}, 3, 0, 3, 7, "\x1B#8\x1B[4;4H\x1B[2K", 3, 0, 8},
-		{"  DCH  at left", []int{esc_decaln, csi_cup, csi_dch}, 0, 0, 0, 7, "\x1B#8\x1B[1;1H\x1B[2P", 0, 6, 2},
-		{"  DCH at right", []int{esc_decaln, csi_cup, csi_dch}, 0, 5, 0, 7, "\x1B#8\x1B[1;6H\x1B[3P", 0, 5, 3},
-		{" DCH in middle", []int{esc_decaln, csi_cup, csi_dch}, 3, 3, 3, 7, "\x1B#8\x1B[4;4H\x1B[20P", 3, 3, 5},
-		{" ECH in middle", []int{esc_decaln, csi_cup, csi_ech}, 3, 3, 3, 4, "\x1B#8\x1B[4;4H\x1B[2X", 3, 3, 2},
-		{"   ECH at left", []int{esc_decaln, csi_cup, csi_ech}, 0, 0, 0, 4, "\x1B#8\x1B[1;1H\x1B[5X", 0, 0, 5},
-		{"  ECH at right", []int{esc_decaln, csi_cup, csi_ech}, 1, 5, 1, 7, "\x1B#8\x1B[2;6H\x1B[5X", 1, 5, 3},
+		{"ICH  in middle", []int{esc_decaln, csi_cup, csi_ich}, 0, 2, 0, 7, "\x1B#8\x1B[1;3H\x1B[2@", 0, 2, 2, "unused"},
+		{"ICH right side", []int{esc_decaln, csi_cup, csi_ich}, 1, 5, 1, 7, "\x1B#8\x1B[2;6H\x1B[3@", 1, 5, 3, "unused"},
+		{"ICH left side ", []int{esc_decaln, csi_cup, csi_ich}, 0, 0, 0, 7, "\x1B#8\x1B[1;1H\x1B[2@", 0, 0, 2, "unused"},
+		{"   EL to right", []int{esc_decaln, csi_cup, csi_el}, 3, 3, 3, 7, "\x1B#8\x1B[4;4H\x1B[0K", 3, 3, 5, "unused"},
+		{"   EL  to left", []int{esc_decaln, csi_cup, csi_el}, 3, 0, 3, 3, "\x1B#8\x1B[4;4H\x1B[1K", 3, 0, 4, "unused"},
+		{"   EL      all", []int{esc_decaln, csi_cup, csi_el}, 3, 0, 3, 7, "\x1B#8\x1B[4;4H\x1B[2K", 3, 0, 8, "unused"},
+		{"  DCH  at left", []int{esc_decaln, csi_cup, csi_dch}, 0, 0, 0, 7, "\x1B#8\x1B[1;1H\x1B[2P", 0, 6, 2, "unused"},
+		{"  DCH at right", []int{esc_decaln, csi_cup, csi_dch}, 0, 5, 0, 7, "\x1B#8\x1B[1;6H\x1B[3P", 0, 5, 3, "unused"},
+		{" DCH in middle", []int{esc_decaln, csi_cup, csi_dch}, 3, 3, 3, 7, "\x1B#8\x1B[4;4H\x1B[20P", 3, 3, 5, "unused"},
+		{" ECH in middle", []int{esc_decaln, csi_cup, csi_ech}, 3, 3, 3, 4, "\x1B#8\x1B[4;4H\x1B[2X", 3, 3, 2, "unused"},
+		{"   ECH at left", []int{esc_decaln, csi_cup, csi_ech}, 0, 0, 0, 4, "\x1B#8\x1B[1;1H\x1B[5X", 0, 0, 5, "unused"},
+		{"  ECH at right", []int{esc_decaln, csi_cup, csi_ech}, 1, 5, 1, 7, "\x1B#8\x1B[2;6H\x1B[5X", 1, 5, 3, "unused"},
 		{
 			"ICH right side with wrap length==0",
 			[]int{csi_cup, graphemes, graphemes, graphemes, graphemes, csi_cup, csi_ich},
 			1, 5, 2, 0,
-			"\x1B[2;6Hwrap\x1B[2;6H\x1B[3@", 1, 5, 0,
+			"\x1B[2;6Hwrap\x1B[2;6H\x1B[3@", 1, 5, 0, "unused",
 		},
 		{
 			"ICH right side with wrap length!=0",
 			[]int{csi_cup, graphemes, graphemes, graphemes, graphemes, csi_cup, csi_ich},
 			1, 5, 2, 0,
-			"\x1B[2;6Hwrap\x1B[2;6H\x1B[2@", 1, 5, 0,
+			"\x1B[2;6Hwrap\x1B[2;6H\x1B[2@", 1, 5, 0, "unused",
+		},
+		{
+			"   EL  default",
+			[]int{esc_decaln, csi_cup, csi_el},
+			0, 0, 0, 0, "\x1B#8\x1B[4;4H\x1B[3K", 3, 0, 8, "Erase in Line with illegal param:",
 		},
 	}
 	p := NewParser()
@@ -1037,17 +1058,26 @@ func TestHandle_ICH_EL_DCH_ECH(t *testing.T) {
 		}
 		after := printCells(emu.cf, v.emptyY, v.emptyY+1)
 
-		// calculate the expected dmage area
-		dmg := Damage{}
-		dmg.totalCells = emu.cf.damage.totalCells
-		dmg.start, dmg.end = damageArea(emu.cf, v.tlY, v.tlX, v.brY, v.brX+1) // the end point is exclusive.
+		if v.tlX == 0 && v.tlY == 0 && v.brX == 0 && v.brY == 0 {
+			if !strings.Contains(place.String(), v.msg) {
 
-		if emu.cf.damage != dmg || !isEmptyCells(emu.cf, v.emptyY, v.emptyX, v.count) {
-			t.Errorf("%s seq=%q\n", v.name, v.seq)
-			t.Errorf("expect damage %v, got %v\n", dmg, emu.cf.damage)
-			t.Errorf("empty cells start (%d,%d) count=%d\n", v.emptyY, v.emptyX, v.count)
-			t.Errorf("[before] %s", before)
-			t.Errorf("[after ] %s", after)
+				t.Errorf("%s seq=%q\n", v.name, v.seq)
+				t.Errorf("expect msg %s, got %s\n", v.msg, place.String())
+
+			}
+		} else {
+			// calculate the expected dmage area
+			dmg := Damage{}
+			dmg.totalCells = emu.cf.damage.totalCells
+			dmg.start, dmg.end = damageArea(emu.cf, v.tlY, v.tlX, v.brY, v.brX+1) // the end point is exclusive.
+
+			if emu.cf.damage != dmg || !isEmptyCells(emu.cf, v.emptyY, v.emptyX, v.count) {
+				t.Errorf("%s seq=%q\n", v.name, v.seq)
+				t.Errorf("expect damage %v, got %v\n", dmg, emu.cf.damage)
+				t.Errorf("empty cells start (%d,%d) count=%d\n", v.emptyY, v.emptyX, v.count)
+				t.Errorf("[before] %s", before)
+				t.Errorf("[after ] %s", after)
+			}
 		}
 	}
 }
