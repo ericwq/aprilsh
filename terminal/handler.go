@@ -727,11 +727,11 @@ func hdl_csi_sd(emu *emulator, arg int) {
 }
 
 // erase cell from the start to end at specified row
-func clearline(fb *Framebuffer, row int, start int, end int) {
-	for col := start; col <= end; col++ {
-		fb.ResetCell(fb.GetCell(row, col))
-	}
-}
+// func clearline(fb *Framebuffer, row int, start int, end int) {
+// 	for col := start; col <= end; col++ {
+// 		fb.ResetCell(fb.GetCell(row, col))
+// 	}
+// }
 
 // CSI Ps X  Erase Ps Character(s) (default = 1) (ECH).
 func hdl_csi_ech(emu *emulator, arg int) {
