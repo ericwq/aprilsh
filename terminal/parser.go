@@ -1186,6 +1186,7 @@ func (p *Parser) handle_DCS() (hd *Handler) {
 // SCOSC: Save Cursor Position for SCO console
 func (p *Parser) handle_SLRM_SCOSC() (hd *Handler) {
 	// disambiguate SLRM and SCOSC with the parameters number
+	// TODO use horizMarginMode as the condition?
 	if p.getHistoryAt(1) == '[' {
 		hd = &Handler{id: csi_scosc, ch: p.ch, sequence: p.historyString()}
 		hd.handle = func(emu *emulator) {
