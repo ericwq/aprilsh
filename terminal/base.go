@@ -129,6 +129,7 @@ func (dmg *Damage) add(start, end int) {
 		dmg.start = min(dmg.start, start)
 		dmg.end = max(dmg.end, end)
 	}
+	// fmt.Printf("Damage.add start=%d, end=%d\n", dmg.start, dmg.end)
 }
 
 func min(x, y int) int {

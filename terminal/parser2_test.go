@@ -991,6 +991,18 @@ func TestHandle_ICH_EL_DCH_ECH(t *testing.T) {
 		{" ECH in middle", []int{esc_decaln, csi_cup, csi_ech}, 3, 3, 3, 4, "\x1B#8\x1B[4;4H\x1B[2X", 3, 3, 2},
 		{"   ECH at left", []int{esc_decaln, csi_cup, csi_ech}, 0, 0, 0, 4, "\x1B#8\x1B[1;1H\x1B[5X", 0, 0, 5},
 		{"  ECH at right", []int{esc_decaln, csi_cup, csi_ech}, 1, 5, 1, 7, "\x1B#8\x1B[2;6H\x1B[5X", 1, 5, 3},
+		{
+			"ICH right side with wrap length==0",
+			[]int{csi_cup, graphemes, graphemes, graphemes, graphemes, csi_cup, csi_ich},
+			1, 5, 2, 0,
+			"\x1B[2;6Hwrap\x1B[2;6H\x1B[3@", 1, 5, 0,
+		},
+		{
+			"ICH right side with wrap length!=0",
+			[]int{csi_cup, graphemes, graphemes, graphemes, graphemes, csi_cup, csi_ich},
+			1, 5, 2, 0,
+			"\x1B[2;6Hwrap\x1B[2;6H\x1B[2@", 1, 5, 0,
+		},
 	}
 	p := NewParser()
 	emu := NewEmulator3(8, 4, 4) // this is the pre-condidtion for the test case.
@@ -1010,17 +1022,20 @@ func TestHandle_ICH_EL_DCH_ECH(t *testing.T) {
 
 		// call the handler
 		for j, hd := range hds {
+			if j == 1 {
+				emu.cf.damage.reset()
+			}
 			hd.handle(emu)
 			if hd.id != v.hdIDs[j] { // validate the control sequences id
 				t.Errorf("%s: seq=%q expect %s, got %s\n",
 					v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 			}
-			if j == 1 {
+			if j == len(hds)-2 {
 				before = printCells(emu.cf, v.emptyY)
-				emu.cf.damage.reset()
 			}
+
 		}
-		after := printCells(emu.cf, v.emptyY)
+		after := printCells(emu.cf, v.emptyY, v.emptyY+1)
 
 		// calculate the expected dmage area
 		dmg := Damage{}

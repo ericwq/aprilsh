@@ -609,7 +609,10 @@ func hdl_csi_ich(emu *emulator, arg int) {
 		if emu.cf.getCell(emu.posY, emu.posX+arg+length-1).wrap {
 			// maintain wrap bit invariance at EOL
 			emu.cf.getMutableCell(emu.posY, emu.posX+arg+length-1).wrap = false
-			emu.cf.getMutableCell(emu.posY, emu.posX+length-1).wrap = true
+
+			if length != 0 {
+				emu.cf.getMutableCell(emu.posY, emu.posX+length-1).wrap = true
+			} //TODO add logic for length ==0
 		}
 
 		emu.cf.moveInRow(emu.posY, emu.posX+arg, emu.posX, length)

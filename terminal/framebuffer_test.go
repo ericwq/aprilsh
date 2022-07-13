@@ -190,6 +190,9 @@ func isEmptyCols(fb *Framebuffer, cols ...int) bool {
 // check the specified cells is empty, if so return true, otherwise return false.
 // the cells start at (pY,pX), counting sucessive number .
 func isEmptyCells(fb *Framebuffer, pY, pX, count int) bool {
+	if count ==0 {
+		return true
+	}
 	for i := 0; i < count; i++ {
 		idx := fb.getIdx(pY, pX+i)
 		if fb.cells[idx].contents != " " {

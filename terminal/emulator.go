@@ -382,7 +382,6 @@ func (emu *emulator) switchScreenBufferMode(altScreenBufferMode bool) {
 		emu.savedCursor_DEC_alt.isSet = false
 		emu.savedCursor_DEC = &emu.savedCursor_DEC_pri
 		emu.altScreenBufferMode = false
-
 	}
 }
 
