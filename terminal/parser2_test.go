@@ -615,6 +615,18 @@ func TestHandle_SU_SD(t *testing.T) {
 	}{
 		{"SU scroll up   2 lines", []int{csi_su}, []int{nRows - 2, nRows - 1}, "\x1B[2S"}, // bottom 2 is erased
 		{"SD scroll down 3 lines", []int{csi_sd}, []int{0, 1, 2}, "\x1B[3T"},              // top three is erased.
+		{
+			"SU scroll up 2 with SLRM",
+			[]int{csi_privSM, csi_slrm_scosc, csi_su},
+			[]int{nRows - 2, nRows - 1},
+			"\x1B[?69h\x1B[3;76s\x1B[2S",
+		}, // bottom 2 is erased
+		{
+			"SD scroll down 3 with SLRM",
+			[]int{csi_privSM, csi_slrm_scosc, csi_sd},
+			[]int{0, 1, 2},
+			"\x1B[?69h\x1B[3;76s\x1B[3T",
+		}, // top three is erased.
 	}
 
 	p := NewParser()

@@ -428,10 +428,12 @@ func (emu *emulator) eraseRows(startY, count int) {
 	}
 }
 
+// copy row from src to dst.
 func (emu *emulator) copyRow(dstY, srcY int) {
 	emu.cf.copyRow(dstY, srcY, emu.hMargin, emu.nColsEff-emu.hMargin)
 }
 
+// copy rows from startY to startY+count, move rows down
 // insert blank rows at and below startY, within the scrolling area
 func (emu *emulator) insertRows(startY, count int) {
 	for pY := emu.marginBottom - count - 1; pY >= startY; pY-- {
@@ -445,6 +447,7 @@ func (emu *emulator) insertRows(startY, count int) {
 	}
 }
 
+// copy rows from startY+count to startY, move rows up
 // delete rows at and below startY, within the scrolling area
 func (emu *emulator) deleteRows(startY, count int) {
 	for pY := startY; pY < emu.marginBottom-count; pY++ {
