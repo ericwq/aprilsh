@@ -1334,10 +1334,10 @@ func (p *Parser) handle_DECKPNM() (hd *Handler) {
 }
 
 // set compatibility level
-func (p *Parser) handle_DECANM() (hd *Handler) {
+func (p *Parser) handle_DECANM(cl CompatibilityLevel) (hd *Handler) {
 	hd = &Handler{id: esc_decanm, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
-		hdl_esc_decanm(emu)
+		hdl_esc_decanm(emu, cl)
 	}
 
 	p.setState(InputState_Normal)
@@ -1561,7 +1561,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case '>':
 			hd = p.handle_DECKPNM()
 		case '<':
-			hd = p.handle_DECANM()
+			hd = p.handle_DECANM(CompatLevel_VT400)
 		case '~':
 			hd = p.handle_LS1R()
 		case 'n':
