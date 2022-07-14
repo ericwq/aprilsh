@@ -777,7 +777,7 @@ func TestHandle_LF_ScrollUp(t *testing.T) {
 	emu.logI.SetOutput(&place)
 	emu.logT.SetOutput(&place)
 
-	for i, v := range tc {
+	for _, v := range tc {
 		emu.resetTerminal()
 
 		hds := make([]*Handler, 0, 16)
@@ -790,10 +790,10 @@ func TestHandle_LF_ScrollUp(t *testing.T) {
 		// handle the control sequence
 		for _, hd := range hds {
 			hd.handle(emu)
-			if i == 2 {
-				t.Logf("%s [frame] scrollHead=%d historyRows=%d [emulator] posY=%d\n",
-					v.name, emu.cf.scrollHead, emu.cf.historyRows, emu.posY)
-			}
+			// if i == 2 {
+			// 	t.Logf("%s [frame] scrollHead=%d historyRows=%d [emulator] posY=%d\n",
+			// 		v.name, emu.cf.scrollHead, emu.cf.historyRows, emu.posY)
+			// }
 		}
 
 		gotY := emu.posY
