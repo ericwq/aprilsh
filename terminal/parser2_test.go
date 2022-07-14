@@ -563,8 +563,8 @@ func TestHandle_CUU_CUD_CUF_CUB_CUP_FI_BI(t *testing.T) {
 		{"BS agin   ", []int{csi_cup, csi_cub}, 12, 10, "\x1B[13;12H\x08"}, // \x08 calls CUB
 		{"DECFI     ", []int{csi_cup, esc_fi}, 12, 22, "\x1B[13;22H\x1b9"},
 		{"DECBI     ", []int{csi_cup, esc_bi}, 12, 20, "\x1B[13;22H\x1b6"},
-		{"CUU with STBM", []int{csi_cup, csi_decstbm, csi_cuu}, 0, 0, "\x1B[2;1H\x1B[3;32r\x1B[7A"},
-		// {"CUD with STBM", []int{csi_cup, csi_decstbm, csi_cud}, 3, 0, "\x1B[40;80H\x1B[3;36r\x1B[3B"},
+		{"CUU with STBM", []int{csi_decstbm, csi_cup, csi_cuu}, 0, 0, "\x1B[3;32r\x1B[2;1H\x1B[7A"},
+		{"CUD with STBM", []int{csi_decstbm, csi_cup, csi_cud}, 39, 79, "\x1B[3;36r\x1B[40;80H\x1B[3B"},
 	}
 
 	p := NewParser()
@@ -596,7 +596,7 @@ func TestHandle_CUU_CUD_CUF_CUB_CUP_FI_BI(t *testing.T) {
 		gotX := emu.posX
 
 		if gotX != v.wantX || gotY != v.wantY {
-			t.Errorf("%s seq=%q expect cursor position (%d,%d), got (%d,%d)\n", v.name, v.seq, v.wantX, v.wantY, gotX, gotY)
+			t.Errorf("%s seq=%q expect cursor position (%d,%d), got (%d,%d)\n", v.name, v.seq, v.wantY, v.wantX, gotY, gotX)
 		}
 	}
 }
