@@ -91,12 +91,6 @@ type Parser struct {
 	// history, raw handler sequence
 	history *list.List
 
-	// various indicators
-	// readPos         int
-	// lastEscBegin    int
-	// lastNormalBegin int
-	// lastStopPos     int
-
 	argBuf strings.Builder // string parameter
 
 	// select character set destination and mode
@@ -142,7 +136,6 @@ func (p *Parser) appendToHistory(r rune) {
 	} else {
 		p.logE.Printf("Parser histroy string overflow (>4097). %q[%c]\n", p.historyString(), r)
 	}
-	// p.history.Remove(p.history.Front())
 }
 
 func (p *Parser) replaceHistory(chs ...rune) {
@@ -233,7 +226,6 @@ func (p *Parser) setState(newState int) {
 	if newState == InputState_Normal {
 		p.nInputOps = 0
 		p.inputOps[0] = 0
-		// p.lastNormalBegin = p.readPos + 1
 
 	} else if p.inputState == InputState_Normal {
 		p.traceNormalInput()
@@ -250,9 +242,7 @@ func (p *Parser) collectNumericParameters(ch rune) (isNumeric bool) {
 		p.inputOps[p.nInputOps-1] *= 10
 		p.inputOps[p.nInputOps-1] += int(ch - '0')
 		if p.inputOps[p.nInputOps-1] >= 65535 {
-			// TODO consider how to consume the extra rune
 			p.logE.Printf("the number is too big: > 65535, %d", p.inputOps[p.nInputOps-1])
-			// p.perror = fmt.Errorf("the number is too big. %d", p.inputOps[p.nInputOps-1])
 			p.setState(InputState_Normal)
 		}
 	} else if ch == ';' || ch == ':' {
@@ -262,7 +252,6 @@ func (p *Parser) collectNumericParameters(ch rune) (isNumeric bool) {
 			p.nInputOps += 1
 		} else {
 			p.logE.Printf("inputOps full, increase maxEscOps. %d", p.inputOps)
-			// p.perror = fmt.Errorf("the parameters count limitation is over. %d", p.maxEscOps)
 			p.setState(InputState_Normal)
 		}
 	}
@@ -501,6 +490,7 @@ func (p *Parser) handle_BEL() (hd *Handler) {
 	hd.handle = func(emu *emulator) {
 		hdl_c0_bel(emu)
 	}
+	// Do NOT reset the state
 	return hd
 }
 
@@ -510,6 +500,7 @@ func (p *Parser) handle_SI() (hd *Handler) {
 	hd.handle = func(emu *emulator) {
 		hdl_c0_si(emu)
 	}
+	// Do NOT reset the state
 	return hd
 }
 
@@ -519,6 +510,7 @@ func (p *Parser) handle_SO() (hd *Handler) {
 	hd.handle = func(emu *emulator) {
 		hdl_c0_so(emu)
 	}
+	// Do NOT reset the state
 	return hd
 }
 
@@ -1381,9 +1373,6 @@ func (p *Parser) handle_REP() (hd *Handler) {
 	chs := make([]rune, len(p.lastChs))
 	copy(chs[0:], p.lastChs[0:])
 
-	// fmt.Printf("REP history %q\n", p.historyString())
-	// TODO solve history problem
-
 	hd = &Handler{id: csi_rep, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_rep(emu, arg, chs)
@@ -1425,15 +1414,12 @@ func (p *Parser) processStream(str string, hds []*Handler) []*Handler {
 			for graphemes.Next() {
 				input = graphemes.Runes()
 
-				// p.logT.Printf("processStream: input=%q\n", input)
 				hd = p.processInput(input...)
 				if hd != nil {
 					hds = append(hds, hd)
-					// p.logT.Printf("add handler to list. name=%q, ch=%q", hd.name, hd.ch)
 				}
 				_, to := graphemes.Positions()
 
-				// p.logT.Printf("processSTream: to=%d\n", to)
 				if to == len(str) {
 					end = true
 				}
@@ -1477,10 +1463,6 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		return hd
 	}
 
-	// fmt.Printf("processInput got %q\n", chs)
-	// p.lastEscBegin = 0
-	// p.lastNormalBegin = 0
-	// p.lastStopPos = 0
 	p.ch = ch
 
 	// p.logT.Printf(" ch=%q,\t nInputOps=%d, inputOps=%2d\n", ch, p.nInputOps, p.inputOps)
@@ -1492,7 +1474,6 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			p.setState(InputState_Escape)
 			p.inputOps[0] = 0
 			p.nInputOps = 1
-			// p.lastEscBegin = p.readPos // TODO ???
 		case '\x0D': // CR is \r
 			p.traceNormalInput()
 			hd = p.handle_CR()
@@ -1530,7 +1511,6 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case '\x1B': // ESC restarts ESC sequence
 			p.inputOps[0] = 0
 			p.nInputOps = 1
-			// p.lastEscBegin = p.readPos // TODO ???
 		case ' ':
 			p.setState(InputState_Esc_Space)
 		case '#':
@@ -1544,7 +1524,8 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			p.setState(InputState_OSC)
 		case '(', ')', '*', '+', '-', '.', '/':
 			fallthrough
-		case ',', '$': // from ISO/IEC 2022 (absorbed, treat as no-op)
+		case ',', '$':
+			// from ISO/IEC 2022 (absorbed, treat as no-op)
 			// the first byte define the target character set
 			p.scsDst = ch
 			p.scsMod = 0x00
@@ -1576,11 +1557,11 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case '9':
 			hd = p.handle_FI()
 		case '=':
-			hd = p.handle_DECKPAM() // TODO no depends
+			hd = p.handle_DECKPAM()
 		case '>':
-			hd = p.handle_DECKPNM() // TODO no depends
+			hd = p.handle_DECKPNM()
 		case '<':
-			hd = p.handle_DECANM() // TODO no depends
+			hd = p.handle_DECANM()
 		case '~':
 			hd = p.handle_LS1R()
 		case 'n':
@@ -1801,7 +1782,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case 'c':
 			hd = p.handle_secDA()
 		case 'm':
-			hd = p.handle_XTMODKEYS() // TODO no depends
+			hd = p.handle_XTMODKEYS()
 		default:
 			p.unhandledInput()
 		}
@@ -1864,5 +1845,5 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			p.setState(InputState_OSC)
 		}
 	}
-	return hd // actions
+	return hd
 }
