@@ -565,6 +565,8 @@ func TestHandle_CUU_CUD_CUF_CUB_CUP_FI_BI(t *testing.T) {
 		{"DECBI     ", []int{csi_cup, esc_bi}, 12, 20, "\x1B[13;22H\x1b6"},
 		{"CUU with STBM", []int{csi_decstbm, csi_cup, csi_cuu}, 0, 0, "\x1B[3;32r\x1B[2;1H\x1B[7A"},
 		{"CUD with STBM", []int{csi_decstbm, csi_cup, csi_cud}, 39, 79, "\x1B[3;36r\x1B[40;80H\x1B[3B"},
+		{"CUB SLRM left", []int{csi_privSM, csi_slrm_scosc, csi_cup, csi_cub}, 0, 0, "\x1B[?69h\x1B[3;76s\x1B[1;1H\x1B[5D"},
+		{"CUB with right", []int{csi_privSM, csi_slrm_scosc, csi_cup, csi_cub}, 39, 71, "\x1B[?69h\x1B[3;76s\x1B[40;77H\x1B[4D"},
 	}
 
 	p := NewParser()
