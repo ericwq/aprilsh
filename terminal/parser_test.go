@@ -1292,13 +1292,13 @@ func TestHandle_DECSTBM(t *testing.T) {
 		posX, posY  int
 		logMessage  string
 	}{
-		{
-			"DECSTBM ", "\x1B[24;14H\x1B[2;30r", // move the cursor to 23,13 first
-			[]int{csi_cup, csi_decstbm}, // then set new top/bottom margin
+		{ // move the cursor to 23,13 first then set new top/bottom margin
+			"DECSTBM ", "\x1B[24;14H\x1B[2;30r",
+			[]int{csi_cup, csi_decstbm},
 			2 - 1, 30, 0, 0, "",
 		},
-		{
-			"DECSTBM ", "\x1B[2;6H\x1B[3;32r\x1B[32;30r", // CUP, then a successful STBM follow an ignored STBM.
+		{ // CUP, then a successful STBM follow an ignored STBM.
+			"DECSTBM ", "\x1B[2;6H\x1B[3;32r\x1B[32;30r",
 			[]int{csi_cup, csi_decstbm, csi_decstbm},
 			3 - 1, 32, 0, 0, "Illegal arguments to SetTopBottomMargins:",
 		},

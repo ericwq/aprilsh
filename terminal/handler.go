@@ -70,7 +70,6 @@ const (
 	csi_privRM
 	csi_decscl
 	csi_privSM
-	csi_decslrm
 	csi_decstbm
 	csi_decstr
 	csi_ecma48_SL
@@ -92,7 +91,7 @@ const (
 	csi_sm
 	csi_su
 	csi_scorc
-	csi_scosc
+	csi_slrm_scosc
 	csi_sgr
 	csi_tbc
 	csi_vpa
@@ -152,7 +151,6 @@ var strHandlerID = [...]string{
 	"csi_decrst",
 	"csi_decscl",
 	"csi_decset",
-	"csi_decslrm",
 	"csi_decstbm",
 	"csi_decstr",
 	"csi_ecma48_SL",
@@ -174,7 +172,7 @@ var strHandlerID = [...]string{
 	"csi_sm",
 	"csi_su",
 	"csi_scorc",
-	"csi_scosc",
+	"csi_slrm_scosc",
 	"csi_sgr",
 	"csi_tbc",
 	"csi_vpa",
@@ -612,7 +610,7 @@ func hdl_csi_ich(emu *emulator, arg int) {
 
 			if length != 0 {
 				emu.cf.getMutableCell(emu.posY, emu.posX+length-1).wrap = true
-			} //TODO add logic for length ==0
+			} // TODO add logic for length ==0
 		}
 
 		emu.cf.moveInRow(emu.posY, emu.posX+arg, emu.posX, length)
@@ -1510,10 +1508,6 @@ func hdl_dcs_decrqss(emu *emulator, arg string) {
 //          Set left and right margins (DECSLRM), VT420 and up.  This is
 //          available only when DECLRMM is enabled.
 func hdl_csi_decslrm(emu *emulator, params []int) {
-	if !emu.horizMarginMode { // only avaialbe when DECLRMM is enabled
-		return
-	}
-
 	if len(params) == 0 {
 		emu.hMargin = 0
 		emu.nColsEff = emu.nCols
@@ -1548,6 +1542,15 @@ func hdl_csi_scosc(emu *emulator) {
 	emu.savedCursor_SCO.posX = emu.posX
 	emu.savedCursor_SCO.posY = emu.posY
 	emu.savedCursor_SCO.isSet = true
+}
+
+// disambiguate SLRM and SCOSC based on horizMarginMode
+func hdl_csi_slrm_scosc(emu *emulator, params []int) {
+	if emu.horizMarginMode {
+		hdl_csi_decslrm(emu, params)
+	} else {
+		hdl_csi_scosc(emu)
+	}
 }
 
 // CSI u     Restore cursor (SCORC, also ANSI.SYS).

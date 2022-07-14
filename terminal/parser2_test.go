@@ -75,16 +75,16 @@ func TestHandle_SCOSC_SCORC(t *testing.T) {
 		hdIDs      []int
 		posY, posX int
 		set        bool
-		logMsg     string
+		msg        string
 	}{
 		{
 			"move cursor, SCOSC, check", "\x1B[22;33H\x1B[s",
-			[]int{csi_cup, csi_scosc},
+			[]int{csi_cup, csi_slrm_scosc},
 			22 - 1, 33 - 1, true, "",
 		},
 		{
 			"move cursor, SCOSC, move cursor, SCORC, check", "\x1B[33;44H\x1B[s\x1B[42;35H\x1B[u",
-			[]int{csi_cup, csi_scosc, csi_cup, csi_scorc},
+			[]int{csi_cup, csi_slrm_scosc, csi_cup, csi_scorc},
 			33 - 1, 44 - 1, false, "",
 		},
 		{
@@ -130,9 +130,9 @@ func TestHandle_SCOSC_SCORC(t *testing.T) {
 				t.Errorf("%s:\t %q expect {%d,%d,%t}, got %v", v.name, v.seq, v.posY, v.posX, v.set, emu.savedCursor_SCO)
 			}
 		case 2:
-			got := strings.Contains(place.String(), v.logMsg)
+			got := strings.Contains(place.String(), v.msg)
 			if !got {
-				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.logMsg, place.String())
+				t.Errorf("%s:\t %q expect %s, got %s\n", v.name, v.seq, v.msg, place.String())
 			}
 		}
 	}
@@ -227,19 +227,19 @@ func TestHandle_DECSLRM(t *testing.T) {
 		{
 			"set left right margin, normal",
 			"\x1B[?69h\x1B[4;70s",
-			[]int{csi_privSM, csi_decslrm},
+			[]int{csi_privSM, csi_slrm_scosc},
 			3, 70, 0, 0,
 		},
 		{
 			"set left right margin, missing right parameter",
 			"\x1B[?69h\x1B[1s",
-			[]int{csi_privSM, csi_decslrm},
+			[]int{csi_privSM, csi_slrm_scosc},
 			0, 80, 0, 0,
 		},
 		{
 			"set left right margin, left parameter is zero",
 			"\x1B[?69h\x1B[0s",
-			[]int{csi_privSM, csi_decslrm},
+			[]int{csi_privSM, csi_slrm_scosc},
 			0, 80, 0, 0,
 		},
 	}
@@ -303,17 +303,17 @@ func TestHandle_DECSLRM_Others(t *testing.T) {
 	}{
 		{
 			"DECLRMM disable", "\x1B[?69l\x1B[4;49s",
-			[]int{csi_privRM, csi_decslrm},
+			[]int{csi_privRM, csi_slrm_scosc},
 			"", 0, 0, 0, 0,
 		},
 		{
 			"DECLRMM enable, outof range", "\x1B[?69h\x1B[4;89s",
-			[]int{csi_privSM, csi_decslrm},
+			[]int{csi_privSM, csi_slrm_scosc},
 			"Illegal arguments to SetLeftRightMargins:", 0, 0, 0, 0,
 		},
 		{
 			"DECLRMM OriginMode_ScrollingRegion, enable", "\x1B[?6h\x1B[?69h\x1B[4;69s", // DECLRMM: Set Left and Right Margins
-			[]int{csi_privSM, csi_privSM, csi_decslrm},
+			[]int{csi_privSM, csi_privSM, csi_slrm_scosc},
 			"", 3, 69, 0, 3,
 		},
 	}
@@ -459,7 +459,7 @@ func TestHandle_CR_LF_VT_FF(t *testing.T) {
 		{"VT   ", []int{csi_cup, esc_ind}, 4, 2, "\x1B[4;3H\x0B"},
 		{"FF   ", []int{csi_cup, esc_ind}, 5, 3, "\x1B[5;4H\x0C"},
 		{"ESC D", []int{csi_cup, esc_ind}, 6, 4, "\x1B[6;5H\x1BD"},
-		{"CHA CR", []int{csi_privSM, csi_decslrm, csi_cup, c0_cr}, 4, 0, "\x1B[?69h\x1B[4;70s\x1B[5;1H\x0D"},
+		{"CHA CR", []int{csi_privSM, csi_slrm_scosc, csi_cup, c0_cr}, 4, 0, "\x1B[?69h\x1B[4;70s\x1B[5;1H\x0D"},
 	}
 
 	p := NewParser()
@@ -563,10 +563,12 @@ func TestHandle_CUU_CUD_CUF_CUB_CUP_FI_BI(t *testing.T) {
 		{"BS agin   ", []int{csi_cup, csi_cub}, 12, 10, "\x1B[13;12H\x08"}, // \x08 calls CUB
 		{"DECFI     ", []int{csi_cup, esc_fi}, 12, 22, "\x1B[13;22H\x1b9"},
 		{"DECBI     ", []int{csi_cup, esc_bi}, 12, 20, "\x1B[13;22H\x1b6"},
+		{"CUU with STBM", []int{csi_cup, csi_decstbm, csi_cuu}, 0, 0, "\x1B[2;1H\x1B[3;32r\x1B[7A"},
+		// {"CUD with STBM", []int{csi_cup, csi_decstbm, csi_cud}, 3, 0, "\x1B[40;80H\x1B[3;36r\x1B[3B"},
 	}
 
 	p := NewParser()
-	emu := NewEmulator3(80, 40, 500)
+	emu := NewEmulator3(80, 40, 40)
 	var place strings.Builder
 	emu.logI.SetOutput(&place)
 	emu.logT.SetOutput(&place)
@@ -577,7 +579,7 @@ func TestHandle_CUU_CUD_CUF_CUB_CUP_FI_BI(t *testing.T) {
 		hds := make([]*Handler, 0, 16)
 		hds = p.processStream(v.seq, hds)
 
-		if len(hds) != 2 {
+		if len(hds) == 0 {
 			t.Errorf("%s got zero handlers.", v.name)
 		}
 
@@ -616,7 +618,7 @@ func TestHandle_SU_SD(t *testing.T) {
 	p := NewParser()
 
 	for _, v := range tc {
-		// the terminal size is 8x4 [colxrow]
+		// the terminal size is 8x5 [colxrow]
 		emu := NewEmulator3(nCols, nRows, saveLines)
 		var place strings.Builder
 		emu.logI.SetOutput(&place)

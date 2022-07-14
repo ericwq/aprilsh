@@ -1185,20 +1185,11 @@ func (p *Parser) handle_DCS() (hd *Handler) {
 // SLRM: Set Left and Right Margins
 // SCOSC: Save Cursor Position for SCO console
 func (p *Parser) handle_SLRM_SCOSC() (hd *Handler) {
-	// disambiguate SLRM and SCOSC with the parameters number
-	// TODO use horizMarginMode as the condition?
-	if p.getHistoryAt(1) == '[' {
-		hd = &Handler{id: csi_scosc, ch: p.ch, sequence: p.historyString()}
-		hd.handle = func(emu *emulator) {
-			hdl_csi_scosc(emu)
-		}
-	} else {
-		params := p.copyArgs()
+	params := p.copyArgs()
 
-		hd = &Handler{id: csi_decslrm, ch: p.ch, sequence: p.historyString()}
-		hd.handle = func(emu *emulator) {
-			hdl_csi_decslrm(emu, params)
-		}
+	hd = &Handler{id: csi_slrm_scosc, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *emulator) {
+		hdl_csi_slrm_scosc(emu, params)
 	}
 
 	p.setState(InputState_Normal)
