@@ -39,6 +39,7 @@ import (
 const (
 	InputState_Normal = iota
 	InputState_Escape
+	InputState_Escape_VT52
 	InputState_Esc_Space
 	InputState_Esc_Hash
 	InputState_Esc_Pct
@@ -54,12 +55,15 @@ const (
 	InputState_DCS_Esc
 	InputState_OSC
 	InputState_OSC_Esc
+	InputState_VT52_CUP_Arg1
+	InputState_VT52_CUP_Arg2
 )
 
 var strInputState = [...]string{
 	"Normal",
 	"Escape",
 	"Esc_Space",
+	"Escape_VT52",
 	"Esc_Hash",
 	"Esc_Pct",
 	"Select_Charset",
@@ -74,6 +78,8 @@ var strInputState = [...]string{
 	"DCS_Esc",
 	"OSC",
 	"OSC_Esc",
+	"VT52_CUP_Arg1",
+	"VT52_CUP_Arg2",
 }
 
 type Parser struct {
@@ -1504,6 +1510,58 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			p.replaceHistory(ch)
 			hd = p.handle_Graphemes()
 		}
+	case InputState_Escape_VT52:
+		// https://github.com/microsoft/terminal/blob/main/doc/specs/%23976%20-%20VT52%20escape%20sequences.md
+		switch ch {
+		case '\x18', '\x1A': // CAN and SUB interrupts ESC sequence
+			p.setState(InputState_Normal)
+		case '\x1B': // ESC restarts ESC sequence
+			p.inputOps[0] = 0
+			p.nInputOps = 1
+		case '=':
+			hd = p.handle_DECKPAM()
+		case '>':
+			hd = p.handle_DECKPNM()
+		case '<':
+			hd = p.handle_DECANM(CompatLevel_VT100) // Exit VT52 mode. Enter VT100 mode.
+		case 'A':
+			hd = p.handle_CUU()
+		case 'B':
+			hd = p.handle_CUD()
+		case 'C':
+			hd = p.handle_CUF()
+		case 'D':
+			hd = p.handle_CUB()
+		case 'F':
+			// charsetState = CharsetState {};
+			// charsetState.g [charsetState.gl] = Charset::DecSpec;
+			// setState (InputState::Normal);
+		case 'G':
+			hd = p.handle_DOCS_UTF8()
+		case 'H':
+			hd = p.handle_CUP()
+		case 'I':
+			hd = p.handle_RI()
+		case 'J':
+			hd = p.handle_ED()
+		case 'K':
+			hd = p.handle_EL()
+		case 'Y':
+			p.setState(InputState_VT52_CUP_Arg1)
+		case 'Z':
+		// writePty ("\e/Z");
+		case 'c':
+			hd = p.handle_RIS() // allow "reset" command to escape VT52
+		default:
+			p.unhandledInput()
+		}
+	case InputState_VT52_CUP_Arg1: // 040 is the first line. 32-31=1
+		p.inputOps[0] = int(ch) - 31
+		p.setState(InputState_VT52_CUP_Arg2)
+	case InputState_VT52_CUP_Arg2:
+		p.inputOps[1] = int(ch) - 31
+		p.nInputOps = 2
+		hd = p.handle_CUP()
 	case InputState_Escape:
 		switch ch {
 		case '\x18', '\x1A': // CAN and SUB interrupts ESC sequence

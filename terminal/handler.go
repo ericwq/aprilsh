@@ -537,8 +537,8 @@ func hdl_esc_deckpnm(emu *emulator) {
 
 // DECANM—ANSI Mode
 // ESC <	Exit VT52 mode. Enter VT100 mode.
-func hdl_esc_decanm(emu *emulator,cl CompatibilityLevel) {
-	emu.compatLevel = cl // CompatLevel_VT400
+func hdl_esc_decanm(emu *emulator, cl CompatibilityLevel) {
+	emu.compatLevel = cl
 }
 
 // CSI Ps g  Tab Clear (TBC).
