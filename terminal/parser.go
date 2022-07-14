@@ -97,7 +97,8 @@ type Parser struct {
 	// history, raw handler sequence
 	history *list.List
 
-	argBuf strings.Builder // string parameter
+	argBuf      strings.Builder    // string parameter
+	compatLevel CompatibilityLevel // copy from emulator
 
 	// select character set destination and mode
 	scsDst rune
@@ -1477,7 +1478,11 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		switch ch {
 		case '\x00': // ignore NUL
 		case '\x1B':
-			p.setState(InputState_Escape)
+			if p.compatLevel == CompatLevel_VT52 {
+				p.setState(InputState_Escape_VT52)
+			} else {
+				p.setState(InputState_Escape)
+			}
 			p.inputOps[0] = 0
 			p.nInputOps = 1
 		case '\x0D': // CR is \r
@@ -1519,43 +1524,53 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 			p.inputOps[0] = 0
 			p.nInputOps = 1
 		case '=':
-			hd = p.handle_DECKPAM()
+			hd = p.handle_DECKPAM() // Enter Keypad Mode (ESC =)
 		case '>':
-			hd = p.handle_DECKPNM()
+			hd = p.handle_DECKPNM() // Exit Keypad Mode (ESC >)
 		case '<':
+			p.compatLevel = CompatLevel_VT100       // Enter ANSI Mode (ESC <)
 			hd = p.handle_DECANM(CompatLevel_VT100) // Exit VT52 mode. Enter VT100 mode.
 		case 'A':
-			hd = p.handle_CUU()
+			hd = p.handle_CUU() // Cursor Up (ESC A)
 		case 'B':
-			hd = p.handle_CUD()
+			hd = p.handle_CUD() // Cursor Down (ESC B)
 		case 'C':
-			hd = p.handle_CUF()
+			hd = p.handle_CUF() // Cursor Left (ESC D)
 		case 'D':
-			hd = p.handle_CUB()
+			hd = p.handle_CUB() // Cursor Right (ESC C)
 		case 'F':
-			// charsetState = CharsetState {};
-			// charsetState.g [charsetState.gl] = Charset::DecSpec;
-			// setState (InputState::Normal);
+		// Enter Graphics Mode (ESC F)
+		// TODO implementation
+		// charsetState = CharsetState {};
+		// charsetState.g [charsetState.gl] = Charset::DecSpec;
+		// setState (InputState::Normal);
 		case 'G':
+			//  Exit Graphics Mode (ESC G)
+			/// TODO change the handler name, use the same implementation.
 			hd = p.handle_DOCS_UTF8()
 		case 'H':
-			hd = p.handle_CUP()
+			hd = p.handle_CUP() // Cursor Home (ESC H)
 		case 'I':
-			hd = p.handle_RI()
+			hd = p.handle_RI() // Reverse Line Feed (ESC I)
 		case 'J':
-			hd = p.handle_ED()
+			hd = p.handle_ED() // Erase to End of Display (ESC J)
 		case 'K':
-			hd = p.handle_EL()
+			hd = p.handle_EL() // Erase to End of Line (ESC K)
 		case 'Y':
-			p.setState(InputState_VT52_CUP_Arg1)
+			p.setState(InputState_VT52_CUP_Arg1) // Direct Cursor Address (ESC Y)
 		case 'Z':
+		// The Identify (ESC Z)
+		// For a terminal emulating VT52, the identifying sequence should be ESC / Z.
 		// writePty ("\e/Z");
 		case 'c':
 			hd = p.handle_RIS() // allow "reset" command to escape VT52
 		default:
 			p.unhandledInput()
 		}
-	case InputState_VT52_CUP_Arg1: // 040 is the first line. 32-31=1
+	case InputState_VT52_CUP_Arg1:
+		// ESC Y line# column#
+		// for "line#", the host send the octal code 040 to specifiy the top line of the screen.
+		// for "column#", the host send the octal code 040 to specifiy the leftmost column in a line
 		p.inputOps[0] = int(ch) - 31
 		p.setState(InputState_VT52_CUP_Arg2)
 	case InputState_VT52_CUP_Arg2:
@@ -1619,6 +1634,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case '>':
 			hd = p.handle_DECKPNM()
 		case '<':
+			p.compatLevel = CompatLevel_VT400
 			hd = p.handle_DECANM(CompatLevel_VT400)
 		case '~':
 			hd = p.handle_LS1R()
