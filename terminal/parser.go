@@ -1340,8 +1340,11 @@ func (p *Parser) handle_DECKPNM() (hd *Handler) {
 	return hd
 }
 
-// set compatibility level
+// set compatibility level, also update the Parser.compatLevel field.
 func (p *Parser) handle_DECANM(cl CompatibilityLevel) (hd *Handler) {
+	// update it for the parser.
+	p.compatLevel = cl
+
 	hd = &Handler{id: esc_decanm, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_esc_decanm(emu, cl)
@@ -1386,6 +1389,26 @@ func (p *Parser) handle_REP() (hd *Handler) {
 	}
 
 	p.setState(InputState_Normal)
+	return hd
+}
+
+// VT52: Enter Graphics Mode (ESC F)
+func (p *Parser) handle_EGM() (hd *Handler) {
+	hd = &Handler{id: vt52_egm, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *emulator) {
+		hdl_vt52_egm(emu)
+	}
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// VT52: The Identify (ESC Z)
+func (p *Parser) handle_ID() (hd *Handler) {
+	hd = &Handler{id: vt52_id, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *emulator) {
+		hdl_vt52_id(emu)
+	}
+	// Do NOT reset the state
 	return hd
 }
 
@@ -1528,8 +1551,8 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case '>':
 			hd = p.handle_DECKPNM() // Exit Keypad Mode (ESC >)
 		case '<':
-			p.compatLevel = CompatLevel_VT100       // Enter ANSI Mode (ESC <)
-			hd = p.handle_DECANM(CompatLevel_VT100) // Exit VT52 mode. Enter VT100 mode.
+			// Exit VT52 mode. Enter VT100 mode.
+			hd = p.handle_DECANM(CompatLevel_VT100) // Enter ANSI Mode (ESC <)
 		case 'A':
 			hd = p.handle_CUU() // Cursor Up (ESC A)
 		case 'B':
@@ -1539,15 +1562,9 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case 'D':
 			hd = p.handle_CUB() // Cursor Right (ESC C)
 		case 'F':
-		// Enter Graphics Mode (ESC F)
-		// TODO implementation
-		// charsetState = CharsetState {};
-		// charsetState.g [charsetState.gl] = Charset::DecSpec;
-		// setState (InputState::Normal);
+			hd = p.handle_EGM() // Enter Graphics Mode (ESC F)
 		case 'G':
-			//  Exit Graphics Mode (ESC G)
-			/// TODO change the handler name, use the same implementation.
-			hd = p.handle_DOCS_UTF8()
+			hd = p.handle_DOCS_UTF8() //  Exit Graphics Mode (ESC G)
 		case 'H':
 			hd = p.handle_CUP() // Cursor Home (ESC H)
 		case 'I':
@@ -1559,9 +1576,7 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case 'Y':
 			p.setState(InputState_VT52_CUP_Arg1) // Direct Cursor Address (ESC Y)
 		case 'Z':
-		// The Identify (ESC Z)
-		// For a terminal emulating VT52, the identifying sequence should be ESC / Z.
-		// writePty ("\e/Z");
+			hd = p.handle_ID() // The Identify (ESC Z) should be "\e/Z";
 		case 'c':
 			hd = p.handle_RIS() // allow "reset" command to escape VT52
 		default:
@@ -1634,7 +1649,6 @@ func (p *Parser) processInput(chs ...rune) (hd *Handler) {
 		case '>':
 			hd = p.handle_DECKPNM()
 		case '<':
-			p.compatLevel = CompatLevel_VT400
 			hd = p.handle_DECANM(CompatLevel_VT400)
 		case '~':
 			hd = p.handle_LS1R()

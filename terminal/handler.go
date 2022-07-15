@@ -126,6 +126,8 @@ const (
 	osc_52
 	osc_0_1_2
 	osc_10_11_12_17_19
+	vt52_egm
+	vt52_id
 )
 
 var strHandlerID = [...]string{
@@ -207,6 +209,8 @@ var strHandlerID = [...]string{
 	"osc_52",
 	"osc_0_1_2",
 	"osc_10_11_12_17_19",
+	"vt52_egm",
+	"vt52_id",
 }
 
 // Handler is the outcome of parsering input, it can be used to perform control sequence on emulator.
@@ -341,6 +345,18 @@ func hdl_c0_si(emu *emulator) {
 //          VT200 and up implement LS1.
 func hdl_c0_so(emu *emulator) {
 	emu.charsetState.gl = 1
+}
+
+// VT52: switch gl to charset DEC special
+func hdl_vt52_egm(emu *emulator) {
+	emu.resetCharsetState()
+	emu.charsetState.g[emu.charsetState.gl] = &vt_DEC_Special
+}
+
+// VT52: return device id for vt52 emulator
+// For a terminal emulating VT52, the identifying sequence should be ESC / Z.
+func hdl_vt52_id(emu *emulator) {
+	emu.writePty("\x1B/Z")
 }
 
 // FF, VT same as LF a.k.a IND Index
@@ -536,9 +552,8 @@ func hdl_esc_deckpnm(emu *emulator) {
 }
 
 // DECANM—ANSI Mode
-// ESC <	Exit VT52 mode. Enter VT100 mode.
 func hdl_esc_decanm(emu *emulator, cl CompatibilityLevel) {
-	emu.compatLevel = cl
+	emu.setCompatLevel(cl)
 }
 
 // CSI Ps g  Tab Clear (TBC).
@@ -1264,8 +1279,8 @@ func hdl_csi_privSM(emu *emulator, params []int) {
 			// emu.framebuffer.DS.ApplicationModeCursorKeys = true // DECCKM Apllication zutty:cursorKeyMode
 			emu.cursorKeyMode = CursorKeyMode_Application
 		case 2:
-			emu.resetCharsetState()
-			emu.compatLevel = CompatLevel_VT400
+			emu.resetCharsetState() // Designate USASCII for character sets G0-G3 (DECANM), VT100, and set VT100 mode.
+			emu.setCompatLevel(CompatLevel_VT400)
 			// emu.framebuffer.DS.compatLevel = CompatLevelVT400
 		case 3:
 			emu.switchColMode(ColMode_C132)
@@ -1358,9 +1373,9 @@ func hdl_csi_privRM(emu *emulator, params []int) {
 			// emu.framebuffer.DS.ApplicationModeCursorKeys = false // ANSI
 			emu.cursorKeyMode = CursorKeyMode_ANSI
 		case 2:
-			emu.resetCharsetState()
+			emu.resetCharsetState() // Designate VT52 mode (DECANM), VT100.
+			emu.setCompatLevel(CompatLevel_VT52)
 			// emu.framebuffer.DS.compatLevel = CompatLevel_VT52
-			emu.compatLevel = CompatLevel_VT52
 		case 3:
 			emu.switchColMode(ColMode_C80)
 		case 4:
@@ -1495,7 +1510,7 @@ func hdl_csi_decstr(emu *emulator) {
 func hdl_dcs_decrqss(emu *emulator, arg string) {
 	// only response to DECSCL
 	if arg == "$q\"p" {
-		emu.compatLevel = CompatLevel_VT400
+		emu.setCompatLevel(CompatLevel_VT400)
 		resp := fmt.Sprintf("\x1BP1$r%s\x1B\\", DEVICE_ID)
 		emu.writePty(resp)
 	} else {
@@ -1589,9 +1604,9 @@ func hdl_csi_decscl(emu *emulator, params []int) {
 	if len(params) > 0 {
 		switch params[0] {
 		case 61:
-			emu.compatLevel = CompatLevel_VT100
+			emu.setCompatLevel(CompatLevel_VT100)
 		case 62, 63, 64, 65: // treat VT200,VT300,VT500 as VT400
-			emu.compatLevel = CompatLevel_VT400
+			emu.setCompatLevel(CompatLevel_VT400)
 		default:
 			emu.logU.Printf("compatibility mode: %d", params[0])
 		}

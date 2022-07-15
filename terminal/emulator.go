@@ -170,6 +170,12 @@ func NewEmulator3(nCols, nRows, saveLines int) *emulator {
 	return emu
 }
 
+// set compatibility level for both parser and emulator
+func (emu *emulator) setCompatLevel(cl CompatibilityLevel) {
+	emu.compatLevel = cl
+	emu.parser.compatLevel = cl
+}
+
 func (emu *emulator) resetTerminal() {
 	emu.resetScreen()
 	emu.resetAttrs()
@@ -201,7 +207,7 @@ func (emu *emulator) resetScreen() {
 	emu.localEcho = false
 	emu.bracketedPasteMode = false
 
-	emu.compatLevel = CompatLevel_VT400
+	emu.setCompatLevel(CompatLevel_VT400)
 	emu.cursorKeyMode = CursorKeyMode_ANSI
 	emu.keypadMode = KeypadMode_Normal
 	emu.originMode = OriginMode_Absolute
