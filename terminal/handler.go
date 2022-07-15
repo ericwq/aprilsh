@@ -1604,9 +1604,11 @@ func hdl_csi_decscl(emu *emulator, params []int) {
 	if len(params) > 0 {
 		switch params[0] {
 		case 61:
-			emu.setCompatLevel(CompatLevel_VT100)
-		case 62, 63, 64, 65: // treat VT200,VT300,VT500 as VT400
-			emu.setCompatLevel(CompatLevel_VT400)
+			// emu.setCompatLevel(CompatLevel_VT100)
+			fallthrough
+		case 62, 63, 64, 65:
+			// emu.setCompatLevel(CompatLevel_VT400)
+			emu.setCompatLevel(sclCompatLevel(params[0]))
 		default:
 			emu.logU.Printf("compatibility mode: %d", params[0])
 		}
@@ -1621,6 +1623,20 @@ func hdl_csi_decscl(emu *emulator, params []int) {
 			emu.logU.Printf("DECSCL: C1 control transmission mode: %d", params[1])
 		}
 	}
+}
+
+// Set conformance level based on Pl. treat VT200,VT300,VT500 as VT400
+func sclCompatLevel(Pl int) (rcl CompatibilityLevel) {
+	rcl = CompatLevel_Unused
+	switch Pl {
+	case 61:
+		rcl = CompatLevel_VT100
+		break
+	case 62, 63, 64, 65:
+		rcl = CompatLevel_VT400
+		break
+	}
+	return
 }
 
 // CSI Ps ' }

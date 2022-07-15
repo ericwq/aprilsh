@@ -304,7 +304,9 @@ func (p *Parser) copyArgs() (args []int) {
 // set compatLevel if params contains value '2',or just set the compatLevel.
 func (p *Parser) setCompatLevel(cl CompatibilityLevel, params ...int) {
 	if len(params) == 0 {
-		p.compatLevel = cl
+		if p.compatLevel != cl && cl != CompatLevel_Unused {
+			p.compatLevel = cl
+		}
 	} else {
 		for _, v := range params {
 			if v == 2 {
@@ -1187,6 +1189,9 @@ func (p *Parser) handle_DCS() (hd *Handler) {
 	arg := p.getArg()
 
 	if strings.HasPrefix(arg, "$q") { // only process DECRQSS
+		if arg == "$q\"p" {
+			p.setCompatLevel(CompatLevel_VT400)
+		}
 		hd = &Handler{id: dcs_decrqss, ch: p.ch, sequence: p.historyString()}
 		hd.handle = func(emu *emulator) {
 			hdl_dcs_decrqss(emu, arg)
@@ -1228,6 +1233,9 @@ func (p *Parser) handle_SCORC() (hd *Handler) {
 func (p *Parser) handle_DECSCL() (hd *Handler) {
 	params := p.copyArgs()
 
+	if len(params) > 0 {
+		p.setCompatLevel(sclCompatLevel(params[0]))
+	}
 	hd = &Handler{id: csi_decscl, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_csi_decscl(emu, params)
@@ -1360,8 +1368,6 @@ func (p *Parser) handle_DECKPNM() (hd *Handler) {
 
 // set compatibility level, also update the Parser.compatLevel field.
 func (p *Parser) handle_DECANM(cl CompatibilityLevel) (hd *Handler) {
-	// update it for the parser.
-	p.compatLevel = cl
 	p.setCompatLevel(cl)
 
 	hd = &Handler{id: esc_decanm, ch: p.ch, sequence: p.historyString()}

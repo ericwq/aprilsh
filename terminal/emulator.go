@@ -172,7 +172,9 @@ func NewEmulator3(nCols, nRows, saveLines int) *emulator {
 
 // set compatibility level for both parser and emulator
 func (emu *emulator) setCompatLevel(cl CompatibilityLevel) {
-	emu.compatLevel = cl
+	if emu.compatLevel != cl {
+		emu.compatLevel = cl
+	}
 	// emu.parser.compatLevel = cl
 }
 
