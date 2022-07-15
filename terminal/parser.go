@@ -62,8 +62,8 @@ const (
 var strInputState = [...]string{
 	"Normal",
 	"Escape",
-	"Esc_Space",
 	"Escape_VT52",
+	"Esc_Space",
 	"Esc_Hash",
 	"Esc_Pct",
 	"Select_Charset",
@@ -203,6 +203,8 @@ func (p *Parser) reset() {
 	p.scsMod = 0x00
 	p.vtMode = false
 	p.logTrace = false
+
+	p.compatLevel = CompatLevel_VT400
 }
 
 // trace the input if logTrace is true
@@ -297,6 +299,20 @@ func (p *Parser) copyArgs() (args []int) {
 		copy(args, p.inputOps)
 	}
 	return
+}
+
+// set compatLevel if params contains value '2',or just set the compatLevel.
+func (p *Parser) setCompatLevel(cl CompatibilityLevel, params ...int) {
+	if len(params) == 0 {
+		p.compatLevel = cl
+	} else {
+		for _, v := range params {
+			if v == 2 {
+				p.compatLevel = cl
+				break
+			}
+		}
+	}
 }
 
 // func handle_UserByte(ch rune) (hd *Handler) {
@@ -1111,6 +1127,7 @@ func (p *Parser) handle_RM() (hd *Handler) {
 // csi_privSM
 func (p *Parser) handle_privSM() (hd *Handler) {
 	params := p.copyArgs()
+	p.setCompatLevel(CompatLevel_VT400, params...)
 
 	hd = &Handler{id: csi_privSM, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
@@ -1125,6 +1142,7 @@ func (p *Parser) handle_privSM() (hd *Handler) {
 // csi_privRM
 func (p *Parser) handle_privRM() (hd *Handler) {
 	params := p.copyArgs()
+	p.setCompatLevel(CompatLevel_VT52, params...)
 
 	hd = &Handler{id: csi_privRM, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
@@ -1344,6 +1362,7 @@ func (p *Parser) handle_DECKPNM() (hd *Handler) {
 func (p *Parser) handle_DECANM(cl CompatibilityLevel) (hd *Handler) {
 	// update it for the parser.
 	p.compatLevel = cl
+	p.setCompatLevel(cl)
 
 	hd = &Handler{id: esc_decanm, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {

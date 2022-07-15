@@ -27,6 +27,7 @@ SOFTWARE.
 package terminal
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -1273,6 +1274,61 @@ func TestHandle_DCS(t *testing.T) {
 				got := emu.terminalToHost.String()
 				if got != v.wantMsg {
 					t.Errorf("%s: seq=%q, \nexpect\t %q, \ngot\t\t %q\n", v.name, v.seq, v.wantMsg, got)
+				}
+			}
+		})
+	}
+}
+
+func TestHandle_VT52_EGM_ID(t *testing.T) {
+	tc := []struct {
+		name      string
+		seq       string
+		hdIDs     []int
+		charsetGL *map[byte]rune
+		resp      string
+	}{
+		{"VT52 ESC F", "\x1B[?2l\x1BF", []int{csi_privRM, vt52_egm}, &vt_DEC_Special, ""},
+		{"VT52 ESC Z", "\x1B[?2l\x1BZ", []int{csi_privRM, vt52_id}, nil, "\x1B/Z"},
+	}
+
+	p := NewParser()
+	emu := NewEmulator3(8, 4, 0)
+	// var place strings.Builder
+	// p.logU.SetOutput(&place)
+
+	for _, v := range tc {
+		// place.Reset()
+		p.reset()
+		emu.terminalToHost.Reset()
+
+		t.Run(v.name, func(t *testing.T) {
+			// process control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) == 0 {
+				t.Errorf("%s got zero handlers.", v.name)
+			}
+
+			// execute the control sequence
+			for j, hd := range hds {
+				hd.handle(emu)
+				if hd.id != v.hdIDs[j] { // validate the control sequences name
+					t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+				}
+			}
+
+			if v.resp == "" {
+				got := emu.charsetState.g[emu.charsetState.gl]
+				if !reflect.DeepEqual(got, v.charsetGL) {
+					// if got != v.charsetGL {
+					t.Errorf("%s seq=%q GL charset expect %p, got %p\n", v.name, v.seq, v.charsetGL, got)
+				}
+			} else {
+				got := emu.terminalToHost.String()
+				if got != v.resp {
+					t.Errorf("%s seq=%q response expect %q, got %q\n", v.name, v.seq, v.resp, got)
 				}
 			}
 		})
