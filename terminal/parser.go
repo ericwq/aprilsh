@@ -984,6 +984,8 @@ func (p *Parser) handle_NEL() (hd *Handler) {
 // reset the screen
 // Reset to Initial State
 func (p *Parser) handle_RIS() (hd *Handler) {
+	p.setCompatLevel(CompatLevel_VT400)
+
 	hd = &Handler{id: esc_ris, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *emulator) {
 		hdl_esc_ris(emu)
