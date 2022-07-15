@@ -992,6 +992,7 @@ func TestHandle_RI_NEL(t *testing.T) {
 		{"NEL", "\x1B[11;6H\x1BE", 11, 0, []int{csi_cup, esc_nel}, 0}, // move cursor down to next row, may scroll up
 		{"VT52 CUP no parameter", "\x1B[?2l\x1BH", 0, 0, []int{csi_privRM, csi_cup}, 0},
 		{"VT52 CUP 5,5", "\x1B[?2l\x1BY%%", 5, 5, []int{csi_privRM, csi_cup}, 0}, // % is 37, check ascii table
+		{"VT52 RI ", "\x1B[11;6H\x1B[?2l\x1BI", 9, 5, []int{csi_cup, csi_privRM, esc_ri}, 0},
 	}
 
 	p := NewParser()
@@ -1373,19 +1374,20 @@ func TestHandle_DECSCL(t *testing.T) {
 		seq      string
 		hdIDs    []int
 		cmpLevel CompatibilityLevel
-		warnStr  string
+		msg      string
 	}{
-		{"CompatLevel VT100", "\x1B[61\"p", []int{csi_decscl}, CompatLevel_VT100, ""},
-		{"CompatLevel VT400", "\x1B[62\"p", []int{csi_decscl}, CompatLevel_VT400, ""},
-		{"CompatLevel VT400", "\x1B[63\"p", []int{csi_decscl}, CompatLevel_VT400, ""},
-		{"CompatLevel VT400", "\x1B[64\"p", []int{csi_decscl}, CompatLevel_VT400, ""},
-		{"CompatLevel VT400", "\x1B[65\"p", []int{csi_decscl}, CompatLevel_VT400, ""},
-		{"CompatLevel VT400 DECANM", "\x1B<", []int{esc_decanm}, CompatLevel_VT400, ""},
-		{"CompatLevel others", "\x1B[66\"p", []int{csi_decscl}, CompatLevel_Unused, "compatibility mode:"},
-		{"CompatLevel 8-bit control", "\x1B[65;0\"p", []int{csi_decscl}, CompatLevel_Unused, "DECSCL: 8-bit controls"},
-		{"CompatLevel 8-bit control", "\x1B[61;2\"p", []int{csi_decscl}, CompatLevel_Unused, "DECSCL: 8-bit controls"},
-		{"CompatLevel 7-bit control", "\x1B[65;1\"p", []int{csi_decscl}, CompatLevel_Unused, "DECSCL: 7-bit controls"},
-		{"CompatLevel outof range  ", "\x1B[65;3\"p", []int{csi_decscl}, CompatLevel_Unused, "DECSCL: C1 control transmission mode:"},
+		{"CompatLevel VT100 param 61", "\x1B[61\"p", []int{csi_decscl}, CompatLevel_VT100, ""},
+		{"CompatLevel VT400 param 62", "\x1B[62\"p", []int{csi_decscl}, CompatLevel_VT400, ""},
+		{"CompatLevel VT400 param 63", "\x1B[63\"p", []int{csi_decscl}, CompatLevel_VT400, ""},
+		{"CompatLevel VT400 param 64", "\x1B[64\"p", []int{csi_decscl}, CompatLevel_VT400, ""},
+		{"CompatLevel VT400 param 65", "\x1B[65\"p", []int{csi_decscl}, CompatLevel_VT400, ""},
+		{"CompatLevel VT400 DECANM  ", "\x1B<", []int{esc_decanm}, CompatLevel_VT400, ""},
+		{"VT52 CompatLevel VT100    ", "\x1B[?2l\x1B<", []int{csi_privRM, esc_decanm}, CompatLevel_VT100, ""},
+		{"CompatLevel others        ", "\x1B[66\"p", []int{csi_decscl}, CompatLevel_Unused, "compatibility mode:"},
+		{"CompatLevel 8-bit control ", "\x1B[65;0\"p", []int{csi_decscl}, CompatLevel_Unused, "DECSCL: 8-bit controls"},
+		{"CompatLevel 8-bit control ", "\x1B[61;2\"p", []int{csi_decscl}, CompatLevel_Unused, "DECSCL: 8-bit controls"},
+		{"CompatLevel 7-bit control ", "\x1B[65;1\"p", []int{csi_decscl}, CompatLevel_Unused, "DECSCL: 7-bit controls"},
+		{"CompatLevel outof range   ", "\x1B[65;3\"p", []int{csi_decscl}, CompatLevel_Unused, "DECSCL: C1 control transmission mode:"},
 		{"CompatLevel unhandled", "\x1B[65;3\"q", []int{csi_decscl}, CompatLevel_Unused, "Unhandled input:"},
 	}
 
@@ -1407,16 +1409,6 @@ func TestHandle_DECSCL(t *testing.T) {
 		hds := make([]*Handler, 0, 16)
 		hds = p.processStream(v.seq, hds)
 
-		if len(hds) != 1 {
-			if v.warnStr == "" {
-				t.Errorf("%s expect %d handlers.", v.name, len(hds))
-			} else if v.warnStr != "" && !strings.Contains(place.String(), v.warnStr) {
-				t.Errorf("%s:\t %q expect %q, got %s\n", v.name, v.seq, v.warnStr, place.String())
-			} else {
-				continue
-			}
-		}
-
 		// handle the control sequence
 		for j, hd := range hds {
 			hd.handle(emu)
@@ -1427,14 +1419,14 @@ func TestHandle_DECSCL(t *testing.T) {
 		}
 
 		switch i {
-		case 0, 1, 2, 3, 4, 5:
+		case 0, 1, 2, 3, 4, 5, 6:
 			got := emu.compatLevel
 			if got != v.cmpLevel {
 				t.Errorf("%s:\t %q, expect %d, got %d\n", v.name, v.seq, v.cmpLevel, got)
 			}
 		default:
-			if !strings.Contains(place.String(), v.warnStr) {
-				t.Errorf("%s:\t %q expect %q, got %s\n", v.name, v.seq, v.warnStr, place.String())
+			if !strings.Contains(place.String(), v.msg) {
+				t.Errorf("%s:\t %q expect %q, got %s\n", v.name, v.seq, v.msg, place.String())
 			}
 		}
 	}

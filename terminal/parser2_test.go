@@ -567,6 +567,10 @@ func TestHandle_CUU_CUD_CUF_CUB_CUP_FI_BI(t *testing.T) {
 		{"CUD with STBM", []int{csi_decstbm, csi_cup, csi_cud}, 39, 79, "\x1B[3;36r\x1B[40;80H\x1B[3B"},
 		{"CUB SLRM left", []int{csi_privSM, csi_slrm_scosc, csi_cup, csi_cub}, 0, 0, "\x1B[?69h\x1B[3;76s\x1B[1;1H\x1B[5D"},
 		{"CUB with right", []int{csi_privSM, csi_slrm_scosc, csi_cup, csi_cub}, 39, 71, "\x1B[?69h\x1B[3;76s\x1B[40;77H\x1B[4D"},
+		{"VT52 CUU", []int{csi_cup, csi_privRM, csi_cuu}, 19, 10, "\x1B[21;11H\x1B[?2l\x1BA"},
+		{"VT52 CUD", []int{csi_cup, csi_privRM, csi_cud}, 21, 10, "\x1B[21;11H\x1B[?2l\x1BB"},
+		{"VT52 CUF", []int{csi_cup, csi_privRM, csi_cuf}, 20, 11, "\x1B[21;11H\x1B[?2l\x1BC"},
+		{"VT52 CUB", []int{csi_cup, csi_privRM, csi_cub}, 20, 9, "\x1B[21;11H\x1B[?2l\x1BD"},
 	}
 
 	p := NewParser()
@@ -576,6 +580,8 @@ func TestHandle_CUU_CUD_CUF_CUB_CUP_FI_BI(t *testing.T) {
 	emu.logT.SetOutput(&place)
 
 	for _, v := range tc {
+		p.reset()
+		emu.resetTerminal()
 
 		// parse the sequence
 		hds := make([]*Handler, 0, 16)
@@ -929,7 +935,12 @@ func TestHandle_ED_IL_DL(t *testing.T) {
 		msg      string
 	}{
 		// use CUP to move cursor to start position, use DECALN to fill the screen, then call ED,IL or DL
-		{"ED erase below @ 1,0", []int{csi_cup, esc_decaln, csi_ed}, 1, 0, 3, 7, "\x1B[2;1H\x1B#8\x1B[J", "unused"},  // Erase Below (default).
+		{"ED erase below @ 1,0", []int{csi_cup, esc_decaln, csi_ed}, 1, 0, 3, 7, "\x1B[2;1H\x1B#8\x1B[J", "unused"}, // Erase Below (default).
+		{
+			"VT52 ED erase below @ 1,0",
+			[]int{csi_cup, esc_decaln, csi_privRM, csi_ed},
+			1, 0, 3, 7, "\x1B[2;1H\x1B#8\x1B[?2l\x1BJ", "unused",
+		}, // Erase Below (default).
 		{"ED erase below @ 3,7", []int{csi_cup, esc_decaln, csi_ed}, 3, 6, 3, 7, "\x1B[4;7H\x1B#8\x1B[0J", "unused"}, // Ps = 0  ⇒  Erase Below (default).
 		{"ED erase above @ 3,6", []int{csi_cup, esc_decaln, csi_ed}, 0, 0, 3, 6, "\x1B[4;7H\x1B#8\x1B[1J", "unused"}, // Ps = 1  ⇒  Erase Above.
 		{"ED erase all", []int{csi_cup, esc_decaln, csi_ed}, 0, 0, 3, 7, "\x1B[4;7H\x1B#8\x1B[2J", "unused"},         // Ps = 2  ⇒  Erase All.
@@ -951,6 +962,8 @@ func TestHandle_ED_IL_DL(t *testing.T) {
 
 	for _, v := range tc {
 		place.Reset()
+		p.reset()
+		emu.resetTerminal()
 
 		hds := make([]*Handler, 0, 16)
 		hds = p.processStream(v.seq, hds)
@@ -1123,6 +1136,12 @@ func TestHandle_ICH_EL_DCH_ECH(t *testing.T) {
 			[]int{esc_decaln, csi_cup, csi_el},
 			0, 0, 0, 0, "\x1B#8\x1B[4;4H\x1B[3K", 3, 0, 8, "Erase in Line with illegal param:",
 		},
+		{
+			"VT52 EL to right",
+			[]int{esc_decaln, csi_cup, csi_privRM, csi_el},
+			3, 3, 3, 7,
+			"\x1B#8\x1B[4;4H\x1B[?2l\x1BK", 3, 3, 5, "unused",
+		},
 	}
 	p := NewParser()
 	emu := NewEmulator3(8, 4, 4) // this is the pre-condidtion for the test case.
@@ -1189,14 +1208,29 @@ func TestHandle_DEC_KPNM_KPAM(t *testing.T) {
 		keypadMode0 KeypadMode
 		keypadMode1 KeypadMode
 	}{
-		{"DEC KPNM application mode", []int{esc_deckpnm, esc_deckpam}, "\x1b>\x1b=", KeypadMode_Normal, KeypadMode_Application},
-		{"DEC KPAM numeric mode", []int{esc_deckpam, esc_deckpnm}, "\x1b=\x1b>", KeypadMode_Application, KeypadMode_Normal},
+		{
+			"DEC KPNM application mode",
+			[]int{esc_deckpnm, esc_deckpam},
+			"\x1b>\x1b=", KeypadMode_Normal, KeypadMode_Application,
+		},
+		{
+			"DEC KPAM numeric mode",
+			[]int{esc_deckpam, esc_deckpnm},
+			"\x1b=\x1b>", KeypadMode_Application, KeypadMode_Normal,
+		},
+		{
+			"VT52 DEC KPAM KPAM KPNM",
+			[]int{csi_privRM, esc_deckpam, esc_deckpnm},
+			"\x1B[?2l\x1b=\x1b>", KeypadMode_Application, KeypadMode_Normal,
+		},
 	}
 
 	p := NewParser()
 	emu := NewEmulator3(8, 4, 4) // this is the pre-condidtion for the test case.
 
 	for _, v := range tc {
+		p.reset()
+		emu.resetTerminal()
 
 		hds := make([]*Handler, 0, 16)
 		hds = p.processStream(v.seq, hds)
@@ -1214,11 +1248,11 @@ func TestHandle_DEC_KPNM_KPAM(t *testing.T) {
 			}
 			got := emu.keypadMode
 			switch j {
-			case 0:
+			case len(hds) - 2:
 				if got != v.keypadMode0 {
 					t.Errorf("%s seq=%q keypadmode expect %d, got %d\n", v.name, v.seq, v.keypadMode0, got)
 				}
-			case 1:
+			case len(hds) - 1:
 				if got != v.keypadMode1 {
 					t.Errorf("%s seq=%q keypadmode expect %d, got %d\n", v.name, v.seq, v.keypadMode1, got)
 				}
