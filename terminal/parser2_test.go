@@ -1244,9 +1244,11 @@ func TestHandle_ESCSpaceHash_Unhandled(t *testing.T) {
 		{"esc hash 4", "\x1B#4", InputState_Normal, "DECDHL: Double-height, bottom half."},
 		{"esc hash 5", "\x1B#5", InputState_Normal, "DECSWL: Single-width line."},
 		{"esc hash 6", "\x1B#6", InputState_Normal, "DECDWL: Double-width line."},
-		{"esc hash default", "\x1B#9", InputState_Normal, "Unhandled input:"},   // esc hash unhandle
-		{"csi quote default", "\x1B['o", InputState_Normal, "Unhandled input:"}, // csi quote unhandle
-		{"csi space default", "\x1B[ o", InputState_Normal, "Unhandled input:"}, // csi space unhandle
+		{"esc hash default", "\x1B#9", InputState_Normal, "Unhandled input:"},        // esc hash unhandle
+		{"csi quote default", "\x1B['o", InputState_Normal, "Unhandled input:"},      // csi quote unhandle
+		{"csi space default", "\x1B[ o", InputState_Normal, "Unhandled input:"},      // csi space unhandle
+		{"VT52 default", "\x1B[?2l\x1B\x1Bd", InputState_Normal, "Unhandled input:"}, // vt52 unhandle
+		{"VT52 CAN SUB", "\x1B[?2l\x1B\x18\x1B\x1A", InputState_Normal, ""},
 	}
 
 	p := NewParser()

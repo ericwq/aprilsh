@@ -990,6 +990,8 @@ func TestHandle_RI_NEL(t *testing.T) {
 		{"RI ", "\x1B[11;6H\x1BM", 9, 5, []int{csi_cup, esc_ri}, 0},   // move cursor up to the previouse row
 		{"RI ", "\x1B[1;6H\x1BM", 0, 5, []int{csi_cup, esc_ri}, 39},   // move cursor up to the previouse row, scroll down
 		{"NEL", "\x1B[11;6H\x1BE", 11, 0, []int{csi_cup, esc_nel}, 0}, // move cursor down to next row, may scroll up
+		{"VT52 CUP no parameter", "\x1B[?2l\x1BH", 0, 0, []int{csi_privRM, csi_cup}, 0},
+		{"VT52 CUP 5,5", "\x1B[?2l\x1BY%%", 5, 5, []int{csi_privRM, csi_cup}, 0}, // % is 37, check ascii table
 	}
 
 	p := NewParser()
@@ -999,6 +1001,7 @@ func TestHandle_RI_NEL(t *testing.T) {
 	emu.logT.SetOutput(&place) // redirect the output to the string builder
 
 	for _, v := range tc {
+		p.reset()
 		emu.resetTerminal()
 
 		// parse control sequence
