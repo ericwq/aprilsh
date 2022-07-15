@@ -998,6 +998,89 @@ func TestHandle_ED_IL_DL(t *testing.T) {
 	}
 }
 
+func TestHandle_ICH2(t *testing.T) {
+	tc := []struct {
+		name     string
+		hdIDs    []int
+		tlY, tlX int // damage area top/left
+		brY, brX int // damage area bottom/right
+		seq      string
+		emptyY   int // empty cell starting Y
+		emptyX   int // empty cell starting X
+		count    int // empty cells count number
+		msg      string
+	}{
+		// use DECALN to fill the screen, use CUP to move cursor to start position, then call the sequence
+		{
+			"ICH right side with wrap length==0",
+			[]int{csi_cup, graphemes, graphemes, graphemes, graphemes, csi_cup, csi_ich},
+			1, 77, 2, 0,
+			"\x1B[2;78Hwrap\x1B[2;78H\x1B[3@", 1, 77, 3, "unused",
+		},
+		{
+			"ICH right side with wrap length!=0",
+			[]int{csi_cup, graphemes, graphemes, graphemes, graphemes, csi_cup, csi_ich},
+			1, 77, 2, 0,
+			"\x1B[2;78Hwrap\x1B[2;78H\x1B[2@", 1, 77, 0, "unused",
+		}, //"\033[2;78Hwrap\033[2;78H\033[3@"
+	}
+	p := NewParser()
+	emu := NewEmulator3(80, 40, 40) // this is the pre-condidtion for the test case.
+	var place strings.Builder
+	emu.logI.SetOutput(&place)
+	emu.logT.SetOutput(&place)
+
+	for _, v := range tc {
+
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) == 0 {
+			t.Errorf("%s got zero handlers.", v.name)
+		}
+		before := ""
+
+		// call the handler
+		for j, hd := range hds {
+			if j == 1 {
+				emu.cf.damage.reset()
+			}
+			hd.handle(emu)
+			if hd.id != v.hdIDs[j] { // validate the control sequences id
+				t.Errorf("%s: seq=%q expect %s, got %s\n",
+					v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+			}
+			if j == len(hds)-2 {
+				before = printCells(emu.cf, v.emptyY)
+			}
+
+		}
+		after := printCells(emu.cf, v.emptyY, v.emptyY+1)
+
+		if v.tlX == 0 && v.tlY == 0 && v.brX == 0 && v.brY == 0 {
+			if !strings.Contains(place.String(), v.msg) {
+
+				t.Errorf("%s seq=%q\n", v.name, v.seq)
+				t.Errorf("expect msg %s, got %s\n", v.msg, place.String())
+
+			}
+		} else {
+			// calculate the expected dmage area
+			dmg := Damage{}
+			dmg.totalCells = emu.cf.damage.totalCells
+			dmg.start, dmg.end = damageArea(emu.cf, v.tlY, v.tlX, v.brY, v.brX+1) // the end point is exclusive.
+
+			if emu.cf.damage != dmg || !isEmptyCells(emu.cf, v.emptyY, v.emptyX, v.count) {
+				t.Errorf("%s seq=%q\n", v.name, v.seq)
+				t.Errorf("expect damage %v, got %v\n", dmg, emu.cf.damage)
+				t.Errorf("empty cells start (%d,%d) count=%d\n", v.emptyY, v.emptyX, v.count)
+				t.Errorf("[before] %s", before)
+				t.Errorf("[after ] %s", after)
+			}
+		}
+	}
+}
+
 func TestHandle_ICH_EL_DCH_ECH(t *testing.T) {
 	tc := []struct {
 		name     string
