@@ -29,6 +29,7 @@ package terminal
 import (
 	"fmt"
 	"io/ioutil"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -666,17 +667,18 @@ func TestHandle_ESC_DCS(t *testing.T) {
 
 func TestHandle_DOCS(t *testing.T) {
 	tc := []struct {
-		name    string
-		seq     string
-		wantGL  int
-		wantGR  int
-		wantSS  int
-		hdIDs   int
-		warnStr string
+		name   string
+		seq    string
+		wantGL int
+		wantGR int
+		wantSS int
+		hdIDs  []int
+		msg    string
 	}{
-		{"set DOCS utf-8       ", "\x1B%G", 0, 2, 0, esc_docs_utf8, ""},
-		{"set DOCS iso8859-1   ", "\x1B%@", 0, 2, 0, esc_docs_iso8859_1, ""},
-		{"ESC Percent unhandled", "\x1B%H", 0, 2, 0, unused_handlerID, "Unhandled input:"},
+		{"set DOCS utf-8       ", "\x1B%G", 0, 2, 0, []int{esc_docs_utf8}, ""},
+		{"set DOCS iso8859-1   ", "\x1B%@", 0, 2, 0, []int{esc_docs_iso8859_1}, ""},
+		{"ESC Percent unhandled", "\x1B%H", 0, 2, 0, nil, "Unhandled input:"},
+		{"VT52 ESC G", "\x1B[?2l\x1BG", 0, 2, 0, []int{csi_privRM, esc_docs_utf8}, ""},
 	}
 
 	p := NewParser()
@@ -687,8 +689,9 @@ func TestHandle_DOCS(t *testing.T) {
 
 	emu := NewEmulator3(8, 4, 0)
 	for _, v := range tc {
-
+		p.reset()
 		place.Reset()
+		emu.resetTerminal()
 
 		// set different value
 		emu.charsetState.gl = 2
@@ -699,40 +702,53 @@ func TestHandle_DOCS(t *testing.T) {
 			emu.charsetState.g[i] = &vt_DEC_Supplement // Charset_DecSuppl
 		}
 
-		// parse the instruction
-		var hd *Handler
-		for _, ch := range v.seq {
-			hd = p.processInput(ch)
+		// parse control sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		// check handler length
+		if len(hds) == 0 {
+			if v.msg != "" {
+				if !strings.Contains(place.String(), v.msg) {
+					t.Errorf("%s:\t %q expect %q, got %s\n", v.name, v.seq, v.msg, place.String())
+				}
+				continue
+			} else {
+				t.Errorf("%s got zero handlers.", v.name)
+			}
 		}
 
-		// call the handler
-		if hd != nil {
+		// execute the control sequence
+		for j, hd := range hds {
 			hd.handle(emu)
-
-			if hd.id != v.hdIDs {
-				t.Errorf("%s: %q expect %s, got %s", v.name, v.seq, strHandlerID[v.hdIDs], strHandlerID[hd.id])
+			if hd.id != v.hdIDs[j] { // validate the control sequences name
+				t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 			}
+		}
 
-			for i := 0; i < 4; i++ {
-				if i == 2 {
-					// skip the g[2], which is iso8859-1 for 'ESC % @'
-					continue
+		for i := 0; i < 4; i++ {
+			switch i {
+			case 2:
+				if v.hdIDs[len(v.hdIDs)-1] == esc_docs_iso8859_1 {
+					got := emu.charsetState.g[emu.charsetState.gr]
+					if !reflect.DeepEqual(got, &vt_ISO_8859_1) {
+						t.Errorf("%s g[gr]= g[%d] expect ISO8859_1.\n", v.name, emu.charsetState.gr)
+						t.Errorf("%v vs %v \n", vt_ISO_8859_1, *got)
+					}
+					break
 				}
+				fallthrough
+			case 0, 1, 3:
 				if emu.charsetState.g[i] != nil {
-					t.Errorf("%s charset g1~g4 should be utf-8.", v.name)
+					t.Errorf("%s charset g[%d] should be utf-8.", v.name, i)
 				}
 			}
-			// verify the result
-			if emu.charsetState.gl != v.wantGL || emu.charsetState.gr != v.wantGR || emu.charsetState.ss != v.wantSS {
-				t.Errorf("%s expect GL,GR,SS= %d,%d,%d, got=%d,%d,%d\n", v.name, v.wantGL, v.wantGR, v.wantSS,
-					emu.charsetState.gl, emu.charsetState.gr, emu.charsetState.ss)
-			}
-		} else {
-			if v.hdIDs == unused_handlerID {
-				if !strings.Contains(place.String(), v.warnStr) {
-					t.Errorf("%s:\t %q expect %q, got %s\n", v.name, v.seq, v.warnStr, place.String())
-				}
-			}
+		}
+
+		// verify the result
+		if emu.charsetState.gl != v.wantGL || emu.charsetState.gr != v.wantGR || emu.charsetState.ss != v.wantSS {
+			t.Errorf("%s expect GL,GR,SS= %d,%d,%d, got=%d,%d,%d\n", v.name, v.wantGL, v.wantGR, v.wantSS,
+				emu.charsetState.gl, emu.charsetState.gr, emu.charsetState.ss)
 		}
 	}
 }

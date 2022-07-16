@@ -98,7 +98,7 @@ type Parser struct {
 	history *list.List
 
 	argBuf      strings.Builder    // string parameter
-	compatLevel CompatibilityLevel // copy from emulator
+	compatLevel CompatibilityLevel // independent from compatLevel in emulator
 
 	// select character set destination and mode
 	scsDst rune
