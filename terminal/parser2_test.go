@@ -886,8 +886,10 @@ func TestHandle_DECALN_RIS(t *testing.T) {
 		hdIDs []int
 		want  string
 	}{
-		{"ESC DECLAN", "\x1B#8", 3, 7, []int{esc_decaln}, "E"}, // the whole screen is filled with 'E'
-		{"ESC RIS   ", "\x1Bc", 3, 7, []int{esc_ris}, " "},     // after reset, the screen is empty
+		{"ESC DECLAN", "\x1B#8", 3, 7, []int{esc_decaln}, "E"},                 // the whole screen is filled with 'E'
+		{"ESC RIS   ", "\x1Bc", 3, 7, []int{esc_ris}, " "},                     // after reset, the screen is empty
+		{"ESC DECLAN", "\x1B#8", 3, 7, []int{esc_decaln}, "E"},                 // the whole screen is filled with 'E'
+		{"VT52 ESC c", "\x1B[?2l\x1Bc", 3, 7, []int{csi_privRM, esc_ris}, " "}, // after reset, the screen is empty
 	}
 
 	p := NewParser()
