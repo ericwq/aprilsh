@@ -527,6 +527,46 @@ func (emu *Emulator) MoveCursor(posY, posX int) {
 	hdl_csi_cup(emu, posY, posX)
 }
 
+// get current cursor column
+func (emu *Emulator) GetCursorCol() int {
+	return emu.posX + 1
+}
+
+// get current cursor row
+func (emu *Emulator) GetCursorRow() int {
+	if emu.originMode == OriginMode_Absolute {
+		return emu.posY + 1
+	}
+	return emu.posY - emu.marginTop + 1
+}
+
+// get active area height
+func (emu *Emulator) GetHeight() int {
+	return emu.marginBottom - emu.marginTop
+}
+
+// get active area width
+func (emu *Emulator) GetWidth() int {
+	if emu.horizMarginMode {
+		return emu.nColsEff - emu.hMargin
+	}
+
+	return emu.nCols
+}
+
+func (emu *Emulator) GetCell(row, col int) Cell {
+	//TODO consider the implementation of CUP to GetCell()
+	if row < 0 || row > emu.GetWidth() {
+		row = emu.GetCursorRow()
+	}
+
+	if col < 0 || col > emu.GetHeight() {
+		col = emu.GetCursorCol()
+	}
+
+	return emu.cf.getCell(row-1, col-1)
+}
+
 /*
 func (e *emulator) CSIdispatch(act Action) {
 	e.dispatcher.dispatch(DISPATCH_CSI, act, &e.framebuffer)
