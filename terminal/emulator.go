@@ -48,7 +48,7 @@ type CharsetState struct {
 	ss int
 }
 
-type emulator struct {
+type Emulator struct {
 	dispatcher     Dispatcher
 	parser         *Parser
 	terminalToHost strings.Builder
@@ -125,10 +125,10 @@ type emulator struct {
 	*/
 }
 
-func NewEmulator3(nCols, nRows, saveLines int) *emulator {
+func NewEmulator3(nCols, nRows, saveLines int) *Emulator {
 	// TODO makePalette256 (palette256);
 
-	emu := &emulator{}
+	emu := &Emulator{}
 	emu.parser = NewParser()
 	emu.cf, emu.marginTop, emu.marginBottom = NewFramebuffer3(nCols, nRows, saveLines)
 	emu.frame_pri = *emu.cf
@@ -171,14 +171,14 @@ func NewEmulator3(nCols, nRows, saveLines int) *emulator {
 }
 
 // set compatibility level for both parser and emulator
-func (emu *emulator) setCompatLevel(cl CompatibilityLevel) {
+func (emu *Emulator) setCompatLevel(cl CompatibilityLevel) {
 	if emu.compatLevel != cl {
 		emu.compatLevel = cl
 	}
 	// emu.parser.compatLevel = cl
 }
 
-func (emu *emulator) resetTerminal() {
+func (emu *Emulator) resetTerminal() {
 	emu.parser.reset()
 
 	emu.resetScreen()
@@ -201,7 +201,7 @@ func (emu *emulator) resetTerminal() {
 	// TODO checking hasOSCHandler
 }
 
-func (emu *emulator) resetScreen() {
+func (emu *Emulator) resetScreen() {
 	emu.showCursorMode = true
 	emu.autoWrapMode = true
 	emu.autoNewlineMode = false
@@ -225,7 +225,7 @@ func (emu *emulator) resetScreen() {
 	emu.cf.getSelection().clear()
 }
 
-func (emu *emulator) resetAttrs() {
+func (emu *Emulator) resetAttrs() {
 	emu.reverseVideo = false
 	emu.fg = emu.attrs.renditions.fgColor
 	emu.bg = emu.attrs.renditions.bgColor
@@ -235,18 +235,18 @@ func (emu *emulator) resetAttrs() {
 	hdl_csi_sgr(emu, params)
 }
 
-func (emu *emulator) clearScreen() {
+func (emu *Emulator) clearScreen() {
 	emu.posX = 0
 	emu.posY = 0
 	emu.lastCol = false
 	emu.fillScreen(' ')
 }
 
-func (emu *emulator) fillScreen(ch rune) {
+func (emu *Emulator) fillScreen(ch rune) {
 	emu.cf.fillCells(ch, emu.attrs)
 }
 
-func (emu *emulator) initSelectionData() {
+func (emu *Emulator) initSelectionData() {
 	// prepare selection data for OSC 52
 	// https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands
 	emu.selectionData = make(map[rune]string)
@@ -264,7 +264,7 @@ func (emu *emulator) initSelectionData() {
 	emu.selectionData['7'] = "" // cut-buffer 7
 }
 
-func (emu *emulator) initLog() {
+func (emu *Emulator) initLog() {
 	// init logger
 	emu.logT = log.New(os.Stderr, "TRAC: ", log.Ldate|log.Ltime|log.Lshortfile)
 	emu.logI = log.New(os.Stderr, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
@@ -273,7 +273,7 @@ func (emu *emulator) initLog() {
 	emu.logU = log.New(os.Stderr, "(Uimplemented): ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
-func (emu *emulator) resetCharsetState() {
+func (emu *Emulator) resetCharsetState() {
 	// we don't use vt100 charset by default
 	emu.charsetState.vtMode = false
 
@@ -292,7 +292,7 @@ func (emu *emulator) resetCharsetState() {
 	emu.charsetState.ss = 0
 }
 
-func (emu *emulator) lookupCharset(p rune) (r rune) {
+func (emu *Emulator) lookupCharset(p rune) (r rune) {
 	// choose the charset based on instructions before
 	var cs *map[byte]rune
 	if emu.charsetState.ss > 0 {
@@ -311,12 +311,12 @@ func (emu *emulator) lookupCharset(p rune) (r rune) {
 }
 
 // hide the implementation of write back
-func (emu *emulator) writePty(resp string) {
+func (emu *Emulator) writePty(resp string) {
 	emu.terminalToHost.WriteString(resp)
 }
 
 // parse and handle the stream together.
-func (emu *emulator) handleStream(seq string) (hds []*Handler) {
+func (emu *Emulator) handleStream(seq string) (hds []*Handler) {
 	hds = make([]*Handler, 0, 16)
 
 	hds = emu.parser.processStream(seq, hds)
@@ -326,7 +326,7 @@ func (emu *emulator) handleStream(seq string) (hds []*Handler) {
 	return
 }
 
-func (emu *emulator) resize(nCols, nRows int) {
+func (emu *Emulator) resize(nCols, nRows int) {
 	if emu.nCols == nCols && emu.nRows == nRows {
 		return
 	}
@@ -373,7 +373,7 @@ func (emu *emulator) resize(nCols, nRows int) {
 	// TODO pty resize
 }
 
-func (emu *emulator) switchScreenBufferMode(altScreenBufferMode bool) {
+func (emu *Emulator) switchScreenBufferMode(altScreenBufferMode bool) {
 	if emu.altScreenBufferMode == altScreenBufferMode {
 		return
 	}
@@ -396,7 +396,7 @@ func (emu *emulator) switchScreenBufferMode(altScreenBufferMode bool) {
 }
 
 // TODO see the comments
-func (emu *emulator) switchColMode(colMode ColMode) {
+func (emu *Emulator) switchColMode(colMode ColMode) {
 	if emu.colMode == colMode {
 		return
 	}
@@ -413,7 +413,7 @@ func (emu *emulator) switchColMode(colMode ColMode) {
 	emu.colMode = colMode
 }
 
-func (emu *emulator) normalizeCursorPos() {
+func (emu *Emulator) normalizeCursorPos() {
 	if emu.nColsEff < emu.posX+1 {
 		emu.posX = emu.nColsEff - 1
 	}
@@ -422,30 +422,30 @@ func (emu *emulator) normalizeCursorPos() {
 	}
 }
 
-func (emu *emulator) isCursorInsideMargins() bool {
+func (emu *Emulator) isCursorInsideMargins() bool {
 	return emu.posX >= emu.hMargin && emu.posX < emu.nColsEff &&
 		emu.posY >= emu.marginTop && emu.posY < emu.marginBottom
 }
 
-func (emu *emulator) eraseRow(pY int) {
+func (emu *Emulator) eraseRow(pY int) {
 	emu.cf.eraseInRow(pY, emu.hMargin, emu.nColsEff-emu.hMargin, emu.attrs)
 }
 
 // erase rows at and below startY, within the scrolling area
-func (emu *emulator) eraseRows(startY, count int) {
+func (emu *Emulator) eraseRows(startY, count int) {
 	for pY := startY; pY < startY+count; pY++ {
 		emu.eraseRow(pY)
 	}
 }
 
 // copy row from src to dst.
-func (emu *emulator) copyRow(dstY, srcY int) {
+func (emu *Emulator) copyRow(dstY, srcY int) {
 	emu.cf.copyRow(dstY, srcY, emu.hMargin, emu.nColsEff-emu.hMargin)
 }
 
 // copy rows from startY to startY+count, move rows down
 // insert blank rows at and below startY, within the scrolling area
-func (emu *emulator) insertRows(startY, count int) {
+func (emu *Emulator) insertRows(startY, count int) {
 	for pY := emu.marginBottom - count - 1; pY >= startY; pY-- {
 		emu.copyRow(pY+count, pY)
 		if pY == 0 {
@@ -459,7 +459,7 @@ func (emu *emulator) insertRows(startY, count int) {
 
 // copy rows from startY+count to startY, move rows up
 // delete rows at and below startY, within the scrolling area
-func (emu *emulator) deleteRows(startY, count int) {
+func (emu *Emulator) deleteRows(startY, count int) {
 	for pY := startY; pY < emu.marginBottom-count; pY++ {
 		emu.copyRow(pY, pY+count)
 	}
@@ -470,7 +470,7 @@ func (emu *emulator) deleteRows(startY, count int) {
 }
 
 // insert blank cols at and to the right of startX, within the scrolling area
-func (emu *emulator) insertCols(startX, count int) {
+func (emu *Emulator) insertCols(startX, count int) {
 	for r := emu.marginTop; r < emu.marginBottom; r++ {
 		emu.cf.moveInRow(r, startX+count, startX, emu.nColsEff-startX-count)
 		emu.cf.eraseInRow(r, startX, count, emu.attrs) // use the default renditions
@@ -478,14 +478,14 @@ func (emu *emulator) insertCols(startX, count int) {
 }
 
 // delete cols at and to the right of startX, within the scrolling area
-func (emu *emulator) deleteCols(startX, count int) {
+func (emu *Emulator) deleteCols(startX, count int) {
 	for r := emu.marginTop; r < emu.marginBottom; r++ {
 		emu.cf.moveInRow(r, startX, startX+count, emu.nColsEff-startX-count)
 		emu.cf.eraseInRow(r, emu.nColsEff-count, count, emu.attrs) // use the default renditions
 	}
 }
 
-func (emu *emulator) jumpToNextTabStop() {
+func (emu *Emulator) jumpToNextTabStop() {
 	if len(emu.tabStops) == 0 {
 		margin := 0
 		if emu.isCursorInsideMargins() {
@@ -509,7 +509,7 @@ func (emu *emulator) jumpToNextTabStop() {
 }
 
 // TODO need implementation
-func (emu *emulator) showCursor() {
+func (emu *Emulator) showCursor() {
 	if emu.showCursorMode && emu.parser.getState() == InputState_Normal {
 		emu.cf.setCursorPos(emu.posY, emu.posX)
 		emu.cf.setCursorStyle(CursorStyle_FillBlock)
@@ -518,8 +518,13 @@ func (emu *emulator) showCursor() {
 }
 
 // TODO need implementation
-func (emu *emulator) hideCursor() {
+func (emu *Emulator) hideCursor() {
 	emu.cf.setCursorStyle(CursorStyle_Hidden)
+}
+
+// move cursor to specified position, (default screen coordinate = [1,1])
+func (emu *Emulator) MoveCursor(posY, posX int) {
+	hdl_csi_cup(emu, posY, posX)
 }
 
 /*

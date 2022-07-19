@@ -22,12 +22,12 @@ type Resize struct {
 	height int
 }
 
-func (u UserByte) handle(emu emulator) {
+func (u UserByte) handle(emu Emulator) {
 	ret := emu.user.parse(u, emu.cf.DS.ApplicationModeCursorKeys)
 	emu.dispatcher.terminalToHost.WriteString(ret)
 }
 
-func (r Resize) handle(emu emulator) {
+func (r Resize) handle(emu Emulator) {
 	emu.resize(r.width, r.height)
 }
 

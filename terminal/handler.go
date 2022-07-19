@@ -219,7 +219,7 @@ type Handler struct {
 	id       int                 // handler ID
 	sequence string              // control sequence
 	ch       rune                // the last byte
-	handle   func(emu *emulator) // handle function that will perform control sequnce on emulator
+	handle   func(emu *Emulator) // handle function that will perform control sequnce on emulator
 }
 
 // In the loop, national flag's width got 1+1=2.
@@ -246,7 +246,7 @@ func runesWidth(runes []rune) (width int) {
 // https://henvic.dev/posts/go-utf8/
 // https://pkg.go.dev/golang.org/x/text/encoding/charmap
 // https://github.com/rivo/uniseg
-func hdl_graphemes(emu *emulator, chs ...rune) {
+func hdl_graphemes(emu *Emulator, chs ...rune) {
 	w := runesWidth(chs)
 	if len(chs) == 1 && emu.charsetState.vtMode {
 		chs[0] = emu.lookupCharset(chs[0])
@@ -301,7 +301,7 @@ func hdl_graphemes(emu *emulator, chs ...rune) {
 
 // Horizontal Tab (HTS  is Ctrl-I).
 // move cursor to the next tab position
-func hdl_c0_ht(emu *emulator) {
+func hdl_c0_ht(emu *Emulator) {
 	if emu.posX < emu.nColsEff-1 {
 		emu.jumpToNextTabStop()
 	}
@@ -309,13 +309,13 @@ func hdl_c0_ht(emu *emulator) {
 
 // Bell (BEL  is Ctrl-G).
 // ring the bell
-func hdl_c0_bel(emu *emulator) {
+func hdl_c0_bel(emu *Emulator) {
 	emu.cf.RingBell()
 }
 
 // Carriage Return (CR  is Ctrl-M).
 // move cursor to the head of the same row
-func hdl_c0_cr(emu *emulator) {
+func hdl_c0_cr(emu *Emulator) {
 	if emu.originMode == OriginMode_Absolute && emu.posX < emu.hMargin {
 		emu.posX = 0
 	} else {
@@ -327,7 +327,7 @@ func hdl_c0_cr(emu *emulator) {
 // Line Feed
 // move cursor to the next row, scroll down if necessary.
 // if the screen scrolled, erase the line from current position.
-func hdl_c0_lf(emu *emulator) {
+func hdl_c0_lf(emu *Emulator) {
 	if hdl_esc_ind(emu) {
 		emu.cf.eraseInRow(emu.posY, emu.posX, emu.nColsEff-emu.posX, emu.attrs)
 	}
@@ -336,32 +336,32 @@ func hdl_c0_lf(emu *emulator) {
 // SI       Switch to Standard Character Set (Ctrl-O is Shift In or LS0).
 //          This invokes the G0 character set (the default) as GL.
 //          VT200 and up implement LS0.
-func hdl_c0_si(emu *emulator) {
+func hdl_c0_si(emu *Emulator) {
 	emu.charsetState.gl = 0
 }
 
 // SO       Switch to Alternate Character Set (Ctrl-N is Shift Out or
 //          LS1).  This invokes the G1 character set as GL.
 //          VT200 and up implement LS1.
-func hdl_c0_so(emu *emulator) {
+func hdl_c0_so(emu *Emulator) {
 	emu.charsetState.gl = 1
 }
 
 // VT52: switch gl to charset DEC special
-func hdl_vt52_egm(emu *emulator) {
+func hdl_vt52_egm(emu *Emulator) {
 	emu.resetCharsetState()
 	emu.charsetState.g[emu.charsetState.gl] = &vt_DEC_Special
 }
 
 // VT52: return device id for vt52 emulator
 // For a terminal emulating VT52, the identifying sequence should be ESC / Z.
-func hdl_vt52_id(emu *emulator) {
+func hdl_vt52_id(emu *Emulator) {
 	emu.writePty("\x1B/Z")
 }
 
 // FF, VT same as LF a.k.a IND Index
 // move cursor to the next row, scroll down if necessary.
-func hdl_esc_ind(emu *emulator) (scrolled bool) {
+func hdl_esc_ind(emu *Emulator) (scrolled bool) {
 	if emu.posY == emu.marginBottom-1 {
 		// text up, viewpoint down if it reaches the last row in active area
 		hdl_csi_su(emu, 1)
@@ -376,58 +376,58 @@ func hdl_esc_ind(emu *emulator) (scrolled bool) {
 // ESC N
 //     Single Shift Select of G2 Character Set (SS2  is 0x8e), VT220.
 //     This affects next character only.
-func hdl_esc_ss2(emu *emulator) {
+func hdl_esc_ss2(emu *Emulator) {
 	emu.charsetState.ss = 2
 }
 
 // ESC O
 //     Single Shift Select of G3 Character Set (SS3  is 0x8f), VT220.
 //     This affects next character only.
-func hdl_esc_ss3(emu *emulator) {
+func hdl_esc_ss3(emu *Emulator) {
 	emu.charsetState.ss = 3
 }
 
 // ESC ~     Invoke the G1 Character Set as GR (LS1R), VT100.
-func hdl_esc_ls1r(emu *emulator) {
+func hdl_esc_ls1r(emu *Emulator) {
 	emu.charsetState.gr = 1
 }
 
 // ESC n     Invoke the G2 Character Set as GL (LS2).
-func hdl_esc_ls2(emu *emulator) {
+func hdl_esc_ls2(emu *Emulator) {
 	emu.charsetState.gl = 2
 }
 
 // ESC }     Invoke the G2 Character Set as GR (LS2R).
-func hdl_esc_ls2r(emu *emulator) {
+func hdl_esc_ls2r(emu *Emulator) {
 	emu.charsetState.gr = 2
 }
 
 // ESC o     Invoke the G3 Character Set as GL (LS3).
-func hdl_esc_ls3(emu *emulator) {
+func hdl_esc_ls3(emu *Emulator) {
 	emu.charsetState.gl = 3
 }
 
 // ESC |     Invoke the G3 Character Set as GR (LS3R).
-func hdl_esc_ls3r(emu *emulator) {
+func hdl_esc_ls3r(emu *Emulator) {
 	emu.charsetState.gr = 3
 }
 
 // ESC % G   Select UTF-8 character set, ISO 2022.
 // https://en.wikipedia.org/wiki/ISO/IEC_2022#Interaction_with_other_coding_systems
-func hdl_esc_docs_utf8(emu *emulator) {
+func hdl_esc_docs_utf8(emu *Emulator) {
 	emu.resetCharsetState()
 }
 
 // ESC % @   Select default character set.  That is ISO 8859-1 (ISO 2022).
 // https://www.cl.cam.ac.uk/~mgk25/unicode.html#utf-8
-func hdl_esc_docs_iso8859_1(emu *emulator) {
+func hdl_esc_docs_iso8859_1(emu *Emulator) {
 	emu.resetCharsetState()
 	emu.charsetState.g[emu.charsetState.gr] = &vt_ISO_8859_1 // Charset_IsoLatin1
 	emu.charsetState.vtMode = true
 }
 
 // Select G0 ~ G3 character set based on parameter
-func hdl_esc_dcs(emu *emulator, index int, charset *map[byte]rune) {
+func hdl_esc_dcs(emu *Emulator, index int, charset *map[byte]rune) {
 	emu.charsetState.g[index] = charset
 	if charset != nil {
 		emu.charsetState.vtMode = true
@@ -436,14 +436,14 @@ func hdl_esc_dcs(emu *emulator, index int, charset *map[byte]rune) {
 
 // ESC H Tab Set (HTS is 0x88).
 // Sets a tab stop in the current column the cursor is in.
-func hdl_esc_hts(emu *emulator) {
+func hdl_esc_hts(emu *Emulator) {
 	emu.tabStops = append(emu.tabStops, emu.posX)
 	sort.Ints(emu.tabStops)
 }
 
 // ESC M  Reverse Index (RI  is 0x8d).
 // reverse index -- like a backwards line feed
-func hdl_esc_ri(emu *emulator) {
+func hdl_esc_ri(emu *Emulator) {
 	if emu.posY == emu.marginTop {
 		// scroll down 1 row
 		hdl_csi_sd(emu, 1)
@@ -454,19 +454,19 @@ func hdl_esc_ri(emu *emulator) {
 }
 
 // ESC E  Next Line (NEL  is 0x85).
-func hdl_esc_nel(emu *emulator) {
+func hdl_esc_nel(emu *Emulator) {
 	hdl_esc_ind(emu)
 	hdl_c0_cr(emu)
 }
 
 // ESC c     Full Reset (RIS), VT100.
 // reset the screen
-func hdl_esc_ris(emu *emulator) {
+func hdl_esc_ris(emu *Emulator) {
 	emu.resetTerminal()
 }
 
 // ESC 7     Save Cursor (DECSC), VT100.
-func hdl_esc_decsc(emu *emulator) {
+func hdl_esc_decsc(emu *Emulator) {
 	emu.savedCursor_DEC.posX = emu.posX
 	emu.savedCursor_DEC.posY = emu.posY
 	emu.savedCursor_DEC.lastCol = emu.lastCol
@@ -477,7 +477,7 @@ func hdl_esc_decsc(emu *emulator) {
 }
 
 // ESC 8     Restore Cursor (DECRC), VT100.
-func hdl_esc_decrc(emu *emulator) {
+func hdl_esc_decrc(emu *Emulator) {
 	if !emu.savedCursor_DEC.isSet {
 		emu.logI.Println("Asked to restore cursor (DECRC) but it has not been saved.")
 	} else {
@@ -494,7 +494,7 @@ func hdl_esc_decrc(emu *emulator) {
 
 // ESC # 8   DEC Screen Alignment Test (DECALN), VT100.
 // fill the screen with 'E'
-func hdl_esc_decaln(emu *emulator) {
+func hdl_esc_decaln(emu *Emulator) {
 	// Save current attrs
 	origAttrs := emu.attrs
 
@@ -513,7 +513,7 @@ func hdl_esc_decaln(emu *emulator) {
 // This control function moves the cursor forward one column. If the cursor is
 // at the right margin, then all screen data within the margins moves one column
 // to the left. The column shifted past the left margin is lost.
-func hdl_esc_fi(emu *emulator) {
+func hdl_esc_fi(emu *Emulator) {
 	arg := 1
 	if emu.posX < emu.nColsEff-1 {
 		hdl_csi_cuf(emu, arg)
@@ -526,7 +526,7 @@ func hdl_esc_fi(emu *emulator) {
 // This control function moves the cursor backward one column. If the cursor is
 // at the left margin, then all screen data within the margin moves one column
 // to the right. The column that shifted past the right margin is lost.
-func hdl_esc_bi(emu *emulator) {
+func hdl_esc_bi(emu *Emulator) {
 	arg := 1
 	if emu.posX > emu.hMargin {
 		hdl_csi_cub(emu, arg)
@@ -539,7 +539,7 @@ func hdl_esc_bi(emu *emulator) {
 // DECKPAM enables the numeric keypad to send application sequences to the host.
 // DECKPNM enables the numeric keypad to send numeric characters.
 // ESC = Send application sequences.
-func hdl_esc_deckpam(emu *emulator) {
+func hdl_esc_deckpam(emu *Emulator) {
 	emu.keypadMode = KeypadMode_Application
 }
 
@@ -547,19 +547,19 @@ func hdl_esc_deckpam(emu *emulator) {
 // DECKPNM enables the keypad to send numeric characters to the host.
 // DECKPAM enables the keypad to send application sequences.
 // ESC > Send numeric keypad characters.
-func hdl_esc_deckpnm(emu *emulator) {
+func hdl_esc_deckpnm(emu *Emulator) {
 	emu.keypadMode = KeypadMode_Normal
 }
 
 // DECANM—ANSI Mode
-func hdl_esc_decanm(emu *emulator, cl CompatibilityLevel) {
+func hdl_esc_decanm(emu *Emulator, cl CompatibilityLevel) {
 	emu.setCompatLevel(cl)
 }
 
 // CSI Ps g  Tab Clear (TBC).
 //            Ps = 0  ⇒  Clear Current Column (default).
 //            Ps = 3  ⇒  Clear All.
-func hdl_csi_tbc(emu *emulator, cmd int) {
+func hdl_csi_tbc(emu *Emulator, cmd int) {
 	switch cmd {
 	case 0: // clear this tab stop
 		idx := sort.SearchInts(emu.tabStops, emu.posX)
@@ -576,7 +576,7 @@ func hdl_csi_tbc(emu *emulator, cmd int) {
 // CSI Ps I  Cursor Forward Tabulation Ps tab stops (default = 1) (CHT).
 // Advance the cursor to the next column (in the same row) with a tab stop.
 // If there are no more tab stops, move to the last column in the row.
-func hdl_csi_cht(emu *emulator, count int) {
+func hdl_csi_cht(emu *Emulator, count int) {
 	if count == 1 {
 		hdl_c0_ht(emu)
 	} else {
@@ -590,7 +590,7 @@ func hdl_csi_cht(emu *emulator, count int) {
 // Move the cursor to the previous column (in the same row) with a tab stop.
 // If there are no more tab stops, moves the cursor to the first column.
 // If the cursor is in the first column, doesn’t move the cursor.
-func hdl_csi_cbt(emu *emulator, count int) {
+func hdl_csi_cbt(emu *Emulator, count int) {
 	for k := 0; k < count; k++ {
 		if len(emu.tabStops) == 0 {
 			if emu.posX > 0 && emu.posX%8 == 0 {
@@ -613,7 +613,7 @@ func hdl_csi_cbt(emu *emulator, count int) {
 }
 
 // CSI Ps @  Insert Ps (Blank) Character(s) (default = 1) (ICH).
-func hdl_csi_ich(emu *emulator, arg int) {
+func hdl_csi_ich(emu *Emulator, arg int) {
 	if emu.isCursorInsideMargins() {
 		length := emu.nColsEff - emu.posX
 		arg = min(arg, length)
@@ -639,7 +639,7 @@ func hdl_csi_ich(emu *emulator, arg int) {
 // * Ps = 1  ⇒  Erase Above.
 // * Ps = 2  ⇒  Erase All.
 // * Ps = 3  ⇒  Erase Saved Lines, xterm.
-func hdl_csi_ed(emu *emulator, cmd int) {
+func hdl_csi_ed(emu *Emulator, cmd int) {
 	emu.normalizeCursorPos()
 	switch cmd {
 	case 0: // clear from cursor to end of screen
@@ -668,7 +668,7 @@ func hdl_csi_ed(emu *emulator, cmd int) {
 // * Ps = 0  ⇒  Erase to Right (default).
 // * Ps = 1  ⇒  Erase to Left.
 // * Ps = 2  ⇒  Erase All.
-func hdl_csi_el(emu *emulator, cmd int) {
+func hdl_csi_el(emu *Emulator, cmd int) {
 	emu.normalizeCursorPos()
 	switch cmd {
 	case 0: // clear from cursor to end of line
@@ -684,7 +684,7 @@ func hdl_csi_el(emu *emulator, cmd int) {
 
 // CSI Ps L  Insert Ps Line(s) (default = 1) (IL).
 // insert N lines in cursor position
-func hdl_csi_il(emu *emulator, lines int) {
+func hdl_csi_il(emu *Emulator, lines int) {
 	if emu.isCursorInsideMargins() {
 		lines = min(lines, emu.marginBottom-emu.posY)
 		emu.insertRows(emu.posY, lines)
@@ -694,7 +694,7 @@ func hdl_csi_il(emu *emulator, lines int) {
 
 // CSI Ps M  Delete Ps Line(s) (default = 1) (DL).
 // delete N lines in cursor position
-func hdl_csi_dl(emu *emulator, lines int) {
+func hdl_csi_dl(emu *Emulator, lines int) {
 	if emu.isCursorInsideMargins() {
 		lines = min(lines, emu.marginBottom-emu.posY)
 		emu.deleteRows(emu.posY, lines)
@@ -703,7 +703,7 @@ func hdl_csi_dl(emu *emulator, lines int) {
 }
 
 // CSI Ps P  Delete Ps Character(s) (default = 1) (DCH).
-func hdl_csi_dch(emu *emulator, arg int) {
+func hdl_csi_dch(emu *Emulator, arg int) {
 	if emu.isCursorInsideMargins() {
 		length := emu.nColsEff - emu.posX
 		arg = min(arg, length)
@@ -716,7 +716,7 @@ func hdl_csi_dch(emu *emulator, arg int) {
 }
 
 // CSI Ps S  Scroll up Ps lines (default = 1) (SU), VT420, ECMA-48.
-func hdl_csi_su(emu *emulator, arg int) {
+func hdl_csi_su(emu *Emulator, arg int) {
 	if emu.horizMarginMode {
 		arg = min(arg, emu.marginBottom-emu.marginTop)
 		emu.deleteRows(emu.marginTop, arg)
@@ -728,7 +728,7 @@ func hdl_csi_su(emu *emulator, arg int) {
 }
 
 // CSI Ps T  Scroll down Ps lines (default = 1) (SD), VT420.
-func hdl_csi_sd(emu *emulator, arg int) {
+func hdl_csi_sd(emu *Emulator, arg int) {
 	if emu.horizMarginMode {
 		arg = min(arg, emu.marginBottom-emu.marginTop)
 		emu.insertRows(emu.marginTop, arg)
@@ -747,7 +747,7 @@ func hdl_csi_sd(emu *emulator, arg int) {
 // }
 
 // CSI Ps X  Erase Ps Character(s) (default = 1) (ECH).
-func hdl_csi_ech(emu *emulator, arg int) {
+func hdl_csi_ech(emu *Emulator, arg int) {
 	length := emu.nColsEff - emu.posX
 	arg = min(arg, length)
 
@@ -758,7 +758,7 @@ func hdl_csi_ech(emu *emulator, arg int) {
 // CSI Ps c  Send Device Attributes (Primary DA).
 // CSI ? 6 2 ; Ps c  ("VT220")
 // DA response
-func hdl_csi_priDA(emu *emulator) {
+func hdl_csi_priDA(emu *Emulator) {
 	// mosh only reply "\x1B[?62c" plain vt220
 	resp := fmt.Sprintf("\x1B[?%s", DEVICE_ID)
 	emu.writePty(resp)
@@ -770,7 +770,7 @@ func hdl_csi_priDA(emu *emulator) {
 // Pp = 1  ⇒  "VT220".
 // Pv is the firmware version.
 // Pc indicates the ROM cartridge registration number and is always zero.
-func hdl_csi_secDA(emu *emulator) {
+func hdl_csi_secDA(emu *Emulator) {
 	// mosh only reply "\033[>1;10;0c" plain vt220
 	resp := "\x1B[>64;0;0c" // VT520
 	emu.writePty(resp)
@@ -778,7 +778,7 @@ func hdl_csi_secDA(emu *emulator) {
 
 // CSI Ps d  Line Position Absolute  [row] (default = [1,column]) (VPA).
 // Move cursor to line Pn.
-func hdl_csi_vpa(emu *emulator, row int) {
+func hdl_csi_vpa(emu *Emulator, row int) {
 	row = max(1, min(row, emu.nRows))
 	emu.posY = row - 1
 	emu.lastCol = false
@@ -786,7 +786,7 @@ func hdl_csi_vpa(emu *emulator, row int) {
 
 // CSI Ps e  Line Position Relative  [rows] (default = [row+1,column]) (VPR).
 // Move cursor to the n-th line relative to active row
-func hdl_csi_vpr(emu *emulator, row int) {
+func hdl_csi_vpr(emu *Emulator, row int) {
 	row += emu.posY + 1
 	row = max(1, min(row, emu.nRows))
 	emu.posY = row - 1
@@ -795,7 +795,7 @@ func hdl_csi_vpr(emu *emulator, row int) {
 
 // Move the active position to the n-th character of the active line.
 // CSI Ps G  Cursor Character Absolute  [column] (default = [row,1]) (CHA).
-func hdl_csi_cha(emu *emulator, count int) {
+func hdl_csi_cha(emu *Emulator, count int) {
 	count = max(1, min(count, emu.nCols))
 	emu.posX = count - 1
 	emu.lastCol = false
@@ -804,18 +804,18 @@ func hdl_csi_cha(emu *emulator, count int) {
 // Move the active position to the n-th character of the active line.
 // CSI Ps `  Character Position Absolute  [column] (default = [row,1]) (HPA).
 // same as CHA
-func hdl_csi_hpa(emu *emulator, count int) {
+func hdl_csi_hpa(emu *Emulator, count int) {
 	hdl_csi_cha(emu, count)
 }
 
 // CSI Ps a  Character Position Relative  [columns] (default = [row,col+1]) (HPR).
 // move to the n-th character relative to the active position
-func hdl_csi_hpr(emu *emulator, arg int) {
+func hdl_csi_hpr(emu *Emulator, arg int) {
 	hdl_csi_cha(emu, emu.posX+arg+1)
 }
 
 // CSI Ps A  Cursor Up Ps Times (default = 1) (CUU).
-func hdl_csi_cuu(emu *emulator, num int) {
+func hdl_csi_cuu(emu *Emulator, num int) {
 	if emu.posY >= emu.marginTop {
 		num = min(num, emu.posY-emu.marginTop)
 	} else {
@@ -826,7 +826,7 @@ func hdl_csi_cuu(emu *emulator, num int) {
 }
 
 // CSI Ps B  Cursor Down Ps Times (default = 1) (CUD).
-func hdl_csi_cud(emu *emulator, num int) {
+func hdl_csi_cud(emu *Emulator, num int) {
 	if emu.posY < emu.marginBottom {
 		num = min(num, emu.marginBottom-emu.posY-1)
 	} else {
@@ -837,14 +837,14 @@ func hdl_csi_cud(emu *emulator, num int) {
 }
 
 // CSI Ps C  Cursor Forward Ps Times (default = 1) (CUF).
-func hdl_csi_cuf(emu *emulator, num int) {
+func hdl_csi_cuf(emu *Emulator, num int) {
 	num = min(num, emu.nColsEff-emu.posX-1)
 	emu.posX += num
 	emu.lastCol = false
 }
 
 // CSI Ps D  Cursor Backward Ps Times (default = 1) (CUB).
-func hdl_csi_cub(emu *emulator, num int) {
+func hdl_csi_cub(emu *Emulator, num int) {
 	if emu.posX >= emu.hMargin {
 		num = min(num, emu.posX-emu.hMargin)
 	} else {
@@ -858,7 +858,7 @@ func hdl_csi_cub(emu *emulator, num int) {
 }
 
 // CSI Ps ; Ps H Cursor Position [row;column] (default = [1,1]) (CUP).
-func hdl_csi_cup(emu *emulator, row int, col int) {
+func hdl_csi_cup(emu *Emulator, row int, col int) {
 	switch emu.originMode {
 	case OriginMode_Absolute:
 		row = max(1, min(row, emu.nRows)) - 1
@@ -878,7 +878,7 @@ func hdl_csi_cup(emu *emulator, row int, col int) {
 // CSI Ps n  Device Status Report (DSR).
 //   Ps = 5  ⇒  Status Report. Result ("OK") is CSI 0 n
 //   Ps = 6  ⇒  Report Cursor Position (CPR) [row;column]. Result is CSI r ; c R
-func hdl_csi_dsr(emu *emulator, cmd int) {
+func hdl_csi_dsr(emu *Emulator, cmd int) {
 	switch cmd {
 	case 5: // device status report requested
 		emu.writePty("\x1B[0n") // device OK
@@ -898,7 +898,7 @@ func hdl_csi_dsr(emu *emulator, cmd int) {
 // CSI Pm m  Character Attributes (SGR).
 // select graphics rendition -- e.g., bold, blinking, etc.
 // support 8, 16, 256 color, RGB color.
-func hdl_csi_sgr(emu *emulator, params []int) {
+func hdl_csi_sgr(emu *Emulator, params []int) {
 	// we need to change the field, get the field pointer
 	rend := &emu.attrs.renditions
 	for k := 0; k < len(params); k++ {
@@ -1000,7 +1000,7 @@ OSC Ps ; Pt ST
             Ps = 1 8  ⇒  Change Tektronix cursor color to Pt.
             Ps = 1 9  ⇒  Change highlight foreground color to Pt.
 */
-func hdl_osc_10x(emu *emulator, cmd int, arg string) {
+func hdl_osc_10x(emu *Emulator, cmd int, arg string) {
 	arg = fmt.Sprintf("%d;%s", cmd, arg) // add the cmd back to the arg
 	count := strings.Count(arg, ";")
 	if count > 0 && count%2 == 1 { // color pair has 2n-1 ';'
@@ -1058,7 +1058,7 @@ and set the system clipboard
 	% hello
 	% Hello Russia!
 */
-func hdl_osc_52(emu *emulator, cmd int, arg string) {
+func hdl_osc_52(emu *Emulator, cmd int, arg string) {
 	// parse Pc:Pd
 	pos := strings.Index(arg, ";")
 	if pos == -1 {
@@ -1171,7 +1171,7 @@ xterm 256 color protocol: https://unix.stackexchange.com/questions/105568/how-ca
 color and formatting: https://misc.flogisoft.com/bash/tip_colors_and_formatting
 
 */
-func hdl_osc_4(emu *emulator, cmd int, arg string) {
+func hdl_osc_4(emu *Emulator, cmd int, arg string) {
 	count := strings.Count(arg, ";")
 	if count > 0 && count%2 == 1 { // c/spec pair has 2n-1 ';'
 		pairs := (count + 1) / 2 // count the c/spec pair
@@ -1209,7 +1209,7 @@ func hdl_osc_4(emu *emulator, cmd int, arg string) {
 //* 0: set icon name and window title
 //* 1: set icon name
 //* 2: set window title
-func hdl_osc_0_1_2(emu *emulator, cmd int, arg string) {
+func hdl_osc_0_1_2(emu *Emulator, cmd int, arg string) {
 	// set icon name / window title
 	setIcon := cmd == 0 || cmd == 1
 	setTitle := cmd == 0 || cmd == 2
@@ -1231,7 +1231,7 @@ func hdl_osc_0_1_2(emu *emulator, cmd int, arg string) {
 // *  Ps = 4  ⇒  Insert Mode (IRM).
 // *  Ps = 1 2  ⇒  Send/receive (SRM).
 // *  Ps = 2 0  ⇒  Automatic Newline (LNM).
-func hdl_csi_sm(emu *emulator, params []int) {
+func hdl_csi_sm(emu *Emulator, params []int) {
 	for _, param := range params {
 		switch param {
 		case 2:
@@ -1253,7 +1253,7 @@ func hdl_csi_sm(emu *emulator, params []int) {
 // *  Ps = 4  ⇒  Replace Mode (IRM).
 // *  Ps = 1 2  ⇒  Send/receive (SRM).
 // *  Ps = 2 0  ⇒  Normal Linefeed (LNM).
-func hdl_csi_rm(emu *emulator, params []int) {
+func hdl_csi_rm(emu *Emulator, params []int) {
 	for _, param := range params {
 		switch param {
 		case 2:
@@ -1272,7 +1272,7 @@ func hdl_csi_rm(emu *emulator, params []int) {
 
 // CSI ? Pm h
 // DEC Private Mode Set (DECSET).
-func hdl_csi_privSM(emu *emulator, params []int) {
+func hdl_csi_privSM(emu *Emulator, params []int) {
 	for _, param := range params {
 		switch param {
 		case 1:
@@ -1366,7 +1366,7 @@ func hdl_csi_privSM(emu *emulator, params []int) {
 
 // CSI ? Pm l
 // DEC Private Mode Reset (DECRST).
-func hdl_csi_privRM(emu *emulator, params []int) {
+func hdl_csi_privRM(emu *Emulator, params []int) {
 	for _, param := range params {
 		switch param {
 		case 1:
@@ -1445,7 +1445,7 @@ func hdl_csi_privRM(emu *emulator, params []int) {
 
 // CSI Ps ; Ps r
 // Set Scrolling Region [top;bottom] (default = full size of  window) (DECSTBM), VT100.
-func hdl_csi_decstbm(emu *emulator, params []int) {
+func hdl_csi_decstbm(emu *Emulator, params []int) {
 	// only top is set to 0
 	if len(params) == 0 {
 		if emu.marginTop != 0 || emu.marginBottom != emu.nRows {
@@ -1483,7 +1483,7 @@ func hdl_csi_decstbm(emu *emulator, params []int) {
 }
 
 // CSI ! p   Soft terminal reset (DECSTR), VT220 and up.
-func hdl_csi_decstr(emu *emulator) {
+func hdl_csi_decstr(emu *Emulator) {
 	emu.resetScreen()
 	emu.resetAttrs()
 }
@@ -1507,7 +1507,7 @@ func hdl_csi_decstr(emu *emulator) {
 //           r Pt ST for invalid requests.
 //
 // DECRQSS—Request Selection or Setting
-func hdl_dcs_decrqss(emu *emulator, arg string) {
+func hdl_dcs_decrqss(emu *Emulator, arg string) {
 	// only response to DECSCL
 	if arg == "$q\"p" {
 		emu.setCompatLevel(CompatLevel_VT400)
@@ -1522,7 +1522,7 @@ func hdl_dcs_decrqss(emu *emulator, arg string) {
 // CSI Pl ; Pr s
 //          Set left and right margins (DECSLRM), VT420 and up.  This is
 //          available only when DECLRMM is enabled.
-func hdl_csi_decslrm(emu *emulator, params []int) {
+func hdl_csi_decslrm(emu *Emulator, params []int) {
 	if len(params) == 0 {
 		emu.hMargin = 0
 		emu.nColsEff = emu.nCols
@@ -1553,14 +1553,14 @@ func hdl_csi_decslrm(emu *emulator, params []int) {
 }
 
 // CSI s     Save cursor, available only when DECLRMM is disabled (SCOSC, also ANSI.SYS).
-func hdl_csi_scosc(emu *emulator) {
+func hdl_csi_scosc(emu *Emulator) {
 	emu.savedCursor_SCO.posX = emu.posX
 	emu.savedCursor_SCO.posY = emu.posY
 	emu.savedCursor_SCO.isSet = true
 }
 
 // disambiguate SLRM and SCOSC based on horizMarginMode
-func hdl_csi_slrm_scosc(emu *emulator, params []int) {
+func hdl_csi_slrm_scosc(emu *Emulator, params []int) {
 	if emu.horizMarginMode {
 		hdl_csi_decslrm(emu, params)
 	} else {
@@ -1569,7 +1569,7 @@ func hdl_csi_slrm_scosc(emu *emulator, params []int) {
 }
 
 // CSI u     Restore cursor (SCORC, also ANSI.SYS).
-func hdl_csi_scorc(emu *emulator) {
+func hdl_csi_scorc(emu *Emulator) {
 	if !emu.savedCursor_SCO.isSet {
 		emu.logI.Println("Asked to restore cursor (SCORC) but it has not been saved.")
 	} else {
@@ -1600,7 +1600,7 @@ func hdl_csi_scorc(emu *emulator) {
 //
 //           The 7-bit and 8-bit control modes can also be set by S7C1T and
 //           S8C1T, but DECSCL is preferred.
-func hdl_csi_decscl(emu *emulator, params []int) {
+func hdl_csi_decscl(emu *Emulator, params []int) {
 	if len(params) > 0 {
 		switch params[0] {
 		case 61:
@@ -1641,7 +1641,7 @@ func sclCompatLevel(Pl int) (rcl CompatibilityLevel) {
 
 // CSI Ps ' }
 //           Insert Ps Column(s) (default = 1) (DECIC), VT420 and up.
-func hdl_csi_decic(emu *emulator, num int) {
+func hdl_csi_decic(emu *Emulator, num int) {
 	if emu.isCursorInsideMargins() {
 		num = min(num, emu.nColsEff-emu.posX)
 		emu.insertCols(emu.posX, num)
@@ -1650,7 +1650,7 @@ func hdl_csi_decic(emu *emulator, num int) {
 
 // CSI Ps ' ~
 //           Delete Ps Column(s) (default = 1) (DECDC), VT420 and up.
-func hdl_csi_decdc(emu *emulator, num int) {
+func hdl_csi_decdc(emu *Emulator, num int) {
 	if emu.isCursorInsideMargins() {
 		num = min(num, emu.nColsEff-emu.posX)
 		emu.deleteCols(emu.posX, num)
@@ -1659,26 +1659,26 @@ func hdl_csi_decdc(emu *emulator, num int) {
 
 // CSI Ps SP @
 //           Shift left Ps columns(s) (default = 1) (SL), ECMA-48.
-func hdl_csi_ecma48_SL(emu *emulator, arg int) {
+func hdl_csi_ecma48_SL(emu *Emulator, arg int) {
 	arg = min(arg, emu.nColsEff-emu.hMargin)
 	emu.deleteCols(emu.hMargin, arg)
 }
 
 // CSI Ps SP A
 //           Shift right Ps columns(s) (default = 1) (SR), ECMA-48.
-func hdl_csi_ecma48_SR(emu *emulator, arg int) {
+func hdl_csi_ecma48_SR(emu *Emulator, arg int) {
 	arg = min(arg, emu.nColsEff-emu.hMargin)
 	emu.insertCols(emu.hMargin, arg)
 }
 
 // CSI Ps E  Cursor Next Line Ps Times (default = 1) (CNL).
-func hdl_csi_cnl(emu *emulator, arg int) {
+func hdl_csi_cnl(emu *Emulator, arg int) {
 	hdl_csi_cud(emu, arg)
 	hdl_c0_cr(emu)
 }
 
 // CSI Ps F  Cursor Preceding Line Ps Times (default = 1) (CPL).
-func hdl_csi_cpl(emu *emulator, arg int) {
+func hdl_csi_cpl(emu *Emulator, arg int) {
 	hdl_csi_cuu(emu, arg)
 	hdl_c0_cr(emu)
 }
@@ -1705,7 +1705,7 @@ func hdl_csi_cpl(emu *emulator, arg int) {
 //
 //           If no parameters are given, all resources are reset to their
 //           initial values.
-func hdl_csi_xtmodkeys(emu *emulator, params []int) {
+func hdl_csi_xtmodkeys(emu *Emulator, params []int) {
 	switch len(params) {
 	case 0:
 		// Reset all options to initial values
@@ -1739,7 +1739,7 @@ func hdl_csi_xtmodkeys(emu *emulator, params []int) {
 }
 
 // CSI Ps b  Repeat the preceding graphic character Ps times (REP).
-func hdl_csi_rep(emu *emulator, arg int, chs []rune) {
+func hdl_csi_rep(emu *Emulator, arg int, chs []rune) {
 	for k := 0; k < arg; k++ {
 		hdl_graphemes(emu, chs...)
 	}

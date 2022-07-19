@@ -56,7 +56,7 @@ const (
 	t_bracketedPasteMode
 )
 
-func t_getDECmode(emu *emulator, which DECmode) bool {
+func t_getDECmode(emu *Emulator, which DECmode) bool {
 	switch which {
 	case t_reverseVideo:
 		return emu.reverseVideo
@@ -95,7 +95,7 @@ func t_getDECmode(emu *emulator, which DECmode) bool {
 // 	}
 // }
 
-func t_getANSImode(emu *emulator, which ANSImode) bool {
+func t_getANSImode(emu *Emulator, which ANSImode) bool {
 	switch which {
 	case t_keyboardLocked:
 		return emu.keyboardLocked

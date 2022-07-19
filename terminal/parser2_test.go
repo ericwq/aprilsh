@@ -57,7 +57,7 @@ func damageArea(cf *Framebuffer, y1, x1, y2, x2 int) (start, end int) {
 // 	}
 // }
 
-func isTabStop(emu *emulator, x int) bool {
+func isTabStop(emu *Emulator, x int) bool {
 	data := emu.tabStops
 
 	i := sort.Search(len(data), func(i int) bool { return data[i] >= x })
