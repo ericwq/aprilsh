@@ -104,8 +104,8 @@ func (ccm *ConditionalCursorMove) getValidity(emu *terminal.Emulator, lateAck in
 
 type ConditionalOverlayCell struct {
 	ConditionalOverlay
-	replacement      terminal.Cell
-	unknown          bool
+	replacement      terminal.Cell   // the prediction, replace the original content
+	unknown          bool            // has replacement?
 	originalContents []terminal.Cell // we don't give credit for correct predictions that match the original contents
 }
 
