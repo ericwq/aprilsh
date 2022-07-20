@@ -109,6 +109,22 @@ type ConditionalOverlayCell struct {
 	originalContents []terminal.Cell // we don't give credit for correct predictions that match the original contents
 }
 
+func (coc *ConditionalOverlayCell) reset2() {
+	coc.unknown = false
+	coc.originalContents = make([]terminal.Cell, 0)
+	coc.reset()
+}
+
+func (coc *ConditionalOverlayCell) resetWithOrig() {
+	if !coc.active || coc.unknown {
+		coc.reset2()
+		return
+	}
+
+	coc.originalContents = append(coc.originalContents, coc.replacement)
+	coc.reset()
+}
+
 func (coc *ConditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch int64, row int, flag bool) {
 	// if specified position is out of active area or is not active.
 	if !coc.active || row >= emu.GetHeight() || coc.col >= emu.GetWidth() {
