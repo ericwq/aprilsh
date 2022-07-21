@@ -43,7 +43,19 @@ type ConditionalOverlay struct {
 	col                 int
 	active              bool  // represents a prediction at all, default value false
 	tentativeUntilEpoch int64 // when to show
-	predictionTiem      int64 // used to find long-pending predictions, default value -1
+	predictionTime      int64 // used to find long-pending predictions, default value -1
+}
+
+func NewConditionalOverlay(expirationFrame int64, col int, tentativeUntilEpoch int64) ConditionalOverlay {
+	// default active is false, default predictionTiem is -1
+	co := ConditionalOverlay{}
+	co.expirationFrame = expirationFrame
+	co.col = col
+	co.active = false
+	co.tentativeUntilEpoch = tentativeUntilEpoch
+	co.predictionTime = -1
+
+	return co
 }
 
 // if the overlay is ready?
@@ -51,19 +63,29 @@ func (co *ConditionalOverlay) tentative(confirmedEpoch int64) bool {
 	return co.tentativeUntilEpoch > confirmedEpoch
 }
 
+// reset expirationFrame and tentativeUntilEpoch
 func (co *ConditionalOverlay) reset() {
 	co.expirationFrame = -1
+	co.tentativeUntilEpoch = -1
 	co.active = false
 }
 
+// set expirationFrame and predictionTime
 func (co *ConditionalOverlay) expire(expirationFrame, now int64) {
 	co.expirationFrame = expirationFrame
-	co.predictionTiem = now
+	co.predictionTime = now
 }
 
 type ConditionalCursorMove struct {
 	ConditionalOverlay
 	row int
+}
+
+func NewConditionalCursorMove(expirationFrame int64, row int, col int, tentativeUntilEpoch int64) ConditionalCursorMove {
+	ccm := ConditionalCursorMove{}
+	ccm.ConditionalOverlay = NewConditionalOverlay(expirationFrame, col, tentativeUntilEpoch)
+	ccm.row = row
+	return ccm
 }
 
 // set cursor position in emulator if the confirmedEpoch is greater than tantative epoch.
@@ -109,12 +131,23 @@ type ConditionalOverlayCell struct {
 	originalContents []terminal.Cell // we don't give credit for correct predictions that match the original contents
 }
 
+func NewConditionalOverlayCell(expirationFrame int64, col int, tentativeUntilEpoch int64) ConditionalOverlayCell {
+	coc := ConditionalOverlayCell{}
+	coc.ConditionalOverlay = NewConditionalOverlay(expirationFrame, col, tentativeUntilEpoch)
+	coc.replacement = terminal.Cell{}
+	coc.unknown = false
+	coc.originalContents = make([]terminal.Cell, 0)
+	return coc
+}
+
+// reset everything except replacement
 func (coc *ConditionalOverlayCell) reset2() {
 	coc.unknown = false
 	coc.originalContents = make([]terminal.Cell, 0)
 	coc.reset()
 }
 
+// reset everything but fill the originalContents with replacement
 func (coc *ConditionalOverlayCell) resetWithOrig() {
 	if !coc.active || coc.unknown {
 		coc.reset2()
