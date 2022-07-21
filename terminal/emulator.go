@@ -522,14 +522,17 @@ func (emu *Emulator) hideCursor() {
 	emu.cf.setCursorStyle(CursorStyle_Hidden)
 }
 
+/* --------------------------- The following method is for prediction engine --------------------------- */
 // move cursor to specified position, (default screen coordinate = [1,1])
 func (emu *Emulator) MoveCursor(posY, posX int) {
-	hdl_csi_cup(emu, posY, posX)
+	emu.posX = posX
+	emu.posY = posY
+	emu.normalizeCursorPos()
 }
 
 // get current cursor column
 func (emu *Emulator) GetCursorCol() int {
-	return emu.posX + 1
+	return emu.posX
 }
 
 // get current cursor row
@@ -555,7 +558,7 @@ func (emu *Emulator) GetWidth() int {
 }
 
 func (emu *Emulator) GetCell(row, col int) Cell {
-	//TODO consider the implementation of CUP to GetCell()
+	// TODO consider the implementation of CUP to GetCell()
 	if row < 0 || row > emu.GetWidth() {
 		row = emu.GetCursorRow()
 	}
