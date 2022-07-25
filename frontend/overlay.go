@@ -31,11 +31,23 @@ import "github.com/ericwq/aprilsh/terminal"
 type Validity uint
 
 const (
-	Pending Validity = iota
+	ValidityUnused Validity = iota
+	Pending
 	Correct
 	CorrectNoCredit
 	IncorrectOrExpired
 	Inactive
+)
+
+const (
+	SRTT_TRIGGER_LOW          = 20   // <= ms cures SRTT trigger to show predictions
+	SRTT_TRIGGER_HIGH         = 30   // > ms starts SRTT trigger
+	FLAG_TRIGGER_LOW          = 50   // <= ms cures flagging
+	FLAG_TRIGGER_HIGH         = 80   // > ms starts flagging
+	GLITCH_THRESHOLD          = 250  // prediction outstanding this long is glitch
+	GLITCH_REPAIR_COUNT       = 10   // non-glitches required to cure glitch trigger
+	GLITCH_REPAIR_MININTERVAL = 150  // required time in between non-glitches
+	GLITCH_FLAG_THRESHOLD     = 5000 // prediction outstanding this long => underline
 )
 
 type ConditionalOverlay struct {
@@ -200,17 +212,29 @@ func (coc *ConditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, 
 	}
 	current := emu.GetCell(row, coc.col)
 
+	// see if it hasn't been updated yet
 	if lateAck >= coc.expirationFrame {
 		if coc.unknown {
 			return CorrectNoCredit
 		}
 
+		// too easy for this to trigger falsely
 		if coc.replacement.IsBlank() {
 			return CorrectNoCredit
 		}
 
 		if current.ContentsMatch(coc.replacement) {
-			for i, cell := range coc.originalContents {
+			pos := 0
+			for i, it := range coc.originalContents {
+				if it.ContentsMatch(coc.replacement) {
+					break
+				}
+				pos = i
+			}
+			if pos == len(coc.originalContents) {
+				return Correct
+			} else {
+				return CorrectNoCredit
 			}
 		} else {
 			return IncorrectOrExpired
