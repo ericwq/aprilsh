@@ -94,7 +94,7 @@ func (ccm *ConditionalCursorMove) apply(emu *terminal.Emulator, confirmedEpoch i
 		return
 	}
 
-	if ccm.tentative(confirmedEpoch) { // only apply to specified epoch
+	if ccm.tentative(confirmedEpoch) { // check if it's the right time.
 		return
 	}
 
@@ -164,7 +164,28 @@ func (coc *ConditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 		return
 	}
 
-	if coc.tentative(confirmedEpoch) { // only apply to specified epoch
+	if coc.tentative(confirmedEpoch) { // check if it's the right time.
 		return
+	}
+
+	// both prediction and framebuffer cell are blank
+	if coc.replacement.IsBlank() && emu.GetCell(row, coc.col).IsBlank() {
+		flag = false
+	}
+
+	if coc.unknown {
+		if flag && coc.col != emu.GetWidth()-1 {
+			emu.GetMutableCell(row, coc.col).SetUnderline(true)
+		}
+		return
+	}
+
+	if emu.GetCell(row, coc.col) != coc.replacement {
+		cell := emu.GetMutableCell(row, coc.col)
+		*cell = coc.replacement
+		if flag {
+			emu.GetMutableCell(row, coc.col).SetUnderline(true)
+		}
+
 	}
 }

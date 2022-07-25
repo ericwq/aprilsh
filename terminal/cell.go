@@ -228,6 +228,10 @@ func (c *Cell) SetRenditions(r Renditions) {
 	c.renditions = r
 }
 
+func (c *Cell) SetUnderline(underline bool) {
+	c.renditions.underline = underline
+}
+
 func (c Cell) GetWide() bool {
 	return c.wide
 }

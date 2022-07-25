@@ -522,7 +522,13 @@ func (emu *Emulator) hideCursor() {
 	emu.cf.setCursorStyle(CursorStyle_Hidden)
 }
 
-/* --------------------------- The following method is for prediction engine --------------------------- */
+/*
+-----------------------------------------------------------------------------------------------------
+The following methods is only used by prediction engine. The coordinate is different from the one used
+by control sequence. It use the Emulator internal coordinate, starts from 0.
+-----------------------------------------------------------------------------------------------------
+*/
+
 // move cursor to specified position, (default screen coordinate = [1,1])
 func (emu *Emulator) MoveCursor(posY, posX int) {
 	emu.posX = posX
@@ -538,9 +544,9 @@ func (emu *Emulator) GetCursorCol() int {
 // get current cursor row
 func (emu *Emulator) GetCursorRow() int {
 	if emu.originMode == OriginMode_Absolute {
-		return emu.posY + 1
+		return emu.posY
 	}
-	return emu.posY - emu.marginTop + 1
+	return emu.posY - emu.marginTop
 }
 
 // get active area height
@@ -557,17 +563,40 @@ func (emu *Emulator) GetWidth() int {
 	return emu.nCols
 }
 
-func (emu *Emulator) GetCell(row, col int) Cell {
-	// TODO consider the implementation of CUP to GetCell()
-	if row < 0 || row > emu.GetWidth() {
-		row = emu.GetCursorRow()
+func (emu *Emulator) GetCell(posY, posX int) Cell {
+	posY, posX = emu.getCellPos(posY, posX)
+
+	return emu.cf.getCell(posY, posX)
+}
+
+func (emu *Emulator) GetMutableCell(posY, posX int) *Cell {
+	posY, posX = emu.getCellPos(posY, posX)
+
+	return emu.cf.getMutableCell(posY, posX)
+}
+
+func (emu *Emulator) getCellPos(posY, posX int) (posY2, posX2 int) {
+	// in case we don't provide the row or col
+	if posY < 0 || posY > emu.GetWidth() {
+		posY = emu.GetCursorRow()
 	}
 
-	if col < 0 || col > emu.GetHeight() {
-		col = emu.GetCursorCol()
+	if posX < 0 || posX > emu.GetHeight() {
+		posX = emu.GetCursorCol()
 	}
 
-	return emu.cf.getCell(row-1, col-1)
+	switch emu.originMode {
+	case OriginMode_Absolute:
+		posY = max(1, min(posY, emu.nRows))
+	case OriginMode_ScrollingRegion:
+		posY = max(1, min(posY, emu.marginBottom))
+		posY += emu.marginTop
+	}
+	posX = max(1, min(posX, emu.nCols))
+
+	posX2 = posX
+	posY2 = posY
+	return
 }
 
 /*
