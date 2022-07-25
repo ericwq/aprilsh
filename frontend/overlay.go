@@ -33,7 +33,7 @@ type Validity uint
 const (
 	Pending Validity = iota
 	Correct
-	ValidityCorrectNoCredit
+	CorrectNoCredit
 	IncorrectOrExpired
 	Inactive
 )
@@ -103,7 +103,7 @@ func (ccm *ConditionalCursorMove) apply(emu *terminal.Emulator, confirmedEpoch i
 
 // return Correct only when lateAck is greater than expirationFrame and cursor position is at the
 // same position.
-func (ccm *ConditionalCursorMove) getValidity(emu *terminal.Emulator, lateAck int64) (v Validity) {
+func (ccm *ConditionalCursorMove) getValidity(emu *terminal.Emulator, lateAck int64) Validity {
 	if !ccm.active { // only validate active prediction
 		return Inactive
 	}
@@ -173,19 +173,48 @@ func (coc *ConditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 		flag = false
 	}
 
+	// TOODO the meaning of unknown?
 	if coc.unknown {
+		// except the last column add underline for the cell.
 		if flag && coc.col != emu.GetWidth()-1 {
 			emu.GetMutableCell(row, coc.col).SetUnderline(true)
 		}
 		return
 	}
 
+	// if the cell is not the same as the prediction, replace it with the prediction.
 	if emu.GetCell(row, coc.col) != coc.replacement {
-		cell := emu.GetMutableCell(row, coc.col)
-		*cell = coc.replacement
+		(*emu.GetMutableCell(row, coc.col)) = coc.replacement
 		if flag {
 			emu.GetMutableCell(row, coc.col).SetUnderline(true)
 		}
-
 	}
+}
+
+func (coc *ConditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, lateAck int64) Validity {
+	if !coc.active {
+		return Inactive
+	}
+	if row >= emu.GetHeight() || coc.col >= emu.GetWidth() {
+		return IncorrectOrExpired
+	}
+	current := emu.GetCell(row, coc.col)
+
+	if lateAck >= coc.expirationFrame {
+		if coc.unknown {
+			return CorrectNoCredit
+		}
+
+		if coc.replacement.IsBlank() {
+			return CorrectNoCredit
+		}
+
+		if current.ContentsMatch(coc.replacement) {
+			for i, cell := range coc.originalContents {
+			}
+		} else {
+			return IncorrectOrExpired
+		}
+	}
+	return Pending
 }
