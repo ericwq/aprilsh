@@ -242,3 +242,26 @@ func (coc *ConditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, 
 	}
 	return Pending
 }
+
+type ConditionalOverlayRow struct {
+	rowNum       int
+	overlayCells []ConditionalOverlayCell
+}
+
+func NewConditionalOverlayRow(rowNum int) *ConditionalOverlayRow {
+	row := ConditionalOverlayRow{rowNum: rowNum}
+	row.overlayCells = make([]ConditionalOverlayCell, 0)
+	return &row
+}
+
+// TODO do we need this in golang?
+func (cor *ConditionalOverlayRow) rowNumEqual(rowNum int) bool {
+	return cor.rowNum == rowNum
+}
+
+func (cor *ConditionalOverlayRow) apply(emu *terminal.Emulator, confirmedEpoch int64, flag bool) {
+	for _, it := range cor.overlayCells {
+		it.apply(emu, confirmedEpoch, cor.rowNum, flag)
+	}
+}
+
