@@ -1028,13 +1028,13 @@ func TestHandle_ICH2(t *testing.T) {
 		// use DECALN to fill the screen, use CUP to move cursor to start position, then call the sequence
 		{
 			"ICH right side with wrap length==0",
-			[]int{csi_cup, graphemes, graphemes, graphemes, graphemes, csi_cup, csi_ich},
+			[]int{csi_cup, Graphemes, Graphemes, Graphemes, Graphemes, csi_cup, csi_ich},
 			1, 77, 2, 0,
 			"\x1B[2;78Hwrap\x1B[2;78H\x1B[3@", 1, 77, 3, "unused",
 		},
 		{
 			"ICH right side with wrap length!=0",
-			[]int{csi_cup, graphemes, graphemes, graphemes, graphemes, csi_cup, csi_ich},
+			[]int{csi_cup, Graphemes, Graphemes, Graphemes, Graphemes, csi_cup, csi_ich},
 			1, 77, 2, 0,
 			"\x1B[2;78Hwrap\x1B[2;78H\x1B[2@", 1, 77, 0, "unused",
 		}, //"\033[2;78Hwrap\033[2;78H\033[3@"
@@ -1123,13 +1123,13 @@ func TestHandle_ICH_EL_DCH_ECH(t *testing.T) {
 		{"  ECH at right", []int{esc_decaln, csi_cup, csi_ech}, 1, 5, 1, 7, "\x1B#8\x1B[2;6H\x1B[5X", 1, 5, 3, "unused"},
 		{
 			"ICH right side with wrap length==0",
-			[]int{csi_cup, graphemes, graphemes, graphemes, graphemes, csi_cup, csi_ich},
+			[]int{csi_cup, Graphemes, Graphemes, Graphemes, Graphemes, csi_cup, csi_ich},
 			1, 5, 2, 0,
 			"\x1B[2;6Hwrap\x1B[2;6H\x1B[3@", 1, 5, 0, "unused",
 		},
 		{
 			"ICH right side with wrap length!=0",
-			[]int{csi_cup, graphemes, graphemes, graphemes, graphemes, csi_cup, csi_ich},
+			[]int{csi_cup, Graphemes, Graphemes, Graphemes, Graphemes, csi_cup, csi_ich},
 			1, 5, 2, 0,
 			"\x1B[2;6Hwrap\x1B[2;6H\x1B[2@", 1, 5, 0, "unused",
 		},

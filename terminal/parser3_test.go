@@ -837,7 +837,7 @@ func TestHandle_OSC_0_1_2(t *testing.T) {
 		p.reset()
 		// parse the sequence
 		for _, ch := range v.seq {
-			hd = p.processInput(ch)
+			hd = p.ProcessInput(ch)
 		}
 
 		if hd != nil {
@@ -893,7 +893,7 @@ func TestHandle_OSC_Abort(t *testing.T) {
 
 		// parse the sequence
 		for _, ch := range v.seq {
-			hd = p.processInput(ch)
+			hd = p.ProcessInput(ch)
 		}
 
 		if hd != nil {

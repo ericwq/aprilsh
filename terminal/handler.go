@@ -121,7 +121,7 @@ const (
 	esc_ris
 	esc_ss2
 	esc_ss3
-	graphemes
+	Graphemes
 	osc_4
 	osc_52
 	osc_0_1_2
@@ -220,6 +220,14 @@ type Handler struct {
 	sequence string              // control sequence
 	ch       rune                // the last byte
 	handle   func(emu *Emulator) // handle function that will perform control sequnce on emulator
+}
+
+func (h *Handler) GetId() int {
+	return h.id
+}
+
+func (h *Handler) Handle(emu *Emulator) {
+	h.handle(emu)
 }
 
 // In the loop, national flag's width got 1+1=2.
@@ -1032,7 +1040,7 @@ func hdl_osc_10x(emu *Emulator, cmd int, arg string) {
 				case 10, 19: // 10: VT100 text foreground color; 19: highlight foreground color
 					color = emu.attrs.renditions.fgColor
 				case 12: // 12: text cursor color
-					color = emu.cf.DS.cursorColor //TODO remove the DS reference.
+					color = emu.cf.DS.cursorColor // TODO remove the DS reference.
 				}
 				response := fmt.Sprintf("\x1B]%d;%s\x1B\\", colorIdx, color) // the String() method of Color will be called.
 				emu.writePty(response)

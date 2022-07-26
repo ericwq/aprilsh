@@ -159,7 +159,7 @@ func TestProcessInputEmpty(t *testing.T) {
 	var hd *Handler
 	var chs []rune
 
-	hd = p.processInput(chs...)
+	hd = p.ProcessInput(chs...)
 	if hd != nil {
 		t.Errorf("processInput expect empty, got %s\n", hd.name)
 	}
@@ -191,7 +191,7 @@ func TestHandle_Graphemes(t *testing.T) {
 		{
 			"UTF-8 plain english",
 			"\x1B[1;14Hlong long ago",
-			[]int{csi_cup, graphemes},
+			[]int{csi_cup, Graphemes},
 			14, 0,
 			[]int{13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
 			"long long ago",
@@ -199,7 +199,7 @@ func TestHandle_Graphemes(t *testing.T) {
 		{
 			"UTF-8 chinese, combining character and flags",
 			"\x1B[2;30HChin\u0308\u0308a 🏖 i国旗🇳🇱Fun 🌈with Flag🇧🇷.s",
-			[]int{csi_cup, graphemes},
+			[]int{csi_cup, Graphemes},
 			30, 1,
 			[]int{29, 30, 31, 32, 33, 34, 35, 37, 38, 39, 41, 43, 45, 46, 47, 48, 49, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 62, 63},
 			"Chin\u0308\u0308a 🏖 i国旗🇳🇱Fun 🌈with Flag🇧🇷.s",
@@ -208,9 +208,9 @@ func TestHandle_Graphemes(t *testing.T) {
 			"VT mix UTF-8",
 			"\x1B[3;24H中国\x1B%@\xA5AB\xe2\xe3\xe9\x1B%GShanghai\x1B%@CD\xe0\xe1",
 			[]int{
-				csi_cup, graphemes, graphemes, esc_docs_iso8859_1, graphemes, graphemes, graphemes, graphemes, graphemes,
-				graphemes, esc_docs_utf8, graphemes, graphemes, graphemes, graphemes, graphemes, graphemes, graphemes,
-				graphemes, esc_docs_iso8859_1, graphemes, graphemes, graphemes, graphemes,
+				csi_cup, Graphemes, Graphemes, esc_docs_iso8859_1, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes,
+				Graphemes, esc_docs_utf8, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes,
+				Graphemes, esc_docs_iso8859_1, Graphemes, Graphemes, Graphemes, Graphemes,
 			},
 			24, 2,
 			[]int{23, 25, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44},
@@ -218,7 +218,7 @@ func TestHandle_Graphemes(t *testing.T) {
 		},
 		{
 			"VT edge", "\x1B[4;10H\x1B%@Beijing\x1B%G",
-			[]int{csi_cup, esc_docs_iso8859_1, graphemes, graphemes, graphemes, graphemes, graphemes, graphemes, graphemes, esc_docs_utf8},
+			[]int{csi_cup, esc_docs_iso8859_1, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes, esc_docs_utf8},
 			10, 3,
 			[]int{9, 10, 11, 12, 13, 14, 15},
 			"Beijing",
@@ -361,28 +361,28 @@ func TestHandle_REP(t *testing.T) {
 	}{
 		{
 			"plain english REP+wrap", "\x1B[8;79Hp\u0308\x1B[b",
-			[]int{csi_cup, graphemes, csi_rep},
+			[]int{csi_cup, Graphemes, csi_rep},
 			7,
 			[]int{78, 79},
 			"p\u0308p\u0308",
 		},
 		{
 			"chinese even REP+wrap", "\x1B[9;79H四\x1B[5b",
-			[]int{csi_cup, graphemes, csi_rep},
+			[]int{csi_cup, Graphemes, csi_rep},
 			8,
 			[]int{78, 0, 2, 4, 6, 8},
 			"四四四四四四",
 		},
 		{
 			"chinese odd REP+wrap", "\x1B[10;79H#海\x1B[5b",
-			[]int{csi_cup, graphemes, graphemes, csi_rep},
+			[]int{csi_cup, Graphemes, Graphemes, csi_rep},
 			9,
 			[]int{78, 0, 2, 4, 6, 8, 10},
 			"#海海海海海海",
 		},
 		{
 			"insert REP+wrap", "\x1B[4h\x1B[11;78H#\x1B[5b",
-			[]int{csi_sm, csi_cup, graphemes, csi_rep},
+			[]int{csi_sm, csi_cup, Graphemes, csi_rep},
 			10,
 			[]int{77, 78, 79, 0, 1, 2},
 			"######",
@@ -648,7 +648,7 @@ func TestHandle_ESC_DCS(t *testing.T) {
 			// parse the instruction
 			var hd *Handler
 			for _, ch := range v.seq {
-				hd = p.processInput(ch)
+				hd = p.ProcessInput(ch)
 			}
 			if hd != nil {
 				hd.handle(emu)
@@ -777,7 +777,7 @@ func TestHandle_LS2_LS3(t *testing.T) {
 		// parse the instruction
 		var hd *Handler
 		for _, ch := range v.seq {
-			hd = p.processInput(ch)
+			hd = p.ProcessInput(ch)
 		}
 
 		// call the handler
@@ -820,7 +820,7 @@ func TestHandle_LS1R_LS2R_LS3R(t *testing.T) {
 		// parse the instruction
 		var hd *Handler
 		for _, ch := range v.seq {
-			hd = p.processInput(ch)
+			hd = p.ProcessInput(ch)
 		}
 
 		// call the handler
@@ -861,7 +861,7 @@ func TestHandle_SS2_SS3(t *testing.T) {
 		// parse the instruction
 		var hd *Handler
 		for _, ch := range v.seq {
-			hd = p.processInput(ch)
+			hd = p.ProcessInput(ch)
 		}
 
 		// call the handler
@@ -901,7 +901,7 @@ func TestHandle_SO_SI(t *testing.T) {
 	for _, v := range tc {
 		place.Reset()
 
-		hd := p.processInput(v.r)
+		hd := p.ProcessInput(v.r)
 		if hd != nil {
 			hd.handle(emu)
 
@@ -945,7 +945,7 @@ func TestHandle_CUP(t *testing.T) {
 
 		// parse the sequence
 		for _, ch := range v.seq {
-			hd = p.processInput(ch)
+			hd = p.ProcessInput(ch)
 		}
 		if hd == nil {
 			t.Errorf("%s got nil Handler\n", v.name)
@@ -1102,7 +1102,7 @@ func TestHandle_ENQ_CAN_SUB_ESC(t *testing.T) {
 			}
 
 			for _, ch := range raw {
-				hd = p.processInput(ch)
+				hd = p.ProcessInput(ch)
 			}
 
 			if hd == nil {

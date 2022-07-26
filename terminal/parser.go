@@ -338,7 +338,7 @@ func (p *Parser) setCompatLevel(cl CompatibilityLevel, params ...int) {
 
 // print graphemes on screen
 func (p *Parser) handle_Graphemes() (hd *Handler) {
-	hd = &Handler{id: graphemes, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: Graphemes, ch: p.ch, sequence: p.historyString()}
 
 	// store the last graphic character
 	r := p.chs
@@ -1453,7 +1453,7 @@ func (p *Parser) processStream(str string, hds []*Handler) []*Handler {
 			for i := 0; i < len(str); i++ {
 				input = make([]rune, 1)
 				input[0] = rune(str[i]) // note the type conversion will promote 0x9c to 0x009c
-				hd = p.processInput(input[0])
+				hd = p.ProcessInput(input[0])
 				if hd != nil {
 					hds = append(hds, hd)
 				}
@@ -1471,7 +1471,7 @@ func (p *Parser) processStream(str string, hds []*Handler) []*Handler {
 			for graphemes.Next() {
 				input = graphemes.Runes()
 
-				hd = p.processInput(input...)
+				hd = p.ProcessInput(input...)
 				if hd != nil {
 					hds = append(hds, hd)
 				}
@@ -1493,7 +1493,7 @@ func (p *Parser) processStream(str string, hds []*Handler) []*Handler {
 // process each rune. must apply the UTF-8 decoder to the incoming byte
 // stream before interpreting any control characters.
 // ref: https://docs.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences
-func (p *Parser) processInput(chs ...rune) (hd *Handler) {
+func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 	var ch rune
 
 	defer func() {
