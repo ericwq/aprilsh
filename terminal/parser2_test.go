@@ -79,17 +79,17 @@ func TestHandle_SCOSC_SCORC(t *testing.T) {
 	}{
 		{
 			"move cursor, SCOSC, check", "\x1B[22;33H\x1B[s",
-			[]int{csi_cup, csi_slrm_scosc},
+			[]int{CSI_CUP, CSI_SLRM_SCOSC},
 			22 - 1, 33 - 1, true, "",
 		},
 		{
 			"move cursor, SCOSC, move cursor, SCORC, check", "\x1B[33;44H\x1B[s\x1B[42;35H\x1B[u",
-			[]int{csi_cup, csi_slrm_scosc, csi_cup, csi_scorc},
+			[]int{CSI_CUP, CSI_SLRM_SCOSC, CSI_CUP, CSI_SCORC},
 			33 - 1, 44 - 1, false, "",
 		},
 		{
 			"SCORC, check", "\x1B[u",
-			[]int{csi_scorc},
+			[]int{CSI_SCORC},
 			0, 0, false, "Asked to restore cursor (SCORC) but it has not been saved.",
 		},
 	}
@@ -151,7 +151,7 @@ func TestHandle_DECSC_DECRC_privSM_1048(t *testing.T) {
 		{
 			"ESC DECSC/DECRC",
 			"\x1B[?6h\x1B[9;9H\x1B7\x1B[24;14H\x1B[?6l\x1B8",
-			[]int{csi_privSM, csi_cup, esc_decsc, csi_cup, csi_privRM, esc_decrc},
+			[]int{CSI_privSM, CSI_CUP, ESC_DECSC, CSI_CUP, CSI_privRM, ESC_DECRC},
 			8, 8, OriginMode_ScrollingRegion,
 		},
 		// move cursor to (9,9), set originMode absolute, privSM 1048
@@ -159,7 +159,7 @@ func TestHandle_DECSC_DECRC_privSM_1048(t *testing.T) {
 		{
 			"CSI privSM/privRM 1048",
 			"\x1B[10;10H\x1B[?6l\x1B[?1048h\x1B[22;12H\x1B[?6h\x1B[?1048l",
-			[]int{csi_cup, csi_privRM, csi_privSM, csi_cup, csi_privSM, csi_privRM},
+			[]int{CSI_CUP, CSI_privRM, CSI_privSM, CSI_CUP, CSI_privSM, CSI_privRM},
 			9, 9, OriginMode_Absolute,
 		},
 	}
@@ -227,19 +227,19 @@ func TestHandle_DECSLRM(t *testing.T) {
 		{
 			"set left right margin, normal",
 			"\x1B[?69h\x1B[4;70s",
-			[]int{csi_privSM, csi_slrm_scosc},
+			[]int{CSI_privSM, CSI_SLRM_SCOSC},
 			3, 70, 0, 0,
 		},
 		{
 			"set left right margin, missing right parameter",
 			"\x1B[?69h\x1B[1s",
-			[]int{csi_privSM, csi_slrm_scosc},
+			[]int{CSI_privSM, CSI_SLRM_SCOSC},
 			0, 80, 0, 0,
 		},
 		{
 			"set left right margin, left parameter is zero",
 			"\x1B[?69h\x1B[0s",
-			[]int{csi_privSM, csi_slrm_scosc},
+			[]int{CSI_privSM, CSI_SLRM_SCOSC},
 			0, 80, 0, 0,
 		},
 	}
@@ -303,17 +303,17 @@ func TestHandle_DECSLRM_Others(t *testing.T) {
 	}{
 		{
 			"DECLRMM disable", "\x1B[?69l\x1B[4;49s",
-			[]int{csi_privRM, csi_slrm_scosc},
+			[]int{CSI_privRM, CSI_SLRM_SCOSC},
 			"", 0, 0, 0, 0,
 		},
 		{
 			"DECLRMM enable, outof range", "\x1B[?69h\x1B[4;89s",
-			[]int{csi_privSM, csi_slrm_scosc},
+			[]int{CSI_privSM, CSI_SLRM_SCOSC},
 			"Illegal arguments to SetLeftRightMargins:", 0, 0, 0, 0,
 		},
 		{
 			"DECLRMM OriginMode_ScrollingRegion, enable", "\x1B[?6h\x1B[?69h\x1B[4;69s", // DECLRMM: Set Left and Right Margins
-			[]int{csi_privSM, csi_privSM, csi_slrm_scosc},
+			[]int{CSI_privSM, CSI_privSM, CSI_SLRM_SCOSC},
 			"", 3, 69, 0, 3,
 		},
 	}
@@ -392,7 +392,7 @@ func TestHandle_DECSTR(t *testing.T) {
 				(finally) soft terminal reset, check the opposite result for the soft reset sequence.
 			*/
 			"\x1B[4h\x1B[?6h\x1B[?25l\x1B[?1h\x1B[2;30r\x1B[!p",
-			[]int{csi_sm, csi_privSM, csi_privRM, csi_privSM, csi_decstbm, csi_decstr},
+			[]int{CSI_SM, CSI_privSM, CSI_privRM, CSI_privSM, CSI_DECSTBM, CSI_DECSTR},
 			false, OriginMode_Absolute, true, CursorKeyMode_ANSI, false,
 		},
 	}
@@ -453,13 +453,13 @@ func TestHandle_CR_LF_VT_FF(t *testing.T) {
 		posX  int
 		seq   string
 	}{
-		{"CR 1 ", []int{csi_cup, c0_cr}, 2, 0, "\x1B[3;2H\x0D"},
-		{"CR 2 ", []int{csi_cup, c0_cr}, 4, 0, "\x1B[5;10H\x0D"},
-		{"LF   ", []int{csi_cup, esc_ind}, 3, 1, "\x1B[3;2H\x0C"},
-		{"VT   ", []int{csi_cup, esc_ind}, 4, 2, "\x1B[4;3H\x0B"},
-		{"FF   ", []int{csi_cup, esc_ind}, 5, 3, "\x1B[5;4H\x0C"},
-		{"ESC D", []int{csi_cup, esc_ind}, 6, 4, "\x1B[6;5H\x1BD"},
-		{"CHA CR", []int{csi_privSM, csi_slrm_scosc, csi_cup, c0_cr}, 4, 0, "\x1B[?69h\x1B[4;70s\x1B[5;1H\x0D"},
+		{"CR 1 ", []int{CSI_CUP, C0_CR}, 2, 0, "\x1B[3;2H\x0D"},
+		{"CR 2 ", []int{CSI_CUP, C0_CR}, 4, 0, "\x1B[5;10H\x0D"},
+		{"LF   ", []int{CSI_CUP, ESC_IND}, 3, 1, "\x1B[3;2H\x0C"},
+		{"VT   ", []int{CSI_CUP, ESC_IND}, 4, 2, "\x1B[4;3H\x0B"},
+		{"FF   ", []int{CSI_CUP, ESC_IND}, 5, 3, "\x1B[5;4H\x0C"},
+		{"ESC D", []int{CSI_CUP, ESC_IND}, 6, 4, "\x1B[6;5H\x1BD"},
+		{"CHA CR", []int{CSI_privSM, CSI_SLRM_SCOSC, CSI_CUP, C0_CR}, 4, 0, "\x1B[?69h\x1B[4;70s\x1B[5;1H\x0D"},
 	}
 
 	p := NewParser()
@@ -503,14 +503,14 @@ func TestHandle_CSI_BS_FF_VT_CR_TAB(t *testing.T) {
 		wantY, wantX int
 	}{
 		// call CUP first to set the start position
-		{"CSI backspace number    ", []int{csi_cup, csi_cup}, "\x1B[1;1H\x1B[23;12\bH", 22, 0},       // undo last character in CSI sequence
-		{"CSI backspace semicolon ", []int{csi_cup, csi_cup}, "\x1B[1;1H\x1B[23;\b;12H", 22, 11},     // undo last character in CSI sequence
-		{"cursor down 1+3 rows VT ", []int{csi_cup, esc_ind, csi_cud}, "\x1B[9;10H\x1B[3\vB", 12, 9}, //(8,9)->(9.9)->(12,9)
-		{"cursor down 1+3 rows FF ", []int{csi_cup, esc_ind, csi_cud}, "\x1B[9;10H\x1B[\f3B", 12, 9},
-		{"cursor up 2 rows and CR ", []int{csi_cup, c0_cr, csi_cuu}, "\x1B[8;9H\x1B[\r2A", 5, 0},
-		{"cursor up 3 rows and CR ", []int{csi_cup, c0_cr, csi_cuu}, "\x1B[7;7H\x1B[3\rA", 3, 0},
-		{"cursor forward 2cols +HT", []int{csi_cup, c0_ht, csi_cuf}, "\x1B[4;6H\x1B[2\tC", 3, 10},
-		{"cursor forward 1cols +HT", []int{csi_cup, c0_ht, csi_cuf}, "\x1B[6;3H\x1B[\t1C", 5, 9},
+		{"CSI backspace number    ", []int{CSI_CUP, CSI_CUP}, "\x1B[1;1H\x1B[23;12\bH", 22, 0},       // undo last character in CSI sequence
+		{"CSI backspace semicolon ", []int{CSI_CUP, CSI_CUP}, "\x1B[1;1H\x1B[23;\b;12H", 22, 11},     // undo last character in CSI sequence
+		{"cursor down 1+3 rows VT ", []int{CSI_CUP, ESC_IND, CSI_CUD}, "\x1B[9;10H\x1B[3\vB", 12, 9}, //(8,9)->(9.9)->(12,9)
+		{"cursor down 1+3 rows FF ", []int{CSI_CUP, ESC_IND, CSI_CUD}, "\x1B[9;10H\x1B[\f3B", 12, 9},
+		{"cursor up 2 rows and CR ", []int{CSI_CUP, C0_CR, CSI_CUU}, "\x1B[8;9H\x1B[\r2A", 5, 0},
+		{"cursor up 3 rows and CR ", []int{CSI_CUP, C0_CR, CSI_CUU}, "\x1B[7;7H\x1B[3\rA", 3, 0},
+		{"cursor forward 2cols +HT", []int{CSI_CUP, C0_HT, CSI_CUF}, "\x1B[4;6H\x1B[2\tC", 3, 10},
+		{"cursor forward 1cols +HT", []int{CSI_CUP, C0_HT, CSI_CUF}, "\x1B[6;3H\x1B[\t1C", 5, 9},
 	}
 
 	p := NewParser()
@@ -554,23 +554,23 @@ func TestHandle_CUU_CUD_CUF_CUB_CUP_FI_BI(t *testing.T) {
 		seq   string
 	}{
 		// call CUP first to set the start position
-		{"CSI Ps A  ", []int{csi_cup, csi_cuu}, 14, 10, "\x1B[21;11H\x1B[6A"},
-		{"CSI Ps B  ", []int{csi_cup, csi_cud}, 13, 10, "\x1B[11;11H\x1B[3B"},
-		{"CSI Ps C  ", []int{csi_cup, csi_cuf}, 10, 12, "\x1B[11;11H\x1B[2C"},
-		{"CSI Ps D  ", []int{csi_cup, csi_cub}, 10, 12, "\x1B[11;21H\x1B[8D"},
-		{"BS        ", []int{csi_cup, csi_cub}, 12, 11, "\x1B[13;13H\x08"}, // \x08 calls CUB
-		{"CUB       ", []int{csi_cup, csi_cub}, 12, 11, "\x1B[13;13H\x1B[1D"},
-		{"BS agin   ", []int{csi_cup, csi_cub}, 12, 10, "\x1B[13;12H\x08"}, // \x08 calls CUB
-		{"DECFI     ", []int{csi_cup, esc_fi}, 12, 22, "\x1B[13;22H\x1b9"},
-		{"DECBI     ", []int{csi_cup, esc_bi}, 12, 20, "\x1B[13;22H\x1b6"},
-		{"CUU with STBM", []int{csi_decstbm, csi_cup, csi_cuu}, 0, 0, "\x1B[3;32r\x1B[2;1H\x1B[7A"},
-		{"CUD with STBM", []int{csi_decstbm, csi_cup, csi_cud}, 39, 79, "\x1B[3;36r\x1B[40;80H\x1B[3B"},
-		{"CUB SLRM left", []int{csi_privSM, csi_slrm_scosc, csi_cup, csi_cub}, 0, 0, "\x1B[?69h\x1B[3;76s\x1B[1;1H\x1B[5D"},
-		{"CUB with right", []int{csi_privSM, csi_slrm_scosc, csi_cup, csi_cub}, 39, 71, "\x1B[?69h\x1B[3;76s\x1B[40;77H\x1B[4D"},
-		{"VT52 CUU", []int{csi_cup, csi_privRM, csi_cuu}, 19, 10, "\x1B[21;11H\x1B[?2l\x1BA"},
-		{"VT52 CUD", []int{csi_cup, csi_privRM, csi_cud}, 21, 10, "\x1B[21;11H\x1B[?2l\x1BB"},
-		{"VT52 CUF", []int{csi_cup, csi_privRM, csi_cuf}, 20, 11, "\x1B[21;11H\x1B[?2l\x1BC"},
-		{"VT52 CUB", []int{csi_cup, csi_privRM, csi_cub}, 20, 9, "\x1B[21;11H\x1B[?2l\x1BD"},
+		{"CSI Ps A  ", []int{CSI_CUP, CSI_CUU}, 14, 10, "\x1B[21;11H\x1B[6A"},
+		{"CSI Ps B  ", []int{CSI_CUP, CSI_CUD}, 13, 10, "\x1B[11;11H\x1B[3B"},
+		{"CSI Ps C  ", []int{CSI_CUP, CSI_CUF}, 10, 12, "\x1B[11;11H\x1B[2C"},
+		{"CSI Ps D  ", []int{CSI_CUP, CSI_CUB}, 10, 12, "\x1B[11;21H\x1B[8D"},
+		{"BS        ", []int{CSI_CUP, CSI_CUB}, 12, 11, "\x1B[13;13H\x08"}, // \x08 calls CUB
+		{"CUB       ", []int{CSI_CUP, CSI_CUB}, 12, 11, "\x1B[13;13H\x1B[1D"},
+		{"BS agin   ", []int{CSI_CUP, CSI_CUB}, 12, 10, "\x1B[13;12H\x08"}, // \x08 calls CUB
+		{"DECFI     ", []int{CSI_CUP, ESC_FI}, 12, 22, "\x1B[13;22H\x1b9"},
+		{"DECBI     ", []int{CSI_CUP, ESC_BI}, 12, 20, "\x1B[13;22H\x1b6"},
+		{"CUU with STBM", []int{CSI_DECSTBM, CSI_CUP, CSI_CUU}, 0, 0, "\x1B[3;32r\x1B[2;1H\x1B[7A"},
+		{"CUD with STBM", []int{CSI_DECSTBM, CSI_CUP, CSI_CUD}, 39, 79, "\x1B[3;36r\x1B[40;80H\x1B[3B"},
+		{"CUB SLRM left", []int{CSI_privSM, CSI_SLRM_SCOSC, CSI_CUP, CSI_CUB}, 0, 0, "\x1B[?69h\x1B[3;76s\x1B[1;1H\x1B[5D"},
+		{"CUB with right", []int{CSI_privSM, CSI_SLRM_SCOSC, CSI_CUP, CSI_CUB}, 39, 71, "\x1B[?69h\x1B[3;76s\x1B[40;77H\x1B[4D"},
+		{"VT52 CUU", []int{CSI_CUP, CSI_privRM, CSI_CUU}, 19, 10, "\x1B[21;11H\x1B[?2l\x1BA"},
+		{"VT52 CUD", []int{CSI_CUP, CSI_privRM, CSI_CUD}, 21, 10, "\x1B[21;11H\x1B[?2l\x1BB"},
+		{"VT52 CUF", []int{CSI_CUP, CSI_privRM, CSI_CUF}, 20, 11, "\x1B[21;11H\x1B[?2l\x1BC"},
+		{"VT52 CUB", []int{CSI_CUP, CSI_privRM, CSI_CUB}, 20, 9, "\x1B[21;11H\x1B[?2l\x1BD"},
 	}
 
 	p := NewParser()
@@ -619,17 +619,17 @@ func TestHandle_SU_SD(t *testing.T) {
 		emptyRows []int
 		seq       string
 	}{
-		{"SU scroll up   2 lines", []int{csi_su}, []int{nRows - 2, nRows - 1}, "\x1B[2S"}, // bottom 2 is erased
-		{"SD scroll down 3 lines", []int{csi_sd}, []int{0, 1, 2}, "\x1B[3T"},              // top three is erased.
+		{"SU scroll up   2 lines", []int{CSI_SU}, []int{nRows - 2, nRows - 1}, "\x1B[2S"}, // bottom 2 is erased
+		{"SD scroll down 3 lines", []int{CSI_SD}, []int{0, 1, 2}, "\x1B[3T"},              // top three is erased.
 		{
 			"SU scroll up 2 with SLRM",
-			[]int{csi_privSM, csi_slrm_scosc, csi_su},
+			[]int{CSI_privSM, CSI_SLRM_SCOSC, CSI_SU},
 			[]int{nRows - 2, nRows - 1},
 			"\x1B[?69h\x1B[3;76s\x1B[2S",
 		}, // bottom 2 is erased
 		{
 			"SD scroll down 3 with SLRM",
-			[]int{csi_privSM, csi_slrm_scosc, csi_sd},
+			[]int{CSI_privSM, CSI_SLRM_SCOSC, CSI_SD},
 			[]int{0, 1, 2},
 			"\x1B[?69h\x1B[3;76s\x1B[3T",
 		}, // top three is erased.
@@ -680,9 +680,9 @@ func TestHandle_HTS_TBC(t *testing.T) {
 		hdIDs []int
 		seq   string
 	}{
-		{"Set/Clear tab stop 1", []int{csi_cup, esc_hts, csi_tbc}, "\x1B[21;19H\x1BH\x1B[g"}, // set tab stop; clear tab stop
-		{"Set/Clear tab stop 2", []int{csi_cup, esc_hts, csi_tbc}, "\x1B[21;39H\x1BH\x1B[0g"},
-		{"Set/Clear tab stop 3", []int{csi_cup, esc_hts, csi_tbc}, "\x1B[21;47H\x1BH\x1B[3g"},
+		{"Set/Clear tab stop 1", []int{CSI_CUP, ESC_HTS, CSI_TBC}, "\x1B[21;19H\x1BH\x1B[g"}, // set tab stop; clear tab stop
+		{"Set/Clear tab stop 2", []int{CSI_CUP, ESC_HTS, CSI_TBC}, "\x1B[21;39H\x1BH\x1B[0g"},
+		{"Set/Clear tab stop 3", []int{CSI_CUP, ESC_HTS, CSI_TBC}, "\x1B[21;47H\x1BH\x1B[3g"},
 	}
 	// TODO test to see the HTS same position
 	p := NewParser()
@@ -733,16 +733,16 @@ func TestHandle_HT_CHT_CBT(t *testing.T) {
 		posX  int
 		seq   string
 	}{
-		{"HT case 1  ", []int{csi_cup, c0_ht}, 8, "\x1B[21;6H\x09"},                 // move to the next tab stop
-		{"HT case 2  ", []int{csi_cup, c0_ht}, 16, "\x1B[21;10H\x09"},               // move to the next tab stop
-		{"CBT back to the 3 tab", []int{csi_cup, csi_cbt}, 8, "\x1B[21;30H\x1B[3Z"}, // move backward to the previous 3 tab stop
-		{"CHT to the next 1 tab", []int{csi_cup, csi_cht}, 8, "\x1B[21;3H\x1B[I"},   // move to the next N tab stop
-		{"CHT to the next 4 tab", []int{csi_cup, csi_cht}, 32, "\x1B[21;3H\x1B[4I"}, // move to the next N tab stop
-		{"CHT to the right edge", []int{csi_cup, csi_cht}, 79, "\x1B[21;60H\x1B[4I"},
-		{"CBT rule to left edge", []int{csi_cup, csi_cbt}, 0, "\x1B[21;3H\x1B[3Z"}, // under tab rules
+		{"HT case 1  ", []int{CSI_CUP, C0_HT}, 8, "\x1B[21;6H\x09"},                 // move to the next tab stop
+		{"HT case 2  ", []int{CSI_CUP, C0_HT}, 16, "\x1B[21;10H\x09"},               // move to the next tab stop
+		{"CBT back to the 3 tab", []int{CSI_CUP, CSI_CBT}, 8, "\x1B[21;30H\x1B[3Z"}, // move backward to the previous 3 tab stop
+		{"CHT to the next 1 tab", []int{CSI_CUP, CSI_CHT}, 8, "\x1B[21;3H\x1B[I"},   // move to the next N tab stop
+		{"CHT to the next 4 tab", []int{CSI_CUP, CSI_CHT}, 32, "\x1B[21;3H\x1B[4I"}, // move to the next N tab stop
+		{"CHT to the right edge", []int{CSI_CUP, CSI_CHT}, 79, "\x1B[21;60H\x1B[4I"},
+		{"CBT rule to left edge", []int{CSI_CUP, CSI_CBT}, 0, "\x1B[21;3H\x1B[3Z"}, // under tab rules
 		{
 			"CBT tab stop to left edge",
-			[]int{csi_cup, esc_hts, csi_cup, esc_hts, csi_cbt}, // set 2 tab stops, CBT 2 backwards
+			[]int{CSI_CUP, ESC_HTS, CSI_CUP, ESC_HTS, CSI_CBT}, // set 2 tab stops, CBT 2 backwards
 			0,
 			"\x1B[21;4H\x1BH\x1B[21;7H\x1BH\x1B[2Z",
 		},
@@ -835,12 +835,12 @@ func TestHandle_DECIC_DECDC(t *testing.T) {
 		hdIDs     []int
 	}{
 		// move cursor to start position, and perform insert and delete
-		{"insert at left side ", "\x1B[2;1H\x1B[3'}", []int{0, 1, 2}, []int{csi_cup, csi_decic}},
-		{"insert at middle    ", "\x1B[2;4H\x1B[2'}", []int{3, 4}, []int{csi_cup, csi_decic}},
-		{"insert at right side", "\x1B[1;8H\x1B[2'}", []int{7}, []int{csi_cup, csi_decic}},
-		{"delete at left side ", "\x1B[1;1H\x1B[3'~", []int{5, 6, 7}, []int{csi_cup, csi_decdc}},
-		{"delete at middle    ", "\x1B[1;4H\x1B[2'~", []int{6, 7}, []int{csi_cup, csi_decdc}},
-		{"delete at right side", "\x1B[1;8H\x1B[2'~", []int{7}, []int{csi_cup, csi_decdc}},
+		{"insert at left side ", "\x1B[2;1H\x1B[3'}", []int{0, 1, 2}, []int{CSI_CUP, CSI_DECIC}},
+		{"insert at middle    ", "\x1B[2;4H\x1B[2'}", []int{3, 4}, []int{CSI_CUP, CSI_DECIC}},
+		{"insert at right side", "\x1B[1;8H\x1B[2'}", []int{7}, []int{CSI_CUP, CSI_DECIC}},
+		{"delete at left side ", "\x1B[1;1H\x1B[3'~", []int{5, 6, 7}, []int{CSI_CUP, CSI_DECDC}},
+		{"delete at middle    ", "\x1B[1;4H\x1B[2'~", []int{6, 7}, []int{CSI_CUP, CSI_DECDC}},
+		{"delete at right side", "\x1B[1;8H\x1B[2'~", []int{7}, []int{CSI_CUP, CSI_DECDC}},
 	}
 
 	for _, v := range tc {
@@ -886,10 +886,10 @@ func TestHandle_DECALN_RIS(t *testing.T) {
 		hdIDs []int
 		want  string
 	}{
-		{"ESC DECLAN", "\x1B#8", 3, 7, []int{esc_decaln}, "E"},                 // the whole screen is filled with 'E'
-		{"ESC RIS   ", "\x1Bc", 3, 7, []int{esc_ris}, " "},                     // after reset, the screen is empty
-		{"ESC DECLAN", "\x1B#8", 3, 7, []int{esc_decaln}, "E"},                 // the whole screen is filled with 'E'
-		{"VT52 ESC c", "\x1B[?2l\x1Bc", 3, 7, []int{csi_privRM, esc_ris}, " "}, // after reset, the screen is empty
+		{"ESC DECLAN", "\x1B#8", 3, 7, []int{ESC_DECALN}, "E"},                 // the whole screen is filled with 'E'
+		{"ESC RIS   ", "\x1Bc", 3, 7, []int{ESC_RIS}, " "},                     // after reset, the screen is empty
+		{"ESC DECLAN", "\x1B#8", 3, 7, []int{ESC_DECALN}, "E"},                 // the whole screen is filled with 'E'
+		{"VT52 ESC c", "\x1B[?2l\x1Bc", 3, 7, []int{CSI_privRM, ESC_RIS}, " "}, // after reset, the screen is empty
 	}
 
 	p := NewParser()
@@ -937,22 +937,22 @@ func TestHandle_ED_IL_DL(t *testing.T) {
 		msg      string
 	}{
 		// use CUP to move cursor to start position, use DECALN to fill the screen, then call ED,IL or DL
-		{"ED erase below @ 1,0", []int{csi_cup, esc_decaln, csi_ed}, 1, 0, 3, 7, "\x1B[2;1H\x1B#8\x1B[J", "unused"}, // Erase Below (default).
+		{"ED erase below @ 1,0", []int{CSI_CUP, ESC_DECALN, CSI_ED}, 1, 0, 3, 7, "\x1B[2;1H\x1B#8\x1B[J", "unused"}, // Erase Below (default).
 		{
 			"VT52 ED erase below @ 1,0",
-			[]int{csi_cup, esc_decaln, csi_privRM, csi_ed},
+			[]int{CSI_CUP, ESC_DECALN, CSI_privRM, CSI_ED},
 			1, 0, 3, 7, "\x1B[2;1H\x1B#8\x1B[?2l\x1BJ", "unused",
 		}, // Erase Below (default).
-		{"ED erase below @ 3,7", []int{csi_cup, esc_decaln, csi_ed}, 3, 6, 3, 7, "\x1B[4;7H\x1B#8\x1B[0J", "unused"}, // Ps = 0  ⇒  Erase Below (default).
-		{"ED erase above @ 3,6", []int{csi_cup, esc_decaln, csi_ed}, 0, 0, 3, 6, "\x1B[4;7H\x1B#8\x1B[1J", "unused"}, // Ps = 1  ⇒  Erase Above.
-		{"ED erase all", []int{csi_cup, esc_decaln, csi_ed}, 0, 0, 3, 7, "\x1B[4;7H\x1B#8\x1B[2J", "unused"},         // Ps = 2  ⇒  Erase All.
-		{"ED saved lines, all", []int{csi_cup, esc_decaln, csi_ed}, 0, 0, 7, 7, "\x1B[4;7H\x1B#8\x1B[3J", "unused"},  // Ps = 3  ⇒  Erase saved lines.
-		{"IL 1 lines @ 2,2 mid", []int{csi_cup, esc_decaln, csi_il}, 2, 0, 3, 7, "\x1B[3;3H\x1B#8\x1B[L", "unused"},
-		{"IL 2 lines @ 1,0 bottom", []int{csi_cup, esc_decaln, csi_il}, 1, 0, 3, 7, "\x1B[2;1H\x1B#8\x1B[2L", "unused"},
-		{"IL 4 lines @ 0,0 top", []int{esc_decaln, csi_cup, csi_il}, 0, 0, 3, 7, "\x1B#8\x1B[1;1H\x1B[4L", "unused"},
-		{"DL 2 lines @ 1,0 top", []int{esc_decaln, csi_cup, csi_dl}, 1, 0, 3, 7, "\x1B#8\x1B[2;1H\x1B[2M", "unused"},
-		{"DL 1 lines @ 3,0 bottom", []int{esc_decaln, csi_cup, csi_dl}, 3, 0, 3, 7, "\x1B#8\x1B[4;1H\x1B[1M", "unused"},
-		{"ED default", []int{csi_cup, esc_decaln, csi_ed}, 0, 0, 0, 0, "\x1B[4;7H\x1B#8\x1B[4J", "Erase in Display with illegal param:"}, // Unhandled case
+		{"ED erase below @ 3,7", []int{CSI_CUP, ESC_DECALN, CSI_ED}, 3, 6, 3, 7, "\x1B[4;7H\x1B#8\x1B[0J", "unused"}, // Ps = 0  ⇒  Erase Below (default).
+		{"ED erase above @ 3,6", []int{CSI_CUP, ESC_DECALN, CSI_ED}, 0, 0, 3, 6, "\x1B[4;7H\x1B#8\x1B[1J", "unused"}, // Ps = 1  ⇒  Erase Above.
+		{"ED erase all", []int{CSI_CUP, ESC_DECALN, CSI_ED}, 0, 0, 3, 7, "\x1B[4;7H\x1B#8\x1B[2J", "unused"},         // Ps = 2  ⇒  Erase All.
+		{"ED saved lines, all", []int{CSI_CUP, ESC_DECALN, CSI_ED}, 0, 0, 7, 7, "\x1B[4;7H\x1B#8\x1B[3J", "unused"},  // Ps = 3  ⇒  Erase saved lines.
+		{"IL 1 lines @ 2,2 mid", []int{CSI_CUP, ESC_DECALN, CSI_IL}, 2, 0, 3, 7, "\x1B[3;3H\x1B#8\x1B[L", "unused"},
+		{"IL 2 lines @ 1,0 bottom", []int{CSI_CUP, ESC_DECALN, CSI_IL}, 1, 0, 3, 7, "\x1B[2;1H\x1B#8\x1B[2L", "unused"},
+		{"IL 4 lines @ 0,0 top", []int{ESC_DECALN, CSI_CUP, CSI_IL}, 0, 0, 3, 7, "\x1B#8\x1B[1;1H\x1B[4L", "unused"},
+		{"DL 2 lines @ 1,0 top", []int{ESC_DECALN, CSI_CUP, CSI_DL}, 1, 0, 3, 7, "\x1B#8\x1B[2;1H\x1B[2M", "unused"},
+		{"DL 1 lines @ 3,0 bottom", []int{ESC_DECALN, CSI_CUP, CSI_DL}, 3, 0, 3, 7, "\x1B#8\x1B[4;1H\x1B[1M", "unused"},
+		{"ED default", []int{CSI_CUP, ESC_DECALN, CSI_ED}, 0, 0, 0, 0, "\x1B[4;7H\x1B#8\x1B[4J", "Erase in Display with illegal param:"}, // Unhandled case
 	}
 
 	p := NewParser()
@@ -1028,13 +1028,13 @@ func TestHandle_ICH2(t *testing.T) {
 		// use DECALN to fill the screen, use CUP to move cursor to start position, then call the sequence
 		{
 			"ICH right side with wrap length==0",
-			[]int{csi_cup, Graphemes, Graphemes, Graphemes, Graphemes, csi_cup, csi_ich},
+			[]int{CSI_CUP, Graphemes, Graphemes, Graphemes, Graphemes, CSI_CUP, CSI_ICH},
 			1, 77, 2, 0,
 			"\x1B[2;78Hwrap\x1B[2;78H\x1B[3@", 1, 77, 3, "unused",
 		},
 		{
 			"ICH right side with wrap length!=0",
-			[]int{csi_cup, Graphemes, Graphemes, Graphemes, Graphemes, csi_cup, csi_ich},
+			[]int{CSI_CUP, Graphemes, Graphemes, Graphemes, Graphemes, CSI_CUP, CSI_ICH},
 			1, 77, 2, 0,
 			"\x1B[2;78Hwrap\x1B[2;78H\x1B[2@", 1, 77, 0, "unused",
 		}, //"\033[2;78Hwrap\033[2;78H\033[3@"
@@ -1109,38 +1109,38 @@ func TestHandle_ICH_EL_DCH_ECH(t *testing.T) {
 		msg      string
 	}{
 		// use DECALN to fill the screen, use CUP to move cursor to start position, then call the sequence
-		{"ICH  in middle", []int{esc_decaln, csi_cup, csi_ich}, 0, 2, 0, 7, "\x1B#8\x1B[1;3H\x1B[2@", 0, 2, 2, "unused"},
-		{"ICH right side", []int{esc_decaln, csi_cup, csi_ich}, 1, 5, 1, 7, "\x1B#8\x1B[2;6H\x1B[3@", 1, 5, 3, "unused"},
-		{"ICH left side ", []int{esc_decaln, csi_cup, csi_ich}, 0, 0, 0, 7, "\x1B#8\x1B[1;1H\x1B[2@", 0, 0, 2, "unused"},
-		{"   EL to right", []int{esc_decaln, csi_cup, csi_el}, 3, 3, 3, 7, "\x1B#8\x1B[4;4H\x1B[0K", 3, 3, 5, "unused"},
-		{"   EL  to left", []int{esc_decaln, csi_cup, csi_el}, 3, 0, 3, 3, "\x1B#8\x1B[4;4H\x1B[1K", 3, 0, 4, "unused"},
-		{"   EL      all", []int{esc_decaln, csi_cup, csi_el}, 3, 0, 3, 7, "\x1B#8\x1B[4;4H\x1B[2K", 3, 0, 8, "unused"},
-		{"  DCH  at left", []int{esc_decaln, csi_cup, csi_dch}, 0, 0, 0, 7, "\x1B#8\x1B[1;1H\x1B[2P", 0, 6, 2, "unused"},
-		{"  DCH at right", []int{esc_decaln, csi_cup, csi_dch}, 0, 5, 0, 7, "\x1B#8\x1B[1;6H\x1B[3P", 0, 5, 3, "unused"},
-		{" DCH in middle", []int{esc_decaln, csi_cup, csi_dch}, 3, 3, 3, 7, "\x1B#8\x1B[4;4H\x1B[20P", 3, 3, 5, "unused"},
-		{" ECH in middle", []int{esc_decaln, csi_cup, csi_ech}, 3, 3, 3, 4, "\x1B#8\x1B[4;4H\x1B[2X", 3, 3, 2, "unused"},
-		{"   ECH at left", []int{esc_decaln, csi_cup, csi_ech}, 0, 0, 0, 4, "\x1B#8\x1B[1;1H\x1B[5X", 0, 0, 5, "unused"},
-		{"  ECH at right", []int{esc_decaln, csi_cup, csi_ech}, 1, 5, 1, 7, "\x1B#8\x1B[2;6H\x1B[5X", 1, 5, 3, "unused"},
+		{"ICH  in middle", []int{ESC_DECALN, CSI_CUP, CSI_ICH}, 0, 2, 0, 7, "\x1B#8\x1B[1;3H\x1B[2@", 0, 2, 2, "unused"},
+		{"ICH right side", []int{ESC_DECALN, CSI_CUP, CSI_ICH}, 1, 5, 1, 7, "\x1B#8\x1B[2;6H\x1B[3@", 1, 5, 3, "unused"},
+		{"ICH left side ", []int{ESC_DECALN, CSI_CUP, CSI_ICH}, 0, 0, 0, 7, "\x1B#8\x1B[1;1H\x1B[2@", 0, 0, 2, "unused"},
+		{"   EL to right", []int{ESC_DECALN, CSI_CUP, CSI_EL}, 3, 3, 3, 7, "\x1B#8\x1B[4;4H\x1B[0K", 3, 3, 5, "unused"},
+		{"   EL  to left", []int{ESC_DECALN, CSI_CUP, CSI_EL}, 3, 0, 3, 3, "\x1B#8\x1B[4;4H\x1B[1K", 3, 0, 4, "unused"},
+		{"   EL      all", []int{ESC_DECALN, CSI_CUP, CSI_EL}, 3, 0, 3, 7, "\x1B#8\x1B[4;4H\x1B[2K", 3, 0, 8, "unused"},
+		{"  DCH  at left", []int{ESC_DECALN, CSI_CUP, CSI_DCH}, 0, 0, 0, 7, "\x1B#8\x1B[1;1H\x1B[2P", 0, 6, 2, "unused"},
+		{"  DCH at right", []int{ESC_DECALN, CSI_CUP, CSI_DCH}, 0, 5, 0, 7, "\x1B#8\x1B[1;6H\x1B[3P", 0, 5, 3, "unused"},
+		{" DCH in middle", []int{ESC_DECALN, CSI_CUP, CSI_DCH}, 3, 3, 3, 7, "\x1B#8\x1B[4;4H\x1B[20P", 3, 3, 5, "unused"},
+		{" ECH in middle", []int{ESC_DECALN, CSI_CUP, CSI_ECH}, 3, 3, 3, 4, "\x1B#8\x1B[4;4H\x1B[2X", 3, 3, 2, "unused"},
+		{"   ECH at left", []int{ESC_DECALN, CSI_CUP, CSI_ECH}, 0, 0, 0, 4, "\x1B#8\x1B[1;1H\x1B[5X", 0, 0, 5, "unused"},
+		{"  ECH at right", []int{ESC_DECALN, CSI_CUP, CSI_ECH}, 1, 5, 1, 7, "\x1B#8\x1B[2;6H\x1B[5X", 1, 5, 3, "unused"},
 		{
 			"ICH right side with wrap length==0",
-			[]int{csi_cup, Graphemes, Graphemes, Graphemes, Graphemes, csi_cup, csi_ich},
+			[]int{CSI_CUP, Graphemes, Graphemes, Graphemes, Graphemes, CSI_CUP, CSI_ICH},
 			1, 5, 2, 0,
 			"\x1B[2;6Hwrap\x1B[2;6H\x1B[3@", 1, 5, 0, "unused",
 		},
 		{
 			"ICH right side with wrap length!=0",
-			[]int{csi_cup, Graphemes, Graphemes, Graphemes, Graphemes, csi_cup, csi_ich},
+			[]int{CSI_CUP, Graphemes, Graphemes, Graphemes, Graphemes, CSI_CUP, CSI_ICH},
 			1, 5, 2, 0,
 			"\x1B[2;6Hwrap\x1B[2;6H\x1B[2@", 1, 5, 0, "unused",
 		},
 		{
 			"   EL  default",
-			[]int{esc_decaln, csi_cup, csi_el},
+			[]int{ESC_DECALN, CSI_CUP, CSI_EL},
 			0, 0, 0, 0, "\x1B#8\x1B[4;4H\x1B[3K", 3, 0, 8, "Erase in Line with illegal param:",
 		},
 		{
 			"VT52 EL to right",
-			[]int{esc_decaln, csi_cup, csi_privRM, csi_el},
+			[]int{ESC_DECALN, CSI_CUP, CSI_privRM, CSI_EL},
 			3, 3, 3, 7,
 			"\x1B#8\x1B[4;4H\x1B[?2l\x1BK", 3, 3, 5, "unused",
 		},
@@ -1212,17 +1212,17 @@ func TestHandle_DEC_KPNM_KPAM(t *testing.T) {
 	}{
 		{
 			"DEC KPNM application mode",
-			[]int{esc_deckpnm, esc_deckpam},
+			[]int{ESC_DECKPNM, ESC_DECKPAM},
 			"\x1b>\x1b=", KeypadMode_Normal, KeypadMode_Application,
 		},
 		{
 			"DEC KPAM numeric mode",
-			[]int{esc_deckpam, esc_deckpnm},
+			[]int{ESC_DECKPAM, ESC_DECKPNM},
 			"\x1b=\x1b>", KeypadMode_Application, KeypadMode_Normal,
 		},
 		{
 			"VT52 DEC KPAM KPAM KPNM",
-			[]int{csi_privRM, esc_deckpam, esc_deckpnm},
+			[]int{CSI_privRM, ESC_DECKPAM, ESC_DECKPNM},
 			"\x1B[?2l\x1b=\x1b>", KeypadMode_Application, KeypadMode_Normal,
 		},
 	}

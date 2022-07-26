@@ -130,15 +130,15 @@ func TestHandle_SM_RM(t *testing.T) {
 		hdIDs []int
 		want  bool
 	}{
-		{"SM: keyboardLocked ", "\x1B[2l\x1B[2h", t_keyboardLocked, []int{csi_rm, csi_sm}, true},
-		{"SM: insertMode     ", "\x1B[4l\x1B[4h", t_insertMode, []int{csi_rm, csi_sm}, true},
-		{"SM: localEcho      ", "\x1B[12l\x1B[12h", t_localEcho, []int{csi_rm, csi_sm}, false},
-		{"SM: autoNewlineMode", "\x1B[20l\x1B[20h", t_autoNewlineMode, []int{csi_rm, csi_sm}, true},
+		{"SM: keyboardLocked ", "\x1B[2l\x1B[2h", t_keyboardLocked, []int{CSI_RM, CSI_SM}, true},
+		{"SM: insertMode     ", "\x1B[4l\x1B[4h", t_insertMode, []int{CSI_RM, CSI_SM}, true},
+		{"SM: localEcho      ", "\x1B[12l\x1B[12h", t_localEcho, []int{CSI_RM, CSI_SM}, false},
+		{"SM: autoNewlineMode", "\x1B[20l\x1B[20h", t_autoNewlineMode, []int{CSI_RM, CSI_SM}, true},
 
-		{"RM: keyboardLocked ", "\x1B[2h\x1B[2l", t_keyboardLocked, []int{csi_sm, csi_rm}, false},
-		{"RM: insertMode     ", "\x1B[4h\x1B[4l", t_insertMode, []int{csi_sm, csi_rm}, false},
-		{"RM: localEcho      ", "\x1B[12h\x1B[12l", t_localEcho, []int{csi_sm, csi_rm}, true},
-		{"RM: autoNewlineMode", "\x1B[20h\x1B[20l", t_autoNewlineMode, []int{csi_sm, csi_rm}, false},
+		{"RM: keyboardLocked ", "\x1B[2h\x1B[2l", t_keyboardLocked, []int{CSI_SM, CSI_RM}, false},
+		{"RM: insertMode     ", "\x1B[4h\x1B[4l", t_insertMode, []int{CSI_SM, CSI_RM}, false},
+		{"RM: localEcho      ", "\x1B[12h\x1B[12l", t_localEcho, []int{CSI_SM, CSI_RM}, true},
+		{"RM: autoNewlineMode", "\x1B[20h\x1B[20l", t_autoNewlineMode, []int{CSI_SM, CSI_RM}, false},
 	}
 
 	p := NewParser()
@@ -217,8 +217,8 @@ func TestHandle_privSM_privRM_67(t *testing.T) {
 		hdIDs        []int
 		bkspSendsDel bool
 	}{
-		{"enable DECBKM—Backarrow Key Mode", "\x1B[?67h", []int{csi_privSM}, false},
-		{"disable DECBKM—Backarrow Key Mode", "\x1B[?67l", []int{csi_privRM}, true},
+		{"enable DECBKM—Backarrow Key Mode", "\x1B[?67h", []int{CSI_privSM}, false},
+		{"disable DECBKM—Backarrow Key Mode", "\x1B[?67l", []int{CSI_privRM}, true},
 	}
 
 	p := NewParser()
@@ -260,23 +260,23 @@ func TestHandle_privSM_privRM_BOOL(t *testing.T) {
 		hdIDs []int
 		want  bool
 	}{
-		{"privSM: reverseVideo", "\x1B[?5l\x1B[?5h", t_reverseVideo, []int{csi_privRM, csi_privSM}, true},
-		{"privSM: autoWrapMode", "\x1B[?7l\x1B[?7h", t_autoWrapMode, []int{csi_privRM, csi_privSM}, true},
-		{"privSM: CursorVisible", "\x1B[?25l\x1B[?25h", t_showCursorMode, []int{csi_privRM, csi_privSM}, true},
-		{"privSM: focusEventMode", "\x1B[?1004l\x1B[?1004h", t_focusEventMode, []int{csi_privRM, csi_privSM}, true},
-		{"privSM: MouseAlternateScroll", "\x1B[?1007l\x1B[?1007h", t_altScrollMode, []int{csi_privRM, csi_privSM}, true},
-		{"privSM: altSendsEscape", "\x1B[?1036l\x1B[?1036h", t_altSendsEscape, []int{csi_privRM, csi_privSM}, true},
-		{"privSM: altSendsEscape", "\x1B[?1039l\x1B[?1039h", t_altSendsEscape, []int{csi_privRM, csi_privSM}, true},
-		{"privSM: BracketedPaste", "\x1B[?2004l\x1B[?2004h", t_bracketedPasteMode, []int{csi_privRM, csi_privSM}, true},
+		{"privSM: reverseVideo", "\x1B[?5l\x1B[?5h", t_reverseVideo, []int{CSI_privRM, CSI_privSM}, true},
+		{"privSM: autoWrapMode", "\x1B[?7l\x1B[?7h", t_autoWrapMode, []int{CSI_privRM, CSI_privSM}, true},
+		{"privSM: CursorVisible", "\x1B[?25l\x1B[?25h", t_showCursorMode, []int{CSI_privRM, CSI_privSM}, true},
+		{"privSM: focusEventMode", "\x1B[?1004l\x1B[?1004h", t_focusEventMode, []int{CSI_privRM, CSI_privSM}, true},
+		{"privSM: MouseAlternateScroll", "\x1B[?1007l\x1B[?1007h", t_altScrollMode, []int{CSI_privRM, CSI_privSM}, true},
+		{"privSM: altSendsEscape", "\x1B[?1036l\x1B[?1036h", t_altSendsEscape, []int{CSI_privRM, CSI_privSM}, true},
+		{"privSM: altSendsEscape", "\x1B[?1039l\x1B[?1039h", t_altSendsEscape, []int{CSI_privRM, CSI_privSM}, true},
+		{"privSM: BracketedPaste", "\x1B[?2004l\x1B[?2004h", t_bracketedPasteMode, []int{CSI_privRM, CSI_privSM}, true},
 
-		{"privRM: ReverseVideo", "\x1B[?5h\x1B[?5l", t_reverseVideo, []int{csi_privSM, csi_privRM}, false},
-		{"privRM: AutoWrapMode", "\x1B[?7h\x1B[?7l", t_autoWrapMode, []int{csi_privSM, csi_privRM}, false},
-		{"privRM: CursorVisible", "\x1B[?25h\x1B[?25l", t_showCursorMode, []int{csi_privSM, csi_privRM}, false},
-		{"privRM: focusEventMode", "\x1B[?1004h\x1B[?1004l", t_focusEventMode, []int{csi_privSM, csi_privRM}, false},
-		{"privRM: MouseAlternateScroll", "\x1B[?1007h\x1B[?1007l", t_altScrollMode, []int{csi_privSM, csi_privRM}, false},
-		{"privRM: altSendsEscape", "\x1B[?1036h\x1B[?1036l", t_altSendsEscape, []int{csi_privSM, csi_privRM}, false},
-		{"privRM: altSendsEscape", "\x1B[?1039h\x1B[?1039l", t_altSendsEscape, []int{csi_privSM, csi_privRM}, false},
-		{"privRM: BracketedPaste", "\x1B[?2004h\x1B[?2004l", t_bracketedPasteMode, []int{csi_privSM, csi_privRM}, false},
+		{"privRM: ReverseVideo", "\x1B[?5h\x1B[?5l", t_reverseVideo, []int{CSI_privSM, CSI_privRM}, false},
+		{"privRM: AutoWrapMode", "\x1B[?7h\x1B[?7l", t_autoWrapMode, []int{CSI_privSM, CSI_privRM}, false},
+		{"privRM: CursorVisible", "\x1B[?25h\x1B[?25l", t_showCursorMode, []int{CSI_privSM, CSI_privRM}, false},
+		{"privRM: focusEventMode", "\x1B[?1004h\x1B[?1004l", t_focusEventMode, []int{CSI_privSM, CSI_privRM}, false},
+		{"privRM: MouseAlternateScroll", "\x1B[?1007h\x1B[?1007l", t_altScrollMode, []int{CSI_privSM, CSI_privRM}, false},
+		{"privRM: altSendsEscape", "\x1B[?1036h\x1B[?1036l", t_altSendsEscape, []int{CSI_privSM, CSI_privRM}, false},
+		{"privRM: altSendsEscape", "\x1B[?1039h\x1B[?1039l", t_altSendsEscape, []int{CSI_privSM, CSI_privRM}, false},
+		{"privRM: BracketedPaste", "\x1B[?2004h\x1B[?2004l", t_bracketedPasteMode, []int{CSI_privSM, CSI_privRM}, false},
 	}
 
 	p := NewParser()
@@ -317,17 +317,17 @@ func TestHandle_privSM_privRM_Log(t *testing.T) {
 		hdID int
 		want string
 	}{
-		{"privSM:   4", "\x1B[?4h", csi_privSM, "DECSCLM: Set smooth scroll"},
-		{"privSM:   8", "\x1B[?8h", csi_privSM, "DECARM: Set auto-repeat mode"},
-		{"privSM:  12", "\x1B[?12h", csi_privSM, "Start blinking cursor"},
-		{"privSM:1001", "\x1B[?1001h", csi_privSM, "Set VT200 Highlight Mouse mode"},
-		{"privSM:unknow", "\x1B[?2022h", csi_privSM, "set priv mode"},
+		{"privSM:   4", "\x1B[?4h", CSI_privSM, "DECSCLM: Set smooth scroll"},
+		{"privSM:   8", "\x1B[?8h", CSI_privSM, "DECARM: Set auto-repeat mode"},
+		{"privSM:  12", "\x1B[?12h", CSI_privSM, "Start blinking cursor"},
+		{"privSM:1001", "\x1B[?1001h", CSI_privSM, "Set VT200 Highlight Mouse mode"},
+		{"privSM:unknow", "\x1B[?2022h", CSI_privSM, "set priv mode"},
 
-		{"privRM:   4", "\x1B[?4l", csi_privRM, "DECSCLM: Set jump scroll"},
-		{"privRM:   8", "\x1B[?8l", csi_privRM, "DECARM: Reset auto-repeat mode"},
-		{"privRM:  12", "\x1B[?12l", csi_privRM, "Stop blinking cursor"},
-		{"privRM:1001", "\x1B[?1001l", csi_privRM, "Reset VT200 Highlight Mouse mode"},
-		{"privRM:unknow", "\x1B[?2022l", csi_privRM, "reset priv mode"},
+		{"privRM:   4", "\x1B[?4l", CSI_privRM, "DECSCLM: Set jump scroll"},
+		{"privRM:   8", "\x1B[?8l", CSI_privRM, "DECARM: Reset auto-repeat mode"},
+		{"privRM:  12", "\x1B[?12l", CSI_privRM, "Stop blinking cursor"},
+		{"privRM:1001", "\x1B[?1001l", CSI_privRM, "Reset VT200 Highlight Mouse mode"},
+		{"privRM:unknow", "\x1B[?2022l", CSI_privRM, "reset priv mode"},
 	}
 
 	p := NewParser()
@@ -368,8 +368,8 @@ func TestHandle_privSM_privRM_6(t *testing.T) {
 		hdIDs      []int
 		originMode OriginMode
 	}{
-		{"privSM:   6", "\x1B[?6l\x1B[?6h", []int{csi_privRM, csi_privSM}, OriginMode_ScrollingRegion},
-		{"privRM:   6", "\x1B[?6h\x1B[?6l", []int{csi_privSM, csi_privRM}, OriginMode_Absolute},
+		{"privSM:   6", "\x1B[?6l\x1B[?6h", []int{CSI_privRM, CSI_privSM}, OriginMode_ScrollingRegion},
+		{"privRM:   6", "\x1B[?6h\x1B[?6l", []int{CSI_privSM, CSI_privRM}, OriginMode_Absolute},
 	}
 
 	p := NewParser()
@@ -411,8 +411,8 @@ func TestHandle_privSM_privRM_1(t *testing.T) {
 		hdIDs         []int
 		cursorKeyMode CursorKeyMode
 	}{
-		{"privSM:   1", "\x1B[?1l\x1B[?1h", []int{csi_privRM, csi_privSM}, CursorKeyMode_Application},
-		{"privRM:   1", "\x1B[?1h\x1B[?1l", []int{csi_privSM, csi_privRM}, CursorKeyMode_ANSI},
+		{"privSM:   1", "\x1B[?1l\x1B[?1h", []int{CSI_privRM, CSI_privSM}, CursorKeyMode_Application},
+		{"privRM:   1", "\x1B[?1h\x1B[?1l", []int{CSI_privSM, CSI_privRM}, CursorKeyMode_ANSI},
 	}
 
 	p := NewParser()
@@ -454,15 +454,15 @@ func TestHandle_privSM_privRM_MouseTrackingMode(t *testing.T) {
 		hdIDs []int
 		want  MouseTrackingMode
 	}{
-		{"privSM:   9", "\x1B[?9l\x1B[?9h", []int{csi_privRM, csi_privSM}, MouseTrackingMode_X10_Compat},
-		{"privSM:1000", "\x1B[?1000l\x1B[?1000h", []int{csi_privRM, csi_privSM}, MouseTrackingMode_VT200},
-		{"privSM:1002", "\x1B[?1002l\x1B[?1002h", []int{csi_privRM, csi_privSM}, MouseTrackingMode_VT200_ButtonEvent},
-		{"privSM:1003", "\x1B[?1003l\x1B[?1003h", []int{csi_privRM, csi_privSM}, MouseTrackingMode_VT200_AnyEvent},
+		{"privSM:   9", "\x1B[?9l\x1B[?9h", []int{CSI_privRM, CSI_privSM}, MouseTrackingMode_X10_Compat},
+		{"privSM:1000", "\x1B[?1000l\x1B[?1000h", []int{CSI_privRM, CSI_privSM}, MouseTrackingMode_VT200},
+		{"privSM:1002", "\x1B[?1002l\x1B[?1002h", []int{CSI_privRM, CSI_privSM}, MouseTrackingMode_VT200_ButtonEvent},
+		{"privSM:1003", "\x1B[?1003l\x1B[?1003h", []int{CSI_privRM, CSI_privSM}, MouseTrackingMode_VT200_AnyEvent},
 
-		{"privRM:   9", "\x1B[?9h\x1B[?9l", []int{csi_privSM, csi_privRM}, MouseTrackingMode_Disable},
-		{"privRM:1000", "\x1B[?1000h\x1B[?1000l", []int{csi_privSM, csi_privRM}, MouseTrackingMode_Disable},
-		{"privRM:1002", "\x1B[?1002h\x1B[?1002l", []int{csi_privSM, csi_privRM}, MouseTrackingMode_Disable},
-		{"privRM:1003", "\x1B[?1003h\x1B[?1003l", []int{csi_privSM, csi_privRM}, MouseTrackingMode_Disable},
+		{"privRM:   9", "\x1B[?9h\x1B[?9l", []int{CSI_privSM, CSI_privRM}, MouseTrackingMode_Disable},
+		{"privRM:1000", "\x1B[?1000h\x1B[?1000l", []int{CSI_privSM, CSI_privRM}, MouseTrackingMode_Disable},
+		{"privRM:1002", "\x1B[?1002h\x1B[?1002l", []int{CSI_privSM, CSI_privRM}, MouseTrackingMode_Disable},
+		{"privRM:1003", "\x1B[?1003h\x1B[?1003l", []int{CSI_privSM, CSI_privRM}, MouseTrackingMode_Disable},
 	}
 
 	p := NewParser()
@@ -504,13 +504,13 @@ func TestHandle_privSM_privRM_MouseTrackingEnc(t *testing.T) {
 		hdIDs []int
 		want  MouseTrackingEnc
 	}{
-		{"privSM:1005", "\x1B[?1005l\x1B[?1005h", []int{csi_privRM, csi_privSM}, MouseTrackingEnc_UTF8},
-		{"privSM:1006", "\x1B[?1006l\x1B[?1006h", []int{csi_privRM, csi_privSM}, MouseTrackingEnc_SGR},
-		{"privSM:1015", "\x1B[?1015l\x1B[?1015h", []int{csi_privRM, csi_privSM}, MouseTrackingEnc_URXVT},
+		{"privSM:1005", "\x1B[?1005l\x1B[?1005h", []int{CSI_privRM, CSI_privSM}, MouseTrackingEnc_UTF8},
+		{"privSM:1006", "\x1B[?1006l\x1B[?1006h", []int{CSI_privRM, CSI_privSM}, MouseTrackingEnc_SGR},
+		{"privSM:1015", "\x1B[?1015l\x1B[?1015h", []int{CSI_privRM, CSI_privSM}, MouseTrackingEnc_URXVT},
 
-		{"privRM:1005", "\x1B[?1005h\x1B[?1005l", []int{csi_privSM, csi_privRM}, MouseTrackingEnc_Default},
-		{"privRM:1006", "\x1B[?1006h\x1B[?1006l", []int{csi_privSM, csi_privRM}, MouseTrackingEnc_Default},
-		{"privRM:1015", "\x1B[?1015h\x1B[?1015l", []int{csi_privSM, csi_privRM}, MouseTrackingEnc_Default},
+		{"privRM:1005", "\x1B[?1005h\x1B[?1005l", []int{CSI_privSM, CSI_privRM}, MouseTrackingEnc_Default},
+		{"privRM:1006", "\x1B[?1006h\x1B[?1006l", []int{CSI_privSM, CSI_privRM}, MouseTrackingEnc_Default},
+		{"privRM:1015", "\x1B[?1015h\x1B[?1015l", []int{CSI_privSM, CSI_privRM}, MouseTrackingEnc_Default},
 	}
 
 	p := NewParser()
@@ -553,8 +553,8 @@ func TestHandle_privSM_privRM_47_1047(t *testing.T) {
 		setMode   bool
 		unsetMode bool
 	}{
-		{"privSM/RST 47", "\x1B[?47h\x1B[?47l", []int{csi_privSM, csi_privRM}, true, false},
-		{"privSM/RST 1047", "\x1B[?1047h\x1B[?1047l", []int{csi_privSM, csi_privRM}, true, false},
+		{"privSM/RST 47", "\x1B[?47h\x1B[?47l", []int{CSI_privSM, CSI_privRM}, true, false},
+		{"privSM/RST 1047", "\x1B[?1047h\x1B[?1047l", []int{CSI_privSM, CSI_privRM}, true, false},
 	}
 
 	p := NewParser()
@@ -601,7 +601,7 @@ func TestHandle_privSM_privRM_69(t *testing.T) {
 		hdIDs           []int
 		horizMarginMode bool
 	}{
-		{"privSM/privRM 69 combining", "\x1B[?69h\x1B[?69l", []int{csi_privSM, csi_privRM}, true},
+		{"privSM/privRM 69 combining", "\x1B[?69h\x1B[?69l", []int{CSI_privSM, CSI_privRM}, true},
 	}
 
 	p := NewParser()
@@ -649,7 +649,7 @@ func TestHandle_privSM_privRM_1049(t *testing.T) {
 	// privRM 1049 disable normal screen buffer (false)
 	// privRM 1049 set normal screen buffer (again for fast return)
 	seq := "\x1B[24;14H\x1B[?1049h\x1B[34;24H\x1B[?1049l\x1B[?1049l"
-	hdIDs := []int{csi_cup, csi_privSM, csi_cup, csi_privRM, csi_privRM}
+	hdIDs := []int{CSI_CUP, CSI_privSM, CSI_CUP, CSI_privRM, CSI_privRM}
 
 	p := NewParser()
 	emu := NewEmulator3(80, 40, 500)
@@ -732,9 +732,9 @@ func TestHandle_privSM_privRM_3(t *testing.T) {
 		hdIDs []int
 		mode  ColMode
 	}{
-		{"change to column Mode    132", "\x1B[?3h", []int{csi_privSM}, ColMode_C132},
-		{"change to column Mode     80", "\x1B[?3l", []int{csi_privRM}, ColMode_C80},
-		{"change to column Mode repeat", "\x1B[?3h\x1B[?3h", []int{csi_privSM, csi_privSM}, ColMode_C132},
+		{"change to column Mode    132", "\x1B[?3h", []int{CSI_privSM}, ColMode_C132},
+		{"change to column Mode     80", "\x1B[?3l", []int{CSI_privRM}, ColMode_C80},
+		{"change to column Mode repeat", "\x1B[?3h\x1B[?3h", []int{CSI_privSM, CSI_privSM}, ColMode_C132},
 	}
 
 	p := NewParser()
@@ -776,8 +776,8 @@ func TestHandle_privSM_privRM_2(t *testing.T) {
 		compatLevel         CompatibilityLevel
 		isResetCharsetState bool
 	}{
-		{"privSM 2", "\x1B[?2h", []int{csi_privSM}, CompatLevel_VT400, true},
-		{"privRM 2", "\x1B[?2l", []int{csi_privRM}, CompatLevel_VT52, true},
+		{"privSM 2", "\x1B[?2h", []int{CSI_privSM}, CompatLevel_VT400, true},
+		{"privRM 2", "\x1B[?2l", []int{CSI_privRM}, CompatLevel_VT52, true},
 	}
 
 	p := NewParser()
@@ -823,10 +823,10 @@ func TestHandle_OSC_0_1_2(t *testing.T) {
 		seq     string
 		wantStr string
 	}{
-		{"OSC 0;Pt BEL        ", []int{osc_0_1_2}, true, true, "\x1B]0;ada\x07", "ada"},
-		{"OSC 1;Pt 7bit ST    ", []int{osc_0_1_2}, true, false, "\x1B]1;adas\x1B\\", "adas"},
-		{"OSC 2;Pt BEL chinese", []int{osc_0_1_2}, false, true, "\x1B]2;[道德经]\x07", "[道德经]"},
-		{"OSC 2;Pt BEL unusual", []int{osc_0_1_2}, false, true, "\x1B]2;[neovim]\x1B78\x07", "[neovim]\x1B78"},
+		{"OSC 0;Pt BEL        ", []int{OSC_0_1_2}, true, true, "\x1B]0;ada\x07", "ada"},
+		{"OSC 1;Pt 7bit ST    ", []int{OSC_0_1_2}, true, false, "\x1B]1;adas\x1B\\", "adas"},
+		{"OSC 2;Pt BEL chinese", []int{OSC_0_1_2}, false, true, "\x1B]2;[道德经]\x07", "[道德经]"},
+		{"OSC 2;Pt BEL unusual", []int{OSC_0_1_2}, false, true, "\x1B]2;[neovim]\x1B78\x07", "[neovim]\x1B78"},
 	}
 
 	p := NewParser()
@@ -919,28 +919,28 @@ func TestHandle_OSC_52(t *testing.T) {
 	}{
 		{
 			"new selection in c",
-			[]int{osc_52},
+			[]int{OSC_52},
 			"c", "YXByaWxzaAo=",
 			"\x1B]52;c;YXByaWxzaAo=\x1B\\", true,
 			"\x1B]52;c;YXByaWxzaAo=\x1B\\",
 		},
 		{
 			"clear selection in cs",
-			[]int{osc_52, osc_52},
+			[]int{OSC_52, OSC_52},
 			"cs", "",
 			"\x1B]52;cs;x\x1B\\", true, // echo "aprilsh" | base64
 			"\x1B]52;cs;YXByaWxzaAo=\x1B\\\x1B]52;cs;x\x1B\\",
 		},
 		{
 			"empty selection",
-			[]int{osc_52},
+			[]int{OSC_52},
 			"s0", "5Zub5aeR5aiY5bGxCg==", // echo "四姑娘山" | base64
 			"\x1B]52;s0;5Zub5aeR5aiY5bGxCg==\x1B\\", true,
 			"\x1B]52;;5Zub5aeR5aiY5bGxCg==\x1B\\",
 		},
 		{
 			"question selection",
-			[]int{osc_52, osc_52},
+			[]int{OSC_52, OSC_52},
 			"", "", // don't care these values
 			"\x1B]52;c;5Zub5aeR5aiY5bGxCg==\x1B\\", false,
 			"\x1B]52;c0;5Zub5aeR5aiY5bGxCg==\x1B\\\x1B]52;c0;?\x1B\\",
@@ -997,8 +997,8 @@ func TestHandle_OSC_52_abort(t *testing.T) {
 		wantStr string
 		seq     string
 	}{
-		{"malform OSC 52 ", []int{osc_52}, "OSC 52: can't find Pc parameter.", "\x1B]52;23\x1B\\"},
-		{"Pc not in range", []int{osc_52}, "invalid Pc parameters.", "\x1B]52;se;\x1B\\"},
+		{"malform OSC 52 ", []int{OSC_52}, "OSC 52: can't find Pc parameter.", "\x1B]52;23\x1B\\"},
+		{"Pc not in range", []int{OSC_52}, "invalid Pc parameters.", "\x1B]52;se;\x1B\\"},
 	}
 	p := NewParser()
 	emu := NewEmulator3(8, 4, 0)
@@ -1042,31 +1042,31 @@ func TestHandle_OSC_4(t *testing.T) {
 	}{
 		{
 			"query one color number",
-			[]int{osc_4},
+			[]int{OSC_4},
 			"\x1B]4;1;rgb:8080/0000/0000\x1B\\", false,
 			"\x1B]4;1;?\x1B\\",
 		},
 		{
 			"query two color number",
-			[]int{osc_4},
+			[]int{OSC_4},
 			"\x1B]4;250;rgb:bcbc/bcbc/bcbc\x1B\\\x1B]4;1;rgb:8080/0000/0000\x1B\\", false,
 			"\x1B]4;250;?;1;?\x1B\\",
 		},
 		{
 			"query 8 color number",
-			[]int{osc_4},
+			[]int{OSC_4},
 			"\x1B]4;0;rgb:0000/0000/0000\x1B\\\x1B]4;1;rgb:8080/0000/0000\x1B\\\x1B]4;2;rgb:0000/8080/0000\x1B\\\x1B]4;3;rgb:8080/8080/0000\x1B\\\x1B]4;4;rgb:0000/0000/8080\x1B\\\x1B]4;5;rgb:8080/0000/8080\x1B\\\x1B]4;6;rgb:0000/8080/8080\x1B\\\x1B]4;7;rgb:c0c0/c0c0/c0c0\x1B\\", false,
 			"\x1B]4;0;?;1;?;2;?;3;?;4;?;5;?;6;?;7;?\x1B\\",
 		},
 		{
 			"missing ';' abort",
-			[]int{osc_4},
+			[]int{OSC_4},
 			"OSC 4: malformed argument, missing ';'.", true,
 			"\x1B]4;1?\x1B\\",
 		},
 		{
 			"Ps malform abort",
-			[]int{osc_4},
+			[]int{OSC_4},
 			"OSC 4: can't parse c parameter.", true,
 			"\x1B]4;m;?\x1B\\",
 		},
@@ -1129,49 +1129,49 @@ func TestHandle_OSC_10x(t *testing.T) {
 		{
 			"query 6 color",
 			ColorWhite, ColorGreen, ColorOlive,
-			[]int{osc_10_11_12_17_19},
+			[]int{OSC_10_11_12_17_19},
 			"\x1B]10;rgb:ffff/ffff/ffff\x1B\\\x1B]11;rgb:0000/8080/0000\x1B\\\x1B]17;rgb:0000/8080/0000\x1B\\\x1B]19;rgb:ffff/ffff/ffff\x1B\\\x1B]12;rgb:8080/8080/0000\x1B\\", false,
 			"\x1B]10;?;11;?;17;?;19;?;12;?\x1B\\",
 		},
 		{
 			"parse color parameter error",
 			invalidColor, invalidColor, invalidColor,
-			[]int{osc_10_11_12_17_19},
+			[]int{OSC_10_11_12_17_19},
 			"OSC 10x: can't parse color index.", true,
 			"\x1B]10;?;m;?\x1B\\",
 		},
 		{
 			"malform parameter",
 			invalidColor, invalidColor, invalidColor,
-			[]int{osc_10_11_12_17_19},
+			[]int{OSC_10_11_12_17_19},
 			"OSC 10x: malformed argument, missing ';'.", true,
 			"\x1B]10;?;\x1B\\",
 		},
 		{
 			"VT100 text foreground color: regular color",
 			ColorWhite, invalidColor, invalidColor,
-			[]int{osc_10_11_12_17_19},
+			[]int{OSC_10_11_12_17_19},
 			"\x1B]10;rgb:ffff/ffff/ffff\x1B\\", false,
 			"\x1B]10;?\x1B\\",
 		},
 		{
 			"VT100 text background color: default color",
 			invalidColor, ColorDefault, invalidColor,
-			[]int{osc_10_11_12_17_19},
+			[]int{OSC_10_11_12_17_19},
 			"\x1B]11;rgb:0000/0000/0000\x1B\\", false,
 			"\x1B]11;?\x1B\\",
 		},
 		{
 			"text cursor color: regular color",
 			invalidColor, invalidColor, ColorGreen,
-			[]int{osc_10_11_12_17_19},
+			[]int{OSC_10_11_12_17_19},
 			"\x1B]12;rgb:0000/8080/0000\x1B\\", false,
 			"\x1B]12;?\x1B\\",
 		},
 		{
 			"text cursor color: default color",
 			invalidColor, invalidColor, ColorDefault,
-			[]int{osc_10_11_12_17_19},
+			[]int{OSC_10_11_12_17_19},
 			"\x1B]12;rgb:0000/0000/0000\x1B\\", false,
 			"\x1B]12;?\x1B\\",
 		},
@@ -1235,9 +1235,9 @@ func TestHandle_DCS(t *testing.T) {
 		warn    bool
 		seq     string
 	}{
-		{"DECRQSS normal", []int{dcs_decrqss}, "\x1BP1$r" + DEVICE_ID + "\x1B\\", false, "\x1BP$q\"p\x1B\\"},
-		{"decrqss others", []int{dcs_decrqss}, "\x1BP0$rother\x1B\\", false, "\x1BP$qother\x1B\\"},
-		{"DCS unimplement", []int{dcs_decrqss}, "DCS:", true, "\x1BPunimplement\x1B78\x1B\\"},
+		{"DECRQSS normal", []int{DCS_DECRQSS}, "\x1BP1$r" + DEVICE_ID + "\x1B\\", false, "\x1BP$q\"p\x1B\\"},
+		{"decrqss others", []int{DCS_DECRQSS}, "\x1BP0$rother\x1B\\", false, "\x1BP$qother\x1B\\"},
+		{"DCS unimplement", []int{DCS_DECRQSS}, "DCS:", true, "\x1BPunimplement\x1B78\x1B\\"},
 	}
 	p := NewParser()
 	// p.logU = log.New(&place, "(Uimplemented): ", log.Ldate|log.Ltime|log.Lshortfile)
@@ -1288,8 +1288,8 @@ func TestHandle_VT52_EGM_ID(t *testing.T) {
 		charsetGL *map[byte]rune
 		resp      string
 	}{
-		{"VT52 ESC F", "\x1B[?2l\x1BF", []int{csi_privRM, vt52_egm}, &vt_DEC_Special, ""},
-		{"VT52 ESC Z", "\x1B[?2l\x1BZ", []int{csi_privRM, vt52_id}, nil, "\x1B/Z"},
+		{"VT52 ESC F", "\x1B[?2l\x1BF", []int{CSI_privRM, VT52_EGM}, &vt_DEC_Special, ""},
+		{"VT52 ESC Z", "\x1B[?2l\x1BZ", []int{CSI_privRM, VT52_ID}, nil, "\x1B/Z"},
 	}
 
 	p := NewParser()

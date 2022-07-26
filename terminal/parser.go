@@ -355,7 +355,7 @@ func (p *Parser) handle_Graphemes() (hd *Handler) {
 func (p *Parser) handle_CUU() (hd *Handler) {
 	num := p.getPs(0, 1)
 
-	hd = &Handler{id: csi_cuu, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_CUU, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_cuu(emu, num)
 	}
@@ -368,7 +368,7 @@ func (p *Parser) handle_CUU() (hd *Handler) {
 func (p *Parser) handle_CUD() (hd *Handler) {
 	num := p.getPs(0, 1)
 
-	hd = &Handler{id: csi_cud, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_CUD, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_cud(emu, num)
 	}
@@ -381,7 +381,7 @@ func (p *Parser) handle_CUD() (hd *Handler) {
 func (p *Parser) handle_CUF() (hd *Handler) {
 	num := p.getPs(0, 1)
 
-	hd = &Handler{id: csi_cuf, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_CUF, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_cuf(emu, num)
 	}
@@ -394,7 +394,7 @@ func (p *Parser) handle_CUF() (hd *Handler) {
 func (p *Parser) handle_CUB() (hd *Handler) {
 	num := p.getPs(0, 1)
 
-	hd = &Handler{id: csi_cub, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_CUB, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_cub(emu, num)
 	}
@@ -410,7 +410,7 @@ func (p *Parser) handle_CUP() (hd *Handler) {
 	row := p.getPs(0, 1)
 	col := p.getPs(1, 1)
 
-	hd = &Handler{id: csi_cup, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_CUP, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_cup(emu, row, col)
 	}
@@ -451,22 +451,22 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 		switch cmd {
 		// create the ActOn
 		case 0, 1, 2:
-			hd = &Handler{id: osc_0_1_2, ch: p.ch, sequence: p.historyString()}
+			hd = &Handler{id: OSC_0_1_2, ch: p.ch, sequence: p.historyString()}
 			hd.handle = func(emu *Emulator) {
 				hdl_osc_0_1_2(emu, cmd, arg)
 			}
 		case 4:
-			hd = &Handler{id: osc_4, ch: p.ch, sequence: p.historyString()}
+			hd = &Handler{id: OSC_4, ch: p.ch, sequence: p.historyString()}
 			hd.handle = func(emu *Emulator) {
 				hdl_osc_4(emu, cmd, arg)
 			}
 		case 52:
-			hd = &Handler{id: osc_52, ch: p.ch, sequence: p.historyString()}
+			hd = &Handler{id: OSC_52, ch: p.ch, sequence: p.historyString()}
 			hd.handle = func(emu *Emulator) {
 				hdl_osc_52(emu, cmd, arg)
 			}
 		case 10, 11, 12, 17, 19:
-			hd = &Handler{id: osc_10_11_12_17_19, ch: p.ch, sequence: p.historyString()}
+			hd = &Handler{id: OSC_10_11_12_17_19, ch: p.ch, sequence: p.historyString()}
 			hd.handle = func(emu *Emulator) {
 				hdl_osc_10x(emu, cmd, arg)
 			}
@@ -480,7 +480,7 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 
 // Carriage Return
 func (p *Parser) handle_CR() (hd *Handler) {
-	hd = &Handler{id: c0_cr, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: C0_CR, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_c0_cr(emu)
 	}
@@ -490,7 +490,7 @@ func (p *Parser) handle_CR() (hd *Handler) {
 
 // Line Feed
 func (p *Parser) handle_IND() (hd *Handler) {
-	hd = &Handler{id: esc_ind, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: ESC_IND, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_esc_ind(emu)
 	}
@@ -501,7 +501,7 @@ func (p *Parser) handle_IND() (hd *Handler) {
 // Horizontal Tab
 // move cursor position to next tab stop
 func (p *Parser) handle_HT() (hd *Handler) {
-	hd = &Handler{id: c0_ht, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: C0_HT, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_c0_ht(emu)
 	}
@@ -511,7 +511,7 @@ func (p *Parser) handle_HT() (hd *Handler) {
 
 // Bell
 func (p *Parser) handle_BEL() (hd *Handler) {
-	hd = &Handler{id: c0_bel, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: C0_BEL, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_c0_bel(emu)
 	}
@@ -521,7 +521,7 @@ func (p *Parser) handle_BEL() (hd *Handler) {
 
 // SI - switch to standard character set
 func (p *Parser) handle_SI() (hd *Handler) {
-	hd = &Handler{id: c0_si, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: C0_SI, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_c0_si(emu)
 	}
@@ -531,7 +531,7 @@ func (p *Parser) handle_SI() (hd *Handler) {
 
 // SO - switch to alternate character set
 func (p *Parser) handle_SO() (hd *Handler) {
-	hd = &Handler{id: c0_so, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: C0_SO, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_c0_so(emu)
 	}
@@ -541,7 +541,7 @@ func (p *Parser) handle_SO() (hd *Handler) {
 
 // set cursor position as tab stop position
 func (p *Parser) handle_HTS() (hd *Handler) {
-	hd = &Handler{id: esc_hts, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: ESC_HTS, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_esc_hts(emu)
 	}
@@ -554,7 +554,7 @@ func (p *Parser) handle_HTS() (hd *Handler) {
 func (p *Parser) handle_CHT() (hd *Handler) {
 	count := p.getPs(0, 1)
 
-	hd = &Handler{id: csi_cht, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_CHT, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_cht(emu, count)
 	}
@@ -567,7 +567,7 @@ func (p *Parser) handle_CHT() (hd *Handler) {
 func (p *Parser) handle_CBT() (hd *Handler) {
 	count := p.getPs(0, 1)
 
-	hd = &Handler{id: csi_cbt, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_CBT, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_cbt(emu, count)
 	}
@@ -580,7 +580,7 @@ func (p *Parser) handle_CBT() (hd *Handler) {
 func (p *Parser) handle_TBC() (hd *Handler) {
 	cmd := p.getPs(0, 0)
 
-	hd = &Handler{id: csi_tbc, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_TBC, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_tbc(emu, cmd)
 	}
@@ -595,7 +595,7 @@ func (p *Parser) handle_TBC() (hd *Handler) {
 func (p *Parser) handle_ICH() (hd *Handler) {
 	count := p.getPs(0, 1)
 
-	hd = &Handler{id: csi_ich, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_ICH, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_ich(emu, count)
 	}
@@ -609,7 +609,7 @@ func (p *Parser) handle_ICH() (hd *Handler) {
 func (p *Parser) handle_HPA() (hd *Handler) {
 	count := p.getPs(0, 1)
 
-	hd = &Handler{id: csi_hpa, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_HPA, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_hpa(emu, count)
 	}
@@ -622,7 +622,7 @@ func (p *Parser) handle_HPA() (hd *Handler) {
 func (p *Parser) handle_HPR() (hd *Handler) {
 	count := p.getPs(0, 1)
 
-	hd = &Handler{id: csi_hpr, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_HPR, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_hpr(emu, count)
 	}
@@ -636,7 +636,7 @@ func (p *Parser) handle_HPR() (hd *Handler) {
 func (p *Parser) handle_CHA() (hd *Handler) {
 	count := p.getPs(0, 1)
 
-	hd = &Handler{id: csi_cha, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_CHA, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_cha(emu, count)
 	}
@@ -653,7 +653,7 @@ func (p *Parser) handle_CHA() (hd *Handler) {
 func (p *Parser) handle_ED() (hd *Handler) {
 	cmd := p.getPs(0, 0)
 
-	hd = &Handler{id: csi_ed, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_ED, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_ed(emu, cmd)
 	}
@@ -669,7 +669,7 @@ func (p *Parser) handle_ED() (hd *Handler) {
 func (p *Parser) handle_EL() (hd *Handler) {
 	cmd := p.getPs(0, 0)
 
-	hd = &Handler{id: csi_el, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_EL, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_el(emu, cmd)
 	}
@@ -684,7 +684,7 @@ func (p *Parser) handle_EL() (hd *Handler) {
 func (p *Parser) handle_IL() (hd *Handler) {
 	lines := p.getPs(0, 1)
 
-	hd = &Handler{id: csi_il, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_IL, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_il(emu, lines)
 	}
@@ -699,7 +699,7 @@ func (p *Parser) handle_IL() (hd *Handler) {
 func (p *Parser) handle_DL() (hd *Handler) {
 	lines := p.getPs(0, 1)
 
-	hd = &Handler{id: csi_dl, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_DL, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_dl(emu, lines)
 	}
@@ -715,7 +715,7 @@ func (p *Parser) handle_DL() (hd *Handler) {
 func (p *Parser) handle_DCH() (hd *Handler) {
 	cells := p.getPs(0, 1)
 
-	hd = &Handler{id: csi_dch, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_DCH, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_dch(emu, cells)
 	}
@@ -730,7 +730,7 @@ func (p *Parser) handle_DCH() (hd *Handler) {
 func (p *Parser) handle_SU() (hd *Handler) {
 	lines := p.getPs(0, 1)
 
-	hd = &Handler{id: csi_su, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_SU, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_su(emu, lines)
 	}
@@ -745,7 +745,7 @@ func (p *Parser) handle_SU() (hd *Handler) {
 func (p *Parser) handle_SD() (hd *Handler) {
 	lines := p.getPs(0, 1)
 
-	hd = &Handler{id: csi_sd, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_SD, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_sd(emu, lines)
 	}
@@ -760,7 +760,7 @@ func (p *Parser) handle_SD() (hd *Handler) {
 func (p *Parser) handle_ECH() (hd *Handler) {
 	num := p.getPs(0, 1)
 
-	hd = &Handler{id: csi_ech, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_ECH, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_ech(emu, num)
 	}
@@ -777,7 +777,7 @@ func (p *Parser) handle_ECH() (hd *Handler) {
 // current operating VT level.
 // Device Attributes (Primary)
 func (p *Parser) handle_priDA() (hd *Handler) {
-	hd = &Handler{id: csi_priDA, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_priDA, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_priDA(emu)
 	}
@@ -790,7 +790,7 @@ func (p *Parser) handle_priDA() (hd *Handler) {
 // code, firmware version level, and hardware options.
 // Device Attributes (Secondary)
 func (p *Parser) handle_secDA() (hd *Handler) {
-	hd = &Handler{id: csi_secDA, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_secDA, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_secDA(emu)
 	}
@@ -805,7 +805,7 @@ func (p *Parser) handle_secDA() (hd *Handler) {
 func (p *Parser) handle_VPA() (hd *Handler) {
 	row := p.getPs(0, 1)
 
-	hd = &Handler{id: csi_vpa, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_VPA, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_vpa(emu, row)
 	}
@@ -818,7 +818,7 @@ func (p *Parser) handle_VPA() (hd *Handler) {
 func (p *Parser) handle_VPR() (hd *Handler) {
 	row := p.getPs(0, 1)
 
-	hd = &Handler{id: csi_vpr, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_VPR, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_vpr(emu, row)
 	}
@@ -831,7 +831,7 @@ func (p *Parser) handle_VPR() (hd *Handler) {
 func (p *Parser) handle_SGR() (hd *Handler) {
 	params := p.copyArgs()
 
-	hd = &Handler{id: csi_sgr, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_SGR, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_sgr(emu, params)
 	}
@@ -846,7 +846,7 @@ func (p *Parser) handle_SGR() (hd *Handler) {
 func (p *Parser) handle_DSR() (hd *Handler) {
 	cmd := p.getPs(0, 0)
 
-	hd = &Handler{id: csi_dsr, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_DSR, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_dsr(emu, cmd)
 	}
@@ -857,7 +857,7 @@ func (p *Parser) handle_DSR() (hd *Handler) {
 
 // ESC N Single Shift Select of G2 Character Set (SS2  is 0x8e), VT220.
 func (p *Parser) handle_SS2() (hd *Handler) {
-	hd = &Handler{id: esc_ss2, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: ESC_SS2, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_esc_ss2(emu)
 	}
@@ -868,7 +868,7 @@ func (p *Parser) handle_SS2() (hd *Handler) {
 
 // ESC O Single Shift Select of G3 Character Set (SS3  is 0x8f), VT220.
 func (p *Parser) handle_SS3() (hd *Handler) {
-	hd = &Handler{id: esc_ss3, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: ESC_SS3, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_esc_ss3(emu)
 	}
@@ -879,7 +879,7 @@ func (p *Parser) handle_SS3() (hd *Handler) {
 
 // LS1R gr = 1
 func (p *Parser) handle_LS1R() (hd *Handler) {
-	hd = &Handler{id: esc_ls1r, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: ESC_LS1R, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_esc_ls1r(emu)
 	}
@@ -890,7 +890,7 @@ func (p *Parser) handle_LS1R() (hd *Handler) {
 
 // LS2 gl = 2
 func (p *Parser) handle_LS2() (hd *Handler) {
-	hd = &Handler{id: esc_ls2, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: ESC_LS2, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_esc_ls2(emu)
 	}
@@ -901,7 +901,7 @@ func (p *Parser) handle_LS2() (hd *Handler) {
 
 // LS2R gr = 2
 func (p *Parser) handle_LS2R() (hd *Handler) {
-	hd = &Handler{id: esc_ls2r, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: ESC_LS2R, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_esc_ls2r(emu)
 	}
@@ -912,7 +912,7 @@ func (p *Parser) handle_LS2R() (hd *Handler) {
 
 // LS3 gl = 3
 func (p *Parser) handle_LS3() (hd *Handler) {
-	hd = &Handler{id: esc_ls3, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: ESC_LS3, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_esc_ls3(emu)
 	}
@@ -923,7 +923,7 @@ func (p *Parser) handle_LS3() (hd *Handler) {
 
 // LS3R gr = 3
 func (p *Parser) handle_LS3R() (hd *Handler) {
-	hd = &Handler{id: esc_ls3r, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: ESC_LS3R, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_esc_ls3r(emu)
 	}
@@ -934,7 +934,7 @@ func (p *Parser) handle_LS3R() (hd *Handler) {
 
 // DOCS Select charset: UTF-8
 func (p *Parser) handle_DOCS_UTF8() (hd *Handler) {
-	hd = &Handler{id: esc_docs_utf8, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: ESC_DOCS_UTF8, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_esc_docs_utf8(emu)
 	}
@@ -946,7 +946,7 @@ func (p *Parser) handle_DOCS_UTF8() (hd *Handler) {
 
 // DOCS Select charset: default (ISO-8859-1)
 func (p *Parser) handle_DOCS_ISO8859_1() (hd *Handler) {
-	hd = &Handler{id: esc_docs_iso8859_1, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: ESC_DOCS_ISO8859_1, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_esc_docs_iso8859_1(emu)
 	}
@@ -960,7 +960,7 @@ func (p *Parser) handle_DOCS_ISO8859_1() (hd *Handler) {
 // horizontal position, scrolls buffer if necessary
 // Reverse Index
 func (p *Parser) handle_RI() (hd *Handler) {
-	hd = &Handler{id: esc_ri, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: ESC_RI, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_esc_ri(emu)
 	}
@@ -972,7 +972,7 @@ func (p *Parser) handle_RI() (hd *Handler) {
 // move cursor to the next row, scroll down if necessary. move cursor to row head
 // Next Line
 func (p *Parser) handle_NEL() (hd *Handler) {
-	hd = &Handler{id: esc_nel, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: ESC_NEL, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_esc_nel(emu)
 	}
@@ -986,7 +986,7 @@ func (p *Parser) handle_NEL() (hd *Handler) {
 func (p *Parser) handle_RIS() (hd *Handler) {
 	p.setCompatLevel(CompatLevel_VT400)
 
-	hd = &Handler{id: esc_ris, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: ESC_RIS, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_esc_ris(emu)
 	}
@@ -997,7 +997,7 @@ func (p *Parser) handle_RIS() (hd *Handler) {
 
 // Save Cursor and Attributes
 func (p *Parser) handle_DECSC() (hd *Handler) {
-	hd = &Handler{id: esc_decsc, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: ESC_DECSC, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_esc_decsc(emu)
 	}
@@ -1008,7 +1008,7 @@ func (p *Parser) handle_DECSC() (hd *Handler) {
 
 // Restore Cursor and Attributes
 func (p *Parser) handle_DECRC() (hd *Handler) {
-	hd = &Handler{id: esc_decrc, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: ESC_DECRC, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_esc_decrc(emu)
 	}
@@ -1020,7 +1020,7 @@ func (p *Parser) handle_DECRC() (hd *Handler) {
 // fill the screen with 'E'
 // DEC Alignment Pattern Generator
 func (p *Parser) handle_DECALN() (hd *Handler) {
-	hd = &Handler{id: esc_decaln, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: ESC_DECALN, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_esc_decaln(emu)
 	}
@@ -1087,7 +1087,7 @@ func (p *Parser) handle_ESC_DCS() (hd *Handler) {
 		charset = &vt_DEC_Technical // Charset_DecTechn
 	}
 
-	hd = &Handler{id: esc_dcs, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: ESC_DCS, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_esc_dcs(emu, index, charset)
 	}
@@ -1105,7 +1105,7 @@ func (p *Parser) handle_ESC_DCS() (hd *Handler) {
 func (p *Parser) handle_SM() (hd *Handler) {
 	params := p.copyArgs()
 
-	hd = &Handler{id: csi_sm, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_SM, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_sm(emu, params)
 	}
@@ -1118,7 +1118,7 @@ func (p *Parser) handle_SM() (hd *Handler) {
 func (p *Parser) handle_RM() (hd *Handler) {
 	params := p.copyArgs()
 
-	hd = &Handler{id: csi_rm, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_RM, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_rm(emu, params)
 	}
@@ -1133,7 +1133,7 @@ func (p *Parser) handle_privSM() (hd *Handler) {
 	params := p.copyArgs()
 	p.setCompatLevel(CompatLevel_VT400, params...)
 
-	hd = &Handler{id: csi_privSM, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_privSM, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_privSM(emu, params)
 	}
@@ -1148,7 +1148,7 @@ func (p *Parser) handle_privRM() (hd *Handler) {
 	params := p.copyArgs()
 	p.setCompatLevel(CompatLevel_VT52, params...)
 
-	hd = &Handler{id: csi_privRM, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_privRM, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_privRM(emu, params)
 	}
@@ -1161,7 +1161,7 @@ func (p *Parser) handle_privRM() (hd *Handler) {
 func (p *Parser) handle_DECSTBM() (hd *Handler) {
 	params := p.copyArgs()
 
-	hd = &Handler{id: csi_decstbm, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_DECSTBM, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_decstbm(emu, params)
 	}
@@ -1173,7 +1173,7 @@ func (p *Parser) handle_DECSTBM() (hd *Handler) {
 
 // DEC Soft Terminal Reset
 func (p *Parser) handle_DECSTR() (hd *Handler) {
-	hd = &Handler{id: csi_decstr, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_DECSTR, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_decstr(emu)
 	}
@@ -1194,7 +1194,7 @@ func (p *Parser) handle_DCS() (hd *Handler) {
 		if arg == "$q\"p" {
 			p.setCompatLevel(CompatLevel_VT400)
 		}
-		hd = &Handler{id: dcs_decrqss, ch: p.ch, sequence: p.historyString()}
+		hd = &Handler{id: DCS_DECRQSS, ch: p.ch, sequence: p.historyString()}
 		hd.handle = func(emu *Emulator) {
 			hdl_dcs_decrqss(emu, arg)
 		}
@@ -1211,7 +1211,7 @@ func (p *Parser) handle_DCS() (hd *Handler) {
 func (p *Parser) handle_SLRM_SCOSC() (hd *Handler) {
 	params := p.copyArgs()
 
-	hd = &Handler{id: csi_slrm_scosc, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_SLRM_SCOSC, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_slrm_scosc(emu, params)
 	}
@@ -1222,7 +1222,7 @@ func (p *Parser) handle_SLRM_SCOSC() (hd *Handler) {
 
 // SCORC: Restore Cursor Position for SCO console
 func (p *Parser) handle_SCORC() (hd *Handler) {
-	hd = &Handler{id: csi_scorc, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_SCORC, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_scorc(emu)
 	}
@@ -1238,7 +1238,7 @@ func (p *Parser) handle_DECSCL() (hd *Handler) {
 	if len(params) > 0 {
 		p.setCompatLevel(sclCompatLevel(params[0]))
 	}
-	hd = &Handler{id: csi_decscl, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_DECSCL, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_decscl(emu, params)
 	}
@@ -1250,7 +1250,7 @@ func (p *Parser) handle_DECSCL() (hd *Handler) {
 func (p *Parser) handle_DECIC() (hd *Handler) {
 	num := p.getPs(0, 1)
 
-	hd = &Handler{id: csi_decic, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_DECIC, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_decic(emu, num)
 	}
@@ -1263,7 +1263,7 @@ func (p *Parser) handle_DECIC() (hd *Handler) {
 func (p *Parser) handle_DECDC() (hd *Handler) {
 	num := p.getPs(0, 1)
 
-	hd = &Handler{id: csi_decdc, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_DECDC, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_decdc(emu, num)
 	}
@@ -1276,7 +1276,7 @@ func (p *Parser) handle_DECDC() (hd *Handler) {
 func (p *Parser) handle_ecma48_SL() (hd *Handler) {
 	arg := p.getPs(0, 1)
 
-	hd = &Handler{id: csi_ecma48_SL, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_ECMA48_SL, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_ecma48_SL(emu, arg)
 	}
@@ -1289,7 +1289,7 @@ func (p *Parser) handle_ecma48_SL() (hd *Handler) {
 func (p *Parser) handle_ecma48_SR() (hd *Handler) {
 	arg := p.getPs(0, 1)
 
-	hd = &Handler{id: csi_ecma48_SR, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_ECMA48_SR, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_ecma48_SR(emu, arg)
 	}
@@ -1302,7 +1302,7 @@ func (p *Parser) handle_ecma48_SR() (hd *Handler) {
 func (p *Parser) handle_CNL() (hd *Handler) {
 	arg := p.getPs(0, 1)
 
-	hd = &Handler{id: csi_cnl, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_CNL, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_cnl(emu, arg)
 	}
@@ -1315,7 +1315,7 @@ func (p *Parser) handle_CNL() (hd *Handler) {
 func (p *Parser) handle_CPL() (hd *Handler) {
 	arg := p.getPs(0, 1)
 
-	hd = &Handler{id: csi_cpl, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_CPL, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_cpl(emu, arg)
 	}
@@ -1326,7 +1326,7 @@ func (p *Parser) handle_CPL() (hd *Handler) {
 
 // Back Index
 func (p *Parser) handle_BI() (hd *Handler) {
-	hd = &Handler{id: esc_bi, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: ESC_BI, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_esc_bi(emu)
 	}
@@ -1337,7 +1337,7 @@ func (p *Parser) handle_BI() (hd *Handler) {
 
 // Forward Index
 func (p *Parser) handle_FI() (hd *Handler) {
-	hd = &Handler{id: esc_fi, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: ESC_FI, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_esc_fi(emu)
 	}
@@ -1348,7 +1348,7 @@ func (p *Parser) handle_FI() (hd *Handler) {
 
 // set keypad mode to application
 func (p *Parser) handle_DECKPAM() (hd *Handler) {
-	hd = &Handler{id: esc_deckpam, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: ESC_DECKPAM, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_esc_deckpam(emu)
 	}
@@ -1359,7 +1359,7 @@ func (p *Parser) handle_DECKPAM() (hd *Handler) {
 
 // set keypad mode to normal
 func (p *Parser) handle_DECKPNM() (hd *Handler) {
-	hd = &Handler{id: esc_deckpnm, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: ESC_DECKPNM, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_esc_deckpnm(emu)
 	}
@@ -1372,7 +1372,7 @@ func (p *Parser) handle_DECKPNM() (hd *Handler) {
 func (p *Parser) handle_DECANM(cl CompatibilityLevel) (hd *Handler) {
 	p.setCompatLevel(cl)
 
-	hd = &Handler{id: esc_decanm, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: ESC_DECANM, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_esc_decanm(emu, cl)
 	}
@@ -1394,7 +1394,7 @@ func (p *Parser) handle_XTMODKEYS() (hd *Handler) {
 	// prepare the parameters
 	params := p.copyArgs()
 
-	hd = &Handler{id: csi_xtmodkeys, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_XTMODKEYS, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_xtmodkeys(emu, params)
 	}
@@ -1410,7 +1410,7 @@ func (p *Parser) handle_REP() (hd *Handler) {
 	chs := make([]rune, len(p.lastChs))
 	copy(chs[0:], p.lastChs[0:])
 
-	hd = &Handler{id: csi_rep, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_REP, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_rep(emu, arg, chs)
 	}
@@ -1421,7 +1421,7 @@ func (p *Parser) handle_REP() (hd *Handler) {
 
 // VT52: Enter Graphics Mode (ESC F)
 func (p *Parser) handle_EGM() (hd *Handler) {
-	hd = &Handler{id: vt52_egm, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: VT52_EGM, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_vt52_egm(emu)
 	}
@@ -1431,7 +1431,7 @@ func (p *Parser) handle_EGM() (hd *Handler) {
 
 // VT52: The Identify (ESC Z)
 func (p *Parser) handle_ID() (hd *Handler) {
-	hd = &Handler{id: vt52_id, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: VT52_ID, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
 		hdl_vt52_id(emu)
 	}
