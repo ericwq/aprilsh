@@ -26,9 +26,14 @@ SOFTWARE.
 
 package frontend
 
-import "github.com/ericwq/aprilsh/terminal"
+import (
+	"github.com/ericwq/aprilsh/terminal"
+)
 
-type Validity uint
+type (
+	Validity          uint
+	DisplayPreference uint
+)
 
 const (
 	ValidityUnused Validity = iota
@@ -37,6 +42,14 @@ const (
 	CorrectNoCredit
 	IncorrectOrExpired
 	Inactive
+)
+
+const (
+	DisplayPreferenceUnused DisplayPreference = iota
+	Always
+	Never
+	Adaptive
+	Experimental
 )
 
 const (
@@ -225,13 +238,13 @@ func (coc *ConditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, 
 
 		if current.ContentsMatch(coc.replacement) {
 			pos := 0
-			for i, it := range coc.originalContents {
-				if it.ContentsMatch(coc.replacement) {
+			for i := range coc.originalContents {
+				if coc.originalContents[i].ContentsMatch(coc.replacement) {
 					break
 				}
 				pos = i
 			}
-			if pos == len(coc.originalContents) {
+			if pos == len(coc.originalContents)-1 {
 				return Correct
 			} else {
 				return CorrectNoCredit
@@ -260,8 +273,141 @@ func (cor *ConditionalOverlayRow) rowNumEqual(rowNum int) bool {
 }
 
 func (cor *ConditionalOverlayRow) apply(emu *terminal.Emulator, confirmedEpoch int64, flag bool) {
-	for _, it := range cor.overlayCells {
-		it.apply(emu, confirmedEpoch, cor.rowNum, flag)
+	for i := range cor.overlayCells {
+		cor.overlayCells[i].apply(emu, confirmedEpoch, cor.rowNum, flag)
 	}
 }
 
+type PredictionEngine struct {
+	lastByte              rune
+	parser                terminal.Parser
+	overlays              []ConditionalOverlayRow
+	cursors               []ConditionalCursorMove
+	localFrameSent        int64
+	localFrameAcked       int64
+	localFrameLateAcked   int64
+	predictionEpoch       int64
+	confirmedEpoch        int64
+	flagging              bool // whether we are underlining predictions
+	srttTrigger           bool // show predictions because of slow round trip time
+	glitchTrigger         bool // show predictions temporarily because of long-pending prediction
+	lastQuickConfirmation int64
+	sendInterval          int
+	lastWidth             int
+	lastHeight            int
+	displayPreference     DisplayPreference
+}
+
+func NewPredictionEngine() *PredictionEngine {
+	pe := PredictionEngine{}
+	pe.parser = *terminal.NewParser()
+	pe.cursors = make([]ConditionalCursorMove, 0)
+	pe.overlays = make([]ConditionalOverlayRow, 0)
+	pe.predictionEpoch = 1
+	pe.sendInterval = 250
+	pe.displayPreference = Adaptive
+
+	return &pe
+}
+
+// return the last cursor move stored in the engine
+func (pe *PredictionEngine) cursor() *ConditionalCursorMove {
+	if len(pe.cursors) == 0 {
+		return nil
+	}
+	return &(pe.cursors[len(pe.cursors)-1])
+}
+
+// add cursor move to prediction engine.
+func (pe *PredictionEngine) initCursor(emu *terminal.Emulator) {
+	if len(pe.cursors) == 0 {
+		// initialize new cursor prediction with current cursor position
+		cursor := NewConditionalCursorMove(pe.localFrameSent+1, emu.GetCursorRow(), emu.GetCursorCol(), pe.predictionEpoch)
+		pe.cursors = append(pe.cursors, cursor)
+		pe.cursor().active = true
+	} else if pe.cursor().tentativeUntilEpoch != pe.predictionEpoch {
+		// initialize new cursor prediction with last cursor position
+		cursor := NewConditionalCursorMove(pe.localFrameSent+1, pe.cursor().row, pe.cursor().col, pe.predictionEpoch)
+		pe.cursors = append(pe.cursors, cursor)
+		pe.cursor().active = true
+	}
+}
+
+// get or make a row for the prediction engine.
+func (pe *PredictionEngine) getOrMakeRow(rowNum int, nCols int) (it *ConditionalOverlayRow) {
+	for i := range pe.overlays {
+		if pe.overlays[i].rowNumEqual(rowNum) {
+			it = &(pe.overlays[i])
+		}
+	}
+	if it == nil {
+		it = NewConditionalOverlayRow(rowNum)
+		it.overlayCells = make([]ConditionalOverlayCell, nCols)
+		for i := 0; i < nCols; i++ {
+			it.overlayCells[i] = NewConditionalOverlayCell(0, i, pe.predictionEpoch)
+		}
+		pe.overlays = append(pe.overlays, *it)
+	}
+	return
+}
+
+func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
+	show := pe.displayPreference != Never && (pe.srttTrigger || pe.glitchTrigger ||
+		pe.displayPreference == Always || pe.displayPreference == Experimental)
+
+	if show {
+		for i := range pe.cursors {
+			pe.cursors[i].apply(emu, pe.confirmedEpoch)
+		}
+
+		for i := range pe.overlays {
+			pe.overlays[i].apply(emu, pe.confirmedEpoch, pe.flagging)
+		}
+	}
+}
+
+func (pe *PredictionEngine) reset() {
+	pe.cursors = make([]ConditionalCursorMove, 0)
+	pe.overlays = make([]ConditionalOverlayRow, 0)
+	pe.becomeTentative()
+}
+
+func (pe *PredictionEngine) becomeTentative() {
+	if pe.displayPreference == Experimental {
+		pe.predictionEpoch++
+	}
+}
+
+// new_user_byte
+func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, chs ...rune) {
+	if pe.displayPreference == Never {
+		return // Never disable the prediction
+	} else if pe.displayPreference == Experimental {
+		pe.predictionEpoch = pe.confirmedEpoch
+	}
+
+	pe.cull(emu)
+
+	// now := time.Now().Unix()
+	if len(chs) > 1 {
+		// for multi runes, it should be grapheme.
+		pe.handleGrapheme(emu, chs...)
+		return
+	}
+	ch := chs[0]
+	pe.lastByte = chs[0]
+
+	hd := pe.parser.ProcessInput(ch)
+	if hd != nil {
+		switch hd.GetId() {
+		case terminal.Graphemes:
+		}
+	}
+}
+
+func (pe *PredictionEngine) handleGrapheme(emu *terminal.Emulator, ch ...rune) {
+}
+
+func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
+	// TODO
+}
