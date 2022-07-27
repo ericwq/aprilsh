@@ -231,7 +231,7 @@ func (h *Handler) Handle(emu *Emulator) {
 }
 
 // In the loop, national flag's width got 1+1=2.
-func runesWidth(runes []rune) (width int) {
+func RunesWidth(runes []rune) (width int) {
 	// quick pass for iso8859-1
 	if len(runes) == 1 && runes[0] < 0x00fe {
 		return 1
@@ -255,7 +255,7 @@ func runesWidth(runes []rune) (width int) {
 // https://pkg.go.dev/golang.org/x/text/encoding/charmap
 // https://github.com/rivo/uniseg
 func hdl_graphemes(emu *Emulator, chs ...rune) {
-	w := runesWidth(chs)
+	w := RunesWidth(chs)
 	if len(chs) == 1 && emu.charsetState.vtMode {
 		chs[0] = emu.lookupCharset(chs[0])
 	}

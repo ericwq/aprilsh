@@ -108,7 +108,7 @@ func TestRunesWidth(t *testing.T) {
 		var rs []rune
 		for graphemes.Next() {
 			rs = graphemes.Runes()
-			width += runesWidth(rs)
+			width += RunesWidth(rs)
 		}
 		if v.width != width {
 			t.Logf("%s :\t %q %U\n", v.name, v.raw, rs)

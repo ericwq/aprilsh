@@ -1585,9 +1585,9 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 		case 'B':
 			hd = p.handle_CUD() // Cursor Down (ESC B)
 		case 'C':
-			hd = p.handle_CUF() // Cursor Left (ESC D)
+			hd = p.handle_CUF() // Cursor Right (ESC C)
 		case 'D':
-			hd = p.handle_CUB() // Cursor Right (ESC C)
+			hd = p.handle_CUB() // Cursor Left (ESC D)
 		case 'F':
 			hd = p.handle_EGM() // Enter Graphics Mode (ESC F)
 		case 'G':

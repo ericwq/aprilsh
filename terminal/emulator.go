@@ -599,6 +599,10 @@ func (emu *Emulator) getCellPos(posY, posX int) (posY2, posX2 int) {
 	return
 }
 
+func (emu *Emulator) GetRenditions() (rnd Renditions) {
+	return emu.attrs.renditions
+}
+
 /*
 func (e *emulator) CSIdispatch(act Action) {
 	e.dispatcher.dispatch(DISPATCH_CSI, act, &e.framebuffer)
