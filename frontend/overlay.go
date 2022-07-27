@@ -27,6 +27,8 @@ SOFTWARE.
 package frontend
 
 import (
+	"time"
+
 	"github.com/ericwq/aprilsh/terminal"
 )
 
@@ -373,8 +375,27 @@ func (pe *PredictionEngine) reset() {
 }
 
 func (pe *PredictionEngine) becomeTentative() {
-	if pe.displayPreference == Experimental {
+	if pe.displayPreference != Experimental {
 		pe.predictionEpoch++
+	}
+}
+
+func (pe *PredictionEngine) newlineCarriageReturn(emu *terminal.Emulator) {
+	now := time.Now().Unix()
+	pe.initCursor(emu)
+	pe.cursor().col = 0
+	if pe.cursor().row == emu.GetHeight()-1 {
+		// Don't try to predict scroll until we have versioned cell predictions
+		// TODO need to consider the scrolling part
+		newRow := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
+		for i := range newRow.overlayCells {
+			newRow.overlayCells[i].active = true
+			newRow.overlayCells[i].tentativeUntilEpoch = pe.predictionEpoch
+			newRow.overlayCells[i].expire(pe.localFrameSent+1, now)
+			newRow.overlayCells[i].replacement.Clear()
+		}
+	} else {
+		pe.cursor().row++
 	}
 }
 
@@ -388,24 +409,122 @@ func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, chs ...rune) {
 
 	pe.cull(emu)
 
-	// now := time.Now().Unix()
+	now := time.Now().Unix()
+	ch := chs[0]
+	pe.lastByte = chs[0] // lastByte seems useless.
 	if len(chs) > 1 {
 		// for multi runes, it should be grapheme.
 		pe.handleGrapheme(emu, chs...)
 		return
 	}
-	ch := chs[0]
-	pe.lastByte = chs[0]
 
 	hd := pe.parser.ProcessInput(ch)
 	if hd != nil {
 		switch hd.GetId() {
 		case terminal.Graphemes:
+			pe.handleGrapheme(emu, ch)
+		case terminal.C0_CR:
+			pe.becomeTentative()
+			pe.newlineCarriageReturn(emu)
+		case terminal.CSI_CUF:
+			pe.initCursor(emu)
+			if pe.cursor().col < emu.GetWidth()-1 {
+				pe.cursor().col++
+				pe.cursor().expire(pe.localFrameSent+1, now)
+			}
+		case terminal.CSI_CUB:
+			pe.initCursor(emu)
+			if pe.cursor().col > 0 { // TODO consider the left right margin.
+				pe.cursor().col--
+				pe.cursor().expire(pe.localFrameSent+1, now)
+			}
+		default:
+			pe.becomeTentative()
 		}
 	}
 }
 
-func (pe *PredictionEngine) handleGrapheme(emu *terminal.Emulator, ch ...rune) {
+func (pe *PredictionEngine) handleGrapheme(emu *terminal.Emulator, chs ...rune) {
+	w := terminal.RunesWidth(chs)
+	pe.initCursor(emu)
+	now := time.Now().Unix()
+
+	if len(chs) == 1 && chs[0] == '\x7f' { // handle backspace
+	} else if chs[0] < 0x20 || w != 1 {
+		// TODO handle wide rune, combining grapheme
+	} else {
+		// normal rune
+		theRow := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
+		if pe.cursor().col+1 >= emu.GetWidth() {
+			// prediction in the last column is tricky
+			// e.g., emacs will show wrap character, shell will just put the character there
+			pe.becomeTentative()
+		}
+
+		// do the insert
+		for i := emu.GetWidth() - 1; i > pe.cursor().col; i-- {
+			cell := &(theRow.overlayCells[i])
+			cell.resetWithOrig()
+			cell.active = true
+			cell.tentativeUntilEpoch = pe.predictionEpoch
+			cell.expire(pe.localFrameSent+1, now)
+			cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, i))
+
+			prevCell := &(theRow.overlayCells[i-1])
+			prevCellActual := emu.GetCell(pe.cursor().row, i-1)
+
+			if i == emu.GetWidth()-1 {
+				cell.unknown = true
+			} else if prevCell.active {
+				if prevCell.unknown {
+					// prevCell active=T unknown=T
+					cell.unknown = true
+				} else {
+					// prevCell active=T unknown=F
+					cell.unknown = false
+					cell.replacement = prevCell.replacement
+				}
+			} else {
+				// prevCell active=F
+				cell.unknown = false
+				cell.replacement = prevCellActual
+			}
+		}
+
+		cell := &(theRow.overlayCells[pe.cursor().col])
+		cell.resetWithOrig()
+		cell.active = true
+		cell.tentativeUntilEpoch = pe.predictionEpoch
+		cell.expire(pe.localFrameSent+1, now)
+		cell.replacement.SetRenditions(emu.GetRenditions())
+
+		// heuristic: match renditions of character to the left
+		if pe.cursor().col > 0 {
+			prevCell := &(theRow.overlayCells[pe.cursor().col-1])
+			prevCellActual := emu.GetCell(pe.cursor().row, pe.cursor().col-1)
+
+			if prevCell.active && !prevCell.unknown {
+				cell.replacement.SetRenditions(prevCell.replacement.GetRenditions())
+			} else {
+				cell.replacement.SetRenditions(prevCellActual.GetRenditions())
+			}
+		}
+
+		cell.replacement.Clear()
+		cell.replacement.Append(chs[0])
+		cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, pe.cursor().col))
+
+		// move cursor
+		pe.cursor().expire(pe.localFrameSent+1, now)
+
+		// do we need to wrap?
+		if pe.cursor().col < emu.GetWidth()-1 {
+			pe.cursor().col++
+		} else {
+			pe.becomeTentative()
+			pe.newlineCarriageReturn(emu)
+		}
+	}
 }
 
 func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
