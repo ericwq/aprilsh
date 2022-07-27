@@ -292,7 +292,7 @@ type PredictionEngine struct {
 	confirmedEpoch        int64
 	flagging              bool // whether we are underlining predictions
 	srttTrigger           bool // show predictions because of slow round trip time
-	glitchTrigger         bool // show predictions temporarily because of long-pending prediction
+	glitchTrigger         int  // show predictions temporarily because of long-pending prediction
 	lastQuickConfirmation int64
 	sendInterval          int
 	lastWidth             int
@@ -527,6 +527,64 @@ func (pe *PredictionEngine) handleGrapheme(emu *terminal.Emulator, chs ...rune) 
 	}
 }
 
+// return true if there is any cursor move prediction or any input prediction, otherwise false.
+func (pe *PredictionEngine) active() bool {
+	if len(pe.cursors) != 0 {
+		return true
+	}
+
+	for i := range pe.overlays {
+		for j := range pe.overlays[i].overlayCells {
+			if pe.overlays[i].overlayCells[j].active {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
 func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
-	// TODO
+	if pe.displayPreference == Never {
+		return
+	}
+
+	if pe.lastHeight != emu.GetHeight() || pe.lastWidth != emu.GetWidth() {
+		pe.lastHeight = emu.GetHeight()
+		pe.lastWidth = emu.GetWidth()
+		pe.reset()
+	}
+
+	now := time.Now().Unix()
+
+	// control srtt_trigger with hysteresis
+	if pe.sendInterval > SRTT_TRIGGER_HIGH {
+		pe.srttTrigger = true
+	} else if pe.srttTrigger && pe.sendInterval <= SRTT_TRIGGER_LOW && !pe.active() {
+		// second condition: 20 ms is current minimum value
+		// third condition: only turn off when no predictions being shown
+		pe.srttTrigger = false
+	}
+
+	// control underlining with hysteresis
+	if pe.sendInterval > FLAG_TRIGGER_HIGH {
+		pe.flagging = true
+	} else if pe.sendInterval <= FLAG_TRIGGER_LOW {
+		pe.flagging = false
+	}
+
+	// really big glitches also activate underlining
+	if pe.glitchTrigger > GLITCH_REPAIR_COUNT {
+		pe.flagging = true
+	}
+
+	// go through cell predictions
+	for i := 0; i < len(pe.overlays); i++ {
+		inext := i + 1
+		if pe.overlays[i].rowNum < 0 || pe.overlays[i].rowNum >= emu.GetHeight() {
+			pe.overlays = pe.overlays[inext:] // erase this row from prediction if it's out of scope.
+			i = inext
+			continue
+		}
+	}
 }
