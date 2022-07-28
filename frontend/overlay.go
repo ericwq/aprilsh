@@ -354,7 +354,7 @@ func (pe *PredictionEngine) getOrMakeRow(rowNum int, nCols int) (it *Conditional
 }
 
 func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
-	show := pe.displayPreference != Never && (pe.srttTrigger || pe.glitchTrigger ||
+	show := pe.displayPreference != Never && (pe.srttTrigger || pe.glitchTrigger > 0 ||
 		pe.displayPreference == Always || pe.displayPreference == Experimental)
 
 	if show {
@@ -544,6 +544,31 @@ func (pe *PredictionEngine) active() bool {
 	return false
 }
 
+func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
+	// remove cursor move if the condition is true
+	cursors := make([]ConditionalCursorMove, 0)
+	for i := range pe.cursors {
+		if pe.cursors[i].tentative(epoch - 1) {
+			continue
+		}
+		cursors = append(cursors, pe.cursors[i])
+	}
+	cursors = append(cursors, NewConditionalCursorMove(pe.localFrameSent+1,
+		emu.GetCursorRow(), emu.GetCursorCol(), pe.predictionEpoch))
+	pe.cursors = cursors
+	pe.cursor().active = true
+	for i := range pe.overlays {
+		for j := range pe.overlays[i].overlayCells {
+			cell := &(pe.overlays[i].overlayCells[j])
+			if cell.tentative(epoch - 1) {
+				cell.reset2()
+			}
+		}
+	}
+
+	pe.becomeTentative()
+}
+
 func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 	if pe.displayPreference == Never {
 		return
@@ -579,12 +604,70 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 	}
 
 	// go through cell predictions
+	overlays := make([]ConditionalOverlayRow, 0)
 	for i := 0; i < len(pe.overlays); i++ {
-		inext := i + 1
 		if pe.overlays[i].rowNum < 0 || pe.overlays[i].rowNum >= emu.GetHeight() {
-			pe.overlays = pe.overlays[inext:] // erase this row from prediction if it's out of scope.
-			i = inext
+			// skip/erase this row if it's out of scope.
 			continue
+		} else {
+			overlays = append(overlays, pe.overlays[i])
+		}
+
+		for j := range pe.overlays[i].overlayCells {
+			cell := &(pe.overlays[i].overlayCells[j])
+			switch cell.getValidity(emu, pe.overlays[i].rowNum, pe.localFrameLateAcked) {
+			case IncorrectOrExpired:
+				if cell.tentative(pe.confirmedEpoch) {
+					// Bad tentative prediction in row %d, col %d (think %lc, actually %lc)\n
+					if pe.displayPreference == Experimental {
+						cell.reset2()
+					} else {
+						pe.killEpoch(cell.tentativeUntilEpoch, emu)
+					}
+				} else {
+					// [%d=>%d] Killing prediction in row %d, col %d (think %lc, actually %lc)\n
+					if pe.displayPreference == Experimental {
+						cell.reset2()
+					} else {
+						pe.reset()
+						return
+					}
+				}
+			case Correct:
+				if cell.tentativeUntilEpoch > pe.confirmedEpoch {
+					pe.confirmedEpoch = cell.tentativeUntilEpoch
+				}
+
+				// When predictions come in quickly, slowly take away the glitch trigger.
+				if now-cell.predictionTime < GLITCH_THRESHOLD {
+					if pe.glitchTrigger > 0 && now-GLITCH_REPAIR_MININTERVAL >= pe.lastQuickConfirmation {
+						pe.glitchTrigger--
+						pe.lastQuickConfirmation = now
+					}
+				}
+
+				// match rest of row to the actual renditions
+				actualRenditions := emu.GetCell(pe.overlays[i].rowNum, cell.col).GetRenditions()
+				for k := j; k < len(pe.overlays[i].overlayCells); k++ {
+					pe.overlays[i].overlayCells[k].replacement.SetRenditions(actualRenditions)
+				}
+
+				fallthrough
+			case CorrectNoCredit:
+				cell.reset2()
+			case Pending:
+				// When a prediction takes a long time to be confirmed, we
+				// activate the predictions even if SRTT is low
+				if now-cell.predictionTime >= GLITCH_FLAG_THRESHOLD {
+					pe.glitchTrigger = GLITCH_REPAIR_COUNT * 2 // display and underline
+				} else if now-cell.predictionTime >= GLITCH_THRESHOLD && pe.glitchTrigger < GLITCH_REPAIR_COUNT {
+					pe.glitchTrigger = GLITCH_REPAIR_COUNT // just display
+				}
+			default:
+				break
+			}
 		}
 	}
+	// restore overlay cells
+	pe.overlays = overlays
 }
