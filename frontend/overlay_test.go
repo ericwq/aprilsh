@@ -120,7 +120,7 @@ func TestCellApply(t *testing.T) {
 		confirmedEpoch int64
 		flag           bool
 		row, col       int
-		unknow         bool
+		unknown        bool
 		contents       rune
 		rend           *terminal.Renditions
 		cell           *terminal.Cell
@@ -139,7 +139,7 @@ func TestCellApply(t *testing.T) {
 		predict := NewConditionalOverlayCell(10, v.col, 10)
 
 		predict.active = v.active
-		predict.unknown = v.unknow
+		predict.unknown = v.unknown
 		// set content for emulator cell
 		if v.contents != '\x00' {
 			emu.GetMutableCell(v.row, v.col).Append(v.contents)
@@ -158,6 +158,33 @@ func TestCellApply(t *testing.T) {
 		rend := emu.GetCell(v.row, v.col).GetRenditions()
 		if v.rend != nil && rend != *v.rend {
 			t.Errorf("%q cell (%d,%d) renditions expect %v, got %v\n", v.name, v.row, v.col, *v.rend, rend)
+		}
+	}
+}
+
+func TestCellGetValidity(t *testing.T) {
+	tc := []struct {
+		name     string
+		active   bool
+		row, col int
+		lateAck  int64
+		unknown  bool
+		contents rune
+		validity Validity
+	}{
+		{"active=T, unknown=F, isBlank=F, content match", true, 10, 10, 20, false, 'E', Correct},
+	}
+
+	emu := terminal.NewEmulator3(80, 40, 40)
+	for _, v := range tc {
+		predict := NewConditionalOverlayCell(10, v.col, 10)
+		predict.active = v.active
+		predict.unknown = v.unknown
+		emu.GetMutableCell(v.row, v.col).Append(v.contents)
+
+		validity := predict.getValidity(emu, v.row, v.lateAck)
+		if validity != v.validity {
+			t.Errorf("%q expect %d, got %d\n", v.name, v.validity, validity)
 		}
 	}
 }

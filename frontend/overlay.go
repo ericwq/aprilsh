@@ -241,15 +241,17 @@ func (coc *ConditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, 
 			return CorrectNoCredit
 		}
 
+		// if the frame is the same as the pridiction
 		if current.ContentsMatch(coc.replacement) {
-			pos := 0
+			// it's Correct if any cell in originalContents doesn't match replacement
+			found := false
 			for i := range coc.originalContents {
 				if coc.originalContents[i].ContentsMatch(coc.replacement) {
+					found = true
 					break
 				}
-				pos = i
 			}
-			if pos == len(coc.originalContents)-1 {
+			if !found {
 				return Correct
 			} else {
 				return CorrectNoCredit
