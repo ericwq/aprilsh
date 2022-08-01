@@ -241,7 +241,7 @@ func (coc *ConditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, 
 			return CorrectNoCredit
 		}
 
-		// if the frame is the same as the pridiction
+		// if the frame cell is the same as the prediction
 		if current.ContentsMatch(coc.replacement) {
 			// it's Correct if any cell in originalContents doesn't match replacement
 			found := false
@@ -454,7 +454,8 @@ func (pe *PredictionEngine) handleGrapheme(emu *terminal.Emulator, chs ...rune) 
 	pe.initCursor(emu)
 	now := time.Now().Unix()
 
-	if len(chs) == 1 && chs[0] == '\x7f' { // handle backspace
+	if len(chs) == 1 && chs[0] == '\x7f' {
+		// TODO handle backspace
 	} else if chs[0] < 0x20 || w != 1 {
 		// TODO handle wide rune, combining grapheme
 	} else {
