@@ -115,7 +115,7 @@ func NewConditionalCursorMove(expirationFrame int64, row int, col int, tentative
 	return ccm
 }
 
-// set cursor position in emulator if the confirmedEpoch is greater than tantative epoch.
+// set prediction cursor position in emulator if the confirmedEpoch is greater than tantative epoch.
 func (ccm *ConditionalCursorMove) apply(emu *terminal.Emulator, confirmedEpoch int64) {
 	if !ccm.active { // only apply to active prediction
 		return
@@ -128,8 +128,8 @@ func (ccm *ConditionalCursorMove) apply(emu *terminal.Emulator, confirmedEpoch i
 	emu.MoveCursor(ccm.row, ccm.col)
 }
 
-// return Correct only when lateAck is greater than expirationFrame and cursor position is at the
-// same position.
+// check the validity of prediction cursor move.
+// return Correct only when lateAck is greater than expirationFrame and cursor position is at the same position.
 func (ccm *ConditionalCursorMove) getValidity(emu *terminal.Emulator, lateAck int64) Validity {
 	if !ccm.active { // only validate active prediction
 		return Inactive
