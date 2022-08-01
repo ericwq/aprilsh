@@ -185,6 +185,8 @@ func (coc *ConditionalOverlayCell) resetWithOrig() {
 	coc.reset()
 }
 
+// apply cell prediction to the emulator, (row,col) specify the cell.
+// confirmedEpoch specified the epoch. flag means underlining the cell.
 func (coc *ConditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch int64, row int, flag bool) {
 	// if specified position is out of active area or is not active.
 	if !coc.active || row >= emu.GetHeight() || coc.col >= emu.GetWidth() {
@@ -202,14 +204,15 @@ func (coc *ConditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 
 	// TOODO the meaning of unknown?
 	if coc.unknown {
-		// except the last column add underline for the cell.
+		// underlining the cell except the last column.
 		if flag && coc.col != emu.GetWidth()-1 {
 			emu.GetMutableCell(row, coc.col).SetUnderline(true)
 		}
 		return
 	}
 
-	// if the cell is not the same as the prediction, replace it with the prediction.
+	// if the cell is different from the prediction, replace it with the prediction.
+	// update renditions if flag is true.
 	if emu.GetCell(row, coc.col) != coc.replacement {
 		(*emu.GetMutableCell(row, coc.col)) = coc.replacement
 		if flag {

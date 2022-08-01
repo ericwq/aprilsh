@@ -32,7 +32,7 @@ import (
 	"github.com/ericwq/aprilsh/terminal"
 )
 
-func TestConditionalOverlay(t *testing.T) {
+func TestOverlay(t *testing.T) {
 	co := NewConditionalOverlay(12, 2, 14)
 
 	if co.tentative(15) {
@@ -51,7 +51,7 @@ func TestConditionalOverlay(t *testing.T) {
 	}
 }
 
-func TestConditionalCursorMoveApply(t *testing.T) {
+func TestMoveApply(t *testing.T) {
 	tc := []struct {
 		name           string
 		activeParam    bool
@@ -78,7 +78,7 @@ func TestConditionalCursorMoveApply(t *testing.T) {
 	}
 }
 
-func TestConditionalCursorMoveGetValidity(t *testing.T) {
+func TestMoveGetValidity(t *testing.T) {
 	tc := []struct {
 		name            string
 		lateAck         int64
@@ -104,6 +104,60 @@ func TestConditionalCursorMoveGetValidity(t *testing.T) {
 		validity := ccm.getValidity(emu, v.lateAck)
 		if validity != v.validity {
 			t.Errorf("%q getValidity() expect %d, got %d\n", v.name, v.validity, validity)
+		}
+	}
+}
+
+func TestCellApply(t *testing.T) {
+	underlineRend := terminal.NewRendition(4) // renditions with underline attribute
+	underlineCell := terminal.Cell{}
+	underlineCell.SetRenditions(underlineRend)
+	plainCell := terminal.Cell{}
+
+	tc := []struct {
+		name           string
+		active         bool
+		confirmedEpoch int64
+		flag           bool
+		row, col       int
+		unknow         bool
+		contents       rune
+		rend           *terminal.Renditions
+		cell           *terminal.Cell
+	}{
+		{"active=T flag=T unknow=F update cell and rendition", true, 20, true, 10, 10, false, 'E', &underlineRend, &underlineCell},
+		{"active=T flag=F unknow=F update cell", true, 20, false, 11, 10, false, 'E', nil, &plainCell},
+		{"active=T flag=T unknow=T update rendition", true, 20, true, 12, 10, true, 'E', &underlineRend, nil},
+		{"active=T flag=F unknow=T return", true, 20, false, 13, 10, true, 'E', nil, nil},
+		{"active=T flag=T unknow=T return", true, 20, true, 14, 10, true, '\x00', nil, nil},
+		{"tentative early return", true, 9, true, 14, 10, true, 'E', nil, nil},
+		{"active early return", false, 10, true, 14, 10, true, 'E', nil, nil},
+	}
+
+	emu := terminal.NewEmulator3(80, 40, 40)
+	for _, v := range tc {
+		predict := NewConditionalOverlayCell(10, v.col, 10)
+
+		predict.active = v.active
+		predict.unknown = v.unknow
+		// set content for emulator cell
+		if v.contents != '\x00' {
+			emu.GetMutableCell(v.row, v.col).Append(v.contents)
+		}
+
+		// call apply
+		predict.apply(emu, v.confirmedEpoch, v.row, v.flag)
+
+		// validate cell
+		cell := emu.GetCell(v.row, v.col)
+		if v.cell != nil && cell != *(v.cell) {
+			t.Errorf("%q cell (%d,%d) contents expect\n%v\ngot \n%v\n", v.name, v.row, v.col, *v.cell, cell)
+		}
+
+		// validate rendition
+		rend := emu.GetCell(v.row, v.col).GetRenditions()
+		if v.rend != nil && rend != *v.rend {
+			t.Errorf("%q cell (%d,%d) renditions expect %v, got %v\n", v.name, v.row, v.col, *v.rend, rend)
 		}
 	}
 }
