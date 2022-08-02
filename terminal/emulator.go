@@ -316,7 +316,7 @@ func (emu *Emulator) writePty(resp string) {
 }
 
 // parse and handle the stream together.
-func (emu *Emulator) handleStream(seq string) (hds []*Handler) {
+func (emu *Emulator) HandleStream(seq string) (hds []*Handler) {
 	hds = make([]*Handler, 0, 16)
 
 	hds = emu.parser.processStream(seq, hds)

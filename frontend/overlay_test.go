@@ -27,6 +27,7 @@ SOFTWARE.
 package frontend
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/ericwq/aprilsh/terminal"
@@ -186,5 +187,35 @@ func TestCellGetValidity(t *testing.T) {
 		if validity != v.validity {
 			t.Errorf("%q expect %d, got %d\n", v.name, v.validity, validity)
 		}
+	}
+}
+
+func TestPredictionHandleGrapheme(t *testing.T) {
+	tc := []struct {
+		name      string
+		rawStr    string // rawString will fill the right side of emulator
+		row, col  int    // the specified row and col
+		insertStr string
+	}{
+		{"insert 4 runes", "abcdefghij", 4, 69, "ABCDEFGHIJ"},
+	}
+
+	// pe := NewPredictionEngine()
+	emu := terminal.NewEmulator3(80, 40, 40)
+
+	for _, v := range tc {
+		for i := 0; i < len(v.rawStr); i++ {
+			fmt.Printf("before HandleStream: cell (%d,%d) contains %s\n", v.row, v.col+i, emu.GetCell(v.row, v.col+i))
+		}
+		emu.MoveCursor(v.row, v.col)
+		emu.HandleStream(v.rawStr)
+		for i := 0; i < len(v.insertStr); i++ {
+			fmt.Printf("after HandleStream: cell (%d,%d) contains %s\n", v.row, v.col+i, emu.GetCell(v.row, v.col+i))
+		}
+		// for i := range v.insertStr {
+		// 	emu.MoveCursor(v.row, v.col)
+		// 	fmt.Printf("%s insert %c loop %d\n", v.name, v.insertStr[i], i)
+		// 	pe.handleGrapheme(emu, rune(v.insertStr[i]))
+		// }
 	}
 }

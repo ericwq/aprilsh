@@ -220,6 +220,10 @@ func (c Cell) PrintGrapheme(output *strings.Builder) {
 	output.WriteString(c.contents)
 }
 
+func (c Cell) String() string {
+	return c.contents
+}
+
 func (c Cell) GetRenditions() Renditions {
 	return c.renditions
 }

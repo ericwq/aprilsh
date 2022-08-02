@@ -27,6 +27,7 @@ SOFTWARE.
 package frontend
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ericwq/aprilsh/terminal"
@@ -174,7 +175,7 @@ func (coc *ConditionalOverlayCell) reset2() {
 	coc.reset()
 }
 
-// reset everything but fill the originalContents with replacement
+// Reset everything if active is F or unknown is T. Otherwise append replacement to the originalContents.
 func (coc *ConditionalOverlayCell) resetWithOrig() {
 	if !coc.active || coc.unknown {
 		coc.reset2()
@@ -495,6 +496,9 @@ func (pe *PredictionEngine) handleGrapheme(emu *terminal.Emulator, chs ...rune) 
 				cell.unknown = false
 				cell.replacement = prevCellActual
 			}
+
+			fmt.Printf("handleGrapheme() cell (%d,%d) active=%t\tunknown=%t\treplacement=%s\toriginalContents=%s\n",
+				pe.cursor().row, i, cell.active, cell.unknown, cell.replacement, cell.originalContents)
 		}
 
 		cell := &(theRow.overlayCells[pe.cursor().col])
@@ -520,6 +524,8 @@ func (pe *PredictionEngine) handleGrapheme(emu *terminal.Emulator, chs ...rune) 
 		cell.replacement.Append(chs[0])
 		cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, pe.cursor().col))
 
+		fmt.Printf("handleGrapheme() cell (%d,%d) active=%t\tunknown=%t\treplacement=%s\toriginalContents=%s\n",
+			pe.cursor().row, pe.cursor().col, cell.active, cell.unknown, cell.replacement, cell.originalContents)
 		// move cursor
 		pe.cursor().expire(pe.localFrameSent+1, now)
 
