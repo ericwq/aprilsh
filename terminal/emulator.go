@@ -577,11 +577,11 @@ func (emu *Emulator) GetMutableCell(posY, posX int) *Cell {
 
 func (emu *Emulator) getCellPos(posY, posX int) (posY2, posX2 int) {
 	// in case we don't provide the row or col
-	if posY < 0 || posY > emu.GetWidth() {
+	if posY < 0 || posY > emu.GetHeight() {
 		posY = emu.GetCursorRow()
 	}
 
-	if posX < 0 || posX > emu.GetHeight() {
+	if posX < 0 || posX > emu.GetWidth() {
 		posX = emu.GetCursorCol()
 	}
 

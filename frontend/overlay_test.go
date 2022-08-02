@@ -197,25 +197,25 @@ func TestPredictionHandleGrapheme(t *testing.T) {
 		row, col  int    // the specified row and col
 		insertStr string
 	}{
-		{"insert 4 runes", "abcdefghij", 4, 69, "ABCDEFGHIJ"},
+		{"insert 10 runes", "abcdefghij", 4, 69, "ABCDEFGHIJ"},
 	}
 
-	// pe := NewPredictionEngine()
+	pe := NewPredictionEngine()
 	emu := terminal.NewEmulator3(80, 40, 40)
 
 	for _, v := range tc {
-		for i := 0; i < len(v.rawStr); i++ {
-			fmt.Printf("before HandleStream: cell (%d,%d) contains %s\n", v.row, v.col+i, emu.GetCell(v.row, v.col+i))
-		}
+		// for i := 0; i < len(v.rawStr); i++ {
+		// 	fmt.Printf("before HandleStream: cell (%d,%d) contains %q\n", v.row, v.col+i, emu.GetCell(v.row, v.col+i))
+		// }
 		emu.MoveCursor(v.row, v.col)
 		emu.HandleStream(v.rawStr)
-		for i := 0; i < len(v.insertStr); i++ {
-			fmt.Printf("after HandleStream: cell (%d,%d) contains %s\n", v.row, v.col+i, emu.GetCell(v.row, v.col+i))
-		}
-		// for i := range v.insertStr {
-		// 	emu.MoveCursor(v.row, v.col)
-		// 	fmt.Printf("%s insert %c loop %d\n", v.name, v.insertStr[i], i)
-		// 	pe.handleGrapheme(emu, rune(v.insertStr[i]))
+		// for i := 0; i < len(v.insertStr); i++ {
+		// 	fmt.Printf("after HandleStream: cell (%d,%d) contains %q\n", v.row, v.col+i, emu.GetCell(v.row, v.col+i))
 		// }
+		for i := range v.insertStr {
+			emu.MoveCursor(v.row, v.col)
+			pe.handleGrapheme(emu, rune(v.insertStr[i]))
+			fmt.Printf("%s: insert %c loop %d\n", v.name, v.insertStr[i], i)
+		}
 	}
 }

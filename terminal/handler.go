@@ -275,10 +275,10 @@ func hdl_graphemes(emu *Emulator, chs ...rune) {
 	}
 
 	// print the current cursor cell
-	// fmt.Printf("hdl_graphemes print %s at (%d,%d)\n", string(chs), emu.posY, emu.posX)
 	c := emu.cf.getMutableCell(emu.posY, emu.posX)
 	*c = emu.attrs
 	c.contents = string(chs)
+	// fmt.Printf("hdl_graphemes print %s at (%d,%d) %p\n", c, emu.posY, emu.posX, c)
 
 	/// for double width graphemes
 	if w == 2 && emu.posX < emu.nColsEff-1 {
