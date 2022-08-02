@@ -204,18 +204,17 @@ func TestPredictionHandleGrapheme(t *testing.T) {
 	emu := terminal.NewEmulator3(80, 40, 40)
 
 	for _, v := range tc {
-		// for i := 0; i < len(v.rawStr); i++ {
-		// 	fmt.Printf("before HandleStream: cell (%d,%d) contains %q\n", v.row, v.col+i, emu.GetCell(v.row, v.col+i))
-		// }
+
+		// fill in the rawStr to see the result
 		emu.MoveCursor(v.row, v.col)
 		emu.HandleStream(v.rawStr)
 		// for i := 0; i < len(v.insertStr); i++ {
 		// 	fmt.Printf("after HandleStream: cell (%d,%d) contains %q\n", v.row, v.col+i, emu.GetCell(v.row, v.col+i))
 		// }
+		emu.MoveCursor(v.row, v.col)
 		for i := range v.insertStr {
-			emu.MoveCursor(v.row, v.col)
-			pe.handleGrapheme(emu, rune(v.insertStr[i]))
 			fmt.Printf("%s: insert %c loop %d\n", v.name, v.insertStr[i], i)
+			pe.handleGrapheme(emu, rune(v.insertStr[i]))
 		}
 	}
 }
