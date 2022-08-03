@@ -27,7 +27,6 @@ SOFTWARE.
 package frontend
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/ericwq/aprilsh/terminal"
@@ -222,6 +221,8 @@ func (coc *ConditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 	}
 }
 
+// return Correct if frame cell is the same as the prediction and any history content doesn't match prediction.
+// for unknown or blank cell, or history content match prediction, return CorrectNoCredit.
 func (coc *ConditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, lateAck int64) Validity {
 	if !coc.active {
 		return Inactive
@@ -242,9 +243,10 @@ func (coc *ConditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, 
 			return CorrectNoCredit
 		}
 
+		// fmt.Printf("getValidity() current cell=%s, replacement=%s, result=%t\n", current, coc.replacement, current.ContentsMatch(coc.replacement))
 		// if the frame cell is the same as the prediction
 		if current.ContentsMatch(coc.replacement) {
-			// it's Correct if any cell in originalContents doesn't match replacement
+			// it's Correct if any history content doesn't match prediction
 			found := false
 			for i := range coc.originalContents {
 				if coc.originalContents[i].ContentsMatch(coc.replacement) {
@@ -420,7 +422,7 @@ func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, chs ...rune) {
 	pe.lastByte = chs[0] // lastByte seems useless.
 	if len(chs) > 1 {
 		// for multi runes, it should be grapheme.
-		pe.handleGrapheme(emu, chs...)
+		pe.handleUserGrapheme(emu, chs...)
 		return
 	}
 
@@ -428,7 +430,7 @@ func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, chs ...rune) {
 	if hd != nil {
 		switch hd.GetId() {
 		case terminal.Graphemes:
-			pe.handleGrapheme(emu, ch)
+			pe.handleUserGrapheme(emu, ch)
 		case terminal.C0_CR:
 			pe.becomeTentative()
 			pe.newlineCarriageReturn(emu)
@@ -450,7 +452,7 @@ func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, chs ...rune) {
 	}
 }
 
-func (pe *PredictionEngine) handleGrapheme(emu *terminal.Emulator, chs ...rune) {
+func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...rune) {
 	w := terminal.RunesWidth(chs)
 	pe.initCursor(emu)
 	now := time.Now().Unix()
@@ -475,7 +477,10 @@ func (pe *PredictionEngine) handleGrapheme(emu *terminal.Emulator, chs ...rune) 
 			cell.active = true
 			cell.tentativeUntilEpoch = pe.predictionEpoch
 			cell.expire(pe.localFrameSent+1, now)
-			cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, i))
+			if len(cell.originalContents) == 0 {
+				// avoiding add original cell content several times
+				cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, i))
+			}
 
 			prevCell := &(theRow.overlayCells[i-1])
 			prevCellActual := emu.GetCell(pe.cursor().row, i-1)
@@ -497,8 +502,8 @@ func (pe *PredictionEngine) handleGrapheme(emu *terminal.Emulator, chs ...rune) 
 				cell.replacement = prevCellActual
 			}
 
-			fmt.Printf("handleGrapheme() cell (%d,%d) active=%t\tunknown=%t\treplacement=%s\toriginalContents=%s\n",
-				pe.cursor().row, i, cell.active, cell.unknown, cell.replacement, cell.originalContents)
+			// fmt.Printf("handleGrapheme() cell (%d,%d) active=%t\tunknown=%t\treplacement=%s\toriginalContents=%s\n",
+			// 	pe.cursor().row, i, cell.active, cell.unknown, cell.replacement, cell.originalContents)
 		}
 
 		cell := &(theRow.overlayCells[pe.cursor().col])
@@ -522,10 +527,13 @@ func (pe *PredictionEngine) handleGrapheme(emu *terminal.Emulator, chs ...rune) 
 
 		cell.replacement.Clear()
 		cell.replacement.Append(chs[0])
-		cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, pe.cursor().col))
+		if len(cell.originalContents) == 0 {
+			// avoiding add original cell content several times
+			cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, pe.cursor().col))
+		}
+		// fmt.Printf("handleGrapheme() cell (%d,%d) active=%t\tunknown=%t\treplacement=%s\toriginalContents=%s\n",
+		// 	pe.cursor().row, pe.cursor().col, cell.active, cell.unknown, cell.replacement, cell.originalContents)
 
-		fmt.Printf("handleGrapheme() cell (%d,%d) active=%t\tunknown=%t\treplacement=%s\toriginalContents=%s\n",
-			pe.cursor().row, pe.cursor().col, cell.active, cell.unknown, cell.replacement, cell.originalContents)
 		// move cursor
 		pe.cursor().expire(pe.localFrameSent+1, now)
 

@@ -27,7 +27,6 @@ SOFTWARE.
 package frontend
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/ericwq/aprilsh/terminal"
@@ -170,22 +169,52 @@ func TestCellGetValidity(t *testing.T) {
 		row, col int
 		lateAck  int64
 		unknown  bool
-		contents rune
+		base     string // base content
+		predict  string // prediction
+		frame    string // frame content
 		validity Validity
 	}{
-		{"active=T, unknown=F, isBlank=F, content match", true, 10, 10, 20, false, 'E', Correct},
+		{"active=F, unknown=F", false, 13, 70, 20, false, "", "active", "false", Inactive},                      // active=F
+		{"active=T, cursor out of range", true, 41, 70, 0, false, "", "smaller", "lateAck", IncorrectOrExpired}, // cursor out of range
+		{"active=T, smaller lateAck", true, 13, 70, 0, false, "", "smaller", "lateAck", Pending},                // smaller lateAck
+		{"active=T, unknown=T", true, 13, 70, 20, true, "", "unknow", "true", CorrectNoCredit},                  // unknown=T
+		{"active=T, unknown=F, blank predict", true, 13, 70, 20, false, "----", "    ", "some", CorrectNoCredit},
+		{"active=T, unknown=F, content match", true, 12, 70, 20, false, "Else", "Easy", "Easy", CorrectNoCredit},
+		{"active=T, unknown=T, isBlank=F correct", true, 14, 70, 5, false, "     ", "right", "right", Correct},
+		{"active=T, unknown=F, content not match", true, 11, 70, 20, false, "-----", "Alpha", "Beta", IncorrectOrExpired},
 	}
 
 	emu := terminal.NewEmulator3(80, 40, 40)
+	pe := NewPredictionEngine()
+
 	for _, v := range tc {
-		predict := NewConditionalOverlayCell(10, v.col, 10)
+		pe.reset()
+
+		// set the base content
+		emu.MoveCursor(v.row, v.col)
+		emu.HandleStream(v.base)
+
+		// mimic user input for prediction engine
+		emu.MoveCursor(v.row, v.col)
+		for i := range v.predict {
+			pe.handleUserGrapheme(emu, rune(v.predict[i]))
+		}
+
+		// mimic the result from server
+		emu.MoveCursor(v.row, v.col)
+		emu.HandleStream(v.frame)
+
+		// get the predict row
+		predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
+		predict := &(predictRow.overlayCells[v.col])
+
 		predict.active = v.active
 		predict.unknown = v.unknown
-		emu.GetMutableCell(v.row, v.col).Append(v.contents)
 
 		validity := predict.getValidity(emu, v.row, v.lateAck)
 		if validity != v.validity {
 			t.Errorf("%q expect %d, got %d\n", v.name, v.validity, validity)
+			t.Errorf("cell (%d,%d) replacement=%s, originalContents=%s\n", v.row, v.col, predict.replacement, predict.originalContents)
 		}
 	}
 }
@@ -197,24 +226,21 @@ func TestPredictionHandleGrapheme(t *testing.T) {
 		row, col  int    // the specified row and col
 		insertStr string
 	}{
-		{"insert 10 runes", "abcdefghij", 4, 69, "ABCDEFGHIJ"},
+		{"insert 10 runes", "abcdefghij", 4, 70, "ABCDEFGHIJ"},
 	}
 
 	pe := NewPredictionEngine()
 	emu := terminal.NewEmulator3(80, 40, 40)
 
 	for _, v := range tc {
-
-		// fill in the rawStr to see the result
+		// fill in the rawStr with lowercase letter
 		emu.MoveCursor(v.row, v.col)
 		emu.HandleStream(v.rawStr)
-		// for i := 0; i < len(v.insertStr); i++ {
-		// 	fmt.Printf("after HandleStream: cell (%d,%d) contains %q\n", v.row, v.col+i, emu.GetCell(v.row, v.col+i))
-		// }
+		// move cursor to the start position
 		emu.MoveCursor(v.row, v.col)
+		// mimic user input 10 uppercase letter
 		for i := range v.insertStr {
-			fmt.Printf("%s: insert %c loop %d\n", v.name, v.insertStr[i], i)
-			pe.handleGrapheme(emu, rune(v.insertStr[i]))
+			pe.handleUserGrapheme(emu, rune(v.insertStr[i]))
 		}
 	}
 }
