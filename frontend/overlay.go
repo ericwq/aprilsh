@@ -478,7 +478,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 			cell.tentativeUntilEpoch = pe.predictionEpoch
 			cell.expire(pe.localFrameSent+1, now)
 			if len(cell.originalContents) == 0 {
-				// avoiding add original cell content several times
+				// avoi adding original cell content several times
 				cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, i))
 			}
 
@@ -528,7 +528,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 		cell.replacement.Clear()
 		cell.replacement.Append(chs[0])
 		if len(cell.originalContents) == 0 {
-			// avoiding add original cell content several times
+			// avoid adding original cell content several times
 			cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, pe.cursor().col))
 		}
 		// fmt.Printf("handleGrapheme() cell (%d,%d) active=%t\tunknown=%t\treplacement=%s\toriginalContents=%s\n",
