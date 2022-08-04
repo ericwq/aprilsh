@@ -282,6 +282,7 @@ func (cor *ConditionalOverlayRow) rowNumEqual(rowNum int) bool {
 	return cor.rowNum == rowNum
 }
 
+//
 func (cor *ConditionalOverlayRow) apply(emu *terminal.Emulator, confirmedEpoch int64, flag bool) {
 	for i := range cor.overlayCells {
 		cor.overlayCells[i].apply(emu, confirmedEpoch, cor.rowNum, flag)
@@ -361,6 +362,7 @@ func (pe *PredictionEngine) getOrMakeRow(rowNum int, nCols int) (it *Conditional
 	return
 }
 
+// apply overlay cell and cursor to Emulator.
 func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
 	show := pe.displayPreference != Never && (pe.srttTrigger || pe.glitchTrigger > 0 ||
 		pe.displayPreference == Always || pe.displayPreference == Experimental)
@@ -624,7 +626,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 	}
 
 	// go through cell predictions
-	overlays := make([]ConditionalOverlayRow, 0)
+	overlays := make([]ConditionalOverlayRow, 0, len(pe.overlays))
 	for i := 0; i < len(pe.overlays); i++ {
 		if pe.overlays[i].rowNum < 0 || pe.overlays[i].rowNum >= emu.GetHeight() {
 			// skip/erase this row if it's out of scope.
@@ -647,14 +649,15 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 				} else {
 					// [%d=>%d] Killing prediction in row %d, col %d (think %lc, actually %lc)\n
 					if pe.displayPreference == Experimental {
-						cell.reset2()
+						cell.reset2() // only clear the current cell
 					} else {
-						pe.reset()
+						pe.reset() // clear the whole prediction
 						return
 					}
 				}
 			case Correct:
-				if cell.tentativeUntilEpoch > pe.confirmedEpoch {
+				if cell.tentative(pe.confirmedEpoch) {
+					// if cell.tentativeUntilEpoch > pe.confirmedEpoch {
 					pe.confirmedEpoch = cell.tentativeUntilEpoch
 				}
 
@@ -690,4 +693,28 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 	}
 	// restore overlay cells
 	pe.overlays = overlays
+
+	if len(pe.cursors) > 0 {
+		if pe.cursor().getValidity(emu, pe.localFrameLateAcked) == IncorrectOrExpired {
+			// Sadly, we're predicting (%d,%d) vs. (%d,%d) [tau: %ld expiration_time=%ld, now=%ld]\n
+			if pe.displayPreference == Experimental {
+				pe.cursors = make([]ConditionalCursorMove, 0) // only clear the cursor prediction
+			} else {
+				pe.reset() // clear the whole prediction
+				return
+			}
+		}
+	}
+
+	// remove any cursor move except Pending validity.
+	cursors := make([]ConditionalCursorMove, 0, len(pe.cursors))
+	for i := range pe.cursors {
+		it := &(pe.cursors[i])
+		if it.getValidity(emu, pe.localFrameLateAcked) != Pending {
+			continue
+		} else {
+			cursors = append(cursors, *it)
+		}
+	}
+	pe.cursors = cursors
 }
