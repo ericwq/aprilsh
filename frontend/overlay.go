@@ -387,7 +387,7 @@ func (pe *PredictionEngine) reset() {
 	pe.becomeTentative()
 }
 
-// delay the prediciton epoch to next time
+// delay the prediction epoch to next time
 func (pe *PredictionEngine) becomeTentative() {
 	if pe.displayPreference != Experimental {
 		pe.predictionEpoch++
@@ -413,10 +413,12 @@ func (pe *PredictionEngine) newlineCarriageReturn(emu *terminal.Emulator) {
 	}
 }
 
-// new_user_byte
+// process user input to prepare local prediction:cells and cursors.
+// before process the input, PredictionEngine calls cull() method to check the prediction validity.
+// a.k.a mosh new_user_byte() method
 func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, chs ...rune) {
 	if pe.displayPreference == Never {
-		return // Never disable the prediction
+		return // option Never means disable the prediction
 	} else if pe.displayPreference == Experimental {
 		pe.predictionEpoch = pe.confirmedEpoch
 	}
@@ -484,7 +486,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 			cell.tentativeUntilEpoch = pe.predictionEpoch
 			cell.expire(pe.localFrameSent+1, now)
 			if len(cell.originalContents) == 0 {
-				// avoi adding original cell content several times
+				// avoid adding original cell content several times
 				cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, i))
 			}
 
@@ -572,7 +574,7 @@ func (pe *PredictionEngine) active() bool {
 
 // remove expire epoch cursor movement, append a new cursor movement,
 // remove expire epoch cell prediction.
-// delay the prediciton to next time
+// delay the prediction to next time
 func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
 	// remove cursor movement if epoch expire
 	cursors := make([]ConditionalCursorMove, 0)
@@ -600,6 +602,13 @@ func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
 	pe.becomeTentative()
 }
 
+// check the validity of cell prediction and perform action based on the validity.
+// for IncorrectOrExpired: remove the cell prediction or clear the whole prediction.
+// for Correct: update glitch_trigger if possible, update remaining renditions, remove the cell prediction.
+// for CorrectNoCredit: remove the cell prediction. keeps prediction.
+// for Pending: update glitch_trigger if possible, the pre
+// check the validity of cursor prediction and perform action based on the validity.
+// for IncorrectOrExpired: clear the whole prediction.
 func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 	if pe.displayPreference == Never {
 		return
@@ -703,6 +712,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 	// restore overlay cells
 	pe.overlays = overlays
 
+	// go through cursor predictions
 	if len(pe.cursors) > 0 {
 		if pe.cursor().getValidity(emu, pe.localFrameLateAcked) == IncorrectOrExpired {
 			// Sadly, we're predicting (%d,%d) vs. (%d,%d) [tau: %ld expiration_time=%ld, now=%ld]\n
@@ -715,9 +725,9 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 		}
 	}
 
-	// remove any cursor move except Pending validity.
 	cursors := make([]ConditionalCursorMove, 0, len(pe.cursors))
 	for i := range pe.cursors {
+		// remove any cursor prediction except Pending validity.
 		it := &(pe.cursors[i])
 		if it.getValidity(emu, pe.localFrameLateAcked) != Pending {
 			continue
