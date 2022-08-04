@@ -221,8 +221,11 @@ func (coc *ConditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 	}
 }
 
-// return Correct if frame cell is the same as the prediction and any history content doesn't match prediction.
+// for frame cell is the same as the prediction and any history content doesn't match prediction, return Correct .
 // for unknown or blank cell, or history content match prediction, return CorrectNoCredit.
+// for prediction cursor is out of range or prediction doesn't match frame cell, return IncorrectOrExpired.
+// for the lasteAck is not greater than expirationFrame, return Pending.
+// for inactive prediction, return Inactive.
 func (coc *ConditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, lateAck int64) Validity {
 	if !coc.active {
 		return Inactive
@@ -362,7 +365,7 @@ func (pe *PredictionEngine) getOrMakeRow(rowNum int, nCols int) (it *Conditional
 	return
 }
 
-// apply overlay cell and cursor to Emulator.
+// apply overlay cells and cursors to Emulator.
 func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
 	show := pe.displayPreference != Never && (pe.srttTrigger || pe.glitchTrigger > 0 ||
 		pe.displayPreference == Always || pe.displayPreference == Experimental)
@@ -384,6 +387,7 @@ func (pe *PredictionEngine) reset() {
 	pe.becomeTentative()
 }
 
+// delay the prediciton epoch to next time
 func (pe *PredictionEngine) becomeTentative() {
 	if pe.displayPreference != Experimental {
 		pe.predictionEpoch++
@@ -566,8 +570,11 @@ func (pe *PredictionEngine) active() bool {
 	return false
 }
 
+// remove expire epoch cursor movement, append a new cursor movement,
+// remove expire epoch cell prediction.
+// delay the prediciton to next time
 func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
-	// remove cursor move if the condition is true
+	// remove cursor movement if epoch expire
 	cursors := make([]ConditionalCursorMove, 0)
 	for i := range pe.cursors {
 		if pe.cursors[i].tentative(epoch - 1) {
@@ -575,10 +582,12 @@ func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
 		}
 		cursors = append(cursors, pe.cursors[i])
 	}
-	cursors = append(cursors, NewConditionalCursorMove(pe.localFrameSent+1,
-		emu.GetCursorRow(), emu.GetCursorCol(), pe.predictionEpoch))
+	cursors = append(cursors,
+		NewConditionalCursorMove(pe.localFrameSent+1, emu.GetCursorRow(), emu.GetCursorCol(), pe.predictionEpoch))
 	pe.cursors = cursors
 	pe.cursor().active = true
+
+	// remove cell prediction if epoch expire
 	for i := range pe.overlays {
 		for j := range pe.overlays[i].overlayCells {
 			cell := &(pe.overlays[i].overlayCells[j])
