@@ -27,6 +27,7 @@ SOFTWARE.
 package frontend
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ericwq/aprilsh/terminal"
@@ -185,7 +186,7 @@ func (coc *ConditionalOverlayCell) resetWithOrig() {
 	coc.reset()
 }
 
-// apply cell prediction to the emulator, (row,col) specify the cell.
+// apply cell prediction to the emulator, replace frame cell with prediction. (row,col) specify the cell.
 // confirmedEpoch specified the epoch. flag means underlining the cell.
 func (coc *ConditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch int64, row int, flag bool) {
 	// if specified position is out of active area or is not active.
@@ -539,8 +540,8 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 			// avoid adding original cell content several times
 			cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, pe.cursor().col))
 		}
-		// fmt.Printf("handleGrapheme() cell (%d,%d) active=%t\tunknown=%t\treplacement=%s\toriginalContents=%s\n",
-		// 	pe.cursor().row, pe.cursor().col, cell.active, cell.unknown, cell.replacement, cell.originalContents)
+		fmt.Printf("handleGrapheme() cell (%d,%d) active=%t\tunknown=%t\treplacement=%s\toriginalContents=%s\n",
+			pe.cursor().row, pe.cursor().col, cell.active, cell.unknown, cell.replacement, cell.originalContents)
 
 		// move cursor
 		pe.cursor().expire(pe.localFrameSent+1, now)

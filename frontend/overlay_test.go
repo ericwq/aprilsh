@@ -27,6 +27,7 @@ SOFTWARE.
 package frontend
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/ericwq/aprilsh/terminal"
@@ -215,6 +216,60 @@ func TestCellGetValidity(t *testing.T) {
 		if validity != v.validity {
 			t.Errorf("%q expect %d, got %d\n", v.name, v.validity, validity)
 			t.Errorf("cell (%d,%d) replacement=%s, originalContents=%s\n", v.row, v.col, predict.replacement, predict.originalContents)
+		}
+	}
+}
+
+func TestPredictionCull(t *testing.T) {
+	tc := []struct {
+		name     string
+		row, col int
+		base     string // base content
+		predict  string // prediction
+		frame    string // frame content
+	}{
+		{"correct validity", 9, 70, "     ", "right", "right"},
+	}
+	emu := terminal.NewEmulator3(80, 40, 40)
+	pe := NewPredictionEngine()
+
+	for k, v := range tc {
+		pe.reset()
+
+		// set the base content
+		emu.MoveCursor(v.row, v.col)
+		emu.HandleStream(v.base)
+
+		// cell := emu.GetCell(v.row, v.col)
+		// fmt.Printf("set base content =%q vs  %q\n", cell, v.base)
+
+		// mimic user input for prediction engine
+		emu.MoveCursor(v.row, v.col)
+		for i := range v.predict {
+			pe.handleUserGrapheme(emu, rune(v.predict[i]))
+		}
+
+		fmt.Printf("overlays length=%d cursors length=%d\n", len(pe.overlays), len(pe.cursors))
+		// mimic the result from server
+		emu.MoveCursor(v.row, v.col)
+		emu.HandleStream(v.frame)
+
+		// get the predict cell
+		predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
+		predict := &(predictRow.overlayCells[v.col])
+
+		fmt.Printf("(9,70) before cull has %s active=%t\n", predict.replacement, predict.active)
+		fmt.Printf("overlays length=%d cursors length=%d\n", len(pe.overlays), len(pe.cursors))
+		pe.cull(emu)
+
+		fmt.Printf("overlays length=%d cursors length=%d\n", len(pe.overlays), len(pe.cursors))
+		fmt.Printf("(9,70) after cull has %s active=%t\n", predict.replacement, predict.active)
+
+		switch k {
+		case 0:
+			if predict.active != false && len(predict.originalContents) != 0 {
+				t.Errorf("%s expect empty predict cell, got %v", v.name, predict)
+			}
 		}
 	}
 }
