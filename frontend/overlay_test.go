@@ -27,7 +27,6 @@ SOFTWARE.
 package frontend
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/ericwq/aprilsh/terminal"
@@ -227,11 +226,15 @@ func TestPredictionCull(t *testing.T) {
 		base     string // base content
 		predict  string // prediction
 		frame    string // frame content
+		lateAck  int
 	}{
-		{"correct validity", 9, 70, "     ", "right", "right"},
+		{"Correct validity", 9, 70, "     ", "right", "right", 2},
+		{"IncorrectOrExpired validity", 10, 70, "-----", "Alpha", "Beta", 2},
 	}
 	emu := terminal.NewEmulator3(80, 40, 40)
 	pe := NewPredictionEngine()
+	pe.lastWidth = emu.GetWidth()
+	pe.lastHeight = emu.GetHeight()
 
 	for k, v := range tc {
 		pe.reset()
@@ -249,26 +252,28 @@ func TestPredictionCull(t *testing.T) {
 			pe.handleUserGrapheme(emu, rune(v.predict[i]))
 		}
 
-		fmt.Printf("overlays length=%d cursors length=%d\n", len(pe.overlays), len(pe.cursors))
 		// mimic the result from server
 		emu.MoveCursor(v.row, v.col)
 		emu.HandleStream(v.frame)
+
+		// set the lateAck
+		pe.localFrameLateAcked = int64(v.lateAck)
 
 		// get the predict cell
 		predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
 		predict := &(predictRow.overlayCells[v.col])
 
-		fmt.Printf("(9,70) before cull has %s active=%t\n", predict.replacement, predict.active)
-		fmt.Printf("overlays length=%d cursors length=%d\n", len(pe.overlays), len(pe.cursors))
 		pe.cull(emu)
-
-		fmt.Printf("overlays length=%d cursors length=%d\n", len(pe.overlays), len(pe.cursors))
-		fmt.Printf("(9,70) after cull has %s active=%t\n", predict.replacement, predict.active)
 
 		switch k {
 		case 0:
 			if predict.active != false && len(predict.originalContents) != 0 {
-				t.Errorf("%s expect empty predict cell, got %v", v.name, predict)
+				t.Errorf("cell (%d,%d) replacement=%s, originalContents=%s\n", v.row, v.col, predict.replacement, predict.originalContents)
+				t.Errorf("%s expect empty predict cell, got cell active=%t\n", v.name, predict.active)
+			}
+		case 1:
+			if predict.active {
+				t.Errorf("%s expect empty predict cell, got cell active=%t\n", v.name, predict.active)
 			}
 		}
 	}
