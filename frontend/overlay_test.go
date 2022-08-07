@@ -230,6 +230,7 @@ func TestPredictionCull(t *testing.T) {
 	}{
 		{"Correct validity", 9, 70, "     ", "right", "right", 2},
 		{"IncorrectOrExpired validity", 10, 70, "-----", "Alpha", "Beta", 2},
+		{"Pending validity", 11, 70, "    ", "----", "****", 0},
 	}
 	emu := terminal.NewEmulator3(80, 40, 40)
 	pe := NewPredictionEngine()

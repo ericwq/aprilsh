@@ -27,7 +27,6 @@ SOFTWARE.
 package frontend
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/ericwq/aprilsh/terminal"
@@ -707,7 +706,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 				// 	cell.col, cell.replacement, cell.originalContents, cell.active, pe.localFrameLateAcked, cell.expirationFrame, CorrectNoCredit)
 				cell.reset2()
 			case Pending:
-				fmt.Printf("cull() return Pending=%d\n", Pending)
+				// fmt.Printf("cell (%d,%d) return Pending=%d\n", pe.overlays[i].rowNum, cell.col, Pending)
 				// When a prediction takes a long time to be confirmed, we
 				// activate the predictions even if SRTT is low
 				if now-cell.predictionTime >= GLITCH_FLAG_THRESHOLD {
@@ -716,7 +715,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 					pe.glitchTrigger = GLITCH_REPAIR_COUNT // just display
 				}
 			default:
-				// fmt.Printf("cull() return Inactive=%d\n", Inactive)
+				// fmt.Printf("cell (%d,%d) return Inactive=%d\n", pe.overlays[i].rowNum, cell.col, Inactive)
 				break
 			}
 		}
