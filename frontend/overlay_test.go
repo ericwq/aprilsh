@@ -27,6 +27,7 @@ SOFTWARE.
 package frontend
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/ericwq/aprilsh/terminal"
@@ -339,7 +340,7 @@ func TestPredictionNewUserInput(t *testing.T) {
 		// mimic user input for prediction engine
 		emu.MoveCursor(v.row, v.col)
 		for i := range v.predict {
-			// fmt.Printf("cull() test predictionEpoch=%d\n", pe.predictionEpoch)
+			fmt.Printf("cull() i=%d, ch=%c\n", i, v.predict[i])
 			pe.newUserInput(emu, rune(v.predict[i]))
 		}
 

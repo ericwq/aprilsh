@@ -27,6 +27,7 @@ SOFTWARE.
 package frontend
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ericwq/aprilsh/terminal"
@@ -430,6 +431,7 @@ func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, chs ...rune) {
 	now := time.Now().Unix()
 	ch := chs[0]
 	pe.lastByte = chs[0] // lastByte seems useless.
+	fmt.Printf("newUserInput() ch=%q len=%d\n", chs, len(chs))
 	if len(chs) > 1 {
 		// for multi runes, it should be grapheme.
 		pe.handleUserGrapheme(emu, chs...)
