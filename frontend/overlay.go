@@ -142,6 +142,8 @@ func (ccm *ConditionalCursorMove) getValidity(emu *terminal.Emulator, lateAck in
 
 	// lateAck is greater than expirationFrame
 	if lateAck >= ccm.expirationFrame {
+		// fmt.Printf("cursor getValidity() cell  (%d,%d)\n", ccm.row, ccm.col)
+		// fmt.Printf("cursor getValidity() frame (%d,%d)\n", emu.GetCursorRow(), emu.GetCursorCol())
 		if emu.GetCursorCol() == ccm.col && emu.GetCursorRow() == ccm.row {
 			return Correct
 		} else {
@@ -660,6 +662,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 			cell := &(pe.overlays[i].overlayCells[j])
 			switch cell.getValidity(emu, pe.overlays[i].rowNum, pe.localFrameLateAcked) {
 			case IncorrectOrExpired:
+				// fmt.Printf("IncorrectOrExpired cell. tentativeUntilEpoch=%d, confirmedEpoch=%d\n", cell.tentativeUntilEpoch, pe.confirmedEpoch)
 				if cell.tentative(pe.confirmedEpoch) {
 					// fmt.Printf("Bad tentative prediction in row %d, col %d (think %s, actually %s)\n",
 					// 	pe.overlays[i].rowNum, cell.col, cell.replacement, emu.GetCell(pe.overlays[i].rowNum, cell.col))
@@ -725,6 +728,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 
 	// go through cursor predictions
 	if len(pe.cursors) > 0 {
+		// fmt.Printf("cull() cursor getValidity return %d\n", pe.cursor().getValidity(emu, pe.localFrameLateAcked))
 		if pe.cursor().getValidity(emu, pe.localFrameLateAcked) == IncorrectOrExpired {
 			// Sadly, we're predicting (%d,%d) vs. (%d,%d) [tau: %ld expiration_time=%ld, now=%ld]\n
 			if pe.displayPreference == Experimental {

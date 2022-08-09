@@ -221,21 +221,24 @@ func TestCellGetValidity(t *testing.T) {
 
 func TestPredictionCull(t *testing.T) {
 	tc := []struct {
-		name     string
-		row, col int
-		base     string // base content
-		predict  string // prediction
-		frame    string // frame content
-		lateAck  int
+		name            string
+		row, col        int
+		base            string // base content
+		predict         string // prediction
+		frame           string // frame content
+		lateAck         int
+		confirmedEpoch  int
+		incorrectCursor bool
 	}{
-		{"Correct validity", 9, 70, "     ", "right", "right", 2},
-		{"IncorrectOrExpired validity", 10, 70, "-----", "Alpha", "Beta", 2},
-		{"Pending validity", 11, 70, "    ", "----", "****", 0},
+		{"reset by height and width", 12, 70, "    ", "----", "****", 0, 0, false},
+		{"Correct validity", 9, 70, "     ", "right", "right", 2, 0, false},
+		{"IncorrectOrExpired validity", 10, 70, "-----", "Alpha", "Beta", 2, 0, false},
+		{"Pending validity", 11, 70, "    ", "----", "****", 0, 0, false},
+		{"IncorrectOrExpired < confirmedEpoch", 13, 70, "-----", "Alpha", "Beta", 2, 10, false},
+		{"Correct validity + incorrect cursor", 14, 70, "     ", "right", "right", 2, 0, true},
 	}
 	emu := terminal.NewEmulator3(80, 40, 40)
 	pe := NewPredictionEngine()
-	pe.lastWidth = emu.GetWidth()
-	pe.lastHeight = emu.GetHeight()
 
 	for k, v := range tc {
 		pe.reset()
@@ -250,6 +253,7 @@ func TestPredictionCull(t *testing.T) {
 		// mimic user input for prediction engine
 		emu.MoveCursor(v.row, v.col)
 		for i := range v.predict {
+			// fmt.Printf("cull() test predictionEpoch=%d\n", pe.predictionEpoch)
 			pe.handleUserGrapheme(emu, rune(v.predict[i]))
 		}
 
@@ -264,17 +268,36 @@ func TestPredictionCull(t *testing.T) {
 		predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
 		predict := &(predictRow.overlayCells[v.col])
 
+		if v.confirmedEpoch != 0 {
+			pe.confirmedEpoch = int64(v.confirmedEpoch)
+		}
+
+		if v.incorrectCursor {
+			emu.MoveCursor(v.row, v.col-1)
+		}
+
 		pe.cull(emu)
 
 		switch k {
-		case 0:
+		case 0, 4, 5:
+			if len(pe.overlays) != 0 || len(pe.cursors) != 0 {
+				t.Errorf("%s should be reset by width and height. got overlays=%d, cursors=%d\n", v.name, len(pe.overlays), len(pe.cursors))
+			}
+		case 1:
+			// Correct cell's active is false, it's originalContents field is cleared.
 			if predict.active != false && len(predict.originalContents) != 0 {
 				t.Errorf("cell (%d,%d) replacement=%s, originalContents=%s\n", v.row, v.col, predict.replacement, predict.originalContents)
 				t.Errorf("%s expect empty predict cell, got cell active=%t\n", v.name, predict.active)
 			}
-		case 1:
+		case 2:
+			// IncorrectOrExpired cell's active is false
 			if predict.active {
 				t.Errorf("%s expect empty predict cell, got cell active=%t\n", v.name, predict.active)
+			}
+		case 3:
+			// Pending cell's active is true.
+			if !predict.active {
+				t.Errorf("%s expect exmpty predict cell, got cell active=%t\n", v.name, predict.active)
 			}
 		}
 	}
