@@ -463,13 +463,13 @@ func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, chs ...rune) {
 }
 
 func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...rune) {
-	w := terminal.RunesWidth(chs)
+	// w := terminal.RunesWidth(chs)
 	pe.initCursor(emu)
 	now := time.Now().Unix()
 
 	if len(chs) == 1 && chs[0] == '\x7f' {
 		// TODO handle backspace
-	} else if chs[0] < 0x20 || w != 1 {
+	} else if chs[0] < 0x20 { //}|| w != 1 {
 		// TODO handle wide rune, combining grapheme
 	} else {
 		// normal rune
@@ -627,6 +627,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 
 	now := time.Now().Unix()
 
+	// fmt.Printf("cull() sendInterval=%d\n", pe.sendInterval)
 	// control srtt_trigger with hysteresis
 	if pe.sendInterval > SRTT_TRIGGER_HIGH {
 		pe.srttTrigger = true

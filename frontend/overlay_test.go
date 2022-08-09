@@ -229,13 +229,15 @@ func TestPredictionCull(t *testing.T) {
 		lateAck         int
 		confirmedEpoch  int
 		incorrectCursor bool
+		sendInterval    int
 	}{
-		{"reset by height and width", 12, 70, "    ", "----", "****", 0, 0, false},
-		{"Correct validity", 9, 70, "     ", "right", "right", 2, 0, false},
-		{"IncorrectOrExpired validity", 10, 70, "-----", "Alpha", "Beta", 2, 0, false},
-		{"Pending validity", 11, 70, "    ", "----", "****", 0, 0, false},
-		{"IncorrectOrExpired < confirmedEpoch", 13, 70, "-----", "Alpha", "Beta", 2, 10, false},
-		{"Correct validity + incorrect cursor", 14, 70, "     ", "right", "right", 2, 0, true},
+		{"reset by height and width", 12, 70, "    ", "----", "****", 0, 0, false, 0},
+		{"Correct validity", 9, 70, "     ", "right", "right", 2, 0, false, 0},
+		{"IncorrectOrExpired validity", 10, 70, "-----", "Alpha", "Beta", 2, 0, false, 0},
+		{"Pending validity", 11, 70, "    ", "----", "****", 0, 0, false, 0},
+		{"IncorrectOrExpired < confirmedEpoch", 13, 70, "-----", "Alpha", "Beta", 2, 10, false, 0},
+		{"Correct validity + incorrect cursor", 14, 70, "     ", "right", "right", 2, 0, true, 0},
+		{"Correct validity + sendInterval", 14, 70, "     ", "right", "right", 2, 0, true, 20},
 	}
 	emu := terminal.NewEmulator3(80, 40, 40)
 	pe := NewPredictionEngine()
@@ -271,9 +273,11 @@ func TestPredictionCull(t *testing.T) {
 		if v.confirmedEpoch != 0 {
 			pe.confirmedEpoch = int64(v.confirmedEpoch)
 		}
-
 		if v.incorrectCursor {
 			emu.MoveCursor(v.row, v.col-1)
+		}
+		if v.sendInterval != 0 {
+			pe.sendInterval = v.sendInterval
 		}
 
 		pe.cull(emu)
@@ -303,28 +307,62 @@ func TestPredictionCull(t *testing.T) {
 	}
 }
 
-func TestPredictionHandleGrapheme(t *testing.T) {
+func TestPredictionNewUserInput(t *testing.T) {
 	tc := []struct {
-		name      string
-		rawStr    string // rawString will fill the right side of emulator
-		row, col  int    // the specified row and col
-		insertStr string
+		name              string
+		row, col          int    // the specified row and col
+		base              string // base content
+		predict           string // prediction
+		result            string // frame content
+		displayPreference DisplayPreference
+		posY, posX        int // new cursor position
 	}{
-		{"insert 10 runes", "abcdefghij", 4, 70, "ABCDEFGHIJ"},
+		{"insert 6 normal text", 3, 75, "******", "abcdef", "abcdef", Adaptive, 0, 0},
+		{"insert CUF", 4, 75, "", "\x1B[C", "", Adaptive, 4, 76},
+		{"insert CUB", 4, 75, "", "\x1B[D", "", Adaptive, 4, 74},
+		{"insert CR", 4, 75, "", "\r", "", Adaptive, 5, 0},
+		{"insert chinese", 4, 75, "", "四", "四", Adaptive, 4, 0},
 	}
 
 	pe := NewPredictionEngine()
 	emu := terminal.NewEmulator3(80, 40, 40)
 
-	for _, v := range tc {
-		// fill in the rawStr with lowercase letter
+	for k, v := range tc {
+		pe.reset()
+
+		// set the base content
 		emu.MoveCursor(v.row, v.col)
-		emu.HandleStream(v.rawStr)
-		// move cursor to the start position
+		emu.HandleStream(v.base)
+
+		pe.displayPreference = v.displayPreference
+
+		// mimic user input for prediction engine
 		emu.MoveCursor(v.row, v.col)
-		// mimic user input 10 uppercase letter
-		for i := range v.insertStr {
-			pe.handleUserGrapheme(emu, rune(v.insertStr[i]))
+		for i := range v.predict {
+			// fmt.Printf("cull() test predictionEpoch=%d\n", pe.predictionEpoch)
+			pe.newUserInput(emu, rune(v.predict[i]))
+		}
+
+		// get the predict cell
+		predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
+		// predict := &(predictRow.overlayCells[v.col])
+
+		switch k {
+		case 0, 4:
+			for i, ch := range v.result {
+				if v.col+i > emu.GetWidth()-1 { // only validate this row, up to right column
+					break
+				}
+				if predictRow.overlayCells[v.col+i].replacement.String() != string(ch) {
+					t.Errorf("%s expect %q at (%d,%d), got %q\n", v.name, string(ch), v.row, v.col+i, predictRow.overlayCells[v.col+i].replacement)
+				}
+			}
+		case 1, 2, 3:
+			gotX := pe.cursor().col
+			gotY := pe.cursor().row
+			if gotX != v.posX || gotY != v.posY {
+				t.Errorf("%s expect cursor at (%d,%d), got (%d,%d)\n", v.name, v.posY, v.posX, gotY, gotX)
+			}
 		}
 	}
 }
