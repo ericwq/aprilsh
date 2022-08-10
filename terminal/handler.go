@@ -226,8 +226,8 @@ func (h *Handler) GetId() int {
 	return h.id
 }
 
-func (h *Handler) Handle(emu *Emulator) {
-	h.handle(emu)
+func (h *Handler) GetCh() rune {
+	return h.ch
 }
 
 // In the loop, national flag's width got 1+1=2.
