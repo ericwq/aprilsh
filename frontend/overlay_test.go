@@ -351,14 +351,17 @@ func TestPredictionNewUserInput(t *testing.T) {
 
 		switch k {
 		case 0, 1, 2:
-			// only validate each cell in this row, not exceed to the next row.
-			for i, ch := range v.result {
+			i := 0
+			for _, ch := range v.result {
 				if v.col+i > emu.GetWidth()-1 {
 					break
 				}
+
 				if predictRow.overlayCells[v.col+i].replacement.String() != string(ch) {
-					t.Errorf("%s expect %q at (%d,%d), got %q\n", v.name, string(ch), v.row, v.col+i, predictRow.overlayCells[v.col+i].replacement)
+					t.Errorf("%s expect %q at (%d,%d), got %q\n", v.name, string(ch),
+						v.row, v.col+i, predictRow.overlayCells[v.col+i].replacement)
 				}
+				i += terminal.RunesWidth([]rune{ch})
 			}
 		case 3, 4, 5, 6:
 			gotX := pe.cursor().col
