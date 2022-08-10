@@ -472,7 +472,7 @@ func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, str string) {
 }
 
 func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...rune) {
-	// w := terminal.RunesWidth(chs)
+	w := terminal.RunesWidth(chs)
 	pe.initCursor(emu)
 	now := time.Now().Unix()
 
@@ -490,7 +490,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 		}
 
 		// do the insert
-		for i := emu.GetWidth() - 1; i > pe.cursor().col; i-- {
+		for i := emu.GetWidth() - w; i > pe.cursor().col; i-- {
 			cell := &(theRow.overlayCells[i])
 			cell.resetWithOrig()
 			cell.active = true
@@ -543,9 +543,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 				cell.replacement.SetRenditions(prevCellActual.GetRenditions())
 			}
 		}
-
-		cell.replacement.Clear()
-		cell.replacement.Append(chs[0])
+		cell.replacement.SetContents(chs...)
 		if len(cell.originalContents) == 0 {
 			// avoid adding original cell content several times
 			cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, pe.cursor().col))
@@ -558,7 +556,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 
 		// do we need to wrap?
 		if pe.cursor().col < emu.GetWidth()-1 {
-			pe.cursor().col++
+			pe.cursor().col += w
 		} else {
 			pe.becomeTentative()
 			pe.newlineCarriageReturn(emu)

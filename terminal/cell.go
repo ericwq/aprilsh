@@ -192,6 +192,10 @@ func (c *Cell) Append(r rune) {
 	// set wide automaticlly?
 }
 
+func (c *Cell) SetContents(chs ...rune) {
+	c.contents = string(chs)
+}
+
 /*
 
 hide it
