@@ -318,7 +318,7 @@ func TestPredictionNewUserInput(t *testing.T) {
 		posY, posX        int // new cursor position
 	}{
 		{"insert english", 3, 75, "******", "abcdef", "abcdef", Adaptive, 0, 0},
-		{"insert chinese", 4, 75, "", "四", "四", Adaptive, 4, 0},
+		{"insert chinese", 4, 70, "", "四姑娘山", "四姑娘山", Adaptive, 4, 0},
 		{"Experimental", 4, 60, "", "Experimental", "Experimental", Experimental, 4, 76},
 		{"insert CUF", 4, 75, "", "\x1B[C", "", Adaptive, 4, 76},
 		{"insert CUB", 4, 75, "", "\x1B[D", "", Adaptive, 4, 74},

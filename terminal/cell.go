@@ -41,7 +41,7 @@ import (
 type Cell struct {
 	contents   string
 	renditions Renditions
-	wide       bool
+	wide       bool // TODO consider remove wide field.
 	fallback   bool
 	wrap       bool
 	dwidth     bool
@@ -266,4 +266,12 @@ func (c Cell) GetWrap() bool {
 
 func (c *Cell) SetWrap(w bool) {
 	c.wrap = w
+}
+
+func (c *Cell) IsDoubleWidth() bool {
+	return c.dwidth
+}
+
+func (c *Cell) IsDoubleWidthCont() bool {
+	return c.dwidthCont
 }
