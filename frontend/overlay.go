@@ -27,10 +27,10 @@ SOFTWARE.
 package frontend
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/ericwq/aprilsh/terminal"
+	"github.com/rivo/uniseg"
 )
 
 type (
@@ -419,47 +419,54 @@ func (pe *PredictionEngine) newlineCarriageReturn(emu *terminal.Emulator) {
 // process user input to prepare local prediction:cells and cursors.
 // before process the input, PredictionEngine calls cull() method to check the prediction validity.
 // a.k.a mosh new_user_byte() method
-func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, chs ...rune) {
-	if pe.displayPreference == Never {
-		return // option Never means disable the prediction
-	} else if pe.displayPreference == Experimental {
-		pe.predictionEpoch = pe.confirmedEpoch
-	}
+func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, str string) {
+	var input []rune
+	var hd *terminal.Handler
 
-	pe.cull(emu)
+	graphemes := uniseg.NewGraphemes(str)
+	for graphemes.Next() {
+		if pe.displayPreference == Never {
+			continue // option Never means disable the prediction
+		} else if pe.displayPreference == Experimental {
+			pe.predictionEpoch = pe.confirmedEpoch
+		}
 
-	now := time.Now().Unix()
-	ch := chs[0]
-	pe.lastByte = chs[0] // lastByte seems useless.
-	fmt.Printf("newUserInput() ch=%q len=%d\n", chs, len(chs))
-	if len(chs) > 1 {
-		// for multi runes, it should be grapheme.
-		pe.handleUserGrapheme(emu, chs...)
-		return
-	}
+		pe.cull(emu)
+		now := time.Now().Unix()
 
-	hd := pe.parser.ProcessInput(ch)
-	if hd != nil {
-		switch hd.GetId() {
-		case terminal.Graphemes:
-			pe.handleUserGrapheme(emu, ch)
-		case terminal.C0_CR:
-			pe.becomeTentative()
-			pe.newlineCarriageReturn(emu)
-		case terminal.CSI_CUF:
-			pe.initCursor(emu)
-			if pe.cursor().col < emu.GetWidth()-1 {
-				pe.cursor().col++
-				pe.cursor().expire(pe.localFrameSent+1, now)
+		input = graphemes.Runes()
+
+		// translate application-mode cursor control function to ANSI cursor control sequence
+		if pe.lastByte == '\x1b' && len(input) == 1 && input[0] == 'O' {
+			input[0] = '['
+		}
+		if len(input) == 1 {
+			pe.lastByte = input[0]
+		}
+
+		hd = pe.parser.ProcessInput(input...)
+		if hd != nil {
+			switch hd.GetId() {
+			case terminal.Graphemes:
+				pe.handleUserGrapheme(emu, hd.GetCh())
+			case terminal.C0_CR:
+				pe.becomeTentative()
+				pe.newlineCarriageReturn(emu)
+			case terminal.CSI_CUF:
+				pe.initCursor(emu)
+				if pe.cursor().col < emu.GetWidth()-1 {
+					pe.cursor().col++
+					pe.cursor().expire(pe.localFrameSent+1, now)
+				}
+			case terminal.CSI_CUB:
+				pe.initCursor(emu)
+				if pe.cursor().col > 0 { // TODO consider the left right margin.
+					pe.cursor().col--
+					pe.cursor().expire(pe.localFrameSent+1, now)
+				}
+			default:
+				pe.becomeTentative()
 			}
-		case terminal.CSI_CUB:
-			pe.initCursor(emu)
-			if pe.cursor().col > 0 { // TODO consider the left right margin.
-				pe.cursor().col--
-				pe.cursor().expire(pe.localFrameSent+1, now)
-			}
-		default:
-			pe.becomeTentative()
 		}
 	}
 }

@@ -27,7 +27,6 @@ SOFTWARE.
 package frontend
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/ericwq/aprilsh/terminal"
@@ -318,11 +317,15 @@ func TestPredictionNewUserInput(t *testing.T) {
 		displayPreference DisplayPreference
 		posY, posX        int // new cursor position
 	}{
-		{"insert 6 normal text", 3, 75, "******", "abcdef", "abcdef", Adaptive, 0, 0},
+		{"insert english", 3, 75, "******", "abcdef", "abcdef", Adaptive, 0, 0},
+		{"insert chinese", 4, 75, "", "四", "四", Adaptive, 4, 0},
+		{"Experimental", 4, 60, "", "Experimental", "Experimental", Experimental, 4, 76},
 		{"insert CUF", 4, 75, "", "\x1B[C", "", Adaptive, 4, 76},
 		{"insert CUB", 4, 75, "", "\x1B[D", "", Adaptive, 4, 74},
 		{"insert CR", 4, 75, "", "\r", "", Adaptive, 5, 0},
-		{"insert chinese", 4, 75, "", "四", "四", Adaptive, 4, 0},
+		{"insert CUF", 4, 75, "", "\x1BOC", "", Adaptive, 4, 76},
+		{"BEL becomeTentative", 5, 70, "", "\x07", "", Adaptive, 0, 0},
+		{"Never", 4, 75, "", "Never", "", Never, 0, 0},
 	}
 
 	pe := NewPredictionEngine()
@@ -335,35 +338,35 @@ func TestPredictionNewUserInput(t *testing.T) {
 		emu.MoveCursor(v.row, v.col)
 		emu.HandleStream(v.base)
 
+		// set the displayPreference field
 		pe.displayPreference = v.displayPreference
 
 		// mimic user input for prediction engine
 		emu.MoveCursor(v.row, v.col)
-		for i := range v.predict {
-			fmt.Printf("cull() i=%d, ch=%c\n", i, v.predict[i])
-			pe.newUserInput(emu, rune(v.predict[i]))
-		}
+		pe.newUserInput(emu, v.predict)
 
 		// get the predict cell
 		predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
 		// predict := &(predictRow.overlayCells[v.col])
 
 		switch k {
-		case 0, 4:
+		case 0, 1, 2:
+			// only validate each cell in this row, not exceed to the next row.
 			for i, ch := range v.result {
-				if v.col+i > emu.GetWidth()-1 { // only validate this row, up to right column
+				if v.col+i > emu.GetWidth()-1 {
 					break
 				}
 				if predictRow.overlayCells[v.col+i].replacement.String() != string(ch) {
 					t.Errorf("%s expect %q at (%d,%d), got %q\n", v.name, string(ch), v.row, v.col+i, predictRow.overlayCells[v.col+i].replacement)
 				}
 			}
-		case 1, 2, 3:
+		case 3, 4, 5, 6:
 			gotX := pe.cursor().col
 			gotY := pe.cursor().row
 			if gotX != v.posX || gotY != v.posY {
 				t.Errorf("%s expect cursor at (%d,%d), got (%d,%d)\n", v.name, v.posY, v.posX, gotY, gotX)
 			}
+		default:
 		}
 	}
 }
