@@ -326,6 +326,8 @@ func TestPredictionNewUserInput(t *testing.T) {
 		{"insert CUF", 4, 75, "", "\x1BOC", "", Adaptive, 4, 76},
 		{"BEL becomeTentative", 5, 70, "", "\x07", "", Adaptive, 0, 0},
 		{"Never", 4, 75, "", "Never", "", Never, 0, 0},
+		{"insert chinese with base content", 6, 71, "上海56789", "四姑娘", "四姑娘上", Adaptive, 0, 0},
+		{"insert chinese with wrap", 7, 79, "", "四", "四", Adaptive, 8, 0},
 	}
 
 	pe := NewPredictionEngine()
@@ -338,6 +340,14 @@ func TestPredictionNewUserInput(t *testing.T) {
 		emu.MoveCursor(v.row, v.col)
 		emu.HandleStream(v.base)
 
+		// if k == 9 {
+		// 	fmt.Println("k==9")
+		// 	for i := 0; i < len(v.base); i++ {
+		// 		cell := emu.GetCell(v.row, v.col+i)
+		// 		fmt.Printf("cell (%d,%d) is %q dw=%t, dwcont=%t\n", v.row, v.col+i, cell, cell.IsDoubleWidth(), cell.IsDoubleWidthCont())
+		// 	}
+		// }
+
 		// set the displayPreference field
 		pe.displayPreference = v.displayPreference
 
@@ -345,21 +355,20 @@ func TestPredictionNewUserInput(t *testing.T) {
 		emu.MoveCursor(v.row, v.col)
 		pe.newUserInput(emu, v.predict)
 
-		// get the predict cell
-		predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
-		// predict := &(predictRow.overlayCells[v.col])
-
 		switch k {
-		case 0, 1, 2:
+		case 0, 1, 2, 9:
+			// get the predict cell
+			predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
 			i := 0
 			for _, ch := range v.result {
 				if v.col+i > emu.GetWidth()-1 {
 					break
 				}
 
-				if predictRow.overlayCells[v.col+i].replacement.String() != string(ch) {
-					t.Errorf("%s expect %q at (%d,%d), got %q\n", v.name, string(ch),
-						v.row, v.col+i, predictRow.overlayCells[v.col+i].replacement)
+				cell := predictRow.overlayCells[v.col+i].replacement
+				if cell.String() != string(ch) {
+					t.Errorf("%s expect %q at (%d,%d), got %q\n", v.name, string(ch), v.row, v.col+i, cell)
+					t.Errorf("predict cell (%d,%d) is %q dw=%t, dwcont=%t\n", v.row, v.col+i, cell, cell.IsDoubleWidth(), cell.IsDoubleWidthCont())
 				}
 				i += terminal.RunesWidth([]rune{ch})
 			}
@@ -369,6 +378,18 @@ func TestPredictionNewUserInput(t *testing.T) {
 			if gotX != v.posX || gotY != v.posY {
 				t.Errorf("%s expect cursor at (%d,%d), got (%d,%d)\n", v.name, v.posY, v.posX, gotY, gotX)
 			}
+		case 10:
+			predictRow := pe.getOrMakeRow(v.posY, emu.GetWidth())
+			i := 0
+			for _, ch := range v.result {
+				cell := predictRow.overlayCells[v.posX+i].replacement
+				if cell.String() != string(ch) {
+					t.Errorf("%s expect %q at (%d,%d), got %q\n", v.name, string(ch), v.posY, v.posX+i, cell)
+					t.Errorf("predict cell (%d,%d) is %q dw=%t, dwcont=%t\n", v.posY, v.posX+i, cell, cell.IsDoubleWidth(), cell.IsDoubleWidthCont())
+				}
+				i += terminal.RunesWidth([]rune{ch})
+			}
+
 		default:
 		}
 	}

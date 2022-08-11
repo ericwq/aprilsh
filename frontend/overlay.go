@@ -478,10 +478,18 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 
 	if len(chs) == 1 && chs[0] == '\x7f' {
 		// TODO handle backspace
-	} else if chs[0] < 0x20 { //}|| w != 1 {
-		// TODO handle wide rune, combining grapheme
+	} else if chs[0] < 0x20 {
+		// TODO handle
 	} else {
-		// normal rune
+		// normal rune, wide rune, combining grapheme
+
+		// for wide rune, only one cell space is not enough, wrap to next row
+		if w == 2 && pe.cursor().col == emu.GetWidth()-1 {
+			pe.becomeTentative()
+			pe.newlineCarriageReturn(emu)
+			// fmt.Printf("handleUserGrapheme() wrap %q to (%d,%d)\n", string(chs), pe.cursor().row, pe.cursor().col)
+		}
+
 		theRow := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
 		if pe.cursor().col+1 >= emu.GetWidth() {
 			// prediction in the last column is tricky
@@ -489,8 +497,8 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 			pe.becomeTentative()
 		}
 
-		// do the insert
-		for i := emu.GetWidth() - w; i > pe.cursor().col; i-- {
+		// do the insert in reverse order
+		for i := emu.GetWidth() - 1; i > pe.cursor().col; i-- {
 			cell := &(theRow.overlayCells[i])
 			cell.resetWithOrig()
 			cell.active = true
@@ -501,11 +509,16 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 				cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, i))
 			}
 
-			prevCell := &(theRow.overlayCells[i-1])
-			prevCellActual := emu.GetCell(pe.cursor().row, i-1)
+			if i-w < pe.cursor().col {
+				break
+			}
+			// fmt.Printf("handleUserGrapheme() iterate col=%d, prev col=%d\n", i, i-w)
+			prevCell := &(theRow.overlayCells[i-w])
+			prevCellActual := emu.GetCell(pe.cursor().row, i-w)
 
 			if i == emu.GetWidth()-1 {
 				cell.unknown = true
+				// cell.replacement = prevCellActual // TODO should we remove this?
 			} else if prevCell.active {
 				if prevCell.unknown {
 					// prevCell active=T unknown=T
@@ -521,10 +534,9 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 				cell.replacement = prevCellActual
 			}
 
-			// fmt.Printf("handleGrapheme() cell (%d,%d) active=%t\tunknown=%t\treplacement=%s\toriginalContents=%s\n",
-			// 	pe.cursor().row, i, cell.active, cell.unknown, cell.replacement, cell.originalContents)
+			// fmt.Printf("handleUserGrapheme() cell (%2d,%2d) active=%t\tunknown=%t\treplacement=%q\tdwidth=%t\toriginalContents=%s\n",
+			// 	pe.cursor().row, i, cell.active, cell.unknown, cell.replacement, cell.replacement.IsDoubleWidth(), cell.originalContents)
 		}
-
 		cell := &(theRow.overlayCells[pe.cursor().col])
 		cell.resetWithOrig()
 		cell.active = true
@@ -543,15 +555,23 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 				cell.replacement.SetRenditions(prevCellActual.GetRenditions())
 			}
 		}
+
+		// wide rune occupies 2 cells.
+		if w == 2 {
+			cell.replacement.SetDoubleWidth(true)
+			nextCell := &(theRow.overlayCells[pe.cursor().col+1])
+			nextCell.replacement.SetDoubleWidthCont(true)
+		}
+
 		cell.replacement.SetContents(chs...)
 		if len(cell.originalContents) == 0 {
 			// avoid adding original cell content several times
 			cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, pe.cursor().col))
 		}
-		// fmt.Printf("handleGrapheme() cell (%d,%d) active=%t\tunknown=%t\treplacement=%s\toriginalContents=%s\n",
-		// 	pe.cursor().row, pe.cursor().col, cell.active, cell.unknown, cell.replacement, cell.originalContents)
 
-		// move cursor
+		// fmt.Printf("handleUserGrapheme() cell (%2d,%2d) active=%t\tunknown=%t\treplacement=%q\tdwidth=%t\toriginalContents=%s\n\n",
+		// 	pe.cursor().row, pe.cursor().col, cell.active, cell.unknown, cell.replacement, cell.replacement.IsDoubleWidth(), cell.originalContents)
+
 		pe.cursor().expire(pe.localFrameSent+1, now)
 
 		// do we need to wrap?
