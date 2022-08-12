@@ -403,7 +403,7 @@ func TestPredictionApply(t *testing.T) {
 		predict  string // prediction
 		result   string // frame content
 	}{
-		{"insert english", 3, 75, "", "abcdef", "abcdef"},
+		{"apply wrapped english input", 9, 75, "", "abcdef", "abcdef"},
 	}
 
 	pe := NewPredictionEngine()
@@ -419,32 +419,33 @@ func TestPredictionApply(t *testing.T) {
 		// mimic user input for prediction engine
 		emu.MoveCursor(v.row, v.col)
 		pe.newUserInput(emu, v.predict)
-		predictRow := pe.getOrMakeRow(v.row+1, emu.GetWidth())
-		predict := predictRow.overlayCells[0].replacement
-		t.Logf("%q overlay at (%d,%d) is %q\n", v.name, v.row+1, 0, predict.GetContents())
+		// predictRow := pe.getOrMakeRow(v.row+1, emu.GetWidth())
+		// predict := predictRow.overlayCells[0].replacement
+		// t.Logf("%q overlay at (%d,%d) is %q\n", v.name, v.row+1, 0, predict.GetContents())
 
 		// mimic the result from server
 		emu.MoveCursor(v.row, v.col)
 		emu.HandleStream(v.result)
-		cell := emu.GetCell(v.row+1, 0) // cr to next row
-		t.Logf("%q emulator at (%d,%d) is %q\n", v.name, v.row+1, 0, cell.GetContents())
+		// cell := emu.GetMutableCell(v.row+1, 0) // cr to next row
+		// t.Logf("%q emulator at (%d,%d) is %q @%p\n", v.name, v.row+1, 0, cell.GetContents(), cell)
 
 		// apply to emulator
 		pe.cull(emu)
 		pe.apply(emu)
+		// t.Logf("%q apply at (%d,%d) is %q @%p\n", v.name, v.row+1, 0, cell.GetContents(), cell)
 
 		switch k {
 		case 0:
 			for i := 0; i < 5; i++ {
 				cell := emu.GetCell(v.row, v.col+i)
-				if string(v.result[i]) != cell.GetContents() {
-					t.Errorf("%q expect %q at (%d,%d), got %q\n", v.name, v.result[i], v.row, v.col+i, cell.GetContents())
+				if string(v.predict[i]) != cell.GetContents() {
+					t.Errorf("%q expect %q at (%d,%d), got %q\n", v.name, v.predict[i], v.row, v.col+i, cell.GetContents())
 				}
 			}
 
 			cell := emu.GetCell(v.row+1, 0) // cr to next row
-			if string(v.result[5]) != cell.GetContents() {
-				t.Errorf("%q expect %q at (%d,%d), got %q\n", v.name, v.result[5], v.row+1, 0, cell.GetContents())
+			if string(v.predict[5]) != cell.GetContents() {
+				t.Errorf("%q expect %q at (%d,%d), got %q\n", v.name, v.predict[5], v.row+1, 0, cell.GetContents())
 			}
 		}
 	}
