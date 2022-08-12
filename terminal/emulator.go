@@ -579,23 +579,29 @@ func (emu *Emulator) GetMutableCell(posY, posX int) *Cell {
 }
 
 func (emu *Emulator) getCellPos(posY, posX int) (posY2, posX2 int) {
+	// fmt.Printf("@1 (%d,%d)\n", posY, posX)
 	// in case we don't provide the row or col
 	if posY < 0 || posY > emu.GetHeight() {
 		posY = emu.GetCursorRow()
+		// fmt.Printf("@2 (%d,%d)\n", posY, posX)
 	}
 
 	if posX < 0 || posX > emu.GetWidth() {
 		posX = emu.GetCursorCol()
+		// fmt.Printf("@3 (%d,%d)\n", posY, posX)
 	}
 
 	switch emu.originMode {
 	case OriginMode_Absolute:
-		posY = max(1, min(posY, emu.nRows))
+		posY = max(0, min(posY, emu.nRows))
+		// fmt.Printf("@4 (%d,%d)\n", posY, posX)
 	case OriginMode_ScrollingRegion:
-		posY = max(1, min(posY, emu.marginBottom))
+		posY = max(0, min(posY, emu.marginBottom))
 		posY += emu.marginTop
+		// fmt.Printf("@5 (%d,%d)\n", posY, posX)
 	}
-	posX = max(1, min(posX, emu.nCols))
+	posX = max(0, min(posX, emu.nCols))
+	// fmt.Printf("@6 (%d,%d)\n", posY, posX)
 
 	posX2 = posX
 	posY2 = posY
