@@ -394,3 +394,58 @@ func TestPredictionNewUserInput(t *testing.T) {
 		}
 	}
 }
+
+func TestPredictionApply(t *testing.T) {
+	tc := []struct {
+		name     string
+		row, col int    // the specified row and col
+		base     string // base content
+		predict  string // prediction
+		result   string // frame content
+	}{
+		{"insert english", 3, 75, "", "abcdef", "abcdef"},
+	}
+
+	pe := NewPredictionEngine()
+	emu := terminal.NewEmulator3(80, 40, 40)
+
+	for k, v := range tc {
+		pe.reset()
+
+		// set the base content
+		emu.MoveCursor(v.row, v.col)
+		emu.HandleStream(v.base)
+
+		// mimic user input for prediction engine
+		emu.MoveCursor(v.row, v.col)
+		pe.newUserInput(emu, v.predict)
+		predictRow := pe.getOrMakeRow(v.row+1, emu.GetWidth())
+		predict := predictRow.overlayCells[0].replacement
+		t.Logf("%q overlay at (%d,%d) is %q\n", v.name, v.row+1, 0, predict.GetContents())
+
+		// mimic the result from server
+		emu.MoveCursor(v.row, v.col)
+		emu.HandleStream(v.result)
+		cell := emu.GetCell(v.row+1, 0) // cr to next row
+		t.Logf("%q emulator at (%d,%d) is %q\n", v.name, v.row+1, 0, cell.GetContents())
+
+		// apply to emulator
+		pe.cull(emu)
+		pe.apply(emu)
+
+		switch k {
+		case 0:
+			for i := 0; i < 5; i++ {
+				cell := emu.GetCell(v.row, v.col+i)
+				if string(v.result[i]) != cell.GetContents() {
+					t.Errorf("%q expect %q at (%d,%d), got %q\n", v.name, v.result[i], v.row, v.col+i, cell.GetContents())
+				}
+			}
+
+			cell := emu.GetCell(v.row+1, 0) // cr to next row
+			if string(v.result[5]) != cell.GetContents() {
+				t.Errorf("%q expect %q at (%d,%d), got %q\n", v.name, v.result[5], v.row+1, 0, cell.GetContents())
+			}
+		}
+	}
+}

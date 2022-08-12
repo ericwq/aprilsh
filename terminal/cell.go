@@ -196,6 +196,10 @@ func (c *Cell) SetContents(chs ...rune) {
 	c.contents = string(chs)
 }
 
+func (c *Cell) GetContents() string {
+	return c.contents
+}
+
 func (c *Cell) SetDoubleWidth(value bool) {
 	c.dwidth = value
 }

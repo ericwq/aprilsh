@@ -512,6 +512,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 			if i-w < pe.cursor().col {
 				break
 			}
+
 			// fmt.Printf("handleUserGrapheme() iterate col=%d, prev col=%d\n", i, i-w)
 			prevCell := &(theRow.overlayCells[i-w])
 			prevCellActual := emu.GetCell(pe.cursor().row, i-w)
@@ -569,7 +570,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 			cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, pe.cursor().col))
 		}
 
-		// fmt.Printf("handleUserGrapheme() cell (%2d,%2d) active=%t\tunknown=%t\treplacement=%q\tdwidth=%t\toriginalContents=%s\n\n",
+		// fmt.Printf("handleUserGrapheme() cell (%2d,%2d) active=%t\tunknown=%t\treplacement=%q\tdwidth=%t\toriginalContents=%s\n",
 		// 	pe.cursor().row, pe.cursor().col, cell.active, cell.unknown, cell.replacement, cell.replacement.IsDoubleWidth(), cell.originalContents)
 
 		pe.cursor().expire(pe.localFrameSent+1, now)
@@ -581,6 +582,8 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 			pe.becomeTentative()
 			pe.newlineCarriageReturn(emu)
 		}
+
+		// fmt.Printf("handleUserGrapheme() cursor at (%d,%d)\n\n", pe.cursor().row, pe.cursor().col)
 	}
 }
 
