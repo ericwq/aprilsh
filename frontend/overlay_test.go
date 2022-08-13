@@ -404,6 +404,7 @@ func TestPredictionApply(t *testing.T) {
 		result   string // frame content
 	}{
 		{"apply wrapped english input", 9, 75, "", "abcdef", "abcdef"},
+		{"apply wrapped chinese input", 10, 75, "", "柠檬水", "柠檬水"},
 	}
 
 	pe := NewPredictionEngine()
@@ -446,6 +447,19 @@ func TestPredictionApply(t *testing.T) {
 			cell := emu.GetCell(v.row+1, 0) // cr to next row
 			if string(v.predict[5]) != cell.GetContents() {
 				t.Errorf("%q expect %q at (%d,%d), got %q\n", v.name, v.predict[5], v.row+1, 0, cell.GetContents())
+			}
+		case 1:
+			i := 0
+			for _, ch := range "柠檬" {
+				cell := emu.GetCell(v.row, v.col+i*2)
+				if string(ch) != cell.GetContents() {
+					t.Errorf("%q expect %q at (%d,%d), got %q\n", v.name, ch, v.row, v.col+i*2, cell.GetContents())
+				}
+				i++
+			}
+			cell := emu.GetCell(v.row+1, 0) // cr to next row
+			if "水" != cell.GetContents() {
+				t.Errorf("%q expect %q at (%d,%d), got %q\n", v.name, "水", v.row+1, 0, cell.GetContents())
 			}
 		}
 	}
