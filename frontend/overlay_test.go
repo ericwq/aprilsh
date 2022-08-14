@@ -464,3 +464,41 @@ func TestPredictionApply(t *testing.T) {
 		}
 	}
 }
+
+func TestPrediction_NewUserInput_Backspace(t *testing.T) {
+	tc := []struct {
+		name     string
+		row, col int    // the specified row and col
+		base     string // base content
+		predict  string // prediction
+		result   string // frame content
+	}{
+		{"input backspace for english", 0, 75, "", "abcd\x1B[D\x1B[D\x1B[D\x7f", "abcde"},
+	}
+
+	pe := NewPredictionEngine()
+	emu := terminal.NewEmulator3(80, 40, 40)
+
+	for k, v := range tc {
+		pe.reset()
+
+		// set the base content
+		emu.MoveCursor(v.row, v.col)
+		emu.HandleStream(v.base)
+
+		// mimic user input for prediction engine
+		emu.MoveCursor(v.row, v.col)
+		pe.newUserInput(emu, v.predict)
+		// predictRow := pe.getOrMakeRow(v.row+1, emu.GetWidth())
+		// predict := predictRow.overlayCells[0].replacement
+		// t.Logf("%q overlay at (%d,%d) is %q\n", v.name, v.row+1, 0, predict.GetContents())
+
+		// mimic the result from server
+		emu.MoveCursor(v.row, v.col)
+		emu.HandleStream(v.result)
+
+		switch k {
+		case 0:
+		}
+	}
+}

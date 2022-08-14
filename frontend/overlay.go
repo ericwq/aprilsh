@@ -477,9 +477,48 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 	now := time.Now().Unix()
 
 	if len(chs) == 1 && chs[0] == '\x7f' {
-		// TODO handle backspace
+		// backspace
+		theRow := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
+		if pe.cursor().col > 0 {
+			pe.cursor().col-- // move cursor to the previous column
+			pe.cursor().expire(pe.localFrameSent+1, now)
+
+			for i := pe.cursor().col; i < emu.GetWidth(); i++ {
+				cell := &(theRow.overlayCells[i])
+
+				cell.resetWithOrig()
+				cell.active = true
+				cell.tentativeUntilEpoch = pe.predictionEpoch
+				cell.expire(pe.localFrameSent+1, now)
+				if len(cell.originalContents) == 0 {
+					// avoid adding original cell content several times
+					cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, i))
+				}
+
+				if i+2 < emu.GetWidth() {
+					nextCell := &(theRow.overlayCells[i+1])
+					nextCellActual := emu.GetCell(pe.cursor().row, i+1)
+
+					if nextCell.active {
+						if nextCell.unknown {
+							cell.unknown = true
+						} else {
+							cell.unknown = false
+							cell.replacement = nextCell.replacement
+						}
+					} else {
+						cell.unknown = false
+						cell.replacement = nextCellActual
+					}
+				} else {
+					cell.unknown = true
+				}
+				// fmt.Printf("handleUserGrapheme() cell (%2d,%2d) active=%t\tunknown=%t\treplacement=%q\tdwidth=%t\toriginalContents=%s\n",
+				// 	pe.cursor().row, i, cell.active, cell.unknown, cell.replacement, cell.replacement.IsDoubleWidth(), cell.originalContents)
+			}
+		}
 	} else if chs[0] < 0x20 {
-		// TODO handle
+		pe.becomeTentative()
 	} else {
 		// normal rune, wide rune, combining grapheme
 
