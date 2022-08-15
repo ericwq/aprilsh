@@ -471,9 +471,10 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 		row, col int    // the specified row and col
 		base     string // base content
 		predict  string // prediction
-		result   string // frame content
+		lateAck  int64  // lateAck control the pending result
+		expect   string // the expect content
 	}{
-		{"input backspace for english", 0, 75, "", "abcd\x1B[D\x1B[D\x1B[D\x7f", "abcde"},
+		{"input backspace for english", 0, 70, "", "abcde\x1B[D\x1B[D\x1B[D\x7f", 0, "acde"},
 	}
 
 	pe := NewPredictionEngine()
@@ -488,17 +489,31 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 
 		// mimic user input for prediction engine
 		emu.MoveCursor(v.row, v.col)
+		pe.localFrameLateAcked = v.lateAck
 		pe.newUserInput(emu, v.predict)
 		// predictRow := pe.getOrMakeRow(v.row+1, emu.GetWidth())
 		// predict := predictRow.overlayCells[0].replacement
 		// t.Logf("%q overlay at (%d,%d) is %q\n", v.name, v.row+1, 0, predict.GetContents())
 
 		// mimic the result from server
-		emu.MoveCursor(v.row, v.col)
-		emu.HandleStream(v.result)
+		// emu.MoveCursor(v.row, v.col)
+		// emu.HandleStream(v.result)
+		pe.cull(emu)
 
 		switch k {
 		case 0:
+			i := 0
+			for _, ch := range v.expect {
+
+				cell := emu.GetCell(v.row, v.col+i)
+				if cell.String() != string(ch) {
+					predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
+					predict := predictRow.overlayCells[v.col+i].replacement
+					t.Errorf("%s expect %q at (%d,%d), got %q\n", v.name, string(ch), v.row, v.col+i, cell)
+					t.Errorf("predict cell (%d,%d) is %q dw=%t, dwcont=%t\n", v.row, v.col+i, predict, predict.IsDoubleWidth(), predict.IsDoubleWidthCont())
+				}
+				i += terminal.RunesWidth([]rune{ch})
+			}
 		}
 	}
 }
