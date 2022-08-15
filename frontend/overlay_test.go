@@ -27,6 +27,7 @@ SOFTWARE.
 package frontend
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/ericwq/aprilsh/terminal"
@@ -498,19 +499,21 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 		// mimic the result from server
 		// emu.MoveCursor(v.row, v.col)
 		// emu.HandleStream(v.result)
+		fmt.Printf("%q prepare to cull().\n", v.name)
 		pe.cull(emu)
+		pe.apply(emu)
 
 		switch k {
 		case 0:
 			i := 0
+			predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
 			for _, ch := range v.expect {
 
 				cell := emu.GetCell(v.row, v.col+i)
-				if cell.String() != string(ch) {
-					predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
-					predict := predictRow.overlayCells[v.col+i].replacement
-					t.Errorf("%s expect %q at (%d,%d), got %q\n", v.name, string(ch), v.row, v.col+i, cell)
-					t.Errorf("predict cell (%d,%d) is %q dw=%t, dwcont=%t\n", v.row, v.col+i, predict, predict.IsDoubleWidth(), predict.IsDoubleWidthCont())
+				predict := predictRow.overlayCells[v.col+i].replacement
+				if cell.String() != predict.String() {
+					t.Errorf("%s expect %q at (%d,%d), got %q", v.name, cell, v.row, v.col+i, predict)
+					t.Errorf("predict cell is dw=%t, dwcont=%t\n", predict.IsDoubleWidth(), predict.IsDoubleWidthCont())
 				}
 				i += terminal.RunesWidth([]rune{ch})
 			}

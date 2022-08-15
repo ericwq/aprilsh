@@ -376,6 +376,7 @@ func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
 	show := pe.displayPreference != Never && (pe.srttTrigger || pe.glitchTrigger > 0 ||
 		pe.displayPreference == Always || pe.displayPreference == Experimental)
 
+	fmt.Printf("apply() show=%t\n", show)
 	if show {
 		for i := range pe.cursors {
 			pe.cursors[i].apply(emu, pe.confirmedEpoch)
@@ -483,7 +484,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 		// backspace
 		theRow := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
 		if pe.cursor().col > 0 {
-			fmt.Printf("handleUserGrapheme() col=%d\n", pe.cursor().col)
+			// fmt.Printf("handleUserGrapheme() col=%d\n", pe.cursor().col)
 			pe.cursor().col-- // move cursor to the previous column
 			pe.cursor().expire(pe.localFrameSent+1, now)
 
@@ -518,8 +519,8 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 				} else {
 					cell.unknown = true
 				}
-				fmt.Printf("handleUserGrapheme() BS cell (%2d,%2d) active=%t\tunknown=%t\treplacement=%q\tdwidth=%t\toriginalContents=%s\n",
-					pe.cursor().row, i, cell.active, cell.unknown, cell.replacement, cell.replacement.IsDoubleWidth(), cell.originalContents)
+				// fmt.Printf("handleUserGrapheme() BS cell (%2d,%2d) active=%t\tunknown=%t\treplacement=%q\tdwidth=%t\toriginalContents=%s\n",
+				// 	pe.cursor().row, i, cell.active, cell.unknown, cell.replacement, cell.replacement.IsDoubleWidth(), cell.originalContents)
 			}
 		}
 	} else if chs[0] < 0x20 {
@@ -579,8 +580,8 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 				cell.replacement = prevCellActual
 			}
 
-			fmt.Printf("handleUserGrapheme() cell (%2d,%2d) active=%t\tunknown=%t\treplacement=%q\tdwidth=%t\toriginalContents=%s\n",
-				pe.cursor().row, i, cell.active, cell.unknown, cell.replacement, cell.replacement.IsDoubleWidth(), cell.originalContents)
+			// fmt.Printf("handleUserGrapheme() cell (%2d,%2d) active=%t\tunknown=%t\treplacement=%q\tdwidth=%t\toriginalContents=%s\n",
+			// 	pe.cursor().row, i, cell.active, cell.unknown, cell.replacement, cell.replacement.IsDoubleWidth(), cell.originalContents)
 		}
 		cell := &(theRow.overlayCells[pe.cursor().col])
 		cell.resetWithOrig()
@@ -614,8 +615,8 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 			cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, pe.cursor().col))
 		}
 
-		fmt.Printf("handleUserGrapheme() cell (%2d,%2d) active=%t\tunknown=%t\treplacement=%q\tdwidth=%t\toriginalContents=%s\n\n",
-			pe.cursor().row, pe.cursor().col, cell.active, cell.unknown, cell.replacement, cell.replacement.IsDoubleWidth(), cell.originalContents)
+		// fmt.Printf("handleUserGrapheme() cell (%2d,%2d) active=%t\tunknown=%t\treplacement=%q\tdwidth=%t\toriginalContents=%s\n\n",
+		// 	pe.cursor().row, pe.cursor().col, cell.active, cell.unknown, cell.replacement, cell.replacement.IsDoubleWidth(), cell.originalContents)
 
 		pe.cursor().expire(pe.localFrameSent+1, now)
 
@@ -784,7 +785,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 				// 	cell.col, cell.replacement, cell.originalContents, cell.active, pe.localFrameLateAcked, cell.expirationFrame, CorrectNoCredit)
 				cell.reset2()
 			case Pending:
-				// fmt.Printf("cell (%d,%d) return Pending=%d\n", pe.overlays[i].rowNum, cell.col, Pending)
+				// fmt.Printf("cull() (%d,%d) return Pending=%d\n", pe.overlays[i].rowNum, cell.col, Pending)
 				// When a prediction takes a long time to be confirmed, we
 				// activate the predictions even if SRTT is low
 				if now-cell.predictionTime >= GLITCH_FLAG_THRESHOLD {
