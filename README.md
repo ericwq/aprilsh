@@ -26,6 +26,7 @@ The project name `Aprilsh` is derived from `April+sh`. I started this project in
 
 - 2022/Jul/31: Finish the terminal emulator: add scroll buffer support, add color palette support, refine utf-8 support.
 - 2022/Aug/04: Working on the prediction Engine
+- 2022/Aug/16: Working on utf-8 support(wide grapheme such as `世界`) for the prediction Engine
 
 ## Architecture view
 
