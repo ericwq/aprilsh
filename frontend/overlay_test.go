@@ -27,7 +27,6 @@ SOFTWARE.
 package frontend
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/ericwq/aprilsh/terminal"
@@ -468,14 +467,15 @@ func TestPredictionApply(t *testing.T) {
 
 func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 	tc := []struct {
-		name     string
-		row, col int    // the specified row and col
-		base     string // base content
-		predict  string // prediction
-		lateAck  int64  // lateAck control the pending result
-		expect   string // the expect content
+		name            string
+		row, col        int    // the specified row and col
+		base            string // base content
+		predict         string // prediction
+		lateAck         int64  // lateAck control the pending result
+		confirmtedEpoch int64  // this control the appply result
+		expect          string // the expect content
 	}{
-		{"input backspace for english", 0, 70, "", "abcde\x1B[D\x1B[D\x1B[D\x7f", 0, "acde"},
+		{"input backspace for english", 0, 70, "", "abcde\x1B[D\x1B[D\x1B[D\x7f", 0, 4, "acde"},
 	}
 
 	pe := NewPredictionEngine()
@@ -492,15 +492,10 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 		emu.MoveCursor(v.row, v.col)
 		pe.localFrameLateAcked = v.lateAck
 		pe.newUserInput(emu, v.predict)
-		// predictRow := pe.getOrMakeRow(v.row+1, emu.GetWidth())
-		// predict := predictRow.overlayCells[0].replacement
-		// t.Logf("%q overlay at (%d,%d) is %q\n", v.name, v.row+1, 0, predict.GetContents())
 
-		// mimic the result from server
-		// emu.MoveCursor(v.row, v.col)
-		// emu.HandleStream(v.result)
-		fmt.Printf("%q prepare to cull().\n", v.name)
+		// merge the predict
 		pe.cull(emu)
+		pe.confirmedEpoch = v.confirmtedEpoch
 		pe.apply(emu)
 
 		switch k {

@@ -27,7 +27,6 @@ SOFTWARE.
 package frontend
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/ericwq/aprilsh/terminal"
@@ -192,6 +191,9 @@ func (coc *ConditionalOverlayCell) resetWithOrig() {
 // apply cell prediction to the emulator, replace frame cell with prediction. (row,col) specify the cell.
 // confirmedEpoch specified the epoch. flag means underlining the cell.
 func (coc *ConditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch int64, row int, flag bool) {
+	// fmt.Printf("apply() (%d,%d) with prediction %q\n", row, coc.col, coc.replacement)
+	// fmt.Printf("apply() coc.active=%t, confirmedEpoch=%d, coc.tentativeUntilEpoch=%d\n", coc.active, confirmedEpoch, coc.tentativeUntilEpoch)
+
 	// if specified position is out of active area or is not active.
 	if !coc.active || row >= emu.GetHeight() || coc.col >= emu.GetWidth() {
 		return
@@ -376,7 +378,7 @@ func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
 	show := pe.displayPreference != Never && (pe.srttTrigger || pe.glitchTrigger > 0 ||
 		pe.displayPreference == Always || pe.displayPreference == Experimental)
 
-	fmt.Printf("apply() show=%t\n", show)
+	// fmt.Printf("apply() show=%t\n", show)
 	if show {
 		for i := range pe.cursors {
 			pe.cursors[i].apply(emu, pe.confirmedEpoch)
@@ -519,7 +521,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 				} else {
 					cell.unknown = true
 				}
-				// fmt.Printf("handleUserGrapheme() BS cell (%2d,%2d) active=%t\tunknown=%t\treplacement=%q\tdwidth=%t\toriginalContents=%s\n",
+				// fmt.Printf("handleUserGrapheme() BS cell (%2d,%2d) active=%t\tunknown=%t\treplacement=%q\tdwidth=%t\toriginalContents=%q\n",
 				// 	pe.cursor().row, i, cell.active, cell.unknown, cell.replacement, cell.replacement.IsDoubleWidth(), cell.originalContents)
 			}
 		}
@@ -580,7 +582,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 				cell.replacement = prevCellActual
 			}
 
-			// fmt.Printf("handleUserGrapheme() cell (%2d,%2d) active=%t\tunknown=%t\treplacement=%q\tdwidth=%t\toriginalContents=%s\n",
+			// fmt.Printf("handleUserGrapheme() cell (%2d,%2d) active=%t\tunknown=%t\treplacement=%q\tdwidth=%t\toriginalContents=%q\n",
 			// 	pe.cursor().row, i, cell.active, cell.unknown, cell.replacement, cell.replacement.IsDoubleWidth(), cell.originalContents)
 		}
 		cell := &(theRow.overlayCells[pe.cursor().col])
@@ -615,7 +617,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 			cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, pe.cursor().col))
 		}
 
-		// fmt.Printf("handleUserGrapheme() cell (%2d,%2d) active=%t\tunknown=%t\treplacement=%q\tdwidth=%t\toriginalContents=%s\n\n",
+		// fmt.Printf("handleUserGrapheme() cell (%2d,%2d) active=%t\tunknown=%t\treplacement=%q\tdwidth=%t\toriginalContents=%q\n\n",
 		// 	pe.cursor().row, pe.cursor().col, cell.active, cell.unknown, cell.replacement, cell.replacement.IsDoubleWidth(), cell.originalContents)
 
 		pe.cursor().expire(pe.localFrameSent+1, now)
