@@ -27,9 +27,11 @@ SOFTWARE.
 package frontend
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/ericwq/aprilsh/terminal"
+	"github.com/rivo/uniseg"
 )
 
 func TestOverlay(t *testing.T) {
@@ -465,6 +467,30 @@ func TestPredictionApply(t *testing.T) {
 	}
 }
 
+func printEmulatorCell(emu *terminal.Emulator, row, col int, sample string) {
+	graphemes := uniseg.NewGraphemes(sample)
+	i := 0
+	for graphemes.Next() {
+		chs := graphemes.Runes()
+
+		cell := emu.GetCell(row, col+i)
+		fmt.Printf("cell (%d,%d) is %q\n", row, col+i, cell)
+		i += terminal.RunesWidth(chs)
+	}
+}
+
+func printPredictionCell(emu *terminal.Emulator, pe *PredictionEngine, row, col int, sample string) {
+	predictRow := pe.getOrMakeRow(row, emu.GetWidth())
+	graphemes := uniseg.NewGraphemes(sample)
+	i := 0
+	for graphemes.Next() {
+		chs := graphemes.Runes()
+		predict := predictRow.overlayCells[col+i].replacement
+		fmt.Printf("predict (%d,%d) is %q\n", row, col+i, predict)
+		i += terminal.RunesWidth(chs)
+	}
+}
+
 func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 	tc := []struct {
 		name            string
@@ -475,7 +501,8 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 		confirmtedEpoch int64  // this control the appply result
 		expect          string // the expect content
 	}{
-		{"input backspace for english", 0, 70, "", "abcde\x1B[D\x1B[D\x1B[D\x7f", 0, 4, "acde"},
+		{"input backspace for simple cell", 0, 70, "", "abcde\x1B[D\x1B[D\x1B[D\x7f", 0, 4, "acde"},
+		{"input backspace for wide cell", 1, 60, "", "abc太学生\x1B[D\x1B[D]\x7f", 0, 4, "abc学生"},
 	}
 
 	pe := NewPredictionEngine()
@@ -492,25 +519,30 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 		emu.MoveCursor(v.row, v.col)
 		pe.localFrameLateAcked = v.lateAck
 		pe.newUserInput(emu, v.predict)
+		printPredictionCell(emu, pe, v.row, v.col, v.expect)
 
 		// merge the predict
 		pe.cull(emu)
 		pe.confirmedEpoch = v.confirmtedEpoch
 		pe.apply(emu)
+		printEmulatorCell(emu, v.row, v.col, v.expect)
 
 		switch k {
-		case 0:
-			i := 0
+		case 0, 1:
 			predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
-			for _, ch := range v.expect {
+			i := 0
+			graphemes := uniseg.NewGraphemes(v.expect)
+			for graphemes.Next() {
+				chs := graphemes.Runes()
 
 				cell := emu.GetCell(v.row, v.col+i)
 				predict := predictRow.overlayCells[v.col+i].replacement
-				if cell.String() != predict.String() {
-					t.Errorf("%s expect %q at (%d,%d), got %q", v.name, cell, v.row, v.col+i, predict)
-					t.Errorf("predict cell is dw=%t, dwcont=%t\n", predict.IsDoubleWidth(), predict.IsDoubleWidthCont())
+				if cell.String() != predict.String() || cell.String() != string(chs) {
+					t.Errorf("%s expect %q at (%d,%d), got predict cell %q dw=%t, dwcont=%t\n",
+						v.name, string(chs), v.row, v.col+i, predict, predict.IsDoubleWidth(), predict.IsDoubleWidthCont())
 				}
-				i += terminal.RunesWidth([]rune{ch})
+
+				i += terminal.RunesWidth(chs)
 			}
 		}
 	}
