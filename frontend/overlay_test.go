@@ -502,13 +502,14 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 		expect          string // the expect content
 	}{
 		{"input backspace for simple cell", 0, 70, "", "abcde\x1B[D\x1B[D\x1B[D\x7f", 0, 4, "acde"},
-		{"input backspace for wide cell", 1, 60, "", "abc太学生\x1B[D\x1B[D]\x7f", 0, 4, "abc学生"},
+		{"input backspace for wide cell", 1, 60, "", "abc太学生\x1B[D\x1B[D\x1B[D\x1B[C\x7f", 0, 4, "abc学生"},
+		{"input backspace for wide cell with base", 2, 60, "东部战区", "\x1B[D\x1B[D\x1B[D\x7f", 0, 4, "东部区"},
 	}
 
 	pe := NewPredictionEngine()
 	emu := terminal.NewEmulator3(80, 40, 40)
 
-	for k, v := range tc {
+	for _, v := range tc {
 		pe.reset()
 
 		// set the base content
@@ -527,23 +528,23 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 		pe.apply(emu)
 		printEmulatorCell(emu, v.row, v.col, v.expect)
 
-		switch k {
-		case 0, 1:
-			predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
-			i := 0
-			graphemes := uniseg.NewGraphemes(v.expect)
-			for graphemes.Next() {
-				chs := graphemes.Runes()
+		// switch k {
+		// case 0, 1:
+		predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
+		i := 0
+		graphemes := uniseg.NewGraphemes(v.expect)
+		for graphemes.Next() {
+			chs := graphemes.Runes()
 
-				cell := emu.GetCell(v.row, v.col+i)
-				predict := predictRow.overlayCells[v.col+i].replacement
-				if cell.String() != predict.String() || cell.String() != string(chs) {
-					t.Errorf("%s expect %q at (%d,%d), got predict cell %q dw=%t, dwcont=%t\n",
-						v.name, string(chs), v.row, v.col+i, predict, predict.IsDoubleWidth(), predict.IsDoubleWidthCont())
-				}
-
-				i += terminal.RunesWidth(chs)
+			cell := emu.GetCell(v.row, v.col+i)
+			predict := predictRow.overlayCells[v.col+i].replacement
+			if cell.String() != predict.String() || cell.String() != string(chs) {
+				t.Errorf("%s expect %q at (%d,%d), got predict cell %q dw=%t, dwcont=%t\n",
+					v.name, string(chs), v.row, v.col+i, predict, predict.IsDoubleWidth(), predict.IsDoubleWidthCont())
 			}
+
+			i += terminal.RunesWidth(chs)
 		}
+		// }
 	}
 }

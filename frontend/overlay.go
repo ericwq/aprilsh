@@ -27,6 +27,7 @@ SOFTWARE.
 package frontend
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ericwq/aprilsh/terminal"
@@ -292,7 +293,6 @@ func (cor *ConditionalOverlayRow) rowNumEqual(rowNum int) bool {
 	return cor.rowNum == rowNum
 }
 
-//
 func (cor *ConditionalOverlayRow) apply(emu *terminal.Emulator, confirmedEpoch int64, flag bool) {
 	for i := range cor.overlayCells {
 		cor.overlayCells[i].apply(emu, confirmedEpoch, cor.rowNum, flag)
@@ -461,14 +461,36 @@ func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, str string) {
 			case terminal.CSI_CUF:
 				pe.initCursor(emu)
 				if pe.cursor().col < emu.GetWidth()-1 {
-					pe.cursor().col++
+					// fmt.Printf("newUserInput() CUF before col=%d\n", pe.cursor().col)
+					row := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
+					cell := row.overlayCells[pe.cursor().col+1].replacement
+					if cell.IsDoubleWidthCont() { // check the next cell width
+						if pe.cursor().col+2 > emu.GetWidth() {
+							break
+						}
+						pe.cursor().col += 2
+					} else {
+						pe.cursor().col++
+					}
 					pe.cursor().expire(pe.localFrameSent+1, now)
+					// fmt.Printf("newUserInput() CUF after  col=%d\n", pe.cursor().col)
 				}
 			case terminal.CSI_CUB:
 				pe.initCursor(emu)
 				if pe.cursor().col > 0 { // TODO consider the left right margin.
-					pe.cursor().col--
+					// fmt.Printf("newUserInput() CUB before col=%d\n", pe.cursor().col)
+					row := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
+					cell := row.overlayCells[pe.cursor().col-1].replacement
+					if cell.IsDoubleWidthCont() { // check the previous cell width
+						if pe.cursor().col-2 < 0 {
+							break
+						}
+						pe.cursor().col -= 2
+					} else {
+						pe.cursor().col--
+					}
 					pe.cursor().expire(pe.localFrameSent+1, now)
+					// fmt.Printf("newUserInput() CUB after  col=%d\n", pe.cursor().col)
 				}
 			default:
 				pe.becomeTentative()
@@ -487,12 +509,25 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 		theRow := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
 		if pe.cursor().col > 0 {
 			// fmt.Printf("handleUserGrapheme() col=%d\n", pe.cursor().col)
-			pe.cursor().col-- // move cursor to the previous column
+
+			// move cursor to the previous graphemes
+			cell := theRow.overlayCells[pe.cursor().col-1].replacement
+			if cell.IsDoubleWidthCont() { // check the previous cell width
+				if pe.cursor().col-2 < 0 {
+					pe.cursor().col = 0
+				} else {
+					pe.cursor().col -= 2
+				}
+			} else {
+				pe.cursor().col--
+			}
 			pe.cursor().expire(pe.localFrameSent+1, now)
+			// fmt.Printf("handleUserGrapheme() backspace to %d\n", pe.cursor().col)
 
 			// iterate to replace the current cell with next cell.
 			for i := pe.cursor().col; i < emu.GetWidth(); i++ {
 				cell := &(theRow.overlayCells[i])
+				// jump := false
 
 				cell.resetWithOrig()
 				cell.active = true
@@ -505,7 +540,15 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 
 				if i+2 < emu.GetWidth() {
 					nextCell := &(theRow.overlayCells[i+1])
+					if nextCell.replacement.IsDoubleWidthCont() {
+						nextCell = &(theRow.overlayCells[i+2])
+						i++
+						// jump = true
+					}
 					nextCellActual := emu.GetCell(pe.cursor().row, i+1)
+					if nextCellActual.IsDoubleWidthCont() {
+						nextCellActual = emu.GetCell(pe.cursor().row, i+2)
+					}
 
 					if nextCell.active {
 						if nextCell.unknown {
@@ -521,8 +564,13 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 				} else {
 					cell.unknown = true
 				}
-				// fmt.Printf("handleUserGrapheme() BS cell (%2d,%2d) active=%t\tunknown=%t\treplacement=%q\tdwidth=%t\toriginalContents=%q\n",
-				// 	pe.cursor().row, i, cell.active, cell.unknown, cell.replacement, cell.replacement.IsDoubleWidth(), cell.originalContents)
+				// if jump {
+				// 	fmt.Printf("handleUserGrapheme() BS cell (%2d,%2d) active=%t unknown=%t\tdwidth=%t\treplacement=%q originalContents=%q\n",
+				// 		pe.cursor().row, i-1, cell.active, cell.unknown, cell.replacement.IsDoubleWidth(), cell.replacement, cell.originalContents)
+				// } else {
+				// 	fmt.Printf("handleUserGrapheme() BS cell (%2d,%2d) active=%t unknown=%t\tdwidth=%t\treplacement=%q originalContents=%q\n",
+				// 		pe.cursor().row, i, cell.active, cell.unknown, cell.replacement.IsDoubleWidth(), cell.replacement, cell.originalContents)
+				// }
 			}
 		}
 	} else if chs[0] < 0x20 {
