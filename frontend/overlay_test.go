@@ -555,8 +555,9 @@ func TestPredictionActive(t *testing.T) {
 		content  rune
 		result   bool
 	}{
-		{"no cursor,  no cell prediction", -1, -1, ' ', false},
-		{"no cursor, has cell prediction", 1, 1, 's', true},
+		{"no cursor,  no cell prediction", -1, -1, ' ', false}, // test active()
+		{"no cursor, has cell prediction", 1, 1, 's', true},    // test active()
+		{"no cursor, cursor()", 1, 1, 'n', true},               // test cursor() corner case
 	}
 
 	pe := NewPredictionEngine()
@@ -573,9 +574,16 @@ func TestPredictionActive(t *testing.T) {
 			predict.replacement.SetContents(v.content)
 		}
 
-		got := pe.active()
-		if got != v.result {
-			t.Errorf("%q expect %t, got %t\n", v.name, v.result, got)
+		if v.content == 'n' {
+			got := pe.cursor()
+			if got != nil {
+				t.Errorf("%q expect nil,got %p\n", v.name, got)
+			}
+		} else {
+			got := pe.active()
+			if got != v.result {
+				t.Errorf("%q expect %t, got %t\n", v.name, v.result, got)
+			}
 		}
 	}
 }
