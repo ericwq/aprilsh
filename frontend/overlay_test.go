@@ -547,3 +547,35 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 		}
 	}
 }
+
+func TestPredictionActive(t *testing.T) {
+	tc := []struct {
+		name     string
+		row, col int
+		content  rune
+		result   bool
+	}{
+		{"no cursor,  no cell prediction", -1, -1, ' ', false},
+		{"no cursor, has cell prediction", 1, 1, 's', true},
+	}
+
+	pe := NewPredictionEngine()
+	emu := terminal.NewEmulator3(80, 40, 40)
+
+	for _, v := range tc {
+		pe.reset()
+
+		if v.row >= 0 || v.col >= 0 {
+			predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
+			predict := &(predictRow.overlayCells[v.col])
+			predict.active = true
+			predict.replacement = terminal.Cell{}
+			predict.replacement.SetContents(v.content)
+		}
+
+		got := pe.active()
+		if got != v.result {
+			t.Errorf("%q expect %t, got %t\n", v.name, v.result, got)
+		}
+	}
+}
