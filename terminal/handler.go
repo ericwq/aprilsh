@@ -259,11 +259,11 @@ func hdl_graphemes(emu *Emulator, chs ...rune) {
 	if len(chs) == 1 && emu.charsetState.vtMode {
 		chs[0] = emu.lookupCharset(chs[0])
 	}
-	// fmt.Printf("   UTF-8: %q, %U, %x w=%d\n", chs, chs, chs, runesWidth(chs))
+	// fmt.Printf("hdl_graphemes %q, %U, %t w=%d (%d/%d)\n", chs, chs, emu.lastCol, RunesWidth(chs), emu.posY, emu.posX)
 
 	// the first condition deal with the new graphemes should wrap on next row
 	// the second condition deal with widh graphemes in special position: posX = nColsEff-1
-	if (emu.autoWrapMode && emu.lastCol) || (w == 2 && emu.posX == emu.nColsEff-1) {
+	if (emu.autoWrapMode && emu.lastCol && emu.posX == emu.nColsEff-1) || (w == 2 && emu.posX == emu.nColsEff-1) {
 		emu.cf.getMutableCell(emu.posY, emu.posX).wrap = true
 		hdl_c0_cr(emu)
 		hdl_c0_lf(emu)
@@ -296,6 +296,7 @@ func hdl_graphemes(emu *Emulator, chs ...rune) {
 	} else {
 		emu.posX++
 	}
+	// fmt.Printf("hdl_graphemes final %s at (%d,%d) lastCol=%t\n", c, emu.posY, emu.posX, emu.lastCol)
 }
 
 // func hdl_userbyte(emu *emulator, u UserByte) {
@@ -342,15 +343,17 @@ func hdl_c0_lf(emu *Emulator) {
 }
 
 // SI       Switch to Standard Character Set (Ctrl-O is Shift In or LS0).
-//          This invokes the G0 character set (the default) as GL.
-//          VT200 and up implement LS0.
+//
+//	This invokes the G0 character set (the default) as GL.
+//	VT200 and up implement LS0.
 func hdl_c0_si(emu *Emulator) {
 	emu.charsetState.gl = 0
 }
 
 // SO       Switch to Alternate Character Set (Ctrl-N is Shift Out or
-//          LS1).  This invokes the G1 character set as GL.
-//          VT200 and up implement LS1.
+//
+//	LS1).  This invokes the G1 character set as GL.
+//	VT200 and up implement LS1.
 func hdl_c0_so(emu *Emulator) {
 	emu.charsetState.gl = 1
 }
@@ -382,15 +385,17 @@ func hdl_esc_ind(emu *Emulator) (scrolled bool) {
 }
 
 // ESC N
-//     Single Shift Select of G2 Character Set (SS2  is 0x8e), VT220.
-//     This affects next character only.
+//
+//	Single Shift Select of G2 Character Set (SS2  is 0x8e), VT220.
+//	This affects next character only.
 func hdl_esc_ss2(emu *Emulator) {
 	emu.charsetState.ss = 2
 }
 
 // ESC O
-//     Single Shift Select of G3 Character Set (SS3  is 0x8f), VT220.
-//     This affects next character only.
+//
+//	Single Shift Select of G3 Character Set (SS3  is 0x8f), VT220.
+//	This affects next character only.
 func hdl_esc_ss3(emu *Emulator) {
 	emu.charsetState.ss = 3
 }
@@ -565,8 +570,9 @@ func hdl_esc_decanm(emu *Emulator, cl CompatibilityLevel) {
 }
 
 // CSI Ps g  Tab Clear (TBC).
-//            Ps = 0  ⇒  Clear Current Column (default).
-//            Ps = 3  ⇒  Clear All.
+//
+//	Ps = 0  ⇒  Clear Current Column (default).
+//	Ps = 3  ⇒  Clear All.
 func hdl_csi_tbc(emu *Emulator, cmd int) {
 	switch cmd {
 	case 0: // clear this tab stop
@@ -884,8 +890,9 @@ func hdl_csi_cup(emu *Emulator, row int, col int) {
 }
 
 // CSI Ps n  Device Status Report (DSR).
-//   Ps = 5  ⇒  Status Report. Result ("OK") is CSI 0 n
-//   Ps = 6  ⇒  Report Cursor Position (CPR) [row;column]. Result is CSI r ; c R
+//
+//	Ps = 5  ⇒  Status Report. Result ("OK") is CSI 0 n
+//	Ps = 6  ⇒  Report Cursor Position (CPR) [row;column]. Result is CSI r ; c R
 func hdl_csi_dsr(emu *Emulator, cmd int) {
 	switch cmd {
 	case 5: // device status report requested
@@ -974,39 +981,39 @@ func hdl_csi_sgr(emu *Emulator, params []int) {
 }
 
 /*
-
 OSC Ps ; Pt ST
-          The 10 colors (below) which may be set or queried using 1 0
-          through 1 9  are denoted dynamic colors, since the
-          corresponding control sequences were the first means for
-          setting xterm's colors dynamically, i.e., after it was
-          started.  They are not the same as the ANSI colors (however,
-          the dynamic text foreground and background colors are used
-          when ANSI colors are reset using SGR 3 9  and 4 9 ,
-          respectively).  These controls may be disabled using the
-          allowColorOps resource.  At least one parameter is expected
-          for Pt.  Each successive parameter changes the next color in
-          the list.  The value of Ps tells the starting point in the
-          list.  The colors are specified by name or RGB specification
-          as per XParseColor.
 
-          If a "?" is given rather than a name or RGB specification,
-          xterm replies with a control sequence of the same form which
-          can be used to set the corresponding dynamic color.  Because
-          more than one pair of color number and specification can be
-          given in one control sequence, xterm can make more than one
-          reply.
+	The 10 colors (below) which may be set or queried using 1 0
+	through 1 9  are denoted dynamic colors, since the
+	corresponding control sequences were the first means for
+	setting xterm's colors dynamically, i.e., after it was
+	started.  They are not the same as the ANSI colors (however,
+	the dynamic text foreground and background colors are used
+	when ANSI colors are reset using SGR 3 9  and 4 9 ,
+	respectively).  These controls may be disabled using the
+	allowColorOps resource.  At least one parameter is expected
+	for Pt.  Each successive parameter changes the next color in
+	the list.  The value of Ps tells the starting point in the
+	list.  The colors are specified by name or RGB specification
+	as per XParseColor.
 
-            Ps = 1 0  ⇒  Change VT100 text foreground color to Pt.
-            Ps = 1 1  ⇒  Change VT100 text background color to Pt.
-            Ps = 1 2  ⇒  Change text cursor color to Pt.
-            Ps = 1 3  ⇒  Change pointer foreground color to Pt.
-            Ps = 1 4  ⇒  Change pointer background color to Pt.
-            Ps = 1 5  ⇒  Change Tektronix foreground color to Pt.
-            Ps = 1 6  ⇒  Change Tektronix background color to Pt.
-            Ps = 1 7  ⇒  Change highlight background color to Pt.
-            Ps = 1 8  ⇒  Change Tektronix cursor color to Pt.
-            Ps = 1 9  ⇒  Change highlight foreground color to Pt.
+	If a "?" is given rather than a name or RGB specification,
+	xterm replies with a control sequence of the same form which
+	can be used to set the corresponding dynamic color.  Because
+	more than one pair of color number and specification can be
+	given in one control sequence, xterm can make more than one
+	reply.
+
+	  Ps = 1 0  ⇒  Change VT100 text foreground color to Pt.
+	  Ps = 1 1  ⇒  Change VT100 text background color to Pt.
+	  Ps = 1 2  ⇒  Change text cursor color to Pt.
+	  Ps = 1 3  ⇒  Change pointer foreground color to Pt.
+	  Ps = 1 4  ⇒  Change pointer background color to Pt.
+	  Ps = 1 5  ⇒  Change Tektronix foreground color to Pt.
+	  Ps = 1 6  ⇒  Change Tektronix background color to Pt.
+	  Ps = 1 7  ⇒  Change highlight background color to Pt.
+	  Ps = 1 8  ⇒  Change Tektronix cursor color to Pt.
+	  Ps = 1 9  ⇒  Change highlight foreground color to Pt.
 */
 func hdl_osc_10x(emu *Emulator, cmd int, arg string) {
 	arg = fmt.Sprintf("%d;%s", cmd, arg) // add the cmd back to the arg
@@ -1055,16 +1062,19 @@ func hdl_osc_10x(emu *Emulator, cmd int, arg string) {
 /*
 OSC Ps ; Pt ST
 Ps = 5 2  ⇒ Manipulate Selection Data. The parameter Pt is parsed as
-			Pc ; Pd
+
+	Pc ; Pd
+
 1. use one of the following commands to encode the original text
 and set the system clipboard
-	% echo -e "\033]52;c;$(base64 <<< hello)\a"
-	% echo "Hello Russia!" | base64
-	SGVsbG8gUnVzc2lhIQo=
-	% echo  -e "\033]52;p;SGVsbG8gUnVzc2lhIQo=\a"
-2. press the paste hot-eky, you will see the original text in step 1.
-	% hello
-	% Hello Russia!
+
+		% echo -e "\033]52;c;$(base64 <<< hello)\a"
+		% echo "Hello Russia!" | base64
+		SGVsbG8gUnVzc2lhIQo=
+		% echo  -e "\033]52;p;SGVsbG8gUnVzc2lhIQo=\a"
+	 2. press the paste hot-eky, you will see the original text in step 1.
+	    % hello
+	    % Hello Russia!
 */
 func hdl_osc_52(emu *Emulator, cmd int, arg string) {
 	// parse Pc:Pd
@@ -1177,7 +1187,6 @@ control sequence, xterm can make more than one reply.
 string names for colors: https://tronche.com/gui/x/xlib/color/strings/
 xterm 256 color protocol: https://unix.stackexchange.com/questions/105568/how-can-i-list-the-available-color-names
 color and formatting: https://misc.flogisoft.com/bash/tip_colors_and_formatting
-
 */
 func hdl_osc_4(emu *Emulator, cmd int, arg string) {
 	count := strings.Count(arg, ";")
@@ -1214,9 +1223,9 @@ func hdl_osc_4(emu *Emulator, cmd int, arg string) {
 }
 
 // OSC of the form "\x1B]X;<title>\007" where X can be:
-//* 0: set icon name and window title
-//* 1: set icon name
-//* 2: set window title
+// * 0: set icon name and window title
+// * 1: set icon name
+// * 2: set window title
 func hdl_osc_0_1_2(emu *Emulator, cmd int, arg string) {
 	// set icon name / window title
 	setIcon := cmd == 0 || cmd == 1
@@ -1497,22 +1506,23 @@ func hdl_csi_decstr(emu *Emulator) {
 }
 
 // DCS $ q Pt ST
-//           Request Status String (DECRQSS), VT420 and up.
-//           The string following the "q" is one of the following:
-//             m       ⇒  SGR
-//             " p     ⇒  DECSCL
-//             SP q    ⇒  DECSCUSR
-//             " q     ⇒  DECSCA
-//             r       ⇒  DECSTBM
-//             s       ⇒  DECSLRM
-//             t       ⇒  DECSLPP
-//             $ |     ⇒  DECSCPP
-//             $ }     ⇒  DECSASD
-//             $ ~     ⇒  DECSSDT
-//             * |     ⇒  DECSNLS
-//           xterm responds with DCS 1 $ r Pt ST for valid requests,
-//           replacing the Pt with the corresponding CSI string, or DCS 0 $
-//           r Pt ST for invalid requests.
+//
+//	Request Status String (DECRQSS), VT420 and up.
+//	The string following the "q" is one of the following:
+//	  m       ⇒  SGR
+//	  " p     ⇒  DECSCL
+//	  SP q    ⇒  DECSCUSR
+//	  " q     ⇒  DECSCA
+//	  r       ⇒  DECSTBM
+//	  s       ⇒  DECSLRM
+//	  t       ⇒  DECSLPP
+//	  $ |     ⇒  DECSCPP
+//	  $ }     ⇒  DECSASD
+//	  $ ~     ⇒  DECSSDT
+//	  * |     ⇒  DECSNLS
+//	xterm responds with DCS 1 $ r Pt ST for valid requests,
+//	replacing the Pt with the corresponding CSI string, or DCS 0 $
+//	r Pt ST for invalid requests.
 //
 // DECRQSS—Request Selection or Setting
 func hdl_dcs_decrqss(emu *Emulator, arg string) {
@@ -1528,8 +1538,9 @@ func hdl_dcs_decrqss(emu *Emulator, arg string) {
 }
 
 // CSI Pl ; Pr s
-//          Set left and right margins (DECSLRM), VT420 and up.  This is
-//          available only when DECLRMM is enabled.
+//
+//	Set left and right margins (DECSLRM), VT420 and up.  This is
+//	available only when DECLRMM is enabled.
 func hdl_csi_decslrm(emu *Emulator, params []int) {
 	if len(params) == 0 {
 		emu.hMargin = 0
@@ -1589,25 +1600,26 @@ func hdl_csi_scorc(emu *Emulator) {
 }
 
 // CSI Pl ; Pc " p
-//           Set conformance level (DECSCL), VT220 and up.
 //
-//           The first parameter selects the conformance level.  Valid
-//           values are:
-//             Pl = 6 1  ⇒  level 1, e.g., VT100.
-//             Pl = 6 2  ⇒  level 2, e.g., VT200.
-//             Pl = 6 3  ⇒  level 3, e.g., VT300.
-//             Pl = 6 4  ⇒  level 4, e.g., VT400.
-//             Pl = 6 5  ⇒  level 5, e.g., VT500.
+//	Set conformance level (DECSCL), VT220 and up.
 //
-//           The second parameter selects the C1 control transmission mode.
-//           This is an optional parameter, ignored in conformance level 1.
-//           Valid values are:
-//             Pc = 0  ⇒  8-bit controls.
-//             Pc = 1  ⇒  7-bit controls (DEC factory default).
-//             Pc = 2  ⇒  8-bit controls.
+//	The first parameter selects the conformance level.  Valid
+//	values are:
+//	  Pl = 6 1  ⇒  level 1, e.g., VT100.
+//	  Pl = 6 2  ⇒  level 2, e.g., VT200.
+//	  Pl = 6 3  ⇒  level 3, e.g., VT300.
+//	  Pl = 6 4  ⇒  level 4, e.g., VT400.
+//	  Pl = 6 5  ⇒  level 5, e.g., VT500.
 //
-//           The 7-bit and 8-bit control modes can also be set by S7C1T and
-//           S8C1T, but DECSCL is preferred.
+//	The second parameter selects the C1 control transmission mode.
+//	This is an optional parameter, ignored in conformance level 1.
+//	Valid values are:
+//	  Pc = 0  ⇒  8-bit controls.
+//	  Pc = 1  ⇒  7-bit controls (DEC factory default).
+//	  Pc = 2  ⇒  8-bit controls.
+//
+//	The 7-bit and 8-bit control modes can also be set by S7C1T and
+//	S8C1T, but DECSCL is preferred.
 func hdl_csi_decscl(emu *Emulator, params []int) {
 	if len(params) > 0 {
 		switch params[0] {
@@ -1648,7 +1660,8 @@ func sclCompatLevel(Pl int) (rcl CompatibilityLevel) {
 }
 
 // CSI Ps ' }
-//           Insert Ps Column(s) (default = 1) (DECIC), VT420 and up.
+//
+//	Insert Ps Column(s) (default = 1) (DECIC), VT420 and up.
 func hdl_csi_decic(emu *Emulator, num int) {
 	if emu.isCursorInsideMargins() {
 		num = min(num, emu.nColsEff-emu.posX)
@@ -1657,7 +1670,8 @@ func hdl_csi_decic(emu *Emulator, num int) {
 }
 
 // CSI Ps ' ~
-//           Delete Ps Column(s) (default = 1) (DECDC), VT420 and up.
+//
+//	Delete Ps Column(s) (default = 1) (DECDC), VT420 and up.
 func hdl_csi_decdc(emu *Emulator, num int) {
 	if emu.isCursorInsideMargins() {
 		num = min(num, emu.nColsEff-emu.posX)
@@ -1666,14 +1680,16 @@ func hdl_csi_decdc(emu *Emulator, num int) {
 }
 
 // CSI Ps SP @
-//           Shift left Ps columns(s) (default = 1) (SL), ECMA-48.
+//
+//	Shift left Ps columns(s) (default = 1) (SL), ECMA-48.
 func hdl_csi_ecma48_SL(emu *Emulator, arg int) {
 	arg = min(arg, emu.nColsEff-emu.hMargin)
 	emu.deleteCols(emu.hMargin, arg)
 }
 
 // CSI Ps SP A
-//           Shift right Ps columns(s) (default = 1) (SR), ECMA-48.
+//
+//	Shift right Ps columns(s) (default = 1) (SR), ECMA-48.
 func hdl_csi_ecma48_SR(emu *Emulator, arg int) {
 	arg = min(arg, emu.nColsEff-emu.hMargin)
 	emu.insertCols(emu.hMargin, arg)
@@ -1693,26 +1709,27 @@ func hdl_csi_cpl(emu *Emulator, arg int) {
 
 // CSI > Pp ; Pv m
 // CSI > Pp m
-//           Set/reset key modifier options (XTMODKEYS), xterm.  Set or
-//           reset resource-values used by xterm to decide whether to
-//           construct escape sequences holding information about the
-//           modifiers pressed with a given key.
 //
-//           The first parameter Pp identifies the resource to set/reset.
-//           The second parameter Pv is the value to assign to the
-//           resource.
+//	Set/reset key modifier options (XTMODKEYS), xterm.  Set or
+//	reset resource-values used by xterm to decide whether to
+//	construct escape sequences holding information about the
+//	modifiers pressed with a given key.
 //
-//           If the second parameter is omitted, the resource is reset to
-//           its initial value.  Values 3  and 5  are reserved for keypad-
-//           keys and string-keys.
+//	The first parameter Pp identifies the resource to set/reset.
+//	The second parameter Pv is the value to assign to the
+//	resource.
 //
-//             Pp = 0  ⇒  modifyKeyboard.
-//             Pp = 1  ⇒  modifyCursorKeys.
-//             Pp = 2  ⇒  modifyFunctionKeys.
-//             Pp = 4  ⇒  modifyOtherKeys.
+//	If the second parameter is omitted, the resource is reset to
+//	its initial value.  Values 3  and 5  are reserved for keypad-
+//	keys and string-keys.
 //
-//           If no parameters are given, all resources are reset to their
-//           initial values.
+//	  Pp = 0  ⇒  modifyKeyboard.
+//	  Pp = 1  ⇒  modifyCursorKeys.
+//	  Pp = 2  ⇒  modifyFunctionKeys.
+//	  Pp = 4  ⇒  modifyOtherKeys.
+//
+//	If no parameters are given, all resources are reset to their
+//	initial values.
 func hdl_csi_xtmodkeys(emu *Emulator, params []int) {
 	switch len(params) {
 	case 0:

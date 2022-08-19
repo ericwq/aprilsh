@@ -504,6 +504,8 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 		{"input backspace for simple cell", 0, 70, "", "abcde\x1B[D\x1B[D\x1B[D\x7f", 0, 4, "acde"},
 		{"input backspace for wide cell", 1, 60, "", "abc太学生\x1B[D\x1B[D\x1B[D\x1B[C\x7f", 0, 4, "abc学生"},
 		{"input backspace for wide cell with base", 2, 60, "东部战区", "\x1B[C\x1B[C\x7f", 0, 5, "东战区"},
+		{"move cursor right, wide cell right edge", 3, 76, "平潭", "\x1B[C\x1B[C", 0, 5, "平潭"},
+		{"move cursor left, wide cell left edge", 4, 0, "三号木", "\x1B[C\x1B[D\x1B[D", 0, 5, "三号木"},
 	}
 
 	pe := NewPredictionEngine()

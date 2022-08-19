@@ -465,9 +465,10 @@ func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, str string) {
 					row := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
 					predict := row.overlayCells[pe.cursor().col+1].replacement
 					cell := emu.GetCell(pe.cursor().row, pe.cursor().col+1)
-					// check the next cell width, both predict and emulator need to check
+					// check the next cell width, both predict and emulator need to be checked
 					if cell.IsDoubleWidthCont() || predict.IsDoubleWidthCont() {
-						if pe.cursor().col+2 > emu.GetWidth() {
+						if pe.cursor().col+2 >= emu.GetWidth() {
+							// fmt.Printf("newUserInput() CUF abort col=%d\n", pe.cursor().col)
 							break
 						}
 						pe.cursor().col += 2
@@ -484,9 +485,11 @@ func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, str string) {
 					row := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
 					predict := row.overlayCells[pe.cursor().col-1].replacement
 					cell := emu.GetCell(pe.cursor().row, pe.cursor().col-1)
-					// check the previous cell width, both predict and emulator need to check
+					// check the previous cell width, both predict and emulator need to be checked
 					if cell.IsDoubleWidthCont() || predict.IsDoubleWidthCont() {
-						if pe.cursor().col-2 < 0 {
+						if pe.cursor().col-2 <= 0 {
+							pe.cursor().col = 0
+							// fmt.Printf("newUserInput() CUB abort col=%d\n", pe.cursor().col)
 							break
 						}
 						pe.cursor().col -= 2
