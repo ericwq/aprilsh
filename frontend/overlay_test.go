@@ -330,6 +330,7 @@ func TestPredictionNewUserInput(t *testing.T) {
 		{"Never", 4, 75, "", "Never", "", Never, 0, 0},
 		{"insert chinese with base content", 6, 71, "上海56789", "四姑娘", "四姑娘上", Adaptive, 0, 0},
 		{"insert chinese with wrap", 7, 79, "", "四", "四", Adaptive, 8, 0},
+		{"insert graphemes <0x20", 9, 0, "", "\x11", "", Adaptive, 0, 0},
 	}
 
 	pe := NewPredictionEngine()
@@ -355,11 +356,12 @@ func TestPredictionNewUserInput(t *testing.T) {
 
 		// mimic user input for prediction engine
 		emu.MoveCursor(v.row, v.col)
+		epoch := pe.predictionEpoch
 		pe.newUserInput(emu, v.predict)
 
 		switch k {
 		case 0, 1, 2, 9:
-			// get the predict cell
+			// validate the result against predict cell
 			predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
 			i := 0
 			for _, ch := range v.result {
@@ -375,12 +377,14 @@ func TestPredictionNewUserInput(t *testing.T) {
 				i += terminal.RunesWidth([]rune{ch})
 			}
 		case 3, 4, 5, 6:
+			// validate the cursor position
 			gotX := pe.cursor().col
 			gotY := pe.cursor().row
 			if gotX != v.posX || gotY != v.posY {
 				t.Errorf("%s expect cursor at (%d,%d), got (%d,%d)\n", v.name, v.posY, v.posX, gotY, gotX)
 			}
 		case 10:
+			// validate the result against predict cell in target row
 			predictRow := pe.getOrMakeRow(v.posY, emu.GetWidth())
 			i := 0
 			for _, ch := range v.result {
@@ -391,8 +395,13 @@ func TestPredictionNewUserInput(t *testing.T) {
 				}
 				i += terminal.RunesWidth([]rune{ch})
 			}
-
+		case 11, 7:
+			// validate predictionEpoch
+			if pe.predictionEpoch-epoch != 1 {
+				t.Errorf("%q expect %d, got %d, %d->%d\n", v.name, 1, pe.predictionEpoch-epoch, epoch, pe.predictionEpoch)
+			}
 		default:
+			// Never do nothing, just ignore it.
 		}
 	}
 }

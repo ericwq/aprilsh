@@ -614,7 +614,8 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 
 			// fmt.Printf("handleUserGrapheme #backspace row %d end.\n\n", pe.cursor().row)
 		}
-	} else if chs[0] < 0x20 {
+	} else if len(chs) == 1 && chs[0] < 0x20 {
+		// unknown print
 		pe.becomeTentative()
 	} else {
 		// normal rune, wide rune, combining grapheme
