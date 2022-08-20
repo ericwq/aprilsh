@@ -473,8 +473,8 @@ func printEmulatorCell(emu *terminal.Emulator, row, col int, sample string, pref
 	for graphemes.Next() {
 		chs := graphemes.Runes()
 
-		cell := emu.GetCell(row, col+i)
-		fmt.Printf("%s cell (%d,%d) is %q\n", prefix, row, col+i, cell)
+		cell := emu.GetMutableCell(row, col+i)
+		fmt.Printf("%s # cell %p (%d,%d) is %q\n", prefix, cell, row, col+i, cell)
 		i += terminal.RunesWidth(chs)
 	}
 }
@@ -485,8 +485,9 @@ func printPredictionCell(emu *terminal.Emulator, pe *PredictionEngine, row, col 
 	i := 0
 	for graphemes.Next() {
 		chs := graphemes.Runes()
-		predict := predictRow.overlayCells[col+i].replacement
-		fmt.Printf("%s predict (%d,%d) is %q\n", prefix, row, col+i, predict)
+		predict := &(predictRow.overlayCells[col+i])
+		fmt.Printf("%s # predict cell %p (%d,%d) is %q active=%t, unknown=%t\n",
+			prefix, predict, row, col+i, predict.replacement, predict.active, predict.unknown)
 		i += terminal.RunesWidth(chs)
 	}
 }
@@ -506,6 +507,8 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 		{"input backspace for wide cell with base", 2, 60, "东部战区", "\x1B[C\x1B[C\x7f", 0, 5, "东战区"},
 		{"move cursor right, wide cell right edge", 3, 76, "平潭", "\x1B[C\x1B[C", 0, 5, "平潭"},
 		{"move cursor left, wide cell left edge", 4, 0, "三号木", "\x1B[C\x1B[D\x1B[D", 0, 5, "三号木"},
+		{"input backspace left edge", 5, 0, "小鸡腿", "\x1B[C\x7f\x7f", 0, 8, "鸡腿"},
+		{"input backspace unknown case", 6, 74, "", "gocto\x1B[D\x1B[D\x7f\x7f", 0, 4, "gto"},
 	}
 
 	pe := NewPredictionEngine()
@@ -513,6 +516,8 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 
 	for _, v := range tc {
 		pe.reset()
+		t.Logf("%q predictionEpoch=%d\n", v.name, pe.predictionEpoch)
+		pe.predictionEpoch = 0 // TODO: when it's time to update predictionEpoch?
 
 		// set the base content
 		emu.MoveCursor(v.row, v.col)
@@ -525,24 +530,24 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 		pe.newUserInput(emu, v.predict)
 		// printPredictionCell(emu, pe, v.row, v.col, v.expect, "Predict")
 
-		// merge the predict
+		// merge the last predict
 		pe.cull(emu)
 		// printPredictionCell(emu, pe, v.row, v.col, v.expect, "After Cull")
 		pe.confirmedEpoch = v.confirmtedEpoch
 		pe.apply(emu)
 		// printEmulatorCell(emu, v.row, v.col, v.expect, "Merge")
 
-		predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
+		// predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
 		i := 0
 		graphemes := uniseg.NewGraphemes(v.expect)
 		for graphemes.Next() {
 			chs := graphemes.Runes()
 
 			cell := emu.GetCell(v.row, v.col+i)
-			predict := predictRow.overlayCells[v.col+i].replacement
+			// predict := predictRow.overlayCells[v.col+i].replacement
 			if cell.String() != string(chs) {
-				t.Errorf("%s expect %q at (%d,%d), got predict cell %q dw=%t, dwcont=%t\n",
-					v.name, string(chs), v.row, v.col+i, predict, predict.IsDoubleWidth(), predict.IsDoubleWidthCont())
+				t.Errorf("%s expect %q at (%d,%d), got cell %q dw=%t, dwcont=%t\n",
+					v.name, string(chs), v.row, v.col+i, cell, cell.IsDoubleWidth(), cell.IsDoubleWidthCont())
 			}
 
 			i += terminal.RunesWidth(chs)

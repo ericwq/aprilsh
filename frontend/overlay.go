@@ -47,6 +47,15 @@ const (
 	Inactive
 )
 
+var strValidity = [...]string{
+	"Unused",
+	"Pending",
+	"Correct",
+	"CorrectNoCredit",
+	"IncorrectOrExpired",
+	"Inactive",
+}
+
 const (
 	DisplayPreferenceUnused DisplayPreference = iota
 	Always
@@ -126,6 +135,7 @@ func (ccm *ConditionalCursorMove) apply(emu *terminal.Emulator, confirmedEpoch i
 		return
 	}
 
+	// fmt.Printf("apply #cursorMove to (%d,%d)\n", ccm.row, ccm.col)
 	emu.MoveCursor(ccm.row, ccm.col)
 }
 
@@ -191,8 +201,11 @@ func (coc *ConditionalOverlayCell) resetWithOrig() {
 // apply cell prediction to the emulator, replace frame cell with prediction. (row,col) specify the cell.
 // confirmedEpoch specified the epoch. flag means underlining the cell.
 func (coc *ConditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch int64, row int, flag bool) {
-	// fmt.Printf("apply() (%d,%d) with prediction %q\n", row, coc.col, coc.replacement)
-	// fmt.Printf("apply() coc.active=%t, confirmedEpoch=%d, coc.tentativeUntilEpoch=%d\n", coc.active, confirmedEpoch, coc.tentativeUntilEpoch)
+	// if coc.replacement.GetContents() != "" {
+	// 	fmt.Printf("apply #cell (%d,%d) with prediction %q\n", row, coc.col, coc.replacement)
+	// 	fmt.Printf("apply #cell coc.active=%t, confirmedEpoch=%d, coc.tentativeUntilEpoch=%d\n",
+	// 		coc.active, confirmedEpoch, coc.tentativeUntilEpoch)
+	// }
 
 	// if specified position is out of active area or is not active.
 	if !coc.active || row >= emu.GetHeight() || coc.col >= emu.GetWidth() {
@@ -210,6 +223,7 @@ func (coc *ConditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 
 	// TOODO the meaning of unknown?
 	if coc.unknown {
+		// fmt.Printf("apply #cell (%d,%d) is unknown %q\n", row, coc.col, coc.replacement)
 		// underlining the cell except the last column.
 		if flag && coc.col != emu.GetWidth()-1 {
 			emu.GetMutableCell(row, coc.col).SetUnderline(true)
@@ -220,7 +234,7 @@ func (coc *ConditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 	// if the cell is different from the prediction, replace it with the prediction.
 	// update renditions if flag is true.
 	if emu.GetCell(row, coc.col) != coc.replacement {
-		// fmt.Printf("Cell apply() (%d,%d) with %q\n", row, coc.col, coc.replacement)
+		// fmt.Printf("apply #cell (%d,%d) with %q\n", row, coc.col, coc.replacement)
 		(*emu.GetMutableCell(row, coc.col)) = coc.replacement
 		if flag {
 			emu.GetMutableCell(row, coc.col).SetUnderline(true)
@@ -243,9 +257,11 @@ func (coc *ConditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, 
 	current := emu.GetCell(row, coc.col)
 
 	// see if it hasn't been updated yet
-	// fmt.Printf("getValidity() lateAck=%d, expirationFrame=%d \n", lateAck, coc.expirationFrame)
+	// fmt.Printf("getValidity() (%d,%d) lateAck=%d, expirationFrame=%d unknow=%t\n",
+	// 	row, coc.col, lateAck, coc.expirationFrame, coc.unknown)
 	if lateAck >= coc.expirationFrame {
 		if coc.unknown {
+			// fmt.Printf("getValidity() (%d,%d) return CorrectNoCredit\n", row, coc.col)
 			return CorrectNoCredit
 		}
 
@@ -254,7 +270,8 @@ func (coc *ConditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, 
 			return CorrectNoCredit
 		}
 
-		// fmt.Printf("getValidity() current cell=%s, replacement=%s, result=%t\n", current, coc.replacement, current.ContentsMatch(coc.replacement))
+		// fmt.Printf("getValidity() current cell=%s, replacement=%s, result=%t\n",
+		// 	current, coc.replacement, current.ContentsMatch(coc.replacement))
 		// if the frame cell is the same as the prediction
 		if current.ContentsMatch(coc.replacement) {
 			// it's Correct if any history content doesn't match prediction
@@ -274,6 +291,8 @@ func (coc *ConditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, 
 			return IncorrectOrExpired
 		}
 	}
+
+	// fmt.Printf("getValidity() (%d,%d) return Pending\n", row, coc.col)
 	return Pending
 }
 
@@ -340,7 +359,7 @@ func (pe *PredictionEngine) cursor() *ConditionalCursorMove {
 }
 
 // predict cursor move based on current cursor or initialize new cursor prediction with last
-// cursor position.
+// cursor position. for the same epoch, just return the current prediction cursor position.
 func (pe *PredictionEngine) initCursor(emu *terminal.Emulator) {
 	if len(pe.cursors) == 0 {
 		// initialize new cursor prediction with current cursor position
@@ -353,6 +372,9 @@ func (pe *PredictionEngine) initCursor(emu *terminal.Emulator) {
 		pe.cursors = append(pe.cursors, cursor)
 		pe.cursor().active = true
 	}
+
+	// fmt.Printf("initCursor #called len=%d, tentativeUntilEpoch=%d, predictionEpoch=%d\n",
+	// 	len(pe.cursors), pe.cursor().tentativeUntilEpoch, pe.predictionEpoch)
 }
 
 // get or make a row for the prediction engine.
@@ -378,7 +400,7 @@ func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
 	show := pe.displayPreference != Never && (pe.srttTrigger || pe.glitchTrigger > 0 ||
 		pe.displayPreference == Always || pe.displayPreference == Experimental)
 
-	// fmt.Printf("apply() show=%t\n", show)
+	// fmt.Printf("apply #engine show=%t\n", show)
 	if show {
 		for i := range pe.cursors {
 			pe.cursors[i].apply(emu, pe.confirmedEpoch)
@@ -437,10 +459,10 @@ func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, str string) {
 			pe.predictionEpoch = pe.confirmedEpoch
 		}
 
+		input = graphemes.Runes()
+		// fmt.Printf("newUserInput # cull before process %q\n", input)
 		pe.cull(emu)
 		now := time.Now().Unix()
-
-		input = graphemes.Runes()
 
 		// translate application-mode cursor control function to ANSI cursor control sequence
 		if pe.lastByte == '\x1b' && len(input) == 1 && input[0] == 'O' {
@@ -461,14 +483,14 @@ func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, str string) {
 			case terminal.CSI_CUF:
 				pe.initCursor(emu)
 				if pe.cursor().col < emu.GetWidth()-1 {
-					// fmt.Printf("newUserInput() CUF before col=%d\n", pe.cursor().col)
+					// fmt.Printf("newUserInput #CUF before col=%d\n", pe.cursor().col)
 					row := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
 					predict := row.overlayCells[pe.cursor().col+1].replacement
 					cell := emu.GetCell(pe.cursor().row, pe.cursor().col+1)
 					// check the next cell width, both predict and emulator need to be checked
 					if cell.IsDoubleWidthCont() || predict.IsDoubleWidthCont() {
 						if pe.cursor().col+2 >= emu.GetWidth() {
-							// fmt.Printf("newUserInput() CUF abort col=%d\n", pe.cursor().col)
+							// fmt.Printf("newUserInput #CUF abort col=%d\n", pe.cursor().col)
 							break
 						}
 						pe.cursor().col += 2
@@ -476,12 +498,12 @@ func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, str string) {
 						pe.cursor().col++
 					}
 					pe.cursor().expire(pe.localFrameSent+1, now)
-					// fmt.Printf("newUserInput() CUF after  col=%d\n", pe.cursor().col)
+					// fmt.Printf("newUserInput #CUF after  col=%d\n", pe.cursor().col)
 				}
 			case terminal.CSI_CUB:
 				pe.initCursor(emu)
 				if pe.cursor().col > 0 { // TODO consider the left right margin.
-					// fmt.Printf("newUserInput() CUB before col=%d\n", pe.cursor().col)
+					// fmt.Printf("newUserInput #CUB before col=%d\n", pe.cursor().col)
 					row := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
 					predict := row.overlayCells[pe.cursor().col-1].replacement
 					cell := emu.GetCell(pe.cursor().row, pe.cursor().col-1)
@@ -489,7 +511,7 @@ func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, str string) {
 					if cell.IsDoubleWidthCont() || predict.IsDoubleWidthCont() {
 						if pe.cursor().col-2 <= 0 {
 							pe.cursor().col = 0
-							// fmt.Printf("newUserInput() CUB abort col=%d\n", pe.cursor().col)
+							// fmt.Printf("newUserInput #CUB abort col=%d\n", pe.cursor().col)
 							break
 						}
 						pe.cursor().col -= 2
@@ -497,11 +519,14 @@ func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, str string) {
 						pe.cursor().col--
 					}
 					pe.cursor().expire(pe.localFrameSent+1, now)
-					// fmt.Printf("newUserInput() CUB after  col=%d\n", pe.cursor().col)
+					// fmt.Printf("newUserInput #CUB after  col=%d\n", pe.cursor().col)
 				}
 			default:
 				pe.becomeTentative()
 			}
+			// if pe.cursor() != nil {
+			// 	fmt.Printf("newUserInput # (%d,%d) input=%q\n", pe.cursor().row, pe.cursor().col, hd.GetSequence())
+			// }
 		}
 	}
 }
@@ -511,19 +536,21 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 	pe.initCursor(emu)
 	now := time.Now().Unix()
 
+	// fmt.Printf("handleUserGrapheme # got %q\n", chs)
 	if len(chs) == 1 && chs[0] == '\x7f' {
 		// backspace
 		theRow := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
 		if pe.cursor().col > 0 {
-			// fmt.Printf("handleUserGrapheme() col=%d\n", pe.cursor().col)
+			// fmt.Printf("handleUserGrapheme #backspace start at col=%d\n", pe.cursor().col)
 
 			// move cursor to the previous graphemes
 			predict := theRow.overlayCells[pe.cursor().col-1].replacement
 			cell := emu.GetCell(pe.cursor().row, pe.cursor().col-1)
 			// check the previous cell width, both predict and emulator need to check
 			if cell.IsDoubleWidthCont() || predict.IsDoubleWidthCont() {
-				if pe.cursor().col-2 < 0 {
+				if pe.cursor().col-2 <= 0 {
 					pe.cursor().col = 0
+					// fmt.Printf("handleUserGrapheme() backspace edge %d\n", pe.cursor().col)
 				} else {
 					pe.cursor().col -= 2
 				}
@@ -531,7 +558,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 				pe.cursor().col--
 			}
 			pe.cursor().expire(pe.localFrameSent+1, now)
-			// fmt.Printf("handleUserGrapheme() backspace to %d\n", pe.cursor().col)
+			// fmt.Printf("handleUserGrapheme #backspace col to %d\n", pe.cursor().col)
 
 			// iterate to replace the current cell with next cell.
 			for i := pe.cursor().col; i < emu.GetWidth(); i++ {
@@ -559,6 +586,8 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 						wideCell = true
 					}
 
+					// fmt.Printf("handleUserGrapheme #backspace (%d,%d) iterate cell replacement. nextCell active=%t, unknown=%t\n",
+					// 	pe.cursor().row, i, nextCell.active, nextCell.unknown)
 					if nextCell.active {
 						if nextCell.unknown {
 							cell.unknown = true
@@ -574,13 +603,16 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 					cell.unknown = true
 				}
 
-				// fmt.Printf("handleUserGrapheme() BS cell (%2d,%2d) active=%t unknown=%t\tdwidth=%t\treplacement=%q originalContents=%q\n",
-				// 	pe.cursor().row, i, cell.active, cell.unknown, cell.replacement.IsDoubleWidth(), cell.replacement, cell.originalContents)
+				// fmt.Printf("handleUserGrapheme #backspace %p (%2d,%2d),active=%t,unknown=%t,dwidth=%t,%q,originalContents=%q\n",
+				// 	cell, pe.cursor().row, i, cell.active, cell.unknown, cell.replacement.IsDoubleWidth(),
+				// 	cell.replacement, cell.originalContents)
 
 				if wideCell {
 					i++
 				}
 			}
+
+			// fmt.Printf("handleUserGrapheme #backspace row %d end.\n\n", pe.cursor().row)
 		}
 	} else if chs[0] < 0x20 {
 		pe.becomeTentative()
@@ -674,7 +706,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 			cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, pe.cursor().col))
 		}
 
-		// fmt.Printf("handleUserGrapheme() cell (%2d,%2d) active=%t\tunknown=%t\treplacement=%q\tdwidth=%t\toriginalContents=%q\n\n",
+		// fmt.Printf("handleUserGrapheme # cell (%2d,%2d) active=%t\tunknown=%t\treplacement=%q\tdwidth=%t\toriginalContents=%q\n",
 		// 	pe.cursor().row, pe.cursor().col, cell.active, cell.unknown, cell.replacement, cell.replacement.IsDoubleWidth(), cell.originalContents)
 
 		pe.cursor().expire(pe.localFrameSent+1, now)
@@ -687,7 +719,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 			pe.newlineCarriageReturn(emu)
 		}
 
-		// fmt.Printf("handleUserGrapheme() cursor at (%d,%d)\n\n", pe.cursor().row, pe.cursor().col)
+		// fmt.Printf("handleUserGrapheme # cursor at (%d,%d)\n\n", pe.cursor().row, pe.cursor().col)
 	}
 }
 
@@ -793,9 +825,16 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 			overlays = append(overlays, pe.overlays[i])
 		}
 
+		// fmt.Printf("cull # go through row %d\n", i)
 		for j := range pe.overlays[i].overlayCells {
 			cell := &(pe.overlays[i].overlayCells[j])
-			switch cell.getValidity(emu, pe.overlays[i].rowNum, pe.localFrameLateAcked) {
+			v := cell.getValidity(emu, pe.overlays[i].rowNum, pe.localFrameLateAcked)
+			// if v != Inactive {
+			// 	fmt.Printf("cull # %p (%d,%d) active=%t,unknown=%t,%q validity=%s\n",
+			// 		cell, i, j, cell.active, cell.unknown, cell.replacement,
+			// 		strValidity[v])
+			// }
+			switch v {
 			case IncorrectOrExpired:
 				// fmt.Printf("IncorrectOrExpired cell. tentativeUntilEpoch=%d, confirmedEpoch=%d\n", cell.tentativeUntilEpoch, pe.confirmedEpoch)
 				if cell.tentative(pe.confirmedEpoch) {
@@ -840,8 +879,8 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 
 				cell.reset2()
 			case CorrectNoCredit:
-				// fmt.Printf("cull() validate col=%d replacement=%s, original=%s, active=%t, ack=%d, expire=%d, CorrectNoCredit=%d\n",
-				// 	cell.col, cell.replacement, cell.originalContents, cell.active, pe.localFrameLateAcked, cell.expirationFrame, CorrectNoCredit)
+				// fmt.Printf("cull() (%d,%d) return CorrectNoCredit, replacement=%s, original=%s, active=%t, ack=%d, expire=%d\n",
+				// 	pe.overlays[i].rowNum, cell.col, cell.replacement, cell.originalContents, cell.active, pe.localFrameLateAcked, cell.expirationFrame)
 				cell.reset2()
 			case Pending:
 				// fmt.Printf("cull() (%d,%d) return Pending=%d\n", pe.overlays[i].rowNum, cell.col, Pending)
@@ -863,7 +902,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 
 	// go through cursor predictions
 	if len(pe.cursors) > 0 {
-		// fmt.Printf("cull() cursor getValidity return %d\n", pe.cursor().getValidity(emu, pe.localFrameLateAcked))
+		// fmt.Printf("cull # current cursor getValidity return %s\n", strValidity[pe.cursor().getValidity(emu, pe.localFrameLateAcked)])
 		if pe.cursor().getValidity(emu, pe.localFrameLateAcked) == IncorrectOrExpired {
 			// Sadly, we're predicting (%d,%d) vs. (%d,%d) [tau: %ld expiration_time=%ld, now=%ld]\n
 			if pe.displayPreference == Experimental {
@@ -875,6 +914,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 		}
 	}
 
+	// fmt.Printf("cull # cursor prediction size=%d.\n", len(pe.cursors))
 	cursors := make([]ConditionalCursorMove, 0, len(pe.cursors))
 	for i := range pe.cursors {
 		// remove any cursor prediction except Pending validity.
@@ -886,4 +926,5 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 		}
 	}
 	pe.cursors = cursors
+	// fmt.Printf("cull # cursor prediction size=%d.\n", len(pe.cursors))
 }

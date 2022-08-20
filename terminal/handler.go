@@ -230,6 +230,10 @@ func (h *Handler) GetCh() rune {
 	return h.ch
 }
 
+func (h *Handler) GetSequence() string {
+	return h.sequence
+}
+
 // In the loop, national flag's width got 1+1=2.
 func RunesWidth(runes []rune) (width int) {
 	// quick pass for iso8859-1
@@ -267,6 +271,11 @@ func hdl_graphemes(emu *Emulator, chs ...rune) {
 		emu.cf.getMutableCell(emu.posY, emu.posX).wrap = true
 		hdl_c0_cr(emu)
 		hdl_c0_lf(emu)
+	}
+
+	// validate lastCol
+	if emu.lastCol && emu.posX != emu.nColsEff-1 {
+		emu.lastCol = false
 	}
 
 	// insert a blank cell for insert mode
