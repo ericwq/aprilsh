@@ -27,6 +27,7 @@ SOFTWARE.
 package frontend
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ericwq/aprilsh/terminal"
@@ -461,6 +462,7 @@ func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, str string) {
 
 		input = graphemes.Runes()
 		// fmt.Printf("newUserInput # cull before process %q\n", input)
+		// fmt.Printf("newUserInput #epoch predictionEpoch=%d\n", pe.predictionEpoch)
 		pe.cull(emu)
 		now := time.Now().Unix()
 
@@ -529,6 +531,7 @@ func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, str string) {
 			// }
 		}
 	}
+	// fmt.Printf("newUserInput #epoch predictionEpoch=%d\n\n", pe.predictionEpoch)
 }
 
 func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...rune) {
@@ -746,20 +749,22 @@ func (pe *PredictionEngine) active() bool {
 // delay the prediction to next time
 func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
 	// remove cursor movement if epoch expire
-	// fmt.Printf("killEpoch() 1st cursors length=%d\n", len(pe.cursors))
+	fmt.Printf("killEpoch #1st cursors length=%d\n", len(pe.cursors))
 	cursors := make([]ConditionalCursorMove, 0)
 	for i := range pe.cursors {
 		if pe.cursors[i].tentative(epoch - 1) {
-			// fmt.Printf("killEpoch() skip cursors col=%d\n", pe.cursors[i].col)
+			fmt.Printf("killEpoch #skip cursors col=%d, tentativeUntilEpoch=%d, epoch=%d\n",
+				pe.cursors[i].col, pe.cursors[i].tentativeUntilEpoch, epoch-1)
 			continue
 		}
+		fmt.Printf("killEpoch #keep cursors col=%d\n", pe.cursors[i].col)
 		cursors = append(cursors, pe.cursors[i])
 	}
 	cursors = append(cursors,
 		NewConditionalCursorMove(pe.localFrameSent+1, emu.GetCursorRow(), emu.GetCursorCol(), pe.predictionEpoch))
 	pe.cursors = cursors
 	pe.cursor().active = true
-	// fmt.Printf("killEpoch() 2nd cursors length=%d\n", len(pe.cursors))
+	fmt.Printf("killEpoch #2nd cursors length=%d\n", len(pe.cursors))
 	// remove cell prediction if epoch expire
 	for i := range pe.overlays {
 		for j := range pe.overlays[i].overlayCells {

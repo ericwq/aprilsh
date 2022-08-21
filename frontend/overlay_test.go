@@ -635,3 +635,40 @@ func TestPredictionNewlineCarriageReturn(t *testing.T) {
 		}
 	}
 }
+
+func TestPredictionKillEpoch(t *testing.T) {
+	tc := struct {
+		name  string
+		epoch int64
+		size  int
+	}{"4 rows", 3, 4}
+
+	rows := []struct {
+		posY    int
+		posX    int
+		predict string
+	}{
+		{0, 0, "history"},
+		{5, 0, "channel"},
+		{9, 0, "starts"},
+		{10, 0, "working."},
+	}
+
+	pe := NewPredictionEngine()
+	emu := terminal.NewEmulator3(80, 40, 40)
+
+	// fill the rows
+	for _, v := range rows {
+		emu.MoveCursor(v.posY, v.posX)
+		pe.newUserInput(emu, v.predict)
+		// printPredictionCell(emu, pe, v.posY, v.posX, v.predict, "INPUT ")
+	}
+
+	gotA := len(pe.cursors)
+	pe.killEpoch(tc.epoch, emu)
+	gotB := len(pe.cursors)
+
+	if gotA <= gotB {
+		t.Errorf("%q A=%d, B=%d\n", tc.name, gotA, gotB)
+	}
+}
