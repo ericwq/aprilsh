@@ -127,11 +127,11 @@ func TestCellApply(t *testing.T) {
 		rend           *terminal.Renditions
 		cell           *terminal.Cell
 	}{
-		{"active=T flag=T unknow=F update cell and rendition", true, 20, true, 10, 10, false, 'E', &underlineRend, &underlineCell},
-		{"active=T flag=F unknow=F update cell", true, 20, false, 11, 10, false, 'E', nil, &plainCell},
-		{"active=T flag=T unknow=T update rendition", true, 20, true, 12, 10, true, 'E', &underlineRend, nil},
-		{"active=T flag=F unknow=T return", true, 20, false, 13, 10, true, 'E', nil, nil},
-		{"active=T flag=T unknow=T return", true, 20, true, 14, 10, true, '\x00', nil, nil},
+		{"active=T flag=T unknown=F update cell and rendition", true, 20, true, 10, 10, false, 'E', &underlineRend, &underlineCell},
+		{"active=T flag=F unknown=F update cell", true, 20, false, 11, 10, false, 'E', nil, &plainCell},
+		{"active=T flag=T unknown=T update rendition", true, 20, true, 12, 10, true, 'E', &underlineRend, nil},
+		{"active=T flag=F unknown=T return", true, 20, false, 13, 10, true, 'E', nil, nil},
+		{"active=T flag=T unknown=T return", true, 20, true, 14, 10, true, '\x00', nil, nil},
 		{"tentative early return", true, 9, true, 14, 10, true, 'E', nil, nil},
 		{"active early return", false, 10, true, 14, 10, true, 'E', nil, nil},
 	}
@@ -518,6 +518,7 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 		{"move cursor left, wide cell left edge", 4, 0, "三号木", "\x1B[C\x1B[D\x1B[D", 0, 5, "三号木"},
 		{"input backspace left edge", 5, 0, "小鸡腿", "\x1B[C\x7f\x7f", 0, 8, "鸡腿"},
 		{"input backspace unknown case", 6, 74, "", "gocto\x1B[D\x1B[D\x7f\x7f", 0, 4, "gto"},
+		{"backspace, predict unknown case", 7, 60, "", "捉鹰打goto\x7f\x7f\x7f\x7f鸟", 0, 4, "捉鹰打鸟"},
 	}
 
 	pe := NewPredictionEngine()
@@ -525,8 +526,8 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 
 	for _, v := range tc {
 		pe.reset()
-		t.Logf("%q predictionEpoch=%d\n", v.name, pe.predictionEpoch)
-		pe.predictionEpoch = 0 // TODO: when it's time to update predictionEpoch?
+		// t.Logf("%q predictionEpoch=%d\n", v.name, pe.predictionEpoch)
+		pe.predictionEpoch = 1 // TODO: when it's time to update predictionEpoch?
 
 		// set the base content
 		emu.MoveCursor(v.row, v.col)
@@ -600,6 +601,37 @@ func TestPredictionActive(t *testing.T) {
 			if got != v.result {
 				t.Errorf("%q expect %t, got %t\n", v.name, v.result, got)
 			}
+		}
+	}
+}
+
+func TestPredictionNewlineCarriageReturn(t *testing.T) {
+	tc := []struct {
+		name       string
+		posY, posX int
+		predict    string
+		gotY, gotX int
+	}{
+		{"normal CR", 2, 3, "CR\x0D", 3, 0},
+		{"bottom CR", 39, 0, "CR\x0D", 39, 0},
+	}
+	pe := NewPredictionEngine()
+	emu := terminal.NewEmulator3(80, 40, 40)
+
+	for _, v := range tc {
+		pe.reset()
+		pe.predictionEpoch = 1 // reset it
+
+		// mimic user input for prediction engine
+		emu.MoveCursor(v.posY, v.posX)
+		pe.newUserInput(emu, v.predict)
+		pe.cull(emu)
+
+		// validate the cursor position
+		gotX := pe.cursor().col
+		gotY := pe.cursor().row
+		if gotX != v.gotX || gotY != v.gotY {
+			t.Errorf("%s expect cursor at (%d,%d), got (%d,%d)\n", v.name, v.gotY, v.gotX, gotY, gotX)
 		}
 	}
 }
