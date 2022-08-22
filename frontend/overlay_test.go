@@ -636,6 +636,14 @@ func TestPredictionNewlineCarriageReturn(t *testing.T) {
 	}
 }
 
+func printCursors(pe *PredictionEngine, prefix string) {
+	for i, cursor := range pe.cursors {
+		fmt.Printf("%q #cursor at (%d,%d) %p active=%t, tentativeUntilEpoch=%d\n",
+			prefix, cursor.row, cursor.col, &(pe.cursors[i]), cursor.active, cursor.tentativeUntilEpoch)
+	}
+	fmt.Printf("%q done\n\n", prefix)
+}
+
 func TestPredictionKillEpoch(t *testing.T) {
 	tc := struct {
 		name  string
@@ -648,27 +656,39 @@ func TestPredictionKillEpoch(t *testing.T) {
 		posX    int
 		predict string
 	}{
-		{0, 0, "history"},
-		{5, 0, "channel"},
-		{9, 0, "starts"},
-		{10, 0, "working."},
+		// rows: 0,5,9,10
+		{0, 0, "history\r\r\r\r\rchannel\r\r\r\rstarts\rworking"},
 	}
 
 	pe := NewPredictionEngine()
 	emu := terminal.NewEmulator3(80, 40, 40)
 
+	// printCursors(pe, "BEFORE newUserInput.")
 	// fill the rows
 	for _, v := range rows {
 		emu.MoveCursor(v.posY, v.posX)
 		pe.newUserInput(emu, v.predict)
 		// printPredictionCell(emu, pe, v.posY, v.posX, v.predict, "INPUT ")
 	}
+	pe.cull(emu)
 
+	// printCursors(pe, "AFTER newUserInput.")
+
+	// posYs := []int{0, 5, 9, 10}
+	// for _, posY := range posYs {
+	// 	printPredictionCell(emu, pe, posY, 0, "channel", "PREDICT -")
+	// }
+
+	// it should be 11
 	gotA := len(pe.cursors)
+	// fmt.Println("killEpoch #testing called it explicitily.")
 	pe.killEpoch(tc.epoch, emu)
+
+	// it should be 2
 	gotB := len(pe.cursors)
 
-	if gotA <= gotB {
+	// printCursors(pe, "AFTER killEpoch.")
+	if gotB != 2 {
 		t.Errorf("%q A=%d, B=%d\n", tc.name, gotA, gotB)
 	}
 }
