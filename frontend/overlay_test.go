@@ -702,11 +702,12 @@ func TestPredictionCull2(t *testing.T) {
 		frame               string            // the expect content
 		displayPreference   DisplayPreference // display preference
 		localFrameLateAcked int64             // control the result of cull.
+		localFrameSend      int64
 		sendInterval        int
 	}{
-		{"displayPreference is never", 0, 0, "", "", "", Never, 0, 0},
-		{"Correct validity", 1, 0, "", "correct", "correct", Adaptive, 1, 0},
-		{"IncorrectOrExpired validity", 2, 0, "", "right", "wrong", Adaptive, 3, 0},
+		{"displayPreference is never", 0, 0, "", "", "", Never, 0, 0, 0},
+		{"Correct validity", 1, 0, "", "correct", "correct", Adaptive, 1, 0, 0},
+		{"IncorrectOrExpired validity", 2, 0, "", "right", "wrong", Adaptive, 3, 1, 0},
 	}
 	emu := terminal.NewEmulator3(80, 40, 40)
 	pe := NewPredictionEngine()
@@ -722,6 +723,7 @@ func TestPredictionCull2(t *testing.T) {
 
 		// mimic user input for prediction engine
 		emu.MoveCursor(v.row, v.col)
+		pe.localFrameSent = v.localFrameSend
 		pe.newUserInput(emu, v.predict) // cull will be called for each rune, except last rune
 
 		// mimic the result from server

@@ -724,8 +724,9 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 			cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, pe.cursor().col))
 		}
 
-		fmt.Printf("handleUserGrapheme #cell (%2d,%2d) active=%t\tunknown=%t\treplacement=%q\tdwidth=%t\toriginalContents=%q\n",
-			pe.cursor().row, pe.cursor().col, cell.active, cell.unknown, cell.replacement, cell.replacement.IsDoubleWidth(), cell.originalContents)
+		fmt.Printf("handleUserGrapheme #cell (%2d,%2d) active=%t, unknown=%t, replacement=%q, dwidth=%t,tentativeUntilEpoch=%d, originalContents=%q\n",
+			pe.cursor().row, pe.cursor().col, cell.active, cell.unknown, cell.replacement,
+			cell.replacement.IsDoubleWidth(), pe.predictionEpoch, cell.originalContents)
 
 		pe.cursor().expire(pe.localFrameSent+1, now)
 
