@@ -221,94 +221,6 @@ func TestCellGetValidity(t *testing.T) {
 	}
 }
 
-func TestPredictionCull(t *testing.T) {
-	tc := []struct {
-		name            string
-		row, col        int
-		base            string // base content
-		predict         string // prediction
-		frame           string // frame content
-		lateAck         int
-		confirmedEpoch  int
-		incorrectCursor bool
-		sendInterval    int
-	}{
-		{"reset by height and width", 12, 70, "    ", "----", "****", 0, 0, false, 0},
-		{"Correct validity", 9, 70, "     ", "right", "right", 2, 0, false, 0},
-		{"IncorrectOrExpired validity", 10, 70, "-----", "Alpha", "Beta", 2, 0, false, 0},
-		{"Pending validity", 11, 70, "    ", "----", "****", 0, 0, false, 0},
-		{"IncorrectOrExpired < confirmedEpoch", 13, 70, "-----", "Alpha", "Beta", 2, 10, false, 0},
-		{"Correct validity + incorrect cursor", 14, 70, "     ", "right", "right", 2, 0, true, 0},
-		{"Correct validity + sendInterval", 14, 70, "     ", "right", "right", 2, 0, true, 20},
-	}
-	emu := terminal.NewEmulator3(80, 40, 40)
-	pe := NewPredictionEngine()
-
-	for k, v := range tc {
-		pe.reset()
-
-		// set the base content
-		emu.MoveCursor(v.row, v.col)
-		emu.HandleStream(v.base)
-
-		// cell := emu.GetCell(v.row, v.col)
-		// fmt.Printf("set base content =%q vs  %q\n", cell, v.base)
-
-		// mimic user input for prediction engine
-		emu.MoveCursor(v.row, v.col)
-		for i := range v.predict {
-			// fmt.Printf("cull() test predictionEpoch=%d\n", pe.predictionEpoch)
-			pe.handleUserGrapheme(emu, rune(v.predict[i]))
-		}
-
-		// mimic the result from server
-		emu.MoveCursor(v.row, v.col)
-		emu.HandleStream(v.frame)
-
-		// set the lateAck
-		pe.localFrameLateAcked = int64(v.lateAck)
-
-		// get the predict cell
-		predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
-		predict := &(predictRow.overlayCells[v.col])
-
-		if v.confirmedEpoch != 0 {
-			pe.confirmedEpoch = int64(v.confirmedEpoch)
-		}
-		if v.incorrectCursor {
-			emu.MoveCursor(v.row, v.col-1)
-		}
-		if v.sendInterval != 0 {
-			pe.sendInterval = v.sendInterval
-		}
-
-		pe.cull(emu)
-
-		switch k {
-		case 0, 4, 5:
-			if len(pe.overlays) != 0 || len(pe.cursors) != 0 {
-				t.Errorf("%s should be reset by width and height. got overlays=%d, cursors=%d\n", v.name, len(pe.overlays), len(pe.cursors))
-			}
-		case 1:
-			// Correct cell's active is false, it's originalContents field is cleared.
-			if predict.active != false && len(predict.originalContents) != 0 {
-				t.Errorf("cell (%d,%d) replacement=%s, originalContents=%s\n", v.row, v.col, predict.replacement, predict.originalContents)
-				t.Errorf("%s expect empty predict cell, got cell active=%t\n", v.name, predict.active)
-			}
-		case 2:
-			// IncorrectOrExpired cell's active is false
-			if predict.active {
-				t.Errorf("%s expect empty predict cell, got cell active=%t\n", v.name, predict.active)
-			}
-		case 3:
-			// Pending cell's active is true.
-			if !predict.active {
-				t.Errorf("%s expect exmpty predict cell, got cell active=%t\n", v.name, predict.active)
-			}
-		}
-	}
-}
-
 func TestPredictionNewUserInput(t *testing.T) {
 	tc := []struct {
 		name              string
@@ -503,13 +415,13 @@ func printPredictionCell(emu *terminal.Emulator, pe *PredictionEngine, row, col 
 
 func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 	tc := []struct {
-		name            string
-		row, col        int    // the specified row and col
-		base            string // base content
-		predict         string // prediction
-		lateAck         int64  // lateAck control the pending result
-		confirmtedEpoch int64  // this control the appply result
-		expect          string // the expect content
+		name           string
+		row, col       int    // the specified row and col
+		base           string // base content
+		predict        string // prediction
+		lateAck        int64  // lateAck control the pending result
+		confirmedEpoch int64  // this control the appply result
+		expect         string // the expect content
 	}{
 		{"input backspace for simple cell", 0, 70, "", "abcde\x1B[D\x1B[D\x1B[D\x7f", 0, 4, "acde"},
 		{"input backspace for wide cell", 1, 60, "", "abc太学生\x1B[D\x1B[D\x1B[D\x1B[C\x7f", 0, 4, "abc学生"},
@@ -543,7 +455,7 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 		// merge the last predict
 		pe.cull(emu)
 		// printPredictionCell(emu, pe, v.row, v.col, v.expect, "After Cull")
-		pe.confirmedEpoch = v.confirmtedEpoch
+		pe.confirmedEpoch = v.confirmedEpoch
 		pe.apply(emu)
 		// printEmulatorCell(emu, v.row, v.col, v.expect, "Merge")
 
@@ -690,5 +602,150 @@ func TestPredictionKillEpoch(t *testing.T) {
 	// printCursors(pe, "AFTER killEpoch.")
 	if gotB != 2 {
 		t.Errorf("%q A=%d, B=%d\n", tc.name, gotA, gotB)
+	}
+}
+
+func testPredictionCull(t *testing.T) {
+	tc := []struct {
+		name            string
+		row, col        int
+		base            string // base content
+		predict         string // prediction
+		frame           string // frame content
+		lateAck         int
+		confirmedEpoch  int
+		incorrectCursor bool
+		sendInterval    int
+	}{
+		{"reset by height and width", 12, 70, "    ", "----", "****", 0, 0, false, 0},
+		{"Correct validity", 9, 70, "     ", "right", "right", 2, 0, false, 0},
+		{"IncorrectOrExpired validity", 10, 70, "-----", "Alpha", "Beta", 2, 0, false, 0},
+		{"Pending validity", 11, 70, "    ", "----", "****", 0, 0, false, 0},
+		{"IncorrectOrExpired < confirmedEpoch", 13, 70, "-----", "Alpha", "Beta", 2, 10, false, 0},
+		{"Correct validity + incorrect cursor", 14, 70, "     ", "right", "right", 2, 0, true, 0},
+		{"Correct validity + sendInterval", 14, 70, "     ", "right", "right", 2, 0, true, 20},
+	}
+	emu := terminal.NewEmulator3(80, 40, 40)
+	pe := NewPredictionEngine()
+
+	for k, v := range tc {
+		pe.reset()
+
+		// set the base content
+		emu.MoveCursor(v.row, v.col)
+		emu.HandleStream(v.base)
+
+		// cell := emu.GetCell(v.row, v.col)
+		// fmt.Printf("set base content =%q vs  %q\n", cell, v.base)
+
+		// mimic user input for prediction engine
+		emu.MoveCursor(v.row, v.col)
+		for i := range v.predict {
+			// fmt.Printf("cull() test predictionEpoch=%d\n", pe.predictionEpoch)
+			pe.handleUserGrapheme(emu, rune(v.predict[i]))
+		}
+
+		// mimic the result from server
+		emu.MoveCursor(v.row, v.col)
+		emu.HandleStream(v.frame)
+
+		// set the lateAck
+		pe.localFrameLateAcked = int64(v.lateAck)
+
+		// get the predict cell
+		predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
+		predict := &(predictRow.overlayCells[v.col])
+
+		if v.confirmedEpoch != 0 {
+			pe.confirmedEpoch = int64(v.confirmedEpoch)
+		}
+		if v.incorrectCursor {
+			emu.MoveCursor(v.row, v.col-1)
+		}
+		if v.sendInterval != 0 {
+			pe.sendInterval = v.sendInterval
+		}
+
+		pe.cull(emu)
+
+		switch k {
+		case 0, 4, 5:
+			if len(pe.overlays) != 0 || len(pe.cursors) != 0 {
+				t.Errorf("%s should be reset by width and height. got overlays=%d, cursors=%d\n", v.name, len(pe.overlays), len(pe.cursors))
+			}
+		case 1:
+			// Correct cell's active is false, it's originalContents field is cleared.
+			if predict.active != false && len(predict.originalContents) != 0 {
+				t.Errorf("cell (%d,%d) replacement=%s, originalContents=%s\n", v.row, v.col, predict.replacement, predict.originalContents)
+				t.Errorf("%s expect empty predict cell, got cell active=%t\n", v.name, predict.active)
+			}
+		case 2:
+			// IncorrectOrExpired cell's active is false
+			if predict.active {
+				t.Errorf("%s expect empty predict cell, got cell active=%t\n", v.name, predict.active)
+			}
+		case 3:
+			// Pending cell's active is true.
+			if !predict.active {
+				t.Errorf("%s expect exmpty predict cell, got cell active=%t\n", v.name, predict.active)
+			}
+		}
+	}
+}
+
+func TestPredictionCull2(t *testing.T) {
+	tc := []struct {
+		name                string
+		row, col            int               // cursor start position
+		base                string            // base content
+		predict             string            // prediction
+		frame               string            // the expect content
+		displayPreference   DisplayPreference // display preference
+		localFrameLateAcked int64             // control the result of cull.
+		sendInterval        int
+	}{
+		{"displayPreference is never", 0, 0, "", "", "", Never, 0, 0},
+		{"Correct validity", 1, 0, "", "correct", "correct", Adaptive, 1, 0},
+		{"IncorrectOrExpired validity", 2, 0, "", "right", "wrong", Adaptive, 3, 0},
+	}
+	emu := terminal.NewEmulator3(80, 40, 40)
+	pe := NewPredictionEngine()
+
+	for k, v := range tc {
+		pe.reset()
+		pe.displayPreference = v.displayPreference
+		fmt.Printf("\n%q #testing call cull A.\n", v.name)
+
+		// set the base content
+		emu.MoveCursor(v.row, v.col)
+		emu.HandleStream(v.base)
+
+		// mimic user input for prediction engine
+		emu.MoveCursor(v.row, v.col)
+		pe.newUserInput(emu, v.predict) // cull will be called for each rune, except last rune
+
+		// mimic the result from server
+		emu.MoveCursor(v.row, v.col)
+		emu.HandleStream(v.frame)
+
+		fmt.Printf("%q #testing call cull B. localFrameLateAcked=%d\n", v.name, v.localFrameLateAcked)
+		pe.localFrameLateAcked = v.localFrameLateAcked
+		pe.cull(emu)
+
+		switch k {
+		case 1:
+			// validate the confirmedEpoch is right
+			confirmedEpoch := pe.confirmedEpoch
+			if confirmedEpoch != 2 {
+				predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
+				for i := range v.frame {
+					predict := &(predictRow.overlayCells[v.col+i])
+					if predict.active {
+						t.Errorf("%q should not be active", v.name)
+					}
+				}
+			}
+		default:
+		}
 	}
 }

@@ -27,6 +27,7 @@ SOFTWARE.
 package frontend
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/ericwq/aprilsh/terminal"
@@ -242,11 +243,12 @@ func (coc *ConditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 	}
 }
 
-// for frame cell is the same as the prediction and any history content doesn't match prediction, return Correct .
-// for unknown or blank cell, or history content match prediction, return CorrectNoCredit.
-// for prediction cursor is out of range or prediction doesn't match frame cell, return IncorrectOrExpired.
-// for the lasteAck is not greater than expirationFrame, return Pending.
-// for inactive prediction, return Inactive.
+// check frame cell against prediction cell, if the ack frame is greater than the expiration frame.
+// - for unknown or blank cell, or history content match prediction, return CorrectNoCredit.
+// - for prediction cursor is out of range or prediction doesn't match frame cell, return IncorrectOrExpired.
+// - if the frame cell is the same as the prediction cell and no history match prediction, retrun Correct.
+// if the ack frame is smaller than the expiration frame, return pending.
+// if the cell is inactive, return Inactive.
 func (coc *ConditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, lateAck int64) Validity {
 	if !coc.active {
 		return Inactive
@@ -350,6 +352,10 @@ func NewPredictionEngine() *PredictionEngine {
 	return &pe
 }
 
+func (pe *PredictionEngine) SetSendInterval(value int) {
+	pe.sendInterval = value
+}
+
 // return the last cursor move stored in the engine
 func (pe *PredictionEngine) cursor() *ConditionalCursorMove {
 	if len(pe.cursors) == 0 {
@@ -451,6 +457,10 @@ func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, str string) {
 	var input []rune
 	var hd *terminal.Handler
 
+	if len(str) == 0 {
+		return
+	}
+
 	graphemes := uniseg.NewGraphemes(str)
 	for graphemes.Next() {
 		if pe.displayPreference == Never {
@@ -527,6 +537,7 @@ func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, str string) {
 					// fmt.Printf("newUserInput #CUB after  col=%d\n", pe.cursor().col)
 				}
 			default:
+				// TODO we can add support for more control sequences to improve the usability of prediction engine.
 				pe.becomeTentative()
 			}
 			// if pe.cursor() != nil {
@@ -713,8 +724,8 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, chs ...ru
 			cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, pe.cursor().col))
 		}
 
-		// fmt.Printf("handleUserGrapheme # cell (%2d,%2d) active=%t\tunknown=%t\treplacement=%q\tdwidth=%t\toriginalContents=%q\n",
-		// 	pe.cursor().row, pe.cursor().col, cell.active, cell.unknown, cell.replacement, cell.replacement.IsDoubleWidth(), cell.originalContents)
+		fmt.Printf("handleUserGrapheme #cell (%2d,%2d) active=%t\tunknown=%t\treplacement=%q\tdwidth=%t\toriginalContents=%q\n",
+			pe.cursor().row, pe.cursor().col, cell.active, cell.unknown, cell.replacement, cell.replacement.IsDoubleWidth(), cell.originalContents)
 
 		pe.cursor().expire(pe.localFrameSent+1, now)
 
@@ -752,15 +763,15 @@ func (pe *PredictionEngine) active() bool {
 // delay the prediction to next epoch.
 func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
 	// remove cursor movement if epoch expire
-	// fmt.Printf("killEpoch #1st cursors length=%d\n", len(pe.cursors))
+	fmt.Printf("killEpoch #1st cursors length=%d\n", len(pe.cursors))
 	cursors := make([]ConditionalCursorMove, 0)
 	for i := range pe.cursors {
 		if pe.cursors[i].tentative(epoch - 1) {
-			// fmt.Printf("killEpoch #skip cursors (%d,%d), tentativeUntilEpoch=%d, epoch=%d\n",
-			// pe.cursors[i].row, pe.cursors[i].col, pe.cursors[i].tentativeUntilEpoch, epoch-1)
+			fmt.Printf("killEpoch #skip cursors (%2d,%2d), tentativeUntilEpoch=%d, epoch=%d\n",
+				pe.cursors[i].row, pe.cursors[i].col, pe.cursors[i].tentativeUntilEpoch, epoch-1)
 			continue
 		}
-		// fmt.Printf("killEpoch #keep cursors (%d,%d)\n", pe.cursors[i].row, pe.cursors[i].col)
+		fmt.Printf("killEpoch #keep cursors (%2d,%2d)\n", pe.cursors[i].row, pe.cursors[i].col)
 		cursors = append(cursors, pe.cursors[i])
 	}
 
@@ -769,7 +780,7 @@ func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
 		NewConditionalCursorMove(pe.localFrameSent+1, emu.GetCursorRow(), emu.GetCursorCol(), pe.predictionEpoch))
 	pe.cursors = cursors
 	pe.cursor().active = true
-	// fmt.Printf("killEpoch #2nd cursors length=%d\n", len(pe.cursors))
+	fmt.Printf("killEpoch #2nd cursors length=%d\n", len(pe.cursors))
 
 	// remove cell prediction if epoch expire
 	for i := range pe.overlays {
@@ -777,7 +788,7 @@ func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
 			cell := &(pe.overlays[i].overlayCells[j])
 			if cell.tentative(epoch - 1) {
 				cell.reset2()
-				// fmt.Printf("killEpoch() cell (%d,%d) reset2\n", pe.overlays[i].rowNum, cell.col)
+				fmt.Printf("killEpoch #cell (%2d,%2d) reset2\n", pe.overlays[i].rowNum, cell.col)
 			}
 		}
 	}
@@ -837,15 +848,15 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 			overlays = append(overlays, pe.overlays[i])
 		}
 
-		// fmt.Printf("cull # go through row %d\n", i)
+		fmt.Printf("cull # go through row %d\n", pe.overlays[i].rowNum)
 		for j := range pe.overlays[i].overlayCells {
 			cell := &(pe.overlays[i].overlayCells[j])
 			v := cell.getValidity(emu, pe.overlays[i].rowNum, pe.localFrameLateAcked)
-			// if v != Inactive {
-			// 	fmt.Printf("cull # %p (%d,%d) active=%t,unknown=%t,%q validity=%s\n",
-			// 		cell, i, j, cell.active, cell.unknown, cell.replacement,
-			// 		strValidity[v])
-			// }
+			if v != Inactive {
+				fmt.Printf("cull #cell %p (%2d,%2d) active=%t,unknown=%t, %q, expirationFrame=%d, lateAck=%d, validity=%s\n",
+					cell, pe.overlays[i].rowNum, j, cell.active, cell.unknown, cell.replacement, cell.expirationFrame,
+					pe.localFrameLateAcked, strValidity[v])
+			}
 			switch v {
 			case IncorrectOrExpired:
 				// fmt.Printf("IncorrectOrExpired cell. tentativeUntilEpoch=%d, confirmedEpoch=%d\n", cell.tentativeUntilEpoch, pe.confirmedEpoch)
@@ -855,6 +866,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 					if pe.displayPreference == Experimental {
 						cell.reset2()
 					} else {
+						fmt.Printf("cull #cell killEpoch is called. tentativeUntilEpoch=%d, confirmedEpoch=%d\n", cell.tentativeUntilEpoch, pe.confirmedEpoch)
 						pe.killEpoch(cell.tentativeUntilEpoch, emu)
 					}
 				} else {
@@ -868,8 +880,9 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 					}
 				}
 			case Correct:
-				// fmt.Printf("cull() validate col=%d replacement=%s, original=%s, active=%t, ack=%d, expire=%d, Correct=%d\n",
+				// fmt.Printf("cull #correct validate col=%d replacement=%s, original=%s, active=%t, ack=%d, expire=%d, Correct=%d\n",
 				// 	cell.col, cell.replacement, cell.originalContents, cell.active, pe.localFrameLateAcked, cell.expirationFrame, Correct)
+				// fmt.Printf("cull #Correct tentativeUntilEpoch=%d, confirmedEpoch=%d\n", cell.tentativeUntilEpoch, pe.confirmedEpoch)
 				if cell.tentative(pe.confirmedEpoch) {
 					// if cell.tentativeUntilEpoch > pe.confirmedEpoch {
 					pe.confirmedEpoch = cell.tentativeUntilEpoch
@@ -892,10 +905,12 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 				cell.reset2()
 			case CorrectNoCredit:
 				// fmt.Printf("cull() (%d,%d) return CorrectNoCredit, replacement=%s, original=%s, active=%t, ack=%d, expire=%d\n",
+				// fmt.Printf("cull #CorrectNoCredit tentativeUntilEpoch=%d, confirmedEpoch=%d\n", cell.tentativeUntilEpoch, pe.confirmedEpoch)
 				// 	pe.overlays[i].rowNum, cell.col, cell.replacement, cell.originalContents, cell.active, pe.localFrameLateAcked, cell.expirationFrame)
 				cell.reset2()
 			case Pending:
 				// fmt.Printf("cull() (%d,%d) return Pending=%d\n", pe.overlays[i].rowNum, cell.col, Pending)
+				// fmt.Printf("cull #Pending tentativeUntilEpoch=%d, confirmedEpoch=%d\n", cell.tentativeUntilEpoch, pe.confirmedEpoch)
 				// When a prediction takes a long time to be confirmed, we
 				// activate the predictions even if SRTT is low
 				if now-cell.predictionTime >= GLITCH_FLAG_THRESHOLD {
@@ -914,7 +929,8 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 
 	// go through cursor predictions
 	if len(pe.cursors) > 0 {
-		// fmt.Printf("cull # current cursor getValidity return %s\n", strValidity[pe.cursor().getValidity(emu, pe.localFrameLateAcked)])
+		fmt.Printf("cull #cursor (%d,%d) getValidity return %s: lateAck=%d, expirationFrame=%d\n", pe.cursor().row, pe.cursor().col,
+			strValidity[pe.cursor().getValidity(emu, pe.localFrameLateAcked)], pe.localFrameLateAcked, pe.cursor().expirationFrame)
 		if pe.cursor().getValidity(emu, pe.localFrameLateAcked) == IncorrectOrExpired {
 			// Sadly, we're predicting (%d,%d) vs. (%d,%d) [tau: %ld expiration_time=%ld, now=%ld]\n
 			if pe.displayPreference == Experimental {
