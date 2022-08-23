@@ -485,7 +485,6 @@ func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, str string, del
 		}
 
 		input = graphemes.Runes()
-		// fmt.Printf("newUserInput # cull before process %q\n", input)
 		// fmt.Printf("newUserInput #epoch predictionEpoch=%d\n", pe.predictionEpoch)
 
 		now := time.Now().UnixMilli()
@@ -745,9 +744,9 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 			cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, pe.cursor().col))
 		}
 
-		fmt.Printf("handleUserGrapheme #cell (%2d,%2d) active=%t, unknown=%t, replacement=%q, dwidth=%t, tentativeUntilEpoch=%d, originalContents=%q\n",
-			pe.cursor().row, pe.cursor().col, cell.active, cell.unknown, cell.replacement,
-			cell.replacement.IsDoubleWidth(), pe.predictionEpoch, cell.originalContents)
+		// fmt.Printf("handleUserGrapheme #cell (%2d,%2d) active=%t, unknown=%t, replacement=%q, dwidth=%t, tentativeUntilEpoch=%d, originalContents=%q\n",
+		// 	pe.cursor().row, pe.cursor().col, cell.active, cell.unknown, cell.replacement,
+		// 	cell.replacement.IsDoubleWidth(), pe.predictionEpoch, cell.originalContents)
 
 		pe.cursor().expire(pe.localFrameSent+1, now)
 
@@ -802,7 +801,6 @@ func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
 		NewConditionalCursorMove(pe.localFrameSent+1, emu.GetCursorRow(), emu.GetCursorCol(), pe.predictionEpoch))
 	pe.cursors = cursors
 	pe.cursor().active = true
-	// fmt.Printf("killEpoch #2nd cursors length=%d\n", len(pe.cursors))
 
 	// remove cell prediction if epoch expire
 	for i := range pe.overlays {
@@ -816,6 +814,7 @@ func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
 	}
 
 	pe.becomeTentative()
+	// fmt.Printf("killEpoch #last cursors=%d, overlays=%d\n", len(pe.cursors), len(pe.overlays))
 }
 
 // check the validity of cell prediction and perform action based on the validity.
@@ -979,11 +978,14 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 		// remove any cursor prediction except Pending validity.
 		it := &(pe.cursors[i])
 		if it.getValidity(emu, pe.localFrameLateAcked) != Pending {
+			// fmt.Printf("cull #remove cursor at (%d,%d) for state %s\n",
+			// 	pe.cursors[i].row, pe.cursors[i].col, strValidity[it.getValidity(emu, pe.localFrameLateAcked)])
 			continue
 		} else {
 			cursors = append(cursors, *it)
 		}
 	}
 	pe.cursors = cursors
+
 	// fmt.Printf("cull # cursor prediction size=%d.\n", len(pe.cursors))
 }

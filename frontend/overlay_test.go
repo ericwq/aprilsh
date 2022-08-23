@@ -546,7 +546,6 @@ func TestPredictionNewlineCarriageReturn(t *testing.T) {
 		// mimic user input for prediction engine
 		emu.MoveCursor(v.posY, v.posX)
 		pe.newUserInput(emu, v.predict)
-		fmt.Println("mark B")
 		pe.cull(emu)
 
 		// validate the cursor position
@@ -727,7 +726,6 @@ func TestPredictionCull2(t *testing.T) {
 
 	for k, v := range tc {
 		fmt.Printf("\n%q #testing call cull A.\n", v.name)
-		// pe.reset() // reset increase the predictionEpoch
 		pe.SetDisplayPreference(v.displayPreference)
 
 		// set the base content
@@ -740,9 +738,10 @@ func TestPredictionCull2(t *testing.T) {
 
 		// fmt.Printf("%q #testing call cull B1. localFrameSend=%d, localFrameLateAcked=%d, predictionEpoch=%d, confirmedEpoch=%d\n",
 		// 	v.name, pe.localFrameSent, pe.localFrameLateAcked, pe.predictionEpoch, pe.confirmedEpoch)
-		if k > 3 {
-			delay := []int{0, 0, 250, 0, 0, 0, 0, 0, 0}
-			pe.newUserInput(emu, v.predict, delay...) // cull will be called for each rune, except last rune
+		// cull will be called for each rune, except last rune
+		if k > 4 {
+			delay := []int{0, 0, 251, 0, 0, 0, 0, 5001, 0}
+			pe.newUserInput(emu, v.predict, delay...)
 		} else {
 			pe.newUserInput(emu, v.predict) // cull will be called for each rune, except last rune
 		}
@@ -759,38 +758,30 @@ func TestPredictionCull2(t *testing.T) {
 			v.name, pe.localFrameSent, pe.localFrameLateAcked, pe.predictionEpoch, pe.confirmedEpoch)
 
 		switch k {
-		// case 1:
-		// 	// validate the confirmedEpoch is right
-		// 	confirmedEpoch := pe.confirmedEpoch
-		// 	if confirmedEpoch != 2 {
-		// 		predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
-		// 		for i := range v.frame {
-		// 			predict := &(predictRow.overlayCells[v.col+i])
-		// 			if predict.active {
-		// 				t.Errorf("%q should not be active, got active=%t\n", v.name, predict.active)
-		// 			}
-		// 		}
-		// 	}
-		// case 2:
-		// 	// validate the result of killEpoch
-		// 	predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
-		// 	for i := range v.frame {
-		// 		predict := &(predictRow.overlayCells[v.col+i])
-		// 		if predict.active {
-		// 			t.Errorf("%q should not be active, got active=%t\n", v.name, predict.active)
-		// 		}
-		// 	}
-		// case 3:
-		// 	// validate the result of cell reset2
-		// 	predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
-		// 	for i := range v.frame {
-		// 		predict := &(predictRow.overlayCells[v.col+i])
-		// 		if predict.active {
-		// 			t.Errorf("%q should not be active, got active=%t\n", v.name, predict.active)
-		// 		}
-		// 	}
-
+		case 1:
+			// validate the result of killEpoch
+			if len(pe.overlays) == 1 && len(pe.cursors) == 0 {
+				// after killEpoch, cull() remove the last cursor because it's correct
+				break
+			} else {
+				t.Errorf("%q should call killEpoch. got overlays=%d, cursors=%d\n", v.name, len(pe.overlays), len(pe.cursors))
+			}
+		case 2, 4:
+			// validate the result of cell reset2
+			predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
+			for i := range v.frame {
+				predict := &(predictRow.overlayCells[v.col+i])
+				if predict.active {
+					t.Errorf("%q should not be active, got active=%t\n", v.name, predict.active)
+				}
+			}
+		case 3:
+			fallthrough
 		default:
+			// validate pe.reset()
+			if len(pe.overlays) != 0 || len(pe.cursors) != 0 {
+				t.Errorf("%s the engine should be reset. got overlays=%d, cursors=%d\n", v.name, len(pe.overlays), len(pe.cursors))
+			}
 		}
 	}
 }
