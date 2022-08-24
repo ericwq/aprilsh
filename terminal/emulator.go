@@ -612,6 +612,18 @@ func (emu *Emulator) GetRenditions() (rnd Renditions) {
 	return emu.attrs.renditions
 }
 
+func (emu *Emulator) PrefixWindowTitle(prefix string) {
+	emu.cf.PrefixWindowTitle(prefix)
+}
+
+func (emu *Emulator) GetWindowTitle() string {
+	return emu.cf.GetWindowTitle()
+}
+
+func (emu *Emulator) GetIconName() string {
+	return emu.cf.GetIconName()
+}
+
 /*
 func (e *emulator) CSIdispatch(act Action) {
 	e.dispatcher.dispatch(DISPATCH_CSI, act, &e.framebuffer)

@@ -327,11 +327,11 @@ type PredictionEngine struct {
 	localFrameSent        int64
 	localFrameAcked       int64
 	localFrameLateAcked   int64
-	predictionEpoch       int64
-	confirmedEpoch        int64
-	flagging              bool // whether we are underlining predictions
-	srttTrigger           bool // show predictions because of slow round trip time
-	glitchTrigger         int  // show predictions temporarily because of long-pending prediction
+	predictionEpoch       int64 // becomeTentative update predictionEpoch
+	confirmedEpoch        int64 // only Correct validity update confirmedEpoch
+	flagging              bool  // whether we are underlining predictions
+	srttTrigger           bool  // show predictions because of slow round trip time
+	glitchTrigger         int   // show predictions temporarily because of long-pending prediction
 	lastQuickConfirmation int64
 	sendInterval          int
 	lastWidth             int
@@ -999,4 +999,17 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 	pe.cursors = cursors
 
 	// fmt.Printf("cull # cursor prediction size=%d.\n", len(pe.cursors))
+}
+
+type TitleEngine struct {
+	prefix string
+}
+
+func (te *TitleEngine) setPrefix(v string) {
+	te.prefix = v
+}
+
+// apply the window title with the prefix
+func (te *TitleEngine) apply(emu *terminal.Emulator) {
+	emu.PrefixWindowTitle(te.prefix)
 }

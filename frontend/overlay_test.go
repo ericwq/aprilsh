@@ -673,7 +673,7 @@ func TestPredictionCull(t *testing.T) {
 			pe.newUserInput(emu, v.predict)
 		case 11:
 			pe.reset()                             // clear the previous rows
-			pe.getOrMakeRow(v.row, emu.GetWidth()) // add a illegal row
+			pe.getOrMakeRow(v.row, emu.GetWidth()) // add the illegal row
 		case 12:
 			now := time.Now().UnixMilli()
 			for _, ch := range v.predict {
@@ -753,6 +753,31 @@ func TestPredictionCull(t *testing.T) {
 			if len(pe.overlays) != 0 || len(pe.cursors) != 0 {
 				t.Errorf("%s the engine should be reset. got overlays=%d, cursors=%d\n", v.name, len(pe.overlays), len(pe.cursors))
 			}
+		}
+	}
+}
+
+func TestTitleEngine(t *testing.T) {
+	tc := []struct {
+		name   string
+		prefix string
+		result string
+	}{
+		{"english title", "english", "english"},
+	}
+	te := TitleEngine{}
+	emu := terminal.NewEmulator3(80, 40, 40)
+	for _, v := range tc {
+		te.setPrefix(v.prefix)
+		te.apply(emu)
+
+		got := emu.GetWindowTitle()
+		if v.result != got {
+			t.Errorf("%q window title expect %q, got %q\n", v.name, v.result, got)
+		}
+		got = emu.GetIconName()
+		if v.result != got {
+			t.Errorf("%q icon name expect %q, got %q\n", v.name, v.result, got)
 		}
 	}
 }
