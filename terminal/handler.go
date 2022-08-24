@@ -639,7 +639,7 @@ func hdl_csi_cbt(emu *Emulator, count int) {
 func hdl_csi_ich(emu *Emulator, arg int) {
 	if emu.isCursorInsideMargins() {
 		length := emu.nColsEff - emu.posX
-		arg = min(arg, length)
+		arg = Min(arg, length)
 		length -= arg
 
 		if emu.cf.getCell(emu.posY, emu.posX+arg+length-1).wrap {
@@ -709,7 +709,7 @@ func hdl_csi_el(emu *Emulator, cmd int) {
 // insert N lines in cursor position
 func hdl_csi_il(emu *Emulator, lines int) {
 	if emu.isCursorInsideMargins() {
-		lines = min(lines, emu.marginBottom-emu.posY)
+		lines = Min(lines, emu.marginBottom-emu.posY)
 		emu.insertRows(emu.posY, lines)
 		hdl_c0_cr(emu)
 	}
@@ -719,7 +719,7 @@ func hdl_csi_il(emu *Emulator, lines int) {
 // delete N lines in cursor position
 func hdl_csi_dl(emu *Emulator, lines int) {
 	if emu.isCursorInsideMargins() {
-		lines = min(lines, emu.marginBottom-emu.posY)
+		lines = Min(lines, emu.marginBottom-emu.posY)
 		emu.deleteRows(emu.posY, lines)
 		hdl_c0_cr(emu)
 	}
@@ -729,7 +729,7 @@ func hdl_csi_dl(emu *Emulator, lines int) {
 func hdl_csi_dch(emu *Emulator, arg int) {
 	if emu.isCursorInsideMargins() {
 		length := emu.nColsEff - emu.posX
-		arg = min(arg, length)
+		arg = Min(arg, length)
 		length -= arg
 
 		emu.cf.moveInRow(emu.posY, emu.posX, emu.posX+arg, length)
@@ -741,7 +741,7 @@ func hdl_csi_dch(emu *Emulator, arg int) {
 // CSI Ps S  Scroll up Ps lines (default = 1) (SU), VT420, ECMA-48.
 func hdl_csi_su(emu *Emulator, arg int) {
 	if emu.horizMarginMode {
-		arg = min(arg, emu.marginBottom-emu.marginTop)
+		arg = Min(arg, emu.marginBottom-emu.marginTop)
 		emu.deleteRows(emu.marginTop, arg)
 	} else {
 		emu.cf.scrollUp(arg)
@@ -753,7 +753,7 @@ func hdl_csi_su(emu *Emulator, arg int) {
 // CSI Ps T  Scroll down Ps lines (default = 1) (SD), VT420.
 func hdl_csi_sd(emu *Emulator, arg int) {
 	if emu.horizMarginMode {
-		arg = min(arg, emu.marginBottom-emu.marginTop)
+		arg = Min(arg, emu.marginBottom-emu.marginTop)
 		emu.insertRows(emu.marginTop, arg)
 	} else {
 		emu.cf.scrollDown(arg)
@@ -772,7 +772,7 @@ func hdl_csi_sd(emu *Emulator, arg int) {
 // CSI Ps X  Erase Ps Character(s) (default = 1) (ECH).
 func hdl_csi_ech(emu *Emulator, arg int) {
 	length := emu.nColsEff - emu.posX
-	arg = min(arg, length)
+	arg = Min(arg, length)
 
 	emu.cf.eraseInRow(emu.posY, emu.posX, arg, emu.attrs)
 	emu.lastCol = false
@@ -802,7 +802,7 @@ func hdl_csi_secDA(emu *Emulator) {
 // CSI Ps d  Line Position Absolute  [row] (default = [1,column]) (VPA).
 // Move cursor to line Pn.
 func hdl_csi_vpa(emu *Emulator, row int) {
-	row = max(1, min(row, emu.nRows))
+	row = Max(1, Min(row, emu.nRows))
 	emu.posY = row - 1
 	emu.lastCol = false
 }
@@ -811,7 +811,7 @@ func hdl_csi_vpa(emu *Emulator, row int) {
 // Move cursor to the n-th line relative to active row
 func hdl_csi_vpr(emu *Emulator, row int) {
 	row += emu.posY + 1
-	row = max(1, min(row, emu.nRows))
+	row = Max(1, Min(row, emu.nRows))
 	emu.posY = row - 1
 	emu.lastCol = false
 }
@@ -819,7 +819,7 @@ func hdl_csi_vpr(emu *Emulator, row int) {
 // Move the active position to the n-th character of the active line.
 // CSI Ps G  Cursor Character Absolute  [column] (default = [row,1]) (CHA).
 func hdl_csi_cha(emu *Emulator, count int) {
-	count = max(1, min(count, emu.nCols))
+	count = Max(1, Min(count, emu.nCols))
 	emu.posX = count - 1
 	emu.lastCol = false
 }
@@ -840,9 +840,9 @@ func hdl_csi_hpr(emu *Emulator, arg int) {
 // CSI Ps A  Cursor Up Ps Times (default = 1) (CUU).
 func hdl_csi_cuu(emu *Emulator, num int) {
 	if emu.posY >= emu.marginTop {
-		num = min(num, emu.posY-emu.marginTop)
+		num = Min(num, emu.posY-emu.marginTop)
 	} else {
-		num = min(num, emu.posY)
+		num = Min(num, emu.posY)
 	}
 	emu.posY -= num
 	emu.lastCol = false
@@ -851,9 +851,9 @@ func hdl_csi_cuu(emu *Emulator, num int) {
 // CSI Ps B  Cursor Down Ps Times (default = 1) (CUD).
 func hdl_csi_cud(emu *Emulator, num int) {
 	if emu.posY < emu.marginBottom {
-		num = min(num, emu.marginBottom-emu.posY-1)
+		num = Min(num, emu.marginBottom-emu.posY-1)
 	} else {
-		num = min(num, emu.nRows-emu.posY-1)
+		num = Min(num, emu.nRows-emu.posY-1)
 	}
 	emu.posY += num
 	emu.lastCol = false
@@ -861,7 +861,7 @@ func hdl_csi_cud(emu *Emulator, num int) {
 
 // CSI Ps C  Cursor Forward Ps Times (default = 1) (CUF).
 func hdl_csi_cuf(emu *Emulator, num int) {
-	num = min(num, emu.nColsEff-emu.posX-1)
+	num = Min(num, emu.nColsEff-emu.posX-1)
 	emu.posX += num
 	emu.lastCol = false
 }
@@ -869,12 +869,12 @@ func hdl_csi_cuf(emu *Emulator, num int) {
 // CSI Ps D  Cursor Backward Ps Times (default = 1) (CUB).
 func hdl_csi_cub(emu *Emulator, num int) {
 	if emu.posX >= emu.hMargin {
-		num = min(num, emu.posX-emu.hMargin)
+		num = Min(num, emu.posX-emu.hMargin)
 	} else {
-		num = min(num, emu.posX)
+		num = Min(num, emu.posX)
 	}
 	if emu.posX == emu.nColsEff {
-		num = min(num+1, emu.posX)
+		num = Min(num+1, emu.posX)
 	}
 	emu.posX -= num
 	emu.lastCol = false
@@ -884,12 +884,12 @@ func hdl_csi_cub(emu *Emulator, num int) {
 func hdl_csi_cup(emu *Emulator, row int, col int) {
 	switch emu.originMode {
 	case OriginMode_Absolute:
-		row = max(1, min(row, emu.nRows)) - 1
+		row = Max(1, Min(row, emu.nRows)) - 1
 	case OriginMode_ScrollingRegion:
-		row = max(1, min(row, emu.marginBottom)) - 1
+		row = Max(1, Min(row, emu.marginBottom)) - 1
 		row += emu.marginTop
 	}
-	col = max(1, min(col, emu.nCols)) - 1
+	col = Max(1, Min(col, emu.nCols)) - 1
 
 	emu.posX = col
 	emu.posY = row
@@ -1673,7 +1673,7 @@ func sclCompatLevel(Pl int) (rcl CompatibilityLevel) {
 //	Insert Ps Column(s) (default = 1) (DECIC), VT420 and up.
 func hdl_csi_decic(emu *Emulator, num int) {
 	if emu.isCursorInsideMargins() {
-		num = min(num, emu.nColsEff-emu.posX)
+		num = Min(num, emu.nColsEff-emu.posX)
 		emu.insertCols(emu.posX, num)
 	}
 }
@@ -1683,7 +1683,7 @@ func hdl_csi_decic(emu *Emulator, num int) {
 //	Delete Ps Column(s) (default = 1) (DECDC), VT420 and up.
 func hdl_csi_decdc(emu *Emulator, num int) {
 	if emu.isCursorInsideMargins() {
-		num = min(num, emu.nColsEff-emu.posX)
+		num = Min(num, emu.nColsEff-emu.posX)
 		emu.deleteCols(emu.posX, num)
 	}
 }
@@ -1692,7 +1692,7 @@ func hdl_csi_decdc(emu *Emulator, num int) {
 //
 //	Shift left Ps columns(s) (default = 1) (SL), ECMA-48.
 func hdl_csi_ecma48_SL(emu *Emulator, arg int) {
-	arg = min(arg, emu.nColsEff-emu.hMargin)
+	arg = Min(arg, emu.nColsEff-emu.hMargin)
 	emu.deleteCols(emu.hMargin, arg)
 }
 
@@ -1700,7 +1700,7 @@ func hdl_csi_ecma48_SL(emu *Emulator, arg int) {
 //
 //	Shift right Ps columns(s) (default = 1) (SR), ECMA-48.
 func hdl_csi_ecma48_SR(emu *Emulator, arg int) {
-	arg = min(arg, emu.nColsEff-emu.hMargin)
+	arg = Min(arg, emu.nColsEff-emu.hMargin)
 	emu.insertCols(emu.hMargin, arg)
 }
 

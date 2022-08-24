@@ -126,20 +126,20 @@ func (dmg *Damage) add(start, end int) {
 		dmg.start = start
 		dmg.end = end
 	} else {
-		dmg.start = min(dmg.start, start)
-		dmg.end = max(dmg.end, end)
+		dmg.start = Min(dmg.start, start)
+		dmg.end = Max(dmg.end, end)
 	}
 	// fmt.Printf("Damage.add start=%d, end=%d\n", dmg.start, dmg.end)
 }
 
-func min(x, y int) int {
+func Min(x, y int) int {
 	if x < y {
 		return x
 	}
 	return y
 }
 
-func max(x, y int) int {
+func Max(x, y int) int {
 	if x > y {
 		return x
 	}

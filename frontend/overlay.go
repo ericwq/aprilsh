@@ -27,6 +27,7 @@ SOFTWARE.
 package frontend
 
 import (
+	"math"
 	"time"
 
 	"github.com/ericwq/aprilsh/terminal"
@@ -1012,4 +1013,97 @@ func (te *TitleEngine) setPrefix(v string) {
 // apply the window title with the prefix
 func (te *TitleEngine) apply(emu *terminal.Emulator) {
 	emu.PrefixWindowTitle(te.prefix)
+}
+
+type NotificationEngine struct {
+	lastWordFromServer    int64
+	lastAckedState        int64
+	escapeKeyString       string
+	message               string
+	messageIsNetworkError bool
+	messageExpiration     int64
+	showQuitKeystroke     bool
+}
+
+func NewNotificationEngien() *NotificationEngine {
+	ne := &(NotificationEngine{})
+	ne.lastWordFromServer = time.Now().UnixMilli()
+	ne.lastAckedState = time.Now().UnixMilli()
+	ne.messageIsNetworkError = false
+	ne.messageExpiration = -1
+	ne.showQuitKeystroke = true
+	return ne
+}
+
+func (ne *NotificationEngine) serverLate(ts int64) bool {
+	return ts-ne.lastWordFromServer > 65000
+}
+
+func (ne *NotificationEngine) replyLate(ts int64) bool {
+	return ts-ne.lastAckedState > 10000
+}
+
+func (ne *NotificationEngine) needCountup(ts int64) bool {
+	return ne.serverLate(ts) || ne.replyLate(ts)
+}
+
+func (ne *NotificationEngine) adjustMessage() {
+	if time.Now().UnixMilli() >= ne.messageExpiration {
+		ne.message = ""
+	}
+}
+
+func (ne *NotificationEngine) apply(emu *terminal.Emulator) {
+	// TODO add implementation
+}
+
+func (ne *NotificationEngine) getNotificationString() string {
+	return ne.message
+}
+
+func (ne *NotificationEngine) serverHeard(ts int64) {
+	ne.lastWordFromServer = ts
+}
+
+func (ne *NotificationEngine) serverAcked(ts int64) {
+	ne.lastAckedState = ts
+}
+
+const (
+	SEND_INTERVAL_MIN    = 20    /* ms between frames */
+	SEND_INTERVAL_MAX    = 250   /* ms between frames */
+	ACK_INTERVAL         = 3000  /* ms between empty acks */
+	ACK_DELAY            = 100   /* ms before delayed ack */
+	SHUTDOWN_RETRIES     = 16    /* number of shutdown packets to send before giving up */
+	ACTIVE_RETRY_TIMEOUT = 10000 /* attempt to resend at frame rate */
+)
+
+func (ne *NotificationEngine) waitTime() int {
+	nextExpiry := math.MaxInt
+	now := time.Now().UnixMilli()
+
+	nextExpiry = terminal.Min(nextExpiry, int(ne.messageExpiration-now))
+
+	if ne.needCountup(now) {
+		countupInterval := 1000
+		if now-ne.lastWordFromServer > 60000 {
+			// If we've been disconnected for 60 seconds, save power by updating the display less often.
+			countupInterval = ACK_INTERVAL
+		}
+		nextExpiry = terminal.Min(nextExpiry, countupInterval)
+	}
+	return nextExpiry
+}
+
+// default parameters: permanent = false, showQuitKeystroke = true
+func (ne *NotificationEngine) setNotificationString(message string, permanent bool, showQuitKeystroke bool) {
+	ne.message = message
+	if permanent {
+		ne.messageExpiration = -1
+	} else {
+		ne.messageExpiration = time.Now().UnixMilli() + 1000
+	}
+
+	ne.messageIsNetworkError = false
+	ne.showQuitKeystroke = showQuitKeystroke
 }

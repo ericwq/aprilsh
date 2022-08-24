@@ -17,13 +17,13 @@ func TestMinMax(t *testing.T) {
 
 	for _, v := range tc {
 		if v.min {
-			got := min(v.values[0], v.values[1])
+			got := Min(v.values[0], v.values[1])
 			expect := v.values[2]
 			if got != expect {
 				t.Errorf("%s expect min(%d,%d)=%d, got %d\n", v.name, v.values[0], v.values[1], expect, got)
 			}
 		} else {
-			got := max(v.values[0], v.values[1])
+			got := Max(v.values[0], v.values[1])
 			expect := v.values[2]
 			if got != expect {
 				t.Errorf("%s expect max(%d,%d)=%d, got %d\n", v.name, v.values[0], v.values[1], expect, got)

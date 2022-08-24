@@ -142,8 +142,8 @@ func (fb *Framebuffer) resize(nCols, nRows int) (marginTop, marginBottom int) {
 	// TODO the defalt constructor of Cell set the contents field to ""
 	newCells := make([]Cell, nCols*(nRows+fb.saveLines))
 
-	rowLen := min(fb.nCols, nCols)    // minimal row length
-	nCopyRows := min(fb.nRows, nRows) // minimal row number
+	rowLen := Min(fb.nCols, nCols)    // minimal row length
+	nCopyRows := Min(fb.nRows, nRows) // minimal row number
 
 	// copy the active area
 	for pY := 0; pY < nCopyRows; pY++ {
@@ -250,7 +250,7 @@ func (fb *Framebuffer) setCursorStyle(cs CursorStyle) {
 
 // text up, screen down count rows
 func (fb *Framebuffer) pageUp(count int) {
-	viewOffset := min(fb.viewOffset+count, fb.historyRows)
+	viewOffset := Min(fb.viewOffset+count, fb.historyRows)
 	delta := viewOffset - fb.viewOffset
 	fb.cursor.posY += delta
 	fb.selection.br.y += delta
@@ -261,7 +261,7 @@ func (fb *Framebuffer) pageUp(count int) {
 
 // text down, screen up count rows
 func (fb *Framebuffer) pageDown(count int) {
-	viewOffset := max(0, fb.viewOffset-count)
+	viewOffset := Max(0, fb.viewOffset-count)
 	delta := viewOffset - fb.viewOffset
 	fb.cursor.posY += delta
 	fb.selection.br.y += delta
@@ -293,7 +293,7 @@ func (fb *Framebuffer) scrollUp(count int) {
 			fb.scrollHead = fb.marginTop
 		}
 	}
-	fb.historyRows = min(fb.historyRows+count, fb.saveLines)
+	fb.historyRows = Min(fb.historyRows+count, fb.saveLines)
 	fb.damage.add(fb.marginTop*fb.nCols, fb.marginBottom*fb.nCols)
 }
 
@@ -308,7 +308,7 @@ func (fb *Framebuffer) scrollDown(count int) {
 			fb.scrollHead = fb.marginBottom - 1
 		}
 	}
-	fb.historyRows = max(0, fb.historyRows-count)
+	fb.historyRows = Max(0, fb.historyRows-count)
 	fb.damage.add(fb.marginTop*fb.nCols, fb.marginBottom*fb.nCols)
 }
 
