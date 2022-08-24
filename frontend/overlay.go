@@ -27,11 +27,13 @@ SOFTWARE.
 package frontend
 
 import (
+	"fmt"
 	"math"
 	"time"
 
 	"github.com/ericwq/aprilsh/terminal"
 	"github.com/rivo/uniseg"
+	"golang.org/x/exp/constraints"
 )
 
 type (
@@ -1055,6 +1057,11 @@ func (ne *NotificationEngine) adjustMessage() {
 
 func (ne *NotificationEngine) apply(emu *terminal.Emulator) {
 	// TODO add implementation
+	now := time.Now().UnixMilli()
+	timeExpired := ne.needCountup(now)
+
+	if len(ne.message) == 0 && !timeExpired {
+	}
 }
 
 func (ne *NotificationEngine) getNotificationString() string {
@@ -1082,7 +1089,7 @@ func (ne *NotificationEngine) waitTime() int {
 	nextExpiry := math.MaxInt
 	now := time.Now().UnixMilli()
 
-	nextExpiry = terminal.Min(nextExpiry, int(ne.messageExpiration-now))
+	nextExpiry = min(nextExpiry, int(ne.messageExpiration-now))
 
 	if ne.needCountup(now) {
 		countupInterval := 1000
@@ -1090,7 +1097,7 @@ func (ne *NotificationEngine) waitTime() int {
 			// If we've been disconnected for 60 seconds, save power by updating the display less often.
 			countupInterval = ACK_INTERVAL
 		}
-		nextExpiry = terminal.Min(nextExpiry, countupInterval)
+		nextExpiry = min(nextExpiry, countupInterval)
 	}
 	return nextExpiry
 }
@@ -1106,4 +1113,27 @@ func (ne *NotificationEngine) setNotificationString(message string, permanent bo
 
 	ne.messageIsNetworkError = false
 	ne.showQuitKeystroke = showQuitKeystroke
+}
+
+func (ne *NotificationEngine) setEscapeKeyString(str string) {
+	ne.escapeKeyString = fmt.Sprintf(" [To quit: %s .]", str)
+}
+
+func (ne *NotificationEngine) setNetworkError(str string) {
+	ne.message = str
+	ne.messageIsNetworkError = true
+	ne.messageExpiration = time.Now().UnixMilli() + ACK_INTERVAL + 100
+}
+
+func (ne *NotificationEngine) clearNetworkError() {
+	if ne.messageIsNetworkError {
+		ne.messageExpiration = min(ne.messageExpiration, time.Now().UnixMilli()+1000)
+	}
+}
+
+func min[T constraints.Ordered](x, y T) T {
+	if x < y {
+		return x
+	}
+	return y
 }
