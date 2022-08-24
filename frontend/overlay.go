@@ -27,7 +27,6 @@ SOFTWARE.
 package frontend
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/ericwq/aprilsh/terminal"
@@ -352,9 +351,9 @@ func NewPredictionEngine() *PredictionEngine {
 	return &pe
 }
 
-// func (pe *PredictionEngine) SetSendInterval(value int) {
-// 	pe.sendInterval = value
-// }
+func (pe *PredictionEngine) SetSendInterval(value int) {
+	pe.sendInterval = value
+}
 
 func (pe *PredictionEngine) SetLocalFrameSent(v int64) {
 	pe.localFrameSent = v
@@ -434,6 +433,7 @@ func (pe *PredictionEngine) reset() {
 	pe.cursors = make([]ConditionalCursorMove, 0)
 	pe.overlays = make([]ConditionalOverlayRow, 0)
 	pe.becomeTentative()
+	// fmt.Println("reset #clear cursors and overlays")
 }
 
 // delay the prediction epoch to next time
@@ -829,6 +829,13 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 		return
 	}
 
+	// var x strings.Builder
+	// fmt.Fprintf(&x, "cull # cell prediction overlays=%d ", len(pe.overlays))
+	// for i := range pe.overlays {
+	// 	fmt.Fprintf(&x, "row=%d ", pe.overlays[i].rowNum)
+	// }
+	// fmt.Println(x.String())
+
 	if pe.lastHeight != emu.GetHeight() || pe.lastWidth != emu.GetWidth() {
 		pe.lastHeight = emu.GetHeight()
 		pe.lastWidth = emu.GetWidth()
@@ -845,6 +852,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 		// second condition: 20 ms is current minimum value
 		// third condition: only turn off when no predictions being shown
 		pe.srttTrigger = false
+		// fmt.Printf("cull #srttTrigger=%t\n", pe.srttTrigger)
 	}
 
 	// control underlining with hysteresis
@@ -852,11 +860,13 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 		pe.flagging = true
 	} else if pe.sendInterval <= FLAG_TRIGGER_LOW {
 		pe.flagging = false
+		// fmt.Printf("cull #flagging=%t FLAG_TRIGGER_LOW\n", pe.flagging)
 	}
 
 	// really big glitches also activate underlining
 	if pe.glitchTrigger > GLITCH_REPAIR_COUNT {
 		pe.flagging = true
+		// fmt.Printf("cull #flagging=%t, glitchTrigger=%d GLITCH_REPAIR_COUNT\n", pe.flagging, pe.glitchTrigger)
 	}
 
 	// go through cell predictions
@@ -864,6 +874,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 	for i := 0; i < len(pe.overlays); i++ {
 		if pe.overlays[i].rowNum < 0 || pe.overlays[i].rowNum >= emu.GetHeight() {
 			// skip/erase this row if it's out of scope.
+			// fmt.Printf("cull #erase row=%d\n", pe.overlays[i].rowNum)
 			continue
 		} else {
 			overlays = append(overlays, pe.overlays[i])
@@ -883,7 +894,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 				// fmt.Printf("cull #IncorrectOrExpired cell (%d,%d) tentativeUntilEpoch=%d, confirmedEpoch=%d\n",
 				// 	pe.overlays[i].rowNum, j, cell.tentativeUntilEpoch, pe.confirmedEpoch)
 				if cell.tentative(pe.confirmedEpoch) {
-					// fmt.Printf("Bad tentative prediction in row %d, col %d (think %s, actually %s)\n",
+					// fmt.Printf("Bad tentative prediction in (%d,%d) (think %s, actually %s)\n",
 					// 	pe.overlays[i].rowNum, cell.col, cell.replacement, emu.GetCell(pe.overlays[i].rowNum, cell.col))
 					if pe.displayPreference == Experimental {
 						cell.reset2()
@@ -916,12 +927,12 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 				// fmt.Printf("cull #Correct glitchTrigger=%d, now=%d, predictionTime=%d, now-cell.predictionTime=%d\n",
 				// 	pe.glitchTrigger, now, cell.predictionTime, now-cell.predictionTime)
 				if now-cell.predictionTime < GLITCH_THRESHOLD {
-					// fmt.Printf("cull #Correct now-GLITCH_REPAIR_MININTERVAL=%d, pe.lastQuickConfirmation=%d \n",
-					// 	now-GLITCH_REPAIR_MININTERVAL, pe.lastQuickConfirmation)
 					if pe.glitchTrigger > 0 && now-GLITCH_REPAIR_MININTERVAL >= pe.lastQuickConfirmation {
 						pe.glitchTrigger--
 						pe.lastQuickConfirmation = now
 					}
+					// fmt.Printf("cull #Correct glitchTrigger=%d, now-GLITCH_REPAIR_MININTERVAL=%d, pe.lastQuickConfirmation=%d, cond=%t \n",
+					// 	pe.glitchTrigger, now-GLITCH_REPAIR_MININTERVAL, pe.lastQuickConfirmation, now-GLITCH_REPAIR_MININTERVAL >= pe.lastQuickConfirmation)
 				}
 
 				// match rest of row to the actual renditions
@@ -941,11 +952,11 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 				// activate the predictions even if SRTT is low
 				gap := (now - cell.predictionTime)
 				if gap >= GLITCH_FLAG_THRESHOLD {
-					fmt.Printf("cull #Pending (%d,%d) gap=%d > 5000\n", pe.overlays[i].rowNum, cell.col, gap)
+					// fmt.Printf("cull #Pending (%d,%d) gap=%d > 5000\n", pe.overlays[i].rowNum, cell.col, gap)
 					pe.glitchTrigger = GLITCH_REPAIR_COUNT * 2 // display and underline
 				} else if gap >= GLITCH_THRESHOLD && pe.glitchTrigger < GLITCH_REPAIR_COUNT {
-					fmt.Printf("cull #Pending (%d,%d) gap=%d > 250, tentativeUntilEpoch=%d, confirmedEpoch=%d\n",
-						pe.overlays[i].rowNum, cell.col, gap, cell.tentativeUntilEpoch, pe.confirmedEpoch)
+					// fmt.Printf("cull #Pending (%d,%d) gap=%d > 250, glitchTrigger=%d, tentativeUntilEpoch=%d, confirmedEpoch=%d\n",
+					// 	pe.overlays[i].rowNum, cell.col, gap, GLITCH_REPAIR_COUNT, cell.tentativeUntilEpoch, pe.confirmedEpoch)
 					pe.glitchTrigger = GLITCH_REPAIR_COUNT // just display
 				}
 			default:
