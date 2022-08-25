@@ -763,7 +763,8 @@ func TestTitleEngine(t *testing.T) {
 		prefix string
 		result string
 	}{
-		{"english title", "english", "english"},
+		{"english title", " - aprish", " - aprish"},
+		{"chinese title", "终端模拟器", "终端模拟器 - aprish"},
 	}
 	te := TitleEngine{}
 	emu := terminal.NewEmulator3(80, 40, 40)

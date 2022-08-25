@@ -379,6 +379,17 @@ func (pe *PredictionEngine) cursor() *ConditionalCursorMove {
 	return &(pe.cursors[len(pe.cursors)-1])
 }
 
+func (pe *PredictionEngine) timingTestsNecessary() bool {
+	return !(pe.glitchTrigger > 0 && pe.flagging)
+}
+
+func (pe *PredictionEngine) waitTime() int {
+	if pe.timingTestsNecessary() && pe.active() {
+		return 50
+	}
+	return math.MaxInt
+}
+
 // predict cursor move based on current cursor or initialize new cursor prediction with last
 // cursor position. for the same epoch, just return the current prediction cursor position.
 func (pe *PredictionEngine) initCursor(emu *terminal.Emulator) {
@@ -1057,7 +1068,6 @@ func (ne *NotificationEngine) adjustMessage() {
 }
 
 func (ne *NotificationEngine) apply(emu *terminal.Emulator) {
-	// TODO add implementation
 	now := time.Now().UnixMilli()
 	timeExpired := ne.needCountup(now)
 
@@ -1206,4 +1216,44 @@ func min[T constraints.Ordered](x, y T) T {
 		return x
 	}
 	return y
+}
+
+type OverlayManager struct {
+	notifications NotificationEngine
+	predictions   PredictionEngine
+	title         TitleEngine
+}
+
+func NewOverlayManager() *OverlayManager {
+	om := new(OverlayManager)
+	om.predictions = *NewPredictionEngine()
+	om.notifications = *NewNotificationEngien()
+	om.title = TitleEngine{}
+	return om
+}
+
+func (om *OverlayManager) getNotificationEngine() *NotificationEngine {
+	return &om.notifications
+}
+
+func (om *OverlayManager) getPredictionEngine() *PredictionEngine {
+	return &om.predictions
+}
+
+func (om *OverlayManager) setTitlePrefix(v string) {
+	om.title.setPrefix(v)
+}
+
+func (om *OverlayManager) waitTime() int {
+	return min(om.notifications.waitTime(), om.predictions.waitTime())
+}
+
+func (om *OverlayManager) apply(emu *terminal.Emulator) {
+	om.predictions.cull(emu)
+	om.predictions.apply(emu)
+
+	om.notifications.adjustMessage()
+	om.notifications.apply(emu)
+
+	om.title.apply(emu)
 }
