@@ -1070,6 +1070,8 @@ func (ne *NotificationEngine) adjustMessage() {
 func (ne *NotificationEngine) apply(emu *terminal.Emulator) {
 	now := time.Now().UnixMilli()
 	timeExpired := ne.needCountup(now)
+	// fmt.Printf("notifications\t  #apply timeExpired=%t, replyLate=%t, serverLate=%t, message=%d\n",
+		// timeExpired, ne.replyLate(now), ne.serverLate(now), len(ne.message))
 
 	if len(ne.message) == 0 && !timeExpired {
 		return
@@ -1115,13 +1117,14 @@ func (ne *NotificationEngine) apply(emu *terminal.Emulator) {
 	}
 
 	var stringToDraw strings.Builder
-	if len(ne.message) == 0 && !timeExpired {
-		return
-	} else if len(ne.message) == 0 && timeExpired {
+	// if len(ne.message) == 0 && !timeExpired {
+	// 	return
+	// } else
+	if len(ne.message) == 0 && timeExpired {
 		fmt.Fprintf(&stringToDraw, "aprish: Last %s %s ago.%s", explanation,
 			humanReadableDuration(int(timeElapsed), "seconds"), keystrokeStr)
 	} else if len(ne.message) != 0 && !timeExpired {
-		fmt.Fprintf(&stringToDraw, "aprish: %s %s", ne.message, keystrokeStr)
+		fmt.Fprintf(&stringToDraw, "aprish: %s%s", ne.message, keystrokeStr)
 	} else {
 		fmt.Fprintf(&stringToDraw, "aprish: %s (%s without %s.)%s", ne.message,
 			humanReadableDuration(int(timeElapsed), "s"), explanation, keystrokeStr)
@@ -1206,6 +1209,7 @@ func (ne *NotificationEngine) setNetworkError(str string) {
 }
 
 func (ne *NotificationEngine) clearNetworkError() {
+	// fmt.Printf("clearNetworkError #debug messageIsNetworkError=%t\n", ne.messageIsNetworkError)
 	if ne.messageIsNetworkError {
 		ne.messageExpiration = min(ne.messageExpiration, time.Now().UnixMilli()+1000)
 	}

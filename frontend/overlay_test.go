@@ -28,6 +28,7 @@ package frontend
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -256,14 +257,6 @@ func TestPredictionNewUserInput(t *testing.T) {
 		// set the base content
 		emu.MoveCursor(v.row, v.col)
 		emu.HandleStream(v.base)
-
-		// if k == 9 {
-		// 	fmt.Println("k==9")
-		// 	for i := 0; i < len(v.base); i++ {
-		// 		cell := emu.GetCell(v.row, v.col+i)
-		// 		fmt.Printf("cell (%d,%d) is %q dw=%t, dwcont=%t\n", v.row, v.col+i, cell, cell.IsDoubleWidth(), cell.IsDoubleWidthCont())
-		// 	}
-		// }
 
 		// set the displayPreference field
 		pe.displayPreference = v.displayPreference
@@ -780,5 +773,132 @@ func TestTitleEngine(t *testing.T) {
 		if v.result != got {
 			t.Errorf("%q icon name expect %q, got %q\n", v.name, v.result, got)
 		}
+	}
+}
+
+func TestNotificationEngine(t *testing.T) {
+	tc := []struct {
+		name                  string
+		permanent             bool
+		lastWordFromServer    int64 // delta value based on now
+		lastAckedState        int64 // delta value base on now
+		message               string
+		escapeKeyString       string
+		messageIsNetworkError bool
+		showQuitKeystroke     bool
+		result                string
+	}{
+		{"no message, no expire", false, 60, 80, "", "Ctrl-z", false, true, ""},
+		{
+			"english message, no expire", false, 60, 80, "hello world", "Ctrl-z", false, true,
+			"aprish: hello world [To quit: Ctrl-z .]",
+		},
+		{"chinese message, no expire", true, 60, 80, "你好世界", "Ctrl-z", false, false, "aprish: 你好世界"},
+		{
+			"server late", true, 65001, 80, "你好世界", "Ctrl-z", false, false,
+			"aprish: 你好世界 (1:05 without contact.)",
+		},
+		{
+			"reply late", false, 65, 10001, "aia group", "Ctrl-z", false, true,
+			"aprish: aia group (10 s without reply.) [To quit: Ctrl-z .]",
+		},
+		{
+			"no message, server late", false, 65001, 10001, "top gun 2", "Ctrl-z", false, true,
+			"aprish: top gun 2 (1:05 without contact.) [To quit: Ctrl-z .]",
+		},
+		{
+			"no message, server too late", false, 3802001, 100, "top gun 2", "Ctrl-z", false, true,
+			"aprish: top gun 2 (1:03:22 without contact.) [To quit: Ctrl-z .]",
+		},
+		{
+			"network error", false, 200, 10001, "***", "Ctrl-z", true, true,
+			"aprish: network error (10 s without reply.) [To quit: Ctrl-z .]",
+		},
+		{
+			"restore from network failure", false, 200, 20001, "restor from", "Ctrl-z", false, true,
+			"aprish: restor from (20 s without reply.) [To quit: Ctrl-z .]",
+		},
+		{
+			"no message, server late", false, 65001, 20001, "", "Ctrl-z", false, true,
+			"aprish: Last contact 1:05 ago. [To quit: Ctrl-z .]",
+		},
+	}
+
+	ne := NewNotificationEngien()
+	emu := terminal.NewEmulator3(80, 40, 40)
+	for _, v := range tc {
+		// fmt.Printf("%s start\n", v.name)
+		if !ne.messageIsNetworkError {
+			ne.setNotificationString(v.message, v.permanent, v.showQuitKeystroke)
+		}
+		ne.setEscapeKeyString(v.escapeKeyString)
+		ne.serverHeard(time.Now().UnixMilli() - v.lastWordFromServer)
+		ne.serverAcked(time.Now().UnixMilli() - v.lastAckedState)
+
+		if v.messageIsNetworkError {
+			ne.setNetworkError(v.name)
+		} else {
+			ne.clearNetworkError()
+			ne.setNotificationString(v.message, v.permanent, v.showQuitKeystroke)
+		}
+
+		ne.apply(emu)
+
+		// build the string from emulator
+		var got strings.Builder
+		for i := 0; i < emu.GetWidth(); i++ {
+			cell := emu.GetCell(0, i)
+			if cell.IsDoubleWidthCont() {
+				continue
+			}
+
+			got.WriteString(cell.GetContents())
+		}
+
+		// validate the result
+		if len(v.result) != 0 {
+			gotStr := strings.TrimSpace(got.String())
+			if gotStr != v.result {
+				t.Errorf("%q expect \n%q, got \n%q\n", v.name, v.result, gotStr)
+			}
+		}
+		// fmt.Printf("%s end\n\n", v.name)
+	}
+}
+
+func TestNotificationEngine_adjustMessage(t *testing.T) {
+	tc := []struct {
+		name              string
+		message           string
+		messageExpiration int64
+		got               string
+	}{
+		{"message expire", "message expire", 0, ""},
+		{"message ready", "message 准备好了", 20, "message 准备好了"},
+	}
+
+	ne := NewNotificationEngien()
+	// emu := terminal.NewEmulator3(80, 40, 40)
+	for _, v := range tc {
+		fmt.Printf("%s start\n", v.name)
+		ne.setNotificationString(v.message, false, false)
+
+		// validate the message string
+		if ne.getNotificationString() != v.message {
+			t.Errorf("%q expect %q, got %q\n", v.name, v.message, ne.getNotificationString())
+		}
+
+		ne.messageExpiration = time.Now().UnixMilli() + v.messageExpiration
+		ne.adjustMessage()
+
+		// validate the empty string
+		if ne.getNotificationString() != v.got {
+			t.Errorf("%q expect %q, got %q\n", v.name, v.got, ne.getNotificationString())
+		}
+		fmt.Printf("%s end\n\n", v.name)
+	}
+
+	if min(7, 8) == 8 {
+		t.Errorf("min should return %d, for min(7,8), got %d\n", 7, 8)
 	}
 }
