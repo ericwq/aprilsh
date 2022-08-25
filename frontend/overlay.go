@@ -29,6 +29,7 @@ package frontend
 import (
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/ericwq/aprilsh/terminal"
@@ -1061,7 +1062,76 @@ func (ne *NotificationEngine) apply(emu *terminal.Emulator) {
 	timeExpired := ne.needCountup(now)
 
 	if len(ne.message) == 0 && !timeExpired {
+		return
 	}
+
+	// hide cursor if necessary
+	if emu.GetCursorRow() == 0 {
+		emu.SetCursorVisible(false)
+	}
+
+	// draw bar across top of screen
+	notificationBar := &(terminal.Cell{})
+	rend := &(terminal.Renditions{})
+	rend.SetForegroundColor(7) // 37
+	rend.SetBackgroundColor(4) // 44
+	notificationBar.SetRenditions(emu.GetRenditions())
+	notificationBar.SetContents(' ')
+
+	for i := 0; i < emu.GetWidth(); i++ {
+		emu.GetMutableCell(0, i).Reset2(*notificationBar)
+	}
+
+	/* We want to prefer the "last contact" message if we simply haven't
+	   heard from the server in a while, but print the "last reply" message
+	   if the problem is uplink-only. */
+
+	sinceHeard := float64((now - ne.lastWordFromServer) / 1000.0)
+	sinceAck := float64((now - ne.lastAckedState) / 1000.0)
+	serverMessage := "contact"
+	replyMessage := "reply"
+
+	timeElapsed := sinceHeard
+	explanation := serverMessage
+
+	if ne.replyLate(now) && !ne.serverLate(now) {
+		timeElapsed = sinceAck
+		explanation = replyMessage
+	}
+
+	keystrokeStr := ""
+	if ne.showQuitKeystroke {
+		keystrokeStr = ne.escapeKeyString
+	}
+
+	var stringToDraw strings.Builder
+	if len(ne.message) == 0 && !timeExpired {
+		return
+	} else if len(ne.message) == 0 && timeExpired {
+		fmt.Fprintf(&stringToDraw, "aprish: Last %s %s ago.%s", explanation,
+			humanReadableDuration(int(timeElapsed), "seconds"), keystrokeStr)
+	} else if len(ne.message) != 0 && !timeExpired {
+		fmt.Fprintf(&stringToDraw, "aprish: %s %s", ne.message, keystrokeStr)
+	} else {
+		fmt.Fprintf(&stringToDraw, "aprish: %s (%s without %s.)%s", ne.message,
+			humanReadableDuration(int(timeElapsed), "s"), explanation, keystrokeStr)
+	}
+
+	// write message to screen buffer
+	emu.MoveCursor(0, 0)
+	emu.HandleStream(stringToDraw.String())
+}
+
+func humanReadableDuration(numSeconds int, secondsAbbr string) string {
+	var tmp strings.Builder
+	if numSeconds < 60 {
+		fmt.Fprintf(&tmp, "%d %s", numSeconds, secondsAbbr)
+	} else if numSeconds < 3600 {
+		fmt.Fprintf(&tmp, "%d:%02d", numSeconds/60, numSeconds%60)
+	} else {
+		fmt.Fprintf(&tmp, "%d:%02d:%02d", numSeconds/3600, (numSeconds/60)%60, numSeconds%60)
+	}
+	return tmp.String()
 }
 
 func (ne *NotificationEngine) getNotificationString() string {

@@ -624,6 +624,15 @@ func (emu *Emulator) GetIconName() string {
 	return emu.cf.GetIconName()
 }
 
+func (emu *Emulator) SetCursorVisible(visible bool) {
+	if !visible {
+		emu.cf.setCursorStyle(CursorStyle_Hidden)
+	} else {
+		emu.cf.setCursorStyle(CursorStyle_FillBlock)
+		// TODO keep the old style?
+	}
+}
+
 /*
 func (e *emulator) CSIdispatch(act Action) {
 	e.dispatcher.dispatch(DISPATCH_CSI, act, &e.framebuffer)
