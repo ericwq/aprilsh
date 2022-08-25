@@ -1071,7 +1071,7 @@ func (ne *NotificationEngine) apply(emu *terminal.Emulator) {
 	now := time.Now().UnixMilli()
 	timeExpired := ne.needCountup(now)
 	// fmt.Printf("notifications\t  #apply timeExpired=%t, replyLate=%t, serverLate=%t, message=%d\n",
-		// timeExpired, ne.replyLate(now), ne.serverLate(now), len(ne.message))
+	// 	timeExpired, ne.replyLate(now), ne.serverLate(now), len(ne.message))
 
 	if len(ne.message) == 0 && !timeExpired {
 		return
@@ -1098,8 +1098,8 @@ func (ne *NotificationEngine) apply(emu *terminal.Emulator) {
 	   heard from the server in a while, but print the "last reply" message
 	   if the problem is uplink-only. */
 
-	sinceHeard := float64((now - ne.lastWordFromServer) / 1000.0)
-	sinceAck := float64((now - ne.lastAckedState) / 1000.0)
+	sinceHeard := float64((now - ne.lastWordFromServer) / 1000.0) // convert millisecond to seconds
+	sinceAck := float64((now - ne.lastAckedState) / 1000.0)       // convert millisecond to seconds
 	serverMessage := "contact"
 	replyMessage := "reply"
 

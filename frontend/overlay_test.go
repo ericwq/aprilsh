@@ -871,7 +871,7 @@ func TestNotificationEngine_adjustMessage(t *testing.T) {
 		name              string
 		message           string
 		messageExpiration int64
-		got               string
+		expect            string
 	}{
 		{"message expire", "message expire", 0, ""},
 		{"message ready", "message 准备好了", 20, "message 准备好了"},
@@ -880,7 +880,6 @@ func TestNotificationEngine_adjustMessage(t *testing.T) {
 	ne := NewNotificationEngien()
 	// emu := terminal.NewEmulator3(80, 40, 40)
 	for _, v := range tc {
-		fmt.Printf("%s start\n", v.name)
 		ne.setNotificationString(v.message, false, false)
 
 		// validate the message string
@@ -892,13 +891,37 @@ func TestNotificationEngine_adjustMessage(t *testing.T) {
 		ne.adjustMessage()
 
 		// validate the empty string
-		if ne.getNotificationString() != v.got {
-			t.Errorf("%q expect %q, got %q\n", v.name, v.got, ne.getNotificationString())
+		if ne.getNotificationString() != v.expect {
+			t.Errorf("%q expect %q, got %q\n", v.name, v.expect, ne.getNotificationString())
 		}
-		fmt.Printf("%s end\n\n", v.name)
 	}
 
 	if min(7, 8) == 8 {
 		t.Errorf("min should return %d, for min(7,8), got %d\n", 7, 8)
+	}
+}
+
+func TestOverlayManager_waitTime(t *testing.T) {
+	tc := []struct {
+		name               string
+		lastWordFromServer int64 // delta value based on now
+		lastAckedState     int64 // delta value base on now
+		messageExpiration  int64 // delta value base on now
+		expect             int
+	}{
+		{"normal", 60, 10001, 90, 12},
+	}
+
+	om := NewOverlayManager()
+	for _, v := range tc {
+		om.getNotificationEngine().serverHeard(time.Now().UnixMilli() - v.lastWordFromServer)
+		om.getNotificationEngine().serverAcked(time.Now().UnixMilli() - v.lastAckedState)
+
+		om.getNotificationEngine().messageExpiration = time.Now().UnixMilli() + v.messageExpiration
+
+		got := om.waitTime()
+		if got != v.expect {
+			t.Errorf("%q expect waitTime=%d, got %d\n", v.name, v.expect, got)
+		}
 	}
 }
