@@ -488,7 +488,7 @@ func TestPredictionActive(t *testing.T) {
 	pe := NewPredictionEngine()
 	emu := terminal.NewEmulator3(80, 40, 40)
 
-	for _, v := range tc {
+	for k, v := range tc {
 		pe.reset()
 
 		switch v.col {
@@ -514,6 +514,14 @@ func TestPredictionActive(t *testing.T) {
 			got := pe.active()
 			if got != v.result {
 				t.Errorf("%q expect %t, got %t\n", v.name, v.result, got)
+			}
+
+			// jump the queue for waitTime() test case
+			if k == 1 {
+				// this is the perfect time to add waitTime test case
+				if pe.waitTime() != 50 {
+					t.Errorf("%q expect waitTime = %d, got %d\n", v.name, 50, pe.waitTime())
+				}
 			}
 		}
 	}
@@ -725,6 +733,7 @@ func TestPredictionCull(t *testing.T) {
 					t.Errorf("%q expect confirmedEpoch < tentativeUntilEpoch. got %d\n", v.name, pe.confirmedEpoch)
 				}
 			}
+
 		case 7:
 			if !pe.flagging {
 				t.Errorf("%q expect true for flagging, got %t\n", v.name, pe.flagging)
@@ -773,6 +782,14 @@ func TestTitleEngine(t *testing.T) {
 		if v.result != got {
 			t.Errorf("%q icon name expect %q, got %q\n", v.name, v.result, got)
 		}
+	}
+
+	omTitle := " [aprish]"
+	om := NewOverlayManager()
+	om.setTitlePrefix(omTitle)
+
+	if om.title.prefix != omTitle {
+		t.Errorf("jump the queue, expect %q, got %q\n", omTitle, om.title.prefix)
 	}
 }
 
@@ -878,7 +895,6 @@ func TestNotificationEngine_adjustMessage(t *testing.T) {
 	}
 
 	ne := NewNotificationEngien()
-	// emu := terminal.NewEmulator3(80, 40, 40)
 	for _, v := range tc {
 		ne.setNotificationString(v.message, false, false)
 
@@ -909,19 +925,32 @@ func TestOverlayManager_waitTime(t *testing.T) {
 		messageExpiration  int64 // delta value base on now
 		expect             int
 	}{
-		{"normal", 60, 10001, 90, 12},
+		{"reply late", 600, 10001, 4000, 1000},
+		{"server late", 65001, 100, 4000, 3000},
+		{"no server late, no reply late", 65, 100, 400, 400},
 	}
 
 	om := NewOverlayManager()
 	for _, v := range tc {
-		om.getNotificationEngine().serverHeard(time.Now().UnixMilli() - v.lastWordFromServer)
-		om.getNotificationEngine().serverAcked(time.Now().UnixMilli() - v.lastAckedState)
+		ne := om.getNotificationEngine()
+		ne.serverHeard(time.Now().UnixMilli() - v.lastWordFromServer)
+		ne.serverAcked(time.Now().UnixMilli() - v.lastAckedState)
 
-		om.getNotificationEngine().messageExpiration = time.Now().UnixMilli() + v.messageExpiration
+		ne.messageExpiration = time.Now().UnixMilli() + v.messageExpiration
 
 		got := om.waitTime()
 		if got != v.expect {
 			t.Errorf("%q expect waitTime=%d, got %d\n", v.name, v.expect, got)
 		}
 	}
+}
+
+func TestOverlayManager_apply(t *testing.T) {
+	om := NewOverlayManager()
+	emu := terminal.NewEmulator3(80, 40, 40)
+	om.getPredictionEngine()
+
+	// all the components of OverlayManager has been tested by previouse test case
+	// add this for coverage 100%
+	om.apply(emu)
 }

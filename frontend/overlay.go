@@ -1171,8 +1171,6 @@ const (
 func (ne *NotificationEngine) waitTime() int {
 	nextExpiry := math.MaxInt
 	now := time.Now().UnixMilli()
-
-	fmt.Printf("waitTime #ne gap=%d\n", ne.messageExpiration-now)
 	nextExpiry = min(nextExpiry, int(ne.messageExpiration-now))
 
 	if ne.needCountup(now) {
@@ -1183,6 +1181,7 @@ func (ne *NotificationEngine) waitTime() int {
 		}
 		nextExpiry = min(nextExpiry, countupInterval)
 	}
+
 	return nextExpiry
 }
 
