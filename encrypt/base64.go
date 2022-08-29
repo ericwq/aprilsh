@@ -27,72 +27,30 @@ SOFTWARE.
 package encrypt
 
 import (
-	"encoding/binary"
+	"crypto/rand"
 	"fmt"
-	"io"
-	"os"
-	"unsafe"
 )
 
-// pseudorandom number generator
-type prng struct {
-	randfile io.Reader
-}
-
-const (
-	rdev = "/dev/urandom"
-)
-
-func newPrng() *prng {
-	p := new(prng)
-
-	// TODO which is the best way to generate random number, sys call or /dev/urandom file?
-	randfile, err := os.Open(rdev)
-	if err != nil {
-		panic(fmt.Sprintf("Open prng file error: %s\n", err))
-	}
-
-	p.randfile = randfile
-	return p
-}
-
-func (p *prng) fill(size int) (dst []byte) {
+// use sys call to generate random number
+func prngFill(size int) (dst []byte) {
+	dst = make([]byte, size)
 	if size == 0 {
 		return dst
 	}
 
-	dst = make([]byte, size)
-	err := binary.Read(p.randfile, hostEndian, dst)
+	_, err := rand.Read(dst)
+	// err := binary.Read(p.randfile, hostEndian, dst)
 	if err != nil {
-		panic(fmt.Sprintf("Could not read slice from %q. error: %s\n", rdev, err))
+		// panic(fmt.Sprintf("Could not read slice from %q. error: %s\n", rdev, err))
+		panic(fmt.Sprintf("Could not read random number. %s", err))
 	}
 	return
 }
 
-// https://medium.com/learning-the-go-programming-language/encoding-data-with-the-go-binary-package-42c7c0eb3e73
-func (p *prng) uint8() uint8 {
+func prngUint8() uint8 {
 	var u8 uint8
 
-	err := binary.Read(p.randfile, hostEndian, &u8)
-	if err != nil {
-		panic(fmt.Sprintf("Could not read uint8 from %q. error: %s\n", rdev, err))
-	}
+	dst := prngFill(1)
+	u8 = dst[0]
 	return u8
-}
-
-// https://stackoverflow.com/questions/51332658/any-better-way-to-check-endianness-in-go
-var hostEndian binary.ByteOrder
-
-func init() {
-	buf := [2]byte{}
-	*(*uint16)(unsafe.Pointer(&buf[0])) = uint16(0xABCD)
-
-	switch buf {
-	case [2]byte{0xCD, 0xAB}:
-		hostEndian = binary.LittleEndian
-	case [2]byte{0xAB, 0xCD}:
-		hostEndian = binary.BigEndian
-	default:
-		panic("Could not determine native endianness.")
-	}
 }
