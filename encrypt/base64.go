@@ -24,7 +24,7 @@ SOFTWARE.
 
 */
 
-package crypto
+package encrypt
 
 import (
 	"encoding/binary"
