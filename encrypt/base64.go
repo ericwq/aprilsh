@@ -43,12 +43,13 @@ const (
 	rdev = "/dev/urandom"
 )
 
-func NewPRNG() *prng {
+func newPrng() *prng {
 	p := new(prng)
 
+	// TODO which is the best way to generate random number, sys call or /dev/urandom file?
 	randfile, err := os.Open(rdev)
 	if err != nil {
-		panic(fmt.Sprintf("create prng error: %s\n", err))
+		panic(fmt.Sprintf("Open prng file error: %s\n", err))
 	}
 
 	p.randfile = randfile
@@ -61,18 +62,26 @@ func (p *prng) fill(size int) (dst []byte) {
 	}
 
 	dst = make([]byte, size)
-	n, err := p.randfile.Read(dst)
-	if err != nil || n != size {
-		fmt.Printf("PRNG read key error: %s\n", err)
+	err := binary.Read(p.randfile, hostEndian, dst)
+	if err != nil {
+		panic(fmt.Sprintf("Could not read slice from %q. error: %s\n", rdev, err))
 	}
 	return
 }
 
 // https://medium.com/learning-the-go-programming-language/encoding-data-with-the-go-binary-package-42c7c0eb3e73
-// func (p *prng) uint8() {}
+func (p *prng) uint8() uint8 {
+	var u8 uint8
+
+	err := binary.Read(p.randfile, hostEndian, &u8)
+	if err != nil {
+		panic(fmt.Sprintf("Could not read uint8 from %q. error: %s\n", rdev, err))
+	}
+	return u8
+}
 
 // https://stackoverflow.com/questions/51332658/any-better-way-to-check-endianness-in-go
-var nativeEndian binary.ByteOrder
+var hostEndian binary.ByteOrder
 
 func init() {
 	buf := [2]byte{}
@@ -80,11 +89,10 @@ func init() {
 
 	switch buf {
 	case [2]byte{0xCD, 0xAB}:
-		nativeEndian = binary.LittleEndian
+		hostEndian = binary.LittleEndian
 	case [2]byte{0xAB, 0xCD}:
-		nativeEndian = binary.BigEndian
+		hostEndian = binary.BigEndian
 	default:
 		panic("Could not determine native endianness.")
 	}
 }
-
