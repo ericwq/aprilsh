@@ -1,0 +1,90 @@
+/*
+
+MIT License
+
+Copyright (c) 2022 wangqi
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+*/
+
+package crypto
+
+import (
+	"encoding/binary"
+	"fmt"
+	"io"
+	"os"
+	"unsafe"
+)
+
+// pseudorandom number generator
+type prng struct {
+	randfile io.Reader
+}
+
+const (
+	rdev = "/dev/urandom"
+)
+
+func NewPRNG() *prng {
+	p := new(prng)
+
+	randfile, err := os.Open(rdev)
+	if err != nil {
+		panic(fmt.Sprintf("create prng error: %s\n", err))
+	}
+
+	p.randfile = randfile
+	return p
+}
+
+func (p *prng) fill(size int) (dst []byte) {
+	if size == 0 {
+		return dst
+	}
+
+	dst = make([]byte, size)
+	n, err := p.randfile.Read(dst)
+	if err != nil || n != size {
+		fmt.Printf("PRNG read key error: %s\n", err)
+	}
+	return
+}
+
+// https://medium.com/learning-the-go-programming-language/encoding-data-with-the-go-binary-package-42c7c0eb3e73
+// func (p *prng) uint8() {}
+
+// https://stackoverflow.com/questions/51332658/any-better-way-to-check-endianness-in-go
+var nativeEndian binary.ByteOrder
+
+func init() {
+	buf := [2]byte{}
+	*(*uint16)(unsafe.Pointer(&buf[0])) = uint16(0xABCD)
+
+	switch buf {
+	case [2]byte{0xCD, 0xAB}:
+		nativeEndian = binary.LittleEndian
+	case [2]byte{0xAB, 0xCD}:
+		nativeEndian = binary.BigEndian
+	default:
+		panic("Could not determine native endianness.")
+	}
+}
+
