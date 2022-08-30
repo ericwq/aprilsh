@@ -1,6 +1,7 @@
 package encrypt
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 )
@@ -46,4 +47,15 @@ func TestBase64Key(t *testing.T) {
 		t.Error("key length is short.")
 		t.Errorf("key length is short. %q\n", shortLengthKey.printableKey())
 	}
+}
+
+func TestAESbase(t *testing.T) {
+	s := "Hello"
+	key := "zb0SLh88rdSHswjcgcC6949ZUuopGXTt"
+
+	ciphertext, _ := AesGCMEncrypt(key, s)
+	fmt.Println(ciphertext)
+
+	plaintext, _ := AesGCMDecrypt(key, ciphertext)
+	fmt.Printf("Decrypt:: %s\n", plaintext)
 }

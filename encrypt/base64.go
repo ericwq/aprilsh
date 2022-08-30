@@ -27,9 +27,14 @@ SOFTWARE.
 package encrypt
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
+	"io"
+	"sync/atomic"
 )
 
 // use sys call to generate random number
@@ -98,4 +103,124 @@ func (b *Base64Key) printableKey() string {
 
 func (b *Base64Key) data() []uint8 {
 	return b.key
+}
+
+var counter uint64
+
+func Unique() uint64 {
+	atomic.AddUint64(&counter, 0)
+	return counter
+}
+
+type Message struct {
+	nonce []byte
+	text  []byte
+}
+
+type Session struct {
+	base64Key Base64Key
+	aead      cipher.AEAD
+}
+
+func NewSession(key Base64Key) (*Session, error) {
+	s := &Session{base64Key: key}
+	block, err := aes.NewCipher([]byte(s.base64Key.key))
+	if err != nil {
+		return nil, err
+	}
+
+	aesgcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return nil, err
+	}
+
+	s.aead = aesgcm
+	return s, nil
+}
+
+func (s *Session) encrypt(plainText *Message) string {
+	nonce := plainText.nonce
+
+	cipherText := s.aead.Seal(nil, nonce, plainText.text, nil)
+	return string(cipherText)
+}
+
+func (s *Session) decrypt(text string) *Message {
+	ns := s.aead.NonceSize()
+	nonce, ciphertext := text[:ns], text[ns:]
+
+	plaintext, err := s.aead.Open(nil, []byte(nonce), []byte(ciphertext), nil)
+	if err != nil {
+		return nil
+	}
+
+	return &(Message{nonce: []byte(nonce), text: plaintext})
+}
+
+// https://stackoverflow.com/questions/1220751/how-to-choose-an-aes-encryption-mode-cbc-ecb-ctr-ocb-cfb
+// const (
+// 	NONCE_LEN = 12
+// )
+//
+// type Nonce struct {
+// 	bytes [NONCE_LEN]byte
+// }
+
+// https://installmd.com/c/276/go/encrypt-a-string-using-aes-gcm
+func AesGCMIv() ([]byte, error) {
+	// Never use more than 2^32 random nonces with a given key because of the risk of a repeat.
+	nonce := make([]byte, 12)
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, err
+	}
+
+	return nonce, nil
+}
+
+func AesGCMEncrypt(key string, text string) (string, error) {
+	// When decoded the key should be 16 bytes (AES-128) or 32 (AES-256).
+	block, err := aes.NewCipher([]byte(key))
+	if err != nil {
+		return "", err
+	}
+	plaintext := []byte(text)
+
+	nonce, err := AesGCMIv()
+	if err != nil {
+		return "", err
+	}
+
+	aesgcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	ciphertext := aesgcm.Seal(nonce, nonce, plaintext, nil)
+	fmt.Printf("encrypt nonce=%v\n", nonce)
+	return fmt.Sprintf("%x", ciphertext), nil
+}
+
+func AesGCMDecrypt(key string, text string) (string, error) {
+	// When decoded the key should be 16 bytes (AES-128) or 32 (AES-256).
+	block, err := aes.NewCipher([]byte(key))
+	if err != nil {
+		return "", err
+	}
+
+	aesgcm, err := cipher.NewGCM(block)
+	if err != nil {
+		return "", err
+	}
+
+	in, _ := hex.DecodeString(text)
+	ns := aesgcm.NonceSize()
+	nonce, ciphertext := in[:ns], in[ns:]
+
+	fmt.Printf("decrypt nonce=%v\n", nonce)
+	plaintext, err := aesgcm.Open(nil, nonce, ciphertext, nil)
+	if err != nil {
+		return "", err
+	}
+
+	return string(plaintext[:]), nil
 }
