@@ -28,7 +28,6 @@ package encrypt
 
 import (
 	"crypto/rand"
-	"fmt"
 )
 
 // use sys call to generate random number
@@ -38,12 +37,11 @@ func prngFill(size int) (dst []byte) {
 		return dst
 	}
 
-	_, err := rand.Read(dst)
-	// err := binary.Read(p.randfile, hostEndian, dst)
-	if err != nil {
-		// panic(fmt.Sprintf("Could not read slice from %q. error: %s\n", rdev, err))
-		panic(fmt.Sprintf("Could not read random number. %s", err))
-	}
+	rand.Read(dst)
+	// _, err := rand.Read(dst)
+	// if err != nil {
+	// 	panic(fmt.Sprintf("Could not read random number. %s", err))
+	// }
 	return
 }
 
