@@ -31,7 +31,6 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"sync/atomic"
@@ -64,7 +63,7 @@ type Base64Key struct {
 	key []uint8
 }
 
-// random key
+// random key 128bit
 func NewBase64Key() *Base64Key {
 	b := &Base64Key{}
 	b.key = prngFill(16)
@@ -108,7 +107,7 @@ func (b *Base64Key) data() []uint8 {
 var counter uint64
 
 func Unique() uint64 {
-	atomic.AddUint64(&counter, 0)
+	atomic.AddUint64(&counter, 1)
 	return counter
 }
 
@@ -138,26 +137,48 @@ func NewSession(key Base64Key) (*Session, error) {
 	return s, nil
 }
 
-func (s *Session) encrypt(plainText *Message) string {
+// https://stackoverflow.com/questions/1220751/how-to-choose-an-aes-encryption-mode-cbc-ecb-ctr-ocb-cfb
+// https://installmd.com/c/276/go/encrypt-a-string-using-aes-gcm
+
+// encrypt with AES-128 GCM
+func (s *Session) encrypt(plainText *Message) []byte {
 	nonce := plainText.nonce
 
-	cipherText := s.aead.Seal(nil, nonce, plainText.text, nil)
-	return string(cipherText)
+	cipherText := s.aead.Seal(nonce, nonce, plainText.text, nil)
+	// fmt.Printf("#encrypt cipherText=% x, %p\n\n", cipherText, cipherText)
+	return cipherText
 }
 
-func (s *Session) decrypt(text string) *Message {
+// decrypt with AES-128 GCM
+func (s *Session) decrypt(text []byte) *Message {
 	ns := s.aead.NonceSize()
-	nonce, ciphertext := text[:ns], text[ns:]
+	nonce, cipherText := text[:ns], text[ns:]
 
-	plaintext, err := s.aead.Open(nil, []byte(nonce), []byte(ciphertext), nil)
+	// fmt.Printf("#decrypt ciphertext=% x, %p\n", cipherText, cipherText)
+
+	plainText, err := s.aead.Open(nil, nonce, cipherText, nil)
 	if err != nil {
-		return nil
+		panic(fmt.Sprintf("error = %s\n", err))
 	}
 
-	return &(Message{nonce: []byte(nonce), text: plaintext})
+	m := Message{}
+	m.nonce = nonce
+	m.text = plainText
+	// fmt.Printf("#decrypt nonce=% x, plaintext=% x\n", nonce, plainText)
+
+	return &m
 }
 
-// https://stackoverflow.com/questions/1220751/how-to-choose-an-aes-encryption-mode-cbc-ecb-ctr-ocb-cfb
+func randomNonce() ([]byte, error) {
+	// Never use more than 2^32 random nonces with a given key because of the risk of a repeat.
+	nonce := make([]byte, 12)
+	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
+		return nil, err
+	}
+
+	return nonce, nil
+}
+
 // const (
 // 	NONCE_LEN = 12
 // )
@@ -166,7 +187,7 @@ func (s *Session) decrypt(text string) *Message {
 // 	bytes [NONCE_LEN]byte
 // }
 
-// https://installmd.com/c/276/go/encrypt-a-string-using-aes-gcm
+/*
 func AesGCMIv() ([]byte, error) {
 	// Never use more than 2^32 random nonces with a given key because of the risk of a repeat.
 	nonce := make([]byte, 12)
@@ -196,7 +217,7 @@ func AesGCMEncrypt(key string, text string) (string, error) {
 	}
 
 	ciphertext := aesgcm.Seal(nonce, nonce, plaintext, nil)
-	fmt.Printf("encrypt nonce=%v\n", nonce)
+	fmt.Printf("#AesGCMEncrypt encrypt nonce=% x\n", nonce)
 	return fmt.Sprintf("%x", ciphertext), nil
 }
 
@@ -216,7 +237,7 @@ func AesGCMDecrypt(key string, text string) (string, error) {
 	ns := aesgcm.NonceSize()
 	nonce, ciphertext := in[:ns], in[ns:]
 
-	fmt.Printf("decrypt nonce=%v\n", nonce)
+	fmt.Printf("#AesGCMDecrypt decrypt nonce=% x\n", nonce)
 	plaintext, err := aesgcm.Open(nil, nonce, ciphertext, nil)
 	if err != nil {
 		return "", err
@@ -224,3 +245,4 @@ func AesGCMDecrypt(key string, text string) (string, error) {
 
 	return string(plaintext[:]), nil
 }
+*/

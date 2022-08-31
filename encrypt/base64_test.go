@@ -1,7 +1,6 @@
 package encrypt
 
 import (
-	"fmt"
 	"reflect"
 	"testing"
 )
@@ -49,13 +48,54 @@ func TestBase64Key(t *testing.T) {
 	}
 }
 
-func TestAESbase(t *testing.T) {
-	s := "Hello"
-	key := "zb0SLh88rdSHswjcgcC6949ZUuopGXTt"
+func TestSession(t *testing.T) {
+	tc := []struct {
+		name      string
+		plainText string
+	}{
+		{"english plain text", "Datagrams are encrypted and authenticated using AES-128 in the Offset Codebook mode [1]"},
+		{"chinese plain text", "原子操作是比其它同步技术更基础的操作。原子操作是无锁的，常常直接通过CPU指令直接实现。"},
+	}
 
-	ciphertext, _ := AesGCMEncrypt(key, s)
-	fmt.Println(ciphertext)
+	s, _ := NewSession(*NewBase64Key())
+	for _, v := range tc {
+		nonce, _ := randomNonce()
+		message := Message{nonce: nonce, text: []byte(v.plainText)}
 
-	plaintext, _ := AesGCMDecrypt(key, ciphertext)
-	fmt.Printf("Decrypt:: %s\n", plaintext)
+		// fmt.Printf("#before message nonce=% x, nonce=%p\n", message.nonce, message.nonce)
+		cipherText := s.encrypt(&message)
+		// fmt.Printf("#after cipherText=% x\n", cipherText)
+
+		message2 := s.decrypt(cipherText)
+		gotNonce := message2.nonce
+		gotText := message2.text
+
+		if !reflect.DeepEqual(nonce, gotNonce) {
+			t.Errorf("%q expect nonce %v, got %v\n", v.name, nonce, gotNonce)
+		}
+		if v.plainText != string(gotText) {
+			t.Errorf("%q expect plain text \n%q, got \n%q\n", v.name, v.plainText, gotText)
+		}
+	}
+}
+
+// func TestAESbase(t *testing.T) {
+// 	s := "Hello"
+// 	key := "zb0SLh88rdSHswjcgcC6949ZUuopGXTt"
+//
+// 	ciphertext, _ := AesGCMEncrypt(key, s)
+// 	fmt.Println(ciphertext)
+//
+// 	plaintext, _ := AesGCMDecrypt(key, ciphertext)
+// 	fmt.Printf("Decrypt:: %s\n", plaintext)
+// }
+
+func TestUnique(t *testing.T) {
+	for i := 0; i < 10; i++ {
+		v := Unique()
+		expect := i + 1
+		if v != uint64(i+1) {
+			t.Errorf("Unique expect %d, got %d\n", expect, v)
+		}
+	}
 }
