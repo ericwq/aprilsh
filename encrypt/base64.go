@@ -31,10 +31,17 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
-	"fmt"
 	"io"
+	"log"
+	"os"
 	"sync/atomic"
 )
+
+const (
+	NONCE_LEN = 12
+)
+
+var logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 
 // use sys call to generate random number
 func prngFill(size int) (dst []byte) {
@@ -59,6 +66,32 @@ func PrngUint8() uint8 {
 	return u8
 }
 
+func randomNonce() ([]byte, error) {
+	return _randomNonce()
+}
+
+// don't use this function directly, it's for internal purpose only
+type _randFunc func(io.Reader, []byte) (int, error)
+
+// don't use this function directly, it's for internal purpose only
+func _randomNonce(r ..._randFunc) ([]byte, error) {
+	// Never use more than 2^32 random nonces with a given key because of the risk of a repeat.
+	var f _randFunc
+	if len(r) > 0 {
+		f = r[0]
+	} else {
+		f = io.ReadFull
+	}
+
+	nonce := make([]byte, NONCE_LEN)
+	if _, err := f(rand.Reader, nonce); err != nil {
+		logW.Printf("#randomNonce. %s\n", err)
+		return nil, err
+	}
+
+	return nonce, nil
+}
+
 type Base64Key struct {
 	key []uint8
 }
@@ -71,19 +104,15 @@ func NewBase64Key() *Base64Key {
 }
 
 func NewBase64Key2(printableKey string) *Base64Key {
-	defer func() {
-		if err := recover(); err != nil {
-			return
-		}
-	}()
-
 	key, err := base64.StdEncoding.DecodeString(printableKey)
 	if err != nil {
-		panic(fmt.Sprintf("Key must be well-formed base64. %s\n", err))
+		logW.Printf("#Base64Key Key must be well-formed base64. %s\n", err)
+		return nil
 	}
 
 	if len(key) != 16 {
-		panic("Key must represent 16 octets.")
+		logW.Println("#Base64Key Key must represent 16 octets.")
+		return nil
 	}
 
 	b := &Base64Key{}
@@ -125,13 +154,15 @@ func NewSession(key Base64Key) (*Session, error) {
 	s := &Session{base64Key: key}
 	block, err := aes.NewCipher([]byte(s.base64Key.key))
 	if err != nil {
+		logW.Printf("#session %s\n", err)
 		return nil, err
 	}
 
-	aesgcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return nil, err
-	}
+	aesgcm, _ := cipher.NewGCM(block)
+	// aesgcm, err := cipher.NewGCM(block)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
 	s.aead = aesgcm
 	return s, nil
@@ -145,7 +176,6 @@ func (s *Session) encrypt(plainText *Message) []byte {
 	nonce := plainText.nonce
 
 	cipherText := s.aead.Seal(nonce, nonce, plainText.text, nil)
-	// fmt.Printf("#encrypt cipherText=% x, %p\n\n", cipherText, cipherText)
 	return cipherText
 }
 
@@ -153,12 +183,12 @@ func (s *Session) encrypt(plainText *Message) []byte {
 func (s *Session) decrypt(text []byte) *Message {
 	ns := s.aead.NonceSize()
 	nonce, cipherText := text[:ns], text[ns:]
-
 	// fmt.Printf("#decrypt ciphertext=% x, %p\n", cipherText, cipherText)
 
 	plainText, err := s.aead.Open(nil, nonce, cipherText, nil)
 	if err != nil {
-		panic(fmt.Sprintf("error = %s\n", err))
+		logW.Printf("#decrypt %s\n", err)
+		return nil
 	}
 
 	m := Message{}
@@ -168,81 +198,3 @@ func (s *Session) decrypt(text []byte) *Message {
 
 	return &m
 }
-
-func randomNonce() ([]byte, error) {
-	// Never use more than 2^32 random nonces with a given key because of the risk of a repeat.
-	nonce := make([]byte, 12)
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return nil, err
-	}
-
-	return nonce, nil
-}
-
-// const (
-// 	NONCE_LEN = 12
-// )
-//
-// type Nonce struct {
-// 	bytes [NONCE_LEN]byte
-// }
-
-/*
-func AesGCMIv() ([]byte, error) {
-	// Never use more than 2^32 random nonces with a given key because of the risk of a repeat.
-	nonce := make([]byte, 12)
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return nil, err
-	}
-
-	return nonce, nil
-}
-
-func AesGCMEncrypt(key string, text string) (string, error) {
-	// When decoded the key should be 16 bytes (AES-128) or 32 (AES-256).
-	block, err := aes.NewCipher([]byte(key))
-	if err != nil {
-		return "", err
-	}
-	plaintext := []byte(text)
-
-	nonce, err := AesGCMIv()
-	if err != nil {
-		return "", err
-	}
-
-	aesgcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", err
-	}
-
-	ciphertext := aesgcm.Seal(nonce, nonce, plaintext, nil)
-	fmt.Printf("#AesGCMEncrypt encrypt nonce=% x\n", nonce)
-	return fmt.Sprintf("%x", ciphertext), nil
-}
-
-func AesGCMDecrypt(key string, text string) (string, error) {
-	// When decoded the key should be 16 bytes (AES-128) or 32 (AES-256).
-	block, err := aes.NewCipher([]byte(key))
-	if err != nil {
-		return "", err
-	}
-
-	aesgcm, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", err
-	}
-
-	in, _ := hex.DecodeString(text)
-	ns := aesgcm.NonceSize()
-	nonce, ciphertext := in[:ns], in[ns:]
-
-	fmt.Printf("#AesGCMDecrypt decrypt nonce=% x\n", nonce)
-	plaintext, err := aesgcm.Open(nil, nonce, ciphertext, nil)
-	if err != nil {
-		return "", err
-	}
-
-	return string(plaintext[:]), nil
-}
-*/

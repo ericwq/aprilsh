@@ -1,6 +1,10 @@
 package encrypt
 
 import (
+	"errors"
+	"io"
+	"log"
+	"os"
 	"reflect"
 	"testing"
 )
@@ -24,6 +28,11 @@ func TestPrng(t *testing.T) {
 }
 
 func TestBase64Key(t *testing.T) {
+	defer func() {
+		logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	}()
+	logW.SetOutput(io.Discard)
+
 	// normal key
 	normalKey := NewBase64Key()
 	printKey := normalKey.printableKey()
@@ -45,6 +54,16 @@ func TestBase64Key(t *testing.T) {
 	if key4 != nil {
 		t.Error("key length is short.")
 		t.Errorf("key length is short. %q\n", shortLengthKey.printableKey())
+	}
+}
+
+func TestUnique(t *testing.T) {
+	for i := 0; i < 10; i++ {
+		v := Unique()
+		expect := i + 1
+		if v != uint64(i+1) {
+			t.Errorf("Unique expect %d, got %d\n", expect, v)
+		}
 	}
 }
 
@@ -79,23 +98,40 @@ func TestSession(t *testing.T) {
 	}
 }
 
-// func TestAESbase(t *testing.T) {
-// 	s := "Hello"
-// 	key := "zb0SLh88rdSHswjcgcC6949ZUuopGXTt"
-//
-// 	ciphertext, _ := AesGCMEncrypt(key, s)
-// 	fmt.Println(ciphertext)
-//
-// 	plaintext, _ := AesGCMDecrypt(key, ciphertext)
-// 	fmt.Printf("Decrypt:: %s\n", plaintext)
-// }
+func TestSessionError(t *testing.T) {
+	defer func() {
+		logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	}()
+	logW.SetOutput(io.Discard)
 
-func TestUnique(t *testing.T) {
-	for i := 0; i < 10; i++ {
-		v := Unique()
-		expect := i + 1
-		if v != uint64(i+1) {
-			t.Errorf("Unique expect %d, got %d\n", expect, v)
-		}
+	b := Base64Key{}
+	b.key = prngFill(9)
+
+	if _, err := NewSession(b); err == nil {
+		t.Errorf("expect wrong key size error, got %s\n", err)
+	}
+
+	b.key = prngFill(32)
+	s, _ := NewSession(b)
+	nilMessage := s.decrypt([]byte("zb0SLh88rdSHswjcgcC6949ZUuopGXTt"))
+	if nilMessage != nil {
+		t.Errorf("expect nil message returned from decrypt(), got %v\n", nilMessage)
+	}
+}
+
+func fakeRand(io.Reader, []byte) (int, error) {
+	return -2, errors.New("design this error on purpose.")
+}
+
+func TestRandomNonce(t *testing.T) {
+	defer func() {
+		logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	}()
+	logW.SetOutput(io.Discard)
+
+	nonce, err := _randomNonce(fakeRand)
+
+	if nonce != nil {
+		t.Errorf("expect nil nonce, got %v\n %s\n", nonce, err)
 	}
 }
