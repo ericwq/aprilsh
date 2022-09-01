@@ -168,11 +168,15 @@ func TestMessage(t *testing.T) {
 		seqNonce uint64
 		payload  string
 	}{
-		{"english message", uint64(7), "\x1223\x3445normal message"},
+		{"english message", uint64(0x1223), "\x1223\x3445normal message"},
 	}
 
 	for _, v := range tc {
 		m := NewMessage(v.seqNonce, []byte(v.payload))
+
+		if len(m.nonce) != 12 {
+			t.Errorf("%q expect nonce length %d, got %d\n", v.name, 12, len(m.nonce))
+		}
 
 		if m.NonceVal() != v.seqNonce {
 			t.Errorf("%q expect seqNonce %x got %x\n", v.name, v.seqNonce, m.NonceVal())

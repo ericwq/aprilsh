@@ -64,9 +64,10 @@ func prngFill(size int) (dst []byte) {
 
 func PrngUint8() uint8 {
 	var u8 uint8
-
-	dst := prngFill(1)
-	u8 = dst[0]
+	for u8 == 0 {
+		dst := prngFill(1)
+		u8 = dst[0]
+	}
 	return u8
 }
 
@@ -151,26 +152,23 @@ type Message struct {
 
 func NewMessage(seqNonce uint64, payload []byte) (m *Message) {
 	m = &Message{}
+	// fmt.Printf("#Message seqNonce=% x\n", seqNonce)
 
-	head := []byte{0, 0, 0, 0}
+	b := make([]byte, NONCE_LEN)
+	binary.BigEndian.PutUint32(b[0:], 0)
+	binary.BigEndian.PutUint64(b[4:], seqNonce)
 
-	buf := new(bytes.Buffer)
-	binary.Write(buf, binary.BigEndian, head)
-	binary.Write(buf, binary.BigEndian, seqNonce)
-
-	m.nonce = buf.Bytes()
+	m.nonce = b
 	m.text = payload
+
+	// fmt.Printf("#Message head=% x, nonce=% x\n", m.nonce[:4], m.nonce[4:])
 	return m
 }
 
 func (m *Message) NonceVal() uint64 {
-	var seqNonce uint64
-	buf := bytes.NewReader(m.nonce[4:])
-	err := binary.Read(buf, hostEndian, &seqNonce)
-	if err != nil {
-		fmt.Printf("#NonceVal failed. %s\n", err)
-	}
+	seqNonce := binary.BigEndian.Uint64(m.nonce[4:])
 
+	// fmt.Printf("#NonceVal seqNonce=%x\n", seqNonce)
 	return seqNonce
 }
 
@@ -267,7 +265,7 @@ func init() {
 		hostEndian = binary.LittleEndian
 	case [2]byte{0xAB, 0xCD}:
 		hostEndian = binary.BigEndian
-		// default:
-		// 	panic("Could not determine native endianness.")
+	default:
+		panic("Could not determine native endianness.")
 	}
 }
