@@ -29,6 +29,7 @@ package network
 import (
 	"bytes"
 	"encoding/binary"
+	"time"
 
 	"github.com/ericwq/aprilsh/encrypt"
 )
@@ -44,6 +45,11 @@ const (
 	DIRECTION_MASK uint64 = uint64(1) << 63
 	SEQUENCE_MASK  uint64 = ^DIRECTION_MASK
 )
+
+func timestamp16() uint16 {
+	ts := time.Now().UnixMilli() % 65535
+	return uint16(ts)
+}
 
 type Packet struct {
 	seq            uint64

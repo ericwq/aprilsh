@@ -165,7 +165,7 @@ func NewMessage(seqNonce uint64, payload []byte) (m *Message) {
 
 func (m *Message) NonceVal() uint64 {
 	var seqNonce uint64
-	buf := bytes.NewReader(m.text[4:])
+	buf := bytes.NewReader(m.nonce[4:])
 	err := binary.Read(buf, hostEndian, &seqNonce)
 	if err != nil {
 		fmt.Printf("#NonceVal failed. %s\n", err)

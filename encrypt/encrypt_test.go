@@ -161,3 +161,21 @@ func TestRandomNonce(t *testing.T) {
 		t.Errorf("expect nil nonce, got %v\n %s\n", nonce, err)
 	}
 }
+
+func TestMessage(t *testing.T) {
+	tc := []struct {
+		name     string
+		seqNonce uint64
+		payload  string
+	}{
+		{"english message", uint64(7), "\x1223\x3445normal message"},
+	}
+
+	for _, v := range tc {
+		m := NewMessage(v.seqNonce, []byte(v.payload))
+
+		if m.NonceVal() != v.seqNonce {
+			t.Errorf("%q expect seqNonce %x got %x\n", v.name, v.seqNonce, m.NonceVal())
+		}
+	}
+}
