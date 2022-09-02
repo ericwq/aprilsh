@@ -29,6 +29,7 @@ package network
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"time"
 
 	"github.com/ericwq/aprilsh/encrypt"
@@ -103,7 +104,9 @@ func (p *Packet) toMessage() *encrypt.Message {
 
 	// combine time stamp and payload together
 	tsb := p.timestampBytes()
+	fmt.Printf("#toMessage %v\n", p.payload)
 	payload := append(tsb, p.payload...)
+	fmt.Printf("#toMessage %v\n", payload)
 
 	return encrypt.NewMessage(seqNonce, payload)
 }
