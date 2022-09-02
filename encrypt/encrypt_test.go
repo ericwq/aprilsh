@@ -164,15 +164,18 @@ func TestRandomNonce(t *testing.T) {
 
 func TestMessage(t *testing.T) {
 	tc := []struct {
-		name     string
-		seqNonce uint64
-		payload  string
+		name           string
+		seqNonce       uint64
+		mixPayload     string
+		timestamp      uint16
+		timestampReply uint16
+		payload        string
 	}{
-		{"english message", uint64(0x1223), "\x1223\x3445normal message"},
+		{"english message", uint64(0x1223), "\x12\x23\x34\x45normal message", 0x1223, 0x3445,"normal message"},
 	}
 
 	for _, v := range tc {
-		m := NewMessage(v.seqNonce, []byte(v.payload))
+		m := NewMessage(v.seqNonce, []byte(v.mixPayload))
 
 		if len(m.nonce) != 12 {
 			t.Errorf("%q expect nonce length %d, got %d\n", v.name, 12, len(m.nonce))
@@ -180,6 +183,18 @@ func TestMessage(t *testing.T) {
 
 		if m.NonceVal() != v.seqNonce {
 			t.Errorf("%q expect seqNonce %x got %x\n", v.name, v.seqNonce, m.NonceVal())
+		}
+
+		if m.GetTimestamp() != v.timestamp {
+			t.Errorf("%q expect timestamp %x got %x\n", v.name, v.timestamp, m.GetTimestamp())
+		}
+
+		if m.GetTimestampReply() != v.timestampReply {
+			t.Errorf("%q expect timestampReply %x got %x\n", v.name, v.timestampReply, m.GetTimestampReply())
+		}
+
+		if string(m.GetPayload()) != v.payload {
+			t.Errorf("%q expect payload %x got %x\n", v.name, v.payload, m.GetPayload())
 		}
 	}
 }

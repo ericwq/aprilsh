@@ -27,18 +27,15 @@ SOFTWARE.
 package encrypt
 
 import (
-	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
-	"fmt"
 	"io"
 	"log"
 	"os"
 	"sync/atomic"
-	"unsafe"
 )
 
 const (
@@ -162,6 +159,7 @@ func NewMessage(seqNonce uint64, payload []byte) (m *Message) {
 	m.text = payload
 
 	// fmt.Printf("#Message head=% x, nonce=% x\n", m.nonce[:4], m.nonce[4:])
+	// fmt.Printf("#Message text=% x\n", m.text)
 	return m
 }
 
@@ -174,26 +172,28 @@ func (m *Message) NonceVal() uint64 {
 
 // the first two bytes is timestamp in text field
 func (m *Message) GetTimestamp() uint16 {
-	var ts uint16
-	buf := bytes.NewReader(m.text[:2])
-	err := binary.Read(buf, hostEndian, &ts)
-	if err != nil {
-		fmt.Printf("#GetTimestamp failed. %s\n", err)
-	}
-
-	return ts
+	// var ts uint16
+	// buf := bytes.NewReader(m.text[:2])
+	// err := binary.Read(buf, hostEndian, &ts)
+	// if err != nil {
+	// 	fmt.Printf("#GetTimestamp failed. %s\n", err)
+	// }
+	//
+	// return ts
+	return binary.BigEndian.Uint16(m.text[:2])
 }
 
 // the [2:4] bytes is timestampReply in text field
 func (m *Message) GetTimestampReply() uint16 {
-	var tsr uint16
-	buf := bytes.NewReader(m.text[2:4])
-	err := binary.Read(buf, hostEndian, &tsr)
-	if err != nil {
-		fmt.Printf("#GetTimestampReply failed. %s\n", err)
-	}
-
-	return tsr
+	// var tsr uint16
+	// buf := bytes.NewReader(m.text[2:4])
+	// err := binary.Read(buf, hostEndian, &tsr)
+	// if err != nil {
+	// 	fmt.Printf("#GetTimestampReply failed. %s\n", err)
+	// }
+	//
+	// return tsr
+	return binary.BigEndian.Uint16(m.text[2:4])
 }
 
 func (m *Message) GetPayload() (payload []byte) {
@@ -254,18 +254,18 @@ func (s *Session) decrypt(text []byte) *Message {
 	return &m
 }
 
-var hostEndian binary.ByteOrder
-
-func init() {
-	buf := [2]byte{}
-	*(*uint16)(unsafe.Pointer(&buf[0])) = uint16(0xABCD)
-
-	switch buf {
-	case [2]byte{0xCD, 0xAB}:
-		hostEndian = binary.LittleEndian
-	case [2]byte{0xAB, 0xCD}:
-		hostEndian = binary.BigEndian
-	default:
-		panic("Could not determine native endianness.")
-	}
-}
+// var hostEndian binary.ByteOrder
+//
+// func init() {
+// 	buf := [2]byte{}
+// 	*(*uint16)(unsafe.Pointer(&buf[0])) = uint16(0xABCD)
+//
+// 	switch buf {
+// 	case [2]byte{0xCD, 0xAB}:
+// 		hostEndian = binary.LittleEndian
+// 	case [2]byte{0xAB, 0xCD}:
+// 		hostEndian = binary.BigEndian
+// 	default:
+// 		panic("Could not determine native endianness.")
+// 	}
+// }
