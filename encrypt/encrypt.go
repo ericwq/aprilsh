@@ -254,6 +254,8 @@ func (s *Session) decrypt(text []byte) *Message {
 	return &m
 }
 
+// https://commandcenter.blogspot.com/2012/04/byte-order-fallacy.html
+//
 // var hostEndian binary.ByteOrder
 //
 // func init() {
