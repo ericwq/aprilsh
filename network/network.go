@@ -29,7 +29,6 @@ package network
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"time"
 
 	"github.com/ericwq/aprilsh/encrypt"
@@ -67,8 +66,8 @@ func NewPacket(direction Direction, timestamp uint16, timestampReply uint16, pay
 	p.direction = direction
 	p.timestamp = timestamp
 	p.timestampReply = timestampReply
-	// p.payload = payload
-	copy(p.payload, payload)
+	p.payload = payload
+	// copy(p.payload, payload)
 
 	return p
 }
@@ -84,8 +83,8 @@ func NewPacket2(m encrypt.Message) *Packet {
 	}
 	p.timestamp = m.GetTimestamp()
 	p.timestampReply = m.GetTimestampReply()
-	// p.payload = m.GetPayload()
-	copy(p.payload, m.GetPayload())
+
+	p.payload = m.GetPayload()
 
 	return p
 }
@@ -104,9 +103,7 @@ func (p *Packet) toMessage() *encrypt.Message {
 
 	// combine time stamp and payload together
 	tsb := p.timestampBytes()
-	fmt.Printf("#toMessage %v\n", p.payload)
 	payload := append(tsb, p.payload...)
-	fmt.Printf("#toMessage %v\n", payload)
 
 	return encrypt.NewMessage(seqNonce, payload)
 }
