@@ -42,6 +42,8 @@ func TestPacket(t *testing.T) {
 		{"english message", uint64(0x5223), "\x12\x23\x34\x45normal message"},
 		{"chinese message", uint64(0x7226) | DIRECTION_MASK, "\x42\x23\x64\x45大端字节序就和我们平时的写法顺序一样"},
 	}
+
+	// test NewPacket2 and toMessage
 	for _, v := range tc {
 		m1 := encrypt.NewMessage(v.seqNonce, []byte(v.mixPayload))
 		p := NewPacket2(*m1)
@@ -64,6 +66,7 @@ func TestPacket(t *testing.T) {
 		{"chinese packet", TO_SERVER, 4, 5, "大端字节序就和我们平时的写法顺序一样"},
 	}
 
+	// test NewPacket func
 	for i, v := range tc2 {
 		p := NewPacket(v.direction, v.ts1+timestamp16(), v.ts2+timestamp16(), []byte(v.payload))
 
