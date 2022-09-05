@@ -25,7 +25,7 @@
     - `IPPROTO_IP, IP_TOS`
     - `IPPROTO_IP, IP_RECVTOS`
     - `UNIX Network Programming: The Sockets Networking API` Page 193,214
-- `try_bind()` iterates fromt the low port to the high port number, for each port:
+- `try_bind()` iterates from the low port to the high port number, for each port:
   - `try_bind()` calls `bind()` the socket to the address.
   - `UNIX Network Programming: The Sockets Networking API` Page 101,102
   - `try_bind()` calls `set_MTU()` to set MTU.
