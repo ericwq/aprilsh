@@ -8,30 +8,35 @@
 - `Connection()` calls `try_bind()` to bing to desired IP first, if we have `desired_ip` parameter; `try_bind()` return on success.
 - `Connection()` calls `try_bind()` to try any local interface, return on sucess. see [next](#try_bind) section for detail.
 
-## `try_bind()`
+### `try_bind()`
 
-- `try_bind()` calls `getaddrinfo()` function to create struct `addrinfo`.
-  - ` hints.ai_family = AF_UNSPEC;`
-  - ` hints.ai_socktype = SOCK_DGRAM;`
-  - ` hints.ai_flags = AI_PASSIVE | AI_NUMERICHOST | AI_NUMERICSERV;`
+- `try_bind()` builds an instance for `AddrInfo` class with the following `addrinfo` as hint:
+  - `getaddrinfo()` is called in the constructor of `AddrInfo` class to create struct `addrinfo`.
+  - `hints.ai_family = AF_UNSPEC;`
+  - `hints.ai_socktype = SOCK_DGRAM;`
+  - `hints.ai_flags = AI_PASSIVE | AI_NUMERICHOST | AI_NUMERICSERV;`
   - `The Linux programming interface` Page 1213~1216
-- `try_bind()` calls `Socket()` to create socket for connection.
-  - `Socket()` calls system call `socket` to create socket with the following options.
+- `try_bind()` builds an instance for `Socket` class with the local address family as parameter.
+  - `Socket()` calls `socket()` to create socket with the following options.
+    - `SOCK_DGRAM` is the main parameter for the `socket()` system call.
     - `Advanced programming in the UNIX Environment` Page 600
-  - `Socket()` calls `setsockopt()` to set socket options
-    - `IPPROTO_IPV6, IPV6_V6ONLY`
+  - `Socket()` calls `setsockopt()` to set socket options several times for different environment, such as:
+    - `IPPROTO_IP, IP_MTU_DISCOVER`
     - `IPPROTO_IP, IP_TOS`
     - `IPPROTO_IP, IP_RECVTOS`
     - `UNIX Network Programming: The Sockets Networking API` Page 193,214
-- `try_bind()` iterates fromt the low port to the high port number. For each port:
-  - `try_bind()` calls system call `bind()` the socket to the address.
-    - `UNIX Network Programming: The Sockets Networking API` Page 101,102
+- `try_bind()` iterates fromt the low port to the high port number, for each port:
+  - `try_bind()` calls `bind()` the socket to the address.
+  - `UNIX Network Programming: The Sockets Networking API` Page 101,102
   - `try_bind()` calls `set_MTU()` to set MTU.
-  - upon the socket is bind to the address and port. just return.
+  - upon the socket is bind to the address and port, return.
+  - otherwise, increase the port number, go through the next iteration.
+- if the high port number is reached, `try_bind()` prints the error message and quits with error message.
 
 # go net package
 
 [Go: Deep dive into net package learning from TCP server](https://dev.to/hgsgtk/how-go-handles-network-and-system-calls-when-tcp-server-1nbd)
+[Socket sharding in Linux example with Go](https://dev.to/douglasmakey/socket-sharding-in-linux-example-with-go-4mi7)
 
 ## `ListenConfig.ListenPacket()`
 

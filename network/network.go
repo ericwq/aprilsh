@@ -33,6 +33,7 @@ import (
 	"time"
 
 	"github.com/ericwq/aprilsh/encrypt"
+	"golang.org/x/sys/unix"
 )
 
 type Direction uint
@@ -246,5 +247,6 @@ func (c *Connection) parsePortRange(desiredPort string, desiredPortLow, desiredP
 	// net.Dial("udp", "address")
 	// lc := net.ListenConfig{}
 	// lc.ListenPacket(ctx context.Context, network string, address string)
+	unix.SetsockoptInt(1, 2, 3, 4)
 	return false
 }
