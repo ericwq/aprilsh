@@ -30,6 +30,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -225,6 +226,7 @@ func NewConnection(desiredIp string, desiredPort string) *Connection { // server
 	c.RTTVAR = 500
 
 	c.logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	c.socks = make([]net.PacketConn, 0)
 
 	c.setup()
 
@@ -245,7 +247,8 @@ func NewConnection(desiredIp string, desiredPort string) *Connection { // server
 		}
 	}
 
-	if len(desiredIp) == 0 || !c.tryBind(desiredIp, desiredPortLow, desiredPortHigh) {
+	// fmt.Printf("#connection (%d:%d)\n", desiredPortLow, desiredPortHigh)
+	if !c.tryBind(desiredIp, desiredPortLow, desiredPortHigh) {
 		return nil
 	}
 
@@ -260,10 +263,10 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 	searchLow := PORT_RANGE_LOW
 	searchHigh := PORT_RANGE_HIGH
 
-	if portLow != -1 {
+	if portLow != -1 { // low port preference
 		searchLow = portLow
 	}
-	if portHigh != -1 {
+	if portHigh != -1 { // high port preference
 		searchHigh = portHigh
 	}
 
@@ -273,10 +276,10 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 			var opErr error
 			if err := c.Control(func(fd uintptr) {
 				// isable path MTU discovery
-				opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_MTU_DISCOVER, unix.IP_PMTUDISC_DONT)
-				if opErr != nil {
-					return
-				}
+				// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_MTU_DISCOVER, unix.IP_PMTUDISC_DONT)
+				// if opErr != nil {
+				// 	return
+				// }
 
 				// int dscp = 0x92; /* OS X does not have IPTOS_DSCP_AF42 constant */
 				opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS, 0x02)
@@ -295,20 +298,29 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 
 	for i := searchLow; i <= searchHigh; i++ {
 		address := net.JoinHostPort(desireIp, strconv.Itoa(i))
+		fmt.Printf("%d of %d, desireIp=%q, address=%q\n", i, searchHigh, desireIp, address)
 		l, err := lc.ListenPacket(context.Background(), "udp", address)
 		if err != nil {
 			if i == searchHigh {
 				// last port to search
-				c.logW.Fatalf("Failed listening on %s: %s\n", desireIp, err)
+				c.logW.Fatalf("Failed listening on %q: error=%q address=%q\n", desireIp, err, address)
+			} else {
+				c.logW.Printf("Failed binding on %q: error=%q i=%d\n", desireIp, err, i)
 			}
 		} else {
 			c.socks = append(c.socks, l)
 			// TODO setMTU()
 			return true
 		}
-
 	}
 	return false
+}
+
+func (c *Connection) sock() net.PacketConn {
+	if len(c.socks) == 0 {
+		return nil
+	}
+	return c.socks[len(c.socks)-1]
 }
 
 func parsePort(portStr string, hint string, logW *log.Logger) (port int, ok bool) {

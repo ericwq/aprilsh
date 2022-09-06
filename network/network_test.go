@@ -27,6 +27,7 @@ SOFTWARE.
 package network
 
 import (
+	"fmt"
 	"log"
 	"reflect"
 	"strings"
@@ -127,6 +128,27 @@ func TestParsePortRange(t *testing.T) {
 		} else if !strings.Contains(place.String(), v.msg) {
 			// parse failed, check the log message
 			t.Errorf("%q expect \n%q\n got \n%q\n", v.name, v.msg, place.String())
+		}
+	}
+}
+
+func TestConnection(t *testing.T) {
+	tc := []struct {
+		name string
+		ip   string
+		port string
+	}{
+		{"localhost 8080", "localhost", "8080"},
+		{"default range", "", "60001:60010"},
+	}
+
+	for _, v := range tc {
+		c := NewConnection(v.ip, v.port)
+		if c == nil {
+			fmt.Printf("got nil connection for %s:\n%s\n", v.ip, v.port)
+		} else {
+			fmt.Printf("got right connection for %s:%s conn=%v\n", v.ip, v.port, c)
+			c.sock().Close()
 		}
 	}
 }
