@@ -28,14 +28,18 @@ package network
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
-	"fmt"
+	"log"
 	"net"
+	"os"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/ericwq/aprilsh/encrypt"
+	"golang.org/x/sys/unix"
 )
 
 type Direction uint
@@ -198,6 +202,7 @@ type Connection struct {
 	RTTVAR float32
 
 	sendError string
+	logW      *log.Logger
 }
 
 func NewConnection(desiredIp string, desiredPort string) *Connection { // server
@@ -222,6 +227,8 @@ func NewConnection(desiredIp string, desiredPort string) *Connection { // server
 	c.SRTT = 1000
 	c.RTTVAR = 500
 
+	c.logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+
 	c.setup()
 
 	/* The mosh wrapper always gives an IP request, in order
@@ -235,13 +242,13 @@ func NewConnection(desiredIp string, desiredPort string) *Connection { // server
 	ok := false
 
 	if len(desiredPort) > 0 {
-		if desiredPortLow, desiredPortHigh, ok = ParsePortRange(desiredPort); !ok {
-			fmt.Printf("Invalid port range. %q\n", desiredPort)
+		if desiredPortLow, desiredPortHigh, ok = ParsePortRange(desiredPort, c.logW); !ok {
+			c.logW.Printf("Invalid port range. %q\n", desiredPort)
 			return nil
 		}
 	}
 
-	if !c.tryBind(desiredIp, desiredPortLow, desiredPortHigh) {
+	if len(desiredIp) == 0 || !c.tryBind(desiredIp, desiredPortLow, desiredPortHigh) {
 		return nil
 	}
 
@@ -253,20 +260,44 @@ func (c *Connection) setup() {
 }
 
 func (c *Connection) tryBind(desiredIp string, desiredPortLow, desiredPortHigh int) bool {
+	lc := net.ListenConfig{
+		Control: func(network, address string, c syscall.RawConn) error {
+			var opErr error
+			if err := c.Control(func(fd uintptr) {
+				// isable path MTU discovery
+				opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_MTU_DISCOVER, unix.IP_PMTUDISC_DONT)
+				if opErr != nil {
+					return
+				}
+
+				// int dscp = 0x92; /* OS X does not have IPTOS_DSCP_AF42 constant */
+				opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS, 0x02)
+				if opErr != nil {
+					return
+				}
+
+				// request explicit congestion notification on received datagrams
+				opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_RECVTOS, 1)
+			}); err != nil {
+				return err
+			}
+			return opErr
+		},
+	}
+
+	// lc.ListenPacket(context.Background(), network string, address string)
 	return false
 }
 
-func parsePort(portStr string, hint string) (port int, ok bool) {
+func parsePort(portStr string, hint string, logW *log.Logger) (port int, ok bool) {
 	value, err := strconv.Atoi(portStr)
 	if err != nil {
-		// TODO log it
-		fmt.Printf("Invalid (%s) port number (%s\n)", hint, portStr)
+		logW.Printf("Invalid (%s) port number (%s)\n", hint, portStr)
 		return
 	}
 
 	if value < 0 || value > 65535 {
-		// TODO log it
-		fmt.Printf("(%s) port number %d outside valid range [0..65535]\n", hint, value)
+		logW.Printf("(%s) port number %d outside valid range [0..65535]\n", hint, value)
 		return
 	}
 
@@ -275,36 +306,37 @@ func parsePort(portStr string, hint string) (port int, ok bool) {
 	return
 }
 
-func ParsePortRange(desiredPort string) (desiredPortLow, desiredPortHigh int, ok bool) {
+func ParsePortRange(desiredPort string, logW *log.Logger) (desiredPortLow, desiredPortHigh int, ok bool) {
 	// parse "port" or "portlow:porthigh"
 	var value int
 
 	all := strings.Split(desiredPort, ":")
 	if len(all) == 2 {
 		// parse "portlow:porthigh"
-		if value, ok = parsePort(all[0], "low"); !ok {
+		if value, ok = parsePort(all[0], "low", logW); !ok {
 			return
 		} else {
 			desiredPortLow = value
 		}
 
-		if value, ok = parsePort(all[1], "high"); !ok {
+		if value, ok = parsePort(all[1], "high", logW); !ok {
 			return
 		} else {
 			desiredPortHigh = value
 		}
 
 		if desiredPortLow > desiredPortHigh {
-			fmt.Printf("low port %d greater than high port %d\n", desiredPortLow, desiredPortHigh)
+			logW.Printf("low port %d greater than high port %d\n", desiredPortLow, desiredPortHigh)
+			ok = false
 			return
 		}
 	} else {
 		// parse solo port
-		if value, ok = parsePort(all[0], "solo"); !ok {
+		if value, ok = parsePort(all[0], "solo", logW); !ok {
 			return
 		} else {
 			desiredPortLow = value
-			desiredPortLow = desiredPortHigh
+			desiredPortHigh = desiredPortLow
 		}
 	}
 

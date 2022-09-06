@@ -27,7 +27,9 @@ SOFTWARE.
 package network
 
 import (
+	"log"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/ericwq/aprilsh/encrypt"
@@ -84,6 +86,47 @@ func TestPacket(t *testing.T) {
 
 		if p.seq != uint64(i+1) {
 			t.Errorf("%q expect seq >0, got %d", v.name, p.seq)
+		}
+	}
+}
+
+func TestParsePortRange(t *testing.T) {
+	tc := []struct {
+		name     string
+		portStr  string
+		portLow  int
+		portHigh int
+		msg      string
+	}{
+		{"normal port range", "3:65534", 3, 65534, ""},
+		{"outof scope number low", "-1:536", -1, -1, "-1 outside valid range [0..65535]"},
+		{"outof scope number high", "0:65536", -1, -1, "65536 outside valid range [0..65535]"},
+		{"invalid number", "3a", -1, -1, "Invalid (solo) port number"},
+		{"port order reverse", "3:1", -1, -1, "greater than high port"},
+		{"solo port", "5", 5, 5, ""},
+	}
+
+	var place strings.Builder
+	output := log.New(&place, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// output := log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+
+	for _, v := range tc {
+		place.Reset()
+		if portLow, portHigh, ok := ParsePortRange(v.portStr, output); ok {
+			// parse ok, check the low and high value
+			if v.portLow != -1 {
+				if portLow != v.portLow {
+					t.Errorf("%q expect port low %d, got %d\n", v.name, v.portLow, portLow)
+				}
+			}
+			if v.portHigh != -1 {
+				if portHigh != v.portHigh {
+					t.Errorf("%q expect port hight %d, got %d\n", v.name, v.portHigh, portHigh)
+				}
+			}
+		} else if !strings.Contains(place.String(), v.msg) {
+			// parse failed, check the log message
+			t.Errorf("%q expect \n%q\n got \n%q\n", v.name, v.msg, place.String())
 		}
 	}
 }
