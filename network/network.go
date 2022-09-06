@@ -174,11 +174,8 @@ const (
 	CONGESTION_TIMESTAMP_PENALTY = 500 // ms
 )
 
-// https://about.sourcegraph.com/blog/go/gophercon-2019-socket-to-me-where-do-sockets-live-in-go
-// c socket API vs go socket API
-
 type Connection struct {
-	socks         []net.Conn
+	socks         []net.PacketConn
 	hasRemoteAddr bool
 	remoteAddr    net.Addr
 	server        bool
@@ -259,7 +256,18 @@ func (c *Connection) setup() {
 	c.lastPortChoice = time.Now().UnixMilli()
 }
 
-func (c *Connection) tryBind(desiredIp string, desiredPortLow, desiredPortHigh int) bool {
+func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
+	searchLow := PORT_RANGE_LOW
+	searchHigh := PORT_RANGE_HIGH
+
+	if portLow != -1 {
+		searchLow = portLow
+	}
+	if portHigh != -1 {
+		searchHigh = portHigh
+	}
+
+	// prepare for additional socket options
 	lc := net.ListenConfig{
 		Control: func(network, address string, c syscall.RawConn) error {
 			var opErr error
@@ -285,7 +293,21 @@ func (c *Connection) tryBind(desiredIp string, desiredPortLow, desiredPortHigh i
 		},
 	}
 
-	// lc.ListenPacket(context.Background(), network string, address string)
+	for i := searchLow; i <= searchHigh; i++ {
+		address := net.JoinHostPort(desireIp, strconv.Itoa(i))
+		l, err := lc.ListenPacket(context.Background(), "udp", address)
+		if err != nil {
+			if i == searchHigh {
+				// last port to search
+				c.logW.Fatalf("Failed listening on %s: %s\n", desireIp, err)
+			}
+		} else {
+			c.socks = append(c.socks, l)
+			// TODO setMTU()
+			return true
+		}
+
+	}
 	return false
 }
 
@@ -306,8 +328,8 @@ func parsePort(portStr string, hint string, logW *log.Logger) (port int, ok bool
 	return
 }
 
+// parse "port" or "portlow:porthigh"
 func ParsePortRange(desiredPort string, logW *log.Logger) (desiredPortLow, desiredPortHigh int, ok bool) {
-	// parse "port" or "portlow:porthigh"
 	var value int
 
 	all := strings.Split(desiredPort, ":")
@@ -343,10 +365,3 @@ func ParsePortRange(desiredPort string, logW *log.Logger) (desiredPortLow, desir
 	ok = true
 	return
 }
-
-// TODO
-// net.Dial("udp", "address")
-// lc := net.ListenConfig{}
-// lc.ListenPacket(ctx context.Context, network string, address string)
-// unix.SetsockoptInt(1, 2, 3, 4)
-// return false
