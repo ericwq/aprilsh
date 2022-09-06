@@ -37,6 +37,7 @@
 
 - [Go: Deep dive into net package learning from TCP server](https://dev.to/hgsgtk/how-go-handles-network-and-system-calls-when-tcp-server-1nbd)
 - [Socket sharding in Linux example with Go](https://dev.to/douglasmakey/socket-sharding-in-linux-example-with-go-4mi7)
+- [Go socket design from user point](https://tonybai.com/2015/11/17/tcp-programming-in-golang/)
 
 ## `ListenConfig.ListenPacket()`
 

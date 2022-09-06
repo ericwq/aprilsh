@@ -29,11 +29,13 @@ package network
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"net"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/ericwq/aprilsh/encrypt"
-	"golang.org/x/sys/unix"
 )
 
 type Direction uint
@@ -230,9 +232,17 @@ func NewConnection(desiredIp string, desiredPort string) *Connection { // server
 
 	desiredPortHigh := -1
 	desiredPortLow := -1
+	ok := false
 
-	if len(desiredPort) > 0 && !c.parsePortRange(desiredPort, desiredPortLow, desiredPortHigh) {
-		panic("Invalid port range.")
+	if len(desiredPort) > 0 {
+		if desiredPortLow, desiredPortHigh, ok = ParsePortRange(desiredPort); !ok {
+			fmt.Printf("Invalid port range. %q\n", desiredPort)
+			return nil
+		}
+	}
+
+	if !c.tryBind(desiredIp, desiredPortLow, desiredPortHigh) {
+		return nil
 	}
 
 	return c
@@ -242,11 +252,69 @@ func (c *Connection) setup() {
 	c.lastPortChoice = time.Now().UnixMilli()
 }
 
-func (c *Connection) parsePortRange(desiredPort string, desiredPortLow, desiredPortHigh int) bool {
-	// TODO
-	// net.Dial("udp", "address")
-	// lc := net.ListenConfig{}
-	// lc.ListenPacket(ctx context.Context, network string, address string)
-	unix.SetsockoptInt(1, 2, 3, 4)
+func (c *Connection) tryBind(desiredIp string, desiredPortLow, desiredPortHigh int) bool {
 	return false
 }
+
+func parsePort(portStr string, hint string) (port int, ok bool) {
+	value, err := strconv.Atoi(portStr)
+	if err != nil {
+		// TODO log it
+		fmt.Printf("Invalid (%s) port number (%s\n)", hint, portStr)
+		return
+	}
+
+	if value < 0 || value > 65535 {
+		// TODO log it
+		fmt.Printf("(%s) port number %d outside valid range [0..65535]\n", hint, value)
+		return
+	}
+
+	port = value
+	ok = true
+	return
+}
+
+func ParsePortRange(desiredPort string) (desiredPortLow, desiredPortHigh int, ok bool) {
+	// parse "port" or "portlow:porthigh"
+	var value int
+
+	all := strings.Split(desiredPort, ":")
+	if len(all) == 2 {
+		// parse "portlow:porthigh"
+		if value, ok = parsePort(all[0], "low"); !ok {
+			return
+		} else {
+			desiredPortLow = value
+		}
+
+		if value, ok = parsePort(all[1], "high"); !ok {
+			return
+		} else {
+			desiredPortHigh = value
+		}
+
+		if desiredPortLow > desiredPortHigh {
+			fmt.Printf("low port %d greater than high port %d\n", desiredPortLow, desiredPortHigh)
+			return
+		}
+	} else {
+		// parse solo port
+		if value, ok = parsePort(all[0], "solo"); !ok {
+			return
+		} else {
+			desiredPortLow = value
+			desiredPortLow = desiredPortHigh
+		}
+	}
+
+	ok = true
+	return
+}
+
+// TODO
+// net.Dial("udp", "address")
+// lc := net.ListenConfig{}
+// lc.ListenPacket(ctx context.Context, network string, address string)
+// unix.SetsockoptInt(1, 2, 3, 4)
+// return false
