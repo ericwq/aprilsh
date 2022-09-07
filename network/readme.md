@@ -76,9 +76,11 @@ I choose `ListenConfig.ListenPacket()` because `ListenConfig` allow us to change
 
 - `fd.dial()` a.k.a. `netFD.dial()`.
 - `dial()` calls `ctrlFn` defined in `ListenConfig` to setup the socket options.
-- `dial()` calls `laddr.sockaddr()` to convert local address to `syscall.Sockaddr` type.
-- `dial()` calls system call `bind()` to bind the socket to the local address.
-- `dial()` calls `raddr.sockaddr()` to convert remote address to `syscall.Sockaddr` type.
-- `dial()` calls system call `connect()` to connect to the remote address and initialize the socket file descriptor for `netpoll`.
+- if there is local address:
+  - `dial()` calls `laddr.sockaddr()` to convert local address to `syscall.Sockaddr` type.
+  - `dial()` calls system call `bind()` to bind the socket to the local address.
+- if there is remote address:
+  - `dial()` calls `raddr.sockaddr()` to convert remote address to `syscall.Sockaddr` type.
+  - `dial()` calls system call `connect()` to connect to the remote address and initialize the socket file descriptor for `netpoll`.
 - `dial()` calls `syscall.Getsockname()` to get the socket name.
-- `dial()` calls `fd.addrFunc()` to convert the local address from `syscall.Sockaddr` type to `UDPAddr` type.
+- `dial()` calls `fd.setAddr()` method to set the local and remote address field in `netFD`.

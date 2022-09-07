@@ -30,7 +30,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"fmt"
 	"log"
 	"net"
 	"os"
@@ -40,6 +39,7 @@ import (
 	"time"
 
 	"github.com/ericwq/aprilsh/encrypt"
+	"golang.org/x/sys/unix"
 )
 
 type Direction uint
@@ -246,13 +246,55 @@ func NewConnection(desiredIp string, desiredPort string) *Connection { // server
 		}
 	}
 
-	fmt.Printf("#connection (%d:%d)\n", desiredPortLow, desiredPortHigh)
+	// fmt.Printf("#connection (%d:%d)\n", desiredPortLow, desiredPortHigh)
 	if !c.tryBind(desiredIp, desiredPortLow, desiredPortHigh) {
-		fmt.Printf("#connection failed\n\n")
+		// fmt.Printf("#connection failed\n\n")
 		return nil
 	}
-	fmt.Printf("#connection finished\n\n")
+	// fmt.Printf("#connection finished\n\n")
 
+	return c
+}
+
+func NewConnectionClient(keyStr string, ip, port string) *Connection { // client
+	c := &Connection{}
+
+	c.socks = make([]net.PacketConn, 0)
+	c.hasRemoteAddr = false
+	c.server = false
+
+	c.mtu = DEFAULT_SEND_MTU
+
+	c.key = encrypt.NewBase64Key2(keyStr)
+	c.session, _ = encrypt.NewSession(*c.key)
+
+	c.direction = TO_SERVER
+	c.savedTimestamp = -1
+
+	c.lastHeard = -1
+	c.lastPortChoice = -1
+	c.lastRoundTripSuccess = -1
+
+	c.RTTHit = false
+	c.SRTT = 1000
+	c.RTTVAR = 500
+
+	c.logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+
+	c.setup()
+
+	radd, err := net.ResolveUDPAddr("udp", net.JoinHostPort(ip, port))
+	if err != nil {
+		c.logW.Printf("#connection %s\n", err)
+		return nil
+	}
+	conn, err := net.DialUDP("udp", nil, radd)
+	if err != nil {
+		c.logW.Printf("#connection %s\n", err)
+		return nil
+	}
+
+	c.socks = append(c.socks, conn)
 	return c
 }
 
@@ -339,25 +381,28 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 			var opErr error
 			if err := c.Control(func(fd uintptr) {
 				// isable path MTU discovery
-				// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_MTU_DISCOVER, unix.IP_PMTUDISC_DONT)
+				// opErr = syscall.SetsockoptInt(int(fd), syscall.IPPROTO_IP, syscall.IP_MTU_DISCOVER, syscall.IP_PMTUDISC_DONT)
 				// if opErr != nil {
 				// 	fmt.Printf("#ListenConfig %s\n", opErr)
 				// 	return
 				// }
 
 				// int dscp = 0x92; /* OS X does not have IPTOS_DSCP_AF42 constant */
-				// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS, 0x02)
+				// opErr = syscall.SetsockoptInt(int(fd), syscall.IPPROTO_IP, unix.IP_TOS, 0x02)
 				// if opErr != nil {
 				// 	fmt.Printf("#ListenConfig %s\n", opErr)
 				// 	return
 				// }
 
 				// request explicit congestion notification on received datagrams
-				// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_RECVTOS, 1)
+				// opErr = syscall.SetsockoptInt(int(fd), syscall.IPPROTO_IP, syscall.IP_RECVTOS, 1)
 				// if opErr != nil {
 				// 	fmt.Printf("#ListenConfig %s\n", opErr)
 				// 	return
 				// }
+
+				syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEADDR, 1)
+				syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEPORT, 1)
 			}); err != nil {
 				return err
 			}
@@ -367,7 +412,7 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 
 	for i := searchLow; i <= searchHigh; i++ {
 		address := net.JoinHostPort(desireIp, strconv.Itoa(i))
-		fmt.Printf("#tryBind %d-%d, address=%q\n", i, searchHigh, address)
+		// fmt.Printf("#tryBind %d-%d, address=%q\n", i, searchHigh, address)
 		l, err := lc.ListenPacket(context.Background(), "udp", address)
 		if err != nil {
 			if i == searchHigh {
