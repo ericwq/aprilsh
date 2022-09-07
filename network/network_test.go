@@ -27,7 +27,6 @@ SOFTWARE.
 package network
 
 import (
-	"fmt"
 	"log"
 	"reflect"
 	"strings"
@@ -139,15 +138,15 @@ func TestConnection(t *testing.T) {
 		port string
 	}{
 		{"localhost 8080", "localhost", "8080"},
-		{"default range", "", "60001:60010"},
+		{"default range", "", "9081:9090"},
 	}
 
 	for _, v := range tc {
 		c := NewConnection(v.ip, v.port)
 		if c == nil {
-			fmt.Printf("got nil connection for %s:\n%s\n", v.ip, v.port)
+			// fmt.Printf("#test got nil connection for %s:\n%s\n", v.ip, v.port)
 		} else {
-			fmt.Printf("got right connection for %s:%s conn=%v\n", v.ip, v.port, c)
+			// fmt.Printf("#test got right connection for %s:%s\n\tconn=%v\n", v.ip, v.port, c.sock())
 			c.sock().Close()
 		}
 	}

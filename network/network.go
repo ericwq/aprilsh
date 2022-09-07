@@ -40,7 +40,6 @@ import (
 	"time"
 
 	"github.com/ericwq/aprilsh/encrypt"
-	"golang.org/x/sys/unix"
 )
 
 type Direction uint
@@ -247,80 +246,14 @@ func NewConnection(desiredIp string, desiredPort string) *Connection { // server
 		}
 	}
 
-	// fmt.Printf("#connection (%d:%d)\n", desiredPortLow, desiredPortHigh)
+	fmt.Printf("#connection (%d:%d)\n", desiredPortLow, desiredPortHigh)
 	if !c.tryBind(desiredIp, desiredPortLow, desiredPortHigh) {
+		fmt.Printf("#connection failed\n\n")
 		return nil
 	}
+	fmt.Printf("#connection finished\n\n")
 
 	return c
-}
-
-func (c *Connection) setup() {
-	c.lastPortChoice = time.Now().UnixMilli()
-}
-
-func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
-	searchLow := PORT_RANGE_LOW
-	searchHigh := PORT_RANGE_HIGH
-
-	if portLow != -1 { // low port preference
-		searchLow = portLow
-	}
-	if portHigh != -1 { // high port preference
-		searchHigh = portHigh
-	}
-
-	// prepare for additional socket options
-	lc := net.ListenConfig{
-		Control: func(network, address string, c syscall.RawConn) error {
-			var opErr error
-			if err := c.Control(func(fd uintptr) {
-				// isable path MTU discovery
-				// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_MTU_DISCOVER, unix.IP_PMTUDISC_DONT)
-				// if opErr != nil {
-				// 	return
-				// }
-
-				// int dscp = 0x92; /* OS X does not have IPTOS_DSCP_AF42 constant */
-				opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS, 0x02)
-				if opErr != nil {
-					return
-				}
-
-				// request explicit congestion notification on received datagrams
-				opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_RECVTOS, 1)
-			}); err != nil {
-				return err
-			}
-			return opErr
-		},
-	}
-
-	for i := searchLow; i <= searchHigh; i++ {
-		address := net.JoinHostPort(desireIp, strconv.Itoa(i))
-		fmt.Printf("%d of %d, desireIp=%q, address=%q\n", i, searchHigh, desireIp, address)
-		l, err := lc.ListenPacket(context.Background(), "udp", address)
-		if err != nil {
-			if i == searchHigh {
-				// last port to search
-				c.logW.Fatalf("Failed listening on %q: error=%q address=%q\n", desireIp, err, address)
-			} else {
-				c.logW.Printf("Failed binding on %q: error=%q i=%d\n", desireIp, err, i)
-			}
-		} else {
-			c.socks = append(c.socks, l)
-			// TODO setMTU()
-			return true
-		}
-	}
-	return false
-}
-
-func (c *Connection) sock() net.PacketConn {
-	if len(c.socks) == 0 {
-		return nil
-	}
-	return c.socks[len(c.socks)-1]
 }
 
 func parsePort(portStr string, hint string, logW *log.Logger) (port int, ok bool) {
@@ -376,4 +309,78 @@ func ParsePortRange(desiredPort string, logW *log.Logger) (desiredPortLow, desir
 
 	ok = true
 	return
+}
+
+func (c *Connection) setup() {
+	c.lastPortChoice = time.Now().UnixMilli()
+}
+
+func (c *Connection) sock() net.PacketConn {
+	if len(c.socks) == 0 {
+		return nil
+	}
+	return c.socks[len(c.socks)-1]
+}
+
+func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
+	searchLow := PORT_RANGE_LOW
+	searchHigh := PORT_RANGE_HIGH
+
+	if portLow != -1 { // low port preference
+		searchLow = portLow
+	}
+	if portHigh != -1 { // high port preference
+		searchHigh = portHigh
+	}
+
+	// prepare for additional socket options
+	lc := net.ListenConfig{
+		Control: func(network, address string, c syscall.RawConn) error {
+			var opErr error
+			if err := c.Control(func(fd uintptr) {
+				// isable path MTU discovery
+				// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_MTU_DISCOVER, unix.IP_PMTUDISC_DONT)
+				// if opErr != nil {
+				// 	fmt.Printf("#ListenConfig %s\n", opErr)
+				// 	return
+				// }
+
+				// int dscp = 0x92; /* OS X does not have IPTOS_DSCP_AF42 constant */
+				// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS, 0x02)
+				// if opErr != nil {
+				// 	fmt.Printf("#ListenConfig %s\n", opErr)
+				// 	return
+				// }
+
+				// request explicit congestion notification on received datagrams
+				// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_RECVTOS, 1)
+				// if opErr != nil {
+				// 	fmt.Printf("#ListenConfig %s\n", opErr)
+				// 	return
+				// }
+			}); err != nil {
+				return err
+			}
+			return opErr
+		},
+	}
+
+	for i := searchLow; i <= searchHigh; i++ {
+		address := net.JoinHostPort(desireIp, strconv.Itoa(i))
+		fmt.Printf("#tryBind %d-%d, address=%q\n", i, searchHigh, address)
+		l, err := lc.ListenPacket(context.Background(), "udp", address)
+		if err != nil {
+			if i == searchHigh {
+				// last port to search
+				c.logW.Printf("#tryBind error=%q\n", err)
+			} else {
+				c.logW.Printf("#tryBind error=%q\n", err)
+			}
+		} else {
+			c.socks = append(c.socks, l)
+			// TODO setMTU()
+			return true
+		}
+	}
+	return false
 }
