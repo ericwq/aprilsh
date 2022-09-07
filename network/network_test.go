@@ -133,21 +133,35 @@ func TestParsePortRange(t *testing.T) {
 
 func TestConnection(t *testing.T) {
 	tc := []struct {
-		name string
-		ip   string
-		port string
+		name   string
+		ip     string
+		port   string
+		result bool
+		msg    string
 	}{
-		{"localhost 8080", "localhost", "8080"},
-		{"default range", "", "9081:9090"},
+		{"localhost 8080", "localhost", "8080", true, ""},
+		{"default range", "", "9081:9090", true, ""},
+		{"invalid port", "", "4;3", false, ""},
+		{"reverse port order", "", "4:3", false, ""},
+		{"invalid host ", "localhos", "403", false, ""},
+		{"invalid host literal", "192.158.", "403:405", false, ""},
 	}
 
 	for _, v := range tc {
 		c := NewConnection(v.ip, v.port)
-		if c == nil {
-			// fmt.Printf("#test got nil connection for %s:\n%s\n", v.ip, v.port)
+		if v.result {
+			if c == nil {
+				t.Errorf("%q got nil connection for %q:%q\n", v.name, v.ip, v.port)
+			} else if len(c.socks) == 0 {
+				t.Errorf("%q got empty connection for %q:%q\n", v.name, v.ip, v.port)
+			} else {
+				t.Logf("%q close connection=%v\n", v.name, c.sock())
+				c.sock().Close()
+			}
 		} else {
-			// fmt.Printf("#test got right connection for %s:%s\n\tconn=%v\n", v.ip, v.port, c.sock())
-			c.sock().Close()
+			if c != nil {
+				t.Errorf("%q expect nil connection for %q:%q\n", v.name, v.ip, v.port)
+			}
 		}
 	}
 }

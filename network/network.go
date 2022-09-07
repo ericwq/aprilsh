@@ -241,14 +241,13 @@ func NewConnection(desiredIp string, desiredPort string) *Connection { // server
 
 	if len(desiredPort) > 0 {
 		if desiredPortLow, desiredPortHigh, ok = ParsePortRange(desiredPort, c.logW); !ok {
-			c.logW.Printf("Invalid port range. %q\n", desiredPort)
+			// c.logW.Printf("Invalid port value. %q\n", desiredPort)
 			return nil
 		}
 	}
 
 	// fmt.Printf("#connection (%d:%d)\n", desiredPortLow, desiredPortHigh)
 	if !c.tryBind(desiredIp, desiredPortLow, desiredPortHigh) {
-		// fmt.Printf("#connection failed\n\n")
 		return nil
 	}
 	// fmt.Printf("#connection finished\n\n")
@@ -358,9 +357,9 @@ func (c *Connection) setup() {
 }
 
 func (c *Connection) sock() net.PacketConn {
-	if len(c.socks) == 0 {
-		return nil
-	}
+	// if len(c.socks) == 0 {
+	// 	return nil
+	// }
 	return c.socks[len(c.socks)-1]
 }
 
@@ -415,11 +414,8 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 		// fmt.Printf("#tryBind %d-%d, address=%q\n", i, searchHigh, address)
 		l, err := lc.ListenPacket(context.Background(), "udp", address)
 		if err != nil {
-			if i == searchHigh {
-				// last port to search
-				c.logW.Printf("#tryBind error=%q\n", err)
-			} else {
-				c.logW.Printf("#tryBind error=%q\n", err)
+			if i == searchHigh { // last port to search
+				c.logW.Printf("#tryBind error=%q address=%q\n", err, address)
 			}
 		} else {
 			c.socks = append(c.socks, l)
