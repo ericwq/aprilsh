@@ -1,4 +1,4 @@
-# mosh C++ code
+# mosh network connection
 
 ## `Connection()`
 
@@ -32,6 +32,37 @@
   - upon the socket is bind to the address and port, return.
   - otherwise, increase the port number, go through the next iteration.
 - if the high port number is reached, `try_bind()` prints the error message and quits with error message.
+
+# mosh client roaming
+
+## receive a packet from client
+
+- `recv()` receives a packet from remote.
+- `recv()` iterates through each connection saved in `Connection`.
+- `recv()` calls `recv_one()` for each connection to get the payload.
+  - `recv_one()` a.k.a. `Connection:recv_one()`.
+  - `recv_one()` receives a packet from client, the server checks the cached `remote_addr` field against the `packet_remote_addr` value.
+  - `recv_one()` updates the `remote_addr` and `remote_addr_len` fields if it's different from the previous packet.
+- `recv()` calls `prune_sockets()` to clean old socket.
+
+## send packet to remote
+
+- `send()` sends a packet to remote.
+- `send()` creates a `Packet` based on the payload.
+- `send()` encrypts the `Packet` message.
+- `send()` calls `sendto()` to send the packet to the remote with the last socket in socket list.
+- `send()` check the sent data size to check the error.
+- for server side:
+  - `send()` checks the `last_heard` time, if no contact since `SERVER_ASSOCIATION_TIMEOUT`, set `has_remote_addr` false.
+- for client side:
+  - `send()` checks the `last_port_choice` and `last_roundtrip_success`, if `PORT_HOP_INTERVAL` passed, calls `hop_port()`
+
+## hop port
+
+- `hop_port()` a.k.a. `Connection.hop_port()`.
+- `hop_port()` calls `setup()` to update `last_port_choice`.
+- `hop_port()` creates a new socket to the `remote_addr` and add it to the socket list in `Connection`.
+- `hop_port()` calls `prune_sockets()` to clean old socket.
 
 # go net package
 
