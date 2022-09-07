@@ -76,7 +76,7 @@ func TestBase64Key(t *testing.T) {
 
 	// key length is short
 	shortLengthKey := &Base64Key{key: prngFill(8)}
-	key4 := NewBase64Key2(shortLengthKey.printableKey())
+	key4 := NewBase64Key2(shortLengthKey.String())
 	if key4 != nil {
 		t.Error("key length is short.")
 		t.Errorf("key length is short. %q\n", shortLengthKey.printableKey())

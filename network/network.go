@@ -357,9 +357,6 @@ func (c *Connection) setup() {
 }
 
 func (c *Connection) sock() net.PacketConn {
-	// if len(c.socks) == 0 {
-	// 	return nil
-	// }
 	return c.socks[len(c.socks)-1]
 }
 
@@ -378,7 +375,7 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 	lc := net.ListenConfig{
 		Control: func(network, address string, c syscall.RawConn) error {
 			var opErr error
-			if err := c.Control(func(fd uintptr) {
+			if err := c.Control(func(fd uintptr) { // TODO the following code only works on linux!
 				// isable path MTU discovery
 				// opErr = syscall.SetsockoptInt(int(fd), syscall.IPPROTO_IP, syscall.IP_MTU_DISCOVER, syscall.IP_PMTUDISC_DONT)
 				// if opErr != nil {

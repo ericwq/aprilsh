@@ -147,6 +147,7 @@ func TestConnection(t *testing.T) {
 		{"invalid host literal", "192.158.", "403:405", false, ""},
 	}
 
+	// test server connection creation
 	for _, v := range tc {
 		c := NewConnection(v.ip, v.port)
 		if v.result {
@@ -161,6 +162,46 @@ func TestConnection(t *testing.T) {
 		} else {
 			if c != nil {
 				t.Errorf("%q expect nil connection for %q:%q\n", v.name, v.ip, v.port)
+				c.sock().Close()
+			}
+		}
+	}
+}
+
+func TestConnectionClient(t *testing.T) {
+	tc := []struct {
+		name   string
+		sIP    string // server ip
+		sPort  string // server port
+		cIP    string // client ip
+		cPort  string // client port
+		result bool
+	}{
+		{"localhost 8080", "localhost", "8080", "localhost", "8080", true},
+		{"wrong host", "", "9081:9090", "3a", "9081", false},
+		{"wrong connect port", "localhost", "8080", "", "8001", true}, // UDP is not connected, so different port still work.
+	}
+
+	// test client connection
+	for _, v := range tc {
+		server := NewConnection(v.sIP, v.sPort)
+		key := server.key
+		client := NewConnectionClient(key.String(), v.cIP, v.cPort)
+		if v.result {
+			if client == nil {
+				t.Errorf("%q got nil connection, for %q:%q", v.name, v.cIP, v.cPort)
+			} else if len(client.socks) == 0 {
+				t.Errorf("%q got empty connection, for %q:%q", v.name, v.cIP, v.cPort)
+			} else {
+				// t.Logf("%q close connection=%v\n", v.name, client.sock())
+				client.sock().Close()
+				server.sock().Close()
+			}
+		} else {
+			if client != nil {
+				t.Errorf("%q expect nil connection for %q:%q\ngot %#v\n", v.name, v.cIP, v.cPort, client.sock())
+				client.sock().Close()
+				server.sock().Close()
 			}
 		}
 	}

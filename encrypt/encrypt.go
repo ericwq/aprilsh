@@ -135,6 +135,10 @@ func (b *Base64Key) data() []uint8 {
 	return b.key
 }
 
+func (b *Base64Key) String() string {
+	return b.printableKey()
+}
+
 var counter uint64
 
 func Unique() uint64 {
