@@ -185,6 +185,10 @@ func TestConnectionClient(t *testing.T) {
 	// test client connection
 	for _, v := range tc {
 		server := NewConnection(v.sIP, v.sPort)
+		if server == nil {
+			t.Errorf("%q should not return nil.\n", v.name)
+			continue
+		}
 		key := server.key
 		client := NewConnectionClient(key.String(), v.cIP, v.cPort)
 		if v.result {

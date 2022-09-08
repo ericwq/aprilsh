@@ -390,25 +390,42 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 			var opErr error
 			if err := c.Control(func(fd uintptr) { // TODO the following code only works on linux!
 				// isable path MTU discovery
-				// opErr = syscall.SetsockoptInt(int(fd), syscall.IPPROTO_IP, syscall.IP_MTU_DISCOVER, syscall.IP_PMTUDISC_DONT)
+				// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_MTU_DISCOVER, unix.IP_PMTUDISC_DONT)
 				// if opErr != nil {
-				// 	fmt.Printf("#ListenConfig %s\n", opErr)
+				// 	fmt.Printf("#ListenConfig %s\n", opErr.Error())
 				// 	return
 				// }
 
 				// int dscp = 0x92; /* OS X does not have IPTOS_DSCP_AF42 constant */
-				// opErr = syscall.SetsockoptInt(int(fd), syscall.IPPROTO_IP, unix.IP_TOS, 0x02)
-				// if opErr != nil {
-				// 	fmt.Printf("#ListenConfig %s\n", opErr)
-				// 	return
-				// }
+				opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS, 0x02)
+				if opErr != nil {
+					fmt.Printf("#ListenConfig %v\n", opErr)
+					return
+				}
 
 				// request explicit congestion notification on received datagrams
-				// opErr = syscall.SetsockoptInt(int(fd), syscall.IPPROTO_IP, syscall.IP_RECVTOS, 1)
-				// if opErr != nil {
-				// 	fmt.Printf("#ListenConfig %s\n", opErr)
-				// 	return
-				// }
+				opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_RECVTOS, 1)
+				if opErr != nil {
+					fmt.Printf("#ListenConfig %s\n", opErr)
+					return
+				}
+				// https://groups.google.com/g/golang-nuts/c/TcHb_bXT18U
+				/*
+					Here's the solution I came up with for reading the ECN bits:
+					After setting the IP_RECVTOS options
+					syscall.SetsockoptInt(int(fd), syscall.IPPROTO_IP, syscall.IP_RECVTOS, 1)
+					one can read packets from the socket using
+					n, oobn, flags, addr, err := conn.ReadMsgUDP(b, oob)
+					oob now contains all the control messages, which can be parsed using
+					ctrlMsgs, err := syscall.ParseSocketControlMessage(oob[:oobn])
+					The ECN bits can now be extracted by searching for the IP_TOS control message:
+					for _, ctrlMsg := range ctrlMsgs {
+					    if ctrlMsg.Header.Type == syscall.IP_TOS {
+					        ecn := ctrlMsg.Data[0] & 0x3
+					    }
+					}
+
+				*/
 
 				syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEADDR, 1)
 				syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEPORT, 1)
