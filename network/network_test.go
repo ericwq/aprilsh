@@ -48,7 +48,7 @@ func TestPacket(t *testing.T) {
 	// test NewPacket2 and toMessage
 	for _, v := range tc {
 		m1 := encrypt.NewMessage(v.seqNonce, []byte(v.mixPayload))
-		p := NewPacket2(*m1)
+		p := NewPacketFrom(*m1)
 
 		m2 := p.toMessage()
 

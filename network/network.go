@@ -32,6 +32,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log"
+	"math"
 	"net"
 	"net/netip"
 	"os"
@@ -62,6 +63,16 @@ func timestamp16() uint16 {
 	return uint16(ts)
 }
 
+func timestampDiff(tsnew, tsold uint16) uint16 {
+	var diff int
+	diff = int(tsnew - tsold)
+	if diff < 0 {
+		diff += 65536
+	}
+
+	return uint16(diff)
+}
+
 type Packet struct {
 	seq            uint64
 	direction      Direction
@@ -83,7 +94,7 @@ func NewPacket(direction Direction, timestamp uint16, timestampReply uint16, pay
 	return p
 }
 
-func NewPacket2(m encrypt.Message) *Packet {
+func NewPacketFrom(m encrypt.Message) *Packet {
 	p := &Packet{}
 
 	p.seq = m.NonceVal() & SEQUENCE_MASK
@@ -204,8 +215,8 @@ type Connection struct {
 	lastRoundTripSuccess int64 // transport layer needs to tell us this
 
 	RTTHit bool
-	SRTT   float32
-	RTTVAR float32
+	SRTT   float64
+	RTTVAR float64
 
 	sendError string
 	logW      *log.Logger
@@ -425,12 +436,14 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 	return false
 }
 
+// build a packet based on sending and receiving timestamp and payload
 func (c *Connection) newPacket(payload string) *Packet {
 	var outgoingTimestampReply uint16
 
 	outgoingTimestampReply = 0 // -1 for c++
 	now := time.Now().UnixMilli()
 	if now-c.savedTimestampReceivedAt < 1000 { // we have a recent received timestamp
+		// send "corrected" timestamp advanced by how long we held it
 		outgoingTimestampReply = uint16(c.savedTimestamp) + uint16(now-c.savedTimestampReceivedAt)
 		c.savedTimestamp = -1
 		c.savedTimestampReceivedAt = 0
@@ -589,7 +602,7 @@ func (c *Connection) recvOne(conn *net.UDPConn, nonblocking bool) (string, error
 		return "", nil
 	}
 
-	p := NewPacket2(*c.session.Decrypt(data))
+	p := NewPacketFrom(*c.session.Decrypt(data[:n]))
 	// prevent malicious playback to sender
 	if c.server {
 		if p.direction != TO_SERVER {
@@ -602,14 +615,32 @@ func (c *Connection) recvOne(conn *net.UDPConn, nonblocking bool) (string, error
 	}
 
 	if p.seq >= c.expectedReceiverSeq { // don't use out-of-order packets for timestamp or targeting
-		/* this is security-sensitive because a replay attack
-		could otherwise screw up the timestamp and targeting */
+		// this is security-sensitive because a replay attack could otherwise screw up the timestamp and targeting
 		c.expectedReceiverSeq = p.seq + 1
 
-		if p.timestamp != 0 { // -1?
+		if p.timestamp != 0 {
+			c.savedTimestamp = int16(p.timestamp)
+			c.savedTimestampReceivedAt = time.Now().UnixMilli()
+			// TODO congestion_experienced
 		}
 
-		if p.timestampReply != 0 {
+		if p.timestampReply != 0 { // -1 in c++
+			now16 := timestamp16()
+			R := float64(timestampDiff(now16, p.timestampReply))
+
+			if R < 5000 { // ignore large values, e.g. server was Ctrl-Zed
+				if !c.RTTHit { // first measurement
+					c.SRTT = R
+					c.RTTVAR = R / 2
+					c.RTTHit = true
+				} else {
+					alpha := 1.0 / 8.0
+					beta := 1.0 / 4.0
+
+					c.RTTVAR = (1-beta)*c.RTTVAR + (beta * math.Abs(c.SRTT-R))
+					c.SRTT = (1-alpha)*c.SRTT + (alpha * R)
+				}
+			}
 		}
 
 		// auto-adjust to remote host
@@ -617,7 +648,7 @@ func (c *Connection) recvOne(conn *net.UDPConn, nonblocking bool) (string, error
 		c.lastHeard = time.Now().UnixMilli()
 
 		if c.server { // only client can roam
-			if raddr != &c.remoteAddr {
+			if reflect.DeepEqual(*raddr, c.remoteAddr) {
 				c.remoteAddr = *raddr
 				c.logW.Printf("#recvOne server now attached to client at %s\n", &c.remoteAddr)
 			}
