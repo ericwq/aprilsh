@@ -32,6 +32,7 @@ import (
 	"encoding/binary"
 	"log"
 	"net"
+	"net/netip"
 	"os"
 	"strconv"
 	"strings"
@@ -128,6 +129,8 @@ func (p *Packet) timestampBytes() []byte {
 	return buf.Bytes()
 }
 
+type ADDRESS_TYPE int
+
 const (
 	/*
 	 * For IPv4, guess the typical (minimum) header length;
@@ -172,12 +175,16 @@ const (
 	MAX_OLD_SOCKET_AGE = 60000
 
 	CONGESTION_TIMESTAMP_PENALTY = 500 // ms
+
+	ADDRESS_IPV4       ADDRESS_TYPE = 0
+	ADDRESS_IPV6       ADDRESS_TYPE = 1
+	ADDRESS_IPV4_IN_V6 ADDRESS_TYPE = 2
 )
 
 type Connection struct {
 	socks         []net.PacketConn
 	hasRemoteAddr bool
-	remoteAddr    net.Addr
+	remoteAddr    net.UDPAddr
 	server        bool
 
 	mtu int
@@ -187,7 +194,7 @@ type Connection struct {
 
 	direction                Direction
 	savedTimestamp           int16
-	savedTimestampReceivedAt uint64
+	savedTimestampReceivedAt int64
 	expectedReceiverSeq      uint64
 
 	lastHeard            int64
@@ -281,19 +288,12 @@ func NewConnectionClient(keyStr string, ip, port string) *Connection { // client
 	c.logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 
 	c.setup()
-
-	radd, err := net.ResolveUDPAddr("udp", net.JoinHostPort(ip, port))
-	if err != nil {
-		c.logW.Printf("#connection %s\n", err)
+	if !c.dialUDP(ip, port) {
 		return nil
 	}
-	conn, err := net.DialUDP("udp", nil, radd)
-	if err != nil {
-		c.logW.Printf("#connection %s\n", err)
-		return nil
-	}
+	c.hasRemoteAddr = true
+	c.setMTU()
 
-	c.socks = append(c.socks, conn)
 	return c
 }
 
@@ -416,9 +416,105 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 			}
 		} else {
 			c.socks = append(c.socks, l)
-			// TODO setMTU()
+			c.setMTU()
 			return true
 		}
 	}
 	return false
+}
+
+func (c *Connection) newPacket(payload string) *Packet {
+	var outgoingTimestampReply uint16
+
+	outgoingTimestampReply = 0 // -1 for c++
+	now := time.Now().UnixMilli()
+	if now-c.savedTimestampReceivedAt < 1000 { // we have a recent received timestamp
+		outgoingTimestampReply = uint16(c.savedTimestamp) + uint16(now-c.savedTimestampReceivedAt)
+		c.savedTimestamp = -1
+		c.savedTimestampReceivedAt = 0
+	}
+	return NewPacket(c.direction, timestamp16(), outgoingTimestampReply, []byte(payload))
+}
+
+func (c *Connection) dialUDP(ip, port string) bool {
+	radd, err := net.ResolveUDPAddr("udp", net.JoinHostPort(ip, port))
+	if err != nil {
+		c.logW.Printf("#dialUDP %s\n", err)
+		return false
+	}
+	conn, err := net.DialUDP("udp", nil, radd)
+	if err != nil {
+		c.logW.Printf("#dialUDP %s\n", err)
+		return false
+	}
+
+	c.remoteAddr = *radd
+	c.socks = append(c.socks, conn)
+
+	return true
+}
+
+// clear the old and over size sockets
+func (c *Connection) pruneSockets() {
+	// don't keep old sockets if the new socket has been working for long enough
+	if len(c.socks) > 1 {
+		now := time.Now().UnixMilli()
+		if now-c.lastPortChoice > MAX_OLD_SOCKET_AGE {
+			numToKill := len(c.socks) - 1
+
+			// TODO race condition
+			socks := make([]net.PacketConn, 1)
+			copy(socks, c.socks[numToKill:])
+			c.socks = socks
+		}
+	} else {
+		return
+	}
+
+	// make sure we don't have too many receive sockets open
+	if len(c.socks) > MAX_PORTS_OPEN {
+		numToKill := len(c.socks) - MAX_PORTS_OPEN
+
+		// TODO race condition
+		socks := make([]net.PacketConn, MAX_PORTS_OPEN)
+		copy(socks, c.socks[numToKill:])
+		c.socks = socks
+	}
+}
+
+// reconnect server with new local address
+func (c *Connection) hopPort() {
+	c.setup()
+
+	conn, err := net.DialUDP("udp", nil, &c.remoteAddr)
+	if err != nil {
+		c.logW.Printf("#hopPort %s\n", err)
+		return
+	}
+	c.socks = append(c.socks, conn)
+
+	c.pruneSockets()
+}
+
+func (c *Connection) remoteAddrType() ADDRESS_TYPE {
+	// need to find a way to determine the ipv6 network
+	if addr, ok := netip.AddrFromSlice(c.remoteAddr.IP); ok {
+		if addr.Is4In6() {
+			return ADDRESS_IPV4_IN_V6
+		} else if addr.Is6() {
+			return ADDRESS_IPV6
+		}
+	}
+	return ADDRESS_IPV4
+}
+
+func (c *Connection) setMTU() {
+	switch c.remoteAddrType() {
+	case ADDRESS_IPV4:
+		c.mtu = DEFAULT_IPV4_MTU - IPV4_HEADER_LEN
+	case ADDRESS_IPV4_IN_V6:
+		fallthrough
+	case ADDRESS_IPV6:
+		c.mtu = DEFAULT_IPV6_MTU - IPV6_HEADER_LEN
+	}
 }
