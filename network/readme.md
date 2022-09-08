@@ -70,6 +70,8 @@
 - [Socket sharding in Linux example with Go](https://dev.to/douglasmakey/socket-sharding-in-linux-example-with-go-4mi7)
 - [Go socket design from user point](https://tonybai.com/2015/11/17/tcp-programming-in-golang/)
 - [GopherCon 2019 - Socket to me: Where do Sockets live in Go?](https://about.sourcegraph.com/blog/go/gophercon-2019-socket-to-me-where-do-sockets-live-in-go)
+- [golang wiki](https://github.com/golang/go/wiki/Articles)
+- [深入 Go UDP 编程](https://colobu.com/2016/10/19/Go-UDP-Programming/#Read%E5%92%8CWrite%E6%96%B9%E6%B3%95%E9%9B%86%E7%9A%84%E6%AF%94%E8%BE%83)
 
 ## `ListenConfig.ListenPacket()`
 

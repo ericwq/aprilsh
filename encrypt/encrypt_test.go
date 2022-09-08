@@ -108,10 +108,10 @@ func TestSession(t *testing.T) {
 		message := Message{nonce: nonce, text: []byte(v.plainText)}
 
 		// fmt.Printf("#before message nonce=% x, nonce=%p\n", message.nonce, message.nonce)
-		cipherText := s.encrypt(&message)
+		cipherText := s.Encrypt(&message)
 		// fmt.Printf("#after cipherText=% x\n", cipherText)
 
-		message2 := s.decrypt(cipherText)
+		message2 := s.Decrypt(cipherText)
 		gotNonce := message2.nonce
 		gotText := message2.text
 
@@ -139,7 +139,7 @@ func TestSessionError(t *testing.T) {
 
 	b.key = prngFill(32)
 	s, _ := NewSession(b)
-	nilMessage := s.decrypt([]byte("zb0SLh88rdSHswjcgcC6949ZUuopGXTt"))
+	nilMessage := s.Decrypt([]byte("zb0SLh88rdSHswjcgcC6949ZUuopGXTt"))
 	if nilMessage != nil {
 		t.Errorf("expect nil message returned from decrypt(), got %v\n", nilMessage)
 	}

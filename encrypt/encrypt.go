@@ -230,16 +230,16 @@ func NewSession(key Base64Key) (*Session, error) {
 // https://stackoverflow.com/questions/1220751/how-to-choose-an-aes-encryption-mode-cbc-ecb-ctr-ocb-cfb
 // https://installmd.com/c/276/go/encrypt-a-string-using-aes-gcm
 
-// encrypt with AES-128 GCM
-func (s *Session) encrypt(plainText *Message) []byte {
+// Encrypt with AES-128 GCM
+func (s *Session) Encrypt(plainText *Message) []byte {
 	nonce := plainText.nonce
 
 	cipherText := s.aead.Seal(nonce, nonce, plainText.text, nil)
 	return cipherText
 }
 
-// decrypt with AES-128 GCM
-func (s *Session) decrypt(text []byte) *Message {
+// Decrypt with AES-128 GCM
+func (s *Session) Decrypt(text []byte) *Message {
 	ns := s.aead.NonceSize()
 	nonce, cipherText := text[:ns], text[ns:]
 	// fmt.Printf("#decrypt ciphertext=% x, %p\n", cipherText, cipherText)

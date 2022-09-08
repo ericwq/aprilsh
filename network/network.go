@@ -30,10 +30,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"fmt"
 	"log"
 	"net"
 	"net/netip"
 	"os"
+	"reflect"
 	"strconv"
 	"strings"
 	"syscall"
@@ -517,4 +519,110 @@ func (c *Connection) setMTU() {
 	case ADDRESS_IPV6:
 		c.mtu = DEFAULT_IPV6_MTU - IPV6_HEADER_LEN
 	}
+}
+
+// use the latest connection to send the message to remote
+func (c *Connection) send(s string) {
+	if !c.hasRemoteAddr {
+		return
+	}
+
+	px := c.newPacket(s)
+	p := c.session.Encrypt(px.toMessage())
+
+	conn := c.sock().(*net.UDPConn)
+	bytesSent, err := conn.Write(p)
+	if err != nil {
+		c.sendError = fmt.Sprintf("#send %s\n", err)
+		return
+	}
+
+	if bytesSent != len(p) {
+		// Make sendto() failure available to the frontend.
+		c.sendError = fmt.Sprintf("#send %s\n", err)
+
+		// TODO in case EMSGSIZE err, adjust mtu to DEFAULT_SEND_MTU
+	}
+
+	now := time.Now().UnixMilli()
+	if c.server {
+		if now-c.lastHeard > SERVER_ASSOCIATION_TIMEOUT {
+			c.hasRemoteAddr = false
+			c.logW.Printf("#send server now detached from client. [%s]\n", &c.remoteAddr)
+		}
+	} else {
+		if now-c.lastPortChoice > PORT_HOP_INTERVAL && now-c.lastRoundTripSuccess > PORT_HOP_INTERVAL {
+			c.hopPort()
+		}
+	}
+}
+
+// receive packet from remote
+func (c *Connection) recv() string {
+	length := len(c.socks)
+
+	isLast := false
+	for i := range c.socks {
+		if i == length-1 {
+			isLast = true
+		}
+		payload, err := c.recvOne(c.socks[i].(*net.UDPConn), !isLast)
+		if err != nil {
+			// TODO handle error: EAGAIN EWOULDBLOCK
+		}
+
+		c.pruneSockets()
+		return payload
+	}
+	return ""
+}
+
+func (c *Connection) recvOne(conn *net.UDPConn, nonblocking bool) (string, error) {
+	data := make([]byte, 0, c.mtu)
+
+	n, raddr, err := conn.ReadFromUDP(data)
+	if err != nil {
+		return "", err
+	}
+
+	if n < 0 {
+		return "", nil
+	}
+
+	p := NewPacket2(*c.session.Decrypt(data))
+	// prevent malicious playback to sender
+	if c.server {
+		if p.direction != TO_SERVER {
+			return "", nil
+		}
+	} else {
+		if p.direction != TO_CLIENT {
+			return "", nil
+		}
+	}
+
+	if p.seq >= c.expectedReceiverSeq { // don't use out-of-order packets for timestamp or targeting
+		/* this is security-sensitive because a replay attack
+		could otherwise screw up the timestamp and targeting */
+		c.expectedReceiverSeq = p.seq + 1
+
+		if p.timestamp != 0 { // -1?
+		}
+
+		if p.timestampReply != 0 {
+		}
+
+		// auto-adjust to remote host
+		c.hasRemoteAddr = true
+		c.lastHeard = time.Now().UnixMilli()
+
+		if c.server { // only client can roam
+			if raddr != &c.remoteAddr {
+				c.remoteAddr = *raddr
+				c.logW.Printf("#recvOne server now attached to client at %s\n", &c.remoteAddr)
+			}
+		}
+	}
+
+	return string(p.payload), nil // we do return out-of-order or duplicated packets to caller
 }
