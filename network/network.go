@@ -28,6 +28,7 @@ package network
 
 import (
 	"bytes"
+	"context"
 	"encoding/binary"
 	"fmt"
 	"log"
@@ -38,6 +39,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/ericwq/aprilsh/encrypt"
@@ -191,6 +193,8 @@ const (
 	ADDRESS_IPV4       ADDRESS_TYPE = 0
 	ADDRESS_IPV6       ADDRESS_TYPE = 1
 	ADDRESS_IPV4_IN_V6 ADDRESS_TYPE = 2
+
+	NETWORK = "udp4"
 )
 
 type Connection struct {
@@ -384,80 +388,80 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 	}
 
 	// prepare for additional socket options
-	/*
-		lc := net.ListenConfig{
-			Control: func(network, address string, c syscall.RawConn) error {
-				var opErr error
-				if err := c.Control(func(fd uintptr) { // TODO the following code only works on linux!
-					// isable path MTU discovery
-					// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_MTU_DISCOVER, unix.IP_PMTUDISC_DONT)
-					// if opErr != nil {
-					// 	fmt.Printf("#ListenConfig %s\n", opErr.Error())
-					// 	return
-					// }
+	lc := net.ListenConfig{
+		Control: func(network, address string, raw syscall.RawConn) error {
+			var opErr error
+			if err := raw.Control(func(fd uintptr) { // TODO the following code only works on linux!
+				// dsable path MTU discovery
+				// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_MTU_DISCOVER, unix.IP_PMTUDISC_DONT)
+				// if opErr != nil {
+				// 	fmt.Printf("#ListenConfig %s\n", opErr.Error())
+				// 	return
+				// }
 
-					// int dscp = 0x92; // OS X does not have IPTOS_DSCP_AF42 constant
-					// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS, 0x02)
-					// if opErr != nil {
-					// 	fmt.Printf("#ListenConfig %v\n", opErr)
-					// 	return
-					// }
-
-					// request explicit congestion notification on received datagrams
-					// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_RECVTOS, 1)
-					// if opErr != nil {
-					// 	fmt.Printf("#ListenConfig %s\n", opErr)
-					// 	return
-					// }
-					// https://groups.google.com/g/golang-nuts/c/TcHb_bXT18U
-					//
-					// 	Here's the solution I came up with for reading the ECN bits:
-					// 	After setting the IP_RECVTOS options
-					// 	syscall.SetsockoptInt(int(fd), syscall.IPPROTO_IP, syscall.IP_RECVTOS, 1)
-					// 	one can read packets from the socket using
-					// 	n, oobn, flags, addr, err := conn.ReadMsgUDP(b, oob)
-					// 	oob now contains all the control messages, which can be parsed using
-					// 	ctrlMsgs, err := syscall.ParseSocketControlMessage(oob[:oobn])
-					// 	The ECN bits can now be extracted by searching for the IP_TOS control message:
-					// 	for _, ctrlMsg := range ctrlMsgs {
-					// 	    if ctrlMsg.Header.Type == syscall.IP_TOS {
-					// 	        ecn := ctrlMsg.Data[0] & 0x3
-					// 	    }
-					// 	}
-					//
-					//
-
-					// syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEADDR, 1)
-					// syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEPORT, 1)
-				}); err != nil {
-					return err
+				// int dscp = 0x92; // OS X does not have IPTOS_DSCP_AF42 constant
+				opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS, 0b00000011)
+				if opErr != nil {
+					c.logW.Printf("#ListenConfig %v\n", opErr)
+					return
 				}
-				return opErr
-			},
-		}
-	*/
+
+				// request explicit congestion notification on received datagrams
+				// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_RECVTOS, 1)
+				// if opErr != nil {
+				// 	fmt.Printf("#ListenConfig %s\n", opErr)
+				// 	return
+				// }
+				// https://groups.google.com/g/golang-nuts/c/TcHb_bXT18U
+				//
+				// 	Here's the solution I came up with for reading the ECN bits:
+				// 	After setting the IP_RECVTOS options
+				// 	syscall.SetsockoptInt(int(fd), syscall.IPPROTO_IP, syscall.IP_RECVTOS, 1)
+				// 	one can read packets from the socket using
+				// 	n, oobn, flags, addr, err := conn.ReadMsgUDP(b, oob)
+				// 	oob now contains all the control messages, which can be parsed using
+				// 	ctrlMsgs, err := syscall.ParseSocketControlMessage(oob[:oobn])
+				// 	The ECN bits can now be extracted by searching for the IP_TOS control message:
+				// 	for _, ctrlMsg := range ctrlMsgs {
+				// 	    if ctrlMsg.Header.Type == syscall.IP_TOS {
+				// 	        ecn := ctrlMsg.Data[0] & 0x3
+				// 	    }
+				// 	}
+				//
+				//
+
+				// syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEADDR, 1)
+				// syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEPORT, 1)
+			}); err != nil {
+				c.logW.Printf("#ListenConfig %v\n", err)
+				return err
+			}
+			return opErr
+		},
+	}
+
 	for i := searchLow; i <= searchHigh; i++ {
 		address := net.JoinHostPort(desireIp, strconv.Itoa(i))
 
-		ladd, err := net.ResolveUDPAddr("udp", address)
+		ladd, err := net.ResolveUDPAddr(NETWORK, address)
 		if err != nil {
 			c.logW.Printf("#tryBind %s\n", err)
 			return false
 		}
 
 		// fmt.Printf("#tryBind %d-%d, ladd=%q\n", i, searchHigh, ladd)
-		// conn, err := net.ListenPacket("udp", ladd.String())
-		conn, err := net.ListenUDP("udp", ladd)
+		conn, err := lc.ListenPacket(context.Background(), NETWORK, ladd.String())
+		// conn, err := net.ListenUDP("udp", ladd)
 		if err != nil {
 			if i == searchHigh { // last port to search
 				c.logW.Printf("#tryBind error=%q address=%q\n", err, address)
 			}
 		} else {
-			err = markCongestionEncountered(conn)
-			if err != nil {
-				c.logW.Printf("#tryBind congestion setup %s\n", err)
-				return false
-			}
+			// err = markCongestionEncountered(conn.(*net.UDPConn))
+			// if err != nil {
+			// 	c.logW.Printf("#tryBind congestion setup %s\n", err)
+			// 	return false
+			// }
 			c.socks = append(c.socks, conn)
 			c.setMTU()
 			return true
@@ -482,17 +486,18 @@ func (c *Connection) newPacket(payload string) *Packet {
 }
 
 func (c *Connection) dialUDP(ip, port string) bool {
-	radd, err := net.ResolveUDPAddr("udp", net.JoinHostPort(ip, port))
+	radd, err := net.ResolveUDPAddr(NETWORK, net.JoinHostPort(ip, port))
 	if err != nil {
 		c.logW.Printf("#dialUDP %s\n", err)
 		return false
 	}
-	conn, err := net.DialUDP("udp", nil, radd)
+	conn, err := net.DialUDP(NETWORK, nil, radd)
 	if err != nil {
 		c.logW.Printf("#dialUDP %s\n", err)
 		return false
 	}
 
+	// fmt.Printf("#dialUDP success %s\n", radd)
 	// TODO change the value of TOS
 	// l2 := ipv4.NewPacketConn(conn)
 	// err = l2.SetTOS(0b00000011)

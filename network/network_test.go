@@ -143,7 +143,7 @@ func TestConnection(t *testing.T) {
 		{"default range", "", "9081:9090", true, ""}, // error on macOS
 		{"invalid port", "", "4;3", false, ""},
 		{"reverse port order", "", "4:3", false, ""},
-		{"invalid host ", "localhos", "403", false, ""},
+		{"invalid host ", "dev.net", "403", false, ""},
 		{"invalid host literal", "192.158.", "403:405", false, ""},
 	}
 
@@ -178,7 +178,7 @@ func TestConnectionClient(t *testing.T) {
 		result bool
 	}{
 		{"localhost 8080", "localhost", "8080", "localhost", "8080", true},
-		{"wrong host", "", "9081:9090", "3a", "9081", false},          // error on macOS
+		{"wrong host", "", "9081:9090", "dev.net", "9081", false},          // error on macOS
 		{"wrong connect port", "localhost", "8080", "", "8001", true}, // UDP is not connected, so different port still work.
 	}
 
