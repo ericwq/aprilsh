@@ -28,7 +28,6 @@ package network
 
 import (
 	"bytes"
-	"context"
 	"encoding/binary"
 	"fmt"
 	"log"
@@ -39,10 +38,10 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/ericwq/aprilsh/encrypt"
+	// "golang.org/x/net/ipv4"
 	"golang.org/x/sys/unix"
 )
 
@@ -385,67 +384,81 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 	}
 
 	// prepare for additional socket options
-	lc := net.ListenConfig{
-		Control: func(network, address string, c syscall.RawConn) error {
-			var opErr error
-			if err := c.Control(func(fd uintptr) { // TODO the following code only works on linux!
-				// isable path MTU discovery
-				// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_MTU_DISCOVER, unix.IP_PMTUDISC_DONT)
-				// if opErr != nil {
-				// 	fmt.Printf("#ListenConfig %s\n", opErr.Error())
-				// 	return
-				// }
+	/*
+		lc := net.ListenConfig{
+			Control: func(network, address string, c syscall.RawConn) error {
+				var opErr error
+				if err := c.Control(func(fd uintptr) { // TODO the following code only works on linux!
+					// isable path MTU discovery
+					// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_MTU_DISCOVER, unix.IP_PMTUDISC_DONT)
+					// if opErr != nil {
+					// 	fmt.Printf("#ListenConfig %s\n", opErr.Error())
+					// 	return
+					// }
 
-				// int dscp = 0x92; /* OS X does not have IPTOS_DSCP_AF42 constant */
-				opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS, 0x02)
-				if opErr != nil {
-					fmt.Printf("#ListenConfig %v\n", opErr)
-					return
+					// int dscp = 0x92; // OS X does not have IPTOS_DSCP_AF42 constant
+					// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS, 0x02)
+					// if opErr != nil {
+					// 	fmt.Printf("#ListenConfig %v\n", opErr)
+					// 	return
+					// }
+
+					// request explicit congestion notification on received datagrams
+					// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_RECVTOS, 1)
+					// if opErr != nil {
+					// 	fmt.Printf("#ListenConfig %s\n", opErr)
+					// 	return
+					// }
+					// https://groups.google.com/g/golang-nuts/c/TcHb_bXT18U
+					//
+					// 	Here's the solution I came up with for reading the ECN bits:
+					// 	After setting the IP_RECVTOS options
+					// 	syscall.SetsockoptInt(int(fd), syscall.IPPROTO_IP, syscall.IP_RECVTOS, 1)
+					// 	one can read packets from the socket using
+					// 	n, oobn, flags, addr, err := conn.ReadMsgUDP(b, oob)
+					// 	oob now contains all the control messages, which can be parsed using
+					// 	ctrlMsgs, err := syscall.ParseSocketControlMessage(oob[:oobn])
+					// 	The ECN bits can now be extracted by searching for the IP_TOS control message:
+					// 	for _, ctrlMsg := range ctrlMsgs {
+					// 	    if ctrlMsg.Header.Type == syscall.IP_TOS {
+					// 	        ecn := ctrlMsg.Data[0] & 0x3
+					// 	    }
+					// 	}
+					//
+					//
+
+					// syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEADDR, 1)
+					// syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEPORT, 1)
+				}); err != nil {
+					return err
 				}
-
-				// request explicit congestion notification on received datagrams
-				opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_RECVTOS, 1)
-				if opErr != nil {
-					fmt.Printf("#ListenConfig %s\n", opErr)
-					return
-				}
-				// https://groups.google.com/g/golang-nuts/c/TcHb_bXT18U
-				/*
-					Here's the solution I came up with for reading the ECN bits:
-					After setting the IP_RECVTOS options
-					syscall.SetsockoptInt(int(fd), syscall.IPPROTO_IP, syscall.IP_RECVTOS, 1)
-					one can read packets from the socket using
-					n, oobn, flags, addr, err := conn.ReadMsgUDP(b, oob)
-					oob now contains all the control messages, which can be parsed using
-					ctrlMsgs, err := syscall.ParseSocketControlMessage(oob[:oobn])
-					The ECN bits can now be extracted by searching for the IP_TOS control message:
-					for _, ctrlMsg := range ctrlMsgs {
-					    if ctrlMsg.Header.Type == syscall.IP_TOS {
-					        ecn := ctrlMsg.Data[0] & 0x3
-					    }
-					}
-
-				*/
-
-				syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEADDR, 1)
-				syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEPORT, 1)
-			}); err != nil {
-				return err
-			}
-			return opErr
-		},
-	}
-
+				return opErr
+			},
+		}
+	*/
 	for i := searchLow; i <= searchHigh; i++ {
 		address := net.JoinHostPort(desireIp, strconv.Itoa(i))
-		// fmt.Printf("#tryBind %d-%d, address=%q\n", i, searchHigh, address)
-		l, err := lc.ListenPacket(context.Background(), "udp", address)
+
+		ladd, err := net.ResolveUDPAddr("udp", address)
+		if err != nil {
+			c.logW.Printf("#tryBind %s\n", err)
+			return false
+		}
+
+		// fmt.Printf("#tryBind %d-%d, ladd=%q\n", i, searchHigh, ladd)
+		// conn, err := net.ListenPacket("udp", ladd.String())
+		conn, err := net.ListenUDP("udp", ladd)
 		if err != nil {
 			if i == searchHigh { // last port to search
 				c.logW.Printf("#tryBind error=%q address=%q\n", err, address)
 			}
 		} else {
-			c.socks = append(c.socks, l)
+			err = markCongestionEncountered(conn)
+			if err != nil {
+				c.logW.Printf("#tryBind congestion setup %s\n", err)
+				return false
+			}
+			c.socks = append(c.socks, conn)
 			c.setMTU()
 			return true
 		}
@@ -480,10 +493,38 @@ func (c *Connection) dialUDP(ip, port string) bool {
 		return false
 	}
 
+	// TODO change the value of TOS
+	// l2 := ipv4.NewPacketConn(conn)
+	// err = l2.SetTOS(0b00000011)
+	// if err != nil {
+	// 	c.logW.Printf("#dialUDP %s\n", err)
+	// 	return false
+	// }
+
+	err = markCongestionEncountered(conn)
+	if err != nil {
+		c.logW.Printf("#dialUDP %s\n", err)
+		return false
+	}
 	c.remoteAddr = *radd
 	c.socks = append(c.socks, conn)
 
 	return true
+}
+
+func markCongestionEncountered(u *net.UDPConn) error {
+	sc, err := u.SyscallConn()
+	if err != nil {
+		return err
+	}
+	var serr error
+	err = sc.Control(func(fd uintptr) {
+		serr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS, 0b00000011)
+	})
+	if err != nil {
+		return err
+	}
+	return serr
 }
 
 // clear the old and over size sockets

@@ -140,7 +140,7 @@ func TestConnection(t *testing.T) {
 		msg    string
 	}{
 		{"localhost 8080", "localhost", "8080", true, ""},
-		{"default range", "", "9081:9090", true, ""},
+		{"default range", "", "9081:9090", true, ""}, // error on macOS
 		{"invalid port", "", "4;3", false, ""},
 		{"reverse port order", "", "4:3", false, ""},
 		{"invalid host ", "localhos", "403", false, ""},
@@ -156,7 +156,7 @@ func TestConnection(t *testing.T) {
 			} else if len(c.socks) == 0 {
 				t.Errorf("%q got empty connection for %q:%q\n", v.name, v.ip, v.port)
 			} else {
-				t.Logf("%q close connection=%v\n", v.name, c.sock())
+				// t.Logf("%q close connection=%v\n", v.name, c.sock())
 				c.sock().Close()
 			}
 		} else {
@@ -178,7 +178,7 @@ func TestConnectionClient(t *testing.T) {
 		result bool
 	}{
 		{"localhost 8080", "localhost", "8080", "localhost", "8080", true},
-		{"wrong host", "", "9081:9090", "3a", "9081", false},
+		{"wrong host", "", "9081:9090", "3a", "9081", false},          // error on macOS
 		{"wrong connect port", "localhost", "8080", "", "8001", true}, // UDP is not connected, so different port still work.
 	}
 
@@ -186,7 +186,7 @@ func TestConnectionClient(t *testing.T) {
 	for _, v := range tc {
 		server := NewConnection(v.sIP, v.sPort)
 		if server == nil {
-			t.Errorf("%q should not return nil.\n", v.name)
+			t.Errorf("%q server should not return nil.\n", v.name)
 			continue
 		}
 		key := server.key
