@@ -393,6 +393,7 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 			var opErr error
 			if err := raw.Control(func(fd uintptr) { // TODO the following code only works on linux!
 				// dsable path MTU discovery
+				// IP_MTU_DISCOVER and IP_PMTUDISC_DONT is not defined on macOS
 				// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_MTU_DISCOVER, unix.IP_PMTUDISC_DONT)
 				// if opErr != nil {
 				// 	fmt.Printf("#ListenConfig %s\n", opErr.Error())
@@ -400,35 +401,26 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 				// }
 
 				// int dscp = 0x92; // OS X does not have IPTOS_DSCP_AF42 constant
-				opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS, 0b00000011)
+				dscp := 0x02 // ECN-capable transport only
+				opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS, dscp)
 				if opErr != nil {
 					c.logW.Printf("#ListenConfig %v\n", opErr)
 					return
 				}
+				/*
+					Differentiated Service Code Point - TCP/IP Illustrated V1, Page 188
+					Explicit Congestion Notification - TCP/IP Illustrated V1, Page 783
+					Random Early Detection algorithm - check it.
+				*/
+				// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS, 0b00000011)
 
 				// request explicit congestion notification on received datagrams
-				// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_RECVTOS, 1)
-				// if opErr != nil {
-				// 	fmt.Printf("#ListenConfig %s\n", opErr)
-				// 	return
-				// }
+				opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_RECVTOS, 1)
+				if opErr != nil {
+					fmt.Printf("#ListenConfig %s\n", opErr)
+					return
+				}
 				// https://groups.google.com/g/golang-nuts/c/TcHb_bXT18U
-				//
-				// 	Here's the solution I came up with for reading the ECN bits:
-				// 	After setting the IP_RECVTOS options
-				// 	syscall.SetsockoptInt(int(fd), syscall.IPPROTO_IP, syscall.IP_RECVTOS, 1)
-				// 	one can read packets from the socket using
-				// 	n, oobn, flags, addr, err := conn.ReadMsgUDP(b, oob)
-				// 	oob now contains all the control messages, which can be parsed using
-				// 	ctrlMsgs, err := syscall.ParseSocketControlMessage(oob[:oobn])
-				// 	The ECN bits can now be extracted by searching for the IP_TOS control message:
-				// 	for _, ctrlMsg := range ctrlMsgs {
-				// 	    if ctrlMsg.Header.Type == syscall.IP_TOS {
-				// 	        ecn := ctrlMsg.Data[0] & 0x3
-				// 	    }
-				// 	}
-				//
-				//
 
 				// syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEADDR, 1)
 				// syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEPORT, 1)
