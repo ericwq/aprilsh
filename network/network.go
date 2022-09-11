@@ -391,7 +391,7 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 	lc := net.ListenConfig{
 		Control: func(network, address string, raw syscall.RawConn) error {
 			var opErr error
-			if err := raw.Control(func(fd uintptr) { // TODO the following code only works on linux!
+			if err := raw.Control(func(fd uintptr) { // TODO the following code only works on linux and for ipv4!
 				// dsable path MTU discovery
 				// IP_MTU_DISCOVER and IP_PMTUDISC_DONT is not defined on macOS
 				// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_MTU_DISCOVER, unix.IP_PMTUDISC_DONT)
@@ -400,19 +400,31 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 				// 	return
 				// }
 
-				// int dscp = 0x92; // OS X does not have IPTOS_DSCP_AF42 constant
-				dscp := 0x02 // ECN-capable transport only
-				opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS, dscp)
-				if opErr != nil {
-					c.logW.Printf("#ListenConfig %v\n", opErr)
+				// int tosConf = 0x92; // OS X does not have IPTOS_DSCP_AF42 constant
+				tosConf, err := unix.GetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS)
+				if err != nil {
+					c.logW.Printf("#ListenConfig %s\n", opErr)
 					return
 				}
+				// fmt.Printf("#tryBind got TOS options before setup %b.\n", dscp)
+				tosConf |= 0x02 // ECN-capable transport only, ECT(0), https://www.rfc-editor.org/rfc/rfc3168
+
+				// dscp := 0x02 // ECN-capable transport only
+				opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS, tosConf)
+				if opErr != nil {
+					c.logW.Printf("#ListenConfig %s\n", opErr)
+					return
+				}
+				// dscp, _ = unix.GetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS)
+				// fmt.Printf("#tryBind got TOS options after setup %b.\n", dscp)
 				/*
 					Differentiated Service Code Point - TCP/IP Illustrated V1, Page 188
 					Explicit Congestion Notification - TCP/IP Illustrated V1, Page 783
-					Random Early Detection algorithm - check it.
+					Random Early Detection algorithm - check it for packet drop tail.
+					RFC 1349: Type of Service in the Internet Protocol Suite
+					RFC 2474: Definition of the Differentiated Services Field (DS Field) in the IPv4 and IPv6 Headers
+					RFC 3168: The Addition of Explicit Congestion Notification (ECN) to IP
 				*/
-				// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS, 0b00000011)
 
 				// request explicit congestion notification on received datagrams
 				opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_RECVTOS, 1)
@@ -425,7 +437,7 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 				// syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEADDR, 1)
 				// syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEPORT, 1)
 			}); err != nil {
-				c.logW.Printf("#ListenConfig %v\n", err)
+				c.logW.Printf("#ListenConfig %s\n", err)
 				return err
 			}
 			return opErr
@@ -648,6 +660,28 @@ func (c *Connection) recv() string {
 func (c *Connection) recvOne(conn *net.UDPConn, nonblocking bool) (string, error) {
 	data := make([]byte, 0, c.mtu)
 
+	// conn2:=ipv4.NewPacketConn(conn)
+	// n, cm, raddr, err:=conn2.ReadFrom(data)
+
+	oob := make([]byte, 0, 40)
+	// n, oobn, flags, addr, err := conn.ReadMsgUDP(data, oob)
+	n, oobn, _, _, err := conn.ReadMsgUDP(data, oob)
+	if err != nil {
+		return "", err
+	}
+
+	ctrlMsgs, err := syscall.ParseSocketControlMessage(oob[:oobn])
+	if err != nil {
+		return "", err
+	}
+
+	congestionExperienced := false
+	for _, ctrlMsg := range ctrlMsgs {
+		if ctrlMsg.Header.Type == syscall.IP_TOS {
+			congestionExperienced = ctrlMsg.Data[0]&0x03 == 0x03
+		}
+	}
+
 	n, raddr, err := conn.ReadFromUDP(data)
 	if err != nil {
 		return "", err
@@ -668,7 +702,6 @@ func (c *Connection) recvOne(conn *net.UDPConn, nonblocking bool) (string, error
 			return "", nil
 		}
 	}
-
 	if p.seq >= c.expectedReceiverSeq { // don't use out-of-order packets for timestamp or targeting
 		// this is security-sensitive because a replay attack could otherwise screw up the timestamp and targeting
 		c.expectedReceiverSeq = p.seq + 1
@@ -676,7 +709,15 @@ func (c *Connection) recvOne(conn *net.UDPConn, nonblocking bool) (string, error
 		if p.timestamp != 0 {
 			c.savedTimestamp = int16(p.timestamp)
 			c.savedTimestampReceivedAt = time.Now().UnixMilli()
-			// TODO congestion_experienced
+
+			if congestionExperienced {
+				// signal counterparty to slow down
+				// this will gradually slow the counterparty down to the minimum frame rate
+				c.savedTimestamp -= CONGESTION_TIMESTAMP_PENALTY
+				if c.server {
+					c.logW.Println("Received explicit congestion notification.")
+				}
+			}
 		}
 
 		if p.timestampReply != 0 { // -1 in c++
