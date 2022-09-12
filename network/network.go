@@ -30,6 +30,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -578,8 +579,9 @@ func (c *Connection) hopPort() {
 	c.pruneSockets()
 }
 
+// check the current remote address type ipv4,ipv6 or ipv4_in_ipv6
 func (c *Connection) remoteAddrType() ADDRESS_TYPE {
-	// need to find a way to determine the ipv6 network
+	// determine the ipv6/ipv4 network
 	if addr, ok := netip.AddrFromSlice(c.remoteAddr.IP); ok {
 		if addr.Is4In6() {
 			return ADDRESS_IPV4_IN_V6
@@ -610,8 +612,9 @@ func (c *Connection) send(s string) {
 	px := c.newPacket(s)
 	p := c.session.Encrypt(px.toMessage())
 
+	// write data to socket
 	conn := c.sock().(*net.UDPConn)
-	bytesSent, err := conn.Write(p)
+	bytesSent, err := conn.WriteToUDP(p, &c.remoteAddr)
 	if err != nil {
 		c.sendError = fmt.Sprintf("#send %s\n", err)
 		return
@@ -659,36 +662,35 @@ func (c *Connection) recv() string {
 
 func (c *Connection) recvOne(conn *net.UDPConn, nonblocking bool) (string, error) {
 	data := make([]byte, 0, c.mtu)
-
-	// conn2:=ipv4.NewPacketConn(conn)
-	// n, cm, raddr, err:=conn2.ReadFrom(data)
-
 	oob := make([]byte, 0, 40)
-	// n, oobn, flags, addr, err := conn.ReadMsgUDP(data, oob)
-	n, oobn, _, _, err := conn.ReadMsgUDP(data, oob)
+
+	// read from the socket
+	n, oobn, flags, raddr, err := conn.ReadMsgUDP(data, oob)
+	if err != nil {
+		return "", err
+	}
+	if n < 0 {
+		return "", errors.New("#recvOne receive zero or negative length data.")
+	}
+	if flags&unix.MSG_TRUNC > 0 {
+		return "", errors.New("#recvOne received oversize datagram.")
+	}
+
+	// parse the optional ancillary data
+	ctrlMsgs, err := unix.ParseSocketControlMessage(oob[:oobn])
 	if err != nil {
 		return "", err
 	}
 
-	ctrlMsgs, err := syscall.ParseSocketControlMessage(oob[:oobn])
-	if err != nil {
-		return "", err
-	}
-
+	// receive ECN
 	congestionExperienced := false
 	for _, ctrlMsg := range ctrlMsgs {
-		if ctrlMsg.Header.Type == syscall.IP_TOS {
+		if ctrlMsg.Header.Level == unix.IPPROTO_IP &&
+			(ctrlMsg.Header.Type == unix.IP_TOS || ctrlMsg.Header.Type == unix.IP_RECVTOS) {
+			// CE: RFC 3168
+			// https://www.ietf.org/rfc/rfc3168.html
 			congestionExperienced = ctrlMsg.Data[0]&0x03 == 0x03
 		}
-	}
-
-	n, raddr, err := conn.ReadFromUDP(data)
-	if err != nil {
-		return "", err
-	}
-
-	if n < 0 {
-		return "", nil
 	}
 
 	p := NewPacketFrom(*c.session.Decrypt(data[:n]))
@@ -702,6 +704,7 @@ func (c *Connection) recvOne(conn *net.UDPConn, nonblocking bool) (string, error
 			return "", nil
 		}
 	}
+
 	if p.seq >= c.expectedReceiverSeq { // don't use out-of-order packets for timestamp or targeting
 		// this is security-sensitive because a replay attack could otherwise screw up the timestamp and targeting
 		c.expectedReceiverSeq = p.seq + 1
@@ -715,7 +718,7 @@ func (c *Connection) recvOne(conn *net.UDPConn, nonblocking bool) (string, error
 				// this will gradually slow the counterparty down to the minimum frame rate
 				c.savedTimestamp -= CONGESTION_TIMESTAMP_PENALTY
 				if c.server {
-					c.logW.Println("Received explicit congestion notification.")
+					c.logW.Println("#recvOne received explicit congestion notification.")
 				}
 			}
 		}
