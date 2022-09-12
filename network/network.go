@@ -425,6 +425,7 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 					RFC 1349: Type of Service in the Internet Protocol Suite
 					RFC 2474: Definition of the Differentiated Services Field (DS Field) in the IPv4 and IPv6 Headers
 					RFC 3168: The Addition of Explicit Congestion Notification (ECN) to IP
+					https://dl.acm.org/doi/10.1145/2815675.2815716
 				*/
 
 				// request explicit congestion notification on received datagrams
