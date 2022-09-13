@@ -31,6 +31,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/ericwq/aprilsh/encrypt"
 )
@@ -208,5 +209,48 @@ func TestConnectionClient(t *testing.T) {
 				server.sock().Close()
 			}
 		}
+	}
+}
+
+func TestConnectionReadWrite(t *testing.T) {
+	tc := []struct {
+		name  string
+		sIP   string // server ip
+		sPort string // server port
+		msg   string
+	}{
+		{"normal", "localhost", "8080", "a good news from udp client."},
+	}
+
+	for _, v := range tc {
+		server := NewConnection(v.sIP, v.sPort)
+		if server == nil {
+			t.Errorf("%q server should not return nil.\n", v.name)
+			continue
+		}
+
+		go func() {
+			defer server.sock().Close()
+			for {
+				time.Sleep(time.Millisecond * 20)
+				payload := server.recv()
+				if len(payload) == 0 || v.msg != payload {
+					t.Errorf("%q expect %q, got %q\n", v.name, v.msg, payload)
+				} else {
+					return
+				}
+			}
+		}()
+
+		key := server.key
+		client := NewConnectionClient(key.String(), v.sIP, v.sPort)
+
+		client.send(v.msg)
+
+		if client.sendError != "" {
+			t.Errorf("%q send error: %q\n", v.name, client.sendError)
+		}
+
+		defer client.sock().Close()
 	}
 }

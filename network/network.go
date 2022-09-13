@@ -370,6 +370,32 @@ func ParsePortRange(desiredPort string, logW *log.Logger) (desiredPortLow, desir
 	return
 }
 
+// mark the EC bit for socket options (IP_TOS ), currently only EC0 is marked
+func markEC(fd int) error {
+	tosConf, err := unix.GetsockoptInt(fd, unix.IPPROTO_IP, unix.IP_TOS)
+	if err != nil {
+		return err
+	}
+	tosConf |= 0x02 // ECN-capable transport only, ECT(0), https://www.rfc-editor.org/rfc/rfc3168
+
+	/*
+	   Differentiated Service Code Point - TCP/IP Illustrated V1, Page 188
+	   Explicit Congestion Notification - TCP/IP Illustrated V1, Page 783
+	   Random Early Detection algorithm - check it for packet drop tail.
+	   RFC 1349: Type of Service in the Internet Protocol Suite
+	   RFC 2474: Definition of the Differentiated Services Field (DS Field) in the IPv4 and IPv6 Headers
+	   RFC 3168: The Addition of Explicit Congestion Notification (ECN) to IP
+	   https://dl.acm.org/doi/10.1145/2815675.2815716
+	*/
+	// int tosConf = 0x92; // OS X does not have IPTOS_DSCP_AF42 constant
+	// dscp := 0x02 // ECN-capable transport only
+	err = unix.SetsockoptInt(fd, unix.IPPROTO_IP, unix.IP_TOS, tosConf)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // update lastPortChoice timestamp
 func (c *Connection) setup() {
 	c.lastPortChoice = time.Now().UnixMilli()
@@ -404,6 +430,7 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 				// }
 
 				if opErr = markEC(int(fd)); opErr != nil {
+					fmt.Printf("#ListenConfig %s\n", opErr)
 					return
 				}
 
@@ -465,50 +492,50 @@ func (c *Connection) newPacket(payload string) *Packet {
 }
 
 func (c *Connection) dialUDP(ip, port string) bool {
-	radd, err := net.ResolveUDPAddr(NETWORK, net.JoinHostPort(ip, port))
-	if err != nil {
-		c.logW.Printf("#dialUDP %s\n", err)
-		return false
-	}
-	conn, err := net.DialUDP(NETWORK, nil, radd)
-	if err != nil {
-		c.logW.Printf("#dialUDP %s\n", err)
-		return false
-	}
-
-	if err = setupConnectionEC(conn); err != nil {
-		c.logW.Printf("#dialUDP %s\n", err)
-		return false
-	}
-	/*
-		var d net.Dialer
-		var opErr error
-		d.Control = func(network, address string, raw syscall.RawConn) error {
-			if err := raw.Control(func(fd uintptr) {
-				if opErr = markEC(int(fd)); opErr != nil {
-					return
-				}
-			}); err != nil {
-				return err
+	// radd, err := net.ResolveUDPAddr(NETWORK, net.JoinHostPort(ip, port))
+	// if err != nil {
+	// 	c.logW.Printf("#dialUDP %s\n", err)
+	// 	return false
+	// }
+	// conn, err := net.DialUDP(NETWORK, nil, radd)
+	// if err != nil {
+	// 	c.logW.Printf("#dialUDP %s\n", err)
+	// 	return false
+	// }
+	//
+	// if err = setupConnectionEC(conn); err != nil {
+	// 	c.logW.Printf("#dialUDP %s\n", err)
+	// 	return false
+	// }
+	//
+	var d net.Dialer
+	var opErr error
+	d.Control = func(network, address string, raw syscall.RawConn) error {
+		if err := raw.Control(func(fd uintptr) {
+			if opErr = markEC(int(fd)); opErr != nil {
+				fmt.Printf("#dialUDP %s\n", opErr)
+				return
 			}
-			return opErr
+		}); err != nil {
+			return err
 		}
+		return opErr
+	}
 
-		conn, err := d.Dial(NETWORK, net.JoinHostPort(ip, port))
-		if err != nil {
-			c.logW.Printf("#dialUDP %s\n", err)
-			return false
-		}
+	conn, err := d.Dial(NETWORK, net.JoinHostPort(ip, port))
+	if err != nil {
+		c.logW.Printf("#dialUDP %s\n", err)
+		return false
+	}
 
-		radd := conn.RemoteAddr()
-	*/
-	c.remoteAddr = radd
-	c.socks = append(c.socks, conn)
+	c.remoteAddr = conn.RemoteAddr()
+	c.socks = append(c.socks, conn.(net.PacketConn))
 
 	return true
 }
 
 // setup EC bit for specified connection
+/*
 func setupConnectionEC(u *net.UDPConn) error {
 	sc, err := u.SyscallConn()
 	if err != nil {
@@ -523,32 +550,7 @@ func setupConnectionEC(u *net.UDPConn) error {
 	}
 	return serr
 }
-
-// mark the EC bit for socket options (IP_TOS ), currently only EC0 is marked
-func markEC(fd int) error {
-	tosConf, err := unix.GetsockoptInt(fd, unix.IPPROTO_IP, unix.IP_TOS)
-	if err != nil {
-		return err
-	}
-	tosConf |= 0x02 // ECN-capable transport only, ECT(0), https://www.rfc-editor.org/rfc/rfc3168
-
-	/*
-	   Differentiated Service Code Point - TCP/IP Illustrated V1, Page 188
-	   Explicit Congestion Notification - TCP/IP Illustrated V1, Page 783
-	   Random Early Detection algorithm - check it for packet drop tail.
-	   RFC 1349: Type of Service in the Internet Protocol Suite
-	   RFC 2474: Definition of the Differentiated Services Field (DS Field) in the IPv4 and IPv6 Headers
-	   RFC 3168: The Addition of Explicit Congestion Notification (ECN) to IP
-	   https://dl.acm.org/doi/10.1145/2815675.2815716
-	*/
-	// int tosConf = 0x92; // OS X does not have IPTOS_DSCP_AF42 constant
-	// dscp := 0x02 // ECN-capable transport only
-	err = unix.SetsockoptInt(fd, unix.IPPROTO_IP, unix.IP_TOS, tosConf)
-	if err != nil {
-		return err
-	}
-	return nil
-}
+*/
 
 // clear the old and over size sockets
 func (c *Connection) pruneSockets() {
@@ -636,7 +638,11 @@ func (c *Connection) send(s string) {
 
 	// write data to socket (latest socket)
 	conn := c.sock().(*net.UDPConn)
-	bytesSent, err := conn.WriteToUDP(p, c.remoteAddr.(*net.UDPAddr))
+	// bytesSent, err := c.sock().WriteTo(p, c.remoteAddr)
+	bytesSent, err := conn.Write(p)
+	// conn := c.sock().(*net.UDPConn)
+	// bytesSent, err := conn.WriteToUDP(p, c.remoteAddr.(*net.UDPAddr))
+	// bytesSent, err := conn.WriteTo(p, c.remoteAddr)
 	if err != nil {
 		c.sendError = fmt.Sprintf("#send %s\n", err)
 		return
