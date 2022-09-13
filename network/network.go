@@ -201,8 +201,9 @@ const (
 type Connection struct {
 	socks         []net.PacketConn
 	hasRemoteAddr bool
-	remoteAddr    net.UDPAddr
-	server        bool
+	// remoteAddr    net.UDPAddr
+	remoteAddr net.Addr
+	server     bool
 
 	mtu int
 
@@ -479,7 +480,29 @@ func (c *Connection) dialUDP(ip, port string) bool {
 		c.logW.Printf("#dialUDP %s\n", err)
 		return false
 	}
-	c.remoteAddr = *radd
+	/*
+		var d net.Dialer
+		var opErr error
+		d.Control = func(network, address string, raw syscall.RawConn) error {
+			if err := raw.Control(func(fd uintptr) {
+				if opErr = markEC(int(fd)); opErr != nil {
+					return
+				}
+			}); err != nil {
+				return err
+			}
+			return opErr
+		}
+
+		conn, err := d.Dial(NETWORK, net.JoinHostPort(ip, port))
+		if err != nil {
+			c.logW.Printf("#dialUDP %s\n", err)
+			return false
+		}
+
+		radd := conn.RemoteAddr()
+	*/
+	c.remoteAddr = radd
 	c.socks = append(c.socks, conn)
 
 	return true
@@ -559,12 +582,18 @@ func (c *Connection) pruneSockets() {
 func (c *Connection) hopPort() {
 	c.setup()
 
-	conn, err := net.DialUDP("udp", nil, &c.remoteAddr)
-	if err != nil {
-		c.logW.Printf("#hopPort %s\n", err)
+	host, port, _ := net.SplitHostPort(c.remoteAddr.String())
+	if !c.dialUDP(host, port) {
+		c.logW.Printf("#hopPort failed to dial %s\n", c.remoteAddr)
 		return
 	}
-	c.socks = append(c.socks, conn)
+
+	// conn, err := net.DialUDP("udp", nil, &c.remoteAddr)
+	// if err != nil {
+	// 	c.logW.Printf("#hopPort %s\n", err)
+	// 	returno
+	// }
+	// c.socks = append(c.socks, conn)
 
 	c.pruneSockets()
 }
@@ -572,11 +601,14 @@ func (c *Connection) hopPort() {
 // check the current remote address type ipv4,ipv6 or ipv4_in_ipv6
 func (c *Connection) remoteAddrType() ADDRESS_TYPE {
 	// determine the ipv6/ipv4 network
-	if addr, ok := netip.AddrFromSlice(c.remoteAddr.IP); ok {
-		if addr.Is4In6() {
-			return ADDRESS_IPV4_IN_V6
-		} else if addr.Is6() {
-			return ADDRESS_IPV6
+
+	if addr, ok := c.remoteAddr.(*net.UDPAddr); ok {
+		if addr, ok := netip.AddrFromSlice(addr.IP); ok {
+			if addr.Is4In6() {
+				return ADDRESS_IPV4_IN_V6
+			} else if addr.Is6() {
+				return ADDRESS_IPV6
+			}
 		}
 	}
 	return ADDRESS_IPV4
@@ -604,7 +636,7 @@ func (c *Connection) send(s string) {
 
 	// write data to socket (latest socket)
 	conn := c.sock().(*net.UDPConn)
-	bytesSent, err := conn.WriteToUDP(p, &c.remoteAddr)
+	bytesSent, err := conn.WriteToUDP(p, c.remoteAddr.(*net.UDPAddr))
 	if err != nil {
 		c.sendError = fmt.Sprintf("#send %s\n", err)
 		return
@@ -621,7 +653,7 @@ func (c *Connection) send(s string) {
 	if c.server {
 		if now-c.lastHeard > SERVER_ASSOCIATION_TIMEOUT {
 			c.hasRemoteAddr = false
-			c.logW.Printf("#send server now detached from client. [%s]\n", &c.remoteAddr)
+			c.logW.Printf("#send server now detached from client. [%s]\n", c.remoteAddr)
 		}
 	} else {
 		if now-c.lastPortChoice > PORT_HOP_INTERVAL && now-c.lastRoundTripSuccess > PORT_HOP_INTERVAL {
@@ -738,8 +770,8 @@ func (c *Connection) recvOne(conn *net.UDPConn, nonblocking bool) (string, error
 
 		if c.server { // only client can roam
 			if reflect.DeepEqual(*raddr, c.remoteAddr) {
-				c.remoteAddr = *raddr
-				c.logW.Printf("#recvOne server now attached to client at %s\n", &c.remoteAddr)
+				c.remoteAddr = raddr
+				c.logW.Printf("#recvOne server now attached to client at %s\n", c.remoteAddr)
 			}
 		}
 	}
