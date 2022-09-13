@@ -369,6 +369,7 @@ func ParsePortRange(desiredPort string, logW *log.Logger) (desiredPortLow, desir
 	return
 }
 
+// update lastPortChoice timestamp
 func (c *Connection) setup() {
 	c.lastPortChoice = time.Now().UnixMilli()
 }
@@ -401,32 +402,9 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 				// 	return
 				// }
 
-				// int tosConf = 0x92; // OS X does not have IPTOS_DSCP_AF42 constant
-				tosConf, err := unix.GetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS)
-				if err != nil {
-					c.logW.Printf("#ListenConfig %s\n", opErr)
+				if opErr = markEC(int(fd)); opErr != nil {
 					return
 				}
-				// fmt.Printf("#tryBind got TOS options before setup %b.\n", dscp)
-				tosConf |= 0x02 // ECN-capable transport only, ECT(0), https://www.rfc-editor.org/rfc/rfc3168
-
-				// dscp := 0x02 // ECN-capable transport only
-				opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS, tosConf)
-				if opErr != nil {
-					c.logW.Printf("#ListenConfig %s\n", opErr)
-					return
-				}
-				// dscp, _ = unix.GetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS)
-				// fmt.Printf("#tryBind got TOS options after setup %b.\n", dscp)
-				/*
-					Differentiated Service Code Point - TCP/IP Illustrated V1, Page 188
-					Explicit Congestion Notification - TCP/IP Illustrated V1, Page 783
-					Random Early Detection algorithm - check it for packet drop tail.
-					RFC 1349: Type of Service in the Internet Protocol Suite
-					RFC 2474: Definition of the Differentiated Services Field (DS Field) in the IPv4 and IPv6 Headers
-					RFC 3168: The Addition of Explicit Congestion Notification (ECN) to IP
-					https://dl.acm.org/doi/10.1145/2815675.2815716
-				*/
 
 				// request explicit congestion notification on received datagrams
 				opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_RECVTOS, 1)
@@ -457,17 +435,11 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 
 		// fmt.Printf("#tryBind %d-%d, ladd=%q\n", i, searchHigh, ladd)
 		conn, err := lc.ListenPacket(context.Background(), NETWORK, ladd.String())
-		// conn, err := net.ListenUDP("udp", ladd)
 		if err != nil {
 			if i == searchHigh { // last port to search
 				c.logW.Printf("#tryBind error=%q address=%q\n", err, address)
 			}
 		} else {
-			// err = markCongestionEncountered(conn.(*net.UDPConn))
-			// if err != nil {
-			// 	c.logW.Printf("#tryBind congestion setup %s\n", err)
-			// 	return false
-			// }
 			c.socks = append(c.socks, conn)
 			c.setMTU()
 			return true
@@ -503,17 +475,7 @@ func (c *Connection) dialUDP(ip, port string) bool {
 		return false
 	}
 
-	// fmt.Printf("#dialUDP success %s\n", radd)
-	// TODO change the value of TOS
-	// l2 := ipv4.NewPacketConn(conn)
-	// err = l2.SetTOS(0b00000011)
-	// if err != nil {
-	// 	c.logW.Printf("#dialUDP %s\n", err)
-	// 	return false
-	// }
-
-	err = markCongestionEncountered(conn)
-	if err != nil {
+	if err = setupConnectionEC(conn); err != nil {
 		c.logW.Printf("#dialUDP %s\n", err)
 		return false
 	}
@@ -523,19 +485,46 @@ func (c *Connection) dialUDP(ip, port string) bool {
 	return true
 }
 
-func markCongestionEncountered(u *net.UDPConn) error {
+// setup EC bit for specified connection
+func setupConnectionEC(u *net.UDPConn) error {
 	sc, err := u.SyscallConn()
 	if err != nil {
 		return err
 	}
 	var serr error
 	err = sc.Control(func(fd uintptr) {
-		serr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_TOS, 0b00000011)
+		serr = markEC(int(fd))
 	})
 	if err != nil {
 		return err
 	}
 	return serr
+}
+
+// mark the EC bit for socket options (IP_TOS ), currently only EC0 is marked
+func markEC(fd int) error {
+	tosConf, err := unix.GetsockoptInt(fd, unix.IPPROTO_IP, unix.IP_TOS)
+	if err != nil {
+		return err
+	}
+	tosConf |= 0x02 // ECN-capable transport only, ECT(0), https://www.rfc-editor.org/rfc/rfc3168
+
+	/*
+	   Differentiated Service Code Point - TCP/IP Illustrated V1, Page 188
+	   Explicit Congestion Notification - TCP/IP Illustrated V1, Page 783
+	   Random Early Detection algorithm - check it for packet drop tail.
+	   RFC 1349: Type of Service in the Internet Protocol Suite
+	   RFC 2474: Definition of the Differentiated Services Field (DS Field) in the IPv4 and IPv6 Headers
+	   RFC 3168: The Addition of Explicit Congestion Notification (ECN) to IP
+	   https://dl.acm.org/doi/10.1145/2815675.2815716
+	*/
+	// int tosConf = 0x92; // OS X does not have IPTOS_DSCP_AF42 constant
+	// dscp := 0x02 // ECN-capable transport only
+	err = unix.SetsockoptInt(fd, unix.IPPROTO_IP, unix.IP_TOS, tosConf)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // clear the old and over size sockets
@@ -613,7 +602,7 @@ func (c *Connection) send(s string) {
 	px := c.newPacket(s)
 	p := c.session.Encrypt(px.toMessage())
 
-	// write data to socket
+	// write data to socket (latest socket)
 	conn := c.sock().(*net.UDPConn)
 	bytesSent, err := conn.WriteToUDP(p, &c.remoteAddr)
 	if err != nil {
