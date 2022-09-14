@@ -307,6 +307,7 @@ func NewConnectionClient(keyStr string, ip, port string) *Connection { // client
 
 	c.setup()
 	if !c.dialUDP(ip, port) {
+		c.logW.Printf("#connection failed to dial %s:%s\n", ip, port)
 		return nil
 	}
 	c.hasRemoteAddr = true
@@ -430,14 +431,14 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 				// }
 
 				if opErr = markEC(int(fd)); opErr != nil {
-					fmt.Printf("#ListenConfig %s\n", opErr)
+					fmt.Printf("#tryBind %s\n", opErr)
 					return
 				}
 
 				// request explicit congestion notification on received datagrams
 				opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_RECVTOS, 1)
 				if opErr != nil {
-					fmt.Printf("#ListenConfig %s\n", opErr)
+					fmt.Printf("#tryBind %s\n", opErr)
 					return
 				}
 				// https://groups.google.com/g/golang-nuts/c/TcHb_bXT18U
@@ -445,7 +446,7 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 				// syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEADDR, 1)
 				// syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEPORT, 1)
 			}); err != nil {
-				c.logW.Printf("#ListenConfig %s\n", err)
+				c.logW.Printf("#tryBind %s\n", err)
 				return err
 			}
 			return opErr
@@ -492,28 +493,12 @@ func (c *Connection) newPacket(payload string) *Packet {
 }
 
 func (c *Connection) dialUDP(ip, port string) bool {
-	// radd, err := net.ResolveUDPAddr(NETWORK, net.JoinHostPort(ip, port))
-	// if err != nil {
-	// 	c.logW.Printf("#dialUDP %s\n", err)
-	// 	return false
-	// }
-	// conn, err := net.DialUDP(NETWORK, nil, radd)
-	// if err != nil {
-	// 	c.logW.Printf("#dialUDP %s\n", err)
-	// 	return false
-	// }
-	//
-	// if err = setupConnectionEC(conn); err != nil {
-	// 	c.logW.Printf("#dialUDP %s\n", err)
-	// 	return false
-	// }
-	//
 	var d net.Dialer
 	var opErr error
 	d.Control = func(network, address string, raw syscall.RawConn) error {
 		if err := raw.Control(func(fd uintptr) {
 			if opErr = markEC(int(fd)); opErr != nil {
-				fmt.Printf("#dialUDP %s\n", opErr)
+				c.logW.Printf("#dialUDP %s\n", opErr)
 				return
 			}
 		}); err != nil {
@@ -530,27 +515,11 @@ func (c *Connection) dialUDP(ip, port string) bool {
 
 	c.remoteAddr = conn.RemoteAddr()
 	c.socks = append(c.socks, conn.(net.PacketConn))
+	c.hasRemoteAddr = true
 
+	// c.logW.Printf("#dialUDP successfully connect to %q\n", net.JoinHostPort(ip, port))
 	return true
 }
-
-// setup EC bit for specified connection
-/*
-func setupConnectionEC(u *net.UDPConn) error {
-	sc, err := u.SyscallConn()
-	if err != nil {
-		return err
-	}
-	var serr error
-	err = sc.Control(func(fd uintptr) {
-		serr = markEC(int(fd))
-	})
-	if err != nil {
-		return err
-	}
-	return serr
-}
-*/
 
 // clear the old and over size sockets
 func (c *Connection) pruneSockets() {
@@ -650,7 +619,7 @@ func (c *Connection) send(s string) {
 
 	if bytesSent != len(p) {
 		// Make sendto() failure available to the frontend.
-		c.sendError = fmt.Sprintf("#send %s\n", err)
+		c.sendError = fmt.Sprintf("#send size %s\n", err)
 
 		// TODO in case EMSGSIZE err, adjust mtu to DEFAULT_SEND_MTU
 	}
@@ -666,6 +635,7 @@ func (c *Connection) send(s string) {
 			c.hopPort()
 		}
 	}
+	// fmt.Printf("#send %q from %q to %q\n", p, conn.LocalAddr(), conn.RemoteAddr())
 }
 
 // receive packet from remote
@@ -689,8 +659,8 @@ func (c *Connection) recv() string {
 }
 
 func (c *Connection) recvOne(conn *net.UDPConn, nonblocking bool) (string, error) {
-	data := make([]byte, 0, c.mtu)
-	oob := make([]byte, 0, 40)
+	data := make([]byte, c.mtu)
+	oob := make([]byte, 40)
 
 	// read from the socket
 	n, oobn, flags, raddr, err := conn.ReadMsgUDP(data, oob)
@@ -700,10 +670,12 @@ func (c *Connection) recvOne(conn *net.UDPConn, nonblocking bool) (string, error
 	if n < 0 {
 		return "", errors.New("#recvOne receive zero or negative length data.")
 	}
-	if flags&unix.MSG_TRUNC > 0 {
+
+	if flags&unix.MSG_TRUNC == unix.MSG_TRUNC {
 		return "", errors.New("#recvOne received oversize datagram.")
 	}
 
+	// fmt.Printf("#recvOne flags=0x%x, MSG_TRUNC=0x%x, n=%d, oobn=%d, err=%p, raddr=%s\n", flags, unix.MSG_TRUNC, n, oobn, err, raddr)
 	// parse the optional ancillary data
 	ctrlMsgs, err := unix.ParseSocketControlMessage(oob[:oobn])
 	if err != nil {
@@ -715,11 +687,13 @@ func (c *Connection) recvOne(conn *net.UDPConn, nonblocking bool) (string, error
 	for _, ctrlMsg := range ctrlMsgs {
 		if ctrlMsg.Header.Level == unix.IPPROTO_IP &&
 			(ctrlMsg.Header.Type == unix.IP_TOS || ctrlMsg.Header.Type == unix.IP_RECVTOS) {
+			// fmt.Printf("#recvOne got %08b\n", ctrlMsg.Data)
 			// CE: RFC 3168
 			// https://www.ietf.org/rfc/rfc3168.html
 			congestionExperienced = ctrlMsg.Data[0]&0x03 == 0x03
 		}
 	}
+	// fmt.Printf("#recvOne congestionExperienced=%t\n", congestionExperienced)
 
 	p := NewPacketFrom(*c.session.Decrypt(data[:n]))
 	// prevent malicious playback to sender
@@ -775,7 +749,7 @@ func (c *Connection) recvOne(conn *net.UDPConn, nonblocking bool) (string, error
 		c.lastHeard = time.Now().UnixMilli()
 
 		if c.server { // only client can roam
-			if reflect.DeepEqual(*raddr, c.remoteAddr) {
+			if reflect.DeepEqual(raddr, c.remoteAddr) {
 				c.remoteAddr = raddr
 				c.logW.Printf("#recvOne server now attached to client at %s\n", c.remoteAddr)
 			}

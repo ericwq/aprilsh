@@ -28,10 +28,11 @@ package network
 
 import (
 	"log"
+	"net"
 	"reflect"
 	"strings"
+	"sync"
 	"testing"
-	"time"
 
 	"github.com/ericwq/aprilsh/encrypt"
 )
@@ -213,44 +214,100 @@ func TestConnectionClient(t *testing.T) {
 }
 
 func TestConnectionReadWrite(t *testing.T) {
-	tc := []struct {
-		name  string
-		sIP   string // server ip
-		sPort string // server port
-		msg   string
-	}{
-		{"normal", "localhost", "8080", "a good news from udp client."},
+	title := "connection read/write"
+	ip := "localhost"
+	port := "8080"
+
+	message := []string{"a good news from udp client.", "天下风云出我辈，一入江湖岁月催。"}
+
+	var wg sync.WaitGroup
+	server := NewConnection(ip, port)
+	if server == nil {
+		t.Errorf("%q server should not return nil.\n", title)
+		return
 	}
+	// fmt.Printf("#test server listen on =%s\n", server.sock().LocalAddr())
 
-	for _, v := range tc {
-		server := NewConnection(v.sIP, v.sPort)
-		if server == nil {
-			t.Errorf("%q server should not return nil.\n", v.name)
-			continue
-		}
+	key := server.key
+	client := NewConnectionClient(key.String(), ip, port)
+	// fmt.Printf("#test client=%s\n", client.sock().LocalAddr())
 
-		go func() {
-			defer server.sock().Close()
-			for {
-				time.Sleep(time.Millisecond * 20)
-				payload := server.recv()
-				if len(payload) == 0 || v.msg != payload {
-					t.Errorf("%q expect %q, got %q\n", v.name, v.msg, payload)
-				} else {
-					return
-				}
-			}
-		}()
-
-		key := server.key
-		client := NewConnectionClient(key.String(), v.sIP, v.sPort)
-
-		client.send(v.msg)
-
+	for i := range message {
+		client.send(message[i])
 		if client.sendError != "" {
-			t.Errorf("%q send error: %q\n", v.name, client.sendError)
+			t.Errorf("%q send error: %q\n", title, client.sendError)
 		}
-
-		defer client.sock().Close()
 	}
+	defer client.sock().Close()
+
+	wg.Add(1)
+	go func() {
+		defer server.sock().Close()
+		for i := range message {
+			payload := server.recv()
+			// fmt.Printf("#test recv payload=%q\n", payload)
+			if len(payload) == 0 || message[i] != payload {
+				t.Errorf("%q expect %q, got %q\n", title, message[i], payload)
+			} else {
+				t.Logf("%q expect %q, got %q\n", title, message[i], payload)
+			}
+		}
+		wg.Done()
+	}()
+
+	wg.Wait()
+}
+
+// setup EC bit for specified connection
+func setupConnectionEC(u *net.UDPConn) error {
+	sc, err := u.SyscallConn()
+	if err != nil {
+		return err
+	}
+	var serr error
+	err = sc.Control(func(fd uintptr) {
+		serr = markEC(int(fd))
+	})
+	if err != nil {
+		return err
+	}
+	return serr
+}
+
+func TestUDPReadWrite(t *testing.T) {
+	title := "udp read/write"
+	ip := "localhost"
+	port := "8080"
+
+	msg := []string{"a good news from udp client.", "天下风云出我辈，一入江湖岁月催。"}
+
+	address := net.JoinHostPort(ip, port)
+	addr, _ := net.ResolveUDPAddr(NETWORK, address)
+	server, _ := net.ListenUDP("udp", addr)
+	defer server.Close()
+
+	client, _ := net.DialUDP("udp", nil, addr)
+	defer client.Close()
+
+	for i := range msg {
+		_, err := client.Write([]byte(msg[i]))
+		if err != nil {
+			t.Fatal(err)
+		}
+		// fmt.Printf("%q client write size=%d, %q to %s\n", title, n, msg[i], client.RemoteAddr())
+	}
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		for i := range msg {
+			buf := make([]byte, 1000)
+			n, addr, err := server.ReadFrom(buf)
+			if err != nil {
+				t.Errorf("%q server read #%d size=%d data %q from %s\n", title, i, n, buf[:n], addr)
+			}
+			// fmt.Printf("%q server read #%d size=%d data %q from %s\n", title, i, n, buf[:n], addr)
+		}
+		wg.Done()
+	}()
+	wg.Wait()
 }
