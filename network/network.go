@@ -310,7 +310,6 @@ func NewConnectionClient(keyStr string, ip, port string) *Connection { // client
 		c.logW.Printf("#connection failed to dial %s:%s\n", ip, port)
 		return nil
 	}
-	c.hasRemoteAddr = true
 	c.setMTU()
 
 	return c
@@ -371,8 +370,8 @@ func ParsePortRange(desiredPort string, logW *log.Logger) (desiredPortLow, desir
 	return
 }
 
-// mark the EC bit for socket options (IP_TOS ), currently only EC0 is marked
-func markEC(fd int) error {
+// mark the ECN bit for socket options (IP_TOS ), currently only EC0 is marked
+func markECN(fd int) error {
 	tosConf, err := unix.GetsockoptInt(fd, unix.IPPROTO_IP, unix.IP_TOS)
 	if err != nil {
 		return err
@@ -430,15 +429,14 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 				// 	return
 				// }
 
-				if opErr = markEC(int(fd)); opErr != nil {
-					fmt.Printf("#tryBind %s\n", opErr)
+				if opErr = markECN(int(fd)); opErr != nil {
+					c.logW.Printf("#tryBind %s\n", opErr)
 					return
 				}
 
 				// request explicit congestion notification on received datagrams
-				opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_RECVTOS, 1)
-				if opErr != nil {
-					fmt.Printf("#tryBind %s\n", opErr)
+				if opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_RECVTOS, 1); opErr != nil {
+					c.logW.Printf("#tryBind %s\n", opErr)
 					return
 				}
 				// https://groups.google.com/g/golang-nuts/c/TcHb_bXT18U
@@ -494,10 +492,11 @@ func (c *Connection) newPacket(payload string) *Packet {
 
 func (c *Connection) dialUDP(ip, port string) bool {
 	var d net.Dialer
+
 	var opErr error
 	d.Control = func(network, address string, raw syscall.RawConn) error {
 		if err := raw.Control(func(fd uintptr) {
-			if opErr = markEC(int(fd)); opErr != nil {
+			if opErr = markECN(int(fd)); opErr != nil {
 				c.logW.Printf("#dialUDP %s\n", opErr)
 				return
 			}
@@ -549,7 +548,7 @@ func (c *Connection) pruneSockets() {
 	}
 }
 
-// reconnect server with new local address
+// reconnect server with
 func (c *Connection) hopPort() {
 	c.setup()
 
@@ -558,13 +557,6 @@ func (c *Connection) hopPort() {
 		c.logW.Printf("#hopPort failed to dial %s\n", c.remoteAddr)
 		return
 	}
-
-	// conn, err := net.DialUDP("udp", nil, &c.remoteAddr)
-	// if err != nil {
-	// 	c.logW.Printf("#hopPort %s\n", err)
-	// 	returno
-	// }
-	// c.socks = append(c.socks, conn)
 
 	c.pruneSockets()
 }
@@ -607,11 +599,7 @@ func (c *Connection) send(s string) {
 
 	// write data to socket (latest socket)
 	conn := c.sock().(*net.UDPConn)
-	// bytesSent, err := c.sock().WriteTo(p, c.remoteAddr)
 	bytesSent, err := conn.Write(p)
-	// conn := c.sock().(*net.UDPConn)
-	// bytesSent, err := conn.WriteToUDP(p, c.remoteAddr.(*net.UDPAddr))
-	// bytesSent, err := conn.WriteTo(p, c.remoteAddr)
 	if err != nil {
 		c.sendError = fmt.Sprintf("#send %s\n", err)
 		return
@@ -640,16 +628,16 @@ func (c *Connection) send(s string) {
 
 // receive packet from remote
 func (c *Connection) recv() string {
-	length := len(c.socks)
-
-	isLast := false
 	for i := range c.socks {
-		if i == length-1 {
-			isLast = true
-		}
-		payload, err := c.recvOne(c.socks[i].(*net.UDPConn), !isLast)
+		payload, err := c.recvOne(c.socks[i].(*net.UDPConn))
 		if err != nil {
-			// TODO handle error: EAGAIN EWOULDBLOCK
+			if errors.Is(err, unix.EAGAIN) || errors.Is(err, unix.EWOULDBLOCK) {
+				// test the above method
+				continue
+			} else {
+				c.logW.Printf("#recv %s\n", err)
+				break
+			}
 		}
 
 		c.pruneSockets()
@@ -658,11 +646,13 @@ func (c *Connection) recv() string {
 	return ""
 }
 
-func (c *Connection) recvOne(conn *net.UDPConn, nonblocking bool) (string, error) {
+func (c *Connection) recvOne(conn *net.UDPConn) (string, error) {
 	data := make([]byte, c.mtu)
 	oob := make([]byte, 40)
 
 	// read from the socket
+	// in golang, the flags parameters for recvfrom system call is always 0.
+	// that means it's always blocking read. which means unix.MSG_DONTWAIT can't be applied here.
 	n, oobn, flags, raddr, err := conn.ReadMsgUDP(data, oob)
 	if err != nil {
 		return "", err

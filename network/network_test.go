@@ -266,7 +266,7 @@ func setupConnectionEC(u *net.UDPConn) error {
 	}
 	var serr error
 	err = sc.Control(func(fd uintptr) {
-		serr = markEC(int(fd))
+		serr = markECN(int(fd))
 	})
 	if err != nil {
 		return err
