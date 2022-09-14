@@ -27,14 +27,17 @@ SOFTWARE.
 package network
 
 import (
+	"errors"
 	"log"
 	"net"
+	"os"
 	"reflect"
 	"strings"
 	"sync"
 	"testing"
 
 	"github.com/ericwq/aprilsh/encrypt"
+	"golang.org/x/sys/unix"
 )
 
 func TestPacket(t *testing.T) {
@@ -50,7 +53,7 @@ func TestPacket(t *testing.T) {
 	// test NewPacket2 and toMessage
 	for _, v := range tc {
 		m1 := encrypt.NewMessage(v.seqNonce, []byte(v.mixPayload))
-		p := NewPacketFrom(*m1)
+		p := NewPacketFrom(m1)
 
 		m2 := p.toMessage()
 
@@ -310,4 +313,29 @@ func TestUDPReadWrite(t *testing.T) {
 		wg.Done()
 	}()
 	wg.Wait()
+}
+
+func TestSystemCallError(t *testing.T) {
+	tc := []error{unix.EAGAIN, unix.EWOULDBLOCK, unix.EADDRNOTAVAIL}
+	for i, v := range tc {
+
+		e0 := v
+		e1 := os.NewSyscallError("syscall", e0)
+		e2 := net.OpError{Err: e1}
+
+		switch i {
+		case 0:
+			if !errors.Is(&e2, unix.EAGAIN) {
+				t.Errorf("#test e0=%v, e1=%v, e2=%v\n", e0, e1, e2)
+			}
+		case 1:
+			if !errors.Is(&e2, unix.EWOULDBLOCK) {
+				t.Errorf("#test e0=%v, e1=%v, e2=%v\n", e0, e1, e2)
+			}
+		case 2:
+			if !errors.Is(&e2, unix.EADDRNOTAVAIL) {
+				t.Errorf("#test e0=%v, e1=%v, e2=%v\n", e0, e1, e2)
+			}
+		}
+	}
 }

@@ -96,7 +96,7 @@ func NewPacket(direction Direction, timestamp uint16, timestampReply uint16, pay
 	return p
 }
 
-func NewPacketFrom(m encrypt.Message) *Packet {
+func NewPacketFrom(m *encrypt.Message) *Packet {
 	p := &Packet{}
 
 	p.seq = m.NonceVal() & SEQUENCE_MASK
@@ -685,15 +685,21 @@ func (c *Connection) recvOne(conn *net.UDPConn) (string, error) {
 	}
 	// fmt.Printf("#recvOne congestionExperienced=%t\n", congestionExperienced)
 
-	p := NewPacketFrom(*c.session.Decrypt(data[:n]))
+	// decrypt the message and build the packet.
+	msg := c.session.Decrypt(data[:n])
+	if msg == nil {
+		return "", errors.New("#recvOne decrypt message error.")
+	}
+	p := NewPacketFrom(msg)
+
 	// prevent malicious playback to sender
 	if c.server {
 		if p.direction != TO_SERVER {
-			return "", nil
+			return "", errors.New("#recvOne server direction is wrong.")
 		}
 	} else {
 		if p.direction != TO_CLIENT {
-			return "", nil
+			return "", errors.New("#recvOne client direction is wrong.")
 		}
 	}
 
@@ -739,7 +745,7 @@ func (c *Connection) recvOne(conn *net.UDPConn) (string, error) {
 		c.lastHeard = time.Now().UnixMilli()
 
 		if c.server { // only client can roam
-			if reflect.DeepEqual(raddr, c.remoteAddr) {
+			if !reflect.DeepEqual(raddr, c.remoteAddr) {
 				c.remoteAddr = raddr
 				c.logW.Printf("#recvOne server now attached to client at %s\n", c.remoteAddr)
 			}
