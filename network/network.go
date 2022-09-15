@@ -527,8 +527,7 @@ func (c *Connection) pruneSockets() {
 		now := time.Now().UnixMilli()
 		if now-c.lastPortChoice > MAX_OLD_SOCKET_AGE {
 			numToKill := len(c.socks) - 1
-
-			// TODO race condition
+			// TODO need to consider race condition
 			c.socks = c.socks[numToKill:]
 		}
 	} else {
@@ -537,10 +536,8 @@ func (c *Connection) pruneSockets() {
 
 	// make sure we don't have too many receive sockets open
 	if len(c.socks) > MAX_PORTS_OPEN {
-		numToKill := len(c.socks) - MAX_PORTS_OPEN
-
-		// TODO race condition
-		c.socks = c.socks[numToKill:]
+		// TODO need to consider race condition
+		c.socks = c.socks[MAX_PORTS_OPEN:]
 	}
 }
 

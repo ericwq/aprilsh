@@ -35,6 +35,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/ericwq/aprilsh/encrypt"
 	"golang.org/x/sys/unix"
@@ -197,10 +198,6 @@ func TestConnectionClient(t *testing.T) {
 		key := server.key
 		client := NewConnectionClient(key.String(), v.cIP, v.cPort)
 
-		// intercept log output
-		var output strings.Builder
-		server.logW.SetOutput(&output)
-
 		if v.result {
 			if client == nil {
 				t.Errorf("%q got nil connection, for %q:%q", v.name, v.cIP, v.cPort)
@@ -354,5 +351,79 @@ func TestSystemCallError(t *testing.T) {
 				t.Errorf("#test e0=%v, e1=%v, e2=%v\n", e0, e1, e2)
 			}
 		}
+	}
+}
+
+func TestHopPort(t *testing.T) {
+	// prepare the client and server connection for the test
+	title := "localhost hop port test case"
+	ip := "localhost"
+	port := "8080"
+
+	server := NewConnection(ip, port)
+	if server == nil {
+		t.Errorf("%q server should not return nil.\n", title)
+		return
+	}
+	// fmt.Printf("#test server listen on =%s\n", server.sock().LocalAddr())
+
+	key := server.key
+	client := NewConnectionClient(key.String(), ip, port)
+	if client == nil {
+		t.Errorf("%q client should not return nil.\n", title)
+	}
+
+	tc := []struct {
+		name    string
+		start   int  // startpoint of socket number
+		maxAge  bool // exceed the max old socket age?
+		maxOpen bool // exceed the max open ports
+		remains int  // the remains socket
+	}{
+		{"over max age", 9, true, false, 1},
+		{"over max open", 9, false, true, 1},
+	}
+
+	// test hopPort
+	for _, v := range tc {
+		// prepare the sockets
+		for i := 0; i < v.start; i++ {
+			time.Sleep(time.Millisecond * 5)
+			client.hopPort()
+		}
+		// fmt.Printf("%q starts with %d sockets.\n", v.name, len(client.socks))
+
+		if v.maxAge {
+			client.lastPortChoice -= MAX_OLD_SOCKET_AGE + 10
+			// hopPort will reset the lastPortChoice, so we call pruneSockets directly.
+			client.pruneSockets()
+		} else if v.maxOpen {
+			// add more sockets
+			for i := 0; i < MAX_PORTS_OPEN-v.start; i++ {
+				time.Sleep(time.Millisecond * 5)
+				client.hopPort()
+			}
+			// fmt.Printf("%q maxOpen with %d sockets.\n", v.name, len(client.socks))
+		}
+
+		if len(client.socks) != v.remains {
+			t.Errorf("%q expect %d socket, got %d\n", v.name, v.remains, len(client.socks))
+		}
+	}
+
+	// intercept client log
+	var output strings.Builder
+	client.logW.SetOutput(&output)
+
+	// fake wrong remote address
+	client.remoteAddr = &net.UDPAddr{Port: -80}
+	client.hopPort()
+
+	// validate the error handling
+	got := output.String()
+	expect := "#hopPort failed to dial"
+	// fmt.Printf("#test got=%s\n", got)
+	if !strings.Contains(got, expect) {
+		t.Errorf("#test hopPort() expect \n%q, got \n%q\n", expect, got)
 	}
 }
