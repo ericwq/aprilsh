@@ -215,8 +215,8 @@ type Connection struct {
 	savedTimestampReceivedAt int64
 	expectedReceiverSeq      uint64
 
-	lastHeard            int64
-	lastPortChoice       int64
+	lastHeard            int64 // last packet receive time
+	lastPortChoice       int64 // last change port time
 	lastRoundTripSuccess int64 // transport layer needs to tell us this
 
 	RTTHit bool
@@ -318,12 +318,12 @@ func NewConnectionClient(keyStr string, ip, port string) *Connection { // client
 func parsePort(portStr string, hint string, logW *log.Logger) (port int, ok bool) {
 	value, err := strconv.Atoi(portStr)
 	if err != nil {
-		logW.Printf("Invalid (%s) port number (%s)\n", hint, portStr)
+		logW.Printf("#parsePort invalid (%s) port number (%s)\n", hint, portStr)
 		return
 	}
 
 	if value < 0 || value > 65535 {
-		logW.Printf("(%s) port number %d outside valid range [0..65535]\n", hint, value)
+		logW.Printf("#parsePort (%s) port number %d outside valid range [0..65535]\n", hint, value)
 		return
 	}
 
@@ -352,7 +352,7 @@ func ParsePortRange(desiredPort string, logW *log.Logger) (desiredPortLow, desir
 		}
 
 		if desiredPortLow > desiredPortHigh {
-			logW.Printf("low port %d greater than high port %d\n", desiredPortLow, desiredPortHigh)
+			logW.Printf("#ParsePortRange low port %d greater than high port %d\n", desiredPortLow, desiredPortHigh)
 			ok = false
 			return
 		}
@@ -497,7 +497,7 @@ func (c *Connection) dialUDP(ip, port string) bool {
 	d.Control = func(network, address string, raw syscall.RawConn) error {
 		if err := raw.Control(func(fd uintptr) {
 			if opErr = markECN(int(fd)); opErr != nil {
-				c.logW.Printf("#dialUDP %s\n", opErr)
+				c.logW.Printf("#dialUDP ECN %s\n", opErr)
 				return
 			}
 		}); err != nil {
@@ -529,9 +529,7 @@ func (c *Connection) pruneSockets() {
 			numToKill := len(c.socks) - 1
 
 			// TODO race condition
-			socks := make([]net.PacketConn, 1)
-			copy(socks, c.socks[numToKill:])
-			c.socks = socks
+			c.socks = c.socks[numToKill:]
 		}
 	} else {
 		return
@@ -542,13 +540,11 @@ func (c *Connection) pruneSockets() {
 		numToKill := len(c.socks) - MAX_PORTS_OPEN
 
 		// TODO race condition
-		socks := make([]net.PacketConn, MAX_PORTS_OPEN)
-		copy(socks, c.socks[numToKill:])
-		c.socks = socks
+		c.socks = c.socks[numToKill:]
 	}
 }
 
-// reconnect server with
+// reconnect server with new local address
 func (c *Connection) hopPort() {
 	c.setup()
 
@@ -581,9 +577,7 @@ func (c *Connection) setMTU() {
 	switch c.remoteAddrType() {
 	case ADDRESS_IPV4:
 		c.mtu = DEFAULT_IPV4_MTU - IPV4_HEADER_LEN
-	case ADDRESS_IPV4_IN_V6:
-		fallthrough
-	case ADDRESS_IPV6:
+	case ADDRESS_IPV6, ADDRESS_IPV4_IN_V6:
 		c.mtu = DEFAULT_IPV6_MTU - IPV6_HEADER_LEN
 	}
 }
@@ -607,9 +601,12 @@ func (c *Connection) send(s string) {
 
 	if bytesSent != len(p) {
 		// Make sendto() failure available to the frontend.
+		// consider change the sendError to error type
 		c.sendError = fmt.Sprintf("#send size %s\n", err)
 
-		// TODO in case EMSGSIZE err, adjust mtu to DEFAULT_SEND_MTU
+		// with conn.Write() method, there is no chance of EMSGSIZE
+		// payload MTU of last resort
+		c.mtu = DEFAULT_SEND_MTU
 	}
 
 	now := time.Now().UnixMilli()
@@ -632,7 +629,7 @@ func (c *Connection) recv() string {
 		payload, err := c.recvOne(c.socks[i].(*net.UDPConn))
 		if err != nil {
 			if errors.Is(err, unix.EAGAIN) || errors.Is(err, unix.EWOULDBLOCK) {
-				// test the above method
+				// EAGAIN is processed by go netpoll
 				continue
 			} else {
 				c.logW.Printf("#recv %s\n", err)

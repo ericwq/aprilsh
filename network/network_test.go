@@ -106,7 +106,7 @@ func TestParsePortRange(t *testing.T) {
 		{"normal port range", "3:65534", 3, 65534, ""},
 		{"outof scope number low", "-1:536", -1, -1, "-1 outside valid range [0..65535]"},
 		{"outof scope number high", "0:65536", -1, -1, "65536 outside valid range [0..65535]"},
-		{"invalid number", "3a", -1, -1, "Invalid (solo) port number"},
+		{"invalid number", "3a", -1, -1, "invalid (solo) port number"},
 		{"port order reverse", "3:1", -1, -1, "greater than high port"},
 		{"solo port", "5", 5, 5, ""},
 	}
@@ -196,6 +196,11 @@ func TestConnectionClient(t *testing.T) {
 		}
 		key := server.key
 		client := NewConnectionClient(key.String(), v.cIP, v.cPort)
+
+		// intercept log output
+		var output strings.Builder
+		server.logW.SetOutput(&output)
+
 		if v.result {
 			if client == nil {
 				t.Errorf("%q got nil connection, for %q:%q", v.name, v.cIP, v.cPort)
@@ -225,6 +230,10 @@ func TestConnectionReadWrite(t *testing.T) {
 
 	var wg sync.WaitGroup
 	server := NewConnection(ip, port)
+
+	var output strings.Builder
+	server.logW.SetOutput(&output)
+
 	if server == nil {
 		t.Errorf("%q server should not return nil.\n", title)
 		return
@@ -247,12 +256,20 @@ func TestConnectionReadWrite(t *testing.T) {
 	go func() {
 		defer server.sock().Close()
 		for i := range message {
+			output.Reset()
 			payload := server.recv()
 			// fmt.Printf("#test recv payload=%q\n", payload)
 			if len(payload) == 0 || message[i] != payload {
 				t.Errorf("%q expect %q, got %q\n", title, message[i], payload)
 			} else {
-				t.Logf("%q expect %q, got %q\n", title, message[i], payload)
+				// t.Logf("%q expect %q, got %q\n", title, message[i], payload)
+				if i == 0 {
+					got := output.String()
+					expect := "#recvOne server now attached to client at"
+					if !strings.Contains(got, expect) {
+						t.Errorf("%q firt recv() expect \n%q, got \n%q\n", title, expect, got)
+					}
+				}
 			}
 		}
 		wg.Done()
