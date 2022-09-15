@@ -34,6 +34,7 @@ import (
 	"strings"
 
 	"github.com/mattn/go-runewidth"
+	// "github.com/rivo/uniseg"
 )
 
 /* 64 - VT420 family
@@ -236,6 +237,8 @@ func (h *Handler) GetSequence() string {
 
 // In the loop, national flag's width got 1+1=2.
 func RunesWidth(runes []rune) (width int) {
+	// return uniseg.StringWidth(string(runes))
+
 	// quick pass for iso8859-1
 	if len(runes) == 1 && runes[0] < 0x00fe {
 		return 1
