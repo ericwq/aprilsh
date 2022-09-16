@@ -1,3 +1,14 @@
+# reference
+
+- [Go: Deep dive into net package learning from TCP server](https://dev.to/hgsgtk/how-go-handles-network-and-system-calls-when-tcp-server-1nbd)
+- [Socket sharding in Linux example with Go](https://dev.to/douglasmakey/socket-sharding-in-linux-example-with-go-4mi7)
+- [Go socket design from user point](https://tonybai.com/2015/11/17/tcp-programming-in-golang/)
+- [GopherCon 2019 - Socket to me: Where do Sockets live in Go?](https://about.sourcegraph.com/blog/go/gophercon-2019-socket-to-me-where-do-sockets-live-in-go)
+- [golang wiki](https://github.com/golang/go/wiki/Articles)
+- [深入 Go UDP 编程](https://colobu.com/2016/10/19/Go-UDP-Programming/#Read%E5%92%8CWrite%E6%96%B9%E6%B3%95%E9%9B%86%E7%9A%84%E6%AF%94%E8%BE%83)
+- [详解 Go 语言 I/O 多路复用 netpoller 模型](https://www.luozhiyun.com/archives/439)
+- [Mocking Techniques for Go](https://www.myhatchpad.com/insight/mocking-techniques-for-go/)
+
 # mosh network connection
 
 ## `Connection()`
@@ -66,15 +77,6 @@
 
 # go net package
 
-- [Go: Deep dive into net package learning from TCP server](https://dev.to/hgsgtk/how-go-handles-network-and-system-calls-when-tcp-server-1nbd)
-- [Socket sharding in Linux example with Go](https://dev.to/douglasmakey/socket-sharding-in-linux-example-with-go-4mi7)
-- [Go socket design from user point](https://tonybai.com/2015/11/17/tcp-programming-in-golang/)
-- [GopherCon 2019 - Socket to me: Where do Sockets live in Go?](https://about.sourcegraph.com/blog/go/gophercon-2019-socket-to-me-where-do-sockets-live-in-go)
-- [golang wiki](https://github.com/golang/go/wiki/Articles)
-- [深入 Go UDP 编程](https://colobu.com/2016/10/19/Go-UDP-Programming/#Read%E5%92%8CWrite%E6%96%B9%E6%B3%95%E9%9B%86%E7%9A%84%E6%AF%94%E8%BE%83)
-- [详解 Go 语言 I/O 多路复用 netpoller 模型](https://www.luozhiyun.com/archives/439)
-- [Mocking Techniques for Go](https://www.myhatchpad.com/insight/mocking-techniques-for-go/)
-
 ## `ListenConfig.ListenPacket()`
 
 I choose `ListenConfig.ListenPacket()` because `ListenConfig` allow us to change socket configuration and parameters. `ListenConfig.ListenPacket()` calls `sl.listenUDP()` to get the listening socket.
@@ -86,7 +88,7 @@ I choose `ListenConfig.ListenPacket()` because `ListenConfig` allow us to change
   - `internetSocket()` calls `socket()` to create the socket file descriptor. see [next](#socket) section for detail.
 - `sysListener.listenUDP()` calls `newUDPConn()` to build a `UDPConn` type value.
 
-### `socket()`
+## `socket()`
 
 - `socket()` calls `sysSocket` to create the socket.
   - `sysSocket()` calls system call `socket()` and set `SOCK_NONBLOCK` and `SOCK_CLOEXEC` option for the socket.
@@ -96,7 +98,7 @@ I choose `ListenConfig.ListenPacket()` because `ListenConfig` allow us to change
 - `socket()` calls `fd.listenStream()` for `SOCK_STREAM` when local addr is not nil but remote addr is nil. see [next](#listenstream) section for detail.
 - `socket()` calls `fd.dial()` to initialize dialer socket file descriptor. see [next](#dial) section for detail.
 
-### `listenStream()`
+## `listenStream()`
 
 - `fd.listenStream()` a.k.a. `netFD.listenDatagram()`.
 - `listenStream()` calls `laddr.sockaddr()` to convert local address to `syscall.Sockaddr` type.
@@ -107,7 +109,7 @@ I choose `ListenConfig.ListenPacket()` because `ListenConfig` allow us to change
 - `listenStream()` calls `fd.addrFunc()` to convert the local address from `syscall.Sockaddr` type to `UDPAddr` type.
 - `listenStream()` returns the socket file descriptor.
 
-### `dial()`
+## `dial()`
 
 - `fd.dial()` a.k.a. `netFD.dial()`.
 - `dial()` calls `ctrlFn` defined in `ListenConfig` to setup the socket options.
