@@ -437,3 +437,45 @@ func TestTryBindFail(t *testing.T) {
 		t.Errorf("#test tryBind() expect \n%q got \n%s\n", expect, got)
 	}
 }
+
+func TestMarkECNFail(t *testing.T) {
+	tc := []struct {
+		name string
+		fd   int
+		err  error
+	}{
+		{"1st error", 0, errors.New("mock error")},
+		{"2nd error", 1, errors.New("mock 1st set error")},
+		{"3rd error", 2, errors.New("mock 2nd set error")},
+	}
+
+	mockGetOpt := func(fd, level, opt int) (value int, err error) {
+		if fd == 0 {
+			return 0, tc[0].err
+		}
+		return
+	}
+
+	times := 0
+	mockSetOpt := func(fd, level, opt int, value int) (err error) {
+		switch fd {
+		case 1:
+			return tc[1].err
+		case 2:
+			if times == 0 { // return normal at 1st round invocation
+				times++
+			} else {
+				times = 0 // return error at 2nd round invocation
+				return tc[2].err
+			}
+		}
+		return
+	}
+
+	for i := range tc {
+		got := markECN(i, mockGetOpt, mockSetOpt)
+		if got != tc[i].err {
+			t.Errorf("#test expect error handling #%d for set socket options return %s, got %s\n", i, tc[i].err, got)
+		}
+	}
+}

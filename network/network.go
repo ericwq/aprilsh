@@ -201,7 +201,7 @@ const (
 var (
 	logger  = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 	control = func(network, address string, raw syscall.RawConn) (err error) {
-		// err got value from different position, they are not conflict with each other
+		// err got value from different positions, they are not conflict with each other
 		err = raw.Control(func(fd uintptr) {
 			err = markECN(int(fd), unix.GetsockoptInt, unix.SetsockoptInt)
 		})
@@ -418,7 +418,7 @@ func markECN(fd int,
 	}
 
 	// request explicit congestion notification on received datagrams
-	err = setSocketOpt(int(fd), unix.IPPROTO_IP, unix.IP_RECVTOS, 1)
+	err = setSocketOpt(fd, unix.IPPROTO_IP, unix.IP_RECVTOS, 1)
 	if err != nil {
 		return err
 	}
