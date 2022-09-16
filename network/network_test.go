@@ -28,6 +28,7 @@ package network
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -361,6 +362,7 @@ func TestHopPort(t *testing.T) {
 	port := "8080"
 
 	server := NewConnection(ip, port)
+	defer server.sock().Close()
 	if server == nil {
 		t.Errorf("%q server should not return nil.\n", title)
 		return
@@ -369,6 +371,7 @@ func TestHopPort(t *testing.T) {
 
 	key := server.key
 	client := NewConnectionClient(key.String(), ip, port)
+	defer client.sock().Close()
 	if client == nil {
 		t.Errorf("%q client should not return nil.\n", title)
 	}
@@ -425,5 +428,28 @@ func TestHopPort(t *testing.T) {
 	// fmt.Printf("#test got=%s\n", got)
 	if !strings.Contains(got, expect) {
 		t.Errorf("#test hopPort() expect \n%q, got \n%q\n", expect, got)
+	}
+}
+
+func TestTryBindFail(t *testing.T) {
+	// occupy the following ports
+	ports := []int{8000, 8001, 8002, 8003}
+	for i := range ports {
+		srv := NewConnection("", fmt.Sprintf("%d", ports[i]))
+		defer srv.sock().Close()
+	}
+
+	var output strings.Builder
+	oldLog := logger
+	logger = log.New(&output, "#test", log.Ldate|log.Ltime|log.Lshortfile)
+	defer func() {
+		logger = oldLog
+	}()
+	s := NewConnection("", "8000:8003")
+
+	expect := "#tryBind error"
+	got := output.String()
+	if s != nil || !strings.Contains(got, expect) {
+		t.Errorf("#test tryBind() expect \n%q got \n%s\n", expect, got)
 	}
 }

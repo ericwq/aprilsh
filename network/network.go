@@ -198,6 +198,8 @@ const (
 	NETWORK = "udp4"
 )
 
+var logger = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+
 type Connection struct {
 	socks         []net.PacketConn
 	hasRemoteAddr bool
@@ -249,7 +251,7 @@ func NewConnection(desiredIp string, desiredPort string) *Connection { // server
 	c.SRTT = 1000
 	c.RTTVAR = 500
 
-	c.logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	c.logW = logger
 	c.socks = make([]net.PacketConn, 0)
 
 	c.setup()
@@ -303,7 +305,7 @@ func NewConnectionClient(keyStr string, ip, port string) *Connection { // client
 	c.SRTT = 1000
 	c.RTTVAR = 500
 
-	c.logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	c.logW = logger
 
 	c.setup()
 	if !c.dialUDP(ip, port) {
@@ -492,9 +494,7 @@ func (c *Connection) dialUDP(ip, port string) bool {
 	d.Control = func(network, address string, raw syscall.RawConn) error {
 		var opErr error
 		if err := raw.Control(func(fd uintptr) {
-			if opErr = markECN(int(fd)); opErr != nil {
-				return
-			}
+			opErr = markECN(int(fd))
 		}); err != nil {
 			return err
 		}
