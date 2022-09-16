@@ -372,6 +372,15 @@ func ParsePortRange(desiredPort string, logW *log.Logger) (desiredPortLow, desir
 
 // mark the ECN bit for socket options (IP_TOS ), currently only EC0 is marked
 func markECN(fd int) error {
+	// dsable path MTU discovery
+	// IP_MTU_DISCOVER and IP_PMTUDISC_DONT is not defined on macOS
+	// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_MTU_DISCOVER, unix.IP_PMTUDISC_DONT)
+	// if opErr != nil {
+	// 	fmt.Printf("#ListenConfig %s\n", opErr.Error())
+	// 	return
+	// }
+
+	// TODO the following code only works on linux and for ipv4!
 	tosConf, err := unix.GetsockoptInt(fd, unix.IPPROTO_IP, unix.IP_TOS)
 	if err != nil {
 		return err
@@ -393,6 +402,14 @@ func markECN(fd int) error {
 	if err != nil {
 		return err
 	}
+
+	// request explicit congestion notification on received datagrams
+	err = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_RECVTOS, 1)
+	if err != nil {
+		return err
+	}
+	// https://groups.google.com/g/golang-nuts/c/TcHb_bXT18U
+
 	return nil
 }
 
@@ -417,38 +434,18 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 	}
 
 	// prepare for additional socket options
-	lc := net.ListenConfig{
-		Control: func(network, address string, raw syscall.RawConn) error {
-			var opErr error
-			if err := raw.Control(func(fd uintptr) { // TODO the following code only works on linux and for ipv4!
-				// dsable path MTU discovery
-				// IP_MTU_DISCOVER and IP_PMTUDISC_DONT is not defined on macOS
-				// opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_MTU_DISCOVER, unix.IP_PMTUDISC_DONT)
-				// if opErr != nil {
-				// 	fmt.Printf("#ListenConfig %s\n", opErr.Error())
-				// 	return
-				// }
+	var lc net.ListenConfig
+	lc.Control = func(network, address string, raw syscall.RawConn) error {
+		var opErr error
+		if err := raw.Control(func(fd uintptr) {
+			opErr = markECN(int(fd))
 
-				if opErr = markECN(int(fd)); opErr != nil {
-					c.logW.Printf("#tryBind %s\n", opErr)
-					return
-				}
-
-				// request explicit congestion notification on received datagrams
-				if opErr = unix.SetsockoptInt(int(fd), unix.IPPROTO_IP, unix.IP_RECVTOS, 1); opErr != nil {
-					c.logW.Printf("#tryBind %s\n", opErr)
-					return
-				}
-				// https://groups.google.com/g/golang-nuts/c/TcHb_bXT18U
-
-				// syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEADDR, 1)
-				// syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEPORT, 1)
-			}); err != nil {
-				c.logW.Printf("#tryBind %s\n", err)
-				return err
-			}
-			return opErr
-		},
+			// syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEADDR, 1)
+			// syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, unix.SO_REUSEPORT, 1)
+		}); err != nil {
+			return err
+		}
+		return opErr
 	}
 
 	for i := searchLow; i <= searchHigh; i++ {
@@ -492,12 +489,10 @@ func (c *Connection) newPacket(payload string) *Packet {
 
 func (c *Connection) dialUDP(ip, port string) bool {
 	var d net.Dialer
-
-	var opErr error
 	d.Control = func(network, address string, raw syscall.RawConn) error {
+		var opErr error
 		if err := raw.Control(func(fd uintptr) {
 			if opErr = markECN(int(fd)); opErr != nil {
-				c.logW.Printf("#dialUDP ECN %s\n", opErr)
 				return
 			}
 		}); err != nil {
