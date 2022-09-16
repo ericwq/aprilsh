@@ -276,22 +276,6 @@ func TestConnectionReadWrite(t *testing.T) {
 	wg.Wait()
 }
 
-// setup EC bit for specified connection
-func setupConnectionEC(u *net.UDPConn) error {
-	sc, err := u.SyscallConn()
-	if err != nil {
-		return err
-	}
-	var serr error
-	err = sc.Control(func(fd uintptr) {
-		serr = markECN(int(fd))
-	})
-	if err != nil {
-		return err
-	}
-	return serr
-}
-
 func TestUDPReadWrite(t *testing.T) {
 	title := "udp read/write"
 	ip := "localhost"
