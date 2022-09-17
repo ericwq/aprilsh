@@ -243,9 +243,9 @@ func TestConnectionReadWrite(t *testing.T) {
 	// fmt.Printf("#test client=%s\n", client.sock().LocalAddr())
 
 	for i := range message {
-		client.send(message[i])
-		if client.sendError != "" {
-			t.Errorf("%q send error: %q\n", title, client.sendError)
+		sendErr := client.send(message[i])
+		if sendErr != nil {
+			t.Errorf("%q send error: %q\n", title, sendErr)
 		}
 	}
 	defer client.sock().Close()

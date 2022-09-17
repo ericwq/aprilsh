@@ -227,8 +227,8 @@ type Connection struct {
 	SRTT   float64
 	RTTVAR float64
 
-	sendError string
-	logW      *log.Logger
+	// sendError string
+	logW *log.Logger
 }
 
 func NewConnection(desiredIp string, desiredPort string) *Connection { // server
@@ -550,7 +550,7 @@ func (c *Connection) setMTU(addr net.Addr) {
 }
 
 // use the latest connection to send the message to remote
-func (c *Connection) send(s string) {
+func (c *Connection) send(s string) (sendError error) {
 	if !c.hasRemoteAddr {
 		return
 	}
@@ -562,14 +562,14 @@ func (c *Connection) send(s string) {
 	conn := c.sock().(*net.UDPConn)
 	bytesSent, err := conn.Write(p)
 	if err != nil {
-		c.sendError = fmt.Sprintf("#send %s\n", err)
+		sendError = fmt.Errorf("#send %s\n", err)
 		return
 	}
 
 	if bytesSent != len(p) {
 		// Make sendto() failure available to the frontend.
 		// consider change the sendError to error type
-		c.sendError = fmt.Sprintf("#send size %s\n", err)
+		sendError = fmt.Errorf("#send size %s\n", err)
 
 		// with conn.Write() method, there is no chance of EMSGSIZE
 		// payload MTU of last resort
@@ -588,6 +588,7 @@ func (c *Connection) send(s string) {
 		}
 	}
 	// fmt.Printf("#send %q from %q to %q\n", p, conn.LocalAddr(), conn.RemoteAddr())
+	return
 }
 
 // receive packet from remote
