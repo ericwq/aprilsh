@@ -67,7 +67,7 @@ func timestamp16() uint16 {
 
 func timestampDiff(tsnew, tsold uint16) uint16 {
 	var diff int
-	diff = int(tsnew - tsold)
+	diff = int(tsnew) - int(tsold)
 	if diff < 0 {
 		diff += 65536
 	}
@@ -144,8 +144,6 @@ func (p *Packet) timestampBytes() []byte {
 	return buf.Bytes()
 }
 
-type ADDRESS_TYPE int
-
 const (
 	/*
 	 * For IPv4, guess the typical (minimum) header length;
@@ -191,10 +189,6 @@ const (
 
 	CONGESTION_TIMESTAMP_PENALTY = 500 // ms
 
-	ADDRESS_IPV4       ADDRESS_TYPE = 0
-	ADDRESS_IPV6       ADDRESS_TYPE = 1
-	ADDRESS_IPV4_IN_V6 ADDRESS_TYPE = 2
-
 	NETWORK = "udp4"
 )
 
@@ -212,9 +206,8 @@ var (
 type Connection struct {
 	socks         []net.PacketConn
 	hasRemoteAddr bool
-	// remoteAddr    net.UDPAddr
-	remoteAddr net.Addr
-	server     bool
+	remoteAddr    net.Addr
+	server        bool
 
 	mtu int
 
@@ -321,7 +314,7 @@ func NewConnectionClient(keyStr string, ip, port string) *Connection { // client
 		c.logW.Printf("#connection failed to dial %s:%s\n", ip, port)
 		return nil
 	}
-	c.setMTU()
+	c.setMTU(c.remoteAddr)
 
 	return c
 }
@@ -456,21 +449,21 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 	for i := searchLow; i <= searchHigh; i++ {
 		address := net.JoinHostPort(desireIp, strconv.Itoa(i))
 
-		ladd, err := net.ResolveUDPAddr(NETWORK, address)
+		localAddr, err := net.ResolveUDPAddr(NETWORK, address)
 		if err != nil {
 			c.logW.Printf("#tryBind %s\n", err)
 			return false
 		}
 
 		// fmt.Printf("#tryBind %d-%d, ladd=%q\n", i, searchHigh, ladd)
-		conn, err := lc.ListenPacket(context.Background(), NETWORK, ladd.String())
+		conn, err := lc.ListenPacket(context.Background(), NETWORK, localAddr.String())
 		if err != nil {
 			if i == searchHigh { // last port to search
 				c.logW.Printf("#tryBind error=%q address=%q\n", err, address)
 			}
 		} else {
 			c.socks = append(c.socks, conn)
-			c.setMTU()
+			c.setMTU(localAddr)
 			return true
 		}
 	}
@@ -544,29 +537,16 @@ func (c *Connection) hopPort() {
 	c.pruneSockets()
 }
 
-// check the current remote address type ipv4,ipv6 or ipv4_in_ipv6
-func (c *Connection) remoteAddrType() ADDRESS_TYPE {
-	// determine the ipv6/ipv4 network
-
-	if addr, ok := c.remoteAddr.(*net.UDPAddr); ok {
+func (c *Connection) setMTU(addr net.Addr) {
+	if addr, ok := addr.(*net.UDPAddr); ok {
 		if addr, ok := netip.AddrFromSlice(addr.IP); ok {
-			if addr.Is4In6() {
-				return ADDRESS_IPV4_IN_V6
-			} else if addr.Is6() {
-				return ADDRESS_IPV6
+			if addr.Is6() {
+				c.mtu = DEFAULT_IPV6_MTU - IPV6_HEADER_LEN
+				return
 			}
 		}
 	}
-	return ADDRESS_IPV4
-}
-
-func (c *Connection) setMTU() {
-	switch c.remoteAddrType() {
-	case ADDRESS_IPV4:
-		c.mtu = DEFAULT_IPV4_MTU - IPV4_HEADER_LEN
-	case ADDRESS_IPV6, ADDRESS_IPV4_IN_V6:
-		c.mtu = DEFAULT_IPV6_MTU - IPV6_HEADER_LEN
-	}
+	c.mtu = DEFAULT_IPV4_MTU - IPV4_HEADER_LEN
 }
 
 // use the latest connection to send the message to remote

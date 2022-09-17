@@ -479,3 +479,80 @@ func TestMarkECNFail(t *testing.T) {
 		}
 	}
 }
+
+func TestNewPacket(t *testing.T) {
+	// prepare the client and server connection for the test
+	title := "newPacket recent received test case"
+	ip := "localhost"
+	port := "8080"
+
+	server := NewConnection(ip, port)
+	defer server.sock().Close()
+	if server == nil {
+		t.Errorf("%q server should not return nil.\n", title)
+		return
+	}
+
+	// branch the condition
+	server.savedTimestampReceivedAt = time.Now().UnixMilli() - 100
+	pkt := server.newPacket(title)
+
+	// validate the result
+	if string(pkt.payload) != title {
+		t.Errorf("%q expect payload=%q, got %q\n", title, title, pkt.payload)
+	}
+	if pkt.timestampReply == 0 {
+		t.Errorf("%q expect timestampReply not zero, got %d\n", title, pkt.timestampReply)
+	}
+	if server.savedTimestampReceivedAt != 0 {
+		t.Errorf("%q expect savedTimestampReceivedAt=%d, got %d\n", title, 0, server.savedTimestampReceivedAt)
+	}
+}
+
+func TestSetMTU(t *testing.T) {
+	// prepare the connection
+	title := "#test setMTU"
+	ip := "localhost"
+	port := "8080"
+
+	conn := NewConnection(ip, port)
+	defer conn.sock().Close()
+	if conn == nil {
+		t.Errorf("%q server should not return nil.\n", title)
+		return
+	}
+
+	// build ipv6 address
+	udp6Addr, err := net.ResolveUDPAddr("udp6", "[::]:8080")
+	if err != nil {
+		t.Errorf("%q expect udp6 address, got nil", title)
+	}
+	conn.setMTU(udp6Addr)
+
+	// validate the MTU
+	expect := DEFAULT_IPV6_MTU - IPV6_HEADER_LEN
+	if conn.mtu != expect {
+		t.Errorf("%q expect MTU=%d, got %d\n", title, expect, conn.mtu)
+	}
+}
+
+func TestTimestamp16(t *testing.T) {
+	tc := []struct {
+		name    string
+		t0Delta int16
+		diff    uint16
+	}{
+		{"t1 > t0", 500, 500},
+		{"t1 = t0", 0, 0},
+		{"t1 < t0", -300, 65536 - 300},
+	}
+
+	for _, v := range tc {
+		t0 := timestamp16()
+		t1 := int16(t0) + v.t0Delta
+		got := timestampDiff(uint16(t1), t0)
+		if v.diff != got {
+			t.Errorf("%q expect %d, got %d\n", v.name, v.diff, got)
+		}
+	}
+}
