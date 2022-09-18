@@ -556,3 +556,135 @@ func TestTimestamp16(t *testing.T) {
 		}
 	}
 }
+
+func TestSendFail(t *testing.T) {
+	// prepare the client and server connection for the test
+	title := "localhost send test case"
+	ip := "localhost"
+	port := "8080"
+
+	server := NewConnection(ip, port)
+	defer server.sock().Close()
+	if server == nil {
+		t.Errorf("%q server should not return nil.\n", title)
+		return
+	}
+	// fmt.Printf("#test server listen on =%s\n", server.sock().LocalAddr())
+	key := server.key
+	client := NewConnectionClient(key.String(), ip, port)
+	defer client.sock().Close()
+	if client == nil {
+		t.Errorf("%q client should not return nil.\n", title)
+	}
+
+	// test case
+	tc := []struct {
+		name          string
+		hasRemoteAddr bool
+		writeErr      error
+		byteSend      int
+	}{
+		{"send without remote address", false, nil, 0},
+		{"write return err", true, errors.New("#send write"), 0},
+		{"write return wrong size", true, nil, 23},
+	}
+
+	// validate the failure case with mockUdpConn
+	for _, v := range tc {
+		if !v.hasRemoteAddr {
+			client.hasRemoteAddr = false
+			client.send(v.name)
+			// there is no aciton, no error, so no validation
+		} else if v.writeErr != nil {
+			client.hasRemoteAddr = true
+			var mock mockUdpConn
+			client.socks = append(client.socks, &mock)
+			err := client.send(v.name)
+			if !strings.Contains(err.Error(), v.writeErr.Error()) {
+				t.Errorf("%q expect %q, got %q\n", v.name, v.writeErr, err)
+			}
+		} else if v.byteSend != 0 {
+			var mock mockUdpConn
+			client.socks = append(client.socks, &mock)
+			err := client.send(v.name)
+			expect := "#send size:"
+			if !strings.Contains(err.Error(), expect) {
+				t.Errorf("%q expect %q, got %q\n", v.name, expect, err)
+			}
+		}
+	}
+}
+
+type mockUdpConn struct{}
+
+func (mc *mockUdpConn) Write(b []byte) (int, error) {
+	// fmt.Printf("#Write mockUdpConn len=%d\n", len(b))
+	if len(b) == 48 {
+		return 0, errors.New("mock by len = 48.")
+	}
+	return 5, nil
+}
+
+func (mc *mockUdpConn) ReadMsgUDP(b, oob []byte) (n, oobn, flags int, addr *net.UDPAddr, err error) {
+	return
+}
+
+func (mc *mockUdpConn) Close() error {
+	return nil
+}
+
+func (mc *mockUdpConn) WriteTo(b []byte, addr net.Addr) (len int, err error) {
+	return
+}
+
+func TestSendServerBranch(t *testing.T) {
+	// prepare the client and server connection for the test
+	title := "detect server detached from client"
+	ip := "localhost"
+	port := "8080"
+
+	server := NewConnection(ip, port)
+	defer server.sock().Close()
+	if server == nil {
+		t.Errorf("%q server should not return nil.\n", title)
+		return
+	}
+
+	key := server.key
+	client := NewConnectionClient(key.String(), ip, port)
+	defer client.sock().Close()
+	if client == nil {
+		t.Errorf("%q client should not return nil.\n", title)
+	}
+
+	// client send a message to server, server receive it.
+	// this will initialize server data.
+	client.send(title)
+
+	// we need the delay to receive the packet on server side.
+	time.Sleep(time.Millisecond * 20)
+	msg := server.recv()
+	if msg != title {
+		t.Errorf("%q client send\n%q to server, server got \n%q\n", title, title, msg)
+	}
+
+	// fake the lastHeard to meet the detach condition
+	server.lastHeard = time.Now().UnixMilli() - SERVER_ASSOCIATION_TIMEOUT - 10
+
+	// intercept client log
+	var output strings.Builder
+	server.logW.SetOutput(&output)
+
+	err := server.send(title)
+
+	// validate the send server branch
+	gotLog := output.String()
+	expectLog := "#send server now detached from client"
+	if err != nil {
+		t.Errorf("%q should return nil, got %s\n", title, err)
+	} else if server.hasRemoteAddr {
+		t.Errorf("%q expect hasRemoteAddr %t, got %t\n", title, false, server.hasRemoteAddr)
+	} else if !strings.Contains(gotLog, expectLog) {
+		t.Errorf("%q expect log \n%q, got \n%q\n", title, expectLog, gotLog)
+	}
+}

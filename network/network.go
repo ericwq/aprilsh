@@ -203,8 +203,16 @@ var (
 	}
 )
 
+// internal conneciton for testability.
+type udpConn interface {
+	Write(b []byte) (int, error)
+	WriteTo(b []byte, addr net.Addr) (int, error)
+	ReadMsgUDP(b, oob []byte) (n, oobn, flags int, addr *net.UDPAddr, err error)
+	Close() error
+}
+
 type Connection struct {
-	socks         []net.PacketConn
+	socks         []udpConn
 	hasRemoteAddr bool
 	remoteAddr    net.Addr
 	server        bool
@@ -254,7 +262,7 @@ func NewConnection(desiredIp string, desiredPort string) *Connection { // server
 	c.RTTVAR = 500
 
 	c.logW = logger
-	c.socks = make([]net.PacketConn, 0)
+	c.socks = make([]udpConn, 0)
 
 	c.setup()
 
@@ -287,7 +295,7 @@ func NewConnection(desiredIp string, desiredPort string) *Connection { // server
 func NewConnectionClient(keyStr string, ip, port string) *Connection { // client
 	c := &Connection{}
 
-	c.socks = make([]net.PacketConn, 0)
+	c.socks = make([]udpConn, 0)
 	c.hasRemoteAddr = false
 	c.server = false
 
@@ -427,8 +435,9 @@ func (c *Connection) setup() {
 	c.lastPortChoice = time.Now().UnixMilli()
 }
 
-func (c *Connection) sock() net.PacketConn {
-	return c.socks[len(c.socks)-1]
+// return the our udp connection
+func (c *Connection) sock() udpConn {
+	return c.socks[len(c.socks)-1].(udpConn)
 }
 
 func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
@@ -462,7 +471,7 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 				c.logW.Printf("#tryBind error=%q address=%q\n", err, address)
 			}
 		} else {
-			c.socks = append(c.socks, conn)
+			c.socks = append(c.socks, conn.(udpConn))
 			c.setMTU(localAddr)
 			return true
 		}
@@ -496,7 +505,7 @@ func (c *Connection) dialUDP(ip, port string) bool {
 	}
 
 	c.remoteAddr = conn.RemoteAddr()
-	c.socks = append(c.socks, conn.(net.PacketConn))
+	c.socks = append(c.socks, conn.(udpConn))
 	c.hasRemoteAddr = true
 
 	// c.logW.Printf("#dialUDP successfully connect to %q\n", net.JoinHostPort(ip, port))
@@ -558,18 +567,26 @@ func (c *Connection) send(s string) (sendError error) {
 	px := c.newPacket(s)
 	p := c.session.Encrypt(px.toMessage())
 
-	// write data to socket (latest socket)
-	conn := c.sock().(*net.UDPConn)
-	bytesSent, err := conn.Write(p)
-	if err != nil {
-		sendError = fmt.Errorf("#send %s\n", err)
-		return
+	// write data back to remote
+	conn := c.sock()
+	var (
+		bytesSent int
+		err       error
+	)
+	if c.server {
+		bytesSent, err = conn.WriteTo(p, c.remoteAddr)
+	} else {
+		bytesSent, err = conn.Write(p) // only client connection is connected.
 	}
 
+	if err != nil {
+		sendError = fmt.Errorf("#send write: %s", err)
+		return
+	}
 	if bytesSent != len(p) {
 		// Make sendto() failure available to the frontend.
 		// consider change the sendError to error type
-		sendError = fmt.Errorf("#send size %s\n", err)
+		sendError = fmt.Errorf("#send size: %s", err)
 
 		// with conn.Write() method, there is no chance of EMSGSIZE
 		// payload MTU of last resort
@@ -580,7 +597,7 @@ func (c *Connection) send(s string) (sendError error) {
 	if c.server {
 		if now-c.lastHeard > SERVER_ASSOCIATION_TIMEOUT {
 			c.hasRemoteAddr = false
-			c.logW.Printf("#send server now detached from client. [%s]\n", c.remoteAddr)
+			c.logW.Printf("#send server now detached from client: [%s]\n", c.remoteAddr)
 		}
 	} else {
 		if now-c.lastPortChoice > PORT_HOP_INTERVAL && now-c.lastRoundTripSuccess > PORT_HOP_INTERVAL {
@@ -594,7 +611,7 @@ func (c *Connection) send(s string) (sendError error) {
 // receive packet from remote
 func (c *Connection) recv() string {
 	for i := range c.socks {
-		payload, err := c.recvOne(c.socks[i].(*net.UDPConn))
+		payload, err := c.recvOne(c.socks[i].(udpConn))
 		if err != nil {
 			if errors.Is(err, unix.EAGAIN) || errors.Is(err, unix.EWOULDBLOCK) {
 				// EAGAIN is processed by go netpoll
@@ -611,7 +628,7 @@ func (c *Connection) recv() string {
 	return ""
 }
 
-func (c *Connection) recvOne(conn *net.UDPConn) (string, error) {
+func (c *Connection) recvOne(conn udpConn) (string, error) {
 	data := make([]byte, c.mtu)
 	oob := make([]byte, 40)
 
