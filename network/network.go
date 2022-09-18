@@ -218,6 +218,12 @@ type udpConn interface {
 	Close() error
 }
 
+// internal cipher session for testability.
+type cipherSession interface {
+	Encrypt(plainText *encrypt.Message) []byte
+	Decrypt(text []byte) *encrypt.Message
+}
+
 type Connection struct {
 	socks         []udpConn // server has only one socket, client has several socket.
 	hasRemoteAddr bool
@@ -227,7 +233,8 @@ type Connection struct {
 	mtu int
 
 	key     *encrypt.Base64Key
-	session *encrypt.Session
+	session cipherSession
+	// session *encrypt.Session
 
 	direction                Direction
 	savedTimestamp           int16
@@ -309,7 +316,7 @@ func NewConnectionClient(keyStr string, ip, port string) *Connection { // client
 	c.mtu = DEFAULT_SEND_MTU
 
 	c.key = encrypt.NewBase64Key2(keyStr)
-	c.session, _ = encrypt.NewSession(*c.key)
+	c.session, _ = encrypt.NewSession(*c.key) // TODO error handling
 
 	c.direction = TO_SERVER
 	c.savedTimestamp = -1
