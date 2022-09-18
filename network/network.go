@@ -212,7 +212,7 @@ type udpConn interface {
 }
 
 type Connection struct {
-	socks         []udpConn
+	socks         []udpConn // server has only one socket, client has several socket.
 	hasRemoteAddr bool
 	remoteAddr    net.Addr
 	server        bool
@@ -229,7 +229,7 @@ type Connection struct {
 
 	lastHeard            int64 // last packet receive time
 	lastPortChoice       int64 // last change port time
-	lastRoundTripSuccess int64 // transport layer needs to tell us this
+	lastRoundtripSuccess int64 // transport layer needs to tell us this
 
 	RTTHit bool
 	SRTT   float64
@@ -255,7 +255,7 @@ func NewConnection(desiredIp string, desiredPort string) *Connection { // server
 
 	c.lastHeard = -1
 	c.lastPortChoice = -1
-	c.lastRoundTripSuccess = -1
+	c.lastRoundtripSuccess = -1
 
 	c.RTTHit = false
 	c.SRTT = 1000
@@ -309,7 +309,7 @@ func NewConnectionClient(keyStr string, ip, port string) *Connection { // client
 
 	c.lastHeard = -1
 	c.lastPortChoice = -1
-	c.lastRoundTripSuccess = -1
+	c.lastRoundtripSuccess = -1
 
 	c.RTTHit = false
 	c.SRTT = 1000
@@ -600,7 +600,7 @@ func (c *Connection) send(s string) (sendError error) {
 			c.logW.Printf("#send server now detached from client: [%s]\n", c.remoteAddr)
 		}
 	} else {
-		if now-c.lastPortChoice > PORT_HOP_INTERVAL && now-c.lastRoundTripSuccess > PORT_HOP_INTERVAL {
+		if now-c.lastPortChoice > PORT_HOP_INTERVAL && now-c.lastRoundtripSuccess > PORT_HOP_INTERVAL {
 			c.hopPort()
 		}
 	}
@@ -735,4 +735,8 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 	}
 
 	return string(p.payload), nil // we do return out-of-order or duplicated packets to caller
+}
+
+func (c *Connection) setLastRoundtripSuccess(success int64) {
+	c.lastRoundtripSuccess = success
 }

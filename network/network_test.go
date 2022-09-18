@@ -637,7 +637,7 @@ func (mc *mockUdpConn) WriteTo(b []byte, addr net.Addr) (len int, err error) {
 	return
 }
 
-func TestSendServerBranch(t *testing.T) {
+func TestSendBranch(t *testing.T) {
 	// prepare the client and server connection for the test
 	title := "detect server detached from client"
 	ip := "localhost"
@@ -686,5 +686,22 @@ func TestSendServerBranch(t *testing.T) {
 		t.Errorf("%q expect hasRemoteAddr %t, got %t\n", title, false, server.hasRemoteAddr)
 	} else if !strings.Contains(gotLog, expectLog) {
 		t.Errorf("%q expect log \n%q, got \n%q\n", title, expectLog, gotLog)
+	}
+
+	time.Sleep(time.Millisecond * 20)
+	msg = client.recv() // the msg is still the old title
+	if msg != title {
+		t.Errorf("%q client receive\n%q from server, client got \n%q\n", title, title, msg)
+	}
+
+	msg = "client hopPort branch"
+	// set client hopPort condition
+	client.lastPortChoice = time.Now().UnixMilli() - PORT_HOP_INTERVAL - 2
+	client.setLastRoundtripSuccess(time.Now().UnixMilli() - PORT_HOP_INTERVAL - 2)
+
+	client.send(msg)
+	// hopPort will add a new socket to the list.
+	if len(client.socks) != 2 {
+		t.Errorf("%q expect %d socket, got %d\n", msg, 2, len(client.socks))
 	}
 }
