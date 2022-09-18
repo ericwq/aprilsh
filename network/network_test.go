@@ -255,7 +255,7 @@ func TestConnectionReadWrite(t *testing.T) {
 		defer server.sock().Close()
 		for i := range message {
 			output.Reset()
-			payload := server.recv()
+			payload, _ := server.recv()
 			// fmt.Printf("#test recv payload=%q\n", payload)
 			if len(payload) == 0 || message[i] != payload {
 				t.Errorf("%q expect %q, got %q\n", title, message[i], payload)
@@ -615,7 +615,9 @@ func TestSendFail(t *testing.T) {
 	}
 }
 
-type mockUdpConn struct{}
+type mockUdpConn struct {
+	round int
+}
 
 func (mc *mockUdpConn) Write(b []byte) (int, error) {
 	// fmt.Printf("#Write mockUdpConn len=%d\n", len(b))
@@ -626,6 +628,27 @@ func (mc *mockUdpConn) Write(b []byte) (int, error) {
 }
 
 func (mc *mockUdpConn) ReadMsgUDP(b, oob []byte) (n, oobn, flags int, addr *net.UDPAddr, err error) {
+	// fmt.Printf("#mockUdpConn ReadMsgUDP() round=%d\n", mc.round)
+	switch mc.round {
+	case 0:
+		e1 := os.NewSyscallError("syscall", unix.EWOULDBLOCK)
+		err = &net.OpError{Err: e1}
+	case 1:
+		n = -1
+	case 2:
+		flags = unix.MSG_TRUNC
+	case 3:
+		oobStr := "malform oob message"
+		copy(oob, []byte(oobStr))
+		oobn = len(oobStr)
+		// fmt.Printf("#mockUdpConn ReadMsgUDP() oob=%q, oobn=%d\n", oob, oobn)
+	case 4:
+		dataStr := "malform data: mocked by mockUdpConn."
+		copy(b, []byte(dataStr))
+		n = len(b)
+	}
+
+	mc.round++
 	return
 }
 
@@ -663,7 +686,7 @@ func TestSendBranch(t *testing.T) {
 
 	// we need the delay to receive the packet on server side.
 	time.Sleep(time.Millisecond * 20)
-	msg := server.recv()
+	msg, _ := server.recv()
 	if msg != title {
 		t.Errorf("%q client send\n%q to server, server got \n%q\n", title, title, msg)
 	}
@@ -689,7 +712,7 @@ func TestSendBranch(t *testing.T) {
 	}
 
 	time.Sleep(time.Millisecond * 20)
-	msg = client.recv() // the msg is still the old title
+	msg, _ = client.recv() // the msg is still the old title
 	if msg != title {
 		t.Errorf("%q client receive\n%q from server, client got \n%q\n", title, title, msg)
 	}
@@ -703,5 +726,62 @@ func TestSendBranch(t *testing.T) {
 	// hopPort will add a new socket to the list.
 	if len(client.socks) != 2 {
 		t.Errorf("%q expect %d socket, got %d\n", msg, 2, len(client.socks))
+	}
+}
+
+func TestRecvFail(t *testing.T) {
+	// prepare the client and server connection for the test
+	title := "localhost send test case"
+	ip := "localhost"
+	port := "8080"
+
+	server := NewConnection(ip, port)
+	defer server.sock().Close()
+	if server == nil {
+		t.Errorf("%q server should not return nil.\n", title)
+		return
+	}
+	// fmt.Printf("#test server listen on =%s\n", server.sock().LocalAddr())
+	key := server.key
+	client := NewConnectionClient(key.String(), ip, port)
+	defer client.sock().Close()
+	if client == nil {
+		t.Errorf("%q client should not return nil.\n", title)
+	}
+
+	// test case
+	tc := []struct {
+		name  string
+		round int
+		err   error
+	}{
+		{"receive return EWOULDBLOCK err", 0, unix.EWOULDBLOCK},
+		{"receive return n<0 err", 1, errors.New("#recvOne receive zero or negative length data.")},
+		{"receive return MSG_TRUNC err", 2, errors.New("#recvOne received oversize datagram.")},
+		{"receive return parse decrypt error", 3, errors.New("invalid argument")},
+		// {"receive return parse control message error", 3, nil}, errors.New("#recvOne decrypt message error.")
+	}
+
+	// let the mock connection as the only connection
+	var mock mockUdpConn
+	client.socks = append(client.socks, &mock)
+	client.socks = client.socks[len(client.socks)-1:]
+
+	// validate the failure case with mockUdpConn
+	for i, v := range tc {
+		_, err := client.recv()
+		if v.err != nil {
+			switch i {
+			case 0:
+				if !errors.Is(err, v.err) {
+					t.Errorf("%q expect err=%q, got %q\n", v.name, v.err, err)
+				}
+			default:
+				// t.Logf("%q err != v.err = %t\n", v.name, err != v.err)
+				if err.Error() != v.err.Error() {
+					t.Errorf("%q expect err=%q, got %q\n", v.name, v.err, err)
+				}
+			}
+		}
 	}
 }

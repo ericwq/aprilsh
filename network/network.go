@@ -616,9 +616,9 @@ func (c *Connection) send(s string) (sendError error) {
 }
 
 // receive packet from remote
-func (c *Connection) recv() string {
+func (c *Connection) recv() (payload string, err error) {
 	for i := range c.socks {
-		payload, err := c.recvOne(c.socks[i].(udpConn))
+		payload, err = c.recvOne(c.socks[i].(udpConn))
 		if err != nil {
 			if errors.Is(err, unix.EAGAIN) || errors.Is(err, unix.EWOULDBLOCK) {
 				// EAGAIN is processed by go netpoll
@@ -630,9 +630,9 @@ func (c *Connection) recv() string {
 		}
 
 		c.pruneSockets()
-		return payload
+		return
 	}
-	return ""
+	return
 }
 
 func (c *Connection) recvOne(conn udpConn) (string, error) {
