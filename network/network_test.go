@@ -424,10 +424,10 @@ func TestTryBindFail(t *testing.T) {
 	}
 
 	var output strings.Builder
-	oldLog := logger
-	logger = log.New(&output, "#test", log.Ldate|log.Ltime|log.Lshortfile)
+	oldLog := logFunc
+	logFunc = log.New(&output, "#test", log.Ldate|log.Ltime|log.Lshortfile)
 	defer func() {
-		logger = oldLog
+		logFunc = oldLog
 	}()
 	s := NewConnection("", "8000:8003")
 

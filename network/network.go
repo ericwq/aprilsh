@@ -193,13 +193,20 @@ const (
 )
 
 var (
-	logger  = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-	control = func(network, address string, raw syscall.RawConn) (err error) {
+	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+
+	// set socket options
+	controlFunc = func(network, address string, raw syscall.RawConn) (err error) {
 		// err got value from different positions, they are not conflict with each other
 		err = raw.Control(func(fd uintptr) {
 			err = markECN(int(fd), unix.GetsockoptInt, unix.SetsockoptInt)
 		})
 		return
+	}
+
+	// validate congestion experienced
+	congestionFunc = func(in byte) bool {
+		return in&0x03 == 0x03
 	}
 )
 
@@ -261,7 +268,7 @@ func NewConnection(desiredIp string, desiredPort string) *Connection { // server
 	c.SRTT = 1000
 	c.RTTVAR = 500
 
-	c.logW = logger
+	c.logW = logFunc
 	c.socks = make([]udpConn, 0)
 
 	c.setup()
@@ -315,7 +322,7 @@ func NewConnectionClient(keyStr string, ip, port string) *Connection { // client
 	c.SRTT = 1000
 	c.RTTVAR = 500
 
-	c.logW = logger
+	c.logW = logFunc
 
 	c.setup()
 	if !c.dialUDP(ip, port) {
@@ -453,7 +460,7 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 
 	// prepare for additional socket options
 	var lc net.ListenConfig
-	lc.Control = control
+	lc.Control = controlFunc
 
 	for i := searchLow; i <= searchHigh; i++ {
 		address := net.JoinHostPort(desireIp, strconv.Itoa(i))
@@ -496,7 +503,7 @@ func (c *Connection) newPacket(payload string) *Packet {
 
 func (c *Connection) dialUDP(ip, port string) bool {
 	var d net.Dialer
-	d.Control = control
+	d.Control = controlFunc
 
 	conn, err := d.Dial(NETWORK, net.JoinHostPort(ip, port))
 	if err != nil {
@@ -662,7 +669,7 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 			// fmt.Printf("#recvOne got %08b\n", ctrlMsg.Data)
 			// CE: RFC 3168
 			// https://www.ietf.org/rfc/rfc3168.html
-			congestionExperienced = ctrlMsg.Data[0]&0x03 == 0x03
+			congestionExperienced = congestionFunc(ctrlMsg.Data[0])
 		}
 	}
 	// fmt.Printf("#recvOne congestionExperienced=%t\n", congestionExperienced)
