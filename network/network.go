@@ -626,7 +626,7 @@ func (c *Connection) recv() (payload string, err error) {
 	for i := range c.socks {
 		payload, err = c.recvOne(c.socks[i].(udpConn))
 		if err != nil {
-			if errors.Is(err, unix.EAGAIN) || errors.Is(err, unix.EWOULDBLOCK) {
+			if errors.Is(err, unix.EWOULDBLOCK) {
 				// EAGAIN is processed by go netpoll
 				continue
 			} else {
@@ -667,6 +667,7 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 		return "", err
 	}
 
+	// fmt.Printf("#recvOne ctrlMsgs=%v\n", ctrlMsgs)
 	// receive ECN
 	congestionExperienced := false
 	for _, ctrlMsg := range ctrlMsgs {
@@ -682,7 +683,8 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 
 	// decrypt the message and build the packet.
 	msg, err := c.session.Decrypt(data[:n])
-	if err != nil {
+	// fmt.Printf("#recvOne msg=%p\n", msg)
+	if err != nil || msg == nil {
 		return "", err
 	}
 	p := NewPacketFrom(msg)

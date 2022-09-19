@@ -115,7 +115,6 @@ func TestParsePortRange(t *testing.T) {
 
 	var place strings.Builder
 	output := log.New(&place, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-	// output := log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 
 	for _, v := range tc {
 		place.Reset()
@@ -136,6 +135,9 @@ func TestParsePortRange(t *testing.T) {
 			t.Errorf("%q expect \n%q\n got \n%q\n", v.name, v.msg, place.String())
 		}
 	}
+
+	// restor the logFunc
+	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestConnection(t *testing.T) {
@@ -156,11 +158,7 @@ func TestConnection(t *testing.T) {
 
 	// replace the logFunc
 	var output strings.Builder
-	oldLog := logFunc
 	logFunc = log.New(&output, "#test", log.Ldate|log.Ltime|log.Lshortfile)
-	defer func() {
-		logFunc = oldLog
-	}()
 
 	// test server connection creation
 	for _, v := range tc {
@@ -187,6 +185,9 @@ func TestConnection(t *testing.T) {
 			}
 		}
 	}
+
+	// restor the logFunc
+	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestConnectionClient(t *testing.T) {
@@ -214,7 +215,6 @@ func TestConnectionClient(t *testing.T) {
 
 		// replace the logFunc
 		var output strings.Builder
-		oldLog := logFunc
 		logFunc = log.New(&output, "#test", log.Ldate|log.Ltime|log.Lshortfile)
 
 		// open the client connection
@@ -222,8 +222,7 @@ func TestConnectionClient(t *testing.T) {
 		client := NewConnectionClient(key.String(), v.cIP, v.cPort)
 
 		// restor the logFunc
-		logFunc = oldLog
-
+		logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 		if v.result {
 			if client == nil {
 				t.Errorf("%q got nil connection, for %q:%q", v.name, v.cIP, v.cPort)
@@ -303,6 +302,8 @@ func TestConnectionReadWrite(t *testing.T) {
 	}()
 
 	wg.Wait()
+	// restor the logFunc
+	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestUDPReadWrite(t *testing.T) {
@@ -449,6 +450,9 @@ func TestHopPort(t *testing.T) {
 	if !strings.Contains(got, expect) {
 		t.Errorf("#test hopPort() expect \n%q, got \n%q\n", expect, got)
 	}
+
+	// restor the logFunc
+	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestTryBindFail(t *testing.T) {
@@ -460,11 +464,8 @@ func TestTryBindFail(t *testing.T) {
 	}
 
 	var output strings.Builder
-	oldLog := logFunc
 	logFunc = log.New(&output, "#test", log.Ldate|log.Ltime|log.Lshortfile)
-	defer func() {
-		logFunc = oldLog
-	}()
+
 	s := NewConnection("", "8000:8003")
 
 	expect := "#tryBind error"
@@ -472,6 +473,9 @@ func TestTryBindFail(t *testing.T) {
 	if s != nil || !strings.Contains(got, expect) {
 		t.Errorf("#test tryBind() expect \n%q got \n%s\n", expect, got)
 	}
+
+	// restor the logFunc
+	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestMarkECNFail(t *testing.T) {
@@ -653,6 +657,7 @@ func TestSendFail(t *testing.T) {
 
 type mockUdpConn struct {
 	round int
+	data  string
 }
 
 func (mc *mockUdpConn) Write(b []byte) (int, error) {
@@ -680,8 +685,12 @@ func (mc *mockUdpConn) ReadMsgUDP(b, oob []byte) (n, oobn, flags int, addr *net.
 		// fmt.Printf("#mockUdpConn ReadMsgUDP() oob=%q, oobn=%d\n", oob, oobn)
 	case 4:
 		dataStr := "malform data: mocked by mockUdpConn."
+		if mc.data != "" {
+			dataStr = mc.data
+		}
 		copy(b, []byte(dataStr))
 		n = len(dataStr)
+		// fmt.Printf("#mockUdpConn ReadMsgUDP() dataStr=%q, data=%q, round=%d\n", dataStr, mc.data, mc.round)
 	}
 
 	mc.round++
@@ -722,6 +731,11 @@ func TestSendBranch(t *testing.T) {
 
 	// we need the delay to receive the packet on server side.
 	time.Sleep(time.Millisecond * 20)
+
+	// intercept server log
+	var output strings.Builder
+	server.logW.SetOutput(&output)
+
 	msg, _ := server.recv()
 	if msg != title {
 		t.Errorf("%q client send\n%q to server, server got \n%q\n", title, title, msg)
@@ -729,10 +743,6 @@ func TestSendBranch(t *testing.T) {
 
 	// fake the lastHeard to meet the detach condition
 	server.lastHeard = time.Now().UnixMilli() - SERVER_ASSOCIATION_TIMEOUT - 10
-
-	// intercept client log
-	var output strings.Builder
-	server.logW.SetOutput(&output)
 
 	err := server.send(title)
 
@@ -763,6 +773,9 @@ func TestSendBranch(t *testing.T) {
 	if len(client.socks) != 2 {
 		t.Errorf("%q expect %d socket, got %d\n", msg, 2, len(client.socks))
 	}
+
+	// restor the logFunc
+	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestRecvFail(t *testing.T) {
@@ -798,6 +811,10 @@ func TestRecvFail(t *testing.T) {
 		{"receive return parser decrypt error", 4, errors.New("cipher: message authentication failed")},
 	}
 
+	// intercept server log
+	var output strings.Builder
+	client.logW.SetOutput(&output)
+
 	// let the mock connection as the only connection
 	var mock mockUdpConn
 	client.socks = append(client.socks, &mock)
@@ -820,4 +837,144 @@ func TestRecvFail(t *testing.T) {
 			}
 		}
 	}
+	// restor the logFunc
+	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+}
+
+func TestRecvBranchServer(t *testing.T) {
+	// prepare the client and server connection for the test
+	title := "server recive branch"
+	ip := "localhost"
+	port := "8080"
+
+	server := NewConnection(ip, port)
+	defer server.sock().Close()
+	if server == nil {
+		t.Errorf("%q server should not return nil.\n", title)
+		return
+	}
+
+	key := server.key
+	client := NewConnectionClient(key.String(), ip, port)
+	defer client.sock().Close()
+	if client == nil {
+		t.Errorf("%q client should not return nil.\n", title)
+	}
+
+	msg0 := "from client to server"
+	// client send a message to server, server receive it.
+	// this will initialize server data.
+	client.send(msg0)
+
+	// we need the delay to receive the packet on server side.
+	time.Sleep(time.Millisecond * 20)
+
+	// mock the connection: guarantee to return the msg0
+	var mock mockUdpConn
+	mock.round = 4
+	mock.data = msg0
+	server.socks = append(server.socks, &mock)
+	server.socks = server.socks[len(server.socks)-1:]
+
+	// mock the session
+	server.session = &mockSession{direction: TO_CLIENT, seq: 7}
+
+	// intercept server log
+	var output strings.Builder
+	server.logW.SetOutput(&output)
+
+	// perform the receive
+	_, err := server.recv()
+	got := "#recvOne server direction is wrong."
+	if err.Error() != got {
+		t.Errorf("%q client send\n%q to server, server got \n%q\n", title, msg0, got)
+	}
+
+	// restor the logFunc
+	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+}
+
+func TestRecvBranchClient(t *testing.T) {
+	// prepare the client and server connection for the test
+	title := "client recive branch"
+	ip := "localhost"
+	port := "8080"
+
+	server := NewConnection(ip, port)
+	defer server.sock().Close()
+	if server == nil {
+		t.Errorf("%q server should not return nil.\n", title)
+		return
+	}
+
+	key := server.key
+	client := NewConnectionClient(key.String(), ip, port)
+	defer client.sock().Close()
+	if client == nil {
+		t.Errorf("%q client should not return nil.\n", title)
+	}
+
+	// intercept server log
+	var output strings.Builder
+	server.logW.SetOutput(&output)
+
+	msg0 := "from client to server"
+	// client send a message to server, server receive it.
+	// this will initialize server remote address.
+	client.send(msg0)
+	time.Sleep(time.Millisecond * 20)
+	server.recv()
+
+	// server send message to client
+	msg1 := "from server to client"
+	server.send(msg1)
+	time.Sleep(time.Millisecond * 20)
+
+	// mock the connection: guarantee to return the msg0
+	var mock mockUdpConn
+	mock.round = 4
+	mock.data = msg1
+	client.socks = append(client.socks, &mock)
+	client.socks = client.socks[len(client.socks)-1:]
+
+	// mock the session
+	client.session = &mockSession{direction: TO_SERVER, seq: 7}
+
+	// intercept client log
+	client.logW.SetOutput(&output)
+
+	// perform the receive
+	_, err := client.recv()
+	got := "#recvOne client direction is wrong."
+	if err.Error() != got {
+		t.Errorf("%q client send\n%q to server, server got \n%q\n", title, msg1, got)
+	}
+
+	// restor the logFunc
+	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+}
+
+type mockSession struct {
+	direction Direction
+	seq       uint64
+}
+
+func (m *mockSession) Decrypt(text []byte) (*encrypt.Message, error) {
+	var seqNonce uint64
+
+	// logic form Packet.toMessage()
+	if m.direction == TO_CLIENT {
+		// client is 1, server is 0
+		seqNonce = DIRECTION_MASK | (m.seq & SEQUENCE_MASK)
+	} else {
+		seqNonce = m.seq & SEQUENCE_MASK
+	}
+
+	msg := encrypt.NewMessage(seqNonce, text)
+	// fmt.Println("#mockSession Decrypt()")
+	return msg, nil
+}
+
+func (m *mockSession) Encrypt(plainText *encrypt.Message) []byte {
+	return nil
 }
