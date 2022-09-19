@@ -239,15 +239,15 @@ func (s *Session) Encrypt(plainText *Message) []byte {
 }
 
 // Decrypt with AES-128 GCM
-func (s *Session) Decrypt(text []byte) *Message {
+func (s *Session) Decrypt(text []byte) (*Message, error) {
 	ns := s.aead.NonceSize()
 	nonce, cipherText := text[:ns], text[ns:]
 	// fmt.Printf("#decrypt ciphertext=% x, %p\n", cipherText, cipherText)
 
 	plainText, err := s.aead.Open(nil, nonce, cipherText, nil)
 	if err != nil {
-		logW.Printf("#decrypt %s\n", err)
-		return nil
+		// logW.Printf("#decrypt %s\n", err)
+		return nil, err
 	}
 
 	m := Message{}
@@ -255,7 +255,7 @@ func (s *Session) Decrypt(text []byte) *Message {
 	m.text = plainText
 	// fmt.Printf("#decrypt nonce=% x, plaintext=% x\n", nonce, plainText)
 
-	return &m
+	return &m, nil
 }
 
 // https://commandcenter.blogspot.com/2012/04/byte-order-fallacy.html
