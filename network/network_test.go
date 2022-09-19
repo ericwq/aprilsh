@@ -945,9 +945,9 @@ func TestRecvBranchClient(t *testing.T) {
 
 	// perform the receive
 	_, err := client.recv()
-	got := "#recvOne client direction is wrong."
-	if err.Error() != got {
-		t.Errorf("%q client send\n%q to server, server got \n%q\n", title, msg1, got)
+	expect := "#recvOne client direction is wrong."
+	if err.Error() != expect {
+		t.Errorf("%q client send\n%q to server, server got \n%q\n", title, msg1, expect)
 	}
 
 	// restor the logFunc
@@ -977,4 +977,58 @@ func (m *mockSession) Decrypt(text []byte) (*encrypt.Message, error) {
 
 func (m *mockSession) Encrypt(plainText *encrypt.Message) []byte {
 	return nil
+}
+
+func TestRecvCongestionPacket(t *testing.T) {
+	// prepare the client and server connection
+	title := "receive congestion packet branch"
+	ip := "localhost"
+	port := "8080"
+
+	server := NewConnection(ip, port)
+	defer server.sock().Close()
+	if server == nil {
+		t.Errorf("%q server should not return nil.\n", title)
+		return
+	}
+
+	key := server.key
+	client := NewConnectionClient(key.String(), ip, port)
+	defer client.sock().Close()
+	if client == nil {
+		t.Errorf("%q client should not return nil.\n", title)
+	}
+
+	msg0 := "from client to server"
+	// client send a message to server, server receive it.
+	// this will initialize server remote address.
+	client.send(msg0)
+	time.Sleep(time.Millisecond * 20)
+
+	// intercept server log
+	var output strings.Builder
+	server.logW.SetOutput(&output)
+
+	// save old congestionFunc
+	oldCF := congestionFunc
+	// mock the congestion case
+	congestionFunc = func(in byte) bool {
+		return true
+	}
+	server.recv()
+
+	// validate the result
+	expect := "#recvOne received explicit congestion notification."
+	got := output.String()
+	if !strings.Contains(got, expect) {
+		t.Errorf("%q expect \n%q, got \n%q\n", title, expect, got)
+	}
+
+	// if server.savedTimestamp <= 0 {
+	// 	t.Errorf("%q savedTimestamp should be greater than zero, it's %d\n", title, server.savedTimestamp)
+	// }
+
+	// restor the logFunc
+	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	congestionFunc = oldCF
 }

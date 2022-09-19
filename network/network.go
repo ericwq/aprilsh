@@ -708,6 +708,7 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 			c.savedTimestamp = int16(p.timestamp)
 			c.savedTimestampReceivedAt = time.Now().UnixMilli()
 
+			// fmt.Printf("#recvOne savedTimestamp=%d, savedTimestampReceivedAt=%d\n", c.savedTimestamp, c.savedTimestampReceivedAt)
 			if congestionExperienced {
 				// signal counterparty to slow down
 				// this will gradually slow the counterparty down to the minimum frame rate
