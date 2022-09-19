@@ -704,6 +704,7 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 		// this is security-sensitive because a replay attack could otherwise screw up the timestamp and targeting
 		c.expectedReceiverSeq = p.seq + 1
 
+		// fmt.Printf("#recvOne seq=%d, timestamp=%d, timestampReply=%d\n", p.seq, p.timestamp, p.timestampReply)
 		if p.timestamp != 0 {
 			c.savedTimestamp = int16(p.timestamp)
 			c.savedTimestampReceivedAt = time.Now().UnixMilli()
