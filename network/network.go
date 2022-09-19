@@ -221,7 +221,7 @@ type udpConn interface {
 // internal cipher session for testability.
 type cipherSession interface {
 	Encrypt(plainText *encrypt.Message) []byte
-	Decrypt(text []byte) *encrypt.Message
+	Decrypt(text []byte) (*encrypt.Message, error)
 }
 
 type Connection struct {
@@ -333,7 +333,6 @@ func NewConnectionClient(keyStr string, ip, port string) *Connection { // client
 
 	c.setup()
 	if !c.dialUDP(ip, port) {
-		c.logW.Printf("#connection failed to dial %s:%s\n", ip, port)
 		return nil
 	}
 	c.setMTU(c.remoteAddr)
@@ -682,9 +681,9 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 	// fmt.Printf("#recvOne congestionExperienced=%t\n", congestionExperienced)
 
 	// decrypt the message and build the packet.
-	msg := c.session.Decrypt(data[:n])
-	if msg == nil {
-		return "", errors.New("#recvOne decrypt message error.")
+	msg, err := c.session.Decrypt(data[:n])
+	if err != nil {
+		return "", err
 	}
 	p := NewPacketFrom(msg)
 

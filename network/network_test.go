@@ -148,15 +148,25 @@ func TestConnection(t *testing.T) {
 	}{
 		{"localhost 8080", "localhost", "8080", true, ""},
 		{"default range", "", "9081:9090", true, ""}, // error on macOS for ipv6
-		{"invalid port", "", "4;3", false, ""},
-		{"reverse port order", "", "4:3", false, ""},
-		{"invalid host ", "dev.net", "403", false, ""},
-		{"invalid host literal", "192.158.", "403:405", false, ""},
+		{"invalid port", "", "4;3", false, "#parsePort invalid (solo) port"},
+		{"reverse port order", "", "4:3", false, "#ParsePortRange low port"},
+		{"invalid host ", "dev.net", "403", false, "no such host"},
+		{"invalid host literal", "192.158.", "403:405", false, "no such host"},
 	}
+
+	// replace the logFunc
+	var output strings.Builder
+	oldLog := logFunc
+	logFunc = log.New(&output, "#test", log.Ldate|log.Ltime|log.Lshortfile)
+	defer func() {
+		logFunc = oldLog
+	}()
 
 	// test server connection creation
 	for _, v := range tc {
+		output.Reset()
 		c := NewConnection(v.ip, v.port)
+
 		if v.result {
 			if c == nil {
 				t.Errorf("%q got nil connection for %q:%q\n", v.name, v.ip, v.port)
@@ -171,6 +181,10 @@ func TestConnection(t *testing.T) {
 				t.Errorf("%q expect nil connection for %q:%q\n", v.name, v.ip, v.port)
 				c.sock().Close()
 			}
+			got := output.String()
+			if !strings.Contains(got, v.msg) {
+				t.Errorf("%q expect \n%q, got \n%q\n", v.name, v.msg, got)
+			}
 		}
 	}
 }
@@ -183,10 +197,11 @@ func TestConnectionClient(t *testing.T) {
 		cIP    string // client ip
 		cPort  string // client port
 		result bool
+		msg    string
 	}{
-		{"localhost 8080", "localhost", "8080", "localhost", "8080", true},
-		{"wrong host", "", "9081:9090", "dev.net", "9081", false},     // error on macOS for ipv6
-		{"wrong connect port", "localhost", "8080", "", "8001", true}, // UDP does not connect, so different port still work.
+		{"localhost 8080", "localhost", "8080", "localhost", "8080", true, ""},
+		{"wrong host", "", "9081:9090", "dev.net", "9081", false, "no such host"}, // error on macOS for ipv6
+		{"wrong connect port", "localhost", "8080", "", "8001", true, ""},         // UDP does not connect, so different port still work.
 	}
 
 	// test client connection
@@ -196,8 +211,18 @@ func TestConnectionClient(t *testing.T) {
 			t.Errorf("%q server should not return nil.\n", v.name)
 			continue
 		}
+
+		// replace the logFunc
+		var output strings.Builder
+		oldLog := logFunc
+		logFunc = log.New(&output, "#test", log.Ldate|log.Ltime|log.Lshortfile)
+
+		// open the client connection
 		key := server.key
 		client := NewConnectionClient(key.String(), v.cIP, v.cPort)
+
+		// restor the logFunc
+		logFunc = oldLog
 
 		if v.result {
 			if client == nil {
@@ -214,6 +239,10 @@ func TestConnectionClient(t *testing.T) {
 				t.Errorf("%q expect nil connection for %q:%q\ngot %#v\n", v.name, v.cIP, v.cPort, client.sock())
 				client.sock().Close()
 				server.sock().Close()
+			}
+			got := output.String()
+			if !strings.Contains(got, v.msg) {
+				t.Errorf("%q expect \n%q, got \n%q\n", v.name, v.msg, got)
 			}
 		}
 	}
@@ -336,6 +365,13 @@ func TestSystemCallError(t *testing.T) {
 				t.Errorf("#test e0=%v, e1=%v, e2=%v\n", e0, e1, e2)
 			}
 		}
+	}
+
+	err0 := errors.New("err0")
+	err1 := errors.New("err0")
+
+	if errors.Is(err0, err1) {
+		t.Errorf("erros.Is() can't compare two errors. error 0=%q, error 1=%q, equal=%t\n", err0, err1, errors.Is(err0, err1))
 	}
 }
 
@@ -645,7 +681,7 @@ func (mc *mockUdpConn) ReadMsgUDP(b, oob []byte) (n, oobn, flags int, addr *net.
 	case 4:
 		dataStr := "malform data: mocked by mockUdpConn."
 		copy(b, []byte(dataStr))
-		n = len(b)
+		n = len(dataStr)
 	}
 
 	mc.round++
@@ -758,8 +794,8 @@ func TestRecvFail(t *testing.T) {
 		{"receive return EWOULDBLOCK err", 0, unix.EWOULDBLOCK},
 		{"receive return n<0 err", 1, errors.New("#recvOne receive zero or negative length data.")},
 		{"receive return MSG_TRUNC err", 2, errors.New("#recvOne received oversize datagram.")},
-		{"receive return parse decrypt error", 3, errors.New("invalid argument")},
-		// {"receive return parse control message error", 3, nil}, errors.New("#recvOne decrypt message error.")
+		{"receive return parse control message erro", 3, errors.New("invalid argument")},
+		{"receive return parser decrypt error", 4, errors.New("cipher: message authentication failed")},
 	}
 
 	// let the mock connection as the only connection
