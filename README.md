@@ -28,6 +28,7 @@ The project name `Aprilsh` is derived from `April+sh`. I started this project in
 - 2022/Aug/04: Working on the prediction engine.
 - 2022/Aug/16: Working on utf-8 support(wide grapheme such as `世界`) for the prediction engine
 - 2022/Aug/29: Finish the prediction engine: refine utf-8 support.
+- 2022/Sep/20: Finish the UDP send and receive part.
 
 ## Architecture view
 
