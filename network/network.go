@@ -237,8 +237,8 @@ type Connection struct {
 	// session *encrypt.Session
 
 	direction                Direction
-	savedTimestamp           int16
-	savedTimestampReceivedAt int64
+	savedTimestamp           int16 // the timestamp when the packet is created
+	savedTimestampReceivedAt int64 // the timestamp when the packet is received
 	expectedReceiverSeq      uint64
 
 	lastHeard            int64 // last packet receive time
@@ -246,8 +246,8 @@ type Connection struct {
 	lastRoundtripSuccess int64 // transport layer needs to tell us this
 
 	RTTHit bool
-	SRTT   float64
-	RTTVAR float64
+	SRTT   float64 // smoothed round-trip time
+	RTTVAR float64 // round-trip time variation
 
 	// sendError string
 	logW *log.Logger
@@ -725,6 +725,7 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 			R := float64(timestampDiff(now16, p.timestampReply))
 
 			if R < 5000 { // ignore large values, e.g. server was Ctrl-Zed
+				// see https://datatracker.ietf.org/doc/html/rfc2988 for the algorithm
 				if !c.RTTHit { // first measurement
 					c.SRTT = R
 					c.RTTVAR = R / 2

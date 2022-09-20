@@ -1032,3 +1032,69 @@ func TestRecvCongestionPacket(t *testing.T) {
 	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 	congestionFunc = oldCF
 }
+
+func TestRecvSRTT(t *testing.T) {
+	// prepare the client and server connection
+	title := "receive packet to calculate SRTT/RTTVAR"
+	ip := "localhost"
+	port := "8080"
+
+	server := NewConnection(ip, port)
+	defer server.sock().Close()
+	if server == nil {
+		t.Errorf("%q server should not return nil.\n", title)
+		return
+	}
+
+	key := server.key
+	client := NewConnectionClient(key.String(), ip, port)
+	defer client.sock().Close()
+	if client == nil {
+		t.Errorf("%q client should not return nil.\n", title)
+	}
+
+	// client send a message to server, server receive it.
+	// this will initialize server remote address.
+
+	// messages := []struct {
+	// 	toServer string
+	// 	toClient string
+	// }{
+	// 	{"1st round from client to server", "1st round from server to client"},
+	// 	{"2nd round from client to server", "2nd round from server to client"},
+	// 	{"3rd round from client to server", "3rd round from server to client"},
+	// 	{"4th round from client to server", "4th round from server to client"},
+	// }
+
+	// intercept server log
+	var output strings.Builder
+	server.logW.SetOutput(&output)
+
+	var got string
+	maxMsg := 10
+
+	// for i, msg := range messages {
+	for i := 0; i < maxMsg; i++ {
+		toServer := fmt.Sprintf("%d round from client to server", i)
+		toClient := fmt.Sprintf("%d round from server to client", i)
+
+		client.send(toServer)
+		time.Sleep(time.Millisecond * 20)
+		server.recv()
+
+		server.send(toClient)
+		time.Sleep(time.Millisecond * 20)
+		got, _ = client.recv()
+
+		if got != toClient {
+			t.Errorf("%q expect %q, got %q\n", title, toClient, got)
+		}
+		// fmt.Printf("%q %d RTTHit=%t SRTT=%f, RTTVAR=%f\n", title, i, client.RTTHit, client.SRTT, client.RTTVAR)
+	}
+	if client.SRTT < 40 || client.SRTT > 45 {
+		t.Errorf("%q RTTHit=%t SRTT=%f, RTTVAR=%f\n", title, client.RTTHit, client.SRTT, client.RTTVAR)
+	}
+
+	// restor the logFunc
+	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+}
