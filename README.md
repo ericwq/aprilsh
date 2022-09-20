@@ -24,11 +24,15 @@ The project name `Aprilsh` is derived from `April+sh`. I started this project in
 
 ## Status
 
-- 2022/Jul/31: Finish the terminal emulator: add scroll buffer support, add color palette support, refine utf-8 support.
-- 2022/Aug/04: Working on the prediction engine.
-- 2022/Aug/16: Working on utf-8 support(wide grapheme such as `世界`) for the prediction engine
-- 2022/Aug/29: Finish the prediction engine: refine utf-8 support.
-- 2022/Sep/20: Finish the UDP send and receive part.
+- 2022/Jul/31: finish the terminal emulator:
+  - add scroll buffer support,
+  - add color palette support,
+  - refine UTF-8 support.
+- 2022/Aug/04: working on the prediction engine.
+- 2022/Aug/29: finish the prediction engine.
+  - refine UTF-8 support.
+- 2022/Sep/04: working on the UDP network.
+- 2022/Sep/20: finish the UDP network.
 
 ## Architecture view
 
