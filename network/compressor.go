@@ -65,7 +65,7 @@ func (c *Compressor) Compress(input []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-const bufSize = 1250
+const bufSize = 1250 // a little bit bigger than network MTU
 
 func (c *Compressor) Uncompress(input []byte) ([]byte, error) {
 	buf := make([]byte, bufSize)

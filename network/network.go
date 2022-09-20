@@ -75,11 +75,12 @@ func timestampDiff(tsnew, tsold uint16) uint16 {
 	return uint16(diff)
 }
 
+// Packet is used for RTT calculation
 type Packet struct {
 	seq            uint64
-	direction      Direction
-	timestamp      uint16
-	timestampReply uint16
+	direction      Direction // packet direciton
+	timestamp      uint16    // current packet send time
+	timestampReply uint16    // last packet received time
 	payload        []byte
 }
 
@@ -238,7 +239,7 @@ type Connection struct {
 
 	direction                Direction
 	savedTimestamp           int16 // the timestamp when the packet is created
-	savedTimestampReceivedAt int64 // the timestamp when the packet is received
+	savedTimestampReceivedAt int64 // the timestamp when the last packet is received
 	expectedReceiverSeq      uint64
 
 	lastHeard            int64 // last packet receive time
