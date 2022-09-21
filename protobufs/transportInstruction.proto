@@ -1,10 +1,9 @@
 syntax = "proto3";
 
-option optimize_for = LITE_RUNTIME;
-
 package aprish.protobufs;
 
 option go_package = "/protobufs";
+// option optimize_for = LITE_RUNTIME;
 // github.com/ericwq/aprish/protobufs
 
 message Instruction {
