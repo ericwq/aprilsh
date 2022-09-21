@@ -29,6 +29,9 @@ package network
 import (
 	"reflect"
 	"testing"
+
+	pb "github.com/ericwq/aprilsh/protobufs"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestFragment(t *testing.T) {
@@ -69,5 +72,47 @@ func TestFragment(t *testing.T) {
 	f1 := NewFragmentFrom(x)
 	if f1 != nil {
 		t.Errorf("%q expect nil, got %#v\n", x, f1)
+	}
+}
+
+func TestFragmenter(t *testing.T) {
+	name := "inst-> frag -> inst"
+	fe := NewFragmenter()
+
+	in0 := new(pb.Instruction)
+	in0.ProtocolVersion = 2
+	in0.OldNum = 9
+	in0.NewNum = 10
+	in0.AckNum = 8
+	in0.ThrowawayNum = 6
+	in0.Diff = []byte("This is the diff part of instruction. A string is a sequence of one or more characters (letters, numbers, symbols) that can be either a constant or a variable. Made up of Unicode, strings are immutable sequences, meaning they are unchanging. Because text is such a common form of data that we use in everyday life, the string data type is a very important building block of programming. This Go tutorial will go over how to create and print strings, how to concatenate and replicate strings, and how to store strings in variables.`")
+	in0.Chaff = []byte("what is the chaff?")
+
+	mtu := 120
+
+	frags := fe.makeFragments(in0, mtu)
+	got := fe.lastAckSent()
+	if got != in0.AckNum {
+		t.Errorf("%q expect AckNum=%d, got %d\n", name, in0.AckNum, got)
+	}
+
+	fa := NewFragmentAssembly()
+	success := false
+	for i, frag := range frags {
+		success = fa.addFragment(frag)
+		if success && i != len(frags)-1 {
+			t.Errorf("%q expect success=%t, got %t\n", name, false, success)
+		}
+		// fmt.Printf("%q %d success=%t\n", name, i, success)
+	}
+	// fmt.Printf("%q id=%d, total=%d, arrival=%d, len=%d\n",
+	// 	name, fa.currentId, fa.fragmentsTotal, fa.fragmentsArrived, len(fa.fragments))
+
+	in1 := fa.getAssembly()
+	if in1 == nil {
+		t.Errorf("%q expct instruction=\n%#v, got nil\n", name, in1)
+	}
+	if !proto.Equal(in0, in1) {
+		t.Errorf("%q expect \n%#v, got %#v\n", name, in0, in1)
 	}
 }

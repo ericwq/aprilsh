@@ -482,7 +482,7 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 		conn, err := lc.ListenPacket(context.Background(), NETWORK, localAddr.String())
 		if err != nil {
 			if i == searchHigh { // last port to search
-				c.logW.Printf("#tryBind error=%q address=%q\n", err, address)
+				c.logW.Printf("#tryBind error=%s address=%s\n", err, address)
 			}
 		} else {
 			c.socks = append(c.socks, conn.(udpConn))

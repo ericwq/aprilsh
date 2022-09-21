@@ -137,7 +137,8 @@ func NewFragmentAssembly() *FragmentAssembly {
 func (f *FragmentAssembly) addFragment(frag *Fragment) bool {
 	// see if this is a totally new packet
 	if f.currentId != frag.id {
-		f.fragments = make([]*Fragment, 1)
+		// fmt.Printf("#addFragment add* #%d\n", frag.fragmentNum)
+		f.fragments = make([]*Fragment, 0)
 		f.fragments = append(f.fragments, frag)
 		f.fragmentsArrived = 1
 		f.fragmentsTotal = -1 // unknown
@@ -146,10 +147,12 @@ func (f *FragmentAssembly) addFragment(frag *Fragment) bool {
 		// see if we already have this fragments
 		if len(f.fragments) > int(frag.fragmentNum) && f.fragments[frag.fragmentNum].initialized {
 			// make sure new version is same as what we already have
+			// fmt.Printf("#addFragment skip #%d\n", frag.fragmentNum)
 			if *(f.fragments[frag.fragmentNum]) == *frag {
 				// do nothing
 			}
 		} else {
+			// fmt.Printf("#addFragment add #%d\n", frag.fragmentNum)
 			f.fragments = append(f.fragments, frag)
 			f.fragmentsArrived++
 		}
