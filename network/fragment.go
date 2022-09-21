@@ -29,7 +29,6 @@ package network
 import (
 	"bytes"
 	"encoding/binary"
-	"strings"
 	"unsafe"
 
 	pb "github.com/ericwq/aprilsh/protobufs"
@@ -54,14 +53,44 @@ func NewFragment(id uint64, fragmentNum uint16, final bool, contents string) *Fr
 	return f
 }
 
-func NewFragmentFrom(contents string) *Fragment {
+// convert network order string into Fragment
+func NewFragmentFrom(x string) *Fragment {
 	f := new(Fragment)
+	f.initialized = true
 
+	if len(x) < f.fragHeaderLen() {
+		return nil
+	}
+
+	buf := []byte(x)
+	// read id
+	f.id = binary.BigEndian.Uint64(buf[0:])
+
+	// fragmentNum + final
+	combo := binary.BigEndian.Uint16(buf[unsafe.Sizeof(f.id):])
+
+	// fragmentNum
+	f.fragmentNum = combo & 0x7fff
+
+	// final
+	if combo&0x8000 > 0 {
+		f.final = true
+	}
+
+	// data
+	f.contents = string(buf[f.fragHeaderLen():])
 	return f
 }
 
-func (f *Fragment) String() []byte {
-	// pair with NewFragmentFrom
+func (f *Fragment) fragHeaderLen() int {
+	return int(unsafe.Sizeof(f.id) + unsafe.Sizeof(f.fragmentNum))
+}
+
+// convert Fragment into network order string
+func (f *Fragment) String() string {
+	if !f.initialized {
+		return ""
+	}
 
 	buf := new(bytes.Buffer)
 
@@ -75,14 +104,15 @@ func (f *Fragment) String() []byte {
 	p = make([]byte, unsafe.Sizeof(f.fragmentNum))
 	combo := f.fragmentNum
 	if f.final {
-		combo |= (1 << 15)
+		combo |= 0x8000
 	}
 	binary.BigEndian.PutUint16(p, combo)
 	buf.Write(p)
 
+	// contents
 	binary.Write(buf, binary.BigEndian, f.contents)
 
-	return buf.Bytes()
+	return string(buf.Bytes())
 }
 
 type FragmentAssembly struct {
