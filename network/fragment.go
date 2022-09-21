@@ -112,7 +112,7 @@ func (f *Fragment) String() string {
 	buf.Write(p)
 
 	// contents
-	binary.Write(buf, binary.BigEndian, f.contents)
+	buf.WriteString(f.contents)
 
 	return string(buf.Bytes())
 }
