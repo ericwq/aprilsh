@@ -29,9 +29,11 @@ package network
 import (
 	"bytes"
 	"encoding/binary"
+	"strings"
 	"unsafe"
 
 	pb "github.com/ericwq/aprilsh/protobufs"
+	"google.golang.org/protobuf/proto"
 )
 
 type Fragment struct {
@@ -117,13 +119,139 @@ func (f *Fragment) String() string {
 
 type FragmentAssembly struct {
 	fragments        []*Fragment
-	currentId        uint64
+	currentId        uint64 // instruction id
 	fragmentsArrived int
 	fragmentsTotal   int
 }
 
+func NewFragmentAssembly() *FragmentAssembly {
+	f := new(FragmentAssembly)
+
+	f.fragmentsArrived = 0
+	f.fragmentsTotal = -1
+	f.fragments = make([]*Fragment, 0)
+	return f
+}
+
+// check makeFragments() for the addFragment() logic
+func (f *FragmentAssembly) addFragment(frag *Fragment) bool {
+	// see if this is a totally new packet
+	if f.currentId != frag.id {
+		f.fragments = make([]*Fragment, 1)
+		f.fragments = append(f.fragments, frag)
+		f.fragmentsArrived = 1
+		f.fragmentsTotal = -1 // unknown
+		f.currentId = frag.id
+	} else { // not a new packet
+		// see if we already have this fragments
+		if len(f.fragments) > int(frag.fragmentNum) && f.fragments[frag.fragmentNum].initialized {
+			// make sure new version is same as what we already have
+			if *(f.fragments[frag.fragmentNum]) == *frag {
+				// do nothing
+			}
+		} else {
+			f.fragments = append(f.fragments, frag)
+			f.fragmentsArrived++
+		}
+	}
+
+	if frag.final {
+		f.fragmentsTotal = int(frag.fragmentNum) + 1
+	}
+
+	// return true means all the fragments is arrived.
+	return f.fragmentsArrived == f.fragmentsTotal
+}
+
+// convert fragments into Instruction
+func (f *FragmentAssembly) getAssembly() *pb.Instruction {
+	var encoded strings.Builder
+
+	for i := 0; i < f.fragmentsTotal; i++ {
+		encoded.WriteString(f.fragments[i].contents)
+	}
+
+	ret := pb.Instruction{}
+	b, err := GetCompressor().Uncompress([]byte(encoded.String()))
+	if err != nil {
+		return nil
+	}
+
+	err = proto.Unmarshal(b, &ret)
+	if err != nil {
+		return nil // TODO error handling.
+	}
+
+	f.fragments = make([]*Fragment, 0)
+	f.fragmentsArrived = 0
+	f.fragmentsTotal = -1
+
+	return &ret
+}
+
 type Fragmenter struct {
 	nextInstructionId uint64
-	lastInstruction   pb.Instruction
+	lastInstruction   *pb.Instruction
 	lastMTU           int
+}
+
+func NewFragmenter() *Fragmenter {
+	f := new(Fragmenter)
+	f.nextInstructionId = 0
+	f.lastMTU = -1
+	f.lastInstruction = new(pb.Instruction)
+	f.lastInstruction.OldNum = 0
+	f.lastInstruction.NewNum = 0
+
+	return f
+}
+
+func (f *Fragmenter) lastAckSent() uint64 {
+	return f.lastInstruction.AckNum
+}
+
+// convert Instruction into Fragments slice.
+func (f *Fragmenter) makeFragments(inst *pb.Instruction, mtu int) []*Fragment {
+	mtu -= new(Fragment).fragHeaderLen()
+
+	if !proto.Equal(inst, f.lastInstruction) || f.lastMTU != mtu {
+		f.nextInstructionId++
+	}
+
+	// TODO: why add this?
+	// if inst.OldNum == f.lastInstruction.OldNum && inst.NewNum == f.lastInstruction.NewNum {
+	// 	if !reflect.DeepEqual(inst.Diff, f.lastInstruction.Diff) {
+	// 		return nil
+	// 	}
+	// }
+
+	f.lastInstruction = inst
+	f.lastMTU = mtu
+
+	data, _ := proto.Marshal(inst)
+	p0, _ := GetCompressor().Compress(data)
+	payload := []byte(p0)
+
+	var fragmentNum uint16 = 0
+	ret := make([]*Fragment, 0)
+
+	pos := 0
+	for payload != nil {
+		final := false
+		contents := ""
+
+		if len(payload[pos:]) > mtu {
+			contents = string(payload[pos : pos+mtu])
+			pos += mtu
+		} else {
+			contents = string(payload[pos:])
+			payload = nil
+			final = true
+		}
+
+		ret = append(ret, NewFragment(f.nextInstructionId, fragmentNum, final, contents))
+		fragmentNum++
+	}
+
+	return ret
 }
