@@ -153,7 +153,7 @@ func TestConnection(t *testing.T) {
 		{"invalid port", "", "4;3", false, "#parsePort invalid (solo) port"},
 		{"reverse port order", "", "4:3", false, "#ParsePortRange low port"},
 		{"invalid host ", "dev.net", "403", false, "no such host"},
-		{"invalid host literal", "192.158.", "403:405", false, "no such host"},
+		{"invalid host literal", "192.158.", "403:405", false, "#tryBind error"}, // "no such host"},
 	}
 
 	// replace the logFunc
