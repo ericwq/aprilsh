@@ -29,6 +29,7 @@ package network
 import (
 	"bytes"
 	"encoding/binary"
+	"sort"
 	"strings"
 	"unsafe"
 
@@ -133,34 +134,55 @@ func NewFragmentAssembly() *FragmentAssembly {
 	return f
 }
 
+func (f *FragmentAssembly) has(frag *Fragment) (ret bool, idx int) {
+	idx = -1
+	for i, fs := range f.fragments {
+		if fs.fragmentNum == frag.fragmentNum {
+			ret = true
+			idx = i
+			break
+		}
+	}
+	return
+}
+
 // check makeFragments() for the addFragment() logic
 func (f *FragmentAssembly) addFragment(frag *Fragment) bool {
-	// see if this is a totally new packet
 	if f.currentId != frag.id {
+		// this is a totally new packet
+
 		// fmt.Printf("#addFragment add* #%d\n", frag.fragmentNum)
 		f.fragments = make([]*Fragment, 0)
-		f.fragments = append(f.fragments, frag)
+		f.fragments = append(f.fragments, frag) // consider the order problem caused by UDP
 		f.fragmentsArrived = 1
 		f.fragmentsTotal = -1 // unknown
 		f.currentId = frag.id
-	} else { // not a new packet
+	} else {
+		// not a new packet
 		// see if we already have this fragments
-		if len(f.fragments) > int(frag.fragmentNum) && f.fragments[frag.fragmentNum].initialized {
-			// make sure new version is same as what we already have
+		hasThis, idx := f.has(frag)
+		if hasThis {
 			// fmt.Printf("#addFragment skip #%d\n", frag.fragmentNum)
-			if *(f.fragments[frag.fragmentNum]) == *frag {
-				// do nothing
+			if *(f.fragments[idx]) == *frag {
+				// make sure new version is same as what we already have
+				// TODO consider error handling
 			}
 		} else {
 			// fmt.Printf("#addFragment add #%d\n", frag.fragmentNum)
 			f.fragments = append(f.fragments, frag)
 			f.fragmentsArrived++
+			// sort the fragment slice
+			sort.SliceStable(f.fragments, func(i, j int) bool {
+				return f.fragments[i].fragmentNum < f.fragments[j].fragmentNum
+			})
 		}
 	}
 
 	if frag.final {
 		f.fragmentsTotal = int(frag.fragmentNum) + 1
 	}
+
+	// fmt.Printf("#addFragment arrived=%d, total=%d\n", f.fragmentsArrived, f.fragmentsTotal)
 
 	// return true means all the fragments is arrived.
 	return f.fragmentsArrived == f.fragmentsTotal
@@ -214,7 +236,8 @@ func (f *Fragmenter) lastAckSent() uint64 {
 }
 
 // convert Instruction into Fragments slice.
-func (f *Fragmenter) makeFragments(inst *pb.Instruction, mtu int) []*Fragment {
+func (f *Fragmenter) makeFragments(inst *pb.Instruction, mtu int) (ret []*Fragment) {
+	// each fragment needs to consider the actually: mtu - header
 	mtu -= new(Fragment).fragHeaderLen()
 
 	if !proto.Equal(inst, f.lastInstruction) || f.lastMTU != mtu {
@@ -236,23 +259,22 @@ func (f *Fragmenter) makeFragments(inst *pb.Instruction, mtu int) []*Fragment {
 	payload := []byte(p0)
 
 	var fragmentNum uint16 = 0
-	ret := make([]*Fragment, 0)
-
 	pos := 0
+
 	for payload != nil {
 		final := false
-		contents := ""
+		thisFragment := ""
 
 		if len(payload[pos:]) > mtu {
-			contents = string(payload[pos : pos+mtu])
+			thisFragment = string(payload[pos : pos+mtu])
 			pos += mtu
 		} else {
-			contents = string(payload[pos:])
+			thisFragment = string(payload[pos:])
 			payload = nil
 			final = true
 		}
 
-		ret = append(ret, NewFragment(f.nextInstructionId, fragmentNum, final, contents))
+		ret = append(ret, NewFragment(f.nextInstructionId, fragmentNum, final, thisFragment))
 		fragmentNum++
 	}
 

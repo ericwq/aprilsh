@@ -28,6 +28,7 @@ package network
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 
 	pb "github.com/ericwq/aprilsh/protobufs"
@@ -114,5 +115,51 @@ func TestFragmenter(t *testing.T) {
 	}
 	if !proto.Equal(in0, in1) {
 		t.Errorf("%q expect \n%#v, got %#v\n", name, in0, in1)
+	}
+}
+
+func TestAddFragment(t *testing.T) {
+	tc := []struct {
+		id       uint64
+		num      uint16
+		final    bool
+		contents string
+	}{
+		{1, 2, false, "you "},
+		{1, 0, false, "I "},
+		{1, 2, false, "you "}, // repeated frag
+		{1, 1, false, "love "},
+		{1, 1, false, "love "}, // repeated frag
+		{1, 3, true, "too."},
+	}
+
+	// expected result
+	expect := "I love you too."
+	name := "out-of-order and repeat fragments"
+
+	// prepare the out-of-order fragments
+	var frags []*Fragment
+	for _, v := range tc {
+		f := NewFragment(v.id, v.num, v.final, v.contents)
+		frags = append(frags, f)
+	}
+
+	fa := NewFragmentAssembly()
+	for _, frag := range frags {
+		success := fa.addFragment(frag)
+		if success {
+			break
+		}
+		// fmt.Printf("%q %d success=%t\n", name, i, success)
+	}
+
+	var b strings.Builder
+	for i := range fa.fragments {
+		b.WriteString(fa.fragments[i].contents)
+		// fmt.Printf("#test %d - %#v\n", i, fa.fragments[i])
+	}
+	got := b.String()
+	if got != expect {
+		t.Errorf("%q expect %q, got %q\n", name, expect, got)
 	}
 }
