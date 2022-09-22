@@ -29,6 +29,8 @@ package network
 import (
 	"bytes"
 	"encoding/binary"
+	"log"
+	"os"
 	"sort"
 	"strings"
 	"unsafe"
@@ -123,6 +125,7 @@ type FragmentAssembly struct {
 	currentId        uint64 // instruction id
 	fragmentsArrived int
 	fragmentsTotal   int
+	logW             *log.Logger
 }
 
 func NewFragmentAssembly() *FragmentAssembly {
@@ -131,6 +134,7 @@ func NewFragmentAssembly() *FragmentAssembly {
 	f.fragmentsArrived = 0
 	f.fragmentsTotal = -1
 	f.fragments = make([]*Fragment, 0)
+	f.logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 	return f
 }
 
@@ -165,7 +169,6 @@ func (f *FragmentAssembly) addFragment(frag *Fragment) bool {
 			// fmt.Printf("#addFragment skip #%d\n", frag.fragmentNum)
 			if *(f.fragments[idx]) == *frag {
 				// make sure new version is same as what we already have
-				// TODO consider error handling
 			}
 		} else {
 			// fmt.Printf("#addFragment add #%d\n", frag.fragmentNum)
@@ -199,12 +202,14 @@ func (f *FragmentAssembly) getAssembly() *pb.Instruction {
 	ret := pb.Instruction{}
 	b, err := GetCompressor().Uncompress([]byte(encoded.String()))
 	if err != nil {
+		f.logW.Printf("#getAssembly uncompress %s\n", err)
 		return nil
 	}
 
 	err = proto.Unmarshal(b, &ret)
 	if err != nil {
-		return nil // TODO error handling.
+		f.logW.Printf("#getAssembly unmarshal %s\n", err)
+		return nil
 	}
 
 	f.fragments = make([]*Fragment, 0)

@@ -118,7 +118,7 @@ func TestFragmenter(t *testing.T) {
 	}
 }
 
-func TestAddFragment(t *testing.T) {
+func TestAddFragmentSkip(t *testing.T) {
 	tc := []struct {
 		id       uint64
 		num      uint16
@@ -161,5 +161,61 @@ func TestAddFragment(t *testing.T) {
 	got := b.String()
 	if got != expect {
 		t.Errorf("%q expect %q, got %q\n", name, expect, got)
+	}
+}
+
+func TestGetAssemblyFail(t *testing.T) {
+	tc := []struct {
+		id       uint64
+		num      uint16
+		final    bool
+		contents string
+	}{
+		{1, 2, false, "you "},
+		{1, 0, false, "I "},
+		{1, 1, false, "love "},
+		{1, 3, true, "too."},
+	}
+
+	// prepare the out-of-order fragments
+	var frags []*Fragment
+	for _, v := range tc {
+		f := NewFragment(v.id, v.num, v.final, v.contents)
+		frags = append(frags, f)
+	}
+
+	fa := NewFragmentAssembly()
+	for _, frag := range frags {
+		success := fa.addFragment(frag)
+		if success {
+			break
+		}
+	}
+
+	// intercept the log
+	var place strings.Builder
+	fa.logW.SetOutput(&place)
+
+	// validate uncompress error
+	// # this can also test zlib.NewReader(b)
+	in := fa.getAssembly()
+	if in != nil {
+		t.Errorf("#test getAssembly() failed expect nil, got %#v\n", in)
+	}
+
+	// prepare data for unmarshal error condition
+	f0 := NewFragment(2022, 12, true, "no instruction data")
+	mid, _ := GetCompressor().Compress([]byte(f0.contents))
+	f0.contents = string(mid)
+
+	fa.fragmentsArrived = 1
+	fa.fragmentsTotal = 1
+	fa.currentId = 2022
+	fa.fragments = make([]*Fragment, 0)
+	fa.fragments = append(fa.fragments, f0)
+
+	in = fa.getAssembly()
+	if in != nil {
+		t.Errorf("#test getAssembly() failed expect nil, got %#v\n", in)
 	}
 }

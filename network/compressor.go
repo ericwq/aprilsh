@@ -75,10 +75,10 @@ func (c *Compressor) Uncompress(input []byte) ([]byte, error) {
 	}
 	b := bytes.NewReader(input)
 
-	r, _ := zlib.NewReader(b)
-	// if err != nil {
-	// 	return nil, err
-	// }
+	r, err := zlib.NewReader(b)
+	if err != nil {
+		return nil, err
+	}
 	defer r.Close()
 
 	n, err := r.Read(buf)
