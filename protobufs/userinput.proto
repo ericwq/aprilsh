@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package aprish.protobufs;
+
+option go_package = "/protobufs";
+
+message UserMessage {
+  repeated Instruction instruction = 1;
+}
+
+// proto3 doesn't support extensions also consider the optional field
+message Instruction {
+  extensions 2 to max;
+}
+
+message Keystroke {
+  bytes keys = 4;
+}
+
+message ResizeMessage {
+  int32 width = 5;
+  int32 height = 6;
+}
+
+extend Instruction {
+  optional Keystroke keystroke = 2;
+  optional ResizeMessage resize = 3;
+}

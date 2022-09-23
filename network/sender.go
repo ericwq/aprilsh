@@ -26,12 +26,78 @@ SOFTWARE.
 
 package network
 
-type State[T any] struct{}
+import (
+	"fmt"
+)
 
-func (t *State[T]) subtract(*T) {}
-func (t *State[T]) applyString(string) {}
-func (t *State[T]) compare(*T)         {}
+type UserStream struct {
+	action []string
+}
 
-func (t *State[T]) diffFrom(*T) string {
-	return ""
+func (u *UserStream) subtract(prefix *UserStream) {
+	fmt.Println("#UserStream subtract")
+}
+
+func (u *UserStream) diffFrom(prefix *UserStream) {
+	fmt.Println("#UserStream subtract")
+}
+
+type CompleteTerminal struct {
+	action []string
+}
+
+func (u *CompleteTerminal) subtract(prefix *CompleteTerminal) {
+	fmt.Println("#CompleteTerminal subtract")
+}
+
+type State interface {
+	UserStream | CompleteTerminal
+}
+
+var tx Transport[UserStream, CompleteTerminal]
+
+type Transport[L State, R State] struct {
+	sender        TransportSender[L]
+	receivedState []TimestampedState[R]
+}
+
+func NewTransport2() *Transport[UserStream, CompleteTerminal] {
+	t := Transport[UserStream, CompleteTerminal]{}
+	t.receivedState[4].numEq(7)
+	return &t
+}
+
+type TransportSender[S State] struct {
+	sendStates   []TimestampedState[S]
+	currentState S
+}
+
+func (ts *TransportSender[S]) xxx() {
+	tx.sender.currentState.diffFrom(&tx.sender.sendStates[2].state)
+}
+
+func NewTransportSender2() *TransportSender[CompleteTerminal] {
+	ts := TransportSender[CompleteTerminal]{}
+	prefix := new(CompleteTerminal)
+	ts.sendStates[3].state.subtract(prefix)
+	return &ts
+}
+
+type TimestampedState[S State] struct {
+	timestamp int64
+	num       int64
+	state     S
+}
+
+func NewTimestampedState2() *TimestampedState[UserStream] {
+	ts := TimestampedState[UserStream]{}
+	return &ts
+}
+
+func (t *TimestampedState[R]) numEq(v int64) bool {
+	return t.num == v
+}
+
+func (t *TimestampedState[R]) numLt(v int64) bool {
+	return t.num < v
 }
