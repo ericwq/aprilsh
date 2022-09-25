@@ -9,7 +9,10 @@ message HostMessage {
 }
 
 message Instruction {
-  extensions 2 to max;
+  optional HostBytes hostbytes = 2;
+  optional ResizeMessage resize = 3;
+  optional EchoAck echoack = 7;
+  /* extensions 2 to max; */
 }
 
 message HostBytes {
@@ -25,8 +28,5 @@ message EchoAck {
   optional uint64 echo_ack_num = 8;
 }
 
-extend Instruction {
-  optional HostBytes hostbytes = 2;
-  optional ResizeMessage resize = 3;
-  optional EchoAck echoack = 7;
-}
+/* extend Instruction { */
+/* } */

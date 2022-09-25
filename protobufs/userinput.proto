@@ -10,7 +10,9 @@ message UserMessage {
 
 // proto3 doesn't support extensions also consider the optional field
 message Instruction {
-  extensions 2 to max;
+  optional Keystroke keystroke = 2;
+  optional ResizeMessage resize = 3;
+  /* extensions 2 to max; */
 }
 
 message Keystroke {
@@ -22,7 +24,7 @@ message ResizeMessage {
   int32 height = 6;
 }
 
-extend Instruction {
-  optional Keystroke keystroke = 2;
-  optional ResizeMessage resize = 3;
-}
+/* extend Instruction { */
+/*   optional Keystroke keystroke = 2; */
+/*   optional ResizeMessage resize = 3; */
+/* } */
