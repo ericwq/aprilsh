@@ -76,6 +76,42 @@
 - `hop_port()` creates a new socket to the `remote_addr` and add it to the socket list in `Connection`.
 - `hop_port()` calls `prune_sockets()` to clean old socket.
 
+## client main loop
+
+### output frame
+
+- pick the latest remote state.
+- add state to overlay.
+- calculate the state difference and send it to remote server.
+- update the latest remote state.
+
+### process network input
+
+In case there is network input:
+
+- receive the data packet from server.
+- update notification engine.
+- update prediction engine.
+
+### process user input
+
+In case there is user input:
+
+- read user input.
+- update prediction engine.
+- save each user key stroke into the currrent local state.
+
+### process shutdown
+
+- all kinds of cleanup.
+
+### send data to server
+
+- calculate the difference for sent state.
+- create Instruction.
+- put the diff into Instruction.
+- send the Instruction in fragments if possible.
+
 # go net package
 
 ## `ListenConfig.ListenPacket()`
