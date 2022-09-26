@@ -31,22 +31,29 @@ import (
 )
 
 type State interface {
+	// interface for Network::Transport
+	subtract(x State)
+	diffFrom(x State) string
+	initDiff() string
+	applyString(diff string)
+	equal(x State) bool
+	// compare(x State) bool
+
+	// interface from code
 	resetInput()
-	initDiff(x State) bool
-	// statesync.UserStream | statesync.CompleteTerminal
 }
 
 type Transport[L State, R State] struct {
 	sender            TransportSender[L]
 	receivedState     []TimestampedState[R]
-	lastReceiverState *R
+	lastReceiverState R
 }
 
-func (t *Transport[L, R]) getCurrentState() *L {
+func (t *Transport[L, R]) getCurrentState() L {
 	return t.sender.getCurrentState()
 }
 
-func (t *Transport[L, R]) setCurrentState(x *L) {
+func (t *Transport[L, R]) setCurrentState(x L) {
 	t.sender.setCurrentState(x)
 }
 

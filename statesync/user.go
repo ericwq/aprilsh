@@ -26,23 +26,85 @@ SOFTWARE.
 
 package statesync
 
-import "fmt"
+import (
+	"fmt"
+	"reflect"
 
-type UserStream struct {
-	action []string
+	"github.com/ericwq/aprilsh/terminal"
+)
+
+type UserEventType int
+
+const (
+	UserByteType UserEventType = iota
+	ResizeType
+)
+
+type UserEvent struct {
+	theType  UserEventType
+	userByte terminal.UserByte // Parser::UserByte
+	resize   terminal.Resize   // Parser::Resize
 }
 
-type CommonState interface {
-	subtract(*UserStream)
+func NewUserByte(userByte terminal.UserByte) (u UserEvent) {
+	u = UserEvent{}
+
+	u.theType = UserByteType
+	u.userByte = userByte
+
+	return u
+}
+
+func NewUserResize(resize terminal.Resize) (u UserEvent) {
+	u = UserEvent{}
+
+	u.theType = ResizeType
+	u.resize = resize
+
+	return u
+}
+
+type UserStream struct {
+	actions []UserEvent
+}
+
+func (u *UserStream) pushBack(userByte terminal.UserByte) {
+	u.actions = append(u.actions, NewUserByte(userByte))
+}
+
+// in go, we can only use different method name for pushBack()
+func (u *UserStream) pushBackResize(resize terminal.Resize) {
+	u.actions = append(u.actions, NewUserResize(resize))
 }
 
 func (u *UserStream) subtract(prefix *UserStream) {
-	fmt.Println("#UserStream subtract")
+	// if we are subtracting ourself from ourself, just clear the deque
+	if u.equal(prefix) {
+		u.actions = make([]UserEvent, 0)
+		return
+	}
+
+	pos :=0
+	for i := range prefix.actions {
+	}
 }
 
-//	func (u *UserStream) diffFrom(prefix *UserStream) {
-//		fmt.Println("#UserStream subtract")
-//	}
+func (u *UserStream) diffFrom(prefix *UserStream) string {
+	fmt.Println("#UserStream subtract")
+	return ""
+}
+
+func (u *UserStream) initDiff() string {
+	return ""
+}
+
+func (u *UserStream) equal(x *UserStream) bool {
+	return reflect.DeepEqual(u.actions, x.actions)
+}
+
+func (u *UserStream) resetInput() {}
+
+// TODO move it to another file
 type CompleteTerminal struct {
 	action []string
 }

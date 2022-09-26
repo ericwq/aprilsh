@@ -35,15 +35,14 @@ type TransportSender[S State] struct {
 func (t *TransportSender[S]) addSendState(theTimestamp int64, num int64, state *S) {
 }
 
-func (t *TransportSender[S]) getCurrentState() *S {
-	return &t.currentState
+func (t *TransportSender[S]) getCurrentState() S {
+	return t.currentState
 }
 
 // TODO careful about the pointer
-func (t *TransportSender[S]) setCurrentState(x *S) {
-	t.currentState = *x
+func (t *TransportSender[S]) setCurrentState(x S) {
+	t.currentState = x
 	t.currentState.resetInput()
-	t.currentState.initDiff(*x)
 }
 
 // func NewTransportSender2() *TransportSender[CompleteTerminal] {
