@@ -64,6 +64,8 @@ func NewUserResize(resize terminal.Resize) (u UserEvent) {
 	return u
 }
 
+// https://appliedgo.com/blog/generic-interface-functions
+// google: golang interface return self
 type UserStream struct {
 	actions []UserEvent
 }
@@ -77,15 +79,18 @@ func (u *UserStream) pushBackResize(resize terminal.Resize) {
 	u.actions = append(u.actions, NewUserResize(resize))
 }
 
-func (u *UserStream) subtract(prefix *UserStream) {
+func (u *UserStream) ResetInput() {}
+func (u *UserStream) Subtract(prefix *UserStream) {
 	// if we are subtracting ourself from ourself, just clear the deque
 	if u.equal(prefix) {
 		u.actions = make([]UserEvent, 0)
 		return
 	}
 
-	pos :=0
 	for i := range prefix.actions {
+		if len(u.actions) > 1 && u.actions[0] == prefix.actions[i] {
+			u.actions = u.actions[1:]
+		}
 	}
 }
 
@@ -101,8 +106,6 @@ func (u *UserStream) initDiff() string {
 func (u *UserStream) equal(x *UserStream) bool {
 	return reflect.DeepEqual(u.actions, x.actions)
 }
-
-func (u *UserStream) resetInput() {}
 
 // TODO move it to another file
 type CompleteTerminal struct {

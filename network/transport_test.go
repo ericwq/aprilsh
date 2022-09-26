@@ -26,36 +26,18 @@ SOFTWARE.
 
 package network
 
-// the methods returns a quite unspecified type C - basically, it can be anything.
-type State[C any] interface {
-	// interface for Network::Transport
-	Subtract(x C)
-	// diffFrom(x State) string
-	// initDiff() string
-	// applyString(diff string)
-	// equal(x State) bool
-	// compare(x State) bool
+import (
+	"testing"
 
-	// interface from code
-	ResetInput()
-}
+	"github.com/ericwq/aprilsh/statesync"
+)
 
-// A type T that must implement the State interface for type T - that is, for itself.
-type Transport[L State[L], R State[R]] struct {
-	sender            TransportSender[L]
-	receivedState     []TimestampedState[R]
-	lastReceiverState R
-}
+func TestTransport(t *testing.T) {
+	ts := Transport[*statesync.UserStream, *statesync.UserStream]{}
 
-func (t *Transport[L, R]) getCurrentState() L {
-	return t.sender.getCurrentState()
-}
+	currentState := ts.getCurrentState()
+	currentState.ResetInput()
 
-func (t *Transport[L, R]) setCurrentState(x L) {
-	t.sender.setCurrentState(x)
-}
-
-func (t *Transport[L, R]) getLatestRemoteState() R {
-	last := len(t.receivedState) - 1
-	return t.receivedState[last].state
+	us := &statesync.UserStream{}
+	currentState.Subtract(us)
 }

@@ -26,10 +26,10 @@ SOFTWARE.
 
 package network
 
-type TimestampedState[S State] struct {
+type TimestampedState[T State[T]] struct {
 	timestamp int64
 	num       int64
-	state     S
+	state     T
 }
 
 // func NewTimestampedState2() *TimestampedState[UserStream] {
@@ -37,10 +37,10 @@ type TimestampedState[S State] struct {
 // 	return &ts
 // }
 
-func (t *TimestampedState[S]) numEq(v int64) bool {
+func (t *TimestampedState[T]) numEq(v int64) bool {
 	return t.num == v
 }
 
-func (t *TimestampedState[S]) numLt(v int64) bool {
+func (t *TimestampedState[T]) numLt(v int64) bool {
 	return t.num < v
 }
