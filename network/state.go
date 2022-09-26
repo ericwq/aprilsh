@@ -26,29 +26,21 @@ SOFTWARE.
 
 package network
 
-type TransportSender[S State] struct {
-	currentState         S
-	sendStates           []TimestampedState[S]
-	assumedReceiverState *TimestampedState[S]
+type TimestampedState[S State] struct {
+	timestamp int64
+	num       int64
+	state     S
 }
 
-func (t *TransportSender[S]) addSendState(theTimestamp int64, num int64, state *S) {
-}
-
-func (t *TransportSender[S]) getCurrentState() *S {
-	return &t.currentState
-}
-
-// TODO careful about the pointer
-func (t *TransportSender[S]) setCurrentState(x *S) {
-	t.currentState = *x
-	t.currentState.resetInput()
-	t.currentState.initDiff(*x)
-}
-
-// func NewTransportSender2() *TransportSender[CompleteTerminal] {
-// 	ts := TransportSender[CompleteTerminal]{}
-// 	prefix := new(CompleteTerminal)
-// 	ts.sendStates[3].state.subtract(prefix)
+// func NewTimestampedState2() *TimestampedState[UserStream] {
+// 	ts := TimestampedState[UserStream]{}
 // 	return &ts
 // }
+
+func (t *TimestampedState[S]) numEq(v int64) bool {
+	return t.num == v
+}
+
+func (t *TimestampedState[S]) numLt(v int64) bool {
+	return t.num < v
+}

@@ -24,31 +24,29 @@ SOFTWARE.
 
 */
 
-package network
+package statesync
 
-type TransportSender[S State] struct {
-	currentState         S
-	sendStates           []TimestampedState[S]
-	assumedReceiverState *TimestampedState[S]
+import "fmt"
+
+type UserStream struct {
+	action []string
 }
 
-func (t *TransportSender[S]) addSendState(theTimestamp int64, num int64, state *S) {
+type CommonState interface {
+	subtract(*UserStream)
 }
 
-func (t *TransportSender[S]) getCurrentState() *S {
-	return &t.currentState
+func (u *UserStream) subtract(prefix *UserStream) {
+	fmt.Println("#UserStream subtract")
 }
 
-// TODO careful about the pointer
-func (t *TransportSender[S]) setCurrentState(x *S) {
-	t.currentState = *x
-	t.currentState.resetInput()
-	t.currentState.initDiff(*x)
+//	func (u *UserStream) diffFrom(prefix *UserStream) {
+//		fmt.Println("#UserStream subtract")
+//	}
+type CompleteTerminal struct {
+	action []string
 }
 
-// func NewTransportSender2() *TransportSender[CompleteTerminal] {
-// 	ts := TransportSender[CompleteTerminal]{}
-// 	prefix := new(CompleteTerminal)
-// 	ts.sendStates[3].state.subtract(prefix)
-// 	return &ts
-// }
+func (u *CompleteTerminal) subtract(prefix *CompleteTerminal) {
+	fmt.Println("#CompleteTerminal subtract")
+}
