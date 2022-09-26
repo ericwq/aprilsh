@@ -82,7 +82,7 @@
 
 - pick the latest remote state.
 - add state to overlay.
-- calculate the state difference and send it to remote server.
+- calculate the state difference and send it to local output.
 - update the latest remote state.
 
 ### process network input
@@ -97,9 +97,10 @@ In case there is network input:
 
 In case there is user input:
 
-- read user input.
+- read user input (local).
+- process shutdown if ready.
 - update prediction engine.
-- save each user key stroke into the currrent local state.
+- save user key stroke into the currrent local state.
 
 ### process shutdown
 
@@ -107,9 +108,40 @@ In case there is user input:
 
 ### send data to server
 
-- calculate the difference for sent state.
-- create Instruction.
-- put the diff into Instruction.
+- calculate the state difference for sending
+- create Instruction instance.
+- put the state difference into Instruction instance.
+- save the sent state
+- send the Instruction in fragments if possible.
+
+## server main loop
+
+### calculate the server timeout
+
+- go asleep if there is no remote peer
+
+### receive data packet from client
+
+- receive the data packet from client
+- apply userstream to terminal
+- save current terminal state for sync to client
+
+### receive output from local
+
+- read data from local standard output.
+- apply terminal instruction to local terminal.
+- set local current state.
+
+### process shutdown
+
+- all kinds of cleanup
+
+### send data to client
+
+- calculate the state difference for sending
+- create Instruction instance.
+- put the state difference into Instruction instance.
+- save the sent state
 - send the Instruction in fragments if possible.
 
 # go net package
