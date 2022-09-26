@@ -9,6 +9,7 @@
 - [详解 Go 语言 I/O 多路复用 netpoller 模型](https://www.luozhiyun.com/archives/439)
 - [Mocking Techniques for Go](https://www.myhatchpad.com/insight/mocking-techniques-for-go/)
 - [Golang Testing: Mocking and Error Handling](https://williaminfante.medium.com/golang-testing-mocking-and-error-handling-fbfe7f6008b9)
+- [How To Use Generics in Go](https://www.digitalocean.com/community/tutorials/how-to-use-generics-in-go)
 
 # mosh network connection
 
