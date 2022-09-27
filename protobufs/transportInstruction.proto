@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package aprish.protobufs;
+package TransportBuffers;
 
 option go_package = "/protobufs";
 // option optimize_for = LITE_RUNTIME;

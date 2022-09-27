@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package aprish.protobufs;
+package HostBuffers;
 
-option go_package = "/protobufs";
+option go_package = "/protobufs/host";
 
 message HostMessage {
   repeated Instruction instruction = 1;

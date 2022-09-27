@@ -64,8 +64,7 @@ func NewUserResize(resize terminal.Resize) (u UserEvent) {
 	return u
 }
 
-// https://appliedgo.com/blog/generic-interface-functions
-// google: golang interface return self
+// UserStream implements network.State[C any] interface
 type UserStream struct {
 	actions []UserEvent
 }
@@ -80,6 +79,10 @@ func (u *UserStream) pushBackResize(resize terminal.Resize) {
 }
 
 func (u *UserStream) ResetInput() {}
+
+// interface for network.State[C any]
+
+// Subtract() the prefix UserStream from current UserStream
 func (u *UserStream) Subtract(prefix *UserStream) {
 	// if we are subtracting ourself from ourself, just clear the deque
 	if u.equal(prefix) {
@@ -94,8 +97,16 @@ func (u *UserStream) Subtract(prefix *UserStream) {
 	}
 }
 
-func (u *UserStream) diffFrom(prefix *UserStream) string {
-	fmt.Println("#UserStream subtract")
+func (u *UserStream) DiffFrom(existing *UserStream) string {
+	myIt := 0
+
+	for i := range existing.actions {
+		if u.actions[myIt] == existing.actions[i] {
+			if myIt+1 <= len(u.actions)-1 {
+				myIt++
+			}
+		}
+	}
 	return ""
 }
 
