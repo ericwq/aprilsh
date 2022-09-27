@@ -152,7 +152,7 @@ func TestApplyString(t *testing.T) {
 		for _, v := range baseSize {
 			u1.pushBackResize(terminal.Resize{Width: v.width, Height: v.height})
 		}
-		fmt.Printf("#test ApplyString() base+size %s\n", &u1)
+		fmt.Printf("#test ApplyString() base+size %s len=%d\n", &u1, len(u1.actions))
 
 		u2 := UserStream{}
 		// add prefix user keystroke
@@ -164,7 +164,7 @@ func TestApplyString(t *testing.T) {
 		for _, v := range deltaSize {
 			u2.pushBackResize(terminal.Resize{Width: v.width, Height: v.height})
 		}
-		fmt.Printf("#test ApplyString() prefix %s\n", &u2)
+		fmt.Printf("#test ApplyString() prefix %s len=%d\n", &u2, len(u2.actions))
 
 		diff := u1.DiffFrom(&u2)
 		u1.Subtract(&u2) // after DiffFrom(), u1 is not affected.  Call subtract to modify it.
