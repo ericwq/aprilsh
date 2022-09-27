@@ -126,18 +126,17 @@ func TestApplyString(t *testing.T) {
 	deltaSize := []struct {
 		width, height int
 	}{
-		{80, 40}, {132, 60},
+		{80, 40}, {132, 60}, {140, 70},
 	}
 
 	tc := []struct {
 		name      string
 		keystroke string
 		prefix    string
-		remains   string
 	}{
-		{"diff & apply english keystroke from prefix", "Hello world", "Hello ", "world"},
-		{"diff & apply chinese keystroke from prefix", "你好！中国", "你好！", "中国"},
-		{"diff & apply equal keystroke from prefix", "equal prefix", "equal prefix", ""},
+		{"diff & apply english keystroke from prefix", "Hello world", "Hello "},
+		{"diff & apply chinese keystroke from prefix", "你好！中国", "你好！"},
+		{"diff & apply equal keystroke from prefix", "equal prefix", "equal prefix"},
 	}
 
 	for _, v := range tc {

@@ -112,7 +112,7 @@ func (u *UserStream) Subtract(prefix *UserStream) {
 	}
 
 	for i := range prefix.actions {
-		if len(u.actions) > 1 && u.actions[0] == prefix.actions[i] {
+		if len(u.actions) > 0 && u.actions[0] == prefix.actions[i] {
 			u.actions = u.actions[1:]
 		} else {
 			break
@@ -124,7 +124,7 @@ func (u *UserStream) DiffFrom(existing *UserStream) string {
 	// skip the existing part
 	pos := 0
 	for i := range existing.actions {
-		if len(u.actions[pos:]) > 1 && u.actions[pos] == existing.actions[i] {
+		if len(u.actions[pos:]) > 0 && u.actions[pos] == existing.actions[i] {
 			pos++
 		} else {
 			break
@@ -205,5 +205,8 @@ func (u *UserStream) ApplyString(diff string) error {
 }
 
 func (u *UserStream) Equal(x *UserStream) bool {
+	if len(u.actions) == 0 || len(x.actions) == 0 {
+		return true
+	}
 	return reflect.DeepEqual(u.actions, x.actions)
 }
