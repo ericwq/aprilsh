@@ -27,10 +27,11 @@ SOFTWARE.
 package statesync
 
 import (
-	"fmt"
 	"reflect"
 
+	pb "github.com/ericwq/aprilsh/protobufs/user"
 	"github.com/ericwq/aprilsh/terminal"
+	"google.golang.org/protobuf/proto"
 )
 
 type UserEventType int
@@ -85,7 +86,7 @@ func (u *UserStream) ResetInput() {}
 // Subtract() the prefix UserStream from current UserStream
 func (u *UserStream) Subtract(prefix *UserStream) {
 	// if we are subtracting ourself from ourself, just clear the deque
-	if u.equal(prefix) {
+	if u.Equal(prefix) {
 		u.actions = make([]UserEvent, 0)
 		return
 	}
@@ -98,31 +99,84 @@ func (u *UserStream) Subtract(prefix *UserStream) {
 }
 
 func (u *UserStream) DiffFrom(existing *UserStream) string {
-	myIt := 0
-
+	// remove the existing part
+	pos := 0
 	for i := range existing.actions {
-		if u.actions[myIt] == existing.actions[i] {
-			if myIt+1 <= len(u.actions)-1 {
-				myIt++
+		if u.actions[pos] == existing.actions[i] {
+			if pos+1 <= len(u.actions[pos:])-1 {
+				pos++
 			}
 		}
 	}
+
+	// create the UserMessage based on content in UserStream
+	um := pb.UserMessage{}
+	for _, ue := range u.actions[pos:] {
+		switch ue.theType {
+		case UserByteType:
+			theByte := ue.userByte.GetRune()
+			pos := len(um.Instruction) // TODO the last one?
+
+			if len(um.Instruction) > 0 && um.Instruction[pos].Keystroke != nil {
+				// append Keys for Keystroke
+				keys := []byte(string(theByte))
+
+				um.Instruction[pos].Keystroke.Keys = append(um.Instruction[0].Keystroke.Keys, keys...)
+			} else {
+				// create a new Instruction for Keystroke
+				um.Instruction = make([]*pb.Instruction, 0)
+
+				inst := pb.Instruction{
+					Keystroke: &pb.Keystroke{Keys: []byte(string(theByte))},
+				}
+				um.Instruction = append(um.Instruction, &inst)
+			}
+		case ResizeType:
+			// create a new Instruction for ResizeMessage
+			inst := pb.Instruction{
+				Resize: &pb.ResizeMessage{Width: int32(ue.resize.GetWidth()), Height: int32(ue.resize.GetHeight())},
+			}
+			um.Instruction = append(um.Instruction, &inst)
+		default:
+			break
+		}
+	}
+
+	// get the wire-format encoding of UserMessage
+	output, _ := proto.Marshal(&um)
+	// if err != nil {
+	// 	panic(fmt.Sprintf("#DiffFrom marshal %s ", err))
+	// }
+
+	return string(output)
+}
+
+func (u *UserStream) InitDiff() string {
+	// this should not be called
 	return ""
 }
 
-func (u *UserStream) initDiff() string {
-	return ""
+func (u *UserStream) ApplyString(diff string) {
+	// parse the wire-format encoding of UserMessage
+	input := pb.UserMessage{}
+	err := proto.Unmarshal([]byte(diff), &input)
+	if err != nil {
+		return
+	}
+
+	// create the UserStream based on content of UserMessage
+	for i := range input.Instruction {
+		if input.Instruction[i].Keystroke != nil {
+			for _, v := range input.Instruction[i].Keystroke.Keys {
+				u.actions = append(u.actions, NewUserByte(terminal.UserByte{C: rune(v)}))
+			}
+		} else if input.Instruction[i].Resize != nil {
+			w := input.Instruction[i].Resize
+			u.actions = append(u.actions, NewUserResize(terminal.Resize{Width: int(w.Width), Height: int(w.Height)}))
+		}
+	}
 }
 
-func (u *UserStream) equal(x *UserStream) bool {
+func (u *UserStream) Equal(x *UserStream) bool {
 	return reflect.DeepEqual(u.actions, x.actions)
-}
-
-// TODO move it to another file
-type CompleteTerminal struct {
-	action []string
-}
-
-func (u *CompleteTerminal) subtract(prefix *CompleteTerminal) {
-	fmt.Println("#CompleteTerminal subtract")
 }

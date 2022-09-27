@@ -37,10 +37,9 @@ type State[C any] interface {
 	// interface for Network::Transport
 	Subtract(x C)
 	DiffFrom(x C) string
-	// initDiff() string
-	// applyString(diff string)
-	// equal(x State) bool
-	// compare(x State) bool
+	InitDiff() string
+	ApplyString(diff string)
+	Equal(x C) bool
 
 	// interface from code
 	ResetInput()

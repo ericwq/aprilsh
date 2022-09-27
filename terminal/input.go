@@ -14,12 +14,24 @@ type UserInput struct {
 }
 
 type UserByte struct {
-	c rune
+	C rune
+}
+
+func (u UserByte) GetRune() rune {
+	return u.C
 }
 
 type Resize struct {
-	width  int
-	height int
+	Width  int
+	Height int
+}
+
+func (r Resize) GetWidth() int {
+	return r.Width
+}
+
+func (r Resize) GetHeight() int {
+	return r.Height
 }
 
 func (u UserByte) handle(emu Emulator) {
@@ -28,7 +40,7 @@ func (u UserByte) handle(emu Emulator) {
 }
 
 func (r Resize) handle(emu Emulator) {
-	emu.resize(r.width, r.height)
+	emu.resize(r.Width, r.Height)
 }
 
 // The user will always be in application mode. If client is not in
@@ -40,18 +52,18 @@ func (u *UserInput) parse(act UserByte, applicationModeCursorKeys bool) string {
 
 	switch u.state {
 	case USER_INPUT_GROUND:
-		if act.c == '\x1B' {
+		if act.C == '\x1B' {
 			u.state = USER_INPUT_ESC
 		}
-		return string(act.c)
+		return string(act.C)
 
 	case USER_INPUT_ESC:
-		if act.c == 'O' { // ESC O = 7-bit SS3
+		if act.C == 'O' { // ESC O = 7-bit SS3
 			u.state = USER_INPUT_SS3
 			return ""
 		} else {
 			u.state = USER_INPUT_GROUND
-			return string(act.c)
+			return string(act.C)
 		}
 
 		// The cursor keys transmit the following escape sequences depending on the
@@ -66,10 +78,10 @@ func (u *UserInput) parse(act UserByte, applicationModeCursorKeys bool) string {
 		//                   -------------+----------+-------------
 	case USER_INPUT_SS3:
 		u.state = USER_INPUT_GROUND
-		if !applicationModeCursorKeys && 'A' <= act.c && act.c <= 'D' {
-			return fmt.Sprintf("[%c", act.c) // CSI
+		if !applicationModeCursorKeys && 'A' <= act.C && act.C <= 'D' {
+			return fmt.Sprintf("[%c", act.C) // CSI
 		} else {
-			return fmt.Sprintf("O%c", act.c) // SS3
+			return fmt.Sprintf("O%c", act.C) // SS3
 		}
 	}
 
