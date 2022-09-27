@@ -5,11 +5,11 @@ package Clientbuffers;
 option go_package = "/protobufs/user";
 
 message UserMessage {
-  repeated InstructionU instruction = 1;
+  repeated Instruction instruction = 1;
 }
 
 // proto3 doesn't support extensions also consider the optional field
-message InstructionU {
+message Instruction {
   optional Keystroke keystroke = 2;
   optional ResizeMessage resize = 3;
   /* extensions 2 to max; */
