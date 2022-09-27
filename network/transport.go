@@ -38,7 +38,7 @@ type State[C any] interface {
 	Subtract(x C)
 	DiffFrom(x C) string
 	InitDiff() string
-	ApplyString(diff string)
+	ApplyString(diff string) error
 	Equal(x C) bool
 
 	// interface from code

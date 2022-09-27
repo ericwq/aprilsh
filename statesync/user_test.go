@@ -179,3 +179,20 @@ func TestApplyString(t *testing.T) {
 		}
 	}
 }
+
+func TestInitDiff(t *testing.T) {
+	u3 := UserStream{}
+	got := u3.InitDiff()
+	expect := ""
+	if expect != got {
+		t.Errorf("#test InitDiff() expect %q, got %q\n", expect, got)
+	}
+}
+
+func TestApplyStringFail(t *testing.T) {
+	diff := "malformed diff"
+	u3 := &UserStream{}
+	if err := u3.ApplyString(diff); err == nil {
+		t.Error("#test ApplyString() expect error, got nil")
+	}
+}

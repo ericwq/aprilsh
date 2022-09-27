@@ -161,8 +161,6 @@ func (u *UserStream) DiffFrom(existing *UserStream) string {
 				Resize: &pb.ResizeMessage{Width: int32(ue.resize.Width), Height: int32(ue.resize.Height)},
 			}
 			um.Instruction = append(um.Instruction, &inst)
-		default:
-			break
 		}
 	}
 
@@ -180,12 +178,12 @@ func (u *UserStream) InitDiff() string {
 	return ""
 }
 
-func (u *UserStream) ApplyString(diff string) {
+func (u *UserStream) ApplyString(diff string) error {
 	// parse the wire-format encoding of UserMessage
 	input := pb.UserMessage{}
 	err := proto.Unmarshal([]byte(diff), &input)
 	if err != nil {
-		return
+		return err
 	}
 
 	// create the UserStream based on content of UserMessage
@@ -202,6 +200,8 @@ func (u *UserStream) ApplyString(diff string) {
 			u.actions = append(u.actions, NewUserEventResize(terminal.Resize{Width: int(w.Width), Height: int(w.Height)}))
 		}
 	}
+
+	return nil
 }
 
 func (u *UserStream) Equal(x *UserStream) bool {
