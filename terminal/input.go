@@ -17,21 +17,9 @@ type UserByte struct {
 	C rune
 }
 
-func (u UserByte) GetRune() rune {
-	return u.C
-}
-
 type Resize struct {
 	Width  int
 	Height int
-}
-
-func (r Resize) GetWidth() int {
-	return r.Width
-}
-
-func (r Resize) GetHeight() int {
-	return r.Height
 }
 
 func (u UserByte) handle(emu Emulator) {

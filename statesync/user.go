@@ -27,14 +27,18 @@ SOFTWARE.
 package statesync
 
 import (
+	"bytes"
+	"fmt"
 	"reflect"
+	"strings"
 
 	pb "github.com/ericwq/aprilsh/protobufs/user"
 	"github.com/ericwq/aprilsh/terminal"
+	"github.com/rivo/uniseg"
 	"google.golang.org/protobuf/proto"
 )
 
-type UserEventType int
+type UserEventType uint8
 
 const (
 	UserByteType UserEventType = iota
@@ -47,7 +51,7 @@ type UserEvent struct {
 	resize   terminal.Resize   // Parser::Resize
 }
 
-func NewUserByte(userByte terminal.UserByte) (u UserEvent) {
+func NewUserEvent(userByte terminal.UserByte) (u UserEvent) {
 	u = UserEvent{}
 
 	u.theType = UserByteType
@@ -56,7 +60,7 @@ func NewUserByte(userByte terminal.UserByte) (u UserEvent) {
 	return u
 }
 
-func NewUserResize(resize terminal.Resize) (u UserEvent) {
+func NewUserEventResize(resize terminal.Resize) (u UserEvent) {
 	u = UserEvent{}
 
 	u.theType = ResizeType
@@ -70,13 +74,29 @@ type UserStream struct {
 	actions []UserEvent
 }
 
+func (u *UserStream) String() string {
+	var output1 strings.Builder
+	var output2 strings.Builder
+
+	for _, v := range u.actions {
+		switch v.theType {
+		case UserByteType:
+			output1.WriteRune(v.userByte.C)
+		case ResizeType:
+			output2.WriteString(fmt.Sprintf("(%d,%d),", v.resize.Width, v.resize.Height))
+		}
+	}
+
+	return fmt.Sprintf("Keystroke:%q, Resize:%s", output1.String(), output2.String())
+}
+
 func (u *UserStream) pushBack(userByte terminal.UserByte) {
-	u.actions = append(u.actions, NewUserByte(userByte))
+	u.actions = append(u.actions, NewUserEvent(userByte))
 }
 
 // in go, we can only use different method name for pushBack()
 func (u *UserStream) pushBackResize(resize terminal.Resize) {
-	u.actions = append(u.actions, NewUserResize(resize))
+	u.actions = append(u.actions, NewUserEventResize(resize))
 }
 
 func (u *UserStream) ResetInput() {}
@@ -109,32 +129,34 @@ func (u *UserStream) DiffFrom(existing *UserStream) string {
 		}
 	}
 
+	fmt.Printf("#DiffFrom pos=%d\n", pos)
 	// create the UserMessage based on content in UserStream
 	um := pb.UserMessage{}
 	for _, ue := range u.actions[pos:] {
 		switch ue.theType {
 		case UserByteType:
-			theByte := ue.userByte.GetRune()
-			pos := len(um.Instruction) // TODO the last one?
+			idx := len(um.Instruction) - 1 // TODO the last one?
+			var buf bytes.Buffer
+			buf.WriteRune(ue.userByte.C)
+			keys := buf.Bytes()
 
-			if len(um.Instruction) > 0 && um.Instruction[pos].Keystroke != nil {
+			if len(um.Instruction) > 0 && um.Instruction[idx].Keystroke != nil {
 				// append Keys for Keystroke
-				keys := []byte(string(theByte))
 
-				um.Instruction[pos].Keystroke.Keys = append(um.Instruction[0].Keystroke.Keys, keys...)
+				um.Instruction[idx].Keystroke.Keys = append(um.Instruction[0].Keystroke.Keys, keys...)
 			} else {
 				// create a new Instruction for Keystroke
 				um.Instruction = make([]*pb.Instruction, 0)
 
 				inst := pb.Instruction{
-					Keystroke: &pb.Keystroke{Keys: []byte(string(theByte))},
+					Keystroke: &pb.Keystroke{Keys: keys},
 				}
 				um.Instruction = append(um.Instruction, &inst)
 			}
 		case ResizeType:
 			// create a new Instruction for ResizeMessage
 			inst := pb.Instruction{
-				Resize: &pb.ResizeMessage{Width: int32(ue.resize.GetWidth()), Height: int32(ue.resize.GetHeight())},
+				Resize: &pb.ResizeMessage{Width: int32(ue.resize.Width), Height: int32(ue.resize.Height)},
 			}
 			um.Instruction = append(um.Instruction, &inst)
 		default:
@@ -167,12 +189,15 @@ func (u *UserStream) ApplyString(diff string) {
 	// create the UserStream based on content of UserMessage
 	for i := range input.Instruction {
 		if input.Instruction[i].Keystroke != nil {
-			for _, v := range input.Instruction[i].Keystroke.Keys {
-				u.actions = append(u.actions, NewUserByte(terminal.UserByte{C: rune(v)}))
+			graphemes := uniseg.NewGraphemes(string(input.Instruction[i].Keystroke.Keys))
+
+			for graphemes.Next() {
+				chs := graphemes.Runes()
+				u.actions = append(u.actions, NewUserEvent(terminal.UserByte{C: chs[0]}))
 			}
 		} else if input.Instruction[i].Resize != nil {
 			w := input.Instruction[i].Resize
-			u.actions = append(u.actions, NewUserResize(terminal.Resize{Width: int(w.Width), Height: int(w.Height)}))
+			u.actions = append(u.actions, NewUserEventResize(terminal.Resize{Width: int(w.Width), Height: int(w.Height)}))
 		}
 	}
 }
