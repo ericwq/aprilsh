@@ -2,19 +2,9 @@ package terminal
 
 import "fmt"
 
-const (
-	USER_INPUT_GROUND = iota
-	USER_INPUT_ESC
-	USER_INPUT_SS3
-)
-
-// the default state is USER_INPUT_GROUND = 0
-type UserInput struct {
-	state int
-}
-
 type UserByte struct {
-	C rune
+	// C   rune
+	Chs []rune
 }
 
 type Resize struct {
@@ -31,27 +21,43 @@ func (r Resize) handle(emu Emulator) {
 	emu.resize(r.Width, r.Height)
 }
 
+const (
+	USER_INPUT_GROUND = iota
+	USER_INPUT_ESC
+	USER_INPUT_SS3
+)
+
+// the default state is USER_INPUT_GROUND = 0
+type UserInput struct {
+	state int
+}
+
 // The user will always be in application mode. If client is not in
 // application mode, convert user's cursor control function to an
 // ANSI cursor control sequence */
-func (u *UserInput) parse(act UserByte, applicationModeCursorKeys bool) string {
+func (u *UserInput) parse(x UserByte, applicationModeCursorKeys bool) string {
 	// We need to look ahead one byte in the SS3 state to see if
 	// the next byte will be A, B, C, or D (cursor control keys).
 
+	if len(x.Chs) > 1 {
+		return ""
+	}
+	var r rune = x.Chs[0]
+
 	switch u.state {
 	case USER_INPUT_GROUND:
-		if act.C == '\x1B' {
+		if r == '\x1B' {
 			u.state = USER_INPUT_ESC
 		}
-		return string(act.C)
+		return string(r)
 
 	case USER_INPUT_ESC:
-		if act.C == 'O' { // ESC O = 7-bit SS3
+		if r == 'O' { // ESC O = 7-bit SS3
 			u.state = USER_INPUT_SS3
 			return ""
 		} else {
 			u.state = USER_INPUT_GROUND
-			return string(act.C)
+			return string(r)
 		}
 
 		// The cursor keys transmit the following escape sequences depending on the
@@ -66,10 +72,10 @@ func (u *UserInput) parse(act UserByte, applicationModeCursorKeys bool) string {
 		//                   -------------+----------+-------------
 	case USER_INPUT_SS3:
 		u.state = USER_INPUT_GROUND
-		if !applicationModeCursorKeys && 'A' <= act.C && act.C <= 'D' {
-			return fmt.Sprintf("[%c", act.C) // CSI
+		if !applicationModeCursorKeys && 'A' <= r && r <= 'D' {
+			return fmt.Sprintf("[%c", r) // CSI
 		} else {
-			return fmt.Sprintf("O%c", act.C) // SS3
+			return fmt.Sprintf("O%c", r) // SS3
 		}
 	}
 

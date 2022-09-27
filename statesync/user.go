@@ -81,7 +81,8 @@ func (u *UserStream) String() string {
 	for _, v := range u.actions {
 		switch v.theType {
 		case UserByteType:
-			output1.WriteRune(v.userByte.C)
+			// output1.WriteRune(v.userByte.C)
+			output1.WriteString(string(v.userByte.Chs))
 		case ResizeType:
 			output2.WriteString(fmt.Sprintf("(%d,%d),", v.resize.Width, v.resize.Height))
 		}
@@ -90,18 +91,19 @@ func (u *UserStream) String() string {
 	return fmt.Sprintf("Keystroke:%q, Resize:%s", output1.String(), output2.String())
 }
 
-func (u *UserStream) pushBack(userByte terminal.UserByte) {
-	u.actions = append(u.actions, NewUserEvent(userByte))
+func (u *UserStream) pushBack(x []rune) {
+	userStroke := terminal.UserByte{Chs: x}
+	u.actions = append(u.actions, NewUserEvent(userStroke))
 }
 
-// in go, we can only use different method name for pushBack()
-func (u *UserStream) pushBackResize(resize terminal.Resize) {
+func (u *UserStream) pushBackResize(width, height int) {
+	resize := terminal.Resize{Width: width, Height: height}
 	u.actions = append(u.actions, NewUserEventResize(resize))
 }
 
 func (u *UserStream) ResetInput() {}
 
-// interface for network.State[C any]
+/* interface for network.State[C any] */
 
 // Subtract() the prefix UserStream from current UserStream
 func (u *UserStream) Subtract(prefix *UserStream) {
@@ -112,7 +114,7 @@ func (u *UserStream) Subtract(prefix *UserStream) {
 	}
 
 	for i := range prefix.actions {
-		if len(u.actions) > 0 && u.actions[0] == prefix.actions[i] {
+		if len(u.actions) > 0 && reflect.DeepEqual(u.actions[0], prefix.actions[i]) {
 			u.actions = u.actions[1:]
 		} else {
 			break
@@ -124,7 +126,7 @@ func (u *UserStream) DiffFrom(existing *UserStream) string {
 	// skip the existing part
 	pos := 0
 	for i := range existing.actions {
-		if len(u.actions[pos:]) > 0 && u.actions[pos] == existing.actions[i] {
+		if len(u.actions[pos:]) > 0 && reflect.DeepEqual(u.actions[pos], existing.actions[i]) {
 			pos++
 		} else {
 			break
@@ -139,7 +141,8 @@ func (u *UserStream) DiffFrom(existing *UserStream) string {
 		case UserByteType:
 			idx := len(um.Instruction) - 1 // TODO the last one?
 			var buf bytes.Buffer
-			buf.WriteRune(ue.userByte.C)
+			buf.WriteString(string(ue.userByte.Chs))
+			// buf.WriteRune(ue.userByte.C)
 			keys := buf.Bytes()
 
 			if len(um.Instruction) > 0 && um.Instruction[idx].Keystroke != nil {
@@ -193,7 +196,8 @@ func (u *UserStream) ApplyString(diff string) error {
 
 			for graphemes.Next() {
 				chs := graphemes.Runes()
-				u.actions = append(u.actions, NewUserEvent(terminal.UserByte{C: chs[0]}))
+				// u.actions = append(u.actions, NewUserEvent(terminal.UserByte{C: chs[0]}))
+				u.actions = append(u.actions, NewUserEvent(terminal.UserByte{Chs: chs}))
 			}
 		} else if input.Instruction[i].Resize != nil {
 			w := input.Instruction[i].Resize
@@ -205,7 +209,7 @@ func (u *UserStream) ApplyString(diff string) error {
 }
 
 func (u *UserStream) Equal(x *UserStream) bool {
-	if len(u.actions) == 0 || len(x.actions) == 0 {
+	if len(u.actions) == 0 && len(x.actions) == 0 {
 		return true
 	}
 	return reflect.DeepEqual(u.actions, x.actions)

@@ -28,6 +28,7 @@ package statesync
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -60,14 +61,16 @@ func TestSubtract(t *testing.T) {
 		// add user keystroke
 		chs := []rune(v.keystroke)
 		for i := range chs {
-			u1.pushBack(terminal.UserByte{C: chs[i]})
+			// u1.pushBack(terminal.UserByte{Chs: []rune{chs[i]}})
+			u1.pushBack([]rune{chs[i]})
 		}
 		// fmt.Printf("#test DiffFrom() base %s\n", &u1)
 
 		// add size data
 		if v.sizeB {
 			for _, v := range sizes {
-				u1.pushBackResize(terminal.Resize{Width: v.width, Height: v.height})
+				// u1.pushBackResize(terminal.Resize{Width: v.width, Height: v.height})
+				u1.pushBackResize(v.width, v.height)
 			}
 			// fmt.Printf("#test DiffFrom() base+size %s\n", &u1)
 		}
@@ -77,7 +80,8 @@ func TestSubtract(t *testing.T) {
 		// add prefix user keystroke
 		prefix := []rune(v.prefix)
 		for i := range prefix {
-			u2.pushBack(terminal.UserByte{C: prefix[i]})
+			// u2.pushBack(terminal.UserByte{C: prefix[i]})
+			u2.pushBack([]rune{prefix[i]})
 		}
 		// fmt.Printf("#test DiffFrom() prefix %s\n", &u2)
 
@@ -87,7 +91,8 @@ func TestSubtract(t *testing.T) {
 		for _, v := range u1.actions {
 			switch v.theType {
 			case UserByteType:
-				output.WriteRune(v.userByte.C)
+				// output.WriteRune(v.userByte.C)
+				output.WriteString(string(v.userByte.Chs))
 			}
 		}
 		// fmt.Printf("#test DiffFrom() result %#v\n", &u1)
@@ -101,17 +106,17 @@ func TestSubtract(t *testing.T) {
 }
 
 func TestUserEvent(t *testing.T) {
-	e1 := NewUserEvent(terminal.UserByte{C: 'a'})
-	e2 := NewUserEvent(terminal.UserByte{C: 'a'})
+	e1 := NewUserEvent(terminal.UserByte{Chs: []rune("🇧🇷")})
+	e2 := NewUserEvent(terminal.UserByte{Chs: []rune("🇧🇷")})
 
-	if e1 != e2 {
+	if !reflect.DeepEqual(e1, e2) {
 		t.Errorf("#test UserEvent equal should return true, %v, %v\n", e1, e2)
 	}
 
 	e1 = NewUserEventResize(terminal.Resize{Width: 80, Height: 40})
 	e2 = NewUserEventResize(terminal.Resize{Width: 80, Height: 40})
 
-	if e1 != e2 {
+	if !reflect.DeepEqual(e1, e2) {
 		t.Errorf("#test UserEvent equal should return true, %v, %v\n", e1, e2)
 	}
 }
@@ -136,7 +141,8 @@ func TestApplyString(t *testing.T) {
 	}{
 		{"diff & apply english keystroke from prefix", "Hello world", "Hello "},
 		{"diff & apply chinese keystroke from prefix", "你好！中国", "你好！"},
-		{"diff & apply equal keystroke from prefix", "equal prefix", "equal prefix"},
+		{"diff & apply equal prefix", "equal prefix", "equal prefix"},
+		{"diff & apply flag", "Chin\u0308\u0308a 🏖 i国旗🇳🇱Fun 🌈with F🇧🇷lg", ""},
 	}
 
 	for _, v := range tc {
@@ -145,11 +151,16 @@ func TestApplyString(t *testing.T) {
 		// add user keystroke
 		chs := []rune(v.keystroke)
 		for i := range chs {
-			u1.pushBack(terminal.UserByte{C: chs[i]})
+			// u1.pushBack(terminal.UserByte{C: chs[i]})
+			u1.pushBack([]rune{chs[i]})
+			if v.prefix == "" {
+				fmt.Printf("#test ApplyString() [%d] %c %q %x\n", i, chs[i], chs[i], chs[i])
+			}
 		}
 		// add base size data
 		for _, v := range baseSize {
-			u1.pushBackResize(terminal.Resize{Width: v.width, Height: v.height})
+			// u1.pushBackResize(terminal.Resize{Width: v.width, Height: v.height})
+			u1.pushBackResize(v.width, v.height)
 		}
 		fmt.Printf("#test ApplyString() base+size %s len=%d\n", &u1, len(u1.actions))
 
@@ -157,17 +168,19 @@ func TestApplyString(t *testing.T) {
 		// add prefix user keystroke
 		prefix := []rune(v.prefix)
 		for i := range prefix {
-			u2.pushBack(terminal.UserByte{C: prefix[i]})
+			// u2.pushBack(terminal.UserByte{C: prefix[i]})
+			u2.pushBack([]rune{prefix[i]})
 		}
 		// add delta size data
 		for _, v := range deltaSize {
-			u2.pushBackResize(terminal.Resize{Width: v.width, Height: v.height})
+			// u2.pushBackResize(terminal.Resize{Width: v.width, Height: v.height})
+			u2.pushBackResize(v.width, v.height)
 		}
 		fmt.Printf("#test ApplyString() prefix %s len=%d\n", &u2, len(u2.actions))
 
 		diff := u1.DiffFrom(&u2)
 		u1.Subtract(&u2) // after DiffFrom(), u1 is not affected.  Call subtract to modify it.
-		fmt.Printf("#test ApplyString() u1=%s\n", &u1)
+		fmt.Printf("#test ApplyString() u1=%s diff len=%d\n", &u1, len(diff))
 
 		u3 := UserStream{}
 		u3.ApplyString(diff)
