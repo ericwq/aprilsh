@@ -318,6 +318,7 @@ func (emu *Emulator) writePty(resp string) {
 	emu.terminalToHost.WriteString(resp)
 }
 
+// return the terminal feedback, clean feedback buffer.
 func (emu *Emulator) ReadOctetsToHost() string {
 	ret := emu.terminalToHost.String()
 	emu.terminalToHost.Reset()

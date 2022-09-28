@@ -62,6 +62,7 @@ func (c *Complete) Act(str string) string {
 	return c.terminal.ReadOctetsToHost()
 }
 
+// run the action in terminal, return the contents in terminalToHost.
 func (c *Complete) ActOn(x terminal.ActOn) string {
 	x.Handle(*c.terminal)
 	return c.terminal.ReadOctetsToHost()
