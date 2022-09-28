@@ -122,6 +122,7 @@ func (u *UserStream) Subtract(prefix *UserStream) {
 	}
 }
 
+// DiffFrom() exclude the existing UserEvent and return the difference.
 func (u *UserStream) DiffFrom(existing *UserStream) string {
 	// skip the existing part
 	pos := 0
@@ -179,6 +180,7 @@ func (u *UserStream) InitDiff() string {
 	return ""
 }
 
+// convert the UserMessage into a UserStream
 func (u *UserStream) ApplyString(diff string) error {
 	// parse the wire-format encoding of UserMessage
 	input := pb.UserMessage{}
