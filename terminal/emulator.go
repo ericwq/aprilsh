@@ -49,7 +49,6 @@ type CharsetState struct {
 }
 
 type Emulator struct {
-	dispatcher     Dispatcher
 	parser         *Parser
 	terminalToHost strings.Builder
 

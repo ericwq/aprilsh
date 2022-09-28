@@ -29,15 +29,15 @@ package network
 import (
 	"testing"
 
-	"github.com/ericwq/aprilsh/statesync"
+	// "github.com/ericwq/aprilsh/statesync"
 )
 
 func TestTransport(t *testing.T) {
-	ts := Transport[*statesync.UserStream, *statesync.UserStream]{}
-
-	currentState := ts.getCurrentState()
-	currentState.ResetInput()
-
-	us := &statesync.UserStream{}
-	currentState.Subtract(us)
+	// ts := Transport[*statesync.UserStream, *statesync.UserStream]{}
+	//
+	// currentState := ts.getCurrentState()
+	// currentState.ResetInput()
+	//
+	// us := &statesync.UserStream{}
+	// currentState.Subtract(us)
 }
