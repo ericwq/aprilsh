@@ -235,6 +235,10 @@ func (h *Handler) GetSequence() string {
 	return h.sequence
 }
 
+// func (h *Handler) Handle(emu *Emulator) {
+// 	h.handle(emu)
+// }
+
 // In the loop, national flag's width got 1+1=2.
 func RunesWidth(runes []rune) (width int) {
 	// return uniseg.StringWidth(string(runes))

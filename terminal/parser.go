@@ -184,6 +184,10 @@ func (p *Parser) getHistoryAt(reverseIdx int) (r rune) {
 	return r
 }
 
+func (p *Parser) ResetInput() {
+	p.reset()
+}
+
 func (p *Parser) reset() {
 	p.inputState = InputState_Normal
 	p.ch = 0x00

@@ -225,6 +225,10 @@ func (emu *Emulator) resetScreen() {
 	emu.cf.getSelection().clear()
 }
 
+func (emu *Emulator) GetFramebuffer() *Framebuffer {
+	return emu.cf
+}
+
 func (emu *Emulator) resetAttrs() {
 	emu.reverseVideo = false
 	emu.fg = emu.attrs.renditions.fgColor
@@ -313,6 +317,12 @@ func (emu *Emulator) lookupCharset(p rune) (r rune) {
 // hide the implementation of write back
 func (emu *Emulator) writePty(resp string) {
 	emu.terminalToHost.WriteString(resp)
+}
+
+func (emu *Emulator) ReadOctetsToHost() string {
+	ret := emu.terminalToHost.String()
+	emu.terminalToHost.Reset()
+	return ret
 }
 
 // parse and handle the stream together.
