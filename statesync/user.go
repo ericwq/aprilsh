@@ -45,6 +45,8 @@ const (
 	ResizeType
 )
 
+// UserByte instance is created by aprish client, when client got the user input.
+// Resize instance is created by aprish client, when client change the window size.
 type UserEvent struct {
 	theType  UserEventType
 	userByte terminal.UserByte // Parser::UserByte

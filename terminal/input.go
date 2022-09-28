@@ -3,7 +3,6 @@ package terminal
 import "fmt"
 
 type UserByte struct {
-	// C   rune
 	Chs []rune
 }
 
@@ -12,12 +11,17 @@ type Resize struct {
 	Height int
 }
 
-func (u UserByte) handle(emu Emulator) {
+type ActOn interface {
+	Handle(emu Emulator)
+}
+
+func (u UserByte) Handle(emu Emulator) {
+	// TODO remove DS.ApplicationModeCursorKeys
 	ret := emu.user.parse(u, emu.cf.DS.ApplicationModeCursorKeys)
 	emu.writePty(ret)
 }
 
-func (r Resize) handle(emu Emulator) {
+func (r Resize) Handle(emu Emulator) {
 	emu.resize(r.Width, r.Height)
 }
 

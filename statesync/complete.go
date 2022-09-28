@@ -62,6 +62,11 @@ func (c *Complete) Act(str string) string {
 	return c.terminal.ReadOctetsToHost()
 }
 
+func (c *Complete) ActOn(x terminal.ActOn) string {
+	x.Handle(*c.terminal)
+	return c.terminal.ReadOctetsToHost()
+}
+
 func (c *Complete) getEchoAck() uint64 {
 	return c.echoAck
 }
