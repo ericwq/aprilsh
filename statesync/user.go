@@ -133,7 +133,6 @@ func (u *UserStream) DiffFrom(existing *UserStream) string {
 		}
 	}
 
-	fmt.Printf("#DiffFrom pos=%d\n", pos)
 	// create the UserMessage based on content in UserStream
 	um := pb.UserMessage{}
 	for _, ue := range u.actions[pos:] {
@@ -142,7 +141,6 @@ func (u *UserStream) DiffFrom(existing *UserStream) string {
 			idx := len(um.Instruction) - 1 // TODO the last one?
 			var buf bytes.Buffer
 			buf.WriteString(string(ue.userByte.Chs))
-			// buf.WriteRune(ue.userByte.C)
 			keys := buf.Bytes()
 
 			if len(um.Instruction) > 0 && um.Instruction[idx].Keystroke != nil {
@@ -196,7 +194,6 @@ func (u *UserStream) ApplyString(diff string) error {
 
 			for graphemes.Next() {
 				chs := graphemes.Runes()
-				// u.actions = append(u.actions, NewUserEvent(terminal.UserByte{C: chs[0]}))
 				u.actions = append(u.actions, NewUserEvent(terminal.UserByte{Chs: chs}))
 			}
 		} else if input.Instruction[i].Resize != nil {

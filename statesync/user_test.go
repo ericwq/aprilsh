@@ -27,12 +27,12 @@ SOFTWARE.
 package statesync
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/ericwq/aprilsh/terminal"
+	"github.com/rivo/uniseg"
 )
 
 func TestSubtract(t *testing.T) {
@@ -149,42 +149,43 @@ func TestApplyString(t *testing.T) {
 
 		u1 := UserStream{}
 		// add user keystroke
-		chs := []rune(v.keystroke)
-		for i := range chs {
-			// u1.pushBack(terminal.UserByte{C: chs[i]})
-			u1.pushBack([]rune{chs[i]})
-			if v.prefix == "" {
-				fmt.Printf("#test ApplyString() [%d] %c %q %x\n", i, chs[i], chs[i], chs[i])
-			}
+		graphemes := uniseg.NewGraphemes(v.keystroke)
+		for graphemes.Next() {
+			chs := graphemes.Runes()
+			u1.pushBack(chs)
+			// if v.prefix == "" {
+			// 	fmt.Printf("#test ApplyString() %c %q %x\n", chs, chs, chs)
+			// }
 		}
 		// add base size data
 		for _, v := range baseSize {
 			// u1.pushBackResize(terminal.Resize{Width: v.width, Height: v.height})
 			u1.pushBackResize(v.width, v.height)
 		}
-		fmt.Printf("#test ApplyString() base+size %s len=%d\n", &u1, len(u1.actions))
+		// fmt.Printf("#test ApplyString() base+size %s len=%d\n", &u1, len(u1.actions))
 
 		u2 := UserStream{}
 		// add prefix user keystroke
-		prefix := []rune(v.prefix)
-		for i := range prefix {
-			// u2.pushBack(terminal.UserByte{C: prefix[i]})
-			u2.pushBack([]rune{prefix[i]})
+		graphemes = uniseg.NewGraphemes(v.prefix)
+		for graphemes.Next() {
+			chs := graphemes.Runes()
+			u2.pushBack(chs)
 		}
+
 		// add delta size data
 		for _, v := range deltaSize {
 			// u2.pushBackResize(terminal.Resize{Width: v.width, Height: v.height})
 			u2.pushBackResize(v.width, v.height)
 		}
-		fmt.Printf("#test ApplyString() prefix %s len=%d\n", &u2, len(u2.actions))
+		// fmt.Printf("#test ApplyString() prefix %s len=%d\n", &u2, len(u2.actions))
 
 		diff := u1.DiffFrom(&u2)
 		u1.Subtract(&u2) // after DiffFrom(), u1 is not affected.  Call subtract to modify it.
-		fmt.Printf("#test ApplyString() u1=%s diff len=%d\n", &u1, len(diff))
+		// fmt.Printf("#test ApplyString() u1=%s diff len=%d\n", &u1, len(diff))
 
 		u3 := UserStream{}
 		u3.ApplyString(diff)
-		fmt.Printf("#test ApplyString() u3=%s\n\n", &u3)
+		// fmt.Printf("#test ApplyString() u3=%s\n\n", &u3)
 
 		if !u1.Equal(&u3) {
 			t.Errorf("%q expect \n%s, got \n%s\n", v.name, &u1, &u3)
@@ -206,5 +207,48 @@ func TestApplyStringFail(t *testing.T) {
 	u3 := &UserStream{}
 	if err := u3.ApplyString(diff); err == nil {
 		t.Error("#test ApplyString() expect error, got nil")
+	}
+}
+
+func TestString(t *testing.T) {
+	tc := []struct {
+		title     string
+		keystroke string
+		size      bool
+		expect    string
+	}{
+		{"no size", "has keystroke, no size data", false, "Keystroke:\"has keystroke, no size data\", Resize:"},
+		{"no keystroke", "", true, "Keystroke:\"\", Resize:(80,40),(132,60),(140,70),"},
+		{"both keystroke and size", "has both keystroke and data", true, "Keystroke:\"has both keystroke and data\", Resize:(80,40),(132,60),(140,70),"},
+		{"empty", "", false, "Keystroke:\"\", Resize:"},
+	}
+
+	sizes := []struct {
+		width, height int
+	}{
+		{80, 40}, {132, 60}, {140, 70},
+	}
+	for _, v := range tc {
+
+		u1 := UserStream{}
+
+		// add user keystroke
+		chs := []rune(v.keystroke)
+		for i := range chs {
+			u1.pushBack([]rune{chs[i]})
+		}
+
+		// add size data
+		if v.size {
+			for _, v := range sizes {
+				u1.pushBackResize(v.width, v.height)
+			}
+		}
+
+		got := u1.String()
+		if v.expect != got {
+			t.Errorf("%q expect [%s], got [%s]\n", v.title, v.expect, got)
+		}
+
 	}
 }
