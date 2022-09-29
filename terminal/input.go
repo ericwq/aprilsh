@@ -16,7 +16,7 @@ type ActOn interface {
 }
 
 func (u UserByte) Handle(emu Emulator) {
-	// TODO it seams that Parser can't handle Application mode?
+	// TODO it seems that Parser can't handle Application mode?
 	ret := emu.user.parse(u, emu.cursorKeyMode)
 	emu.writePty(ret)
 }
