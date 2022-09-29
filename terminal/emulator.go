@@ -224,10 +224,6 @@ func (emu *Emulator) resetScreen() {
 	emu.cf.getSelection().clear()
 }
 
-func (emu *Emulator) GetFramebuffer() *Framebuffer {
-	return emu.cf
-}
-
 func (emu *Emulator) resetAttrs() {
 	emu.reverseVideo = false
 	emu.fg = emu.attrs.renditions.fgColor
@@ -311,32 +307,6 @@ func (emu *Emulator) lookupCharset(p rune) (r rune) {
 
 	r = lookupTable(cs, byte(p))
 	return r
-}
-
-// hide the implementation of write back
-func (emu *Emulator) writePty(resp string) {
-	emu.terminalToHost.WriteString(resp)
-}
-
-// return the terminal feedback, clean feedback buffer.
-func (emu *Emulator) ReadOctetsToHost() string {
-	ret := emu.terminalToHost.String()
-	emu.terminalToHost.Reset()
-	return ret
-}
-
-// parse and handle the stream together.
-func (emu *Emulator) HandleStream(seq string) (hds []*Handler) {
-	hds = make([]*Handler, 0, 16)
-	if len(seq) == 0 {
-		return
-	}
-
-	hds = emu.parser.processStream(seq, hds)
-	for _, hd := range hds {
-		hd.handle(emu)
-	}
-	return
 }
 
 func (emu *Emulator) resize(nCols, nRows int) {
@@ -535,112 +505,34 @@ func (emu *Emulator) hideCursor() {
 	emu.cf.setCursorStyle(CursorStyle_Hidden)
 }
 
-/*
------------------------------------------------------------------------------------------------------
-The following methods is only used by prediction engine. The coordinate is different from the one used
-by control sequence. It use the Emulator internal coordinate, starts from 0.
------------------------------------------------------------------------------------------------------
-*/
-
-// move cursor to specified position, (default screen coordinate = [1,1])
-func (emu *Emulator) MoveCursor(posY, posX int) {
-	emu.posX = posX
-	emu.posY = posY
-	emu.normalizeCursorPos()
+// hide the implementation of write back
+func (emu *Emulator) writePty(resp string) {
+	emu.terminalToHost.WriteString(resp)
 }
 
-// get current cursor column
-func (emu *Emulator) GetCursorCol() int {
-	return emu.posX
+// return the terminal feedback, clean feedback buffer.
+func (emu *Emulator) ReadOctetsToHost() string {
+	ret := emu.terminalToHost.String()
+	emu.terminalToHost.Reset()
+	return ret
 }
 
-// get current cursor row
-func (emu *Emulator) GetCursorRow() int {
-	if emu.originMode == OriginMode_Absolute {
-		return emu.posY
-	}
-	return emu.posY - emu.marginTop
-}
-
-// get active area height
-func (emu *Emulator) GetHeight() int {
-	return emu.marginBottom - emu.marginTop
-}
-
-// get active area width
-func (emu *Emulator) GetWidth() int {
-	if emu.horizMarginMode {
-		return emu.nColsEff - emu.hMargin
+// parse and handle the stream together.
+func (emu *Emulator) HandleStream(seq string) (hds []*Handler) {
+	hds = make([]*Handler, 0, 16)
+	if len(seq) == 0 {
+		return
 	}
 
-	return emu.nCols
-}
-
-func (emu *Emulator) GetCell(posY, posX int) Cell {
-	posY, posX = emu.getCellPos(posY, posX)
-
-	return emu.cf.getCell(posY, posX)
-}
-
-func (emu *Emulator) GetMutableCell(posY, posX int) *Cell {
-	posY, posX = emu.getCellPos(posY, posX)
-
-	return emu.cf.getMutableCell(posY, posX)
-}
-
-func (emu *Emulator) getCellPos(posY, posX int) (posY2, posX2 int) {
-	// fmt.Printf("@1 (%d,%d)\n", posY, posX)
-	// in case we don't provide the row or col
-	if posY < 0 || posY > emu.GetHeight() {
-		posY = emu.GetCursorRow()
-		// fmt.Printf("@2 (%d,%d)\n", posY, posX)
+	hds = emu.parser.processStream(seq, hds)
+	for _, hd := range hds {
+		hd.handle(emu)
 	}
-
-	if posX < 0 || posX > emu.GetWidth() {
-		posX = emu.GetCursorCol()
-		// fmt.Printf("@3 (%d,%d)\n", posY, posX)
-	}
-
-	switch emu.originMode {
-	case OriginMode_Absolute:
-		posY = Max(0, Min(posY, emu.nRows))
-		// fmt.Printf("@4 (%d,%d)\n", posY, posX)
-	case OriginMode_ScrollingRegion:
-		posY = Max(0, Min(posY, emu.marginBottom))
-		posY += emu.marginTop
-		// fmt.Printf("@5 (%d,%d)\n", posY, posX)
-	}
-	posX = Max(0, Min(posX, emu.nCols))
-	// fmt.Printf("@6 (%d,%d)\n", posY, posX)
-
-	posX2 = posX
-	posY2 = posY
 	return
 }
 
-func (emu *Emulator) GetRenditions() (rnd Renditions) {
-	return emu.attrs.renditions
-}
-
-func (emu *Emulator) PrefixWindowTitle(prefix string) {
-	emu.cf.PrefixWindowTitle(prefix)
-}
-
-func (emu *Emulator) GetWindowTitle() string {
-	return emu.cf.GetWindowTitle()
-}
-
-func (emu *Emulator) GetIconName() string {
-	return emu.cf.GetIconName()
-}
-
-func (emu *Emulator) SetCursorVisible(visible bool) {
-	if !visible {
-		emu.cf.setCursorStyle(CursorStyle_Hidden)
-	} else {
-		emu.cf.setCursorStyle(CursorStyle_FillBlock)
-		// TODO keep the old style?
-	}
+func (emu *Emulator) GetFramebuffer() *Framebuffer {
+	return emu.cf
 }
 
 /*
