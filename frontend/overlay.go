@@ -585,7 +585,7 @@ func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, str string, del
 }
 
 func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64, chs ...rune) {
-	w := terminal.RunesWidth(chs)
+	w := uniseg.StringWidth(string(chs))
 	pe.initCursor(emu)
 
 	// fmt.Printf("handleUserGrapheme # got %q\n", chs)

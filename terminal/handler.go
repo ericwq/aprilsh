@@ -33,8 +33,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/mattn/go-runewidth"
-	// "github.com/rivo/uniseg"
+	"github.com/rivo/uniseg"
 )
 
 /* 64 - VT420 family
@@ -240,6 +239,7 @@ func (h *Handler) GetSequence() string {
 // }
 
 // In the loop, national flag's width got 1+1=2.
+/*
 func RunesWidth(runes []rune) (width int) {
 	// return uniseg.StringWidth(string(runes))
 
@@ -260,17 +260,17 @@ func RunesWidth(runes []rune) (width int) {
 
 	return width
 }
-
+*/
 // print the graphic char to the emulator
 // https://henvic.dev/posts/go-utf8/
 // https://pkg.go.dev/golang.org/x/text/encoding/charmap
 // https://github.com/rivo/uniseg
 func hdl_graphemes(emu *Emulator, chs ...rune) {
-	w := RunesWidth(chs)
+	w := uniseg.StringWidth(string(chs))
 	if len(chs) == 1 && emu.charsetState.vtMode {
 		chs[0] = emu.lookupCharset(chs[0])
 	}
-	// fmt.Printf("hdl_graphemes %q, %U, %t w=%d (%d/%d)\n", chs, chs, emu.lastCol, RunesWidth(chs), emu.posY, emu.posX)
+	// fmt.Printf("hdl_graphemes %q, %U, %t w=%d (%d/%d)\n", chs, chs, emu.lastCol, w, emu.posY, emu.posX)
 
 	// the first condition deal with the new graphemes should wrap on next row
 	// the second condition deal with widh graphemes in special position: posX = nColsEff-1

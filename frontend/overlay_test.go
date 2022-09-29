@@ -281,7 +281,7 @@ func TestPredictionNewUserInput(t *testing.T) {
 					t.Errorf("%s expect %q at (%d,%d), got %q\n", v.name, string(ch), v.row, v.col+i, cell)
 					t.Errorf("predict cell (%d,%d) is %q dw=%t, dwcont=%t\n", v.row, v.col+i, cell, cell.IsDoubleWidth(), cell.IsDoubleWidthCont())
 				}
-				i += terminal.RunesWidth([]rune{ch})
+				i += uniseg.StringWidth(string([]rune{ch}))
 			}
 		case 3, 4, 5, 6:
 			// validate the cursor position
@@ -300,7 +300,7 @@ func TestPredictionNewUserInput(t *testing.T) {
 					t.Errorf("%s expect %q at (%d,%d), got %q\n", v.name, string(ch), v.posY, v.posX+i, cell)
 					t.Errorf("predict cell (%d,%d) is %q dw=%t, dwcont=%t\n", v.posY, v.posX+i, cell, cell.IsDoubleWidth(), cell.IsDoubleWidthCont())
 				}
-				i += terminal.RunesWidth([]rune{ch})
+				i += uniseg.StringWidth(string([]rune{ch}))
 			}
 		case 11, 7:
 			// validate predictionEpoch
@@ -391,7 +391,7 @@ func printEmulatorCell(emu *terminal.Emulator, row, col int, sample string, pref
 
 		cell := emu.GetMutableCell(row, col+i)
 		fmt.Printf("%s # cell %p (%d,%d) is %q\n", prefix, cell, row, col+i, cell)
-		i += terminal.RunesWidth(chs)
+		i += uniseg.StringWidth(string(chs))
 	}
 }
 
@@ -404,7 +404,7 @@ func printPredictionCell(emu *terminal.Emulator, pe *PredictionEngine, row, col 
 		predict := &(predictRow.overlayCells[col+i])
 		fmt.Printf("%s # predict cell %p (%d,%d) is %q active=%t, unknown=%t\n",
 			prefix, predict, row, col+i, predict.replacement, predict.active, predict.unknown)
-		i += terminal.RunesWidth(chs)
+		i += uniseg.StringWidth(string(chs))
 	}
 }
 
@@ -467,7 +467,7 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 					v.name, string(chs), v.row, v.col+i, cell, cell.IsDoubleWidth(), cell.IsDoubleWidthCont())
 			}
 
-			i += terminal.RunesWidth(chs)
+			i += uniseg.StringWidth(string(chs))
 		}
 	}
 }

@@ -223,15 +223,19 @@ func TestRunesWidth(t *testing.T) {
 		{"combining", "shangha\u0308\u0308i", 8},
 		{
 			"emoji 1", "🏝",
+			1,
+		},
+		{
+			"emoji 2", "🗻",
 			2,
 		},
 		{
-			"emoji 2", "🏖",
-			2,
+			"emoji 3", "🏖",
+			1,
 		},
 		{
-			"flags", "🇳🇱🇧🇷",
-			4,
+			"flags", "🇳🇱🇧🇷i",
+			5,
 		},
 		{
 			"flag 2", "🇨🇳",
@@ -245,8 +249,10 @@ func TestRunesWidth(t *testing.T) {
 		var rs []rune
 		for graphemes.Next() {
 			rs = graphemes.Runes()
-			width += RunesWidth(rs)
+			width += uniseg.StringWidth(string(rs))
+			// fmt.Printf("%c %q %U w=%d\n", rs, rs, rs, uniseg.StringWidth(string(rs)))
 		}
+
 		if v.width != width {
 			t.Logf("%s :\t %q %U\n", v.name, v.raw, rs)
 			t.Errorf("%s:\t %q  expect width %d, got %d\n", v.name, v.raw, v.width, width)
@@ -321,7 +327,7 @@ func TestHandle_Graphemes(t *testing.T) {
 		hdIDs     []int
 		hdNumber  int    // expect handler number
 		posY      int    // expect print row
-		posX      []int  // expect print cols
+		posX      int    // expect starting cols
 		graphemes string // data string without control sequences
 	}{
 		// use CUP to set the active cursor position first
@@ -329,16 +335,14 @@ func TestHandle_Graphemes(t *testing.T) {
 			"UTF-8 plain english",
 			"\x1B[1;14Hlong long ago",
 			[]int{CSI_CUP, Graphemes},
-			14, 0,
-			[]int{13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25},
+			14, 0, 13,
 			"long long ago",
 		},
 		{
 			"UTF-8 chinese, combining character and flags",
 			"\x1B[2;30HChin\u0308\u0308a 🏖 i国旗🇳🇱Fun 🌈with Flag🇧🇷.s",
 			[]int{CSI_CUP, Graphemes},
-			30, 1,
-			[]int{29, 30, 31, 32, 33, 34, 35, 37, 38, 39, 41, 43, 45, 46, 47, 48, 49, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 62, 63},
+			30, 1, 29,
 			"Chin\u0308\u0308a 🏖 i国旗🇳🇱Fun 🌈with Flag🇧🇷.s",
 		},
 		{
@@ -349,15 +353,13 @@ func TestHandle_Graphemes(t *testing.T) {
 				Graphemes, ESC_DOCS_UTF8, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes,
 				Graphemes, ESC_DOCS_ISO8859_1, Graphemes, Graphemes, Graphemes, Graphemes,
 			},
-			24, 2,
-			[]int{23, 25, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44},
+			24, 2, 23,
 			"中国¥ABâãéShanghaiCDàá",
 		},
 		{
 			"VT edge", "\x1B[4;10H\x1B%@Beijing\x1B%G",
 			[]int{CSI_CUP, ESC_DOCS_ISO8859_1, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes, ESC_DOCS_UTF8},
-			10, 3,
-			[]int{9, 10, 11, 12, 13, 14, 15},
+			10, 3, 9,
 			"Beijing",
 		},
 	}
@@ -401,20 +403,24 @@ func TestHandle_Graphemes(t *testing.T) {
 
 			// validate the result with data string
 			graphemes := uniseg.NewGraphemes(v.graphemes)
-			j := 0
+			j := 0        // the nth grapheme
+			pos := v.posX // the position counting width
 			for graphemes.Next() {
 				// the expected content
 				chs := graphemes.Runes()
 
 				// get the cell from framebuffer
 				rows := v.posY
-				cols := v.posX[j]
+				cols := pos
 				cell := emu.cf.getCell(rows, cols)
 
+				w := uniseg.StringWidth(string(chs))
+				// fmt.Printf("%c %q %x x=%d\n", chs, chs, chs, w)
 				if cell.contents != string(chs) {
 					t.Errorf("%s:\t [row,cols]:[%2d,%2d] expect %q, got %q\n", v.name, rows, cols, string(chs), cell.contents)
 				}
 				j += 1
+				pos += w
 			}
 		})
 	}
