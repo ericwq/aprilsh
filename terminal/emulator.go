@@ -101,7 +101,7 @@ type Emulator struct {
 	tabStops []int // tab stop positions
 
 	compatLevel   CompatibilityLevel // VT52, VT100, VT400
-	cursorKeyMode CursorKeyMode
+	cursorKeyMode CursorKeyMode      // =cursorKeyMode two possible value : Application(true), ANSI(false)
 	keypadMode    KeypadMode
 	originMode    OriginMode // two possiible value: ScrollingRegion(true), Absolute(false)
 	colMode       ColMode    // column mode 80 or 132, just for compatibility

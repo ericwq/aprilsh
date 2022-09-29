@@ -16,8 +16,8 @@ type ActOn interface {
 }
 
 func (u UserByte) Handle(emu Emulator) {
-	// TODO remove DS.ApplicationModeCursorKeys
-	ret := emu.user.parse(u, emu.cf.DS.ApplicationModeCursorKeys)
+	// TODO it seams that Parser can't handle Application mode?
+	ret := emu.user.parse(u, emu.cursorKeyMode)
 	emu.writePty(ret)
 }
 
@@ -39,7 +39,7 @@ type UserInput struct {
 // The user will always be in application mode. If client is not in
 // application mode, convert user's cursor control function to an
 // ANSI cursor control sequence */
-func (u *UserInput) parse(x UserByte, applicationModeCursorKeys bool) string {
+func (u *UserInput) parse(x UserByte, cursorKeyMode CursorKeyMode) string {
 	// We need to look ahead one byte in the SS3 state to see if
 	// the next byte will be A, B, C, or D (cursor control keys).
 
@@ -76,7 +76,7 @@ func (u *UserInput) parse(x UserByte, applicationModeCursorKeys bool) string {
 		//                   -------------+----------+-------------
 	case USER_INPUT_SS3:
 		u.state = USER_INPUT_GROUND
-		if !applicationModeCursorKeys && 'A' <= r && r <= 'D' {
+		if cursorKeyMode == CursorKeyMode_ANSI && 'A' <= r && r <= 'D' {
 			return fmt.Sprintf("[%c", r) // CSI
 		} else {
 			return fmt.Sprintf("O%c", r) // SS3
