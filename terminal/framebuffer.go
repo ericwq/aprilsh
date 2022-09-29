@@ -31,13 +31,13 @@ const (
 )
 
 type Framebuffer struct {
-	rows             []Row
+	// rows             []Row
 	iconName         string
 	windowTitle      string
 	bellCount        int
 	titleInitialized bool
-	DS               *DrawState
-	selectionData    string // store the selection data
+	// DS               *DrawState
+	selectionData string // store the selection data
 
 	// support both (scrollable) normal screen buffer and alternate screen buffer
 	cells        []Cell // the cells
@@ -56,20 +56,20 @@ type Framebuffer struct {
 }
 
 // Deprecated: please don't use this function to get a new framebuffer.
-func NewFramebuffer(width, height int) *Framebuffer {
-	if width <= 0 || height <= 0 {
-		return nil
-	}
-
-	fb := Framebuffer{}
-	fb.DS = NewDrawState(width, height)
-	fb.rows = make([]Row, height)
-	for i := range fb.rows {
-		fb.rows[i] = *NewRow(width, 0)
-	}
-
-	return &fb
-}
+// func NewFramebuffer(width, height int) *Framebuffer {
+// 	if width <= 0 || height <= 0 {
+// 		return nil
+// 	}
+//
+// 	fb := Framebuffer{}
+// 	fb.DS = NewDrawState(width, height)
+// 	fb.rows = make([]Row, height)
+// 	for i := range fb.rows {
+// 		fb.rows[i] = *NewRow(width, 0)
+// 	}
+//
+// 	return &fb
+// }
 
 // create a framebuffer according to the specified nCols, nRows and saveLines.
 // saveLines: for alternate screen buffer default is 0, for normal screen buffer the default is 500, max 50000
@@ -77,7 +77,7 @@ func NewFramebuffer(width, height int) *Framebuffer {
 func NewFramebuffer3(nCols, nRows, saveLines int) (fb *Framebuffer, marginTop int, marginBottom int) {
 	fb = &Framebuffer{}
 
-	fb.DS = NewDrawState(nCols, nRows)
+	// fb.DS = NewDrawState(nCols, nRows)
 
 	fb.cells = make([]Cell, nCols*(nRows+saveLines))
 	fb.nCols = nCols
@@ -216,7 +216,8 @@ func (fb *Framebuffer) invalidateSelection(damage *Rect) {
 
 // how the vertical scrolling affect selection area.
 // #Understand
-//   why move the selection area?
+//
+//	why move the selection area?
 func (fb *Framebuffer) vscrollSelection(vertOffset int) {
 	if fb.selection.null() {
 		return
@@ -486,7 +487,7 @@ func (fb *Framebuffer) fillCells(ch rune, attrs Cell) {
 }
 
 /* --------------------------------------------------- new frame end here */
-
+/*
 func (fb *Framebuffer) newRow() *Row {
 	w := fb.DS.GetWidth()
 	bgColor := fb.DS.GetBackgroundRendition()
@@ -547,7 +548,7 @@ func (fb *Framebuffer) Scroll(N int) {
 }
 
 func (fb *Framebuffer) MoveRowsAutoscroll(rows int) {
-	/* don't scroll if outside the scrolling region */
+	// don't scroll if outside the scrolling region
 	if fb.DS.GetCursorRow() < fb.DS.GetScrollingRegionTopRow() || fb.DS.GetCursorRow() > fb.DS.GetScrollingRegionBottomRow() {
 		fb.DS.MoveRow(rows, true)
 		return
@@ -661,25 +662,26 @@ func (fb *Framebuffer) Reset() {
 		fb.rows[i] = *fb.newRow()
 	}
 	fb.windowTitle = ""
-	/* do not reset bell_count */
+	// do not reset bell_count
 }
 
 func (fb *Framebuffer) SoftReset() {
 	fb.DS.InsertMode = false
 	fb.DS.OriginMode = false
-	fb.DS.CursorVisible = false /* per xterm and gnome-terminal */
+	fb.DS.CursorVisible = false // per xterm and gnome-terminal
 	fb.DS.ApplicationModeCursorKeys = false
 	fb.DS.SetScrollingRegion(0, fb.DS.GetHeight()-1)
 	fb.DS.AddRenditions()
 	fb.DS.ClearSavedCursor()
 }
+*/
+func (fb *Framebuffer) SetTitleInitialized() { fb.titleInitialized = true }
 
-func (fb *Framebuffer) SetTitleInitialized()        { fb.titleInitialized = true }
-func (fb Framebuffer) IsTitleInitialized() bool     { return fb.titleInitialized }
+// func (fb Framebuffer) IsTitleInitialized() bool     { return fb.titleInitialized }
 func (fb *Framebuffer) SetIconName(iconName string) { fb.iconName = iconName }
 func (fb *Framebuffer) SetWindowTitle(title string) { fb.windowTitle = title }
-func (fb Framebuffer) GetIconName() string          { return fb.iconName }
-func (fb Framebuffer) GetWindowTitle() string       { return fb.windowTitle }
+func (fb *Framebuffer) GetIconName() string         { return fb.iconName }
+func (fb *Framebuffer) GetWindowTitle() string      { return fb.windowTitle }
 
 func (fb *Framebuffer) PrefixWindowTitle(s string) {
 	if fb.iconName == fb.windowTitle {
@@ -757,29 +759,29 @@ func (fb *Framebuffer) resizeCols(width, oldWidth int) {
 	}
 }
 */
-func (fb *Framebuffer) ResetCell(c *Cell) { c.Reset(uint32(fb.DS.GetBackgroundRendition())) }
-func (fb *Framebuffer) ResetRow(r *Row)   { r.Reset(uint32(fb.DS.GetBackgroundRendition())) }
+// func (fb *Framebuffer) ResetCell(c *Cell) { c.Reset(uint32(fb.DS.GetBackgroundRendition())) }
+// func (fb *Framebuffer) ResetRow(r *Row)   { r.Reset(uint32(fb.DS.GetBackgroundRendition())) }
 func (fb *Framebuffer) RingBell()         { fb.bellCount += 1 }
-func (fb Framebuffer) GetBellCount() int  { return fb.bellCount }
+func (fb *Framebuffer) GetBellCount() int { return fb.bellCount }
 
-func (fb Framebuffer) Equal(other *Framebuffer) (ret bool) {
-	// check title and bell count
-	if fb.windowTitle != other.windowTitle || fb.bellCount != other.bellCount {
-		return ret
-	}
-
-	// check DrawState
-	if !fb.DS.Equal(other.DS) {
-		return ret
-	}
-
-	// check the rows first
-	for i := range fb.rows {
-		if !fb.rows[i].Equal(&other.rows[i]) {
-			return ret
-		}
-	}
-
-	ret = true
-	return ret
-}
+// func (fb Framebuffer) Equal(other *Framebuffer) (ret bool) {
+// 	// check title and bell count
+// 	if fb.windowTitle != other.windowTitle || fb.bellCount != other.bellCount {
+// 		return ret
+// 	}
+//
+// 	// check DrawState
+// 	if !fb.DS.Equal(other.DS) {
+// 		return ret
+// 	}
+//
+// 	// check the rows first
+// 	for i := range fb.rows {
+// 		if !fb.rows[i].Equal(&other.rows[i]) {
+// 			return ret
+// 		}
+// 	}
+//
+// 	ret = true
+// 	return ret
+// }

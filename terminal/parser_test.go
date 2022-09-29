@@ -76,6 +76,142 @@ import (
 // 	}
 // }
 
+// func printRows(fb *Framebuffer) string {
+// 	var output strings.Builder
+// 	for _, row := range fb.rows {
+// 		output.WriteString(row.String() + "\n")
+// 	}
+//
+// 	return output.String()
+// }
+
+// check if the row in the specified row list. if so, return true
+// otherwise return false. for empty row list, return false.
+func inScope(rows []int, row int) bool {
+	if len(rows) == 0 {
+		return false
+	}
+	for _, v := range rows {
+		if v == row {
+			return true
+		}
+	}
+	return false
+}
+
+// fill the specified rows on the screen with rotating A~Z.
+// if row list is empty, fill the whole screen.
+func fillCells(fb *Framebuffer, rows ...int) {
+	A := 0x41
+
+	for r := 0; r < fb.nRows; r++ {
+		if len(rows) == 0 || inScope(rows, r) {
+			start := fb.nCols * r // fb.getIdx(r, 0)
+			end := start + fb.nCols
+			for k := start; k < end; k++ {
+				ch := rune(A + (k % 26))
+				fb.cells[k].contents = string(ch)
+			}
+		}
+	}
+}
+
+// print the screen with specified rows. if the row list is empty, print the whole screen.
+func printCells(fb *Framebuffer, rows ...int) string {
+	var output strings.Builder
+
+	for r := 0; r < fb.nRows; r++ {
+		if len(rows) == 0 || inScope(rows, r) {
+			start := fb.nCols * r // fb.getIdx(r, 0)
+			end := start + fb.nCols
+			printRowAt(r, start, end, fb, &output)
+		}
+	}
+	// print the saveLines if it has
+	if fb.saveLines > 0 {
+		for r := fb.nRows; r < fb.nRows+fb.saveLines; r++ {
+			if len(rows) == 0 || inScope(rows, r) {
+				start := r*fb.nCols + 0
+				end := start + fb.nCols
+				printRowAt(r, start, end, fb, &output)
+			}
+		}
+	}
+	return output.String()
+}
+
+func printRowAt(r int, start int, end int, fb *Framebuffer, output *strings.Builder) {
+	if fb.scrollHead == r {
+		fmt.Fprintf(output, "[%3d]-", r)
+	} else {
+		fmt.Fprintf(output, "[%3d] ", r)
+	}
+	for k := start; k < end; k++ {
+		switch fb.cells[k].contents {
+		case " ":
+			if !fb.cells[k].dwidthCont {
+				output.WriteString(".")
+			}
+		case "":
+			if !fb.cells[k].dwidthCont {
+				output.WriteString("*")
+			}
+		default:
+			output.WriteString(fb.cells[k].contents)
+		}
+	}
+	output.WriteString("\n")
+}
+
+// check the specified rows is empty, if so return true, otherwise return false.
+func isEmptyRows(fb *Framebuffer, rows ...int) bool {
+	if len(rows) == 0 {
+		return false
+	}
+
+	for _, r := range rows {
+		for c := 0; c < fb.nCols; c++ {
+			idx := fb.getIdx(r, c)
+			if fb.cells[idx].contents != " " {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// check the specified cols is empty, if so return true, otherwise return false.
+func isEmptyCols(fb *Framebuffer, cols ...int) bool {
+	if len(cols) == 0 {
+		return false
+	}
+	for _, c := range cols {
+		for r := 0; r < fb.nRows; r++ {
+			idx := fb.getIdx(r, c)
+			if fb.cells[idx].contents != " " {
+				// fmt.Printf("isEmptyCols() row=%d col=%d is %s\n", r, c, fb.cells[idx].contents)
+				return false
+			}
+		}
+	}
+	return true
+}
+
+// check the specified cells is empty, if so return true, otherwise return false.
+// the cells start at (pY,pX), counting sucessive number .
+func isEmptyCells(fb *Framebuffer, pY, pX, count int) bool {
+	if count == 0 {
+		return true
+	}
+	for i := 0; i < count; i++ {
+		idx := fb.getIdx(pY, pX+i)
+		if fb.cells[idx].contents != " " {
+			return false
+		}
+	}
+	return true
+}
+
 func TestRunesWidth(t *testing.T) {
 	tc := []struct {
 		name  string
@@ -4029,7 +4165,7 @@ func TestHandle_OSC_10x(t *testing.T) {
 				emu.attrs.renditions.bgColor = v.bgColor
 			}
 			if v.cursorColor != invalidColor {
-				emu.cf.DS.cursorColor = v.cursorColor
+				emu.cf.cursor.color = v.cursorColor
 			}
 
 			// execute the control sequence

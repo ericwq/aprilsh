@@ -188,7 +188,7 @@ type SavedCursor_DEC struct {
 	originMode   OriginMode
 	charsetState CharsetState
 }
-/*
+
 func NewDrawState(width, height int) *DrawState {
 	ds := new(DrawState)
 
@@ -428,4 +428,3 @@ func (ds DrawState) Equal(x *DrawState) bool {
 		ds.MouseAlternateScroll == x.MouseAlternateScroll &&
 		ds.MouseEncodingMode == x.MouseEncodingMode
 }
-*/

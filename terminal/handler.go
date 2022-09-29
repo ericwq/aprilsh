@@ -1063,7 +1063,7 @@ func hdl_osc_10x(emu *Emulator, cmd int, arg string) {
 				case 10, 19: // 10: VT100 text foreground color; 19: highlight foreground color
 					color = emu.attrs.renditions.fgColor
 				case 12: // 12: text cursor color
-					color = emu.cf.DS.cursorColor // TODO remove the DS reference.
+					color = emu.cf.cursor.color
 				}
 				response := fmt.Sprintf("\x1B]%d;%s\x1B\\", colorIdx, color) // the String() method of Color will be called.
 				emu.writePty(response)
