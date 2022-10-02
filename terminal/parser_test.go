@@ -260,6 +260,20 @@ func TestRunesWidth(t *testing.T) {
 	}
 }
 
+func TestUnisegStringWidth(t *testing.T) {
+	raw := "\x1B[2;30HChin\u0308\u0308a 🏖 i国旗🇳🇱Fun 🌈with Flag🇧🇷.s"
+
+	gs := uniseg.NewGraphemes(raw)
+	for gs.Next() {
+		rs := gs.Runes()
+		w1 := uniseg.StringWidth(string(rs))
+		w2 := gs.Width()
+		if w2 != w1 {
+			t.Errorf("%q %U width expect %d, got %d\n", rs, rs, w1, w2)
+		}
+	}
+}
+
 func TestCollectNumericParameters(t *testing.T) {
 	tc := []struct {
 		name string
