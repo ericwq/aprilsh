@@ -34,7 +34,6 @@ import (
 
 	"github.com/ericwq/aprilsh/terminal"
 	"github.com/rivo/uniseg"
-	"golang.org/x/exp/constraints"
 )
 
 type (
@@ -1171,7 +1170,7 @@ const (
 func (ne *NotificationEngine) waitTime() int {
 	nextExpiry := math.MaxInt
 	now := time.Now().UnixMilli()
-	nextExpiry = min(nextExpiry, int(ne.messageExpiration-now))
+	nextExpiry = terminal.Min(nextExpiry, int(ne.messageExpiration-now))
 
 	if ne.needCountup(now) {
 		countupInterval := 1000
@@ -1179,7 +1178,7 @@ func (ne *NotificationEngine) waitTime() int {
 			// If we've been disconnected for 60 seconds, save power by updating the display less often.
 			countupInterval = ACK_INTERVAL
 		}
-		nextExpiry = min(nextExpiry, countupInterval)
+		nextExpiry = terminal.Min(nextExpiry, countupInterval)
 	}
 
 	return nextExpiry
@@ -1211,15 +1210,8 @@ func (ne *NotificationEngine) setNetworkError(str string) {
 func (ne *NotificationEngine) clearNetworkError() {
 	// fmt.Printf("clearNetworkError #debug messageIsNetworkError=%t\n", ne.messageIsNetworkError)
 	if ne.messageIsNetworkError {
-		ne.messageExpiration = min(ne.messageExpiration, time.Now().UnixMilli()+1000)
+		ne.messageExpiration = terminal.Min(ne.messageExpiration, time.Now().UnixMilli()+1000)
 	}
-}
-
-func min[T constraints.Ordered](x, y T) T {
-	if x < y {
-		return x
-	}
-	return y
 }
 
 type OverlayManager struct {
@@ -1249,7 +1241,7 @@ func (om *OverlayManager) setTitlePrefix(v string) {
 }
 
 func (om *OverlayManager) waitTime() int {
-	return min(om.notifications.waitTime(), om.predictions.waitTime())
+	return terminal.Min(om.notifications.waitTime(), om.predictions.waitTime())
 }
 
 func (om *OverlayManager) apply(emu *terminal.Emulator) {

@@ -251,9 +251,13 @@ func TestAbs(t *testing.T) {
 	}
 
 	for _, v := range tc {
-		got := abs(v.value)
+		got := Abs(v.value)
 		if got != v.expect {
 			t.Errorf("%s expect abs(%d)=%d, got %d\n", v.name, v.value, v.expect, got)
 		}
+	}
+
+	if 23.4 != Abs(-23.4) {
+		t.Errorf("#test Abs() should return positive value. %f\n", Abs(-23.4))
 	}
 }

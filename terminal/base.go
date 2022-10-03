@@ -26,7 +26,11 @@ SOFTWARE.
 
 package terminal
 
-import "fmt"
+import (
+	"fmt"
+
+	"golang.org/x/exp/constraints"
+)
 
 type Point struct {
 	x, y int
@@ -132,21 +136,21 @@ func (dmg *Damage) add(start, end int) {
 	// fmt.Printf("Damage.add start=%d, end=%d\n", dmg.start, dmg.end)
 }
 
-func Min(x, y int) int {
+func Min[T constraints.Ordered](x, y T) T {
 	if x < y {
 		return x
 	}
 	return y
 }
 
-func Max(x, y int) int {
+func Max[T constraints.Ordered](x, y T) T {
 	if x > y {
 		return x
 	}
 	return y
 }
 
-func abs(x int) int {
+func Abs[T constraints.Signed| constraints.Float](x T) T {
 	if x < 0 {
 		return -x
 	}
