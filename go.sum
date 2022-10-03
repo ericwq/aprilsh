@@ -1,3 +1,5 @@
+github.com/ericwq/terminfo v0.0.0-20220930045625-282c2b466d14 h1:1tZqPGYgq2rGdWuSRqdzR6lyu9sA/38Tk/agSf2g6vE=
+github.com/ericwq/terminfo v0.0.0-20220930045625-282c2b466d14/go.mod h1:14QlPzEoWBEasmg232QsZSYd/cRo9XRK32pgZH+jYv0=
 github.com/golang/protobuf v1.5.0/go.mod h1:FsONVRAS9T7sI+LIUmWTfcYkHO4aIWwzhcaSAoJOfIk=
 github.com/google/go-cmp v0.5.5/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/go-cmp v0.5.8 h1:e6P7q2lk1O+qJJb4BtCQXlK8vWEO8V1ZeuEdJNOqZyg=

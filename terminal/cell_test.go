@@ -27,9 +27,9 @@ SOFTWARE.
 package terminal
 
 import (
-	"os"
-	"strings"
 	"testing"
+
+	"github.com/rivo/uniseg"
 )
 
 // see https://godoc.org/golang.org/x/text/width
@@ -52,8 +52,8 @@ func TestCellFull(t *testing.T) {
 		for i := 0; i < c.repeat; i++ {
 			cell.Append(c.addition)
 		}
-		if cell.Full() != c.want {
-			t.Errorf("case:%s[len=%d] expected %t, got %t\n", cell.contents, len(cell.contents), c.want, cell.Full())
+		if cell.full() != c.want {
+			t.Errorf("case:%s[len=%d] expected %t, got %t\n", cell.contents, len(cell.contents), c.want, cell.full())
 		}
 	}
 }
@@ -62,38 +62,186 @@ func TestCellComparable(t *testing.T) {
 	tc := []struct {
 		contents   rune
 		renditions Renditions
-		wide       bool
-		fallback   bool
-		wrap       bool
 	}{
-		{'A', Renditions{bgColor: 0}, false, true, false},
-		{'b', Renditions{bgColor: 40}, false, true, false},
-		{'\x7f', Renditions{bgColor: 41}, false, true, false},
-		{'\u4e16', Renditions{bgColor: 42}, true, true, false},
-		{'\u754c', Renditions{bgColor: 43}, true, true, true},
+		{'A', NewRenditions(0)},
+		{'b', NewRenditions(40)},
+		{'\x7f', NewRenditions(41)},
+		{'\u4e16', NewRenditions(42)},
+		{'\u754c', NewRenditions(43)},
 	}
+
 	var c1, c2 Cell
+	var base Cell
+
+	// compare same contents and renditions
 	for _, c := range tc {
-		c1.Reset(0)
-		c2.Reset(0)
+		c1.Reset2(base)
+		c2.Reset2(base)
 
 		c1.Append(c.contents)
 		c1.SetRenditions(c.renditions)
-		c1.SetWide(c.wide)
-		c1.SetFallback(c.fallback)
-		c1.SetWrap(c.wrap)
 
 		c2.Append(c.contents)
 		c2.SetRenditions(c1.GetRenditions())
-		c2.SetWide(c1.GetWide())
-		c2.SetFallback(c1.GetFallback())
-		c2.SetWrap(c1.GetWrap())
 		if c1 != c2 {
 			t.Errorf("case %c c1=%v c2=%v\n", c.contents, c1, c2)
 		}
 	}
 }
 
+func TestCellCompare(t *testing.T) {
+	tc := []struct {
+		ch0          rune
+		ansiBgColor0 int
+		ch1          rune
+		ansiBgColor1 int
+		ret          bool
+	}{
+		{'a', 0, 'b', 0, false},
+		{'i', 0, 'i', 0, true},
+		{'c', 1, 'c', 1, true},
+		{'中', 8, '中', 8, true},
+		{'j', 0, 'j', 0, true},
+		{'h', 0, 'h', 0, true},
+		{'国', 3, '国', 0, false},
+		{'e', 0, 'e', 7, false},
+	}
+
+	var cell0, cell1 Cell
+	var base Cell
+
+	// compare different contents and rendtions.
+	for _, c := range tc {
+		cell0.Reset2(base)
+		cell1.Reset2(base)
+
+		cell0.Append(c.ch0)
+		r0 := Renditions{}
+		r0.SetBackgroundColor(c.ansiBgColor0)
+		cell0.SetRenditions(r0)
+
+		cell1.Append(c.ch1)
+		r1 := Renditions{}
+		r1.SetBackgroundColor(c.ansiBgColor1)
+		cell1.SetRenditions(r1)
+
+		got := cell0 == cell1 // check compare result
+		if got != c.ret {
+			t.Errorf("expect %q, got %q\n", cell0, cell1)
+		}
+	}
+}
+
+func TestContentMatch(t *testing.T) {
+	tc := []struct {
+		name   string
+		r0, r1 string
+		result bool
+	}{
+		{"english", "A", "A", true},
+		{"chinese", "长", "长", true},
+		{"empty content", "", "", true},
+		{"space content", " ", " ", true},
+		{"special", "\xC2\xA0", "\xC2\xA0", true},
+	}
+
+	var c0, c1 Cell
+	var base Cell
+
+	// compare different contents
+	for _, v := range tc {
+		c0.Reset2(base)
+		c1.Reset2(base)
+
+		c0.contents = v.r0
+		c1.contents = v.r1
+
+		// validate ContentsMatch
+		got := c0.ContentsMatch(c1)
+		if got != v.result {
+			t.Errorf("%q c0=%q, c1=%q\n", v.name, c0, c1)
+		}
+
+		// validate GetContents
+		if c1.GetContents() != v.r1 {
+			t.Errorf("%q c1=%q, r1=%q\n", v.name, c1.contents, v.r1)
+		}
+	}
+}
+
+func TestGetWidth(t *testing.T) {
+	tc := []struct {
+		name     string
+		contents string
+		width    int
+	}{
+		{"english", "A", 1},
+		{"chinese", "中", 2},
+		{"combing char", "n\u0308\u0308", 1},
+		{"emojo", "💐", 2},
+		{"emojo flag", "🇮🇹", 2},
+	}
+
+	var c, base Cell
+	for _, v := range tc {
+		c.Reset2(base)
+
+		c.contents = v.contents
+		c.SetDoubleWidth(uniseg.StringWidth(v.contents) == 2)
+
+		// validate contents length
+		got := c.GetWidth()
+		if got != v.width {
+			t.Errorf("%q expect width %d, got %d\n", v.name, v.width, got)
+		}
+
+		// validate dwidthCont case
+		c.SetDoubleWidthCont(true)
+		got = c.GetWidth()
+		if got != 0 {
+			t.Errorf("%q expect dwidthCont width %d, got %d\n", v.name, 0, got)
+		}
+	}
+}
+
+func TestDoubleWidth(t *testing.T) {
+	var c Cell
+
+	c.contents = "长"
+	c.SetDoubleWidth(true)
+	if !c.IsDoubleWidth() {
+		t.Errorf("#test IsDoubleWidth() expect %t, got %t\n ", true, c.IsDoubleWidth())
+	}
+
+	if c.IsDoubleWidthCont() {
+		t.Errorf("#test IsDoubleWidthCont() expect %t, got %t\n ", false, c.IsDoubleWidth())
+	}
+}
+
+func TestString(t *testing.T) {
+	var c Cell
+	str := "江"
+	c.SetContents([]rune(str))
+	got := c.String()
+	if got != str {
+		t.Errorf("#test String() expect %q, got %q\n", str, got)
+	}
+}
+
+func TestSetUnderline(t *testing.T) {
+	var c Cell
+	str := "Z"
+	c.SetContents([]rune(str))
+	c.SetUnderline(true)
+
+	rend := c.GetRenditions()
+	got := rend.underline
+	if !got {
+		t.Errorf("#test SetUnderline() expect %t, got %t\n", true, got)
+	}
+}
+
+/*
 func TestCellAppend(t *testing.T) {
 	tc := []struct {
 		r     rune
@@ -112,14 +260,14 @@ func TestCellAppend(t *testing.T) {
 		var cell Cell
 		output.Reset()
 		cell.Append(c.r)
-		cell.SetWide(c.wide)
+		// cell.SetWide(c.wide)
 		cell.PrintGrapheme(&output)
 		if c.want != output.String() {
 			t.Errorf("expect %s, got %s\n", c.want, output.String())
 		}
-		if c.wide != cell.GetWide() {
-			t.Errorf("case: %s wide: expect %t, got %t\n", output.String(), c.wide, cell.GetWide())
-		}
+		// if c.wide != cell.GetWide() {
+		// 	t.Errorf("case: %s wide: expect %t, got %t\n", output.String(), c.wide, cell.GetWide())
+		// }
 		if c.width != int(cell.GetWidth()) {
 			t.Errorf("case: %s width: expect %d, got %d\n", output.String(), c.width, cell.GetWidth())
 		}
@@ -154,70 +302,9 @@ func TestCellIsPrintISO8859_1(t *testing.T) {
 		}
 	}
 }
+*/
 
-func TestCellCompare(t *testing.T) {
-	tc := []struct {
-		ch0         rune
-		renditions0 int
-		wide0       bool
-		fallback0   bool
-		wrap0       bool
-		ch2         rune
-		renditions2 int
-		wide2       bool
-		fallback2   bool
-		wrap2       bool
-		want        string
-		ret         bool
-	}{
-		{'a', 0, true, false, false, 'b', 0, true, false, false, "Graphemes:", true},
-		{'i', 0, true, false, false, 'i', 0, true, false, false, "", false},
-		{'c', 0, true, true, false, 'c', 0, true, true, false, "", false},
-		{'g', 0, true, false, false, 'g', 0, true, false, false, "", false},
-		{'j', 0, true, true, false, 'j', 0, true, false, false, "Graphemes:", true},
-		{'h', 0, true, false, false, 'h', 0, true, true, false, "Graphemes:", true},
-		{'d', 0, true, false, false, 'd', 0, false, false, false, "width: ", true},
-		{'e', 0, true, false, false, 'e', 7, true, false, false, "renditions differ", true},
-		{'f', 0, true, false, false, 'f', 0, true, false, true, "wrap: ", true},
-	}
-	var cell0, cell2 Cell
-
-	o := new(strings.Builder)
-	_output = o
-
-	for _, c := range tc {
-		o.Reset()
-		cell0.Reset(0)
-		cell2.Reset(0)
-		cell0.Append(c.ch0) // prepare cell0
-		r0 := Renditions{}
-		r0.SetBackgroundColor(c.renditions0)
-		cell0.SetRenditions(r0) // Renditions{bgColor: c.renditions0})
-		cell0.SetWide(c.wide0)
-		cell0.SetFallback(c.fallback0)
-		cell0.SetWrap(c.wrap0)
-		cell2.Append(c.ch2) // prepare cell2
-		r2 := Renditions{}
-		r2.SetBackgroundColor(c.renditions2)
-		cell2.SetRenditions(r2) // Renditions{bgColor: c.renditions2})
-		cell2.SetWide(c.wide2)
-		cell2.SetFallback(c.fallback2)
-		cell2.SetWrap(c.wrap2)
-		got := cell0.Compare(cell2) // check compare result
-		if got != c.ret {
-			t.Logf("[%s]\n", o.String())
-			t.Errorf("expect %t, got %t\n", c.ret, got)
-		}
-		if len(c.want) > 0 && !strings.Contains(o.String(), c.want) {
-			t.Logf("cell0={%s}\n", cell0.debugContents())
-			t.Logf("cell2={%s}\n", cell2.debugContents())
-			t.Errorf("expect '%s', got '%s'\n", c.want, o.String())
-		}
-
-	}
-	_output = os.Stderr
-}
-
+/*
 func TestCellPrintGrapheme(t *testing.T) {
 	tc := []struct {
 		ch       rune
@@ -229,14 +316,15 @@ func TestCellPrintGrapheme(t *testing.T) {
 		{'b', true, "\xC2\xA0b"},
 	}
 	var cell Cell
+	var base Cell
 	for _, c := range tc {
-		cell.Reset(0)
+		cell.Reset2(base)
 		var output strings.Builder
 
 		if c.ch != -1 {
 			cell.Append(c.ch)
 		}
-		cell.SetFallback(c.fallback)
+		// cell.SetFallback(c.fallback)
 
 		cell.PrintGrapheme(&output)
 		if output.String() != c.want {
@@ -269,3 +357,4 @@ func TestCelldebugContents(t *testing.T) {
 		}
 	}
 }
+*/

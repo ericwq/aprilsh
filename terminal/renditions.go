@@ -290,7 +290,7 @@ func (rend *Renditions) buildRendition(attribute int) (processed bool) {
 }
 
 // create rendition based on colorAttr parameter. This method can only be used to set 16-color set.
-func NewRendition(colorAttr int) (rend Renditions) {
+func NewRenditions(colorAttr int) (rend Renditions) {
 	if colorAttr == 0 {
 		rend.ClearAttributes()
 		rend.fgColor = ColorDefault

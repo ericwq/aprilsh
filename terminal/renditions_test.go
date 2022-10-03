@@ -49,11 +49,11 @@ func TestRenditionsComparable(t *testing.T) {
 		{107, 30, 40},
 	}
 	for _, c := range tc {
-		r1 := NewRendition(c.renditions)
+		r1 := NewRenditions(c.renditions)
 		r1.SetForegroundColor(c.fgColorIndex)
 		r1.SetBackgroundColor(c.bgColorIndex)
 
-		r2 := NewRendition(c.renditions)
+		r2 := NewRenditions(c.renditions)
 		r2.SetForegroundColor(c.fgColorIndex)
 		r2.SetBackgroundColor(c.bgColorIndex)
 		if r1 != r2 {

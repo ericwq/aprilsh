@@ -753,7 +753,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 			nextCell.replacement.SetDoubleWidthCont(true)
 		}
 
-		cell.replacement.SetContents(chs...)
+		cell.replacement.SetContents(chs)
 		if len(cell.originalContents) == 0 {
 			// avoid adding original cell content several times
 			cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, pe.cursor().col))
@@ -1088,7 +1088,7 @@ func (ne *NotificationEngine) apply(emu *terminal.Emulator) {
 	rend.SetForegroundColor(7) // 37
 	rend.SetBackgroundColor(4) // 44
 	notificationBar.SetRenditions(emu.GetRenditions())
-	notificationBar.SetContents(' ')
+	notificationBar.SetContents([]rune{' '})
 
 	for i := 0; i < emu.GetWidth(); i++ {
 		emu.GetMutableCell(0, i).Reset2(*notificationBar)

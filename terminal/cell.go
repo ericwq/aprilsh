@@ -27,9 +27,6 @@ SOFTWARE.
 package terminal
 
 import (
-	"fmt"
-	"io"
-	"os"
 	"strings"
 )
 
@@ -41,64 +38,74 @@ import (
 type Cell struct {
 	contents   string
 	renditions Renditions
-	wide       bool // TODO consider remove wide field.
-	fallback   bool
+	// fallback   bool
 	wrap       bool
 	dwidth     bool
 	dwidthCont bool
-}
-
-// reset cell with default renditions, note hte bgColor is not used.
-// the default contents is empty string
-func (c *Cell) Reset(bgColor uint32) {
-	c.contents = ""
-	// c.renditions = Renditions{bgColor: bgColor}
-	c.renditions = Renditions{}
-	c.wide = false
-	c.fallback = false
-	c.wrap = false
-}
-
-// reset cell with specified renditions
-// the default contents is " "
-func (c *Cell) Reset2(attrs Cell) {
-	c.contents = attrs.contents
-	// c.renditions = Renditions{bgColor: bgColor}
-	c.renditions = attrs.renditions
-	c.wide = false
-	c.fallback = false
-	c.wrap = false
-}
-
-// ease of testing
-var _output io.Writer
-
-func init() {
-	_output = os.Stderr
-}
-
-func (c Cell) Empty() bool {
-	return len(c.contents) == 0
-}
-
-// 32 seems like a reasonable limit on combining characters
-func (c Cell) Full() bool {
-	return len(c.contents) >= 32
-}
-
-func (c *Cell) Clear() {
-	c.contents = ""
 }
 
 func (c Cell) IsBlank() bool {
 	return c.Empty() || c.contents == " " || c.contents == "\xC2\xA0"
 }
 
-func (c Cell) ContentsMatch(x Cell) bool {
+func (c Cell) GetRenditions() Renditions {
+	return c.renditions
+}
+
+func (c Cell) String() string {
+	return c.contents
+}
+
+// 32 seems like a reasonable limit on combining characters
+// here we only counting the bytes number
+func (c *Cell) full() bool {
+	return len(c.contents) >= 32
+}
+
+// reset cell with default renditions and contents
+// the default contents is empty string
+/*
+func (c *Cell) Reset() {
+	c.contents = ""
+	c.renditions = Renditions{}
+	c.fallback = false
+	c.wrap = false
+}
+*/
+
+// reset cell with specified renditions
+// TODO : the default contents is " "?
+func (c *Cell) Reset2(attrs Cell) {
+	c.contents = attrs.contents
+	c.renditions = attrs.renditions
+	c.dwidth = false
+	c.dwidthCont = false
+}
+
+/*
+// ease of testing
+var _output io.Writer
+
+func init() {
+	_output = os.Stderr
+}
+*/
+
+func (c *Cell) Empty() bool {
+	return len(c.contents) == 0
+}
+
+// clear contents
+func (c *Cell) Clear() {
+	c.contents = ""
+}
+
+func (c *Cell) ContentsMatch(x Cell) bool {
 	return (c.IsBlank() && x.IsBlank()) || c.contents == x.contents
 }
 
-func (c Cell) debugContents() string {
+/*
+func (c *Cell) debugContents() string {
 	if c.Empty() {
 		return "'_' []"
 	}
@@ -159,23 +166,9 @@ func (c Cell) Compare(other Cell) bool {
 	}
 	return ret
 }
+*/
 
-// Is this a printing ISO 8859-1 character?
-func IsPrintISO8859_1(r rune) bool {
-	return (r <= 0xff && r >= 0xa0) || (r <= 0x7e && r >= 0x20)
-	// return unicode.IsGraphic(r)
-	// return unicode.In(r, unicode.Latin, unicode.Number, unicode.Punct)
-}
-
-func AppendToStr(dest *strings.Builder, r rune) {
-	// ASCII?  Cheat.
-	if r < 0x7f {
-		dest.WriteByte(byte(r))
-		return
-	}
-	dest.WriteRune(r)
-}
-
+// append to the contents
 func (c *Cell) Append(r rune) {
 	var builder strings.Builder
 	if !c.Empty() {
@@ -192,12 +185,17 @@ func (c *Cell) Append(r rune) {
 	// set wide automaticlly?
 }
 
-func (c *Cell) SetContents(chs ...rune) {
+// replace the contents
+func (c *Cell) SetContents(chs []rune) {
 	c.contents = string(chs)
 }
 
 func (c *Cell) GetContents() string {
 	return c.contents
+}
+
+func (c *Cell) SetRenditions(r Renditions) {
+	c.renditions = r
 }
 
 func (c *Cell) SetDoubleWidth(value bool) {
@@ -208,82 +206,6 @@ func (c *Cell) SetDoubleWidthCont(value bool) {
 	c.dwidthCont = value
 }
 
-/*
-
-hide it
-func runeCount(s string) bool {
-	if utf8.RuneCountInString(s)>1 {
-		return true
-	} else {
-		return false
-	}
-}
-*/
-
-// print grapheme to output
-func (c Cell) PrintGrapheme(output *strings.Builder) {
-	if c.Empty() {
-		output.WriteString(" ")
-		return
-	}
-	/*
-	 * cells that begin with combining character get combiner
-	 * attached to no-break space
-	 */
-	if c.fallback {
-		output.WriteString("\xC2\xA0")
-	}
-	output.WriteString(c.contents)
-}
-
-func (c Cell) String() string {
-	return c.contents
-}
-
-func (c Cell) GetRenditions() Renditions {
-	return c.renditions
-}
-
-func (c *Cell) SetRenditions(r Renditions) {
-	c.renditions = r
-}
-
-func (c *Cell) SetUnderline(underline bool) {
-	c.renditions.underline = underline
-}
-
-func (c Cell) GetWide() bool {
-	return c.wide
-}
-
-func (c Cell) GetWidth() uint {
-	if c.wide {
-		return 2
-	} else {
-		return 1
-	}
-}
-
-func (c *Cell) SetWide(w bool) {
-	c.wide = w
-}
-
-func (c Cell) GetFallback() bool {
-	return c.fallback
-}
-
-func (c *Cell) SetFallback(f bool) {
-	c.fallback = f
-}
-
-func (c Cell) GetWrap() bool {
-	return c.wrap
-}
-
-func (c *Cell) SetWrap(w bool) {
-	c.wrap = w
-}
-
 func (c *Cell) IsDoubleWidth() bool {
 	return c.dwidth
 }
@@ -291,3 +213,89 @@ func (c *Cell) IsDoubleWidth() bool {
 func (c *Cell) IsDoubleWidthCont() bool {
 	return c.dwidthCont
 }
+
+/*
+hide it
+
+	func runeCount(s string) bool {
+		if utf8.RuneCountInString(s)>1 {
+			return true
+		} else {
+			return false
+		}
+	}
+
+// print grapheme to output
+
+	func (c *Cell) PrintGrapheme(output *strings.Builder) {
+		if c.Empty() {
+			output.WriteString(" ")
+			return
+		}
+		 // * cells that begin with combining character get combiner
+		 // * attached to no-break space
+		if c.fallback {
+			output.WriteString("\xC2\xA0")
+		}
+		output.WriteString(c.contents)
+	}
+*/
+func (c *Cell) SetUnderline(underline bool) {
+	c.renditions.underline = underline
+}
+
+// func (c Cell) GetWide() bool {
+// 	return c.wide
+// }
+
+// return cell grapheme width: 0,1,2
+func (c *Cell) GetWidth() int {
+	if c.dwidthCont { // it's a place holder for wide grapheme
+		return 0
+	}
+
+	if c.dwidth { // it's a wide grapheme
+		return 2
+	} else {
+		return 1
+	}
+}
+
+// func (c *Cell) SetWide(w bool) {
+// 	c.wide = w
+// }
+
+/*
+func (c *Cell) GetFallback() bool {
+	return c.fallback
+}
+
+func (c *Cell) SetFallback(f bool) {
+	c.fallback = f
+}
+
+func (c *Cell) GetWrap() bool {
+	return c.wrap
+}
+
+func (c *Cell) SetWrap(w bool) {
+	c.wrap = w
+}
+*/
+
+/*
+// Is this a printing ISO 8859-1 character?
+func IsPrintISO8859_1(r rune) bool {
+	return (r <= 0xff && r >= 0xa0) || (r <= 0x7e && r >= 0x20)
+	// return unicode.IsGraphic(r)
+	// return unicode.In(r, unicode.Latin, unicode.Number, unicode.Punct)
+}
+func AppendToStr(dest *strings.Builder, r rune) {
+	// ASCII?  Cheat.
+	if r < 0x7f {
+		dest.WriteByte(byte(r))
+		return
+	}
+	dest.WriteRune(r)
+}
+*/

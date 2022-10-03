@@ -113,7 +113,7 @@ func TestMoveGetValidity(t *testing.T) {
 }
 
 func TestCellApply(t *testing.T) {
-	underlineRend := terminal.NewRendition(4) // renditions with underline attribute
+	underlineRend := terminal.NewRenditions(4) // renditions with underline attribute
 	underlineCell := terminal.Cell{}
 	underlineCell.SetRenditions(underlineRend)
 	plainCell := terminal.Cell{}
@@ -498,7 +498,7 @@ func TestPredictionActive(t *testing.T) {
 			predict := &(predictRow.overlayCells[v.col])
 			predict.active = true
 			predict.replacement = terminal.Cell{}
-			predict.replacement.SetContents(v.content)
+			predict.replacement.SetContents([]rune{v.content})
 		case 1:
 			// add cursor for col==1
 			pe.initCursor(emu)

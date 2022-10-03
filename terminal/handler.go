@@ -293,17 +293,17 @@ func hdl_graphemes(emu *Emulator, chs ...rune) {
 	// print the current cursor cell
 	c := emu.cf.getMutableCell(emu.posY, emu.posX)
 	*c = emu.attrs
-	c.contents = string(chs)
+	c.SetContents(chs)
 	// fmt.Printf("hdl_graphemes print %s at (%d,%d) %p\n", c, emu.posY, emu.posX, c)
 
 	/// for double width graphemes
 	if w == 2 && emu.posX < emu.nColsEff-1 {
 		// set double width flag
-		c.dwidth = true
+		c.SetDoubleWidth(true)
 		// the cell after double width cell
 		// set double width continue flag
 		emu.posX++
-		emu.cf.getMutableCell(emu.posY, emu.posX).dwidthCont = true
+		emu.cf.getMutableCell(emu.posY, emu.posX).SetDoubleWidthCont(true)
 	}
 
 	// prepare for the next graphemes, move the cursor or set last column flag
