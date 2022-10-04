@@ -215,7 +215,7 @@ var strHandlerID = [...]string{
 
 // Handler is the outcome of parsering input, it can be used to perform control sequence on emulator.
 type Handler struct {
-	name     string              // the name of Handler. TODO consider remove this field
+	// name     string              // the name of Handler. TODO consider remove this field
 	id       int                 // handler ID
 	sequence string              // control sequence
 	ch       rune                // the last byte

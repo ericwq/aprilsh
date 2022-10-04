@@ -318,7 +318,7 @@ func TestProcessInputEmpty(t *testing.T) {
 
 	hd = p.ProcessInput(chs...)
 	if hd != nil {
-		t.Errorf("processInput expect empty, got %s\n", hd.name)
+		t.Errorf("processInput expect empty, got %s\n", strHandlerID[hd.id])
 	}
 }
 
@@ -1273,7 +1273,7 @@ func TestHandle_ENQ_CAN_SUB_ESC(t *testing.T) {
 					t.Errorf("%s seq=%q should contains %q\n, got=%s\n", v.name, v.seq, "overflow", place.String())
 				}
 			} else {
-				t.Errorf("%s should get nil handler, got %s, history=%q\n", v.name, hd.name, p.historyString())
+				t.Errorf("%s should get nil handler, got %s, history=%q\n", v.name, strHandlerID[hd.id], p.historyString())
 			}
 		})
 	}
