@@ -569,7 +569,7 @@ func TestHandle_REP(t *testing.T) {
 				hd.handle(emu)
 
 				hdID := v.hdIDs[j]
-				if hd.id != hdID { // validate the control sequences id
+				if hd.GetId() != hdID { // validate the control sequences id
 					t.Errorf("%s seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[hdID], strHandlerID[hd.id])
 				}
 				// t.Logf("%s seq=%q history=%q\n", v.name, v.seq, hd.sequence)
@@ -4315,5 +4315,46 @@ func TestHandle_VT52_EGM_ID(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestHandler(t *testing.T) {
+	tc := []struct {
+		name     string
+		raw      string
+		id       int
+		sequence string
+		ch       rune
+	}{
+		{"CUP", "\x1B[24;14H", CSI_CUP, "\x1B[24;14H", 'H'},
+		{"TBC", "\x1B[3g", CSI_TBC, "\x1B[3g", 'g'},
+	}
+
+	p := NewParser()
+
+	for _, v := range tc {
+		p.ResetInput()
+
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.raw, hds)
+
+		if len(hds) != 1 {
+			t.Errorf("%s should get 1 handler. got %d handlers\n", v.name, len(hds))
+		}
+
+		id := hds[0].GetId()
+		if v.id != id {
+			t.Errorf("%q expect ID %s, got %s\n", v.name, strHandlerID[v.id], strHandlerID[id])
+		}
+
+		sequence := hds[0].sequence
+		if v.sequence != sequence {
+			t.Errorf("%q expect sequence %q, got %q\n", v.name, v.sequence, sequence)
+		}
+
+		ch := hds[0].GetCh()
+		if v.ch != ch {
+			t.Errorf("%q expect ch %q, got %q\n", v.name, v.ch, ch)
+		}
 	}
 }

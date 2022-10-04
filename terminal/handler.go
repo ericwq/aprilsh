@@ -230,13 +230,15 @@ func (h *Handler) GetCh() rune {
 	return h.ch
 }
 
+/*
 func (h *Handler) GetSequence() string {
 	return h.sequence
 }
 
-// func (h *Handler) Handle(emu *Emulator) {
-// 	h.handle(emu)
-// }
+func (h *Handler) Handle(emu *Emulator) {
+	h.handle(emu)
+}
+*/
 
 // In the loop, national flag's width got 1+1=2.
 /*
@@ -261,6 +263,7 @@ func RunesWidth(runes []rune) (width int) {
 	return width
 }
 */
+
 // print the graphic char to the emulator
 // https://henvic.dev/posts/go-utf8/
 // https://pkg.go.dev/golang.org/x/text/encoding/charmap
@@ -273,7 +276,7 @@ func hdl_graphemes(emu *Emulator, chs ...rune) {
 	// fmt.Printf("hdl_graphemes %q, %U, %t w=%d (%d/%d)\n", chs, chs, emu.lastCol, w, emu.posY, emu.posX)
 
 	// the first condition deal with the new graphemes should wrap on next row
-	// the second condition deal with widh graphemes in special position: posX = nColsEff-1
+	// the second condition deal with widh graphemes in special position: posX = nColsEff-1 and width is 2
 	if (emu.autoWrapMode && emu.lastCol && emu.posX == emu.nColsEff-1) || (w == 2 && emu.posX == emu.nColsEff-1) {
 		emu.cf.getMutableCell(emu.posY, emu.posX).wrap = true
 		hdl_c0_cr(emu)
@@ -281,9 +284,10 @@ func hdl_graphemes(emu *Emulator, chs ...rune) {
 	}
 
 	// validate lastCol
-	if emu.lastCol && emu.posX != emu.nColsEff-1 {
-		emu.lastCol = false
-	}
+	// fmt.Printf("#hdl_graphemes lastCol   at (%d,%d) lastCol=%t\n", emu.posY, emu.posX, emu.lastCol)
+	// if emu.lastCol && emu.posX != emu.nColsEff-1 {
+	// 	emu.lastCol = false
+	// }
 
 	// insert a blank cell for insert mode
 	if emu.insertMode {
@@ -294,7 +298,7 @@ func hdl_graphemes(emu *Emulator, chs ...rune) {
 	c := emu.cf.getMutableCell(emu.posY, emu.posX)
 	*c = emu.attrs
 	c.SetContents(chs)
-	// fmt.Printf("hdl_graphemes print %s at (%d,%d) %p\n", c, emu.posY, emu.posX, c)
+	// fmt.Printf("#hdl_graphemes print %q at (%d,%d) %p\n", c, emu.posY, emu.posX, c)
 
 	/// for double width graphemes
 	if w == 2 && emu.posX < emu.nColsEff-1 {
@@ -312,7 +316,7 @@ func hdl_graphemes(emu *Emulator, chs ...rune) {
 	} else {
 		emu.posX++
 	}
-	// fmt.Printf("hdl_graphemes final %s at (%d,%d) lastCol=%t\n", c, emu.posY, emu.posX, emu.lastCol)
+	// fmt.Printf("#hdl_graphemes next      at (%d,%d) lastCol=%t\n", emu.posY, emu.posX, emu.lastCol)
 }
 
 // func hdl_userbyte(emu *emulator, u UserByte) {
