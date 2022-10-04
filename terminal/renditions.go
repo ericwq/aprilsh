@@ -183,7 +183,7 @@ func (r *Renditions) SetAttributes(attr charAttribute, value bool) {
 	}
 }
 
-func (r Renditions) GetAttributes(attr charAttribute) (value, ok bool) {
+func (r *Renditions) GetAttributes(attr charAttribute) (value, ok bool) {
 	ok = true
 
 	switch attr {
@@ -290,14 +290,14 @@ func (rend *Renditions) buildRendition(attribute int) (processed bool) {
 }
 
 // create rendition based on colorAttr parameter. This method can only be used to set 16-color set.
-func NewRenditions(colorAttr int) (rend Renditions) {
-	if colorAttr == 0 {
+func NewRenditions(attribute int) (rend Renditions) {
+	if attribute == 0 {
 		rend.ClearAttributes()
 		rend.fgColor = ColorDefault
 		rend.bgColor = ColorDefault
 		return
 	}
 
-	rend.buildRendition(colorAttr)
+	rend.buildRendition(attribute)
 	return rend
 }
