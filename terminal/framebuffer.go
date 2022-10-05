@@ -32,15 +32,14 @@ const (
 
 type Framebuffer struct {
 	// rows             []Row
+	// DS               *DrawState
 	iconName         string
 	windowTitle      string
 	bellCount        int
 	titleInitialized bool
-	// DS               *DrawState
-	selectionData string // store the selection data
+	selectionData    string // store the selection data for OSC 52
 
 	// support both (scrollable) normal screen buffer and alternate screen buffer
-	cells        []Cell // the cells
 	nCols        int    // cols number per window
 	nRows        int    // rows number per window
 	saveLines    int    // nRows + saveLines is the scrolling area limitation
@@ -50,9 +49,10 @@ type Framebuffer struct {
 	historyRows  int    // number of history (off-screen) rows with data
 	viewOffset   int    // how many rows above top row does the view start?
 	margin       bool   // are there (non-default) top/bottom margins set?
+	cells        []Cell // the cells
+	cursor       Cursor // current cursor style, color and position
 	selection    Rect   // selection area
 	damage       Damage // damage scope
-	cursor       Cursor // current cursor style, color and position
 }
 
 // Deprecated: please don't use this function to get a new framebuffer.
@@ -425,17 +425,6 @@ func (fb *Framebuffer) copyCells(dstIx, srcIx, count int) {
 	fb.damage.add(dstIx, dstIx+count)
 }
 
-// erase a row at pY, within the left-right scrolling area. (startX,count) defines the area.
-// func (fb *Framebuffer) eraseRow(pY, startX, count int, rend Renditions) {
-// 	if count == 0 {
-// 		return
-// 	}
-//
-// 	idx := fb.getIdx(pY, startX)
-// 	fb.eraseRange(idx, idx+count, rend)
-// 	fb.invalidateSelection(NewRect4(startX, pY, startX+count, pY))
-// }
-
 func (fb *Framebuffer) copyAllCells(dst []Cell) {
 	// copy the active area
 	for pY := 0; pY < fb.nRows; pY++ {
@@ -675,9 +664,8 @@ func (fb *Framebuffer) SoftReset() {
 	fb.DS.ClearSavedCursor()
 }
 */
-func (fb *Framebuffer) setTitleInitialized() { fb.titleInitialized = true }
-
-// func (fb Framebuffer) IsTitleInitialized() bool     { return fb.titleInitialized }
+func (fb *Framebuffer) setTitleInitialized()        { fb.titleInitialized = true }
+func (fb *Framebuffer) isTitleInitialized() bool    { return fb.titleInitialized }
 func (fb *Framebuffer) setIconName(iconName string) { fb.iconName = iconName }
 func (fb *Framebuffer) setWindowTitle(title string) { fb.windowTitle = title }
 func (fb *Framebuffer) getIconName() string         { return fb.iconName }
