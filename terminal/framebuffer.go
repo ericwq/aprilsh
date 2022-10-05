@@ -675,15 +675,15 @@ func (fb *Framebuffer) SoftReset() {
 	fb.DS.ClearSavedCursor()
 }
 */
-func (fb *Framebuffer) SetTitleInitialized() { fb.titleInitialized = true }
+func (fb *Framebuffer) setTitleInitialized() { fb.titleInitialized = true }
 
 // func (fb Framebuffer) IsTitleInitialized() bool     { return fb.titleInitialized }
-func (fb *Framebuffer) SetIconName(iconName string) { fb.iconName = iconName }
-func (fb *Framebuffer) SetWindowTitle(title string) { fb.windowTitle = title }
-func (fb *Framebuffer) GetIconName() string         { return fb.iconName }
-func (fb *Framebuffer) GetWindowTitle() string      { return fb.windowTitle }
+func (fb *Framebuffer) setIconName(iconName string) { fb.iconName = iconName }
+func (fb *Framebuffer) setWindowTitle(title string) { fb.windowTitle = title }
+func (fb *Framebuffer) getIconName() string         { return fb.iconName }
+func (fb *Framebuffer) getWindowTitle() string      { return fb.windowTitle }
 
-func (fb *Framebuffer) PrefixWindowTitle(s string) {
+func (fb *Framebuffer) prefixWindowTitle(s string) {
 	if fb.iconName == fb.windowTitle {
 		/* preserve equivalence */
 		fb.iconName = s + fb.iconName
@@ -761,8 +761,8 @@ func (fb *Framebuffer) resizeCols(width, oldWidth int) {
 */
 // func (fb *Framebuffer) ResetCell(c *Cell) { c.Reset(uint32(fb.DS.GetBackgroundRendition())) }
 // func (fb *Framebuffer) ResetRow(r *Row)   { r.Reset(uint32(fb.DS.GetBackgroundRendition())) }
-func (fb *Framebuffer) RingBell()         { fb.bellCount += 1 }
-func (fb *Framebuffer) GetBellCount() int { return fb.bellCount }
+func (fb *Framebuffer) ringBell()         { fb.bellCount += 1 }
+func (fb *Framebuffer) getBellCount() int { return fb.bellCount }
 
 // func (fb Framebuffer) Equal(other *Framebuffer) (ret bool) {
 // 	// check title and bell count

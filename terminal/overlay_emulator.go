@@ -114,15 +114,15 @@ func (emu *Emulator) GetRenditions() (rnd Renditions) {
 }
 
 func (emu *Emulator) PrefixWindowTitle(prefix string) {
-	emu.cf.PrefixWindowTitle(prefix)
+	emu.cf.prefixWindowTitle(prefix)
 }
 
 func (emu *Emulator) GetWindowTitle() string {
-	return emu.cf.GetWindowTitle()
+	return emu.cf.getWindowTitle()
 }
 
 func (emu *Emulator) GetIconName() string {
-	return emu.cf.GetIconName()
+	return emu.cf.getIconName()
 }
 
 func (emu *Emulator) SetCursorVisible(visible bool) {

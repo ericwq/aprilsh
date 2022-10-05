@@ -339,7 +339,7 @@ func hdl_c0_ht(emu *Emulator) {
 // Bell (BEL  is Ctrl-G).
 // ring the bell
 func hdl_c0_bel(emu *Emulator) {
-	emu.cf.RingBell()
+	emu.cf.ringBell()
 }
 
 // Carriage Return (CR  is Ctrl-M).
@@ -1251,14 +1251,14 @@ func hdl_osc_0_1_2(emu *Emulator, cmd int, arg string) {
 	setIcon := cmd == 0 || cmd == 1
 	setTitle := cmd == 0 || cmd == 2
 	if setIcon || setTitle {
-		emu.cf.SetTitleInitialized()
+		emu.cf.setTitleInitialized()
 
 		if setIcon {
-			emu.cf.SetIconName(arg)
+			emu.cf.setIconName(arg)
 		}
 
 		if setTitle {
-			emu.cf.SetWindowTitle(arg)
+			emu.cf.setWindowTitle(arg)
 		}
 	}
 }

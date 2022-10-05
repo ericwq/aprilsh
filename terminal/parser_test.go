@@ -1144,7 +1144,7 @@ func TestHandle_BEL(t *testing.T) {
 		t.Errorf("BEL got nil for seq=%q\n", seq)
 	}
 
-	bellCount := emu.cf.GetBellCount()
+	bellCount := emu.cf.getBellCount()
 	if bellCount == 0 || hds[0].id != C0_BEL {
 		t.Errorf("BEL expect %d, got %d\n", 1, bellCount)
 		t.Errorf("BEL expect %s, got %s\n", strHandlerID[C0_BEL], strHandlerID[hds[0].id])
