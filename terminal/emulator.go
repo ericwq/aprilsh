@@ -90,10 +90,9 @@ type Emulator struct {
 
 	mouseTrk MouseTrackingState
 
-	terminalToHost strings.Builder
-
-	user          UserInput
-	selectionData map[rune]string // local buffer for selection data
+	terminalToHost strings.Builder // used for terminal write back
+	user           UserInput       // TODO consider how to change it.
+	selectionData  map[rune]string // local buffer for selection data in sequence OSC 52
 
 	// logger
 	logE *log.Logger

@@ -80,14 +80,14 @@ package terminal
 	}
 */
 type (
-	MouseTrackingMode  uint
-	MouseTrackingEnc   uint
-	CompatibilityLevel uint
-	CursorKeyMode      uint
-	KeypadMode         uint
-	ColMode            uint
-	OriginMode         uint
-	SelectSnapTo       uint
+	MouseTrackingMode  uint8
+	MouseTrackingEnc   uint8
+	CompatibilityLevel uint8
+	CursorKeyMode      uint8
+	KeypadMode         uint8
+	OriginMode         uint8
+	ColMode            uint8
+	SelectSnapTo       uint8
 )
 
 const (
@@ -139,6 +139,7 @@ const (
 	SelectSnapTo_COUNT
 )
 
+/*
 // TODO replace the following const with the above one
 const (
 	MOUSE_REPORTING_NONE          = 0
@@ -160,6 +161,7 @@ type SavedCursor struct {
 	autoWrapMode         bool // default value true
 	originMode           bool
 }
+*/
 
 // TODO default constructor checking
 type MouseTrackingState struct {
