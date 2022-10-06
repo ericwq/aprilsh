@@ -119,6 +119,7 @@ func NewEmulator3(nCols, nRows, saveLines int) *Emulator {
 	emu.parser = NewParser()
 	emu.cf, emu.marginTop, emu.marginBottom = NewFramebuffer3(nCols, nRows, saveLines)
 	emu.frame_pri = *emu.cf
+	emu.frame_alt = NewFramebuffer2(1, 1)
 
 	emu.nCols = nCols
 	emu.nRows = nRows
@@ -147,7 +148,9 @@ func NewEmulator3(nCols, nRows, saveLines int) *Emulator {
 	emu.fg = emu.attrs.renditions.fgColor
 	emu.bg = emu.attrs.renditions.bgColor
 
-	emu.savedCursor_DEC_pri = SavedCursor_DEC{}
+	// emu.savedCursor_DEC_pri = SavedCursor_DEC{}
+	emu.savedCursor_DEC_alt.originMode = OriginMode_Absolute
+	emu.savedCursor_DEC_pri.originMode = OriginMode_Absolute
 	emu.savedCursor_DEC = &emu.savedCursor_DEC_pri
 	emu.initSelectionData()
 	emu.initLog()

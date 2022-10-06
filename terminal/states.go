@@ -181,7 +181,7 @@ type SavedCursor_SCO struct {
 type SavedCursor_DEC struct {
 	SavedCursor_SCO
 	attrs        Cell
-	originMode   OriginMode
+	originMode   OriginMode // default: OriginMode_Absolute
 	charsetState CharsetState
 }
 

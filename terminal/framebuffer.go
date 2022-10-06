@@ -31,14 +31,6 @@ const (
 )
 
 type Framebuffer struct {
-	// rows             []Row
-	// DS               *DrawState
-	iconName         string
-	windowTitle      string
-	bellCount        int
-	titleInitialized bool
-	selectionData    string // store the selection data
-
 	// support both (scrollable) normal screen buffer and alternate screen buffer
 	nCols        int    // cols number per window
 	nRows        int    // rows number per window
@@ -54,6 +46,15 @@ type Framebuffer struct {
 	selection    Rect   // selection area
 	// snapTo       SelectSnapTo // TODO should we add this?
 	damage Damage // damage scope
+
+	// rows             []Row
+	// DS               *DrawState
+	iconName         string
+	windowTitle      string
+	bellCount        int
+	titleInitialized bool
+	selectionData    string // store the selection data
+
 }
 
 // Deprecated: please don't use this function to get a new framebuffer.
@@ -71,6 +72,12 @@ type Framebuffer struct {
 //
 // 	return &fb
 // }
+
+// create a framebuffer, with saveLines is zero, return the Framebuffer
+func NewFramebuffer2(nCols, nRows int) Framebuffer {
+	pfb, _, _ := NewFramebuffer3(nCols, nRows, 0)
+	return *pfb
+}
 
 // create a framebuffer according to the specified nCols, nRows and saveLines.
 // saveLines: for alternate screen buffer default is 0, for normal screen buffer the default is 500, max 50000
