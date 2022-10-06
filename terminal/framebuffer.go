@@ -37,7 +37,7 @@ type Framebuffer struct {
 	windowTitle      string
 	bellCount        int
 	titleInitialized bool
-	selectionData    string // store the selection data for OSC 52
+	selectionData    string // store the selection data
 
 	// support both (scrollable) normal screen buffer and alternate screen buffer
 	nCols        int    // cols number per window
@@ -52,7 +52,8 @@ type Framebuffer struct {
 	cells        []Cell // the cells
 	cursor       Cursor // current cursor style, color and position
 	selection    Rect   // selection area
-	damage       Damage // damage scope
+	// snapTo       SelectSnapTo // TODO should we add this?
+	damage Damage // damage scope
 }
 
 // Deprecated: please don't use this function to get a new framebuffer.

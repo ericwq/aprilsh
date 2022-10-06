@@ -32,31 +32,66 @@ import (
 	"strings"
 )
 
-type CharsetState struct {
-	// indicate vtMode charset or not, default false
-	vtMode bool
-
-	// charset g0,g1,g2,g3
-	g [4]*map[byte]rune
-
-	// Locking shift states (index into g[]):
-	gl int
-	gr int
-
-	// Single shift state (0 if none active):
-	// 0 - not active; 2: G2 in GL; 3: G3 in GL
-	ss int
-}
+// type VtModifier uint8
+// TODO consider add InputSpec, InputSpecTable: mapping of a certain VtKey to a sequence of input characters
+// TODO consider add RefreshHandlerFn, OscHandlerFn, BellHandlerFn
 
 type Emulator struct {
-	parser         *Parser
+	nRows        int
+	nCols        int
+	cf           *Framebuffer // current frame buffer
+	frame_pri    Framebuffer  // normal screen buffer
+	frame_alt    Framebuffer  // alternate screen buffer
+	posX         int          // current cursor horizontal position (on-screen)
+	posY         int          // current cursor vertical position (on-screen)
+	marginTop    int          // current margin top (copy of frame field)
+	marginBottom int          // current margin bottom (copy of frame field)
+	lastCol      bool
+
+	attrs        Cell // prototype cell with current attributes
+	fg           Color
+	bg           Color
+	reverseVideo bool
+
+	parser *Parser
+
+	// Terminal state - N.B.: keep resetTerminal () in sync with this!
+	showCursorMode      bool // default true
+	altScreenBufferMode bool // Alternate Screen Buffer support: default false
+	autoWrapMode        bool // default:true
+	autoNewlineMode     bool
+	keyboardLocked      bool
+	insertMode          bool // true/false
+	bkspSendsDel        bool // backspace send delete, default:true
+	localEcho           bool
+	bracketedPasteMode  bool
+	altScrollMode       bool
+	altSendsEscape      bool // default true
+	modifyOtherKeys     uint
+
+	horizMarginMode bool // left and right margins support
+	nColsEff        int  // right margins
+	hMargin         int  // left margins
+
+	tabStops []int // tab stop positions
+
+	compatLevel   CompatibilityLevel // VT52, VT100, VT400. default:VT400
+	cursorKeyMode CursorKeyMode      // default:ANSI: Application(true), ANSI(false)
+	keypadMode    KeypadMode         // default:Normal
+	originMode    OriginMode         // default:Absolute, ScrollingRegion(true), Absolute(false)
+	colMode       ColMode            // default:80, column mode 80 or 132, just for compatibility
+
+	charsetState CharsetState // for forward compatibility
+
+	savedCursor_SCO     SavedCursor_SCO // SCO console cursor state
+	savedCursor_DEC_pri SavedCursor_DEC
+	savedCursor_DEC_alt SavedCursor_DEC
+	savedCursor_DEC     *SavedCursor_DEC
+
+	mouseTrk MouseTrackingState
+
 	terminalToHost strings.Builder
 
-	cf        *Framebuffer // current frame buffer
-	frame_pri Framebuffer  // normal screen buffer
-	frame_alt Framebuffer  // alternate screen buffer
-
-	charsetState  CharsetState
 	user          UserInput
 	selectionData map[rune]string // local buffer for selection data
 
@@ -66,52 +101,6 @@ type Emulator struct {
 	logU *log.Logger
 	logW *log.Logger
 	logI *log.Logger
-
-	nRows int
-	nCols int
-
-	posX         int // current cursor horizontal position (on-screen)
-	posY         int // current cursor vertical position (on-screen)
-	marginTop    int // current margin top (copy of frame field)
-	marginBottom int // current margin bottom (copy of frame field)
-	lastCol      bool
-	attrs        Cell // prototype cell with current attributes
-	fg           Color
-	bg           Color
-	reverseVideo bool
-
-	// move states from drawstate
-	showCursorMode      bool
-	altScreenBufferMode bool // Alternate Screen Buffer support: default false
-	autoWrapMode        bool // true/false
-	autoNewlineMode     bool
-	keyboardLocked      bool
-	insertMode          bool // true/false
-	bkspSendsDel        bool // backspace send delete
-	localEcho           bool
-	bracketedPasteMode  bool // true/false
-	altScrollMode       bool
-	altSendsEscape      bool
-	modifyOtherKeys     uint
-
-	horizMarginMode bool // left and right margins support
-	hMargin         int  // left margins
-	nColsEff        int  // right margins
-
-	tabStops []int // tab stop positions
-
-	compatLevel   CompatibilityLevel // VT52, VT100, VT400
-	cursorKeyMode CursorKeyMode      // =cursorKeyMode two possible value : Application(true), ANSI(false)
-	keypadMode    KeypadMode
-	originMode    OriginMode // two possiible value: ScrollingRegion(true), Absolute(false)
-	colMode       ColMode    // column mode 80 or 132, just for compatibility
-
-	savedCursor_SCO     SavedCursor_SCO // SCO console cursor state
-	savedCursor_DEC_pri SavedCursor_DEC
-	savedCursor_DEC_alt SavedCursor_DEC
-	savedCursor_DEC     *SavedCursor_DEC
-
-	mouseTrk MouseTrackingState
 
 	/*
 		CursorVisible             bool // true/false

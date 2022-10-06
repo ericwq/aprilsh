@@ -26,65 +26,59 @@ SOFTWARE.
 
 package terminal
 
-type SavedCursor struct {
-	cursorCol, cursorRow int
-	renditions           Renditions
-	autoWrapMode         bool // default value true
-	originMode           bool
-}
+/*
+	type DrawState struct {
+		width            int
+		height           int
+		cursorCol        int
+		cursorRow        int
+		cursorColor      Color
+		combiningCharCol int
+		combiningCharRow int
 
-type DrawState struct {
-	width            int
-	height           int
-	cursorCol        int
-	cursorRow        int
-	cursorColor      Color
-	combiningCharCol int
-	combiningCharRow int
+		defaultTabs bool
+		tabs        []bool
 
-	defaultTabs bool
-	tabs        []bool
+		scrollingRegionTopRow    int
+		scrollingRegionBottomRow int
+		renditions               Renditions
+		save                     SavedCursor
 
-	scrollingRegionTopRow    int
-	scrollingRegionBottomRow int
-	renditions               Renditions
-	save                     SavedCursor
+		// public fields
+		NextPrintWillWrap bool
 
-	// public fields
-	NextPrintWillWrap bool
+		// DEC private mode
+		OriginMode                bool // two possiible value: ScrollingRegion(true), Absolute(false)
+		AutoWrapMode              bool // true/false
+		CursorVisible             bool // true/false
+		ReverseVideo              bool // two possible value: Reverse(true), Normal(false)
+		BracketedPaste            bool // true/false
+		MouseReportingMode        int  // replace it with MouseTrackingMode
+		MouseFocusEvent           bool // replace it with MouseTrackingState.focusEventMode
+		MouseAlternateScroll      bool // rename to altScrollMode
+		MouseEncodingMode         int  // replace it with MouseTrackingEnc
+		ApplicationModeCursorKeys bool // =cursorKeyMode two possible value : Application(true), ANSI(false)
+		mouseTrk                  MouseTrackingState
+		altSendsEscape            bool
 
-	// DEC private mode
-	OriginMode                bool // two possiible value: ScrollingRegion(true), Absolute(false)
-	AutoWrapMode              bool // true/false
-	CursorVisible             bool // true/false
-	ReverseVideo              bool // two possible value: Reverse(true), Normal(false)
-	BracketedPaste            bool // true/false
-	MouseReportingMode        int  // replace it with MouseTrackingMode
-	MouseFocusEvent           bool // replace it with MouseTrackingState.focusEventMode
-	MouseAlternateScroll      bool // rename to altScrollMode
-	MouseEncodingMode         int  // replace it with MouseTrackingEnc
-	ApplicationModeCursorKeys bool // =cursorKeyMode two possible value : Application(true), ANSI(false)
-	mouseTrk                  MouseTrackingState
-	altSendsEscape            bool
+		// ANSI mode
+		keyboardLocked  bool
+		InsertMode      bool // true/false
+		localEcho       bool
+		autoNewlineMode bool
 
-	// ANSI mode
-	keyboardLocked  bool
-	InsertMode      bool // true/false
-	localEcho       bool
-	autoNewlineMode bool
+		// added for vt400 compatibility
+		compatLevel         CompatibilityLevel // VT52, VT100, VT400
+		altScreenBufferMode bool               // Alternate Screen Buffer support: default false
+		columnMode          ColMode            // column mode 80 or 132, just for compatibility
+		horizMarginMode     bool               // left and right margins support
+		hMargin             int                // left margins
+		nColsEff            int                // right margins
+		bkspSendsDel        bool               // backspace send delete
 
-	// added for vt400 compatibility
-	compatLevel         CompatibilityLevel // VT52, VT100, VT400
-	altScreenBufferMode bool               // Alternate Screen Buffer support: default false
-	columnMode          ColMode            // column mode 80 or 132, just for compatibility
-	horizMarginMode     bool               // left and right margins support
-	hMargin             int                // left margins
-	nColsEff            int                // right margins
-	bkspSendsDel        bool               // backspace send delete
-
-	savedCursorSCO SavedCursorSCO // SCO console cursor state
-}
-
+		savedCursorSCO SavedCursorSCO // SCO console cursor state
+	}
+*/
 type (
 	MouseTrackingMode  uint
 	MouseTrackingEnc   uint
@@ -160,18 +154,18 @@ const (
 	MOUSE_ENCODING_URXVT   = 1015
 )
 
+type SavedCursor struct {
+	cursorCol, cursorRow int
+	renditions           Renditions
+	autoWrapMode         bool // default value true
+	originMode           bool
+}
+
 // TODO default constructor checking
 type MouseTrackingState struct {
 	mode           MouseTrackingMode
 	enc            MouseTrackingEnc
 	focusEventMode bool
-}
-
-type SavedCursorSCO struct {
-	col     int
-	row     int
-	isSet   bool
-	lastCol bool
 }
 
 type SavedCursor_SCO struct {
@@ -188,7 +182,15 @@ type SavedCursor_DEC struct {
 	originMode   OriginMode
 	charsetState CharsetState
 }
+
 /*
+type SavedCursorSCO struct {
+	col     int
+	row     int
+	isSet   bool
+	lastCol bool
+}
+
 func NewDrawState(width, height int) *DrawState {
 	ds := new(DrawState)
 

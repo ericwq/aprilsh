@@ -26,6 +26,26 @@ SOFTWARE.
 
 package terminal
 
+// only in vtMode, charset is enabled, otherwise UTF-8 is choosed.
+type CharsetState struct {
+	// indicate vtMode charset or not, default false
+	vtMode bool
+
+	// charset g0,g1,g2,g3
+	g [4]*map[byte]rune
+
+	// Locking shift states (index into g[]):
+	gl int // G0 in GL
+	gr int // G2 in GR
+
+	// Single shift state (0 if none active):
+	// 0 - not active; 2: G2 in GL; 3: G3 in GL
+	ss int
+}
+
+/*
+This is only a place holder for charset.
+
 var vtCharSets = map[rune]*map[byte]rune{
 	'0': &vt_DEC_Special,
 	'U': &vt_ISO_UK,     // should be 'A' 94-charset, using 'U' to avoid map key confliction
@@ -34,6 +54,7 @@ var vtCharSets = map[rune]*map[byte]rune{
 	'>': &vt_DEC_Technical,
 	'B': nil, // UTF-8
 }
+*/
 
 /*
 These tables perform translation of built-in "hard" character sets
@@ -42,7 +63,7 @@ difference clearly and save the memory. we don't distinguish
 96 or 94 characters, even those originally designated by DEC
 as 94-character sets.
 
-These tables are referenced by vtCharSets.
+see handle_ESC_DCS() in Parser for how to use it.
 
 Ref: the design of zutty and darktile
 */
