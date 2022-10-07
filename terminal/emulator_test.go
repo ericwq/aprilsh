@@ -163,3 +163,24 @@ func TestJumpToNextTabStop(t *testing.T) {
 		t.Errorf("#test jumpToNextTabStop should never return a nil framebuffer\n")
 	}
 }
+
+func TestLookupCharset(t *testing.T) {
+	emu := NewEmulator3(80, 40, 0)
+
+	emu.resetCharsetState()
+	// gr = 2, g[2]= DEC special
+	emu.charsetState.g[emu.charsetState.gr] = &vt_DEC_Special
+
+	str := "\x5f\x68\x7a"
+	want := []rune{0x00a0, 0x2424, 0x2265}
+
+	for i, x := range str {
+		// set ss to 2
+		emu.charsetState.ss = 2
+
+		y := emu.lookupCharset(x)
+		if y != want[i] {
+			t.Errorf("for %x expect %U , got %U \n", x, want[i], y)
+		}
+	}
+}
