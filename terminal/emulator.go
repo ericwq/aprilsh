@@ -328,6 +328,8 @@ func (emu *Emulator) resize(nCols, nRows int) {
 			emu.cf.scrollDown(nScroll)
 			emu.posY += nScroll
 		}
+
+		emu.frame_alt.freeCells()
 	}
 
 	emu.nCols = nCols

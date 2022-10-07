@@ -54,7 +54,6 @@ type Framebuffer struct {
 	bellCount        int
 	titleInitialized bool
 	selectionData    string // store the selection data
-
 }
 
 // Deprecated: please don't use this function to get a new framebuffer.
