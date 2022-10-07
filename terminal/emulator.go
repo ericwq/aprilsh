@@ -396,6 +396,8 @@ func (emu *Emulator) normalizeCursorPos() {
 	if emu.nRows < emu.posY+1 {
 		emu.posY = emu.nRows - 1
 	}
+
+	emu.lastCol = false
 }
 
 func (emu *Emulator) isCursorInsideMargins() bool {
@@ -475,7 +477,7 @@ func (emu *Emulator) jumpToNextTabStop() {
 	} else {
 		// Next tabstop column set, or the right margin
 		nextTabIdx := LowerBound(emu.tabStops, emu.posX)
-		if nextTabIdx > len(emu.tabStops) {
+		if nextTabIdx >= len(emu.tabStops) {
 			emu.posX = emu.nCols - 1
 		} else {
 			emu.posX = emu.tabStops[nextTabIdx]
