@@ -110,36 +110,6 @@ func NewFramebuffer3(nCols, nRows, saveLines int) (fb *Framebuffer, marginTop in
 	return
 }
 
-// drop the scrollback history and view offset
-func (fb *Framebuffer) dropScrollbackHistory() {
-	fb.viewOffset = 0
-	fb.historyRows = 0
-	fb.expose()
-}
-
-func (fb *Framebuffer) setMargins(marginTop, marginBottom int) {
-	fb.unwrapCellStorage()
-	fb.marginTop = marginTop
-	fb.scrollHead = fb.marginTop
-	fb.marginBottom = marginBottom
-	fb.margin = true
-	fb.expose()
-}
-
-// return marginTop = 0, marginBottom = nRows
-func (fb *Framebuffer) resetMargins() (marginTop, marginBottom int) {
-	fb.unwrapCellStorage()
-	marginTop = 0
-	fb.marginTop = marginTop
-	fb.scrollHead = fb.marginTop
-	fb.marginBottom = fb.nRows + fb.saveLines // internal marginBottom = nRows+saveLines
-	marginBottom = fb.nRows                   // external reported value of marginBottom
-	fb.margin = false
-	fb.expose()
-
-	return
-}
-
 func (fb *Framebuffer) resize(nCols, nRows int) (marginTop, marginBottom int) {
 	if fb.nCols == nCols && fb.nRows == nRows {
 		return
@@ -186,6 +156,50 @@ func (fb *Framebuffer) resize(nCols, nRows int) (marginTop, marginBottom int) {
 	return
 }
 
+// drop the scrollback history and view offset
+func (fb *Framebuffer) dropScrollbackHistory() {
+	fb.viewOffset = 0
+	fb.historyRows = 0
+	fb.expose()
+}
+
+func (fb *Framebuffer) setMargins(marginTop, marginBottom int) {
+	fb.unwrapCellStorage()
+	fb.marginTop = marginTop
+	fb.scrollHead = fb.marginTop
+	fb.marginBottom = marginBottom
+	fb.margin = true
+	fb.expose()
+}
+
+// return marginTop = 0, marginBottom = nRows
+func (fb *Framebuffer) resetMargins() (marginTop, marginBottom int) {
+	fb.unwrapCellStorage()
+	marginTop = 0
+	fb.marginTop = marginTop
+	fb.scrollHead = fb.marginTop
+	fb.marginBottom = fb.nRows + fb.saveLines // internal marginBottom = nRows+saveLines
+	marginBottom = fb.nRows                   // external reported value of marginBottom
+	fb.margin = false
+	fb.expose()
+
+	return
+}
+
+// fill current screen with specified rune and renditions.
+func (fb *Framebuffer) fillCells(ch rune, attrs Cell) {
+	for r := 0; r < fb.nRows; r++ {
+
+		start := fb.getIdx(r, 0)
+		end := start + fb.nCols
+		for k := start; k < end; k++ {
+			fb.cells[k] = attrs
+			fb.cells[k].contents = string(ch)
+		}
+		fb.damage.add(start, end)
+	}
+}
+
 func (fb *Framebuffer) fullCopyCells(dst []Cell) {
 	for pY := 0; pY < fb.nRows; pY++ {
 		srcStartIdx := fb.getViewRowIndex(pY)
@@ -195,65 +209,89 @@ func (fb *Framebuffer) fullCopyCells(dst []Cell) {
 	}
 }
 
-func (fb *Framebuffer) expose() {
-	fb.damage.expose()
+func (fb *Framebuffer) freeCells() {
+	fb.cells = nil
 }
 
-func (fb *Framebuffer) resetDamage() {
-	fb.damage.reset()
+// return a copy of the specified cell
+func (fb *Framebuffer) getCell(pY, pX int) (cell Cell) {
+	idx := fb.getIdx(pY, pX)
+	cell = fb.cells[idx]
+	return
 }
 
-func (fb *Framebuffer) getHistroryRows() int {
-	return fb.historyRows
+// retrun a reference of the specified cell
+func (fb *Framebuffer) getMutableCell(pY, pX int) (cell *Cell) {
+	idx := fb.getIdx(pY, pX)
+	fb.damage.add(idx, idx+1)
+	fb.invalidateSelection(NewRect4(pX, pY, pX+1, pY))
+
+	cell = &(fb.cells[idx])
+	return
 }
 
-// invalidate the selection area if it overlaped with damage area
-func (fb *Framebuffer) invalidateSelection(damage *Rect) {
-	if fb.selection.empty() {
+// erase (count) cells from startX column
+func (fb *Framebuffer) eraseInRow(pY, startX, count int, attrs Cell) {
+	if count == 0 {
 		return
 	}
 
-	// damage area is not overlaped with selection area
-	if fb.selection.br.lessEqual(damage.tl) || damage.br.lessEqual(fb.selection.tl) {
+	idx := fb.getIdx(pY, startX)
+	fb.eraseRange(idx, idx+count, attrs)
+	fb.invalidateSelection(NewRect4(startX, pY, startX+count, pY))
+}
+
+// move (count) cells from srcX column to dstX column in row pY
+func (fb *Framebuffer) moveInRow(pY, dstX, srcX, count int) {
+	if count == 0 {
 		return
 	}
 
-	fb.selection.clear()
+	dstIdx := fb.getIdx(pY, dstX)
+	srcIdx := fb.getIdx(pY, srcX)
+	fb.moveCells(dstIdx, srcIdx, count)
+	fb.invalidateSelection(NewRect4(dstX, pY, dstX+count, pY))
 }
 
-// how the vertical scrolling affect selection area.
-// #Understand
-//
-//	why move the selection area?
-func (fb *Framebuffer) vscrollSelection(vertOffset int) {
-	if fb.selection.null() {
+// copy a row from srcY to dstY, within the left-right scrolling area. (startX,count) defines the area.
+func (fb *Framebuffer) copyRow(dstY, srcY, startX, count int) {
+	if count == 0 {
 		return
 	}
 
-	y1 := fb.selection.tl.y + vertOffset
-	y2 := fb.selection.br.y + vertOffset
+	dstIdx := fb.getIdx(dstY, startX)
+	srcIdx := fb.getIdx(srcY, startX)
+	fb.copyCells(dstIdx, srcIdx, count)
+	fb.invalidateSelection(NewRect4(startX, dstY, startX+count, dstY))
+}
 
-	if (fb.margin && y1 < fb.marginTop) || y1 < -fb.saveLines ||
-		y2 > fb.marginBottom || (y2 == fb.marginBottom && fb.selection.br.x > 0) {
-		fb.selection.clear()
-		return
+// text up, active area down count rows
+func (fb *Framebuffer) scrollUp(count int) {
+	fb.vscrollSelection(-count)
+	for k := 0; k < count; k++ {
+		fb.scrollHead += 1
+		if fb.scrollHead == fb.marginBottom {
+			// wrap around the end of the scrolling area
+			fb.scrollHead = fb.marginTop
+		}
 	}
-
-	fb.selection.tl.y = y1
-	fb.selection.br.y = y2
+	fb.historyRows = Min(fb.historyRows+count, fb.saveLines)
+	fb.damage.add(fb.marginTop*fb.nCols, fb.marginBottom*fb.nCols)
 }
 
-func (fb *Framebuffer) getSelection() *Rect {
-	return &fb.selection
-}
-
-func (fb *Framebuffer) setCursorPos(pY, pX int) {
-	fb.cursor.posY = pY + fb.viewOffset
-	fb.cursor.posX = pX
-}
-
-func (fb *Framebuffer) setCursorStyle(cs CursorStyle) {
-	fb.cursor.style = cs
+// text down, active area up count rows
+func (fb *Framebuffer) scrollDown(count int) {
+	fb.vscrollSelection(count)
+	for k := 0; k < count; k++ {
+		if fb.scrollHead >= fb.marginTop+1 {
+			fb.scrollHead -= 1
+		} else {
+			// wrap around the head of the scrolling area
+			fb.scrollHead = fb.marginBottom - 1
+		}
+	}
+	fb.historyRows = Max(0, fb.historyRows-count)
+	fb.damage.add(fb.marginTop*fb.nCols, fb.marginBottom*fb.nCols)
 }
 
 // text up, screen down count rows
@@ -291,99 +329,25 @@ func (fb *Framebuffer) pageToBottom() {
 	fb.expose()
 }
 
-// text up, active area down count rows
-func (fb *Framebuffer) scrollUp(count int) {
-	fb.vscrollSelection(-count)
-	for k := 0; k < count; k++ {
-		fb.scrollHead += 1
-		if fb.scrollHead == fb.marginBottom {
-			// wrap around the end of the scrolling area
-			fb.scrollHead = fb.marginTop
-		}
-	}
-	fb.historyRows = Min(fb.historyRows+count, fb.saveLines)
-	fb.damage.add(fb.marginTop*fb.nCols, fb.marginBottom*fb.nCols)
+func (fb *Framebuffer) getHistroryRows() int {
+	return fb.historyRows
 }
 
-// text down, active area up count rows
-func (fb *Framebuffer) scrollDown(count int) {
-	fb.vscrollSelection(count)
-	for k := 0; k < count; k++ {
-		if fb.scrollHead >= fb.marginTop+1 {
-			fb.scrollHead -= 1
-		} else {
-			// wrap around the head of the scrolling area
-			fb.scrollHead = fb.marginBottom - 1
-		}
-	}
-	fb.historyRows = Max(0, fb.historyRows-count)
-	fb.damage.add(fb.marginTop*fb.nCols, fb.marginBottom*fb.nCols)
+func (fb *Framebuffer) expose() {
+	fb.damage.expose()
 }
 
-// retrun a reference of the specified cell
-func (fb *Framebuffer) getMutableCell(pY, pX int) (cell *Cell) {
-	idx := fb.getIdx(pY, pX)
-	fb.damage.add(idx, idx+1)
-	fb.invalidateSelection(NewRect4(pX, pY, pX+1, pY))
-
-	cell = &(fb.cells[idx])
-	return
+func (fb *Framebuffer) resetDamage() {
+	fb.damage.reset()
 }
 
-// return a copy of the specified cell
-func (fb *Framebuffer) getCell(pY, pX int) (cell Cell) {
-	idx := fb.getIdx(pY, pX)
-	cell = fb.cells[idx]
-	return
+func (fb *Framebuffer) setCursorPos(pY, pX int) {
+	fb.cursor.posY = pY + fb.viewOffset
+	fb.cursor.posX = pX
 }
 
-// erase (reset) fromt start to end with specified renditions
-func (fb *Framebuffer) eraseRange(start, end int, attrs Cell) {
-	for i := range fb.cells[start:end] {
-		fb.cells[start+i].Reset2(attrs)
-	}
-	fb.damage.add(start, end)
-}
-
-// erase (count) cells from startX column
-func (fb *Framebuffer) eraseInRow(pY, startX, count int, attrs Cell) {
-	if count == 0 {
-		return
-	}
-
-	idx := fb.getIdx(pY, startX)
-	fb.eraseRange(idx, idx+count, attrs)
-	fb.invalidateSelection(NewRect4(startX, pY, startX+count, pY))
-}
-
-// move (count) cells from srcX column to dstX column in row pY
-func (fb *Framebuffer) moveInRow(pY, dstX, srcX, count int) {
-	if count == 0 {
-		return
-	}
-
-	dstIdx := fb.getIdx(pY, dstX)
-	srcIdx := fb.getIdx(pY, srcX)
-	fb.moveCells(dstIdx, srcIdx, count)
-	fb.invalidateSelection(NewRect4(dstX, pY, dstX+count, pY))
-}
-
-// move (count) cells from srcIx to dstIx. Both of the parameters are the index for cells.
-func (fb *Framebuffer) moveCells(dstIx, srcIx, count int) {
-	copy(fb.cells[dstIx:], fb.cells[srcIx:srcIx+count])
-	fb.damage.add(dstIx, dstIx+count)
-}
-
-func (fb *Framebuffer) getPhysicalRowIndex(pY int) int {
-	return fb.nCols * fb.getPhysicalRow(pY)
-}
-
-func (fb *Framebuffer) getViewRowIndex(pY int) int {
-	return fb.getPhysicalRowIndex(pY - fb.viewOffset)
-}
-
-func (fb *Framebuffer) getIdx(pY, pX int) int {
-	return fb.nCols*fb.getPhysicalRow(pY-fb.viewOffset) + pX
+func (fb *Framebuffer) setCursorStyle(cs CursorStyle) {
+	fb.cursor.style = cs
 }
 
 // TODO check the relationship between viewOffset and scrollHead
@@ -414,20 +378,34 @@ func (fb *Framebuffer) getPhysicalRow(pY int) int {
 	return pY
 }
 
-// copy a row from srcY to dstY, within the left-right scrolling area. (startX,count) defines the area.
-func (fb *Framebuffer) copyRow(dstY, srcY, startX, count int) {
-	if count == 0 {
-		return
-	}
+func (fb *Framebuffer) getPhysicalRowIndex(pY int) int {
+	return fb.nCols * fb.getPhysicalRow(pY)
+}
 
-	dstIdx := fb.getIdx(dstY, startX)
-	srcIdx := fb.getIdx(srcY, startX)
-	fb.copyCells(dstIdx, srcIdx, count)
-	fb.invalidateSelection(NewRect4(startX, dstY, startX+count, dstY))
+func (fb *Framebuffer) getViewRowIndex(pY int) int {
+	return fb.getPhysicalRowIndex(pY - fb.viewOffset)
+}
+
+func (fb *Framebuffer) getIdx(pY, pX int) int {
+	return fb.nCols*fb.getPhysicalRow(pY-fb.viewOffset) + pX
+}
+
+// erase (reset) fromt start to end with specified renditions
+func (fb *Framebuffer) eraseRange(start, end int, attrs Cell) {
+	for i := range fb.cells[start:end] {
+		fb.cells[start+i].Reset2(attrs)
+	}
+	fb.damage.add(start, end)
 }
 
 // copy (count) cells from srcIx to dstIx. Both of the parameters are the index for cells.
 func (fb *Framebuffer) copyCells(dstIx, srcIx, count int) {
+	copy(fb.cells[dstIx:], fb.cells[srcIx:srcIx+count])
+	fb.damage.add(dstIx, dstIx+count)
+}
+
+// move (count) cells from srcIx to dstIx. Both of the parameters are the index for cells.
+func (fb *Framebuffer) moveCells(dstIx, srcIx, count int) {
 	copy(fb.cells[dstIx:], fb.cells[srcIx:srcIx+count])
 	fb.damage.add(dstIx, dstIx+count)
 }
@@ -464,22 +442,44 @@ func (fb *Framebuffer) unwrapCellStorage() {
 	fb.scrollHead = fb.marginTop
 }
 
-func (fb *Framebuffer) freeCells() {
-	fb.cells = nil
+// how the vertical scrolling affect selection area.
+// #Understand
+//
+//	why move the selection area?
+func (fb *Framebuffer) vscrollSelection(vertOffset int) {
+	if fb.selection.null() {
+		return
+	}
+
+	y1 := fb.selection.tl.y + vertOffset
+	y2 := fb.selection.br.y + vertOffset
+
+	if (fb.margin && y1 < fb.marginTop) || y1 < -fb.saveLines ||
+		y2 > fb.marginBottom || (y2 == fb.marginBottom && fb.selection.br.x > 0) {
+		fb.selection.clear()
+		return
+	}
+
+	fb.selection.tl.y = y1
+	fb.selection.br.y = y2
 }
 
-// fill current screen with specified rune and renditions.
-func (fb *Framebuffer) fillCells(ch rune, attrs Cell) {
-	for r := 0; r < fb.nRows; r++ {
-
-		start := fb.getIdx(r, 0)
-		end := start + fb.nCols
-		for k := start; k < end; k++ {
-			fb.cells[k] = attrs
-			fb.cells[k].contents = string(ch)
-		}
-		fb.damage.add(start, end)
+// invalidate the selection area if it overlaped with damage area
+func (fb *Framebuffer) invalidateSelection(damage *Rect) {
+	if fb.selection.empty() {
+		return
 	}
+
+	// damage area is not overlaped with selection area
+	if fb.selection.br.lessEqual(damage.tl) || damage.br.lessEqual(fb.selection.tl) {
+		return
+	}
+
+	fb.selection.clear()
+}
+
+func (fb *Framebuffer) getSelection() *Rect {
+	return &fb.selection
 }
 
 /* --------------------------------------------------- new frame end here */

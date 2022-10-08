@@ -160,146 +160,6 @@ func NewEmulator3(nCols, nRows, saveLines int) *Emulator {
 	return emu
 }
 
-// set compatibility level for both parser and emulator
-func (emu *Emulator) setCompatLevel(cl CompatibilityLevel) {
-	if emu.compatLevel != cl {
-		emu.compatLevel = cl
-	}
-	// emu.parser.compatLevel = cl
-}
-
-func (emu *Emulator) resetTerminal() {
-	emu.parser.reset()
-
-	emu.resetScreen()
-	emu.resetAttrs()
-
-	emu.switchColMode(ColMode_C80)
-	emu.cf.dropScrollbackHistory()
-	emu.marginTop, emu.marginBottom = emu.cf.resetMargins()
-	emu.clearScreen()
-
-	emu.switchScreenBufferMode(false)
-	emu.altSendsEscape = true
-	emu.altScrollMode = false
-	emu.modifyOtherKeys = 1
-	// TODO consider how to implemnt options parameters
-
-	emu.horizMarginMode = false
-	emu.hMargin = 0
-	emu.nColsEff = emu.nCols
-	// TODO checking hasOSCHandler
-}
-
-func (emu *Emulator) resetScreen() {
-	emu.showCursorMode = true
-	emu.autoWrapMode = true
-	emu.autoNewlineMode = false
-	emu.keyboardLocked = false
-	emu.insertMode = false
-	emu.bkspSendsDel = true
-	emu.localEcho = false
-	emu.bracketedPasteMode = false
-
-	emu.setCompatLevel(CompatLevel_VT400)
-	emu.cursorKeyMode = CursorKeyMode_ANSI
-	emu.keypadMode = KeypadMode_Normal
-	emu.originMode = OriginMode_Absolute
-	emu.resetCharsetState()
-
-	emu.savedCursor_SCO.isSet = false
-	emu.savedCursor_DEC.isSet = false
-
-	emu.mouseTrk = MouseTrackingState{}
-	emu.tabStops = make([]int, 0)
-	emu.cf.getSelection().clear()
-}
-
-func (emu *Emulator) resetAttrs() {
-	emu.reverseVideo = false
-	emu.fg = emu.attrs.renditions.fgColor
-	emu.bg = emu.attrs.renditions.bgColor
-
-	// reset the character attributes
-	params := []int{0} // preapare parameters for SGR
-	hdl_csi_sgr(emu, params)
-}
-
-func (emu *Emulator) clearScreen() {
-	emu.posX = 0
-	emu.posY = 0
-	emu.lastCol = false
-	emu.fillScreen(' ')
-}
-
-func (emu *Emulator) fillScreen(ch rune) {
-	emu.cf.fillCells(ch, emu.attrs)
-}
-
-func (emu *Emulator) initSelectionData() {
-	// prepare selection data for OSC 52
-	// https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands
-	emu.selectionData = make(map[rune]string)
-	emu.selectionData['c'] = "" // clipboard
-	emu.selectionData['p'] = "" // primary
-	emu.selectionData['q'] = "" // secondary
-	emu.selectionData['s'] = "" // select
-	emu.selectionData['0'] = "" // cut-buffer 0
-	emu.selectionData['1'] = "" // cut-buffer 1
-	emu.selectionData['2'] = "" // cut-buffer 2
-	emu.selectionData['3'] = "" // cut-buffer 3
-	emu.selectionData['4'] = "" // cut-buffer 4
-	emu.selectionData['5'] = "" // cut-buffer 5
-	emu.selectionData['6'] = "" // cut-buffer 6
-	emu.selectionData['7'] = "" // cut-buffer 7
-}
-
-func (emu *Emulator) initLog() {
-	// init logger
-	emu.logT = log.New(os.Stderr, "TRAC: ", log.Ldate|log.Ltime|log.Lshortfile)
-	emu.logI = log.New(os.Stderr, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
-	emu.logE = log.New(os.Stderr, "ERRO: ", log.Ldate|log.Ltime|log.Lshortfile)
-	emu.logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-	emu.logU = log.New(os.Stderr, "(Uimplemented): ", log.Ldate|log.Ltime|log.Lshortfile)
-}
-
-func (emu *Emulator) resetCharsetState() {
-	// we don't use vt100 charset by default
-	emu.charsetState.vtMode = false
-
-	// default nil will fall to UTF-8
-	emu.charsetState.g[0] = nil
-	emu.charsetState.g[1] = nil
-	emu.charsetState.g[2] = nil
-	emu.charsetState.g[3] = nil
-
-	// Locking shift states (index into g[]):
-	emu.charsetState.gl = 0 // G0 in GL
-	emu.charsetState.gr = 2 // G2 in GR
-
-	// Single shift state (0 if none active):
-	// 0 - not active; 2: G2 in GL; 3: G3 in GL
-	emu.charsetState.ss = 0
-}
-
-func (emu *Emulator) lookupCharset(p rune) (r rune) {
-	// choose the charset based on instructions before
-	var cs *map[byte]rune
-	if emu.charsetState.ss > 0 {
-		cs = emu.charsetState.g[emu.charsetState.ss]
-		emu.charsetState.ss = 0
-	} else {
-		if p < 0x80 {
-			cs = emu.charsetState.g[emu.charsetState.gl]
-		} else {
-			cs = emu.charsetState.g[emu.charsetState.gr]
-		}
-	}
-
-	r = lookupTable(cs, byte(p))
-	return r
-}
-
 func (emu *Emulator) resize(nCols, nRows int) {
 	if emu.nCols == nCols && emu.nRows == nRows {
 		return
@@ -349,44 +209,84 @@ func (emu *Emulator) resize(nCols, nRows int) {
 	// TODO pty resize
 }
 
-func (emu *Emulator) switchScreenBufferMode(altScreenBufferMode bool) {
-	if emu.altScreenBufferMode == altScreenBufferMode {
-		return
-	}
-
-	if altScreenBufferMode {
-		emu.cf, emu.marginTop, emu.marginBottom = NewFramebuffer3(emu.nCols, emu.nRows, 0)
-		emu.frame_alt = *emu.cf
-
-		emu.savedCursor_DEC = &emu.savedCursor_DEC_alt
-		emu.altScreenBufferMode = true
-	} else {
-		emu.cf = &emu.frame_pri
-		emu.marginTop, emu.marginBottom = emu.cf.resize(emu.nCols, emu.nRows)
-		emu.cf.expose()
-
-		emu.savedCursor_DEC_alt.isSet = false
-		emu.savedCursor_DEC = &emu.savedCursor_DEC_pri
-		emu.altScreenBufferMode = false
-	}
+// hide the implementation of write back
+func (emu *Emulator) writePty(resp string) {
+	emu.terminalToHost.WriteString(resp)
 }
 
-// TODO see the comments
-func (emu *Emulator) switchColMode(colMode ColMode) {
-	if emu.colMode == colMode {
-		return
-	}
+// return the terminal feedback, clean feedback buffer.
+func (emu *Emulator) ReadOctetsToHost() string {
+	ret := emu.terminalToHost.String()
+	emu.terminalToHost.Reset()
+	return ret
+}
+
+func (emu *Emulator) resetTerminal() {
+	emu.parser.reset()
 
 	emu.resetScreen()
+	emu.resetAttrs()
+
+	emu.switchColMode(ColMode_C80)
+	emu.cf.dropScrollbackHistory()
+	emu.marginTop, emu.marginBottom = emu.cf.resetMargins()
 	emu.clearScreen()
 
-	if colMode == ColMode_C80 {
-		emu.logT.Println("DECCOLM: Selected 80 columns per line")
-	} else {
-		emu.logT.Println("DECCOLM: Selected 132 columns per line")
-	}
+	emu.switchScreenBufferMode(false)
+	emu.altSendsEscape = true
+	emu.altScrollMode = false
+	emu.modifyOtherKeys = 1
+	// TODO consider how to implemnt options parameters
 
-	emu.colMode = colMode
+	emu.horizMarginMode = false
+	emu.hMargin = 0
+	emu.nColsEff = emu.nCols
+	// TODO checking hasOSCHandler
+}
+
+func (emu *Emulator) resetAttrs() {
+	emu.reverseVideo = false
+	emu.fg = emu.attrs.renditions.fgColor
+	emu.bg = emu.attrs.renditions.bgColor
+
+	// reset the character attributes
+	params := []int{0} // preapare parameters for SGR
+	hdl_csi_sgr(emu, params)
+}
+
+func (emu *Emulator) resetScreen() {
+	emu.showCursorMode = true
+	emu.autoWrapMode = true
+	emu.autoNewlineMode = false
+	emu.keyboardLocked = false
+	emu.insertMode = false
+	emu.bkspSendsDel = true
+	emu.localEcho = false
+	emu.bracketedPasteMode = false
+
+	emu.setCompatLevel(CompatLevel_VT400)
+	emu.cursorKeyMode = CursorKeyMode_ANSI
+	emu.keypadMode = KeypadMode_Normal
+	emu.originMode = OriginMode_Absolute
+	emu.resetCharsetState()
+
+	emu.savedCursor_SCO.isSet = false
+	emu.savedCursor_DEC.isSet = false
+
+	emu.mouseTrk = MouseTrackingState{}
+	emu.tabStops = make([]int, 0)
+	emu.cf.getSelection().clear()
+}
+
+func (emu *Emulator) clearScreen() {
+	emu.posX = 0
+	emu.posY = 0
+	emu.lastCol = false
+	emu.fillScreen(' ')
+}
+
+func (emu *Emulator) fillScreen(ch rune) {
+	emu.cf.fillCells(ch, emu.attrs)
 }
 
 func (emu *Emulator) normalizeCursorPos() {
@@ -463,6 +363,20 @@ func (emu *Emulator) deleteCols(startX, count int) {
 	}
 }
 
+// TODO need implementation
+func (emu *Emulator) showCursor() {
+	if emu.showCursorMode && emu.parser.getState() == InputState_Normal {
+		emu.cf.setCursorPos(emu.posY, emu.posX)
+		emu.cf.setCursorStyle(CursorStyle_FillBlock)
+		// TODO set HollowBlock for no focus case
+	}
+}
+
+// TODO need implementation
+func (emu *Emulator) hideCursor() {
+	emu.cf.setCursorStyle(CursorStyle_Hidden)
+}
+
 func (emu *Emulator) jumpToNextTabStop() {
 	if len(emu.tabStops) == 0 {
 		margin := 0
@@ -486,30 +400,116 @@ func (emu *Emulator) jumpToNextTabStop() {
 	emu.lastCol = false
 }
 
-// TODO need implementation
-func (emu *Emulator) showCursor() {
-	if emu.showCursorMode && emu.parser.getState() == InputState_Normal {
-		emu.cf.setCursorPos(emu.posY, emu.posX)
-		emu.cf.setCursorStyle(CursorStyle_FillBlock)
-		// TODO set HollowBlock for no focus case
+// TODO see the comments
+func (emu *Emulator) switchColMode(colMode ColMode) {
+	if emu.colMode == colMode {
+		return
+	}
+
+	emu.resetScreen()
+	emu.clearScreen()
+
+	if colMode == ColMode_C80 {
+		emu.logT.Println("DECCOLM: Selected 80 columns per line")
+	} else {
+		emu.logT.Println("DECCOLM: Selected 132 columns per line")
+	}
+
+	emu.colMode = colMode
+}
+
+func (emu *Emulator) switchScreenBufferMode(altScreenBufferMode bool) {
+	if emu.altScreenBufferMode == altScreenBufferMode {
+		return
+	}
+
+	if altScreenBufferMode {
+		emu.cf, emu.marginTop, emu.marginBottom = NewFramebuffer3(emu.nCols, emu.nRows, 0)
+		emu.frame_alt = *emu.cf
+
+		emu.savedCursor_DEC = &emu.savedCursor_DEC_alt
+		emu.altScreenBufferMode = true
+	} else {
+		emu.cf = &emu.frame_pri
+		emu.marginTop, emu.marginBottom = emu.cf.resize(emu.nCols, emu.nRows)
+		emu.cf.expose()
+
+		emu.savedCursor_DEC_alt.isSet = false
+		emu.savedCursor_DEC = &emu.savedCursor_DEC_pri
+		emu.altScreenBufferMode = false
 	}
 }
 
-// TODO need implementation
-func (emu *Emulator) hideCursor() {
-	emu.cf.setCursorStyle(CursorStyle_Hidden)
+// set compatibility level for both parser and emulator
+func (emu *Emulator) setCompatLevel(cl CompatibilityLevel) {
+	if emu.compatLevel != cl {
+		emu.compatLevel = cl
+	}
+	// emu.parser.compatLevel = cl
 }
 
-// hide the implementation of write back
-func (emu *Emulator) writePty(resp string) {
-	emu.terminalToHost.WriteString(resp)
+func (emu *Emulator) initSelectionData() {
+	// prepare selection data for OSC 52
+	// https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands
+	emu.selectionData = make(map[rune]string)
+	emu.selectionData['c'] = "" // clipboard
+	emu.selectionData['p'] = "" // primary
+	emu.selectionData['q'] = "" // secondary
+	emu.selectionData['s'] = "" // select
+	emu.selectionData['0'] = "" // cut-buffer 0
+	emu.selectionData['1'] = "" // cut-buffer 1
+	emu.selectionData['2'] = "" // cut-buffer 2
+	emu.selectionData['3'] = "" // cut-buffer 3
+	emu.selectionData['4'] = "" // cut-buffer 4
+	emu.selectionData['5'] = "" // cut-buffer 5
+	emu.selectionData['6'] = "" // cut-buffer 6
+	emu.selectionData['7'] = "" // cut-buffer 7
 }
 
-// return the terminal feedback, clean feedback buffer.
-func (emu *Emulator) ReadOctetsToHost() string {
-	ret := emu.terminalToHost.String()
-	emu.terminalToHost.Reset()
-	return ret
+func (emu *Emulator) initLog() {
+	// init logger
+	emu.logT = log.New(os.Stderr, "TRAC: ", log.Ldate|log.Ltime|log.Lshortfile)
+	emu.logI = log.New(os.Stderr, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	emu.logE = log.New(os.Stderr, "ERRO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	emu.logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	emu.logU = log.New(os.Stderr, "(Uimplemented): ", log.Ldate|log.Ltime|log.Lshortfile)
+}
+
+func (emu *Emulator) resetCharsetState() {
+	// we don't use vt100 charset by default
+	emu.charsetState.vtMode = false
+
+	// default nil will fall to UTF-8
+	emu.charsetState.g[0] = nil
+	emu.charsetState.g[1] = nil
+	emu.charsetState.g[2] = nil
+	emu.charsetState.g[3] = nil
+
+	// Locking shift states (index into g[]):
+	emu.charsetState.gl = 0 // G0 in GL
+	emu.charsetState.gr = 2 // G2 in GR
+
+	// Single shift state (0 if none active):
+	// 0 - not active; 2: G2 in GL; 3: G3 in GL
+	emu.charsetState.ss = 0
+}
+
+func (emu *Emulator) lookupCharset(p rune) (r rune) {
+	// choose the charset based on instructions before
+	var cs *map[byte]rune
+	if emu.charsetState.ss > 0 {
+		cs = emu.charsetState.g[emu.charsetState.ss]
+		emu.charsetState.ss = 0
+	} else {
+		if p < 0x80 {
+			cs = emu.charsetState.g[emu.charsetState.gl]
+		} else {
+			cs = emu.charsetState.g[emu.charsetState.gr]
+		}
+	}
+
+	r = lookupTable(cs, byte(p))
+	return r
 }
 
 // parse and handle the stream together.
@@ -528,6 +528,114 @@ func (emu *Emulator) HandleStream(seq string) (hds []*Handler) {
 
 func (emu *Emulator) GetFramebuffer() *Framebuffer {
 	return emu.cf
+}
+
+/*
+-----------------------------------------------------------------------------------------------------
+The following methods is only used by prediction engine. The coordinate is different from the one used
+by control sequence. It use the Emulator internal coordinate, starts from 0.
+-----------------------------------------------------------------------------------------------------
+*/
+
+// move cursor to specified position, (default screen coordinate = [0,0])
+func (emu *Emulator) MoveCursor(posY, posX int) {
+	emu.posX = posX
+	emu.posY = posY
+	emu.normalizeCursorPos()
+}
+
+// get current cursor column
+func (emu *Emulator) GetCursorCol() int {
+	return emu.posX
+}
+
+// get current cursor row
+func (emu *Emulator) GetCursorRow() int {
+	if emu.originMode == OriginMode_Absolute {
+		return emu.posY
+	}
+	return emu.posY - emu.marginTop
+}
+
+// get active area height
+func (emu *Emulator) GetHeight() int {
+	return emu.marginBottom - emu.marginTop
+}
+
+// get active area width
+func (emu *Emulator) GetWidth() int {
+	if emu.horizMarginMode {
+		return emu.nColsEff - emu.hMargin
+	}
+
+	return emu.nCols
+}
+
+func (emu *Emulator) GetCell(posY, posX int) Cell {
+	posY, posX = emu.getCellPos(posY, posX)
+
+	return emu.cf.getCell(posY, posX)
+}
+
+func (emu *Emulator) GetMutableCell(posY, posX int) *Cell {
+	posY, posX = emu.getCellPos(posY, posX)
+
+	return emu.cf.getMutableCell(posY, posX)
+}
+
+func (emu *Emulator) getCellPos(posY, posX int) (posY2, posX2 int) {
+	// fmt.Printf("@1 (%d,%d)\n", posY, posX)
+	// in case we don't provide the row or col
+	if posY < 0 || posY > emu.GetHeight() {
+		posY = emu.GetCursorRow()
+		// fmt.Printf("@2 (%d,%d)\n", posY, posX)
+	}
+
+	if posX < 0 || posX > emu.GetWidth() {
+		posX = emu.GetCursorCol()
+		// fmt.Printf("@3 (%d,%d)\n", posY, posX)
+	}
+
+	switch emu.originMode {
+	case OriginMode_Absolute:
+		posY = Max(0, Min(posY, emu.nRows))
+		// fmt.Printf("@4 (%d,%d)\n", posY, posX)
+	case OriginMode_ScrollingRegion:
+		posY = Max(0, Min(posY, emu.marginBottom))
+		posY += emu.marginTop
+		// fmt.Printf("@5 (%d,%d)\n", posY, posX)
+	}
+	posX = Max(0, Min(posX, emu.nCols))
+	// fmt.Printf("@6 (%d,%d)\n", posY, posX)
+
+	posX2 = posX
+	posY2 = posY
+	return
+}
+
+func (emu *Emulator) GetRenditions() (rnd Renditions) {
+	return emu.attrs.renditions
+}
+
+func (emu *Emulator) PrefixWindowTitle(prefix string) {
+	emu.cf.prefixWindowTitle(prefix)
+}
+
+func (emu *Emulator) GetWindowTitle() string {
+	return emu.cf.getWindowTitle()
+}
+
+func (emu *Emulator) GetIconName() string {
+	return emu.cf.getIconName()
+}
+
+func (emu *Emulator) SetCursorVisible(visible bool) {
+	if !visible {
+		emu.cf.setCursorStyle(CursorStyle_Hidden)
+	} else {
+		emu.cf.setCursorStyle(CursorStyle_FillBlock)
+		// TODO keep the old style?
+	}
 }
 
 /*
