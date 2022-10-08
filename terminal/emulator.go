@@ -533,11 +533,11 @@ func (emu *Emulator) GetFramebuffer() *Framebuffer {
 /*
 -----------------------------------------------------------------------------------------------------
 The following methods is only used by prediction engine. The coordinate is different from the one used
-by control sequence. It use the Emulator internal coordinate, starts from 0.
+by control sequence. It use the Emulator internal coordinate, starts from [0,0].
 -----------------------------------------------------------------------------------------------------
 */
 
-// move cursor to specified position, (default screen coordinate = [0,0])
+// move cursor to specified position
 func (emu *Emulator) MoveCursor(posY, posX int) {
 	emu.posX = posX
 	emu.posY = posY
@@ -583,30 +583,26 @@ func (emu *Emulator) GetMutableCell(posY, posX int) *Cell {
 	return emu.cf.getMutableCell(posY, posX)
 }
 
+// convert the [posY,posX] into right position coordinates
 func (emu *Emulator) getCellPos(posY, posX int) (posY2, posX2 int) {
-	// fmt.Printf("@1 (%d,%d)\n", posY, posX)
 	// in case we don't provide the row or col
 	if posY < 0 || posY > emu.GetHeight() {
 		posY = emu.GetCursorRow()
-		// fmt.Printf("@2 (%d,%d)\n", posY, posX)
 	}
 
 	if posX < 0 || posX > emu.GetWidth() {
 		posX = emu.GetCursorCol()
-		// fmt.Printf("@3 (%d,%d)\n", posY, posX)
 	}
 
+	// the logic is from hdl_csi_cup()
 	switch emu.originMode {
 	case OriginMode_Absolute:
 		posY = Max(0, Min(posY, emu.nRows))
-		// fmt.Printf("@4 (%d,%d)\n", posY, posX)
 	case OriginMode_ScrollingRegion:
 		posY = Max(0, Min(posY, emu.marginBottom))
 		posY += emu.marginTop
-		// fmt.Printf("@5 (%d,%d)\n", posY, posX)
 	}
 	posX = Max(0, Min(posX, emu.nCols))
-	// fmt.Printf("@6 (%d,%d)\n", posY, posX)
 
 	posX2 = posX
 	posY2 = posY
@@ -637,34 +633,3 @@ func (emu *Emulator) SetCursorVisible(visible bool) {
 		// TODO keep the old style?
 	}
 }
-
-/*
-func (e *emulator) CSIdispatch(act Action) {
-	e.dispatcher.dispatch(DISPATCH_CSI, act, &e.framebuffer)
-}
-
-func (e *emulator) ESCdispatch(act Action) {
-	ch := act.GetChar()
-
-	// handle 7-bit ESC-encoding of C1 control characters
-	if len(e.dispatcher.getDispatcherChars()) == 0 && 0x40 <= ch && ch <= 0x5F {
-		// convert 7-bit esc sequence into 8-bit c1 control sequence
-		// TODO consider remove 8-bit c1 control
-		act2 := escDispatch{action{ch + 0x40, true}}
-		e.dispatcher.dispatch(DISPATCH_CONTROL, &act2, &e.framebuffer)
-	} else {
-		e.dispatcher.dispatch(DISPATCH_ESCAPE, act, &e.framebuffer)
-	}
-}
-
-func (e *emulator) OSCdispatch(act Action) {
-	e.dispatcher.oscDispatch(act, &e.framebuffer)
-}
-
-func (e *emulator) OSCend(act Action) {
-}
-
-func (e *emulator) Resize(act Action) {
-}
-
-*/
