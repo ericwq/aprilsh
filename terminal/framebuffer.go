@@ -221,7 +221,7 @@ func (fb *Framebuffer) getCell(pY, pX int) (cell Cell) {
 }
 
 // retrun a reference of the specified cell
-func (fb *Framebuffer) getMutableCell(pY, pX int) (cell *Cell) {
+func (fb *Framebuffer) getCellPtr(pY, pX int) (cell *Cell) {
 	idx := fb.getIdx(pY, pX)
 	fb.damage.add(idx, idx+1)
 	fb.invalidateSelection(NewRect4(pX, pY, pX+1, pY))

@@ -229,7 +229,7 @@ func (coc *ConditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 		// fmt.Printf("apply #cell (%d,%d) is unknown %q\n", row, coc.col, coc.replacement)
 		// underlining the cell except the last column.
 		if flag && coc.col != emu.GetWidth()-1 {
-			emu.GetMutableCell(row, coc.col).SetUnderline(true)
+			emu.GetCellPtr(row, coc.col).SetUnderline(true)
 		}
 		return
 	}
@@ -238,9 +238,9 @@ func (coc *ConditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 	// update renditions if flag is true.
 	if emu.GetCell(row, coc.col) != coc.replacement {
 		// fmt.Printf("apply #cell (%d,%d) with %q\n", row, coc.col, coc.replacement)
-		(*emu.GetMutableCell(row, coc.col)) = coc.replacement
+		(*emu.GetCellPtr(row, coc.col)) = coc.replacement
 		if flag {
-			emu.GetMutableCell(row, coc.col).SetUnderline(true)
+			emu.GetCellPtr(row, coc.col).SetUnderline(true)
 		}
 	}
 }
@@ -1090,7 +1090,7 @@ func (ne *NotificationEngine) apply(emu *terminal.Emulator) {
 	notificationBar.SetContents([]rune{' '})
 
 	for i := 0; i < emu.GetWidth(); i++ {
-		emu.GetMutableCell(0, i).Reset2(*notificationBar)
+		emu.GetCellPtr(0, i).Reset2(*notificationBar)
 	}
 
 	/* We want to prefer the "last contact" message if we simply haven't

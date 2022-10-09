@@ -278,7 +278,7 @@ func hdl_graphemes(emu *Emulator, chs ...rune) {
 	// the first condition deal with the new graphemes should wrap on next row
 	// the second condition deal with widh graphemes in special position: posX = nColsEff-1 and width is 2
 	if (emu.autoWrapMode && emu.lastCol && emu.posX == emu.nColsEff-1) || (w == 2 && emu.posX == emu.nColsEff-1) {
-		emu.cf.getMutableCell(emu.posY, emu.posX).wrap = true
+		emu.cf.getCellPtr(emu.posY, emu.posX).wrap = true
 		hdl_c0_cr(emu)
 		hdl_c0_lf(emu)
 	}
@@ -295,7 +295,7 @@ func hdl_graphemes(emu *Emulator, chs ...rune) {
 	}
 
 	// print the current cursor cell
-	c := emu.cf.getMutableCell(emu.posY, emu.posX)
+	c := emu.cf.getCellPtr(emu.posY, emu.posX)
 	*c = emu.attrs
 	c.SetContents(chs)
 	// fmt.Printf("#hdl_graphemes print %q at (%d,%d) %p\n", c, emu.posY, emu.posX, c)
@@ -307,7 +307,7 @@ func hdl_graphemes(emu *Emulator, chs ...rune) {
 		// the cell after double width cell
 		// set double width continue flag
 		emu.posX++
-		emu.cf.getMutableCell(emu.posY, emu.posX).SetDoubleWidthCont(true)
+		emu.cf.getCellPtr(emu.posY, emu.posX).SetDoubleWidthCont(true)
 	}
 
 	// prepare for the next graphemes, move the cursor or set last column flag
@@ -655,10 +655,10 @@ func hdl_csi_ich(emu *Emulator, arg int) {
 
 		if emu.cf.getCell(emu.posY, emu.posX+arg+length-1).wrap {
 			// maintain wrap bit invariance at EOL
-			emu.cf.getMutableCell(emu.posY, emu.posX+arg+length-1).wrap = false
+			emu.cf.getCellPtr(emu.posY, emu.posX+arg+length-1).wrap = false
 
 			if length != 0 {
-				emu.cf.getMutableCell(emu.posY, emu.posX+length-1).wrap = true
+				emu.cf.getCellPtr(emu.posY, emu.posX+length-1).wrap = true
 			} // TODO add logic for length ==0
 		}
 

@@ -577,10 +577,10 @@ func (emu *Emulator) GetCell(posY, posX int) Cell {
 	return emu.cf.getCell(posY, posX)
 }
 
-func (emu *Emulator) GetMutableCell(posY, posX int) *Cell {
+func (emu *Emulator) GetCellPtr(posY, posX int) *Cell {
 	posY, posX = emu.getCellPos(posY, posX)
 
-	return emu.cf.getMutableCell(posY, posX)
+	return emu.cf.getCellPtr(posY, posX)
 }
 
 // convert the [posY,posX] into right position coordinates

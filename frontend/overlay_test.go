@@ -146,7 +146,7 @@ func TestCellApply(t *testing.T) {
 		predict.unknown = v.unknown
 		// set content for emulator cell
 		if v.contents != '\x00' {
-			emu.GetMutableCell(v.row, v.col).Append(v.contents)
+			emu.GetCellPtr(v.row, v.col).Append(v.contents)
 		}
 
 		// call apply
@@ -389,7 +389,7 @@ func printEmulatorCell(emu *terminal.Emulator, row, col int, sample string, pref
 	for graphemes.Next() {
 		chs := graphemes.Runes()
 
-		cell := emu.GetMutableCell(row, col+i)
+		cell := emu.GetCellPtr(row, col+i)
 		fmt.Printf("%s # cell %p (%d,%d) is %q\n", prefix, cell, row, col+i, cell)
 		i += uniseg.StringWidth(string(chs))
 	}
