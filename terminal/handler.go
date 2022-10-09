@@ -391,7 +391,7 @@ func hdl_vt52_id(emu *Emulator) {
 }
 
 // FF, VT same as LF a.k.a IND Index
-// move cursor to the next row, scroll down if necessary.
+// move cursor to the next row, scroll up if necessary.
 func hdl_esc_ind(emu *Emulator) (scrolled bool) {
 	if emu.posY == emu.marginBottom-1 {
 		// text up, viewpoint down if it reaches the last row in active area
@@ -772,13 +772,6 @@ func hdl_csi_sd(emu *Emulator, arg int) {
 		emu.lastCol = false
 	}
 }
-
-// erase cell from the start to end at specified row
-// func clearline(fb *Framebuffer, row int, start int, end int) {
-// 	for col := start; col <= end; col++ {
-// 		fb.ResetCell(fb.GetCell(row, col))
-// 	}
-// }
 
 // CSI Ps X  Erase Ps Character(s) (default = 1) (ECH).
 func hdl_csi_ech(emu *Emulator, arg int) {

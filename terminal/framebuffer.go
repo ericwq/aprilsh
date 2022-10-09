@@ -36,10 +36,10 @@ type Framebuffer struct {
 	nRows        int    // rows number per window
 	saveLines    int    // nRows + saveLines is the scrolling area limitation
 	scrollHead   int    // row offset of scrolling area's logical top row
-	marginTop    int    // current margin top (number of rows above)
-	marginBottom int    // current margin bottom (number of rows above + 1)
+	marginTop    int    // current margin top (number of rows above), the top row of scrolling area.
+	marginBottom int    // current margin bottom (number of rows above + 1), the bottom row of scrolling area.
 	historyRows  int    // number of history (off-screen) rows with data
-	viewOffset   int    // how many rows above top row does the view start?
+	viewOffset   int    // how many rows above top row does the view start? screen view start position
 	margin       bool   // are there (non-default) top/bottom margins set?
 	cells        []Cell // the cells
 	cursor       Cursor // current cursor style, color and position
@@ -265,7 +265,7 @@ func (fb *Framebuffer) copyRow(dstY, srcY, startX, count int) {
 	fb.invalidateSelection(NewRect4(startX, dstY, startX+count, dstY))
 }
 
-// text up, active area down count rows
+// text up, move scrolling area down count rows
 func (fb *Framebuffer) scrollUp(count int) {
 	fb.vscrollSelection(-count)
 	for k := 0; k < count; k++ {
@@ -279,7 +279,7 @@ func (fb *Framebuffer) scrollUp(count int) {
 	fb.damage.add(fb.marginTop*fb.nCols, fb.marginBottom*fb.nCols)
 }
 
-// text down, active area up count rows
+// text down, move scrolling area up count rows
 func (fb *Framebuffer) scrollDown(count int) {
 	fb.vscrollSelection(count)
 	for k := 0; k < count; k++ {
@@ -350,7 +350,14 @@ func (fb *Framebuffer) setCursorStyle(cs CursorStyle) {
 	fb.cursor.style = cs
 }
 
-// TODO check the relationship between viewOffset and scrollHead
+// viewOffset is used to display something other than the active area.
+// scrollHead marks the current logical top of the scrolling area.
+//
+// when preparing frame data for display, viewOffset has to be subtracted
+// from the start of the frame (scrollHead in case of no margins, or 0 if
+// there are margins), wrapping around the buffer limits as necessary.
+// Then, the data has to be copied from that starting point in order,
+// until nRows rows have been copied.
 func (fb *Framebuffer) getPhysicalRow(pY int) int {
 	if pY < 0 {
 		if !fb.margin {
@@ -359,7 +366,6 @@ func (fb *Framebuffer) getPhysicalRow(pY int) int {
 		if pY < 0 {
 			pY += fb.nRows + fb.saveLines
 		}
-
 		// fmt.Printf("- scrollHead=%d, nRows=%d, saveLines=%d -> pY=%d\n", fb.scrollHead, fb.nRows, fb.saveLines, pY)
 		return pY
 	}
