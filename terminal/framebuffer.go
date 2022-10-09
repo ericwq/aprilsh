@@ -84,8 +84,6 @@ func NewFramebuffer2(nCols, nRows int) Framebuffer {
 func NewFramebuffer3(nCols, nRows, saveLines int) (fb *Framebuffer, marginTop int, marginBottom int) {
 	fb = &Framebuffer{}
 
-	// fb.DS = NewDrawState(nCols, nRows)
-
 	fb.cells = make([]Cell, nCols*(nRows+saveLines))
 	fb.nCols = nCols
 	fb.nRows = nRows
@@ -200,6 +198,7 @@ func (fb *Framebuffer) fillCells(ch rune, attrs Cell) {
 	}
 }
 
+/*
 func (fb *Framebuffer) fullCopyCells(dst []Cell) {
 	for pY := 0; pY < fb.nRows; pY++ {
 		srcStartIdx := fb.getViewRowIndex(pY)
@@ -208,6 +207,7 @@ func (fb *Framebuffer) fullCopyCells(dst []Cell) {
 		copy(dst[dstStartIdx:], fb.cells[srcStartIdx:srcEndIdx])
 	}
 }
+*/
 
 func (fb *Framebuffer) freeCells() {
 	fb.cells = nil
