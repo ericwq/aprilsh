@@ -258,6 +258,7 @@ func TestPageUpDownBottom(t *testing.T) {
 
 		// fmt.Printf("scrollHead=%2d, viewOffset=%2d, historyRow=%2d, view row=%2d\n",
 		// 	fb.scrollHead, fb.viewOffset, fb.historyRows, fb.getPhysicalRow(0-fb.viewOffset))
+
 		if fb.viewOffset != v.expectViewOffset {
 			t.Errorf("%q expect viewOffset %d, got %d\n", v.name, v.expectViewOffset, fb.viewOffset)
 		}
