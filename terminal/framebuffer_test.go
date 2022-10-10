@@ -233,15 +233,15 @@ func TestPageUpDownBottom(t *testing.T) {
 		expectViewOffset int    // the result of viewOffset
 		pageType         int    // call pageUp:0 , pageDown:1 or pageToBottom:2
 	}{
-		{"from  0 to 20", 20, "y", 20, 0},
-		{"from 20 to 40", 20, "y", 40, 0},
-		{"from 40 to 45", 5, "x", 45, 0},
-		{"from 44 to 80", 35, "x", 80, 0},
-		{"from 80 to 70", 10, "x", 70, 1},
-		{"from 70 to 40", 30, "y", 40, 1},
-		{"from 40 to 10", 30, "y", 10, 1},
-		{"page to bottom", 0, "z", 0, 2},
-		{"page to bottom again", 0, "z", 0, 2},
+		{"from  0 to  1", 1, "y", 1, 0},        // y area bottom edge
+		{"from  1 to 40", 39, "y", 40, 0},      // y area top edge
+		{"from 40 to 41", 1, "x", 41, 0},       // x area bottom edge
+		{"from 41 to 80", 39, "x", 80, 0},      // x area top edge
+		{"from 80 to 41", 39, "x", 41, 1},      // x area bottom edge
+		{"from 41 to 40", 1, "y", 40, 1},       // y area top edge
+		{"from 40 to  1", 39, "y", 1, 1},       // y area bottom edge
+		{"page to bottom", 0, "z", 0, 2},       // x area top edge
+		{"page to bottom again", 0, "z", 0, 2}, // x area top edge again
 	}
 
 	// fmt.Printf("%s\n", printCells(fb))
@@ -256,9 +256,8 @@ func TestPageUpDownBottom(t *testing.T) {
 			fb.pageToBottom()
 		}
 
-		// fmt.Printf("scrollHead=%d, viewOffset=%d, historyRow=%d\n",
-		// 	fb.scrollHead, fb.viewOffset, fb.historyRows)
-
+		// fmt.Printf("scrollHead=%2d, viewOffset=%2d, historyRow=%2d, view row=%2d\n",
+		// 	fb.scrollHead, fb.viewOffset, fb.historyRows, fb.getPhysicalRow(0-fb.viewOffset))
 		if fb.viewOffset != v.expectViewOffset {
 			t.Errorf("%q expect viewOffset %d, got %d\n", v.name, v.expectViewOffset, fb.viewOffset)
 		}
