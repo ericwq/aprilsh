@@ -213,3 +213,71 @@ func TestFullCopyCells(t *testing.T) {
 		}
 	}
 }
+
+func TestPageUpDownBottom(t *testing.T) {
+	// fill the framebuffer with 3 different content,scroll the active area.
+	fb, _, _ := NewFramebuffer3(80, 40, 80)
+	base := Cell{}
+	r := []rune{'x', 'y', 'z'}
+	for i := 0; i < 3; i++ {
+		fb.fillCells(r[i], base)
+		if i != 2 { // move scrollHead to row 80
+			fb.scrollUp(40)
+		}
+	}
+
+	tc := []struct {
+		name             string
+		viewOffset       int    // the parameter for pageUp or pageDown
+		expect           string // expect cell content
+		expectViewOffset int    // the result of viewOffset
+		pageType         int    // call pageUp:0 , pageDown:1 or pageToBottom:2
+	}{
+		{"from  0 to 20", 20, "y", 20, 0},
+		{"from 20 to 40", 20, "y", 40, 0},
+		{"from 40 to 45", 5, "x", 45, 0},
+		{"from 44 to 80", 35, "x", 80, 0},
+		{"from 80 to 70", 10, "x", 70, 1},
+		{"from 70 to 40", 30, "y", 40, 1},
+		{"from 40 to 10", 30, "y", 10, 1},
+		{"page to bottom", 0, "z", 0, 2},
+		{"page to bottom again", 0, "z", 0, 2},
+	}
+
+	// fmt.Printf("%s\n", printCells(fb))
+
+	for _, v := range tc {
+		switch v.pageType {
+		case 0:
+			fb.pageUp(v.viewOffset)
+		case 1:
+			fb.pageDown(v.viewOffset)
+		case 2:
+			fb.pageToBottom()
+		}
+
+		// fmt.Printf("scrollHead=%d, viewOffset=%d, historyRow=%d\n",
+		// 	fb.scrollHead, fb.viewOffset, fb.historyRows)
+
+		if fb.viewOffset != v.expectViewOffset {
+			t.Errorf("%q expect viewOffset %d, got %d\n", v.name, v.expectViewOffset, fb.viewOffset)
+		}
+
+		// validate the cell content with different viewOffset
+		got := fb.cells[fb.getViewRowIndex(0)].contents
+		if got != v.expect {
+			t.Errorf("%q expect cell %q, got %q\n", v.name, v.expect, got)
+		}
+	}
+}
+
+func TestEraseInRow_Fail(t *testing.T) {
+	fb, _, _ := NewFramebuffer3(80, 40, 80)
+	base := Cell{}
+	fb.eraseInRow(0, 0, 0, base)
+}
+
+func TestCopyRow(t *testing.T) {
+	fb, _, _ := NewFramebuffer3(80, 40, 80)
+	fb.copyRow(0, 0, 0, 0)
+}
