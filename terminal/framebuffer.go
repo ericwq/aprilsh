@@ -198,16 +198,18 @@ func (fb *Framebuffer) fillCells(ch rune, attrs Cell) {
 	}
 }
 
-/*
+// copy screen view to dst, dest must be allocated in advance.
+// dst := make([]Cell, fb.nCols*fb.nRows)
 func (fb *Framebuffer) fullCopyCells(dst []Cell) {
 	for pY := 0; pY < fb.nRows; pY++ {
 		srcStartIdx := fb.getViewRowIndex(pY)
 		srcEndIdx := srcStartIdx + fb.nCols
 		dstStartIdx := fb.nCols * pY
+		// fmt.Printf("#fullCopyCells copy from src[%d:%d] to dst[%d:]\n",
+		// 	srcStartIdx, srcEndIdx, dstStartIdx)
 		copy(dst[dstStartIdx:], fb.cells[srcStartIdx:srcEndIdx])
 	}
 }
-*/
 
 func (fb *Framebuffer) freeCells() {
 	fb.cells = nil
@@ -294,7 +296,7 @@ func (fb *Framebuffer) scrollDown(count int) {
 	fb.damage.add(fb.marginTop*fb.nCols, fb.marginBottom*fb.nCols)
 }
 
-// text up, screen down count rows
+// text down, screen up count rows
 func (fb *Framebuffer) pageUp(count int) {
 	viewOffset := Min(fb.viewOffset+count, fb.historyRows)
 	delta := viewOffset - fb.viewOffset
@@ -305,7 +307,7 @@ func (fb *Framebuffer) pageUp(count int) {
 	fb.expose()
 }
 
-// text down, screen up count rows
+// text up, screen down count rows
 func (fb *Framebuffer) pageDown(count int) {
 	viewOffset := Max(0, fb.viewOffset-count)
 	delta := viewOffset - fb.viewOffset
@@ -352,12 +354,6 @@ func (fb *Framebuffer) setCursorStyle(cs CursorStyle) {
 
 // viewOffset is used to display something other than the active area.
 // scrollHead marks the current logical top of the scrolling area.
-//
-// when preparing frame data for display, viewOffset has to be subtracted
-// from the start of the frame (scrollHead in case of no margins, or 0 if
-// there are margins), wrapping around the buffer limits as necessary.
-// Then, the data has to be copied from that starting point in order,
-// until nRows rows have been copied.
 func (fb *Framebuffer) getPhysicalRow(pY int) int {
 	if pY < 0 {
 		if !fb.margin {
@@ -388,6 +384,11 @@ func (fb *Framebuffer) getPhysicalRowIndex(pY int) int {
 	return fb.nCols * fb.getPhysicalRow(pY)
 }
 
+// when preparing frame data for display, viewOffset has to be subtracted
+// from the start of the frame (scrollHead in case of no margins, or 0 if
+// there are margins), wrapping around the buffer limits as necessary.
+// Then, the data has to be copied from that starting point in order,
+// until nRows rows have been copied.
 func (fb *Framebuffer) getViewRowIndex(pY int) int {
 	return fb.getPhysicalRowIndex(pY - fb.viewOffset)
 }

@@ -77,12 +77,13 @@ func TestIconNameWindowTitle(t *testing.T) {
 	}
 }
 
+type Row struct {
+	row     int
+	count   int
+	content rune
+}
+
 func TestResize(t *testing.T) {
-	type Row struct {
-		row     int
-		count   int
-		content rune
-	}
 	tc := []struct {
 		name   string
 		w0, h0 int
@@ -138,6 +139,77 @@ func TestResize(t *testing.T) {
 			if !strings.Contains(output, indexStr) {
 				t.Errorf("%q expect %q, got empty\n", v.name, indexStr)
 			}
+		}
+	}
+}
+
+func TestUnwrapCellStorage(t *testing.T) {
+	rows := []Row{
+		{0, 80, 'z'},
+		{39, 80, 'z'},
+		{40, 80, 'x'},
+		{79, 80, 'x'},
+		{80, 80, 'y'},
+		{119, 80, 'y'},
+	}
+	name := "#test unwrapCellStorage() "
+
+	fb, _, _ := NewFramebuffer3(80, 40, 80)
+	base := Cell{}
+	r := []rune{'x', 'y', 'z'}
+	for i := 0; i < 3; i++ {
+		fb.fillCells(r[i], base)
+		if i != 2 {
+			fb.scrollUp(40)
+		}
+	}
+	// fmt.Printf("%s\n", printCells(fb))
+
+	fb.unwrapCellStorage()
+	output := printCells(fb)
+	// fmt.Printf("%s\n", output)
+
+	for _, row := range rows {
+		fmtStr := "[%3d] %s"
+		if row.row == 0 {
+			fmtStr = "[%3d]-%s"
+		}
+		indexStr := fmt.Sprintf(fmtStr, row.row,
+			strings.Repeat(string(row.content), row.count))
+		// fmt.Printf("%s\n", indexStr)
+
+		if !strings.Contains(output, indexStr) {
+			t.Errorf("%q expect %q, got empty\n", name, indexStr)
+		}
+	}
+}
+
+func TestFullCopyCells(t *testing.T) {
+	fb, _, _ := NewFramebuffer3(80, 40, 80)
+	base := Cell{}
+	r := []rune{'x', 'y', 'z'}
+	for i := 0; i < 3; i++ {
+		fb.fillCells(r[i], base)
+		if i != 2 { // move scrollHead to row 80
+			fb.scrollUp(40)
+		}
+	}
+	// fmt.Printf("%s\n", printCells(fb))
+	// move viewOffset to row 80
+	fb.pageUp(80)
+
+	// fmt.Printf("scrollHead=%d, viewOffset=%d, historyRow=%d\n",
+	// 	fb.scrollHead, fb.viewOffset, fb.historyRows)
+
+	dst := make([]Cell, fb.nCols*fb.nRows)
+	fb.fullCopyCells(dst)
+
+	// validate the result
+	expect := "x"
+	for _, c := range dst {
+		if c.contents != expect {
+			t.Errorf("#test fullCopyCells() expect %q, got %q", expect, c.contents)
+			break
 		}
 	}
 }
