@@ -32,20 +32,20 @@ const (
 
 type Framebuffer struct {
 	// support both (scrollable) normal screen buffer and alternate screen buffer
-	nCols        int    // cols number per window
-	nRows        int    // rows number per window
-	saveLines    int    // nRows + saveLines is the scrolling area limitation
-	scrollHead   int    // row offset of scrolling area's logical top row
-	marginTop    int    // current margin top (number of rows above), the top row of scrolling area.
-	marginBottom int    // current margin bottom (number of rows above + 1), the bottom row of scrolling area.
-	historyRows  int    // number of history (off-screen) rows with data
-	viewOffset   int    // how many rows above top row does the view start? screen view start position
-	margin       bool   // are there (non-default) top/bottom margins set?
-	cells        []Cell // the cells
-	cursor       Cursor // current cursor style, color and position
-	selection    Rect   // selection area
-	// snapTo       SelectSnapTo // TODO should we add this?
-	damage Damage // damage scope
+	nCols        int          // cols number per window
+	nRows        int          // rows number per window
+	saveLines    int          // nRows + saveLines is the scrolling area limitation
+	scrollHead   int          // row offset of scrolling area's logical top row
+	marginTop    int          // current margin top (number of rows above), the top row of scrolling area.
+	marginBottom int          // current margin bottom (number of rows above + 1), the bottom row of scrolling area.
+	historyRows  int          // number of history (off-screen) rows with data
+	viewOffset   int          // how many rows above top row does the view start? screen view start position
+	margin       bool         // are there (non-default) top/bottom margins set?
+	cells        []Cell       // the cells
+	cursor       Cursor       // current cursor style, color and position
+	selection    Rect         // selection area
+	snapTo       SelectSnapTo // TODO need to add implementation of selection and SelectSnapTo
+	damage       Damage       // damage scope
 
 	// rows             []Row
 	// DS               *DrawState
@@ -122,7 +122,7 @@ func (fb *Framebuffer) resize(nCols, nRows int) (marginTop, marginBottom int) {
 
 	// copy the active area
 	for pY := 0; pY < nCopyRows; pY++ {
-		srcStartIdx := fb.getPhysicalRowIndex(pY)
+		srcStartIdx := fb.getPhysRowIdx(pY)
 		srcEndIdx := srcStartIdx + rowLen
 		dstStartIdx := nCols * pY
 		copy(newCells[dstStartIdx:], fb.cells[srcStartIdx:srcEndIdx])
@@ -131,7 +131,7 @@ func (fb *Framebuffer) resize(nCols, nRows int) (marginTop, marginBottom int) {
 	base := (nRows + fb.saveLines - fb.historyRows) * nCols
 	j := 0
 	for pY := -fb.historyRows; pY < 0; pY++ {
-		srcStartIdx := fb.getPhysicalRowIndex(pY)
+		srcStartIdx := fb.getPhysRowIdx(pY)
 		srcEndIdx := srcStartIdx + rowLen
 		dstStartIdx := base + nCols*j
 		copy(newCells[dstStartIdx:], fb.cells[srcStartIdx:srcEndIdx])
@@ -202,7 +202,7 @@ func (fb *Framebuffer) fillCells(ch rune, attrs Cell) {
 // dst := make([]Cell, fb.nCols*fb.nRows)
 func (fb *Framebuffer) fullCopyCells(dst []Cell) {
 	for pY := 0; pY < fb.nRows; pY++ {
-		srcStartIdx := fb.getViewRowIndex(pY)
+		srcStartIdx := fb.getViewRowIdx(pY)
 		srcEndIdx := srcStartIdx + fb.nCols
 		dstStartIdx := fb.nCols * pY
 		// fmt.Printf("#fullCopyCells copy from src[%d:%d] to dst[%d:]\n",
@@ -318,7 +318,7 @@ func (fb *Framebuffer) pageDown(count int) {
 	fb.expose()
 }
 
-// text down, screen up to the top row
+// text up, screen down to the scrollHead row
 func (fb *Framebuffer) pageToBottom() {
 	if fb.viewOffset == 0 {
 		return
@@ -343,6 +343,11 @@ func (fb *Framebuffer) resetDamage() {
 	fb.damage.reset()
 }
 
+func (fb *Framebuffer) getCursor() (cursor Cursor) {
+	cursor = fb.cursor
+	return
+}
+
 func (fb *Framebuffer) setCursorPos(pY, pX int) {
 	fb.cursor.posY = pY + fb.viewOffset
 	fb.cursor.posX = pX
@@ -352,9 +357,16 @@ func (fb *Framebuffer) setCursorStyle(cs CursorStyle) {
 	fb.cursor.style = cs
 }
 
+/* TODO where the selection and SelectSnapTo related mehtods goes to */
+
 // viewOffset is used to display something other than the active area.
 // scrollHead marks the current logical top of the scrolling area.
 func (fb *Framebuffer) getPhysicalRow(pY int) int {
+	// defer func() {
+	// 	fmt.Printf("#getPhysicalRow scrollHead=%d, nRows=%d, saveLines=%d -> pY=%d\n",
+	// 		fb.scrollHead, fb.nRows, fb.saveLines, pY)
+	// }()
+
 	if pY < 0 {
 		if !fb.margin {
 			pY += fb.scrollHead
@@ -362,25 +374,25 @@ func (fb *Framebuffer) getPhysicalRow(pY int) int {
 		if pY < 0 {
 			pY += fb.nRows + fb.saveLines
 		}
-		// fmt.Printf("- scrollHead=%d, nRows=%d, saveLines=%d -> pY=%d\n", fb.scrollHead, fb.nRows, fb.saveLines, pY)
 		return pY
 	}
 
+	// margin rows keeps unchanged
 	if fb.margin && (pY < fb.marginTop || pY >= fb.marginBottom) {
-		// fmt.Printf("* marginTop=%d, marginBottom=%d -> pY=%d\n", fb.marginTop, fb.marginBottom, pY)
 		return pY
 	}
 
+	// map the row according to scrollHead and marginTop
 	pY += fb.scrollHead - fb.marginTop
 	if pY >= fb.marginBottom {
+		// wrap the buffer
 		pY -= fb.marginBottom - fb.marginTop
 	}
 
-	// fmt.Printf("+ scrollHead=%d, marginTop=%d, marginBottom=%d -> pY=%d\n", fb.scrollHead, fb.marginTop, fb.marginBottom, pY)
 	return pY
 }
 
-func (fb *Framebuffer) getPhysicalRowIndex(pY int) int {
+func (fb *Framebuffer) getPhysRowIdx(pY int) int {
 	return fb.nCols * fb.getPhysicalRow(pY)
 }
 
@@ -389,8 +401,8 @@ func (fb *Framebuffer) getPhysicalRowIndex(pY int) int {
 // there are margins), wrapping around the buffer limits as necessary.
 // Then, the data has to be copied from that starting point in order,
 // until nRows rows have been copied.
-func (fb *Framebuffer) getViewRowIndex(pY int) int {
-	return fb.getPhysicalRowIndex(pY - fb.viewOffset)
+func (fb *Framebuffer) getViewRowIdx(pY int) int {
+	return fb.getPhysRowIdx(pY - fb.viewOffset)
 }
 
 func (fb *Framebuffer) getIdx(pY, pX int) int {
@@ -416,6 +428,8 @@ func (fb *Framebuffer) moveCells(dstIx, srcIx, count int) {
 	copy(fb.cells[dstIx:], fb.cells[srcIx:srcIx+count])
 	fb.damage.add(dstIx, dstIx+count)
 }
+
+/* TODO where damageDeltaCopy goes to */
 
 func (fb *Framebuffer) copyAllCells(dst []Cell) {
 	// copy the active area
@@ -448,6 +462,8 @@ func (fb *Framebuffer) unwrapCellStorage() {
 	fb.cells = newCells
 	fb.scrollHead = fb.marginTop
 }
+
+/* TODO where cycleSelectSnapTo() goes to. */
 
 // how the vertical scrolling affect selection area.
 // #Understand

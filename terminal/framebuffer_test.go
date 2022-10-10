@@ -264,7 +264,7 @@ func TestPageUpDownBottom(t *testing.T) {
 		}
 
 		// validate the cell content with different viewOffset
-		got := fb.cells[fb.getViewRowIndex(0)].contents
+		got := fb.cells[fb.getViewRowIdx(0)].contents
 		if got != v.expect {
 			t.Errorf("%q expect cell %q, got %q\n", v.name, v.expect, got)
 		}
@@ -280,4 +280,82 @@ func TestEraseInRow_Fail(t *testing.T) {
 func TestCopyRow(t *testing.T) {
 	fb, _, _ := NewFramebuffer3(80, 40, 80)
 	fb.copyRow(0, 0, 0, 0)
+}
+
+// TODO need to understand the viewOffset meaning.
+func TestGetPhysicalRow(t *testing.T) {
+	// fill the framebuffer with 3 different content,scroll the active area.
+	fb, _, _ := NewFramebuffer3(80, 40, 10)
+	// set margin top/bottom
+	fb.setMargins(2, 38)
+
+	fillCells(fb)
+	fb.scrollUp(10)
+
+	// fmt.Printf("%s\n", printCells(fb))
+
+	tc := []struct {
+		name   string
+		count  int
+		expect string
+	}{
+		{"from 0 to 2", 2, ""},
+		{"from 2 to 40", 8, ""},
+	}
+
+	for _, v := range tc {
+		// move viewOffset
+		fb.pageUp(v.count)
+		// fmt.Printf("scrollHead=%d, marginTop=%d, marginBottom=%d, viewOffset=%d, historyRow=%d\n",
+		// 	fb.scrollHead, fb.marginTop, fb.marginBottom, fb.viewOffset, fb.historyRows)
+
+		// validate the cell content with different viewOffset
+		got := fb.cells[fb.getViewRowIdx(0)].contents
+		if got != v.expect {
+			t.Errorf("%q expect cell %q, got %q\n", v.name, v.expect, got)
+		}
+	}
+}
+
+func TestGetPhysicalRow_FullRange(t *testing.T) {
+	// fill the framebuffer with 3 different content,scroll the active area.
+	fb, _, _ := NewFramebuffer3(80, 40, 10)
+	// set margin top/bottom
+	fb.setMargins(2, 38)
+	// fill the cell and move the scrollHead
+	fillCells(fb)
+	fb.scrollUp(10)
+
+	tc := []struct {
+		name   string
+		in     int
+		expect int
+	}{
+		{"negative max", -10, 40},
+		{"negative mini", -1, 49},
+		{"margin top", 0, 0},
+		{"margin top continue", 1, 1},
+		{"scroll area top", 2, 12},
+		{"scroll area continue", 27, 37},
+		{"scroll area wrap", 28, 2},
+		{"scroll area continue", 37, 11},
+		{"margin bottom", 38, 38},
+		{"margin bottom continue", 39, 39},
+	}
+
+	// fmt.Printf("%s\n", printCells(fb))
+	// fmt.Printf("scrollHead=%d, marginTop=%d, marginBottom=%d, viewOffset=%d, historyRow=%d\n",
+	// 	fb.scrollHead, fb.marginTop, fb.marginBottom, fb.viewOffset, fb.historyRows)
+
+	for _, v := range tc {
+		got := fb.getPhysicalRow(v.in)
+		if got != v.expect {
+			t.Errorf("%q getPhysicalRow expect %d, got %d\n", v.name, v.expect, got)
+		}
+	}
+
+	// for i := -10; i < 40; i++ {
+	// 	got := fb.getPhysicalRow(i)
+	// 	fmt.Printf("#test getPhysicalRow in=%d, out=%d\n", i, got)
+	// }
 }
