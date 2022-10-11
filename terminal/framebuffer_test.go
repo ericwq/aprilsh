@@ -221,7 +221,7 @@ func TestPageUpDownBottom(t *testing.T) {
 	r := []rune{'x', 'y', 'z'}
 	for i := 0; i < 3; i++ {
 		fb.fillCells(r[i], base)
-		if i != 2 { // move scrollHead to row 80
+		if i != 2 { // move scrollHead twice
 			fb.scrollUp(40)
 		}
 	}
@@ -256,7 +256,7 @@ func TestPageUpDownBottom(t *testing.T) {
 			fb.pageToBottom()
 		}
 
-		// fmt.Printf("scrollHead=%2d, viewOffset=%2d, historyRow=%2d, view row=%2d\n",
+		// fmt.Printf("scrollHead=%2d, viewOffset=%2d, historyRow=%2d, mapping to physical row=%2d\n",
 		// 	fb.scrollHead, fb.viewOffset, fb.historyRows, fb.getPhysicalRow(0-fb.viewOffset))
 
 		if fb.viewOffset != v.expectViewOffset {
@@ -342,9 +342,9 @@ func TestGetPhysicalRow_Margin(t *testing.T) {
 		{"margin bottom continue", 39, 39}, // show bottom margin
 	}
 
-	fmt.Printf("%s\n", printCells(fb))
-	fmt.Printf("scrollHead=%d, marginTop=%d, marginBottom=%d, viewOffset=%d, historyRow=%d\n",
-		fb.scrollHead, fb.marginTop, fb.marginBottom, fb.viewOffset, fb.historyRows)
+	// fmt.Printf("%s\n", printCells(fb))
+	// fmt.Printf("scrollHead=%d, marginTop=%d, marginBottom=%d, viewOffset=%d, historyRow=%d\n",
+	// 	fb.scrollHead, fb.marginTop, fb.marginBottom, fb.viewOffset, fb.historyRows)
 
 	for _, v := range tc {
 		got := fb.getPhysicalRow(v.in)
