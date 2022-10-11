@@ -312,7 +312,6 @@ func TestGetPhysicalRow_NoMargin(t *testing.T) {
 }
 
 func TestGetPhysicalRow_Margin(t *testing.T) {
-	// fill the framebuffer with 3 different content,scroll the active area.
 	fb, _, _ := NewFramebuffer3(80, 40, 10)
 
 	// set margin top/bottom
@@ -357,4 +356,20 @@ func TestGetPhysicalRow_Margin(t *testing.T) {
 	// 	got := fb.getPhysicalRow(i)
 	// 	fmt.Printf("#test getPhysicalRow in=%d, out=%d\n", i, got)
 	// }
+}
+
+func TestCycleSelectSnapTo(t *testing.T) {
+	fb, _, _ := NewFramebuffer3(80, 40, 10)
+
+	tc := []SelectSnapTo{SelectSnapTo_Char, SelectSnapTo_Word, SelectSnapTo_Line, SelectSnapTo_Char}
+
+	for i := 0; i < len(tc)-1; i++ {
+		expect := tc[i+1]
+		fb.cycleSelectSnapTo()
+		got := fb.snapTo
+
+		if got != expect {
+			t.Errorf("#test cycleSelectSnapTo expect %d, got %d\n", expect, got)
+		}
+	}
 }

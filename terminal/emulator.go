@@ -275,7 +275,7 @@ func (emu *Emulator) resetScreen() {
 
 	emu.mouseTrk = MouseTrackingState{}
 	emu.tabStops = make([]int, 0)
-	emu.cf.getSelection().clear()
+	emu.cf.getSelectionPtr().clear()
 }
 
 func (emu *Emulator) clearScreen() {

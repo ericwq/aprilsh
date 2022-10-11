@@ -102,6 +102,7 @@ func NewFramebuffer3(nCols, nRows, saveLines int) (fb *Framebuffer, marginTop in
 
 	fb.damage.totalCells = nCols * (nRows + saveLines)
 	fb.selection = *NewRect()
+	fb.snapTo = SelectSnapTo_Char
 
 	marginTop = fb.marginTop
 	marginBottom = fb.nRows
@@ -114,7 +115,7 @@ func (fb *Framebuffer) resize(nCols, nRows int) (marginTop, marginBottom int) {
 	}
 
 	// adjust the internal cell storage according to the new size
-	// TODO the defalt constructor of Cell set the contents field to ""
+	// the defalt constructor of Cell set the contents field to ""
 	newCells := make([]Cell, nCols*(nRows+fb.saveLines))
 
 	rowLen := Min(fb.nCols, nCols)    // minimal row length
@@ -358,6 +359,59 @@ func (fb *Framebuffer) setCursorStyle(cs CursorStyle) {
 }
 
 /* TODO where the selection and SelectSnapTo related mehtods goes to */
+func (fb *Framebuffer) setSelectSnapTo(snapTo SelectSnapTo) {
+	fb.snapTo = snapTo
+}
+
+func (fb *Framebuffer) cycleSelectSnapTo() {
+	fb.snapTo = fb.cycleSelectSnapTo2(fb.snapTo)
+}
+
+func (fb *Framebuffer) getSelection() Rect {
+	return fb.selection
+}
+
+func (fb *Framebuffer) getSelectionPtr() *Rect {
+	return &fb.selection
+}
+
+func (fb *Framebuffer) getSnappedSelection() (ret Rect) {
+	ret = fb.selection
+
+	if ret.null() {
+		return ret
+	}
+
+	if ret.rectangular {
+		return ret
+	}
+
+	switch fb.snapTo {
+	case SelectSnapTo_Char:
+		break
+	case SelectSnapTo_Word:
+		cp := fb.getViewRowIdx(ret.tl.y) // it's the base
+		for ret.tl.x < fb.nCols && fb.cells[cp+ret.tl.x].contents == " " {
+			ret.tl.x++
+		}
+		for ret.tl.x > 0 && fb.cells[cp+ret.tl.x-1].contents == " " {
+			ret.tl.x--
+		}
+
+		cp = fb.getViewRowIdx(ret.br.y)
+		for ret.br.x > 0 && fb.cells[cp+ret.br.x].contents == " " {
+			ret.br.x--
+		}
+		for ret.br.x < fb.nCols && fb.cells[cp+ret.br.x].contents == " " {
+			ret.br.x++
+		}
+	case SelectSnapTo_Line:
+		ret.tl.x = 0
+		ret.br.x = fb.nCols
+	default:
+	}
+	return
+}
 
 // viewOffset is used to display something other than the active area.
 // scrollHead marks the current logical top of the scrolling area.
@@ -463,7 +517,9 @@ func (fb *Framebuffer) unwrapCellStorage() {
 	fb.scrollHead = fb.marginTop
 }
 
-/* TODO where cycleSelectSnapTo() goes to. */
+func (fb *Framebuffer) cycleSelectSnapTo2(snapTo SelectSnapTo) SelectSnapTo {
+	return SelectSnapTo((int(snapTo) + 1) % int(SelectSnapTo_COUNT))
+}
 
 // how the vertical scrolling affect selection area.
 // #Understand
@@ -499,10 +555,6 @@ func (fb *Framebuffer) invalidateSelection(damage *Rect) {
 	}
 
 	fb.selection.clear()
-}
-
-func (fb *Framebuffer) getSelection() *Rect {
-	return &fb.selection
 }
 
 /* --------------------------------------------------- new frame end here */
