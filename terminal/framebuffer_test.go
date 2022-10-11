@@ -282,48 +282,47 @@ func TestCopyRow(t *testing.T) {
 	fb.copyRow(0, 0, 0, 0)
 }
 
-// TODO need to understand the viewOffset meaning.
-func TestGetPhysicalRow(t *testing.T) {
-	// fill the framebuffer with 3 different content,scroll the active area.
-	fb, _, _ := NewFramebuffer3(80, 40, 10)
-	// set margin top/bottom
-	fb.setMargins(2, 38)
+func TestGetPhysicalRow_NoMargin(t *testing.T) {
+	fb, _, _ := NewFramebuffer3(80, 40, 40)
 
-	fillCells(fb)
-	fb.scrollUp(10)
+	// move scrollHead to specified row
+	fb.scrollUp(40)
 
+	// fill the screen
+	base := Cell{}
+	fb.fillCells('Z', base)
 	// fmt.Printf("%s\n", printCells(fb))
 
-	tc := []struct {
-		name   string
-		count  int
-		expect string
-	}{
-		{"from 0 to 2", 2, ""},
-		{"from 2 to 40", 8, ""},
-	}
+	// set viewOffset to specified number
+	fb.pageUp(40)
 
-	for _, v := range tc {
-		// move viewOffset
-		fb.pageUp(v.count)
-		// fmt.Printf("scrollHead=%d, marginTop=%d, marginBottom=%d, viewOffset=%d, historyRow=%d\n",
-		// 	fb.scrollHead, fb.marginTop, fb.marginBottom, fb.viewOffset, fb.historyRows)
+	// fmt.Printf("#test getPhysicalRow() nCols=%2d, nRows=%2d, saveLines=%2d, margin=%t\n",
+	// 	fb.nCols, fb.nRows, fb.saveLines, fb.margin)
+	// fmt.Printf("#test getPhysicalRow() scrollHead=%2d, marginTop=%2d, marginBottom=%2d, viewOffset=%2d, historyRow=%2d\n",
+	// 	fb.scrollHead, fb.marginTop, fb.marginBottom, fb.viewOffset, fb.historyRows)
 
-		// validate the cell content with different viewOffset
-		got := fb.cells[fb.getViewRowIdx(0)].contents
-		if got != v.expect {
-			t.Errorf("%q expect cell %q, got %q\n", v.name, v.expect, got)
+	for i := 0; i < 40; i++ {
+		if i != fb.getPhysicalRow(i-fb.viewOffset) {
+			t.Errorf("#test expect row %d map to physical row %d, got %d\n", i, i, fb.getPhysicalRow(i-fb.viewOffset))
+			break
 		}
+		// fmt.Printf("#test getPhysicalRow() screen row=%2d, param=%3d, map to physical row=%2d\n",
+		// 	i, i-fb.viewOffset, fb.getPhysicalRow(i-fb.viewOffset))
 	}
 }
 
-func TestGetPhysicalRow_FullRange(t *testing.T) {
+func TestGetPhysicalRow_Margin(t *testing.T) {
 	// fill the framebuffer with 3 different content,scroll the active area.
 	fb, _, _ := NewFramebuffer3(80, 40, 10)
+
 	// set margin top/bottom
 	fb.setMargins(2, 38)
-	// fill the cell and move the scrollHead
-	fillCells(fb)
+
+	// fill the screen
+	base := Cell{}
+	fb.fillCells('Z', base)
+
+	// move the scrollHead to specified row
 	fb.scrollUp(10)
 
 	tc := []struct {
@@ -331,21 +330,21 @@ func TestGetPhysicalRow_FullRange(t *testing.T) {
 		in     int
 		expect int
 	}{
-		{"negative max", -10, 40},
-		{"negative mini", -1, 49},
-		{"margin top", 0, 0},
-		{"margin top continue", 1, 1},
-		{"scroll area top", 2, 12},
-		{"scroll area continue", 27, 37},
-		{"scroll area wrap", 28, 2},
-		{"scroll area continue", 37, 11},
-		{"margin bottom", 38, 38},
-		{"margin bottom continue", 39, 39},
+		{"negative max", -10, 40},          // show data in savedLines
+		{"negative mini", -1, 49},          // the rest of savedLines
+		{"margin top", 0, 0},               // show top margin
+		{"margin top continue", 1, 1},      // show top margin
+		{"scroll area top", 2, 12},         // jump to the scrollHead
+		{"scroll area continue", 27, 37},   // continue to the bottom limitation
+		{"scroll area wrap", 28, 2},        // wrap to the scroll area
+		{"scroll area continue", 37, 11},   // continue until it reaches nRows
+		{"margin bottom", 38, 38},          // show bottom margin
+		{"margin bottom continue", 39, 39}, // show bottom margin
 	}
 
-	// fmt.Printf("%s\n", printCells(fb))
-	// fmt.Printf("scrollHead=%d, marginTop=%d, marginBottom=%d, viewOffset=%d, historyRow=%d\n",
-	// 	fb.scrollHead, fb.marginTop, fb.marginBottom, fb.viewOffset, fb.historyRows)
+	fmt.Printf("%s\n", printCells(fb))
+	fmt.Printf("scrollHead=%d, marginTop=%d, marginBottom=%d, viewOffset=%d, historyRow=%d\n",
+		fb.scrollHead, fb.marginTop, fb.marginBottom, fb.viewOffset, fb.historyRows)
 
 	for _, v := range tc {
 		got := fb.getPhysicalRow(v.in)
