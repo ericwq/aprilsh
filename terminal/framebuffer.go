@@ -388,21 +388,23 @@ func (fb *Framebuffer) getSnappedSelection() (ret Rect) {
 
 	switch fb.snapTo {
 	case SelectSnapTo_Char:
+		// TODO snap need to consider the double width grapheme
 		break
 	case SelectSnapTo_Word:
+		// TODO snap need to consider the double width grapheme
 		cp := fb.getViewRowIdx(ret.tl.y) // it's the base
-		for ret.tl.x < fb.nCols && fb.cells[cp+ret.tl.x].contents == " " {
-			ret.tl.x++
+		for ret.tl.x < fb.nCols && fb.cells[cp+ret.tl.x].IsBlank() {
+			ret.tl.x++ // find the non blank cell
 		}
-		for ret.tl.x > 0 && fb.cells[cp+ret.tl.x-1].contents == " " {
-			ret.tl.x--
+		for ret.tl.x > 0 && !fb.cells[cp+ret.tl.x-1].IsBlank() {
+			ret.tl.x-- // find the blank cell
 		}
 
 		cp = fb.getViewRowIdx(ret.br.y)
-		for ret.br.x > 0 && fb.cells[cp+ret.br.x].contents == " " {
+		for ret.br.x > 0 && fb.cells[cp+ret.br.x].IsBlank() {
 			ret.br.x--
 		}
-		for ret.br.x < fb.nCols && fb.cells[cp+ret.br.x].contents == " " {
+		for ret.br.x < fb.nCols && !fb.cells[cp+ret.br.x].IsBlank() {
 			ret.br.x++
 		}
 	case SelectSnapTo_Line:
