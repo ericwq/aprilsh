@@ -45,6 +45,9 @@ type Cell struct {
 }
 
 func (c Cell) IsBlank() bool {
+	if c.dwidth || c.dwidthCont {
+		return false
+	}
 	return c.Empty() || c.contents == " " || c.contents == "\xC2\xA0"
 }
 

@@ -120,6 +120,12 @@ func fillCells(fb *Framebuffer, rows ...int) {
 func printCells(fb *Framebuffer, rows ...int) string {
 	var output strings.Builder
 
+	fmt.Fprintf(&output, "[RULE]")
+	for r := 0; r < fb.nCols; r++ {
+		fmt.Fprintf(&output, "%d", r%10)
+	}
+	fmt.Fprintf(&output, "\n")
+
 	for r := 0; r < fb.nRows; r++ {
 		if len(rows) == 0 || inScope(rows, r) {
 			start := fb.nCols * r // fb.getIdx(r, 0)

@@ -28,6 +28,7 @@ package terminal
 
 import (
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 )
@@ -448,6 +449,84 @@ func TestInvalidateSelection(t *testing.T) {
 		// validate the result
 		if fb.selection != v.expect {
 			t.Errorf("%q expect %s, got %s\n", v.label, &v.expect, &fb.selection)
+		}
+	}
+}
+
+func TestGetSnappedSelection(t *testing.T) {
+	tc := []struct {
+		label     string
+		seq       string
+		selection Rect
+		snapTo    SelectSnapTo
+		expect    Rect
+	}{
+		{
+			"english text, selection outside", "\x1B[24;14Henglish text, normal selection",
+			Rect{Point{0, 23}, Point{79, 23}, false},
+			SelectSnapTo_Word,
+			Rect{Point{13, 23}, Point{43, 23}, false},
+		},
+		{
+			"english text, selection inside", "\x1B[24;14Henglish text, normal selection",
+			Rect{Point{15, 23}, Point{40, 23}, false},
+			SelectSnapTo_Word,
+			Rect{Point{13, 23}, Point{43, 23}, false},
+		},
+		{
+			"chinese text, selection inside", "\x1B[34;14H中文字符，选择区在内",
+			Rect{Point{15, 33}, Point{29, 33}, false},
+			SelectSnapTo_Word,
+			Rect{Point{13, 33}, Point{33, 33}, false},
+		},
+		{
+			"chinese text, selection outside", "\x1B[34;14H中文字符，选择区在外",
+			Rect{Point{5, 33}, Point{39, 33}, false},
+			SelectSnapTo_Word,
+			Rect{Point{13, 33}, Point{33, 33}, false},
+		},
+		{
+			"selection is null", "",
+			Rect{Point{-1, -1}, Point{-1, -1}, false},
+			SelectSnapTo_Line,
+			Rect{Point{-1, -1}, Point{-1, -1}, false},
+		},
+		{
+			"selection is rectangular", "",
+			Rect{Point{0, 1}, Point{79, 1}, true},
+			SelectSnapTo_Line,
+			Rect{Point{0, 1}, Point{79, 1}, true},
+		},
+		{
+			"snap to char, language independent", "\x1B[41;14Hsnap to char, language independent",
+			Rect{Point{15, 40}, Point{40, 40}, false},
+			SelectSnapTo_Char,
+			Rect{Point{15, 40}, Point{40, 40}, false},
+		},
+		{
+			"snap to line, language independent", "\x1B[41;14Hsnap to line, language independent",
+			Rect{Point{15, 40}, Point{40, 40}, false},
+			SelectSnapTo_Line,
+			Rect{Point{0, 40}, Point{80, 40}, false},
+		},
+	}
+
+	emu := NewEmulator3(80, 40, 0)
+	emu.logT.SetOutput(io.Discard) // hide the log output
+
+	for _, v := range tc {
+		// print the stream to the screen
+		emu.HandleStream(v.seq)
+
+		// fmt.Printf("%s\n", printCells(emu.cf, 33))
+		// setup selection area
+		emu.cf.selection = v.selection
+		// setup selection state
+		emu.cf.setSelectSnapTo(v.snapTo)
+
+		got := emu.cf.getSnappedSelection()
+		if v.expect != got {
+			t.Errorf("%q expect %s, got %s\n", v.label, &v.expect, &got)
 		}
 	}
 }
