@@ -31,8 +31,11 @@ The project name `Aprilsh` is derived from `April+sh`. I started this project in
 - 2022/Aug/04: working on the prediction engine.
 - 2022/Aug/29: finish the prediction engine.
   - refine UTF-8 support.
-- 2022/Sep/04: working on the UDP network.
 - 2022/Sep/20: finish the UDP network.
+- 2022/Sep/28: finish user input state.
+- 2022/Sep/29: refine cell width.
+- 2022/Oct/02: add terminfo module.
+- 2022/Oct/02: working on the Framebuffer for completeness.
 
 ## Architecture view
 
