@@ -26,6 +26,12 @@ SOFTWARE.
 
 package terminal
 
+import (
+	"fmt"
+	"strings"
+	"unicode"
+)
+
 const (
 	SaveLineUpperLimit = 50000
 )
@@ -401,6 +407,74 @@ func (fb *Framebuffer) getSelectedUtf8() (ok bool, utf8Selection string) {
 		ok = false
 		return
 	}
+
+	var lines []string
+	var wrap bool
+
+	fmt.Printf("#getSelectedUtf8 selection=%s\n", &sel)
+
+	addLine := func(y, x1, x2 int) {
+		var line strings.Builder
+		wrapBack := wrap
+		wrap = false
+
+		cp := fb.getViewRowIdx(y)
+		for x := x1; x < x2; x++ {
+			cell := &fb.cells[cp+x]
+			if !cell.dwidthCont {
+				line.WriteString(cell.contents)
+			}
+			if cell.wrap {
+				wrap = true
+				break
+			}
+		}
+
+		fmt.Printf("#getSelectedUtf8 get line:\n%q\n", line.String())
+
+		ln := ""
+		if !wrap && line.Len() > 0 { // discard trailing whitespace
+			ln = strings.TrimRightFunc(line.String(), unicode.IsSpace)
+		}
+
+		if wrapBack && len(lines) > 0 { // deal with extreme long line
+			lines[len(lines)-1] = fmt.Sprintf(lines[len(lines)-1], ln)
+		} else {
+			lines = append(lines, ln)
+		}
+	}
+
+	if sel.tl.y == sel.br.y { // selection area is in the same line
+		addLine(sel.tl.y, sel.tl.x, sel.br.x)
+	} else if sel.rectangular { // selection area is rectangular
+		for y := sel.tl.y; y <= sel.br.y; y++ {
+			addLine(y, sel.tl.x, sel.br.x)
+		}
+	} else { // selection area contains multi lines
+		addLine(sel.tl.y, sel.tl.x, fb.nCols)
+		for y := sel.tl.y + 1; y < sel.br.y; y++ {
+			addLine(y, 0, fb.nCols)
+		}
+		addLine(sel.br.y, 0, sel.br.x)
+	}
+
+	var b strings.Builder
+	for i := range lines {
+		b.WriteString(fmt.Sprintf("%s\n", lines[i]))
+	}
+
+	// discard trailing whitespace
+	utf8Selection = strings.TrimRightFunc(b.String(), func(x rune) bool {
+		if x == '\n' {
+			return true
+		} else {
+			return false
+		}
+	})
+	if len(utf8Selection) > 0 {
+		ok = true
+	}
+
 	return
 }
 

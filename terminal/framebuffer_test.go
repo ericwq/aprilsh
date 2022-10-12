@@ -530,3 +530,37 @@ func TestGetSnappedSelection(t *testing.T) {
 		}
 	}
 }
+
+func TestGetSelectedUtf8(t *testing.T) {
+	tc := []struct {
+		label     string
+		seq       string
+		selection Rect
+		expect    string
+		ok        bool
+	}{
+		{
+			"english text", "\x1B[21;11Hfirst line  \n    second line   \n    3rd line    \n\n\n",
+			Rect{Point{11, 20}, Point{79, 22}, false},
+			"          first line\n    second line\n 3rd line\n", true,
+		},
+	}
+	emu := NewEmulator3(80, 40, 0)
+	// hide the log output
+	// emu.logT.SetOutput(io.Discard)
+
+	for _, v := range tc {
+		// print the stream to the screen
+		emu.HandleStream(v.seq)
+
+		fmt.Printf("%s\n", printCells(emu.cf, 20, 21, 22))
+
+		// setup selection area
+		emu.cf.selection = v.selection
+
+		ok, got := emu.cf.getSelectedUtf8()
+		if v.expect != got || v.ok != ok {
+			t.Errorf("%q expect %t,\n%s, got %t,\n%s\n", v.label, v.ok, v.expect, ok, got)
+		}
+	}
+}
