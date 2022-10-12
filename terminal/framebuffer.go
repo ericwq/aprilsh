@@ -30,8 +30,8 @@ const (
 	SaveLineUpperLimit = 50000
 )
 
+// support both (scrollable) normal screen buffer and alternate screen buffer
 type Framebuffer struct {
-	// support both (scrollable) normal screen buffer and alternate screen buffer
 	nCols        int          // cols number per window
 	nRows        int          // rows number per window
 	saveLines    int          // nRows + saveLines is the scrolling area limitation
@@ -44,33 +44,15 @@ type Framebuffer struct {
 	cells        []Cell       // the cells
 	cursor       Cursor       // current cursor style, color and position
 	selection    Rect         // selection area
-	snapTo       SelectSnapTo // TODO need to add implementation of selection and SelectSnapTo
+	snapTo       SelectSnapTo // selection state
 	damage       Damage       // damage scope
 
-	// rows             []Row
-	// DS               *DrawState
 	iconName         string
 	windowTitle      string
 	bellCount        int
 	titleInitialized bool
-	selectionData    string // store the selection data
+	selectionData    string // store the selection data for OSC 52
 }
-
-// Deprecated: please don't use this function to get a new framebuffer.
-// func NewFramebuffer(width, height int) *Framebuffer {
-// 	if width <= 0 || height <= 0 {
-// 		return nil
-// 	}
-//
-// 	fb := Framebuffer{}
-// 	fb.DS = NewDrawState(width, height)
-// 	fb.rows = make([]Row, height)
-// 	for i := range fb.rows {
-// 		fb.rows[i] = *NewRow(width, 0)
-// 	}
-//
-// 	return &fb
-// }
 
 // create a framebuffer, with saveLines is zero, return the Framebuffer
 func NewFramebuffer2(nCols, nRows int) Framebuffer {
@@ -358,7 +340,6 @@ func (fb *Framebuffer) setCursorStyle(cs CursorStyle) {
 	fb.cursor.style = cs
 }
 
-/* TODO where the selection and SelectSnapTo related mehtods goes to */
 func (fb *Framebuffer) setSelectSnapTo(snapTo SelectSnapTo) {
 	fb.snapTo = snapTo
 }
@@ -411,6 +392,16 @@ func (fb *Framebuffer) getSnappedSelection() (ret Rect) {
 		ret.tl.x = 0
 		ret.br.x = fb.nCols
 	default:
+	}
+	return
+}
+
+func (fb *Framebuffer) getSelectedUtf8() (ok bool, utf8Selection string) {
+	sel := fb.getSnappedSelection()
+
+	if sel.empty() {
+		ok = false
+		return
 	}
 	return
 }
@@ -523,10 +514,7 @@ func (fb *Framebuffer) cycleSelectSnapTo2(snapTo SelectSnapTo) SelectSnapTo {
 	return SelectSnapTo((int(snapTo) + 1) % int(SelectSnapTo_COUNT))
 }
 
-// how the vertical scrolling affect selection area.
-// #Understand
-//
-//	why move the selection area?
+// move the selection area vertically: up and down.
 func (fb *Framebuffer) vscrollSelection(vertOffset int) {
 	if fb.selection.null() {
 		return
@@ -545,7 +533,7 @@ func (fb *Framebuffer) vscrollSelection(vertOffset int) {
 	fb.selection.br.y = y2
 }
 
-// invalidate the selection area if it overlaped with damage area
+// clear the selection area if it overlaped with damage area
 func (fb *Framebuffer) invalidateSelection(damage *Rect) {
 	if fb.selection.empty() {
 		return

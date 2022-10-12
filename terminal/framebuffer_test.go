@@ -373,3 +373,81 @@ func TestCycleSelectSnapTo(t *testing.T) {
 		}
 	}
 }
+
+func TestVscrollSelection(t *testing.T) {
+	tc := []struct {
+		label      string
+		start      Rect
+		vertOffset int
+		expect     Rect
+	}{
+		{"move down", Rect{Point{0, 1}, Point{79, 3}, false}, 8, Rect{Point{0, 9}, Point{79, 11}, false}},
+		{"move down oversize", Rect{Point{0, 1}, Point{79, 3}, false}, 88, Rect{Point{-1, -1}, Point{-1, -1}, false}},
+		{"move up", Rect{Point{0, 37}, Point{79, 39}, false}, -4, Rect{Point{0, 33}, Point{79, 35}, false}},
+		{"move up oversize", Rect{Point{0, 37}, Point{79, 39}, false}, -80, Rect{Point{-1, -1}, Point{-1, -1}, false}},
+	}
+	// nCols, nRows, savedLines
+	fb, _, _ := NewFramebuffer3(80, 40, 40)
+
+	for _, v := range tc {
+		// the initial selection
+		fb.selection = v.start
+
+		// scroll the selection vertOffset
+		fb.vscrollSelection(v.vertOffset)
+
+		// validate the result
+		if fb.selection != v.expect {
+			t.Errorf("%q expect %s, got %s\n", v.label, &v.expect, &fb.selection)
+		}
+	}
+}
+
+func TestInvalidateSelection(t *testing.T) {
+	tc := []struct {
+		label     string
+		selection Rect
+		damage    Rect
+		expect    Rect
+	}{
+		{
+			"selection is on top of damage",
+			Rect{Point{0, 1}, Point{79, 2}, true},
+			Rect{Point{0, 8}, Point{79, 9}, true},
+			Rect{Point{0, 1}, Point{79, 2}, true},
+		},
+		{
+			"damage is on top of selection",
+			Rect{Point{0, 8}, Point{79, 9}, true},
+			Rect{Point{0, 1}, Point{79, 2}, true},
+			Rect{Point{0, 8}, Point{79, 9}, true},
+		},
+		{
+			"selection is empty",
+			Rect{Point{0, 1}, Point{0, 1}, true},
+			Rect{Point{0, 8}, Point{79, 9}, true},
+			Rect{Point{0, 1}, Point{0, 1}, true},
+		},
+		{
+			"selection is overlapped with damage",
+			Rect{Point{0, 1}, Point{79, 4}, true},
+			Rect{Point{0, 3}, Point{79, 9}, true},
+			Rect{Point{-1, -1}, Point{-1, -1}, true},
+		},
+	}
+
+	// nCols, nRows, savedLines
+	fb, _, _ := NewFramebuffer3(80, 40, 40)
+
+	for _, v := range tc {
+		// the initial selection
+		fb.selection = v.selection
+
+		fb.invalidateSelection(&v.damage)
+
+		// validate the result
+		if fb.selection != v.expect {
+			t.Errorf("%q expect %s, got %s\n", v.label, &v.expect, &fb.selection)
+		}
+	}
+}

@@ -52,7 +52,8 @@ func (p Point) less(rhs Point) bool {
 
 // Point(this) < Point(rhs)
 func (p Point) equal(rhs Point) bool {
-	return p.x == rhs.x && p.y == rhs.y
+	return p== rhs
+	// return p.x == rhs.x && p.y == rhs.y
 }
 
 type Rect struct {
