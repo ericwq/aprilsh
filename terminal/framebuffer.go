@@ -345,7 +345,7 @@ func (fb *Framebuffer) setSelectSnapTo(snapTo SelectSnapTo) {
 }
 
 func (fb *Framebuffer) cycleSelectSnapTo() {
-	fb.snapTo = fb.cycleSelectSnapTo2(fb.snapTo)
+	fb.snapTo = cycleSelectSnapTo2(fb.snapTo)
 }
 
 func (fb *Framebuffer) getSelection() Rect {
@@ -506,10 +506,6 @@ func (fb *Framebuffer) unwrapCellStorage() {
 	fb.copyAllCells(newCells)
 	fb.cells = newCells
 	fb.scrollHead = fb.marginTop
-}
-
-func (fb *Framebuffer) cycleSelectSnapTo2(snapTo SelectSnapTo) SelectSnapTo {
-	return SelectSnapTo((int(snapTo) + 1) % int(SelectSnapTo_COUNT))
 }
 
 // move the selection area vertically: up and down.
@@ -821,6 +817,10 @@ func (fb *Framebuffer) resizeCols(width, oldWidth int) {
 // func (fb *Framebuffer) ResetRow(r *Row)   { r.Reset(uint32(fb.DS.GetBackgroundRendition())) }
 func (fb *Framebuffer) ringBell()         { fb.bellCount += 1 }
 func (fb *Framebuffer) getBellCount() int { return fb.bellCount }
+
+func cycleSelectSnapTo2(snapTo SelectSnapTo) SelectSnapTo {
+	return SelectSnapTo((int(snapTo) + 1) % int(SelectSnapTo_COUNT))
+}
 
 // func (fb Framebuffer) Equal(other *Framebuffer) (ret bool) {
 // 	// check title and bell count
