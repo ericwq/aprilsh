@@ -35,7 +35,7 @@ The project name `Aprilsh` is derived from `April+sh`. I started this project in
 - 2022/Sep/28: finish user input state.
 - 2022/Sep/29: refine cell width.
 - 2022/Oct/02: add terminfo module.
-- 2022/Oct/02: working on the Framebuffer for completeness.
+- 2022/Oct/13: finish the Framebuffer for completeness.
 
 ## Architecture view
 
