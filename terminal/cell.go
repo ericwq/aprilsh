@@ -39,6 +39,7 @@ type Cell struct {
 	contents   string
 	renditions Renditions
 	// fallback   bool
+	dirty      bool
 	wrap       bool
 	dwidth     bool
 	dwidthCont bool

@@ -215,6 +215,36 @@ func TestFullCopyCells(t *testing.T) {
 	}
 }
 
+func TestDeltaCopyCells(t *testing.T) {
+	fb, _, _ := NewFramebuffer3(80, 40, 80)
+	base := Cell{}
+	r := []rune{'x', 'y', 'z'}
+	for i := 0; i < 3; i++ {
+		fb.fillCells(r[i], base)
+		if i != 2 { // move scrollHead to specified row
+			fb.scrollUp(40)
+		}
+	}
+	// fmt.Printf("%s\n", printCells(fb))
+	// move viewOffset to specified row
+	fb.pageUp(80)
+
+	// fmt.Printf("scrollHead=%d, viewOffset=%d, historyRow=%d, damage=%v\n",
+	// 	fb.scrollHead, fb.viewOffset, fb.historyRows, fb.damage)
+
+	dst := make([]Cell, fb.nCols*fb.nRows)
+	fb.deltaCopyCells(dst)
+
+	// validate the result
+	expect := "x"
+	for _, c := range dst {
+		if c.contents != expect {
+			t.Errorf("#test fullCopyCells() expect %q, got %q", expect, c.contents)
+			break
+		}
+	}
+}
+
 func TestPageUpDownBottom(t *testing.T) {
 	// fill the framebuffer with 3 different content,scroll the active area.
 	fb, _, _ := NewFramebuffer3(80, 40, 80)
@@ -573,7 +603,7 @@ func TestGetSelectedUtf8(t *testing.T) {
 	}
 	emu := NewEmulator3(80, 40, 0)
 	// hide the log output
-	// emu.logT.SetOutput(io.Discard)
+	emu.logT.SetOutput(io.Discard)
 
 	for i, v := range tc {
 		// print the stream to the screen
@@ -638,4 +668,53 @@ func TestGetCursor(t *testing.T) {
 	if got != expect {
 		t.Errorf("#test resetDamage expect %v, got %v\n", expect, got)
 	}
+}
+
+func TestDamageDeltaCopy(t *testing.T) {
+	tc := []struct {
+		label  string
+		start  int
+		count  int
+		expect string
+	}{
+		{"no intersection", 21, 6, ""},
+		{"copy range > damage area", 3, 20, "damage delta"},
+		{"copy range < damage area", 12, 17, "delta"},
+	}
+	rawSeq := "\x1B[1;6Hdamage delta copy"
+
+	emu := NewEmulator3(80, 40, 0)
+	// hide the log output
+	emu.logT.SetOutput(io.Discard)
+
+	// for easy typing
+	fb := emu.cf
+
+	// print the contents to the screen
+	emu.HandleStream(rawSeq)
+
+	// set the damage area
+	fb.damage = Damage{5, 17, 3200}
+
+	for _, v := range tc {
+		dst := make([]Cell, fb.nCols*fb.nRows)
+		fb.damageDeltaCopy(dst, v.start, v.count)
+
+		// extract the result, ignore the target position
+		got := extractFrom(dst)
+		if v.expect != got {
+			t.Errorf("%q expect %q, got %q\n", v.label, v.expect, got)
+		}
+	}
+}
+
+func extractFrom(cells []Cell) string {
+	var b strings.Builder
+	for _, v := range cells {
+		if !v.dwidthCont {
+			b.WriteString(v.contents)
+		}
+	}
+
+	return b.String()
 }

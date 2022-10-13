@@ -187,7 +187,7 @@ func (fb *Framebuffer) fillCells(ch rune, attrs Cell) {
 	}
 }
 
-// copy screen view to dst, dest must be allocated in advance.
+// copy screen view to dst, dst must be allocated in advance.
 // dst := make([]Cell, fb.nCols*fb.nRows)
 func (fb *Framebuffer) fullCopyCells(dst []Cell) {
 	for pY := 0; pY < fb.nRows; pY++ {
@@ -197,6 +197,14 @@ func (fb *Framebuffer) fullCopyCells(dst []Cell) {
 		// fmt.Printf("#fullCopyCells copy from src[%d:%d] to dst[%d:]\n",
 		// 	srcStartIdx, srcEndIdx, dstStartIdx)
 		copy(dst[dstStartIdx:], fb.cells[srcStartIdx:srcEndIdx])
+	}
+}
+
+func (fb *Framebuffer) deltaCopyCells(dst []Cell) {
+	dstIdx := 0
+	for pY := -fb.viewOffset; pY < fb.nRows-fb.viewOffset; pY++ {
+		fb.damageDeltaCopy(dst[dstIdx:], fb.nCols*fb.getPhysicalRow(pY), fb.nCols)
+		dstIdx += fb.nCols
 	}
 }
 
@@ -411,7 +419,7 @@ func (fb *Framebuffer) getSelectedUtf8() (ok bool, utf8Selection string) {
 	var lines []string
 	var wrap bool
 
-	fmt.Printf("#getSelectedUtf8 selection=%s\n", &sel)
+	// fmt.Printf("#getSelectedUtf8 selection=%s\n", &sel)
 
 	addLine := func(y, x1, x2 int) {
 		var line strings.Builder
@@ -547,7 +555,40 @@ func (fb *Framebuffer) moveCells(dstIx, srcIx, count int) {
 	fb.damage.add(dstIx, dstIx+count)
 }
 
-/* TODO where damageDeltaCopy goes to */
+// copy range is specified by start and count. if the copy range is not intersect with
+// damage area, copy nothing, Otherwise, if damage area is smaller than copy range,
+// the real copy range is determined by damage area. if damage area is bigger than copy
+// range, the real copy range is determined by copy range.
+//
+// dst must be allocated in advance.
+func (fb *Framebuffer) damageDeltaCopy(dst []Cell, start, count int) {
+	end := start + count
+
+	// fmt.Printf("#damageDeltaCopy start=%d, count=%d\n", start, count)
+	if fb.damage.end <= start || end <= fb.damage.start {
+		return // no intersection
+	}
+
+	base := 0
+	if start < fb.damage.start {
+		base += fb.damage.start - start
+		start = fb.damage.start
+	}
+
+	if fb.damage.end < end {
+		end = fb.damage.end
+	}
+
+	// fmt.Printf("#damageDeltaCopy start=%d, count=%d, base=%d\n", start, count, base)
+	i := 0
+	for j := start; j < end; j++ {
+		if dst[base+i] != fb.cells[j] {
+			dst[base+i] = fb.cells[j]
+			dst[base+i].dirty = true
+		}
+		i++
+	}
+}
 
 func (fb *Framebuffer) copyAllCells(dst []Cell) {
 	// copy the active area
