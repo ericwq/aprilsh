@@ -273,7 +273,7 @@ func hdl_graphemes(emu *Emulator, chs ...rune) {
 	if len(chs) == 1 && emu.charsetState.vtMode {
 		chs[0] = emu.lookupCharset(chs[0])
 	}
-	// fmt.Printf("hdl_graphemes %q, %U, %t w=%d (%d/%d)\n", chs, chs, emu.lastCol, w, emu.posY, emu.posX)
+	// fmt.Printf("#hdl_graphemes %q, %U, %t w=%d (%d/%d)\n", chs, chs, emu.lastCol, w, emu.posY, emu.posX)
 
 	// the first condition deal with the new graphemes should wrap on next row
 	// the second condition deal with widh graphemes in special position: posX = nColsEff-1 and width is 2

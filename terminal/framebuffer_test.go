@@ -536,31 +536,106 @@ func TestGetSelectedUtf8(t *testing.T) {
 		label     string
 		seq       string
 		selection Rect
+		snapTo    SelectSnapTo
 		expect    string
 		ok        bool
 	}{
 		{
-			"english text", "\x1B[21;11Hfirst line  \n    second line   \n    3rd line    \n\n\n",
+			"english text", "\x1B[21;11Hfirst line  \x0D\x0C    second line   \x0D\x0C    3rd line    \x0D\x0C\x0D\x0C\x0D\x0C",
 			Rect{Point{11, 20}, Point{79, 22}, false},
-			"          first line\n    second line\n 3rd line\n", true,
+			SelectSnapTo_Word,
+			"first line\n    second line\n    3rd line", true,
+		},
+		{
+			"empty selection area", "",
+			Rect{Point{0, 0}, Point{0, 0}, false},
+			SelectSnapTo_Word,
+			"", false,
+		},
+		{
+			"extreme long line, selection area", "\x1B[31;61Hextreme long line will be wrapped.",
+			Rect{Point{60, 30}, Point{80, 31}, false},
+			SelectSnapTo_Word,
+			"extreme long line will be wrapped.", true,
+		},
+		{
+			"one row selection area", "\x1B[32;21Hone row selection area",
+			Rect{Point{14, 31}, Point{80, 31}, false},
+			SelectSnapTo_Word,
+			"one row selection area", true,
+		},
+		{
+			"rectangular selection area", "\x1B[35;21Hrectangular \x0D\x0Cselection area",
+			Rect{Point{0, 34}, Point{80, 35}, true},
+			SelectSnapTo_Line,
+			"                    rectangular\nselection area", true,
 		},
 	}
 	emu := NewEmulator3(80, 40, 0)
 	// hide the log output
 	// emu.logT.SetOutput(io.Discard)
 
-	for _, v := range tc {
+	for i, v := range tc {
 		// print the stream to the screen
 		emu.HandleStream(v.seq)
 
-		fmt.Printf("%s\n", printCells(emu.cf, 20, 21, 22))
-
 		// setup selection area
 		emu.cf.selection = v.selection
+		emu.cf.setSelectSnapTo(v.snapTo)
+
+		if i == 4 {
+			// fmt.Printf("%s\n", printCells(emu.cf, 34, 35))
+
+			// selection := emu.cf.getSnappedSelection()
+			// fmt.Printf("#test getSelectedUtf8() snapTo=%d\n", emu.cf.snapTo)
+			// fmt.Printf("#test getSelectedUtf8() selection=%s\n", &selection)
+		}
 
 		ok, got := emu.cf.getSelectedUtf8()
 		if v.expect != got || v.ok != ok {
-			t.Errorf("%q expect %t,\n%s, got %t,\n%s\n", v.label, v.ok, v.expect, ok, got)
+			t.Errorf("%q expect %t,\n%q, got %t,\n%q\n", v.label, v.ok, v.expect, ok, got)
 		}
+	}
+}
+
+func TestResetDamage(t *testing.T) {
+	fb, _, _ := NewFramebuffer3(80, 40, 40)
+
+	// fill the screen
+	base := Cell{}
+	fb.fillCells('Z', base)
+
+	// the expect value
+	expect := fb.damage
+	expect.start = 0
+	expect.end = 0
+
+	fb.resetDamage()
+	got := fb.damage
+
+	if got != expect {
+		t.Errorf("#test resetDamage expect %v, got %v\n", expect, got)
+	}
+}
+
+func TestGetCursor(t *testing.T) {
+	fb, _, _ := NewFramebuffer3(80, 40, 40)
+
+	// move scrollHead to specified row
+	fb.scrollUp(40)
+
+	// fill the screen
+	base := Cell{}
+	fb.fillCells('Z', base)
+
+	expect := fb.cursor
+	expect.posY += 40
+
+	// set viewOffset to specified number
+	fb.pageUp(40)
+	got := fb.getCursor()
+
+	if got != expect {
+		t.Errorf("#test resetDamage expect %v, got %v\n", expect, got)
 	}
 }

@@ -365,7 +365,7 @@ func (fb *Framebuffer) getSelectionPtr() *Rect {
 func (fb *Framebuffer) getSnappedSelection() (ret Rect) {
 	ret = fb.getSelection()
 
-	if ret.null() {
+	if ret.null() || ret.empty() {
 		return ret
 	}
 
@@ -394,7 +394,7 @@ func (fb *Framebuffer) getSnappedSelection() (ret Rect) {
 		}
 	case SelectSnapTo_Line:
 		ret.tl.x = 0
-		ret.br.x = fb.nCols // TODO nCols-1 or nCols?
+		ret.br.x = fb.nCols
 	default:
 	}
 	return
@@ -430,15 +430,14 @@ func (fb *Framebuffer) getSelectedUtf8() (ok bool, utf8Selection string) {
 			}
 		}
 
-		fmt.Printf("#getSelectedUtf8 get line:\n%q\n", line.String())
-
-		ln := ""
+		ln := line.String()
 		if !wrap && line.Len() > 0 { // discard trailing whitespace
 			ln = strings.TrimRightFunc(line.String(), unicode.IsSpace)
 		}
+		// fmt.Printf("#getSelectedUtf8 trim line:\n%q\n", ln)
 
 		if wrapBack && len(lines) > 0 { // deal with extreme long line
-			lines[len(lines)-1] = fmt.Sprintf(lines[len(lines)-1], ln)
+			lines[len(lines)-1] = fmt.Sprintf("%s%s", lines[len(lines)-1], ln)
 		} else {
 			lines = append(lines, ln)
 		}
