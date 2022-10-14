@@ -139,6 +139,7 @@ func (c *Complete) Subtract(prefix *Complete) {
 }
 
 // implements network.State[C any] interface
+// compare two Complete value and build the seralized HostMessage: difference content.
 func (c *Complete) DiffFrom(existing *Complete) string {
 	hm := pb.HostMessage{}
 
@@ -169,13 +170,14 @@ func (c *Complete) DiffFrom(existing *Complete) string {
 }
 
 // implements network.State[C any] interface
+// get difference between this Complete and a new one.
 func (c *Complete) InitDiff() string {
 	// TODO what about saveLines? use 0 or other value?
 	return c.DiffFrom(NewComplete(c.terminal.GetWidth(), c.terminal.GetHeight(), 0))
 }
 
 // implements network.State[C any] interface
-// convert diff into HostMessage, and apply the instructions to the terminal.
+// convert differene content into HostMessage, and apply the instructions to the terminal.
 func (c *Complete) ApplyString(diff string) error {
 	// parse the wire-format encoding of UserMessage
 	input := pb.HostMessage{}
