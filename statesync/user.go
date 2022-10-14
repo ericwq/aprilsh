@@ -211,6 +211,7 @@ func (u *UserStream) ApplyString(diff string) error {
 	return nil
 }
 
+// implements network.State[C any] interface
 func (u *UserStream) Equal(x *UserStream) bool {
 	if len(u.actions) == 0 && len(x.actions) == 0 {
 		return true

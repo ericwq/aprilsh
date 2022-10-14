@@ -27,7 +27,9 @@ SOFTWARE.
 package statesync
 
 import (
+	"fmt"
 	"math"
+	"reflect"
 
 	pb "github.com/ericwq/aprilsh/protobufs/host"
 	"github.com/ericwq/aprilsh/terminal"
@@ -48,6 +50,7 @@ type Complete struct {
 	terminal     *terminal.Emulator
 	inputHistory []pair
 	echoAck      uint64
+	display      terminal.Display
 }
 
 func NewComplete(nCols, nRows, saveLines int) *Complete {
@@ -131,15 +134,79 @@ func (c *Complete) waitTime(now uint64) int {
 }
 
 // implements network.State[C any] interface
-// do nothing
 func (c *Complete) Subtract(prefix *Complete) {
+	// do nothing
 }
 
 // implements network.State[C any] interface
 func (c *Complete) DiffFrom(existing *Complete) string {
 	hm := pb.HostMessage{}
 
-	// TODO waiting for new_frame() and Action.act()
+	if existing.getEchoAck() != c.getEchoAck() {
+		echoack := c.getEchoAck()
+		instEcho := pb.Instruction{Echoack: &pb.EchoAck{EchoAckNum: &echoack}}
+		hm.Instruction = append(hm.Instruction, &instEcho)
+	}
+
+	if !reflect.DeepEqual(existing.getFramebuffer(), c.getFramebuffer()) {
+		if existing.terminal.GetWidth() != c.terminal.GetWidth() ||
+			existing.terminal.GetHeight() != c.terminal.GetHeight() {
+			w := int32(c.terminal.GetWidth())
+			h := int32(c.terminal.GetHeight())
+			instResize := pb.Instruction{Resize: &pb.ResizeMessage{Width: &w, Height: &h}}
+			hm.Instruction = append(hm.Instruction, &instResize)
+		}
+	}
+
+	update := c.display.NewFrame(true, existing.getFramebuffer(), c.getFramebuffer())
+	if len(update) > 0 {
+		instBytes := pb.Instruction{Hostbytes: &pb.HostBytes{Hoststring: []byte(update)}}
+		hm.Instruction = append(hm.Instruction, &instBytes)
+	}
+
 	output, _ := proto.Marshal(&hm)
 	return string(output)
+}
+
+// implements network.State[C any] interface
+func (c *Complete) InitDiff() string {
+	// TODO what about saveLines? use 0 or other value?
+	return c.DiffFrom(NewComplete(c.terminal.GetWidth(), c.terminal.GetHeight(), 0))
+}
+
+// implements network.State[C any] interface
+// convert diff into HostMessage, and apply the instructions to the terminal.
+func (c *Complete) ApplyString(diff string) error {
+	// parse the wire-format encoding of UserMessage
+	input := pb.HostMessage{}
+	err := proto.Unmarshal([]byte(diff), &input)
+	if err != nil {
+		return err
+	}
+
+	for i := range input.Instruction {
+		if input.Instruction[i].Hostbytes != nil {
+			terminalToHost := c.Act(string(input.Instruction[i].Hostbytes.Hoststring))
+			// server never interrogates client terminal
+			if terminalToHost != "" {
+				fmt.Printf("warn: terminalToHost=%s\n", terminalToHost)
+			}
+		} else if input.Instruction[i].Resize != nil {
+			newSize := terminal.Resize{
+				Height: int(input.Instruction[i].Resize.GetHeight()),
+				Width:  int(input.Instruction[i].Resize.GetWidth()),
+			}
+			c.ActOne(newSize)
+		} else if input.Instruction[i].Echoack != nil {
+			instEchoAckNum := input.Instruction[i].Echoack.GetEchoAckNum()
+			c.echoAck = instEchoAckNum
+		}
+	}
+
+	return nil
+}
+
+// implements network.State[C any] interface
+func (c *Complete) Equal(x *Complete) bool {
+	return false
 }
