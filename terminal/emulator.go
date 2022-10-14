@@ -512,6 +512,10 @@ func (emu *Emulator) lookupCharset(p rune) (r rune) {
 	return r
 }
 
+func (emu *Emulator) GetParser() *Parser {
+	return emu.parser
+}
+
 // parse and handle the stream together.
 func (emu *Emulator) HandleStream(seq string) (hds []*Handler) {
 	hds = make([]*Handler, 0, 16)

@@ -103,10 +103,9 @@ func (u *UserStream) pushBackResize(width, height int) {
 	u.actions = append(u.actions, NewUserEventResize(resize))
 }
 
-func (u *UserStream) ResetInput() {}
+// func (u *UserStream) ResetInput() {}
 
-/* interface for network.State[C any] */
-
+// implements network.State[C any] interface
 // Subtract() the prefix UserStream from current UserStream
 func (u *UserStream) Subtract(prefix *UserStream) {
 	// if we are subtracting ourself from ourself, just clear the deque
@@ -124,6 +123,7 @@ func (u *UserStream) Subtract(prefix *UserStream) {
 	}
 }
 
+// implements network.State[C any] interface
 // DiffFrom() exclude the existing UserEvent and return the difference.
 func (u *UserStream) DiffFrom(existing *UserStream) string {
 	// skip the existing part
@@ -177,11 +177,13 @@ func (u *UserStream) DiffFrom(existing *UserStream) string {
 	return string(output)
 }
 
+// implements network.State[C any] interface
 func (u *UserStream) InitDiff() string {
 	// this should not be called
 	return ""
 }
 
+// implements network.State[C any] interface
 // convert the UserMessage into a UserStream
 func (u *UserStream) ApplyString(diff string) error {
 	// parse the wire-format encoding of UserMessage
