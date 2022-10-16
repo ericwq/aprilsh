@@ -50,7 +50,7 @@ type Complete struct {
 	terminal     *terminal.Emulator
 	inputHistory []pair
 	echoAck      uint64
-	display      terminal.Display
+	display      *terminal.Display
 }
 
 func NewComplete(nCols, nRows, saveLines int) *Complete {

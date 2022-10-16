@@ -26,6 +26,14 @@ SOFTWARE.
 
 package terminal
 
+import (
+	"os"
+
+	"github.com/ericwq/terminfo"
+	_ "github.com/ericwq/terminfo/base"
+	"github.com/ericwq/terminfo/dynamic"
+)
+
 /*
 	 questions
 
@@ -37,11 +45,14 @@ package terminal
 	 how to replace the following functions? setupterm(), tigetnum(), tigetstr(), tigetflag()
 */
 type Display struct {
+	// erase character is part of vt200 but not supported by tmux
+	// (or by "screen" terminfo entry, which is what tmux advertises)
 	hasECH   bool
-	hasBCE   bool
-	hasTitle bool
-	smcup    string
-	rmcup    string
+	hasBCE   bool   // erases result in cell filled with background color
+	hasTitle bool   // supports window title and icon name
+	smcup    string // enter and exit alternate screen mode
+	rmcup    string // enter and exit alternate screen mode
+	ti       *terminfo.Terminfo
 }
 
 // https://github.com/gdamore/tcell the successor of termbox-go
@@ -51,6 +62,46 @@ type Display struct {
 // apk add ncurses-terminfo-base
 // apk add ncurses
 // https://ishuah.com/2021/03/10/build-a-terminal-emulator-in-100-lines-of-go/
+
+// use TERM environment var to initialize display, if useEnvironment is true.
+func NewDisplay(useEnvironment bool) (d *Display, e error) {
+	d = &Display{}
+	d.hasECH = true
+	d.hasBCE = true
+	d.hasTitle = true
+
+	if useEnvironment {
+		d.ti, e = lookupTerminfo(os.Getenv("TERM"))
+		if e != nil {
+			return nil, e
+		}
+	}
+
+	return d, nil
+}
+
+// lookupTerminfo attempts to find a definition for the named $TERM falling
+// back to attempting to parse the output from infocmp.
+func lookupTerminfo(name string) (ti *terminfo.Terminfo, e error) {
+	ti, e = terminfo.LookupTerminfo(name)
+	if e != nil {
+		ti, e = loadDynamicTerminfo(name)
+		if e != nil {
+			return nil, e
+		}
+		terminfo.AddTerminfo(ti)
+	}
+
+	return
+}
+
+func loadDynamicTerminfo(term string) (*terminfo.Terminfo, error) {
+	ti, _, e := dynamic.LoadTerminfo(term)
+	if e != nil {
+		return nil, e
+	}
+	return ti, nil
+}
 
 func (d *Display) NewFrame(initialized bool, oldfb, newfb *Framebuffer) string {
 	return ""
