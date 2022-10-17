@@ -29,6 +29,7 @@ package terminal
 import (
 	"errors"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -45,7 +46,8 @@ func TestDisplay(t *testing.T) {
 		{"useEnvironment, base TERM", true, "alacritty", nil, true, true, false},
 		{"useEnvironment, base TERM, title support", true, "xterm", nil, true, true, true},
 		{"useEnvironment, dynamic TERM", true, "sun", nil, true, true, false}, // we choose sun, because sun fade out from the market
-		{"wrong TERM", true, "stranger", errors.New("infocmp: couldn't open terminfo file (null)."), false, false, false},
+		{"useEnvironment, wrong TERM", true, "stranger", errors.New("infocmp: couldn't open terminfo file"), false, false, false},
+		{"not useEnvironment ", false, "anything", nil, true, true, true},
 	}
 
 	for _, v := range tc {
@@ -64,9 +66,26 @@ func TestDisplay(t *testing.T) {
 				t.Errorf("%q expect title %t, got %t\n", v.label, v.hasTitle, d.hasTitle)
 			}
 		} else {
-			if e.Error() != v.err.Error() {
+			if !strings.HasPrefix(e.Error(), v.err.Error()) {
 				t.Errorf("%q expect err %q, got %q\n", v.label, v.err, e)
 			}
 		}
+	}
+}
+
+func TestOpenClose(t *testing.T) {
+	os.Setenv("TERM", "alacritty") // we choose alacritty, because alacritty is in the base package.
+	d, _ := NewDisplay(true)
+
+	expect := "\x1b[?1049h\x1b[22;0;0t\x1b[?1h"
+	got := d.open()
+	if got != expect {
+		t.Errorf("#test open() expect %q, got %q\n", expect, got)
+	}
+
+	expect = "\x1b[?1l\x1b[0m\x1b[?25h\x1b[?1003l\x1b[?1002l\x1b[?1001l\x1b[?1000l\x1b[?1015l\x1b[?1006l\x1b[?1005l\x1b[?1049l\x1b[23;0;0t"
+	got = d.close()
+	if got != expect {
+		t.Errorf("#test close() expect %q, got %q\n", expect, got)
 	}
 }
