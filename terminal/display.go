@@ -27,7 +27,9 @@ SOFTWARE.
 package terminal
 
 import (
+	"fmt"
 	"os"
+	"strings"
 
 	"github.com/ericwq/terminfo"
 	_ "github.com/ericwq/terminfo/base"
@@ -52,7 +54,6 @@ type Display struct {
 	hasTitle bool   // supports window title and icon name
 	smcup    string // enter and exit alternate screen mode
 	rmcup    string // enter and exit alternate screen mode
-	ti       *terminfo.Terminfo
 }
 
 // https://github.com/gdamore/tcell the successor of termbox-go
@@ -62,7 +63,7 @@ type Display struct {
 // apk add ncurses-terminfo-base
 // apk add ncurses
 // https://ishuah.com/2021/03/10/build-a-terminal-emulator-in-100-lines-of-go/
-
+//
 // use TERM environment var to initialize display, if useEnvironment is true.
 func NewDisplay(useEnvironment bool) (d *Display, e error) {
 	d = &Display{}
@@ -71,12 +72,43 @@ func NewDisplay(useEnvironment bool) (d *Display, e error) {
 	d.hasTitle = true
 
 	if useEnvironment {
-		d.ti, e = lookupTerminfo(os.Getenv("TERM"))
+		term := os.Getenv("TERM")
+		var ti *terminfo.Terminfo
+
+		ti, e = lookupTerminfo(term)
 		if e != nil {
 			return nil, e
 		}
-	}
 
+		// check for ECH
+		if ti.EraseChars != "" {
+			d.hasECH = true
+		}
+
+		// check for BCE
+		if ti.BackColorErase {
+			d.hasBCE = true
+		}
+
+		// Check if we can set the window title and icon name.  terminfo does not
+		// have reliable information on this, so we hardcode a whitelist of
+		// terminal type prefixes.  This is the list from Debian's default
+		// screenrc, plus "screen" itself (which also covers tmux).
+		d.hasTitle = false
+		titleTermTypes := []string{"xterm", "rxvt", "kterm", "Eterm", "screen"}
+		if term != "" {
+			for _, tt := range titleTermTypes {
+				if strings.HasPrefix(term, tt) {
+					d.hasTitle = true
+					break
+				}
+			}
+		}
+
+		// TODO consider use MOSH_NO_TERM_INIT to control this behavior
+		d.smcup = ti.EnterCA
+		d.rmcup = ti.ExitCA
+	}
 	return d, nil
 }
 
@@ -105,4 +137,26 @@ func loadDynamicTerminfo(term string) (*terminfo.Terminfo, error) {
 
 func (d *Display) NewFrame(initialized bool, oldfb, newfb *Framebuffer) string {
 	return ""
+}
+
+func (d *Display) open() string {
+	var b strings.Builder
+	if d.smcup != "" {
+		b.WriteString(d.smcup)
+	}
+	fmt.Fprintf(&b, "\x1B[?1h") // DECSET: set application cursor key mode
+	return b.String()
+}
+
+func (d *Display) close() string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "\x1B[?1l")                                     // DECRST: set ANSI cursor key mode
+	fmt.Fprintf(&b, "\x1B[0m")                                      // SGR: reset character attributes, foreground color and background color
+	fmt.Fprintf(&b, "\x1B[?25h")                                    // DECTCEM: show cursor mode
+	fmt.Fprintf(&b, "\x1B[?1003l\x1B[?1002l\x1B[?1001l\x1B[?1000l") // disable mouse tracking mode
+	fmt.Fprintf(&b, "\x1B[?1015l\x1B[?1006l\x1B[?1005l")            // reset to default mouse tracking encoding
+	if d.rmcup != "" {
+		b.WriteString(d.rmcup)
+	}
+	return b.String()
 }
