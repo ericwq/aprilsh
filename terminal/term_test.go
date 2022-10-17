@@ -2,7 +2,6 @@ package terminal
 
 import (
 	"bytes"
-	"fmt"
 	"testing"
 
 	"github.com/ericwq/terminfo"
@@ -10,20 +9,19 @@ import (
 	"github.com/ericwq/terminfo/dynamic"
 )
 
-func TestTermCapability(t *testing.T) {
-	name := "alacritty"
+func TestTerminfo_bce_ech(t *testing.T) {
+	name := "alacritty" // alacritty support bce and ech
+	// name := "xterm-256color" // xterm-256color support bce and ech on Mac
 	ti, e := terminfo.LookupTerminfo(name)
 	if e != nil {
-		fmt.Printf("#test lookup failed. %s\n", e)
-		ti, _, e := dynamic.LoadTerminfo(name)
+		// fmt.Printf("#test lookup failed. %s\n", e)
+		ti, _, e = dynamic.LoadTerminfo(name)
 		if e != nil {
-			t.Errorf("#test %s %s\n", name, e)
+			t.Fatalf("#test can't find terminfo for %s, %s\n", name, e)
 		}
-		fmt.Printf("#test dynamic success. %v\n", ti)
+		// fmt.Printf("#test dynamic success. %p\n", ti)
 		terminfo.AddTerminfo(ti)
 	}
-
-	fmt.Printf("#test ti=%v\n", ti)
 
 	buf := bytes.NewBuffer(nil)
 	ti.TPuts(buf, ti.Bell)
