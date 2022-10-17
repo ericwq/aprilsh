@@ -74,7 +74,7 @@ func TestDisplay(t *testing.T) {
 }
 
 func TestOpenClose(t *testing.T) {
-	os.Setenv("TERM", "alacritty") // we choose alacritty, because alacritty is in the base package.
+	os.Setenv("TERM", "xterm-256color")
 	d, _ := NewDisplay(true)
 
 	expect := "\x1b[?1049h\x1b[22;0;0t\x1b[?1h"

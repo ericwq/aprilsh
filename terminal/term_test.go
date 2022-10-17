@@ -10,8 +10,7 @@ import (
 )
 
 func TestTerminfo_bce_ech(t *testing.T) {
-	name := "alacritty" // alacritty support bce and ech
-	// name := "xterm-256color" // xterm-256color support bce and ech on Mac
+	name := "xterm-256color" // xterm-256color support bce and ech on Mac
 	ti, e := terminfo.LookupTerminfo(name)
 	if e != nil {
 		// fmt.Printf("#test lookup failed. %s\n", e)
