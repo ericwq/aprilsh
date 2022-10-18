@@ -181,6 +181,7 @@ func (d *Display) NewFrame(initialized bool, last, f *Emulator) string {
 
 	// has size changed?
 	if !initialized || f.GetWidth() != last.GetWidth() || f.GetHeight() != last.GetHeight() {
+		// TODO if the size changed, should we resize first?
 		fmt.Fprintf(&b, "\x1B[r") // reset scrolling region, reset top/bottom margin
 		ti.TPuts(&b, ti.AttrOff)  // sgr0, turn off all attribute modes
 		ti.TPuts(&b, ti.Clear)    // clear, clear screen and home cursor
@@ -201,6 +202,10 @@ func (d *Display) NewFrame(initialized bool, last, f *Emulator) string {
 		fmt.Fprintf(&b, "\x1B[?25l]")
 	}
 
+	// f is new , last is old
+
+	// Extend rows if we've gotten a resize and new is wider than old
+	// Add rows if we've gotten a resize and new is taller than old
 	return b.String()
 }
 
