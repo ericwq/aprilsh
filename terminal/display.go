@@ -54,6 +54,12 @@ type Display struct {
 	hasTitle bool   // supports window title and icon name
 	smcup    string // enter and exit alternate screen mode
 	rmcup    string // enter and exit alternate screen mode
+	ti       *terminfo.Terminfo
+
+	// fields from FrameState
+	cursorX, cursorY int
+	currentRendition Renditions
+	cursorVisible    bool
 }
 
 // https://github.com/gdamore/tcell the successor of termbox-go
@@ -108,6 +114,8 @@ func NewDisplay(useEnvironment bool) (d *Display, e error) {
 		// TODO consider use MOSH_NO_TERM_INIT to control this behavior
 		d.smcup = ti.EnterCA
 		d.rmcup = ti.ExitCA
+
+		d.ti = ti
 	}
 	return d, nil
 }
@@ -135,8 +143,65 @@ func loadDynamicTerminfo(term string) (*terminfo.Terminfo, error) {
 	return ti, nil
 }
 
-func (d *Display) NewFrame(initialized bool, oldfb, newfb *Framebuffer) string {
-	return ""
+func (d *Display) NewFrame(initialized bool, last, f *Emulator) string {
+	var b strings.Builder
+	ti := d.ti
+
+	// has bell been rung?
+	if f.cf.getBellCount() != last.cf.getBellCount() {
+		ti.TPuts(&b, ti.Bell)
+	}
+
+	// has icon name or window title changed?
+	if d.hasTitle && f.cf.isTitleInitialized() &&
+		(!initialized || f.cf.getIconName() != last.cf.getIconName() || f.cf.getWindowTitle() != last.cf.getWindowTitle()) {
+		if f.cf.getIconName() == f.cf.getWindowTitle() {
+			// write combined Icon Name and Window Title
+			fmt.Fprintf(&b, "\x1B]0;%s\x1B\\", f.cf.getWindowTitle())
+			// ST is more correct, but BEL more widely supported
+			// we use ST as the ending
+		} else {
+			// write Icon Name
+			fmt.Fprintf(&b, "\x1B]1;%s\x1B\\", f.cf.getIconName())
+
+			// write Window Title
+			fmt.Fprintf(&b, "\x1B]2;%s\x1B\\", f.cf.getWindowTitle())
+		}
+	}
+
+	// has reverse video state changed?
+	if !initialized || f.reverseVideo != last.reverseVideo {
+		// set reverse video
+		if f.reverseVideo {
+			fmt.Fprintf(&b, "\x1B[?5h]")
+		} else {
+			fmt.Fprintf(&b, "\x1B[?5l]")
+		}
+	}
+
+	// has size changed?
+	if !initialized || f.GetWidth() != last.GetWidth() || f.GetHeight() != last.GetHeight() {
+		fmt.Fprintf(&b, "\x1B[r") // reset scrolling region, reset top/bottom margin
+		ti.TPuts(&b, ti.AttrOff)  // sgr0, turn off all attribute modes
+		ti.TPuts(&b, ti.Clear)    // clear, clear screen and home cursor
+
+		initialized = false
+		d.cursorX = 0
+		d.cursorY = 0
+		d.currentRendition = Renditions{}
+	} else {
+		d.cursorX = last.GetCursorCol()
+		d.cursorY = last.GetCursorRow()
+		d.currentRendition = last.GetRenditions()
+	}
+
+	// is cursor visibility initialized?
+	if !initialized {
+		d.cursorVisible = false
+		fmt.Fprintf(&b, "\x1B[?25l]")
+	}
+
+	return b.String()
 }
 
 func (d *Display) open() string {

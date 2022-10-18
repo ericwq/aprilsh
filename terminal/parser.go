@@ -834,6 +834,9 @@ func (p *Parser) handle_VPR() (hd *Handler) {
 // select graphics rendition -- e.g., bold, blinking, etc.
 func (p *Parser) handle_SGR() (hd *Handler) {
 	params := p.copyArgs()
+	if params == nil { // default value is 0
+		params = []int{0}
+	}
 
 	hd = &Handler{id: CSI_SGR, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {

@@ -159,7 +159,7 @@ func (c *Complete) DiffFrom(existing *Complete) string {
 		}
 	}
 
-	update := c.display.NewFrame(true, existing.getFramebuffer(), c.getFramebuffer())
+	update := c.display.NewFrame(true, existing.terminal, c.terminal)
 	if len(update) > 0 {
 		instBytes := pb.Instruction{Hostbytes: &pb.HostBytes{Hoststring: []byte(update)}}
 		hm.Instruction = append(hm.Instruction, &instBytes)
