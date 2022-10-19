@@ -28,7 +28,7 @@ The project name `Aprilsh` is derived from `April+sh`. I started this project in
   - add scroll buffer support,
   - add color palette support,
   - refine UTF-8 support.
-- 2022/Aug/04: working on the prediction engine.
+- 2022/Aug/04: start the prediction engine.
 - 2022/Aug/29: finish the prediction engine.
   - refine UTF-8 support.
 - 2022/Sep/20: finish the UDP network.
@@ -36,6 +36,8 @@ The project name `Aprilsh` is derived from `April+sh`. I started this project in
 - 2022/Sep/29: refine cell width.
 - 2022/Oct/02: add terminfo module.
 - 2022/Oct/13: finish the Framebuffer for completeness.
+- 2022/Oct/14: finish Complete state.
+- 2022/Oct/19: working on Display.
 
 ## Architecture view
 
