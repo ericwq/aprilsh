@@ -1,5 +1,7 @@
 # Basic design
 
+## Terminal design
+
 What we need is a terminal emulator, which can:
 
 - accept and parse the mix of data and escape sequences and perform the action accordingly.
@@ -69,18 +71,19 @@ Although the `terminfo` entries number in base package is quit a few, comparing 
 
 On the client side, client read from stand input device, which is a `pty` slave.
 
-- The client reads the user input.
-- The client saves the user input in new state.
-- The client calculates the difference between new state and sent states. [`diff_from()`]
+- The client reads the user input [user keystroke].
+- The client saves the user input in new state [state saved in `UserStream`]
+- The client calculates the difference between new state and sent states. [`diff_from()` of `UserStream`]
 - The calculated difference contains `resize` and `keystroke`.
 - The client sends the difference to server through the network.
 
 On the server side, server receives new state from the network.
 
-- The server receives the difference from client.
-- The server applies difference to the local terminal emulator.
-- For `keystroke`, the server applies the input to terminal emulator. [`act()`]
-- For `resize`, the server adjusts the size of terminal emulator.
+- The server receives the difference from client [`recv()`].
+- The server applies difference to the rebuild remote state [`UserStream`].
+- The server applies the user kestroke to the local terminal emulator. [`serve()`]
+  - For `keystroke`, the server applies the input to terminal emulator. [`act()`]
+  - For `resize`, the server adjusts the size of terminal emulator.
 - If there is any response from terminal emulator, the response will be sent back to host application.
 
 ![aprilsh.svg](../img/aprilsh.svg)
@@ -89,21 +92,17 @@ On the server side, server receives new state from the network.
 
 On the server side, server receives application output from the `pty` master.
 
-- The application output is a mix of escape sequence and data.
-- The server reads the mix of escape sequence and data.
-- The server applies the mix to terminal emulator on the server side. [`act()`]
-- If there is any response from terminal emulator, the response will be sent back to host application.
-- Here apply means to operate the terminal emulator according to the escape sequences and data.
-- The server calculates the difference between new state and sent states. [`new_frame()`]
+- When it's time to send state to client [`network.tick()`]
+- The server calculates the difference between new state and sent states. [`new_frame()` of `Display`]
 - The calculated difference is a mix of escape sequences and data, which contains `echo ack`, `resize`, `mix`.
 - The server sends the difference to the client through network.
 
 On the client side, client receives new state from the network.
 
-- The client receives the difference from server.
-- The client applies `resize`, `mix` to the local terminal emulator and save `echo ack`. [`act()`]
+- The client receives the difference from server [`recv()`].
+- The client applies `resize`, `mix` to the local terminal emulator and save `echo ack`. [`act()` of `Complete`]
 - The client applies the prediction to the new state.
-- The client calculates the difference between the new state and local state. [`new_frame()`]
+- When it's time to display the state to real termninal emulator [`output_new_frame()`]
+- The client calculates the difference between new state, prediction and local state. [`new_frame()` of `Display`]
 - The calculated difference is a mix of escape sequences and data.
-- The second difference is mainly used to update the real terminal emulator display.
 - The mix is written to the `pty` slave, which will output to the real terminal emulator.
