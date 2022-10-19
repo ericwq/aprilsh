@@ -571,7 +571,7 @@ func (fb *Framebuffer) damageDeltaCopy(dst []Cell, start, count int) {
 
 	base := 0
 	if start < fb.damage.start {
-		base += fb.damage.start - start
+		base += fb.damage.start - start // change the base, skip the un-damage part.
 		start = fb.damage.start
 	}
 
