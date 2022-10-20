@@ -143,6 +143,12 @@ func loadDynamicTerminfo(term string) (*terminfo.Terminfo, error) {
 	return ti, nil
 }
 
+// NewFrame() compare two terminal and generate mix (grapheme and control sequence) stream
+// to replicate the new terminal content and state to the existing one.
+//
+// - initialized: the first time is false.
+// - last: the existing terminal state.
+// - f: the new terminal state.
 func (d *Display) NewFrame(initialized bool, last, f *Emulator) string {
 	var b strings.Builder
 	ti := d.ti
@@ -180,6 +186,8 @@ func (d *Display) NewFrame(initialized bool, last, f *Emulator) string {
 	}
 
 	// has size changed?
+	// the size of the display terminal isn't changed.
+	// the size of the received terminal is changed by ApplyString()
 	if !initialized || f.GetWidth() != last.GetWidth() || f.GetHeight() != last.GetHeight() {
 		// TODO if the size changed, should we resize first?
 		fmt.Fprintf(&b, "\x1B[r") // reset scrolling region, reset top/bottom margin
