@@ -60,7 +60,7 @@ type Framebuffer struct {
 	selectionData    string // store the selection data for OSC 52
 }
 
-// create a framebuffer, with saveLines is zero, return the Framebuffer
+// create a framebuffer, with zero saveLines.
 func NewFramebuffer2(nCols, nRows int) Framebuffer {
 	pfb, _, _ := NewFramebuffer3(nCols, nRows, 0)
 	return *pfb
