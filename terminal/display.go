@@ -198,6 +198,7 @@ func (d *Display) NewFrame(initialized bool, last, f *Emulator) string {
 		d.currentRendition = Renditions{}
 
 		// change the old terminal size
+		// TODO we should avoid to change the old terminal
 		last.resize(f.GetWidth(), f.GetHeight())
 	} else {
 		d.cursorX = last.GetCursorCol()
