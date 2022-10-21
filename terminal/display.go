@@ -163,15 +163,14 @@ func (d *Display) NewFrame(initialized bool, last, f *Emulator) string {
 		(!initialized || f.cf.getIconName() != last.cf.getIconName() || f.cf.getWindowTitle() != last.cf.getWindowTitle()) {
 		if f.cf.getIconName() == f.cf.getWindowTitle() {
 			// write combined Icon Name and Window Title
-			fmt.Fprintf(&b, "\x1B]0;%s\x1B\\", f.cf.getWindowTitle())
+			fmt.Fprintf(&b, "\x1B]0;%s\x07", f.cf.getWindowTitle())
 			// ST is more correct, but BEL more widely supported
-			// we use ST as the ending
 		} else {
 			// write Icon Name
-			fmt.Fprintf(&b, "\x1B]1;%s\x1B\\", f.cf.getIconName())
+			fmt.Fprintf(&b, "\x1B]1;%s\x07", f.cf.getIconName())
 
 			// write Window Title
-			fmt.Fprintf(&b, "\x1B]2;%s\x1B\\", f.cf.getWindowTitle())
+			fmt.Fprintf(&b, "\x1B]2;%s\x07", f.cf.getWindowTitle())
 		}
 	}
 
@@ -189,31 +188,56 @@ func (d *Display) NewFrame(initialized bool, last, f *Emulator) string {
 	// the size of the display terminal isn't changed.
 	// the size of the received terminal is changed by ApplyString()
 	if !initialized || f.GetWidth() != last.GetWidth() || f.GetHeight() != last.GetHeight() {
-		// TODO if the size changed, should we resize first?
-		fmt.Fprintf(&b, "\x1B[r") // reset scrolling region, reset top/bottom margin
-		ti.TPuts(&b, ti.AttrOff)  // sgr0, turn off all attribute modes
-		ti.TPuts(&b, ti.Clear)    // clear, clear screen and home cursor
+		fmt.Fprintf(&b, "\x1B[r") // smgtb, reset scrolling region, reset top/bottom margin
+		ti.TPuts(&b, ti.AttrOff)  // sgr0, "\x1B[0m" turn off all attribute modes
+		ti.TPuts(&b, ti.Clear)    // clear, "\x1B[H\x1B[2J" clear screen and home cursor
 
 		initialized = false
 		d.cursorX = 0
 		d.cursorY = 0
 		d.currentRendition = Renditions{}
+
+		// change the old terminal size
+		last.resize(f.GetWidth(), f.GetHeight())
 	} else {
 		d.cursorX = last.GetCursorCol()
 		d.cursorY = last.GetCursorRow()
 		d.currentRendition = last.GetRenditions()
 	}
 
+	// has the screen buffer mode changed?
+	if !initialized || f.altScreenBufferMode != last.altScreenBufferMode {
+		// change the screen buffer mode
+		last.switchScreenBufferMode(f.altScreenBufferMode)
+
+		if f.altScreenBufferMode {
+			fmt.Fprint(&b, "\x1B[?47h")
+		} else {
+			fmt.Fprint(&b, "\x1B[?47l")
+		}
+	}
+
+	// saved cursor changed?
+	if !initialized || f.savedCursor_DEC.isSet != last.savedCursor_DEC.isSet {
+		if f.savedCursor_DEC.isSet {
+			hdl_esc_decsc(last)
+
+			fmt.Fprint(&b, "\x1B[7") // sc, TODO not supported by terminfo
+		} else {
+			hdl_esc_decrc(last)
+
+			fmt.Fprint(&b, "\x1B[8") // rc, TODO not supported by terminfo
+		}
+	}
+
 	// is cursor visibility initialized?
 	if !initialized {
 		d.cursorVisible = false
-		fmt.Fprintf(&b, "\x1B[?25l]")
+		ti.TPuts(&b, ti.HideCursor) // civis, "\x1B[?25l]" showCursorMode = false
 	}
 
 	// f is new , last is old
 
-	// Extend rows if we've gotten a resize and new is wider than old
-	// Add rows if we've gotten a resize and new is taller than old
 	return b.String()
 }
 
