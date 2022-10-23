@@ -149,35 +149,35 @@ func loadDynamicTerminfo(term string) (*terminfo.Terminfo, error) {
 // - initialized: the first time is false.
 // - last: the existing terminal state.
 // - f: the new terminal state.
-func (d *Display) NewFrame(initialized bool, last, f *Emulator) string {
+func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	var b strings.Builder
 	ti := d.ti
 
 	// has bell been rung?
-	if f.cf.getBellCount() != last.cf.getBellCount() {
+	if newE.cf.getBellCount() != oldE.cf.getBellCount() {
 		ti.TPuts(&b, ti.Bell)
 	}
 
 	// has icon name or window title changed?
-	if d.hasTitle && f.cf.isTitleInitialized() &&
-		(!initialized || f.cf.getIconName() != last.cf.getIconName() || f.cf.getWindowTitle() != last.cf.getWindowTitle()) {
-		if f.cf.getIconName() == f.cf.getWindowTitle() {
+	if d.hasTitle && newE.cf.isTitleInitialized() &&
+		(!initialized || newE.cf.getIconName() != oldE.cf.getIconName() || newE.cf.getWindowTitle() != oldE.cf.getWindowTitle()) {
+		if newE.cf.getIconName() == newE.cf.getWindowTitle() {
 			// write combined Icon Name and Window Title
-			fmt.Fprintf(&b, "\x1B]0;%s\x07", f.cf.getWindowTitle())
+			fmt.Fprintf(&b, "\x1B]0;%s\x07", newE.cf.getWindowTitle())
 			// ST is more correct, but BEL more widely supported
 		} else {
 			// write Icon Name
-			fmt.Fprintf(&b, "\x1B]1;%s\x07", f.cf.getIconName())
+			fmt.Fprintf(&b, "\x1B]1;%s\x07", newE.cf.getIconName())
 
 			// write Window Title
-			fmt.Fprintf(&b, "\x1B]2;%s\x07", f.cf.getWindowTitle())
+			fmt.Fprintf(&b, "\x1B]2;%s\x07", newE.cf.getWindowTitle())
 		}
 	}
 
 	// has reverse video state changed?
-	if !initialized || f.reverseVideo != last.reverseVideo {
+	if !initialized || newE.reverseVideo != oldE.reverseVideo {
 		// set reverse video
-		if f.reverseVideo {
+		if newE.reverseVideo {
 			fmt.Fprintf(&b, "\x1B[?5h]")
 		} else {
 			fmt.Fprintf(&b, "\x1B[?5l]")
@@ -187,7 +187,8 @@ func (d *Display) NewFrame(initialized bool, last, f *Emulator) string {
 	// has size changed?
 	// the size of the display terminal isn't changed.
 	// the size of the received terminal is changed by ApplyString()
-	if !initialized || f.GetWidth() != last.GetWidth() || f.GetHeight() != last.GetHeight() {
+	if !initialized || newE.GetWidth() != oldE.GetWidth() || newE.GetHeight() != oldE.GetHeight() {
+		// TODO why reset scrolling region?
 		fmt.Fprintf(&b, "\x1B[r") // smgtb, reset scrolling region, reset top/bottom margin
 		ti.TPuts(&b, ti.AttrOff)  // sgr0, "\x1B[0m" turn off all attribute modes
 		ti.TPuts(&b, ti.Clear)    // clear, "\x1B[H\x1B[2J" clear screen and home cursor
@@ -196,22 +197,18 @@ func (d *Display) NewFrame(initialized bool, last, f *Emulator) string {
 		d.cursorX = 0
 		d.cursorY = 0
 		d.currentRendition = Renditions{}
-
-		// change the old terminal size
-		// TODO we should avoid to change the old terminal
-		last.resize(f.GetWidth(), f.GetHeight())
 	} else {
-		d.cursorX = last.GetCursorCol()
-		d.cursorY = last.GetCursorRow()
-		d.currentRendition = last.GetRenditions()
+		d.cursorX = oldE.GetCursorCol()
+		d.cursorY = oldE.GetCursorRow()
+		d.currentRendition = oldE.GetRenditions()
 	}
 
 	// has the screen buffer mode changed?
-	if !initialized || f.altScreenBufferMode != last.altScreenBufferMode {
+	if !initialized || newE.altScreenBufferMode != oldE.altScreenBufferMode {
 		// change the screen buffer mode
-		last.switchScreenBufferMode(f.altScreenBufferMode)
+		oldE.switchScreenBufferMode(newE.altScreenBufferMode)
 
-		if f.altScreenBufferMode {
+		if newE.altScreenBufferMode {
 			fmt.Fprint(&b, "\x1B[?47h")
 		} else {
 			fmt.Fprint(&b, "\x1B[?47l")
@@ -219,17 +216,39 @@ func (d *Display) NewFrame(initialized bool, last, f *Emulator) string {
 	}
 
 	// saved cursor changed?
-	if !initialized || f.savedCursor_DEC.isSet != last.savedCursor_DEC.isSet {
-		if f.savedCursor_DEC.isSet {
-			hdl_esc_decsc(last)
+	if !initialized || newE.savedCursor_DEC.isSet != oldE.savedCursor_DEC.isSet {
+		if newE.savedCursor_DEC.isSet {
+			hdl_esc_decsc(oldE)
 
 			fmt.Fprint(&b, "\x1B[7") // sc, TODO not supported by terminfo
 		} else {
-			hdl_esc_decrc(last)
+			hdl_esc_decrc(oldE)
 
 			fmt.Fprint(&b, "\x1B[8") // rc, TODO not supported by terminfo
 		}
 	}
+
+	/* copy old screen and resize */
+	// what the influence of margin output?
+	// prepare place for the old screen
+	oldScreen := make([]Cell, oldE.GetWidth()*oldE.GetHeight())
+	oldE.cf.fullCopyCells(oldScreen)
+
+	// prepare place for the new screen
+	newPlace := make([]Cell, newE.GetWidth()*newE.GetHeight())
+
+	rowLen := Min(oldE.GetWidth(), newE.GetWidth())      // minimal row length
+	nCopyRows := Min(oldE.GetHeight(), newE.GetHeight()) // minimal row number
+
+	// copy the old screen to the new place
+	for pY := 0; pY < nCopyRows; pY++ {
+		srcStartIdx := pY
+		srcEndIdx := srcStartIdx + rowLen
+		dstStartIdx := rowLen * pY
+		copy(newPlace[dstStartIdx:], oldScreen[srcStartIdx:srcEndIdx])
+	}
+	oldScreen = nil
+	/* copy old screen and resize */
 
 	// is cursor visibility initialized?
 	if !initialized {
