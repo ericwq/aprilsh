@@ -79,9 +79,9 @@ All the user input is send from real terminal emulator to (Aprish) local client.
 
 On the client side, client read from stand input device, which is a `pty` slave.
 
-- The client reads the user input [user keystroke].
-- The client saves the user input in new state [state saved in `UserStream`]
-- When it's time to send state to server [`network.tick()`]
+- The client reads the user input. [user keystroke]
+- The client saves the user input in new state. [state saved in `UserStream`]
+- When it's time to send state to server, [`network.tick()`]
 - The client calculates the difference between new state and sent states. [`diff_from()` of `UserStream`]
 - The calculated difference contains `resize` and `keystroke`.
 - The client sends the difference to server through the network.
@@ -90,12 +90,12 @@ On the client side, client read from stand input device, which is a `pty` slave.
 
 On the server side, server receives new state from the network. Then server applies it to server terminal.
 
-- The server receives the difference from client [`recv()`].
-- The server use the difference to rebuild the remote state [`UserStream`].
-- After received the remote state [`serve()`],
-- The server applies the user kestroke to the local terminal emulator. [`apply_string()` of `UserStream`]
-  - For `keystroke`, the server applies the input to terminal emulator. [`serve()`->`act()`]
-  - For `resize`, the server adjusts the size of terminal emulator.
+- The server receives the difference from client. [`recv()`]
+- The server use the difference to rebuild the remote state. [`apply_string()` of `UserStream`]
+- After the remote state is received, [`serve()`]
+- The server applies the actions to the local terminal emulator. [`serve()`->`act()`]
+  - For `keystroke` action, the server applies the input to terminal emulator.
+  - For `resize` action, the server adjusts the size of terminal emulator.
 - If there is any response from terminal emulator, the response will be sent back to host application.
 
 ![aprilsh.svg](../img/aprilsh.svg)
@@ -104,7 +104,7 @@ On the server side, server receives new state from the network. Then server appl
 
 On the server side, server receives (terminal) application output from the `pty` master, as well as terminal write back.
 
-- When it's time to send state to client [`network.tick()`]
+- When it's time to send state to client, [`network.tick()`]
 - The server calculates the difference between new state and sent states. [`diff_from()` of `Complete`]
 - The calculated difference is a mix of escape sequences and data, which contains `echo ack`, `resize`, `mix`.
 - The server sends the difference to the client through network.
@@ -115,17 +115,18 @@ On the client side, client receives new state from the network. Then the client 
 
 - The client receives the difference from server [`recv()`].
 - The client applies `resize`, `mix` to the local terminal and save `echo ack`. [`apply_string()` of `Complete`]
-- The client applies the prediction to the new state.
 
-Please note that there are two local termianls. One is used to receive terminal state. One is used for display to
-real terminal. Here the local terminal changed is the received terminals.
+Please note that there are two local termianls. One is used to track received terminal. The other is used to find difference for real terminal emulator, such as `kitty`, `alacritty` or `wezterm`. Here the local terminal changed is the received terminals.
 
 ### Client update real terminal
 
-On the client side, the client synchronize the client terminal to real terminal emulator. Here the terminal is used for computing difference for real terminal.
+On the client side, the client synchronize the client terminal to real terminal emulator. Here the local terminal is used to find the difference for real terminal.
 
 - When it's time to display the state to real termninal emulator [`output_new_frame()`]
+- The client fetches the latest received terminal state.
+- The client applies the prediction to the new state.
 - The client calculates the difference between new state, prediction and local state. [`new_frame()` of `Display`]
+  - Here the local state is the last used state.
 - The calculated difference is a mix of escape sequences and data.
 - The mix is written to the `pty` slave, which will output to the real terminal emulator.
 

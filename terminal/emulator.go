@@ -347,7 +347,7 @@ func (emu *Emulator) deleteRows(startY, count int) {
 	}
 }
 
-// insert blank cols at and to the right of startX, within the scrolling area
+// insert count blank cols at startX, within the scrolling area
 func (emu *Emulator) insertCols(startX, count int) {
 	for r := emu.marginTop; r < emu.marginBottom; r++ {
 		emu.cf.moveInRow(r, startX+count, startX, emu.nColsEff-startX-count)
@@ -355,7 +355,7 @@ func (emu *Emulator) insertCols(startX, count int) {
 	}
 }
 
-// delete cols at and to the right of startX, within the scrolling area
+// delete count cols at startX, within the scrolling area
 func (emu *Emulator) deleteCols(startX, count int) {
 	for r := emu.marginTop; r < emu.marginBottom; r++ {
 		emu.cf.moveInRow(r, startX, startX+count, emu.nColsEff-startX-count)
