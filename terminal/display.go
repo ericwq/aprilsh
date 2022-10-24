@@ -389,6 +389,19 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	return b.String()
 }
 
+// putRow(): compare two rows to generate the stream to replicate the new row
+// from the base of old row.
+// if wrap, write the first column
+// if the rows are the same, just return (false)
+// for each cell:
+// - if the cells are the same, skip it.
+// - if the cells are empty, counting it.
+// - output the empty cells by count number.
+// - re-count empty cell with different rendition.
+// - output the empty cells by count number.
+// - if the cells are not empty cell, output it.
+// clear or write empty cells at EOL if possible.
+// whether we should wrap
 func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *Emulator, frameY int, oldRow []Cell, wrap bool) bool {
 	frameX := 0
 
@@ -574,19 +587,6 @@ func (d *Display) updateRendition(out io.Writer, r Renditions, force bool) {
 		d.currentRendition = r
 	}
 }
-
-// putRow(): compare two rows to generate the stream to replicate the row.
-// if wrap, write the first column
-// if the rows are the same, just return (false)
-// for each cell:
-// - if the cells are the same, skip it.
-// - if the cells are empty, counting it.
-// - output the empty cells by count number.
-// - re-count empty cell with different rendition.
-// - output the empty cells by count number.
-// - if the cells are not empty cell, output it.
-// clear or write empty cells at EOL if possible.
-// whether we should wrap
 
 func (d *Display) open() string {
 	var b strings.Builder
