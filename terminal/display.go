@@ -575,6 +575,7 @@ func (d *Display) appendMove(out io.Writer, y int, x int) {
 		// Backspaces are good too.
 		if y == lastY && x-lastX < 0 && x-lastX > -5 {
 			fmt.Fprint(out, strings.Repeat("\x08", y-lastY)) // BS
+			return
 		}
 		// More optimizations are possible.
 	}
