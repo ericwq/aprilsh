@@ -28,7 +28,9 @@ package terminal
 
 import (
 	"fmt"
+	"io"
 	"os"
+	"reflect"
 	"strings"
 
 	"github.com/ericwq/terminfo"
@@ -147,8 +149,8 @@ func loadDynamicTerminfo(term string) (*terminfo.Terminfo, error) {
 // to replicate the new terminal content and state to the existing one.
 //
 // - initialized: the first time is false.
-// - last: the existing terminal state.
-// - f: the new terminal state.
+// - oldE: the existing terminal state.
+// - newE: the new terminal state.
 func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	var b strings.Builder
 	ti := d.ti
@@ -228,37 +230,349 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		}
 	}
 
-	/* copy old screen and resize */
-	// what the influence of margin output?
-	// prepare place for the old screen
-	oldScreen := make([]Cell, oldE.GetWidth()*oldE.GetHeight())
-	oldE.cf.fullCopyCells(oldScreen)
-
-	// prepare place for the new screen
-	newPlace := make([]Cell, newE.GetWidth()*newE.GetHeight())
-
-	rowLen := Min(oldE.GetWidth(), newE.GetWidth())      // minimal row length
-	nCopyRows := Min(oldE.GetHeight(), newE.GetHeight()) // minimal row number
-
-	// copy the old screen to the new place
-	for pY := 0; pY < nCopyRows; pY++ {
-		srcStartIdx := pY
-		srcEndIdx := srcStartIdx + rowLen
-		dstStartIdx := rowLen * pY
-		copy(newPlace[dstStartIdx:], oldScreen[srcStartIdx:srcEndIdx])
-	}
-	oldScreen = nil
-	/* copy old screen and resize */
-
 	// is cursor visibility initialized?
 	if !initialized {
 		d.cursorVisible = false
 		ti.TPuts(&b, ti.HideCursor) // civis, "\x1B[?25l]" showCursorMode = false
 	}
 
-	// f is new , last is old
+	/* resize and copy old screen */
+	// prepare place for the old screen
+	oldScreen := make([]Cell, oldE.nCols*oldE.nRows)
+	oldE.cf.fullCopyCells(oldScreen)
+
+	// prepare place for the new screen
+	newScreen := make([]Cell, newE.nCols*newE.nRows)
+
+	nCopyCols := Min(oldE.nCols, newE.nCols) // minimal column length
+	nCopyRows := Min(oldE.nRows, newE.nRows) // minimal row length
+
+	// copy the old screen to the new place
+	for pY := 0; pY < nCopyRows; pY++ {
+		srcStartIdx := pY * nCopyCols
+		srcEndIdx := srcStartIdx + nCopyCols
+		dstStartIdx := pY * nCopyCols
+		copy(newScreen[dstStartIdx:], oldScreen[srcStartIdx:srcEndIdx])
+	}
+	oldScreen = nil
+	/* resize and copy old screen */
+
+	// scroll up/down?
+	/* keep it first.
+	scrollHeight := 0
+	linesScrolled := 0
+	if initialized && newE.cf.scrollHead != oldE.cf.scrollHead {
+		if newE.cf.scrollHead > oldE.cf.scrollHead {
+			// old scrollHead < new scrollHead
+			linesScrolled = oldE.cf.scrollHead - newE.cf.scrollHead
+			fmt.Fprint(&b, strings.Repeat("\x1BM", linesScrolled)) // ri, Tputs available
+			// use indn or rin?
+		} else {
+			// old scrollHead > new scrollHead
+			// move
+			linesScrolled = newE.cf.scrollHead - oldE.cf.scrollHead
+			fmt.Fprint(&b, strings.Repeat("\x0A", linesScrolled)) // ind
+			// use indn or rin?
+		}
+	}
+	*/
+
+	var frameY int
+	// shortcut -- has display moved up by a certain number of lines?
+	if initialized {
+		var linesScrolled int
+		var scrollHeight int
+
+		for row := 0; row < newE.nRows; row++ {
+			newStart := newE.cf.getViewRowIdx(0)
+			newEnd := newStart + newE.nCols
+			newRow := newE.cf.cells[newStart:newEnd]
+
+			oldStart := row * newE.nCols
+			oldEnd := oldStart + newE.nCols
+			oldRow := newScreen[oldStart:oldEnd]
+
+			if reflect.DeepEqual(newRow, oldRow) {
+				// if row 0, we're looking at ourselves and probably didn't scroll
+				if row == 0 {
+					break
+				}
+
+				// found a scroll: text up, window down
+				linesScrolled = row
+				scrollHeight = 1
+
+				// how big is the region that was scrolled?
+				for regionHeight := 1; linesScrolled+regionHeight < newE.nRows; regionHeight++ {
+					newStart := newE.cf.getViewRowIdx(regionHeight)
+					newEnd := newStart + newE.nCols
+					newRow := newE.cf.cells[newStart:newEnd]
+
+					oldStart := (linesScrolled + regionHeight) * newE.nCols
+					oldEnd := oldStart + newE.nCols
+					oldRow := newScreen[oldStart:oldEnd]
+					if reflect.DeepEqual(newRow, oldRow) {
+						scrollHeight = regionHeight + 1
+					} else {
+						break
+					}
+				}
+
+				break
+			}
+		}
+
+		if scrollHeight > 0 {
+			frameY = scrollHeight
+
+			if linesScrolled > 0 {
+				// do we really need blank row?
+				d.updateRendition(&b, Renditions{}, true)
+
+				topMargin := 0
+				bottomMargin := topMargin + linesScrolled + scrollHeight - 1
+
+				// Common case:  if we're already on the bottom line and we're scrolling the whole
+				// creen, just do a CR and LFs.
+				if scrollHeight+linesScrolled == newE.nRows && d.cursorY+1 == newE.nRows {
+					fmt.Fprint(&b, "\x0D")
+					fmt.Fprint(&b, strings.Repeat("\x0A", linesScrolled)) // ind
+					d.cursorX = 0
+				} else {
+					// set scrolling region
+					fmt.Fprintf(&b, "\x1B[%d;%dr", topMargin+1, bottomMargin+1)
+
+					// go to bottom of scrolling region
+					d.cursorY = -1
+					d.cursorX = -1
+					d.appendSilentMove(&b, bottomMargin, 0)
+
+					// scroll
+					fmt.Fprint(&b, strings.Repeat("\x0A", linesScrolled)) // ind
+
+					// reset scrolling region
+					fmt.Fprint(&b, "\x1B[r")
+					// lidate cursor position after unsetting scrolling region
+					d.cursorY = -1
+					d.cursorX = -1
+				}
+
+				// Now we need a proper blank row.
+				blankRow := make([]Cell, newE.nCols)
+
+				// do the move in our local index
+				for i := topMargin; i <= bottomMargin; i++ {
+					srcStart := (linesScrolled + i) * newE.nCols
+					srcEnd := srcStart + newE.nCols
+
+					dstStart := i * newE.nCols
+					if i+linesScrolled <= bottomMargin {
+						copy(newScreen[dstStart:], newScreen[srcStart:srcEnd])
+					} else {
+						copy(newScreen[dstStart:], blankRow[:])
+					}
+				}
+			}
+		}
+	}
+
+	// Now update the display, row by row
+	wrap := false
+	for ; frameY < newE.nRows; frameY++ {
+		srcStart := frameY * newE.nCols
+		srcEnd := srcStart + newE.nCols
+		oldRow := newScreen[srcStart:srcEnd]
+
+		wrap = d.putRow(&b, initialized, oldE, newE, frameY, oldRow, wrap)
+	}
 
 	return b.String()
+}
+
+func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *Emulator, frameY int, oldRow []Cell, wrap bool) bool {
+	frameX := 0
+
+	newStart := newE.cf.getViewRowIdx(frameY)
+	newEnd := newStart + newE.nCols
+	newRow := newE.cf.cells[newStart:newEnd]
+
+	// If we're forced to write the first column because of wrap, go ahead and do so.
+	if wrap {
+		cell := newRow[0]
+		d.updateRendition(out, cell.GetRenditions(), false)
+		d.appendCell(out, cell)
+		frameX += cell.GetWidth()
+		d.cursorX += cell.GetWidth()
+	}
+
+	// If rows are the same object, we don't need to do anything at all.
+	if initialized && reflect.DeepEqual(newRow, oldRow) {
+		return false
+	}
+
+	wrapThis := false // TODO: last cell warp, need to consider double width cell
+	rowWidth := newE.nCols
+	clearCount := 0
+	wroteLastCell := false
+	blankRenditions := Renditions{}
+
+	for frameX < rowWidth {
+		cell := newRow[frameX]
+
+		// Does cell need to be drawn?  Skip all this.
+		if initialized && clearCount == 0 && cell == oldRow[frameX] {
+			// TODO: how to print combining grapheme and double width grapheme?
+			frameX += cell.GetWidth()
+			continue
+		}
+
+		// Slurp up all the empty cells
+		if cell.Empty() {
+			if clearCount == 0 {
+				blankRenditions = cell.GetRenditions()
+			}
+			if cell.GetRenditions() == blankRenditions {
+				// Remember run of blank cells
+				clearCount++
+				frameX++
+				continue
+			}
+		}
+
+		// Clear or write cells within the row (not to end).
+		if clearCount > 0 {
+			// Move to the right position.
+			d.appendSilentMove(out, frameY, frameX-clearCount)
+			d.updateRendition(out, blankRenditions, false)
+
+			canUseErase := d.hasBCE || d.currentRendition == Renditions{}
+			if canUseErase && d.hasECH && clearCount > 4 {
+				fmt.Fprintf(out, "\x1B[%dX", clearCount)
+			} else {
+				fmt.Fprint(out, strings.Repeat(" ", clearCount))
+				d.cursorX = frameX
+			}
+			// If the current character is *another* empty cell in a different rendition,
+			// we restart counting and continue here
+			clearCount = 0
+			if cell.Empty() {
+				blankRenditions = cell.GetRenditions()
+				clearCount = 1
+				frameX++
+				continue
+			}
+		}
+
+		// Now draw a character cell.
+		// Move to the right position.
+		cellWidth := cell.GetWidth()
+		/*
+			If we are about to print the last character in a wrapping row,
+			trash the cursor position to force explicit positioning.  We do
+			this because our input terminal state may have the cursor on
+			the autowrap column ("column 81"), but our output terminal
+			states always snap the cursor to the true last column ("column
+			80"), and we want to be able to apply the diff to either, for
+			verification.
+		*/
+		if wrapThis && frameX+cellWidth > rowWidth {
+			d.cursorX = -1
+			d.cursorY = -1
+		}
+		d.appendSilentMove(out, frameY, frameX)
+		d.updateRendition(out, cell.GetRenditions(), false)
+		d.appendCell(out, cell)
+		frameX += cellWidth
+		d.cursorX += cellWidth
+		if frameX >= rowWidth {
+			// TODO consider the double width grapheme
+			wroteLastCell = true
+		}
+	}
+	/* End of line. */
+
+	// Clear or write empty cells at EOL.
+	if clearCount > 0 {
+		// Move to the right position.
+		d.appendSilentMove(out, frameY, frameX-clearCount)
+		d.updateRendition(out, blankRenditions, false)
+
+		canUseErase := d.hasBCE || d.currentRendition == Renditions{}
+		if canUseErase && !wrapThis {
+			fmt.Fprint(out, "\x1B[K")
+		} else {
+			fmt.Fprint(out, strings.Repeat(" ", clearCount))
+			d.cursorX = frameX
+			wroteLastCell = true
+		}
+	}
+
+	if wroteLastCell && frameY < newE.nRows-1 {
+		// To hint that a word-select should group the end of one line with the beginning of the next,
+		// we let the real cursor actually wrap around in cases where it wrapped around for us.
+		if wrapThis {
+			// Update our cursor, and ask for wrap on the next row.
+			d.cursorX = 0
+			d.cursorY++
+			return true
+		} else {
+			// Resort to CR/LF and update our cursor.
+			fmt.Fprint(out, "\x0D\x0A")
+			d.cursorX = 0
+			d.cursorY++
+		}
+	}
+	return false
+}
+
+func (d *Display) appendCell(out io.Writer, cell Cell) {
+	cell.printGrapheme(out)
+}
+
+func (d *Display) appendSilentMove(out io.Writer, y int, x int) {
+	if d.cursorX == x && d.cursorY == y {
+		return
+	}
+	// turn off cursor if necessary before moving cursor
+	if d.cursorVisible {
+		fmt.Fprint(out, "\x1B[?25l")
+		d.cursorVisible = false
+	}
+	d.appendMove(out, y, x)
+}
+
+func (d *Display) appendMove(out io.Writer, y int, x int) {
+	lastX := d.cursorX
+	lastY := d.cursorY
+
+	d.cursorY = y
+	d.cursorX = x
+
+	// Only optimize if cursor pos is known
+	if lastX != -1 && lastY != -1 {
+		// Can we use CR and/or LF?  They're cheap and easier to trace.
+		if x == 0 && y-lastY >= 0 && y-lastY < 5 {
+			if lastX != 0 {
+				fmt.Fprint(out, "\x0D") // CR
+			}
+			fmt.Fprint(out, strings.Repeat("\x0A", y-lastY)) // LF
+			return
+		}
+		// Backspaces are good too.
+		if y == lastY && x-lastX < 0 && x-lastX > -5 {
+			fmt.Fprint(out, strings.Repeat("\x08", y-lastY)) // BS
+		}
+		// More optimizations are possible.
+	}
+
+	fmt.Fprintf(out, "\x1B[%d;%dH", y+1, x+1) // cup
+}
+
+func (d *Display) updateRendition(out io.Writer, r Renditions, force bool) {
+	if force || d.currentRendition != r {
+		out.Write([]byte(r.SGR()))
+		d.currentRendition = r
+	}
 }
 
 // putRow(): compare two rows to generate the stream to replicate the row.

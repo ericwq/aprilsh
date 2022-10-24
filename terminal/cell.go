@@ -27,6 +27,7 @@ SOFTWARE.
 package terminal
 
 import (
+	"io"
 	"strings"
 )
 
@@ -229,21 +230,21 @@ hide it
 		}
 	}
 
-// print grapheme to output
-
-	func (c *Cell) PrintGrapheme(output *strings.Builder) {
-		if c.Empty() {
-			output.WriteString(" ")
-			return
-		}
-		 // * cells that begin with combining character get combiner
-		 // * attached to no-break space
-		if c.fallback {
-			output.WriteString("\xC2\xA0")
-		}
-		output.WriteString(c.contents)
-	}
 */
+// print grapheme to output
+func (c *Cell) printGrapheme(out io.Writer) {
+	if c.Empty() {
+		out.Write([]byte(" "))
+		return
+	}
+	// * cells that begin with combining character get combiner
+	// * attached to no-break space
+	// if c.fallback {
+	// 	output.WriteString("\xC2\xA0")
+	// }
+	out.Write([]byte(c.contents))
+}
+
 func (c *Cell) SetUnderline(underline bool) {
 	c.renditions.underline = underline
 }
