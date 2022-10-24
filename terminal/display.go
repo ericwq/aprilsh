@@ -558,13 +558,14 @@ func (d *Display) appendMove(out io.Writer, y int, x int) {
 	lastX := d.cursorX
 	lastY := d.cursorY
 
-	d.cursorY = y
 	d.cursorX = x
+	d.cursorY = y
 
-	// Only optimize if cursor pos is known
+	// Only optimize if cursor position is known
 	if lastX != -1 && lastY != -1 {
 		// Can we use CR and/or LF?  They're cheap and easier to trace.
 		if x == 0 && y-lastY >= 0 && y-lastY < 5 {
+			// less than 5 is efficient than CUP
 			if lastX != 0 {
 				fmt.Fprint(out, "\x0D") // CR
 			}
@@ -581,6 +582,8 @@ func (d *Display) appendMove(out io.Writer, y int, x int) {
 	fmt.Fprintf(out, "\x1B[%d;%dH", y+1, x+1) // cup
 }
 
+// if current renditions is different from parameter renditions, write
+// SGR sequence to the output stream and update the current renditions.
 func (d *Display) updateRendition(out io.Writer, r Renditions, force bool) {
 	if force || d.currentRendition != r {
 		out.Write([]byte(r.SGR()))
@@ -593,17 +596,23 @@ func (d *Display) open() string {
 	if d.smcup != "" {
 		b.WriteString(d.smcup)
 	}
-	fmt.Fprintf(&b, "\x1B[?1h") // DECSET: set application cursor key mode
+	// DECSET: set application cursor key mode
+	fmt.Fprintf(&b, "\x1B[?1h")
 	return b.String()
 }
 
 func (d *Display) close() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "\x1B[?1l")                                     // DECRST: set ANSI cursor key mode
-	fmt.Fprintf(&b, "\x1B[0m")                                      // SGR: reset character attributes, foreground color and background color
-	fmt.Fprintf(&b, "\x1B[?25h")                                    // DECTCEM: show cursor mode
-	fmt.Fprintf(&b, "\x1B[?1003l\x1B[?1002l\x1B[?1001l\x1B[?1000l") // disable mouse tracking mode
-	fmt.Fprintf(&b, "\x1B[?1015l\x1B[?1006l\x1B[?1005l")            // reset to default mouse tracking encoding
+	// DECRST: set ANSI cursor key mode
+	fmt.Fprintf(&b, "\x1B[?1l")
+	// SGR: reset character attributes, foreground color and background color
+	fmt.Fprintf(&b, "\x1B[0m")
+	// DECTCEM: show cursor mode
+	fmt.Fprintf(&b, "\x1B[?25h")
+	// disable mouse tracking mode
+	fmt.Fprintf(&b, "\x1B[?1003l\x1B[?1002l\x1B[?1001l\x1B[?1000l")
+	// reset to default mouse tracking encoding
+	fmt.Fprintf(&b, "\x1B[?1015l\x1B[?1006l\x1B[?1005l")
 	if d.rmcup != "" {
 		b.WriteString(d.rmcup)
 	}
