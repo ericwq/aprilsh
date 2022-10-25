@@ -411,10 +411,6 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 // whether we should wrap
 func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *Emulator, frameY int, oldRow []Cell, wrap bool) bool {
 	frameX := 0
-
-	// newStart := newE.cf.getViewRowIdx(frameY)
-	// newEnd := newStart + newE.nCols
-	// newRow := newE.cf.cells[newStart:newEnd]
 	newRow := getRow(newE, frameY)
 
 	// If we're forced to write the first column because of wrap, go ahead and do so.
