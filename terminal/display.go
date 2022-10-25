@@ -145,6 +145,22 @@ func loadDynamicTerminfo(term string) (*terminfo.Terminfo, error) {
 	return ti, nil
 }
 
+// return the specified row from the new terminal.
+func getRow(newE *Emulator, posY int) (row []Cell) {
+	start := newE.cf.getViewRowIdx(posY)
+	end := start + newE.nCols
+	row = newE.cf.cells[start:end]
+	return row
+}
+
+// return the specified row from the new screen.
+func getRowFrom(from []Cell, posY int, w int) (row []Cell) {
+	start := posY * w
+	end := start + w
+	row = from[start:end]
+	return row
+}
+
 // NewFrame() compare two terminal and generate mix (grapheme and control sequence) stream
 // to replicate the new terminal content and state to the existing one.
 //
@@ -180,9 +196,9 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	if !initialized || newE.reverseVideo != oldE.reverseVideo {
 		// set reverse video
 		if newE.reverseVideo {
-			fmt.Fprintf(&b, "\x1B[?5h]")
+			fmt.Fprintf(&b, "\x1B[?5h")
 		} else {
-			fmt.Fprintf(&b, "\x1B[?5l]")
+			fmt.Fprintf(&b, "\x1B[?5l")
 		}
 	}
 
@@ -205,7 +221,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		d.currentRendition = oldE.GetRenditions()
 	}
 
-	// has the screen buffer mode changed?
+	// TODO: has the screen buffer mode changed?
 	if !initialized || newE.altScreenBufferMode != oldE.altScreenBufferMode {
 		// change the screen buffer mode
 		oldE.switchScreenBufferMode(newE.altScreenBufferMode)
@@ -217,7 +233,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		}
 	}
 
-	// saved cursor changed?
+	// TODO: saved cursor changed?
 	if !initialized || newE.savedCursor_DEC.isSet != oldE.savedCursor_DEC.isSet {
 		if newE.savedCursor_DEC.isSet {
 			hdl_esc_decsc(oldE)
@@ -237,12 +253,14 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	}
 
 	/* resize and copy old screen */
+	// we copy the old screen to avoid changing the existing terminal state.
+
 	// prepare place for the old screen
 	oldScreen := make([]Cell, oldE.nCols*oldE.nRows)
 	oldE.cf.fullCopyCells(oldScreen)
 
 	// prepare place for the new screen
-	newScreen := make([]Cell, newE.nCols*newE.nRows)
+	resizeScreen := make([]Cell, newE.nCols*newE.nRows)
 
 	nCopyCols := Min(oldE.nCols, newE.nCols) // minimal column length
 	nCopyRows := Min(oldE.nRows, newE.nRows) // minimal row length
@@ -252,7 +270,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		srcStartIdx := pY * nCopyCols
 		srcEndIdx := srcStartIdx + nCopyCols
 		dstStartIdx := pY * nCopyCols
-		copy(newScreen[dstStartIdx:], oldScreen[srcStartIdx:srcEndIdx])
+		copy(resizeScreen[dstStartIdx:], oldScreen[srcStartIdx:srcEndIdx])
 	}
 	oldScreen = nil
 	/* resize and copy old screen */
@@ -278,19 +296,16 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	*/
 
 	var frameY int
+	var oldRow []Cell
+	var newRow []Cell
 	// shortcut -- has display moved up by a certain number of lines?
 	if initialized {
 		var linesScrolled int
 		var scrollHeight int
 
-		for row := 0; row < newE.nRows; row++ {
-			newStart := newE.cf.getViewRowIdx(0)
-			newEnd := newStart + newE.nCols
-			newRow := newE.cf.cells[newStart:newEnd]
-
-			oldStart := row * newE.nCols
-			oldEnd := oldStart + newE.nCols
-			oldRow := newScreen[oldStart:oldEnd]
+		for row := 0; row < newE.GetHeight(); row++ {
+			newRow = getRow(newE, 0)
+			oldRow = getRowFrom(resizeScreen, row, newE.nCols)
 
 			if reflect.DeepEqual(newRow, oldRow) {
 				// if row 0, we're looking at ourselves and probably didn't scroll
@@ -303,14 +318,9 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 				scrollHeight = 1
 
 				// how big is the region that was scrolled?
-				for regionHeight := 1; linesScrolled+regionHeight < newE.nRows; regionHeight++ {
-					newStart := newE.cf.getViewRowIdx(regionHeight)
-					newEnd := newStart + newE.nCols
-					newRow := newE.cf.cells[newStart:newEnd]
-
-					oldStart := (linesScrolled + regionHeight) * newE.nCols
-					oldEnd := oldStart + newE.nCols
-					oldRow := newScreen[oldStart:oldEnd]
+				for regionHeight := 1; linesScrolled+regionHeight < newE.GetHeight(); regionHeight++ {
+					newRow = getRow(newE, regionHeight)
+					oldRow = getRowFrom(resizeScreen, linesScrolled+regionHeight, newE.nCols)
 					if reflect.DeepEqual(newRow, oldRow) {
 						scrollHeight = regionHeight + 1
 					} else {
@@ -326,7 +336,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 			frameY = scrollHeight
 
 			if linesScrolled > 0 {
-				// do we really need blank row?
+				// reset the renditions
 				d.updateRendition(&b, Renditions{}, true)
 
 				topMargin := 0
@@ -334,7 +344,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 
 				// Common case:  if we're already on the bottom line and we're scrolling the whole
 				// creen, just do a CR and LFs.
-				if scrollHeight+linesScrolled == newE.nRows && d.cursorY+1 == newE.nRows {
+				if scrollHeight+linesScrolled == newE.GetHeight() && d.cursorY+1 == newE.GetHeight() {
 					fmt.Fprint(&b, "\x0D")
 					fmt.Fprint(&b, strings.Repeat("\x0A", linesScrolled)) // ind
 					d.cursorX = 0
@@ -352,7 +362,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 
 					// reset scrolling region
 					fmt.Fprint(&b, "\x1B[r")
-					// lidate cursor position after unsetting scrolling region
+					// invalidate cursor position after unsetting scrolling region
 					d.cursorY = -1
 					d.cursorX = -1
 				}
@@ -360,16 +370,16 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 				// Now we need a proper blank row.
 				blankRow := make([]Cell, newE.nCols)
 
-				// do the move in our local index
+				// do the move in our local new screen
 				for i := topMargin; i <= bottomMargin; i++ {
-					srcStart := (linesScrolled + i) * newE.nCols
-					srcEnd := srcStart + newE.nCols
-
 					dstStart := i * newE.nCols
+
 					if i+linesScrolled <= bottomMargin {
-						copy(newScreen[dstStart:], newScreen[srcStart:srcEnd])
+						srcStart := (linesScrolled + i) * newE.nCols
+						srcEnd := srcStart + newE.nCols
+						copy(resizeScreen[dstStart:], resizeScreen[srcStart:srcEnd])
 					} else {
-						copy(newScreen[dstStart:], blankRow[:])
+						copy(resizeScreen[dstStart:], blankRow[:])
 					}
 				}
 			}
@@ -378,11 +388,8 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 
 	// Now update the display, row by row
 	wrap := false
-	for ; frameY < newE.nRows; frameY++ {
-		srcStart := frameY * newE.nCols
-		srcEnd := srcStart + newE.nCols
-		oldRow := newScreen[srcStart:srcEnd]
-
+	for ; frameY < newE.GetHeight(); frameY++ {
+		oldRow = getRowFrom(resizeScreen, frameY, newE.nCols)
 		wrap = d.putRow(&b, initialized, oldE, newE, frameY, oldRow, wrap)
 	}
 
@@ -405,9 +412,10 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *Emulator, frameY int, oldRow []Cell, wrap bool) bool {
 	frameX := 0
 
-	newStart := newE.cf.getViewRowIdx(frameY)
-	newEnd := newStart + newE.nCols
-	newRow := newE.cf.cells[newStart:newEnd]
+	// newStart := newE.cf.getViewRowIdx(frameY)
+	// newEnd := newStart + newE.nCols
+	// newRow := newE.cf.cells[newStart:newEnd]
+	newRow := getRow(newE, frameY)
 
 	// If we're forced to write the first column because of wrap, go ahead and do so.
 	if wrap {

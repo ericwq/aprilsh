@@ -738,6 +738,7 @@ func TestHandle_SGR_Break(t *testing.T) {
 		{"break 48:2-1", []int{CSI_SGR}, "\x1B[48:2:23m"},
 		{"break 48:2-2", []int{CSI_SGR}, "\x1B[48:2:23:22m"},
 		{"break 48:7  ", []int{CSI_SGR}, "\x1B[48;7m"},
+		{"sgr0        ", []int{CSI_SGR}, "\x1B[m"},
 	}
 	p := NewParser()
 	emu := NewEmulator3(8, 4, 4)

@@ -51,7 +51,7 @@ type Emulator struct {
 	attrs        Cell // prototype cell with current attributes
 	fg           Color
 	bg           Color
-	reverseVideo bool
+	reverseVideo bool // replicated by NewFrame()
 
 	parser *Parser
 

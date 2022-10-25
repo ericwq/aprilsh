@@ -36,7 +36,8 @@ import (
 	"github.com/rivo/uniseg"
 )
 
-/* 64 - VT420 family
+/*
+ * 64 - VT420 family
  *  1 - 132 columns
  *  9 - National Replacement Character-sets
  * 15 - DEC technical set
