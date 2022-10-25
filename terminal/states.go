@@ -80,8 +80,8 @@ package terminal
 	}
 */
 type (
-	MouseTrackingMode  uint8
-	MouseTrackingEnc   uint8
+	MouseTrackingMode  uint16
+	MouseTrackingEnc   uint16
 	CompatibilityLevel uint8
 	CursorKeyMode      uint8
 	KeypadMode         uint8
@@ -96,18 +96,19 @@ const (
 )
 
 const (
-	MouseTrackingMode_Disable MouseTrackingMode = iota
-	MouseTrackingMode_X10_Compat
-	MouseTrackingMode_VT200
-	MouseTrackingMode_VT200_ButtonEvent
-	MouseTrackingMode_VT200_AnyEvent
+	MouseTrackingMode_Disable           MouseTrackingMode = 0
+	MouseTrackingMode_X10_Compat                          = 9
+	MouseTrackingMode_VT200                               = 1000
+	MouseTrackingMode_VT200_HighLight                     = 1001
+	MouseTrackingMode_VT200_ButtonEvent                   = 1002
+	MouseTrackingMode_VT200_AnyEvent                      = 1003
 )
 
 const (
-	MouseTrackingEnc_Default MouseTrackingEnc = iota
-	MouseTrackingEnc_UTF8
-	MouseTrackingEnc_SGR
-	MouseTrackingEnc_URXVT
+	MouseTrackingEnc_Default MouseTrackingEnc = 0
+	MouseTrackingEnc_UTF8                     = 1005
+	MouseTrackingEnc_SGR                      = 1006
+	MouseTrackingEnc_URXVT                    = 1015
 )
 
 const (
@@ -165,9 +166,9 @@ type SavedCursor struct {
 
 // TODO default constructor checking
 type MouseTrackingState struct {
-	mode           MouseTrackingMode
-	enc            MouseTrackingEnc
-	focusEventMode bool
+	mode           MouseTrackingMode // replicated by NewFrame()
+	enc            MouseTrackingEnc  // replicated by NewFrame()
+	focusEventMode bool              // replicated by NewFrame()
 }
 
 type SavedCursor_SCO struct {
