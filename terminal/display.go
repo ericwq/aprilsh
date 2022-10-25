@@ -375,9 +375,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 					dstStart := i * newE.nCols
 
 					if i+linesScrolled <= bottomMargin {
-						srcStart := (linesScrolled + i) * newE.nCols
-						srcEnd := srcStart + newE.nCols
-						copy(resizeScreen[dstStart:], resizeScreen[srcStart:srcEnd])
+						copy(resizeScreen[dstStart:], getRowFrom(resizeScreen, linesScrolled+i, newE.nCols))
 					} else {
 						copy(resizeScreen[dstStart:], blankRow[:])
 					}
@@ -393,6 +391,75 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		wrap = d.putRow(&b, initialized, oldE, newE, frameY, oldRow, wrap)
 	}
 
+	// has cursor location changed?
+	if !initialized || newE.GetCursorRow() != d.cursorY || newE.GetCursorCol() != d.cursorX {
+		d.appendMove(&b, newE.GetCursorRow(), newE.GetCursorCol())
+	}
+
+	// has cursor visibility changed?
+	if !initialized || newE.showCursorMode != d.cursorVisible {
+		if newE.showCursorMode {
+			fmt.Fprint(&b, "\x1B[?25h") // cvvis
+		} else {
+			fmt.Fprint(&b, "\x1B[?25l") // civis
+		}
+	}
+
+	// have renditions changed?
+	d.updateRendition(&b, newE.GetRenditions(), !initialized)
+
+	// has bracketed paste mode changed?
+	if !initialized || newE.bracketedPasteMode != oldE.bracketedPasteMode {
+		if newE.bracketedPasteMode {
+			fmt.Fprint(&b, "\x1B[?2004h")
+		} else {
+			fmt.Fprint(&b, "\x1B[?2004l")
+		}
+	}
+
+	// has mouse reporting mode changed?
+	if !initialized || newE.mouseTrk.mode != oldE.mouseTrk.mode {
+		if newE.mouseTrk.mode == MouseTrackingMode_Disable {
+			fmt.Fprint(&b, "\x1B[?1003l")
+			fmt.Fprint(&b, "\x1B[?1002l")
+			fmt.Fprint(&b, "\x1B[?1001l")
+			fmt.Fprint(&b, "\x1B[?1000l")
+		} else {
+			// close old mouse reporting mode
+			if oldE.mouseTrk.mode != MouseTrackingMode_Disable {
+				fmt.Fprintf(&b, "\x1B[?%dl", oldE.mouseTrk.mode)
+			}
+			// open new mouse reporting mode
+			fmt.Fprintf(&b, "\x1B[?%dh", newE.mouseTrk.mode)
+		}
+	}
+
+	// has mouse focus mode changed?
+	if !initialized || newE.mouseTrk.focusEventMode != oldE.mouseTrk.focusEventMode {
+		if newE.mouseTrk.focusEventMode {
+			fmt.Fprint(&b, "\x1B[?1004h")
+		} else {
+			fmt.Fprint(&b, "\x1B[?1004l")
+		}
+	}
+
+	// has mouse encoding mode changed?
+	if !initialized || newE.mouseTrk.enc != oldE.mouseTrk.enc {
+		if newE.mouseTrk.enc == MouseTrackingEnc_Default {
+			fmt.Fprint(&b, "\x1B[?1015l")
+			fmt.Fprint(&b, "\x1B[?1006l")
+			fmt.Fprint(&b, "\x1B[?1005l")
+		} else {
+			// close old mouse encoding mode
+			if oldE.mouseTrk.enc != MouseTrackingEnc_Default {
+				fmt.Fprintf(&b, "\x1B[?%dl", oldE.mouseTrk.enc)
+			}
+			// open new mouse encoding mode
+			fmt.Fprintf(&b, "\x1B[?%dh", newE.mouseTrk.enc)
+		}
+	}
+
+	// TODO: more state need to replicate
 	return b.String()
 }
 
