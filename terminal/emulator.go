@@ -42,8 +42,8 @@ type Emulator struct {
 	cf           *Framebuffer // current frame buffer
 	frame_pri    Framebuffer  // normal screen buffer
 	frame_alt    Framebuffer  // alternate screen buffer
-	posX         int          // current cursor horizontal position (on-screen)
-	posY         int          // current cursor vertical position (on-screen)
+	posX         int          // current cursor horizontal position (on-screen)  replicated by NewFrame()
+	posY         int          // current cursor vertical position (on-screen)  replicated by NewFrame()
 	marginTop    int          // current margin top (copy of frame field)
 	marginBottom int          // current margin bottom (copy of frame field)
 	lastCol      bool
@@ -56,7 +56,7 @@ type Emulator struct {
 	parser *Parser
 
 	// Terminal state - N.B.: keep resetTerminal () in sync with this!
-	showCursorMode      bool // default true
+	showCursorMode      bool // default true, replicated by NewFrame(), ds.cursor_visible
 	altScreenBufferMode bool // Alternate Screen Buffer support: default false
 	autoWrapMode        bool // default:true
 	autoNewlineMode     bool
@@ -64,7 +64,7 @@ type Emulator struct {
 	insertMode          bool // true/false
 	bkspSendsDel        bool // backspace send delete, default:true
 	localEcho           bool
-	bracketedPasteMode  bool
+	bracketedPasteMode  bool // replicated by NewFrame()
 	altScrollMode       bool
 	altSendsEscape      bool // default true
 	modifyOtherKeys     uint
@@ -88,7 +88,7 @@ type Emulator struct {
 	savedCursor_DEC_alt SavedCursor_DEC
 	savedCursor_DEC     *SavedCursor_DEC
 
-	mouseTrk MouseTrackingState
+	mouseTrk MouseTrackingState // replicated by NewFrame()
 
 	terminalToHost strings.Builder // used for terminal write back
 	user           UserInput       // TODO consider how to change it.
