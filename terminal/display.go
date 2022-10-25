@@ -459,7 +459,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		}
 	}
 
-	// TODO: more state need to replicate
+	// TODO: more state need to be replicated
 	return b.String()
 }
 
