@@ -390,7 +390,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 }
 
 // putRow(): compare two rows to generate the stream to replicate the new row
-// from the base of old row.
+// from the old row base.
 // if wrap, write the first column
 // if the rows are the same, just return (false)
 // for each cell:
@@ -429,6 +429,7 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 	wroteLastCell := false
 	blankRenditions := Renditions{}
 
+	// iterate for every cell
 	for frameX < rowWidth {
 		cell := newRow[frameX]
 
@@ -452,14 +453,15 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 			}
 		}
 
-		// Clear or write cells within the row (not to end).
+		// Clear or write empty cells within the row (not to end).
 		if clearCount > 0 {
-			// Move to the right position.
+			// Move to the right(correct) position.
 			d.appendSilentMove(out, frameY, frameX-clearCount)
 			d.updateRendition(out, blankRenditions, false)
 
 			canUseErase := d.hasBCE || d.currentRendition == Renditions{}
 			if canUseErase && d.hasECH && clearCount > 4 {
+				// space is more efficient than ECH, if clearCount > 4
 				fmt.Fprintf(out, "\x1B[%dX", clearCount)
 			} else {
 				fmt.Fprint(out, strings.Repeat(" ", clearCount))
@@ -512,7 +514,7 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 
 		canUseErase := d.hasBCE || d.currentRendition == Renditions{}
 		if canUseErase && !wrapThis {
-			fmt.Fprint(out, "\x1B[K")
+			fmt.Fprint(out, "\x1B[K") // Erase in Line (EL), Erase to Right (default)
 		} else {
 			fmt.Fprint(out, strings.Repeat(" ", clearCount))
 			d.cursorX = frameX
@@ -538,10 +540,15 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 	return false
 }
 
+// generate grapheme sequence to change the terminal contents.
+// the generated sequence is wrote to the output stream.
 func (d *Display) appendCell(out io.Writer, cell Cell) {
+	// should we write space for empty contents?
 	cell.printGrapheme(out)
 }
 
+// turn off cursor if necessary, use appendMove to move cursor to position.
+// the generated sequence is wrote to the output stream.
 func (d *Display) appendSilentMove(out io.Writer, y int, x int) {
 	if d.cursorX == x && d.cursorY == y {
 		return
@@ -554,6 +561,8 @@ func (d *Display) appendSilentMove(out io.Writer, y int, x int) {
 	d.appendMove(out, y, x)
 }
 
+// generate CUP sequence to move cursor, use CR/LF/BS sequence to replace CUP if possible.
+// the generated sequence is wrote to the output stream.
 func (d *Display) appendMove(out io.Writer, y int, x int) {
 	lastX := d.cursorX
 	lastY := d.cursorY
@@ -583,8 +592,9 @@ func (d *Display) appendMove(out io.Writer, y int, x int) {
 	fmt.Fprintf(out, "\x1B[%d;%dH", y+1, x+1) // cup
 }
 
-// if current renditions is different from parameter renditions, write
-// SGR sequence to the output stream and update the current renditions.
+// if current renditions is different from parameter renditions, generate
+// SGR sequence to change the cell renditions and update the current renditions.
+// the generated sequence is wrote to the output stream.
 func (d *Display) updateRendition(out io.Writer, r Renditions, force bool) {
 	if force || d.currentRendition != r {
 		out.Write([]byte(r.SGR()))
