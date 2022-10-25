@@ -42,22 +42,22 @@ type Emulator struct {
 	cf           *Framebuffer // current frame buffer
 	frame_pri    Framebuffer  // normal screen buffer
 	frame_alt    Framebuffer  // alternate screen buffer
-	posX         int          // current cursor horizontal position (on-screen)  replicated by NewFrame()
-	posY         int          // current cursor vertical position (on-screen)  replicated by NewFrame()
-	marginTop    int          // current margin top (copy of frame field)
-	marginBottom int          // current margin bottom (copy of frame field)
+	posX         int          // replicated by NewFrame(), current cursor cols position (on-screen)
+	posY         int          // replicated by NewFrame(), current cursor rows position (on-screen)
+	marginTop    int          // current margin top (screen view)
+	marginBottom int          // current margin bottom (screen view)
 	lastCol      bool
 
-	attrs        Cell // prototype cell with current attributes
-	fg           Color
-	bg           Color
-	reverseVideo bool // replicated by NewFrame()
+	attrs Cell // prototype cell with current attributes, replicated by NewFrame()
+	fg    Color
+	bg    Color
 
 	parser *Parser
 
 	// Terminal state - N.B.: keep resetTerminal () in sync with this!
-	showCursorMode      bool // default true, replicated by NewFrame(), ds.cursor_visible
-	altScreenBufferMode bool // Alternate Screen Buffer support: default false
+	reverseVideo        bool // replicated by NewFrame(),
+	showCursorMode      bool // replicated by NewFrame(), default true, ds.cursor_visible
+	altScreenBufferMode bool // replicated by NewFrame(), Alternate Screen Buffer: default false
 	autoWrapMode        bool // default:true
 	autoNewlineMode     bool
 	keyboardLocked      bool

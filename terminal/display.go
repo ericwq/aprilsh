@@ -61,7 +61,7 @@ type Display struct {
 	// fields from FrameState
 	cursorX, cursorY int
 	currentRendition Renditions
-	cursorVisible    bool
+	showCursorMode   bool // mosh: cursorVisible
 }
 
 // https://github.com/gdamore/tcell the successor of termbox-go
@@ -221,34 +221,23 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		d.currentRendition = oldE.GetRenditions()
 	}
 
-	// TODO: has the screen buffer mode changed?
+	// has the screen buffer mode changed?
+	// change screen buffer is something like resize, except resize remains partial content,
+	// screen buffer mode reset the whole screen.
 	if !initialized || newE.altScreenBufferMode != oldE.altScreenBufferMode {
-		// change the screen buffer mode
-		oldE.switchScreenBufferMode(newE.altScreenBufferMode)
-
 		if newE.altScreenBufferMode {
 			fmt.Fprint(&b, "\x1B[?47h")
 		} else {
 			fmt.Fprint(&b, "\x1B[?47l")
 		}
-	}
-
-	// TODO: saved cursor changed?
-	if !initialized || newE.savedCursor_DEC.isSet != oldE.savedCursor_DEC.isSet {
-		if newE.savedCursor_DEC.isSet {
-			hdl_esc_decsc(oldE)
-
-			fmt.Fprint(&b, "\x1B[7") // sc, TODO not supported by terminfo
-		} else {
-			hdl_esc_decrc(oldE)
-
-			fmt.Fprint(&b, "\x1B[8") // rc, TODO not supported by terminfo
-		}
+		// d.cursorX = 0
+		// d.cursorY = 0
+		// d.currentRendition = Renditions{}
 	}
 
 	// is cursor visibility initialized?
 	if !initialized {
-		d.cursorVisible = false
+		d.showCursorMode = false
 		ti.TPuts(&b, ti.HideCursor) // civis, "\x1B[?25l]" showCursorMode = false
 	}
 
@@ -397,7 +386,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	}
 
 	// has cursor visibility changed?
-	if !initialized || newE.showCursorMode != d.cursorVisible {
+	if !initialized || newE.showCursorMode != d.showCursorMode {
 		if newE.showCursorMode {
 			fmt.Fprint(&b, "\x1B[?25h") // cvvis
 		} else {
@@ -460,6 +449,14 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	}
 
 	// TODO: more state need to be replicated
+	// saved cursor changed?
+	if !initialized || newE.savedCursor_DEC.isSet != oldE.savedCursor_DEC.isSet {
+		if newE.savedCursor_DEC.isSet {
+			fmt.Fprint(&b, "\x1B[7") // sc, TODO not supported by terminfo
+		} else {
+			fmt.Fprint(&b, "\x1B[8") // rc, TODO not supported by terminfo
+		}
+	}
 	return b.String()
 }
 
@@ -625,9 +622,9 @@ func (d *Display) appendSilentMove(out io.Writer, y int, x int) {
 		return
 	}
 	// turn off cursor if necessary before moving cursor
-	if d.cursorVisible {
+	if d.showCursorMode {
 		fmt.Fprint(out, "\x1B[?25l")
-		d.cursorVisible = false
+		d.showCursorMode = false
 	}
 	d.appendMove(out, y, x)
 }
