@@ -39,7 +39,7 @@ import (
 type Emulator struct {
 	nRows        int          // replicated by NewFrame(),
 	nCols        int          // replicated by NewFrame(),
-	cf           *Framebuffer // current frame buffer
+	cf           *Framebuffer // replicated by NewFrame(), current frame buffer
 	frame_pri    Framebuffer  // normal screen buffer
 	frame_alt    Framebuffer  // alternate screen buffer
 	posX         int          // replicated by NewFrame(), current cursor cols position (on-screen)
@@ -67,7 +67,7 @@ type Emulator struct {
 	bracketedPasteMode  bool // replicated by NewFrame(),
 	altScrollMode       bool // replicated by NewFrame(),
 	altSendsEscape      bool // replicated by NewFrame(), default true
-	modifyOtherKeys     uint
+	modifyOtherKeys     uint // replicated by NewFrame(),
 
 	horizMarginMode bool // replicated by NewFrame(), left and right margins support
 	nColsEff        int  // replicated by NewFrame(), right margins
@@ -83,10 +83,10 @@ type Emulator struct {
 
 	charsetState CharsetState // for forward compatibility
 
-	savedCursor_SCO     SavedCursor_SCO // SCO console cursor state
+	savedCursor_SCO     SavedCursor_SCO // replicated by NewFrame(), SCO console cursor state
 	savedCursor_DEC_pri SavedCursor_DEC
 	savedCursor_DEC_alt SavedCursor_DEC
-	savedCursor_DEC     *SavedCursor_DEC
+	savedCursor_DEC     *SavedCursor_DEC // replicated by NewFrame(),
 
 	mouseTrk MouseTrackingState // replicated by NewFrame()
 

@@ -29,6 +29,7 @@ package terminal
 import (
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"reflect"
 	"strings"
@@ -62,6 +63,8 @@ type Display struct {
 	cursorX, cursorY int
 	currentRendition Renditions
 	showCursorMode   bool // mosh: cursorVisible
+
+	logW *log.Logger
 }
 
 // https://github.com/gdamore/tcell the successor of termbox-go
@@ -78,6 +81,8 @@ func NewDisplay(useEnvironment bool) (d *Display, e error) {
 	d.hasECH = true
 	d.hasBCE = true
 	d.hasTitle = true
+
+	d.logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 
 	if useEnvironment {
 		term := os.Getenv("TERM")
@@ -252,6 +257,35 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		}
 	}
 
+	// has saved cursor changed?
+	// Let the target terminal decide what to save, here we just issue the control sequence.
+	//
+	// Saves the following items in the terminal's memory:
+	//
+	// Cursor position
+	// Character attributes set by the SGR command
+	// Character sets (G0, G1, G2, or G3) currently in GL and GR
+	// Wrap flag (autowrap or no autowrap)
+	// State of origin mode (DECOM)
+	// Selective erase attribute
+	// Any single shift 2 (SS2) or single shift 3 (SS3) functions sent
+	if !initialized || newE.savedCursor_DEC.isSet != oldE.savedCursor_DEC.isSet {
+		if newE.savedCursor_DEC.isSet {
+			fmt.Fprint(&b, "\x1B[7") // sc
+		} else {
+			fmt.Fprint(&b, "\x1B[8") // rc
+		}
+	}
+
+	// has SCO saved cursor changed
+	if !initialized || newE.savedCursor_SCO.isSet != oldE.savedCursor_SCO.isSet {
+		if newE.savedCursor_SCO.isSet {
+			fmt.Fprint(&b, "\x1B[s") // SCOSC
+		} else {
+			fmt.Fprint(&b, "\x1B[u") // SCORC
+		}
+	}
+
 	// is cursor visibility initialized?
 	if !initialized {
 		d.showCursorMode = false
@@ -304,6 +338,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	var frameY int
 	var oldRow []Cell
 	var newRow []Cell
+
 	// shortcut -- has display moved up by a certain number of lines?
 	if initialized {
 		var linesScrolled int
@@ -518,9 +553,9 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	// TODO the using of bkspSendsDel is not finished: InputSpecTable?
 	if !initialized || newE.bkspSendsDel != oldE.bkspSendsDel {
 		if newE.bkspSendsDel {
-			fmt.Fprint(&b, "\x1B[?67h")
+			fmt.Fprint(&b, "\x1B[?67h") // DECSET
 		} else {
-			fmt.Fprint(&b, "\x1B[?67l")
+			fmt.Fprint(&b, "\x1B[?67l") // DECRST
 		}
 	}
 
@@ -528,9 +563,9 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	// TODO the using of altSendsEscape is not finished: InputSpecTable?
 	if !initialized || newE.altSendsEscape != oldE.altSendsEscape {
 		if newE.altSendsEscape {
-			fmt.Fprint(&b, "\x1B[?1036h")
+			fmt.Fprint(&b, "\x1B[?1036h") // DECSET
 		} else {
-			fmt.Fprint(&b, "\x1B[?1036l")
+			fmt.Fprint(&b, "\x1B[?1036l") // DECRST
 		}
 	}
 
@@ -538,9 +573,9 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	// TODO the using of altScrollMode is not finished: pageUp, pageDown?
 	if !initialized || newE.altScrollMode != oldE.altScrollMode {
 		if newE.altScrollMode {
-			fmt.Fprint(&b, "\x1B[?1007h")
+			fmt.Fprint(&b, "\x1B[?1007h") // DECSET
 		} else {
-			fmt.Fprint(&b, "\x1B[?1007l")
+			fmt.Fprint(&b, "\x1B[?1007l") // DECRST
 		}
 	}
 
@@ -549,9 +584,9 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	if !initialized || newE.cursorKeyMode != oldE.cursorKeyMode {
 		switch newE.cursorKeyMode {
 		case CursorKeyMode_Application:
-			fmt.Fprint(&b, "\x1B[?1h")
+			fmt.Fprint(&b, "\x1B[?1h") // DECSET
 		case CursorKeyMode_ANSI:
-			fmt.Fprint(&b, "\x1B[?1l")
+			fmt.Fprint(&b, "\x1B[?1l") // DECRST
 		}
 	}
 
@@ -559,9 +594,9 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	if !initialized || newE.originMode != oldE.originMode {
 		switch newE.originMode {
 		case OriginMode_ScrollingRegion:
-			fmt.Fprint(&b, "\x1B[?6h")
+			fmt.Fprint(&b, "\x1B[?6h") // DECSET
 		case OriginMode_Absolute:
-			fmt.Fprint(&b, "\x1B[?6l")
+			fmt.Fprint(&b, "\x1B[?6l") // DECRST
 		}
 	}
 
@@ -570,9 +605,9 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	if !initialized || newE.keypadMode != oldE.keypadMode {
 		switch newE.keypadMode {
 		case KeypadMode_Application:
-			fmt.Fprint(&b, "\x1b=")
+			fmt.Fprint(&b, "\x1B=") // DECKPAM
 		case KeypadMode_Normal:
-			fmt.Fprint(&b, "\x1B>")
+			fmt.Fprint(&b, "\x1B>") // DECKPNM
 		}
 	}
 
@@ -580,9 +615,9 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	if !initialized || newE.colMode != oldE.colMode {
 		switch newE.colMode {
 		case ColMode_C132:
-			fmt.Fprint(&b, "\x1B[?3h")
+			fmt.Fprint(&b, "\x1B[?3h") // DECSET
 		case ColMode_C80:
-			fmt.Fprint(&b, "\x1B[?3l")
+			fmt.Fprint(&b, "\x1B[?3l") // DECRST
 		}
 	}
 
@@ -607,7 +642,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	if !initialized || newE.compatLevel != oldE.compatLevel {
 		switch newE.compatLevel {
 		case CompatLevel_VT52:
-			fmt.Fprint(&b, "\x1B[?2l")
+			fmt.Fprint(&b, "\x1B[?2l") // DECSET
 		case CompatLevel_VT100:
 			fmt.Fprint(&b, "\x1B[61\"p") // DECSCL
 		case CompatLevel_VT400:
@@ -615,15 +650,14 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		}
 	}
 
-	/* more state need to be replicated */
-	// saved cursor changed?
-	if !initialized || newE.savedCursor_DEC.isSet != oldE.savedCursor_DEC.isSet {
-		if newE.savedCursor_DEC.isSet {
-			fmt.Fprint(&b, "\x1B[7") // sc, TODO not supported by terminfo
-		} else {
-			fmt.Fprint(&b, "\x1B[8") // rc, TODO not supported by terminfo
-		}
+	// has key modifier encoding level changed?
+	// TODO the using of modifyOtherKeys is not finished: zutty?
+	if !initialized || newE.modifyOtherKeys != oldE.modifyOtherKeys {
+		// the possible value for modifyOtherKeys is [0,1,2]
+		fmt.Fprintf(&b, "\x1B[>4;%dm", newE.modifyOtherKeys)
 	}
+
+	// TODO do we need to consider OSC 52 selection data and cursor selection area.
 	return b.String()
 }
 
