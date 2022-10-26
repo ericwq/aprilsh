@@ -6,18 +6,19 @@ Reborn [mosh](https://mosh.org/) with go.
 
 [openSSH](https://www.openssh.com/) is excellent. While `mosh` provides better keystroke prediction/latency and is capable of handle WiFi/cellular mobile network roaming problem. But `mosh` is not active anymore and no release [sine 2017](https://github.com/mobile-shell/mosh/issues/1115). Such a good project like `mosh` should keeps developing.
 
-After read through `mosh` source code, I decide to use go to rewrite it. Go is my first choice because the C++ syntax is too complex for me. Go also has excellent support for UTF-8. And remote shell is our daily tools, if it's broken we need a quick fix. The go compiler is fast.
+After read through `mosh` source code, I decide to use go to rewrite it. Go is my first choice because the C++ syntax is too complex for me. Go also has excellent support for UTF-8 and goroutine. And remote shell is my daily tools, if it's broken I need a quick fix. The last reason is go compiler is faster than c++.
 
 There are several rules for this project:
 
 - Keep the base design of `mosh`: `SSP`, UDP, keystroke prediction.
 - Use 3rd party library as less as possible to keep it clean.
 
-There are some goals for this project:
+There are also some goals for this project:
 
-- UTF-8 support, including [emoji and flag](https://unicode.org/emoji/charts/emoji-list.html) support.
+- Full UTF-8 support, including [emoji and flag](https://unicode.org/emoji/charts/emoji-list.html) support.
 - Solve the terminal 24bit color problem.
 - Upgrade to [proto3](https://developers.google.com/protocol-buffers/docs/proto3)
+- Use terminfo database for better compatibility.
 - Prove that go is capable of programming terminal application.
 
 The project name `Aprilsh` is derived from `April+sh`. I started this project in April shanghai, it's a remote shell.
@@ -38,6 +39,7 @@ The project name `Aprilsh` is derived from `April+sh`. I started this project in
 - 2022/Oct/13: finish the Framebuffer for completeness.
 - 2022/Oct/14: finish Complete state.
 - 2022/Oct/19: working on Display.
+- 2022/Oct/26: finish 1st iteration for Display.
 
 ## Architecture view
 
