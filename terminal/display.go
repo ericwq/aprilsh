@@ -534,6 +534,74 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		}
 	}
 
+	// has altScrollMode changed?
+	// TODO the using of altScrollMode is not finished: pageUp, pageDown?
+	if !initialized || newE.altScrollMode != oldE.altScrollMode {
+		if newE.altScrollMode {
+			fmt.Fprint(&b, "\x1B[?1007h")
+		} else {
+			fmt.Fprint(&b, "\x1B[?1007l")
+		}
+	}
+
+	// has cursor key mode changed?
+	// TODO the using of cursorKeyMode is not finished: InputSpecTable?
+	if !initialized || newE.cursorKeyMode != oldE.cursorKeyMode {
+		switch newE.cursorKeyMode {
+		case CursorKeyMode_Application:
+			fmt.Fprint(&b, "\x1B[?1h")
+		case CursorKeyMode_ANSI:
+			fmt.Fprint(&b, "\x1B[?1l")
+		}
+	}
+
+	// has origin mode changed?
+	if !initialized || newE.originMode != oldE.originMode {
+		switch newE.originMode {
+		case OriginMode_ScrollingRegion:
+			fmt.Fprint(&b, "\x1B[?6h")
+		case OriginMode_Absolute:
+			fmt.Fprint(&b, "\x1B[?6l")
+		}
+	}
+
+	// has keypad mode changed?
+	// TODO the using of keypadMode is not finished: InputSpecTable?
+	if !initialized || newE.keypadMode != oldE.keypadMode {
+		switch newE.keypadMode {
+		case KeypadMode_Application:
+			fmt.Fprint(&b, "\x1b=")
+		case KeypadMode_Normal:
+			fmt.Fprint(&b, "\x1B>")
+		}
+	}
+
+	// has column mode changed? the column mode is out of date.
+	if !initialized || newE.colMode != oldE.colMode {
+		switch newE.colMode {
+		case ColMode_C132:
+			fmt.Fprint(&b, "\x1B[?3h")
+		case ColMode_C80:
+			fmt.Fprint(&b, "\x1B[?3l")
+		}
+	}
+
+	// has tab stop position changed?
+	if !initialized || !reflect.DeepEqual(newE.tabStops, oldE.tabStops) {
+		if len(newE.tabStops) == 0 {
+			// clear tab stop if necessary
+			fmt.Fprint(&b, "\x1B[3g") // TBC
+		} else {
+			// rebuild the tab stop
+			for _, tabStop := range newE.tabStops {
+				d.appendMove(&b, 0, tabStop) // CUP: move cursor to the tab stop position
+				fmt.Fprint(&b, "\x1BH")      // HTS: set current position as tab stop
+			}
+			// restore the cursor position
+			d.appendMove(&b, d.cursorY, d.cursorX)
+		}
+	}
+
 	/* more state need to be replicated */
 	// saved cursor changed?
 	if !initialized || newE.savedCursor_DEC.isSet != oldE.savedCursor_DEC.isSet {

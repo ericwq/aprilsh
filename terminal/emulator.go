@@ -65,7 +65,7 @@ type Emulator struct {
 	bkspSendsDel        bool // replicated by NewFrame(), default:true, backspace send delete
 	localEcho           bool // replicated by NewFrame(),
 	bracketedPasteMode  bool // replicated by NewFrame(),
-	altScrollMode       bool
+	altScrollMode       bool // replicated by NewFrame(),
 	altSendsEscape      bool // replicated by NewFrame(), default true
 	modifyOtherKeys     uint
 
@@ -73,13 +73,13 @@ type Emulator struct {
 	nColsEff        int  // replicated by NewFrame(), right margins
 	hMargin         int  // replicated by NewFrame(), left margins
 
-	tabStops []int // tab stop positions
+	tabStops []int // replicated by NewFrame(), tab stop positions
 
 	compatLevel   CompatibilityLevel // VT52, VT100, VT400. default:VT400
-	cursorKeyMode CursorKeyMode      // default:ANSI: Application(true), ANSI(false)
-	keypadMode    KeypadMode         // default:Normal
-	originMode    OriginMode         // default:Absolute, ScrollingRegion(true), Absolute(false)
-	colMode       ColMode            // default:80, column mode 80 or 132, just for compatibility
+	cursorKeyMode CursorKeyMode      // replicated by NewFrame(), default:ANSI: Application(true), ANSI(false)
+	keypadMode    KeypadMode         // replicated by NewFrame(), default:Normal
+	originMode    OriginMode         // replicated by NewFrame(), default:Absolute, ScrollingRegion(true), Absolute(false)
+	colMode       ColMode            // replicated by NewFrame(), default:80, column mode 80 or 132, just for compatibility
 
 	charsetState CharsetState // for forward compatibility
 
