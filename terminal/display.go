@@ -602,6 +602,19 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		}
 	}
 
+	// has conformance level changed?
+	// TODO the using of compatLevel is not finished: zutty?
+	if !initialized || newE.compatLevel != oldE.compatLevel {
+		switch newE.compatLevel {
+		case CompatLevel_VT52:
+			fmt.Fprint(&b, "\x1B[?2l")
+		case CompatLevel_VT100:
+			fmt.Fprint(&b, "\x1B[61\"p") // DECSCL
+		case CompatLevel_VT400:
+			fmt.Fprint(&b, "\x1B[64\"p") // DECSCL
+		}
+	}
+
 	/* more state need to be replicated */
 	// saved cursor changed?
 	if !initialized || newE.savedCursor_DEC.isSet != oldE.savedCursor_DEC.isSet {

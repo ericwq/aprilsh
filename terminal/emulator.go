@@ -75,7 +75,7 @@ type Emulator struct {
 
 	tabStops []int // replicated by NewFrame(), tab stop positions
 
-	compatLevel   CompatibilityLevel // VT52, VT100, VT400. default:VT400
+	compatLevel   CompatibilityLevel // replicated by NewFrame(), VT52, VT100, VT400. default:VT400
 	cursorKeyMode CursorKeyMode      // replicated by NewFrame(), default:ANSI: Application(true), ANSI(false)
 	keypadMode    KeypadMode         // replicated by NewFrame(), default:Normal
 	originMode    OriginMode         // replicated by NewFrame(), default:Absolute, ScrollingRegion(true), Absolute(false)
