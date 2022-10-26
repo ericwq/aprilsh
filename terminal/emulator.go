@@ -37,41 +37,41 @@ import (
 // TODO consider add RefreshHandlerFn, OscHandlerFn, BellHandlerFn
 
 type Emulator struct {
-	nRows        int
-	nCols        int
+	nRows        int          // replicated by NewFrame(),
+	nCols        int          // replicated by NewFrame(),
 	cf           *Framebuffer // current frame buffer
 	frame_pri    Framebuffer  // normal screen buffer
 	frame_alt    Framebuffer  // alternate screen buffer
 	posX         int          // replicated by NewFrame(), current cursor cols position (on-screen)
 	posY         int          // replicated by NewFrame(), current cursor rows position (on-screen)
-	marginTop    int          // current margin top (screen view)
-	marginBottom int          // current margin bottom (screen view)
+	marginTop    int          // replicated by NewFrame(), current margin top (screen view)
+	marginBottom int          // replicated by NewFrame(), current margin bottom (screen view)
 	lastCol      bool
 
-	attrs Cell // prototype cell with current attributes, replicated by NewFrame()
-	fg    Color
-	bg    Color
+	attrs Cell  // replicated by NewFrame() partially, prototype cell with current attributes
+	fg    Color // TODO: should we keep this?
+	bg    Color // TODO: should we keep this?
 
 	parser *Parser
 
 	// Terminal state - N.B.: keep resetTerminal () in sync with this!
 	reverseVideo        bool // replicated by NewFrame(),
 	showCursorMode      bool // replicated by NewFrame(), default true, ds.cursor_visible
-	altScreenBufferMode bool // replicated by NewFrame(), Alternate Screen Buffer: default false
-	autoWrapMode        bool // default:true
-	autoNewlineMode     bool
-	keyboardLocked      bool
-	insertMode          bool // true/false
-	bkspSendsDel        bool // backspace send delete, default:true
-	localEcho           bool
-	bracketedPasteMode  bool // replicated by NewFrame()
+	altScreenBufferMode bool // replicated by NewFrame(), , Alternate Screen Buffer
+	autoWrapMode        bool // replicated by NewFrame(), default:true
+	autoNewlineMode     bool // replicated by NewFrame(),
+	keyboardLocked      bool // replicated by NewFrame(),
+	insertMode          bool // replicated by NewFrame(),
+	bkspSendsDel        bool // replicated by NewFrame(), default:true, backspace send delete
+	localEcho           bool // replicated by NewFrame(),
+	bracketedPasteMode  bool // replicated by NewFrame(),
 	altScrollMode       bool
-	altSendsEscape      bool // default true
+	altSendsEscape      bool // replicated by NewFrame(), default true
 	modifyOtherKeys     uint
 
-	horizMarginMode bool // left and right margins support
-	nColsEff        int  // right margins
-	hMargin         int  // left margins
+	horizMarginMode bool // replicated by NewFrame(), left and right margins support
+	nColsEff        int  // replicated by NewFrame(), right margins
+	hMargin         int  // replicated by NewFrame(), left margins
 
 	tabStops []int // tab stop positions
 

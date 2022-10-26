@@ -235,6 +235,23 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		// d.currentRendition = Renditions{}
 	}
 
+	// has the vertical margin changed?
+	if !initialized || (newE.marginTop != oldE.marginTop || newE.marginBottom != oldE.marginBottom) {
+		fmt.Fprintf(&b, "\x1B[%d;%ds", newE.marginTop+1, newE.marginBottom)
+	}
+
+	// has the horizontal margin changed?
+	if !initialized || newE.horizMarginMode != oldE.horizMarginMode {
+		if newE.horizMarginMode {
+			fmt.Fprint(&b, "\x1B[?69h")
+			if newE.hMargin != oldE.hMargin || newE.nColsEff != oldE.nColsEff {
+				fmt.Fprintf(&b, "\x1B[%d;%ds", newE.hMargin+1, newE.nColsEff)
+			}
+		} else {
+			fmt.Fprint(&b, "\x1B[?69l")
+		}
+	}
+
 	// is cursor visibility initialized?
 	if !initialized {
 		d.showCursorMode = false
@@ -398,6 +415,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	d.updateRendition(&b, newE.GetRenditions(), !initialized)
 
 	// has bracketed paste mode changed?
+	// TODO the using of keyboardLocked is not finished: pasteSelection?
 	if !initialized || newE.bracketedPasteMode != oldE.bracketedPasteMode {
 		if newE.bracketedPasteMode {
 			fmt.Fprint(&b, "\x1B[?2004h")
@@ -448,7 +466,75 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		}
 	}
 
-	// TODO: more state need to be replicated
+	// has auto wrap mode changed?
+	if !initialized || newE.autoWrapMode != oldE.autoWrapMode {
+		if newE.autoWrapMode {
+			fmt.Fprint(&b, "\x1B[?7h")
+		} else {
+			fmt.Fprint(&b, "\x1B[?7l")
+		}
+	}
+
+	// has auto wrap mode changed?
+	// TODO the using of autoNewlineMode is not finished: InputSpecTable?
+	if !initialized || newE.autoNewlineMode != oldE.autoNewlineMode {
+		if newE.autoNewlineMode {
+			fmt.Fprint(&b, "\x1B[20h")
+		} else {
+			fmt.Fprint(&b, "\x1B[20l")
+		}
+	}
+
+	// has keyboard action mode changed?
+	// TODO the using of keyboardLocked is not finished: writePty?
+	if !initialized || newE.keyboardLocked != oldE.keyboardLocked {
+		if newE.keyboardLocked {
+			fmt.Fprint(&b, "\x1B[2h")
+		} else {
+			fmt.Fprint(&b, "\x1B[2l")
+		}
+	}
+
+	// has insert mode changed?
+	if !initialized || newE.insertMode != oldE.insertMode {
+		if newE.insertMode {
+			fmt.Fprint(&b, "\x1B[4h")
+		} else {
+			fmt.Fprint(&b, "\x1B[4l")
+		}
+	}
+
+	// has local echo changed?
+	// TODO the using of localEcho is not finished: writePty?
+	if !initialized || newE.localEcho != oldE.localEcho {
+		if newE.localEcho {
+			fmt.Fprint(&b, "\x1B[12h")
+		} else {
+			fmt.Fprint(&b, "\x1B[12l")
+		}
+	}
+
+	// has backspace send delete changed?
+	// TODO the using of bkspSendsDel is not finished: InputSpecTable?
+	if !initialized || newE.bkspSendsDel != oldE.bkspSendsDel {
+		if newE.bkspSendsDel {
+			fmt.Fprint(&b, "\x1B[?67h")
+		} else {
+			fmt.Fprint(&b, "\x1B[?67l")
+		}
+	}
+
+	// has alt key as ESC changed?
+	// TODO the using of altSendsEscape is not finished: InputSpecTable?
+	if !initialized || newE.altSendsEscape != oldE.altSendsEscape {
+		if newE.altSendsEscape {
+			fmt.Fprint(&b, "\x1B[?1036h")
+		} else {
+			fmt.Fprint(&b, "\x1B[?1036l")
+		}
+	}
+
+	/* more state need to be replicated */
 	// saved cursor changed?
 	if !initialized || newE.savedCursor_DEC.isSet != oldE.savedCursor_DEC.isSet {
 		if newE.savedCursor_DEC.isSet {
