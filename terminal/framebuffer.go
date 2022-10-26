@@ -53,11 +53,10 @@ type Framebuffer struct {
 	snapTo       SelectSnapTo // selection state
 	damage       Damage       // damage scope
 
-	iconName         string
-	windowTitle      string
-	bellCount        int
-	titleInitialized bool
-	selectionData    string // store the selection data for OSC 52
+	iconName         string // replicated by NewFrame()
+	windowTitle      string // replicated by NewFrame()
+	bellCount        int    // replicated by NewFrame()
+	titleInitialized bool   // replicated by NewFrame()
 }
 
 // create a framebuffer, with zero saveLines.

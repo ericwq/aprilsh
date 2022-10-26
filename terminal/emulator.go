@@ -92,7 +92,8 @@ type Emulator struct {
 
 	terminalToHost strings.Builder // used for terminal write back
 	user           UserInput       // TODO consider how to change it.
-	selectionData  map[rune]string // local buffer for selection data in sequence OSC 52
+	selectionStore map[rune]string // local storage buffer for selection data in sequence OSC 52
+	selectionData  string          // store the selection data for OSC 52
 
 	// logger
 	logE *log.Logger
@@ -449,21 +450,21 @@ func (emu *Emulator) setCompatLevel(cl CompatibilityLevel) {
 }
 
 func (emu *Emulator) initSelectionData() {
-	// prepare selection data for OSC 52
+	// prepare selection data storage for OSC 52
 	// https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands
-	emu.selectionData = make(map[rune]string)
-	emu.selectionData['c'] = "" // clipboard
-	emu.selectionData['p'] = "" // primary
-	emu.selectionData['q'] = "" // secondary
-	emu.selectionData['s'] = "" // select
-	emu.selectionData['0'] = "" // cut-buffer 0
-	emu.selectionData['1'] = "" // cut-buffer 1
-	emu.selectionData['2'] = "" // cut-buffer 2
-	emu.selectionData['3'] = "" // cut-buffer 3
-	emu.selectionData['4'] = "" // cut-buffer 4
-	emu.selectionData['5'] = "" // cut-buffer 5
-	emu.selectionData['6'] = "" // cut-buffer 6
-	emu.selectionData['7'] = "" // cut-buffer 7
+	emu.selectionStore = make(map[rune]string)
+	emu.selectionStore['c'] = "" // clipboard
+	emu.selectionStore['p'] = "" // primary
+	emu.selectionStore['q'] = "" // secondary
+	emu.selectionStore['s'] = "" // select
+	emu.selectionStore['0'] = "" // cut-buffer 0
+	emu.selectionStore['1'] = "" // cut-buffer 1
+	emu.selectionStore['2'] = "" // cut-buffer 2
+	emu.selectionStore['3'] = "" // cut-buffer 3
+	emu.selectionStore['4'] = "" // cut-buffer 4
+	emu.selectionStore['5'] = "" // cut-buffer 5
+	emu.selectionStore['6'] = "" // cut-buffer 6
+	emu.selectionStore['7'] = "" // cut-buffer 7
 }
 
 func (emu *Emulator) initLog() {

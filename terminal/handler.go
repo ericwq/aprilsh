@@ -1077,7 +1077,28 @@ func hdl_osc_10x(emu *Emulator, cmd int, arg string) {
 OSC Ps ; Pt ST
 Ps = 5 2  ⇒ Manipulate Selection Data. The parameter Pt is parsed as
 
-	Pc ; Pd
+		Pc ; Pd
+
+	   The first, Pc, may contain zero or more characters from the
+	   set c , p , q , s , 0 , 1 , 2 , 3 , 4 , 5 , 6 , and 7 .  It is
+	   used to construct a list of selection parameters for
+	   clipboard, primary, secondary, select, or cut-buffers 0
+	   through 7 respectively, in the order given.  If the parameter
+	   is empty, xterm uses s 0 , to specify the configurable
+	   primary/clipboard selection and cut-buffer 0.
+
+	   The second parameter, Pd, gives the selection data.  Normally
+	   this is a string encoded in base64 (RFC-4648).  The data
+	   becomes the new selection, which is then available for pasting
+	   by other applications.
+
+	   If the second parameter is a ? , xterm replies to the host
+	   with the selection data encoded using the same protocol.  It
+	   uses the first selection found by asking successively for each
+	   item from the list of selection parameters.
+
+	   If the second parameter is neither a base64 string nor ? ,
+	   then the selection is cleared.
 
 1. use one of the following commands to encode the original text
 and set the system clipboard
@@ -1122,7 +1143,7 @@ func hdl_osc_52(emu *Emulator, cmd int, arg string) {
 			item from the list of selection parameters.
 		*/
 		for _, ch := range Pc {
-			if data, ok := emu.selectionData[ch]; ok && data != "" {
+			if data, ok := emu.selectionStore[ch]; ok && data != "" {
 				// resp to the host
 				resp := fmt.Sprintf("\x1B]%d;%c;%s\x1B\\", cmd, ch, data)
 				emu.writePty(resp)
@@ -1141,15 +1162,15 @@ func hdl_osc_52(emu *Emulator, cmd int, arg string) {
 			   by other applications.
 			*/
 			for _, ch := range Pc {
-				if _, ok := emu.selectionData[ch]; ok { // make sure Pc exist
+				if _, ok := emu.selectionStore[ch]; ok { // make sure Pc exist
 					// update the new selection in local cache
-					emu.selectionData[ch] = Pd
+					emu.selectionStore[ch] = Pd
 					set = true
 				}
 			}
 			if set {
-				// save the selection in framebuffer, later it will be sent to terminal.
-				emu.cf.selectionData = fmt.Sprintf("\x1B]%d;%s;%s\x1B\\", cmd, Pc, Pd)
+				// store the selection data, later it will be sent to terminal.
+				emu.selectionData = fmt.Sprintf("\x1B]%d;%s;%s\x1B\\", cmd, Pc, Pd)
 			}
 		} else {
 			/*
@@ -1157,15 +1178,15 @@ func hdl_osc_52(emu *Emulator, cmd int, arg string) {
 			   then the selection is cleared.
 			*/
 			for _, ch := range Pc {
-				if _, ok := emu.selectionData[ch]; ok { // make sure Pc exist
+				if _, ok := emu.selectionStore[ch]; ok { // make sure Pc exist
 					// clear the selection in local cache
-					emu.selectionData[ch] = ""
+					emu.selectionStore[ch] = ""
 					set = true
 				}
 			}
 			if set {
-				// save the selection in framebuffer, later it will be sent to terminal.
-				emu.cf.selectionData = fmt.Sprintf("\x1B]%d;%s;%s\x1B\\", cmd, Pc, Pd)
+				// store the selection data, later it will be sent to terminal.
+				emu.selectionData = fmt.Sprintf("\x1B]%d;%s;%s\x1B\\", cmd, Pc, Pd)
 			}
 		}
 	}

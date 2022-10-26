@@ -3939,7 +3939,7 @@ func TestHandle_OSC_52(t *testing.T) {
 	p := NewParser()
 	emu := NewEmulator3(8, 4, 0)
 	for _, v := range tc {
-		emu.cf.selectionData = ""
+		emu.selectionData = ""
 		emu.terminalToHost.Reset()
 
 		t.Run(v.name, func(t *testing.T) {
@@ -3960,14 +3960,14 @@ func TestHandle_OSC_52(t *testing.T) {
 			}
 
 			if v.noReply {
-				if v.wantString != emu.cf.selectionData {
-					t.Errorf("%s: seq=%q expect %q, got %q\n", v.name, v.seq, v.wantString, emu.cf.selectionData)
+				if v.wantString != emu.selectionData {
+					t.Errorf("%s: seq=%q expect %q, got %q\n", v.name, v.seq, v.wantString, emu.selectionData)
 				}
 				for _, ch := range v.wantPc {
-					if data, ok := emu.selectionData[ch]; ok && data == v.wantPd {
+					if data, ok := emu.selectionStore[ch]; ok && data == v.wantPd {
 						continue
 					} else {
-						t.Errorf("%s: seq=%q, expect[%c]%q, got [%c]%q\n", v.name, v.seq, ch, v.wantPc, ch, emu.selectionData[ch])
+						t.Errorf("%s: seq=%q, expect[%c]%q, got [%c]%q\n", v.name, v.seq, ch, v.wantPc, ch, emu.selectionStore[ch])
 					}
 				}
 			} else {
