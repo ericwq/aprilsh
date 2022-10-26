@@ -1107,7 +1107,7 @@ and set the system clipboard
 		% echo "Hello Russia!" | base64
 		SGVsbG8gUnVzc2lhIQo=
 		% echo  -e "\033]52;p;SGVsbG8gUnVzc2lhIQo=\a"
-	 2. press the paste hot-eky, you will see the original text in step 1.
+2. press the paste hot-eky, you will see the original text in step 1.
 	    % hello
 	    % Hello Russia!
 */

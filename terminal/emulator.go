@@ -93,7 +93,7 @@ type Emulator struct {
 	terminalToHost strings.Builder // used for terminal write back
 	user           UserInput       // TODO consider how to change it.
 	selectionStore map[rune]string // local storage buffer for selection data in sequence OSC 52
-	selectionData  string          // store the selection data for OSC 52
+	selectionData  string          // replicated by NewFrame(), store the selection data for OSC 52
 
 	// logger
 	logE *log.Logger

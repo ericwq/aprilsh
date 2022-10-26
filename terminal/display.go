@@ -657,7 +657,14 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		fmt.Fprintf(&b, "\x1B[>4;%dm", newE.modifyOtherKeys)
 	}
 
-	// TODO do we need to consider OSC 52 selection data and cursor selection area.
+	// has OSC 52 selection data changed?
+	if !initialized || newE.selectionData != oldE.selectionData {
+		// the selectionData is in the form of "\x1B]52;%s;%s\x1B\\"
+		// see hdl_osc_52() for detail
+		fmt.Fprint(&b, newE.selectionData)
+	}
+
+	// TODO do we need to consider cursor selection area.
 	return b.String()
 }
 
