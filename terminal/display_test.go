@@ -101,6 +101,11 @@ func TestNewFrame(t *testing.T) {
 		expectRow   string
 	}{
 		{
+			"empty screen update one wrap line", 'N', "\x1B[11;74Houtput for normal warp line.", true,
+			"\x1b[?25l\x1b[11;74Houtput for normal warp line.\x1b[?25h", 11,
+			"[ 11] for.normal.warp.line............................................................",
+		},
+		{
 			"same screen update one wrap line", 'X', "\x1B[24;74Houtput for normal warp line.", true,
 			"\x1b[?25l\x1b[24;74Houtput for normal warp line.\x1b[?25h", 24,
 			"[ 24] for.normal.warp.line.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
@@ -116,8 +121,11 @@ func TestNewFrame(t *testing.T) {
 	}
 
 	for _, v := range tc {
-		oldE.cf.fillCells(v.bgRune, oldE.attrs)
-		newE.cf.fillCells(v.bgRune, newE.attrs)
+		// 'N' means don't fill the screen
+		if v.bgRune != 'N' {
+			oldE.cf.fillCells(v.bgRune, oldE.attrs)
+			newE.cf.fillCells(v.bgRune, newE.attrs)
+		}
 
 		// make difference between terminal states
 		newE.HandleStream(v.mix)
