@@ -312,6 +312,7 @@ func hdl_graphemes(emu *Emulator, chs ...rune) {
 	}
 
 	// prepare for the next graphemes, move the cursor or set last column flag
+	// posX is used by current grapheme.
 	if emu.posX == emu.nColsEff-1 {
 		emu.lastCol = true
 	} else {
@@ -1074,43 +1075,41 @@ func hdl_osc_10x(emu *Emulator, cmd int, arg string) {
 }
 
 /*
-OSC Ps ; Pt ST
-Ps = 5 2  ⇒ Manipulate Selection Data. The parameter Pt is parsed as
-
-		Pc ; Pd
-
-	   The first, Pc, may contain zero or more characters from the
-	   set c , p , q , s , 0 , 1 , 2 , 3 , 4 , 5 , 6 , and 7 .  It is
-	   used to construct a list of selection parameters for
-	   clipboard, primary, secondary, select, or cut-buffers 0
-	   through 7 respectively, in the order given.  If the parameter
-	   is empty, xterm uses s 0 , to specify the configurable
-	   primary/clipboard selection and cut-buffer 0.
-
-	   The second parameter, Pd, gives the selection data.  Normally
-	   this is a string encoded in base64 (RFC-4648).  The data
-	   becomes the new selection, which is then available for pasting
-	   by other applications.
-
-	   If the second parameter is a ? , xterm replies to the host
-	   with the selection data encoded using the same protocol.  It
-	   uses the first selection found by asking successively for each
-	   item from the list of selection parameters.
-
-	   If the second parameter is neither a base64 string nor ? ,
-	   then the selection is cleared.
-
-1. use one of the following commands to encode the original text
-and set the system clipboard
-
-		% echo -e "\033]52;c;$(base64 <<< hello)\a"
-		% echo "Hello Russia!" | base64
-		SGVsbG8gUnVzc2lhIQo=
-		% echo  -e "\033]52;p;SGVsbG8gUnVzc2lhIQo=\a"
-2. press the paste hot-eky, you will see the original text in step 1.
-	    % hello
-	    % Hello Russia!
-*/
+ * OSC Ps ; Pt ST
+ * Ps = 5 2  ⇒ Manipulate Selection Data. The parameter Pt is parsed as
+ *
+ * 		Pc ; Pd
+ *
+ * The first, Pc, may contain zero or more characters from the
+ * set c , p , q , s , 0 , 1 , 2 , 3 , 4 , 5 , 6 , and 7 .  It is
+ * used to construct a list of selection parameters for
+ * clipboard, primary, secondary, select, or cut-buffers 0
+ * through 7 respectively, in the order given.  If the parameter
+ * is empty, xterm uses s 0 , to specify the configurable
+ * primary/clipboard selection and cut-buffer 0.
+ *
+ * The second parameter, Pd, gives the selection data.  Normally
+ * this is a string encoded in base64 (RFC-4648).  The data
+ * becomes the new selection, which is then available for pasting
+ * by other applications.
+ *
+ * If the second parameter is a ? , xterm replies to the host
+ * with the selection data encoded using the same protocol.  It
+ * uses the first selection found by asking successively for each
+ * item from the list of selection parameters.
+ *
+ * If the second parameter is neither a base64 string nor ? ,
+ * then the selection is cleared.
+ *
+ * 1. use one of the following commands to encode the original text and set the system clipboard
+ * - % echo -e "\033]52;c;$(base64 <<< hello)\a"
+ * - % echo "Hello Russia!" | base64
+ * - SGVsbG8gUnVzc2lhIQo=
+ * - % echo  -e "\033]52;p;SGVsbG8gUnVzc2lhIQo=\a"
+ * 2. press the paste hot-eky, you will see the original text in step 1.
+ * - % hello
+ * - % Hello Russia!
+ */
 func hdl_osc_52(emu *Emulator, cmd int, arg string) {
 	// parse Pc:Pd
 	pos := strings.Index(arg, ";")

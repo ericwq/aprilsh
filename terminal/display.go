@@ -687,7 +687,9 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 		return false
 	}
 
-	wrapThis := false // TODO: last cell warp, need to consider double width cell
+	// this row should be wrapped. TODO: need to consider double width cell
+	wrapThis := newRow[len(newRow)-1].wrap
+	// fmt.Printf("#putRow row=%d, wrapThis=%t\n", frameY, wrapThis)
 	rowWidth := newE.nCols
 	clearCount := 0
 	wroteLastCell := false
@@ -700,6 +702,7 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 		// Does cell need to be drawn?  Skip all this.
 		if initialized && clearCount == 0 && cell == oldRow[frameX] {
 			// TODO: how to print combining grapheme and double width grapheme?
+			// fmt.Printf("#putRow r,c=%2d,%2d is the same\n", frameY, frameX)
 			frameX += cell.GetWidth()
 			continue
 		}
@@ -778,7 +781,7 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 
 		canUseErase := d.hasBCE || d.currentRendition == Renditions{}
 		if canUseErase && !wrapThis {
-			fmt.Fprint(out, "\x1B[K") // Erase in Line (EL), Erase to Right (default)
+			fmt.Fprint(out, "\x1B[K") // ti.el,  Erase in Line (EL), Erase to Right (default)
 		} else {
 			fmt.Fprint(out, strings.Repeat(" ", clearCount))
 			d.cursorX = frameX
@@ -819,7 +822,7 @@ func (d *Display) appendSilentMove(out io.Writer, y int, x int) {
 	}
 	// turn off cursor if necessary before moving cursor
 	if d.showCursorMode {
-		fmt.Fprint(out, "\x1B[?25l")
+		fmt.Fprint(out, "\x1B[?25l") // ti.civis
 		d.showCursorMode = false
 	}
 	d.appendMove(out, y, x)
@@ -853,7 +856,7 @@ func (d *Display) appendMove(out io.Writer, y int, x int) {
 		// More optimizations are possible.
 	}
 
-	fmt.Fprintf(out, "\x1B[%d;%dH", y+1, x+1) // cup
+	fmt.Fprintf(out, "\x1B[%d;%dH", y+1, x+1) // ti.cup
 }
 
 // if current renditions is different from parameter renditions, generate

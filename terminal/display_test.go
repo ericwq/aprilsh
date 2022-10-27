@@ -91,12 +91,6 @@ func TestOpenClose(t *testing.T) {
 }
 
 func TestNewFrame(t *testing.T) {
-	os.Setenv("TERM", "xterm-256color")
-	d, e := NewDisplay(true)
-	if e != nil {
-		t.Errorf("#test NewFrame() create display error: %s\n", e)
-	}
-
 	tc := []struct {
 		label       string
 		bgRune      rune
@@ -108,12 +102,18 @@ func TestNewFrame(t *testing.T) {
 	}{
 		{
 			"same screen update one wrap line", 'X', "\x1B[24;74Houtput for normal warp line.", true,
-			"\x1b[?25l\x1b[24;74Houtput \r\nfor normal warp line.\x1b[?25h", 24,
+			"\x1b[?25l\x1b[24;74Houtput for normal warp line.\x1b[?25h", 24,
 			"[ 24] for.normal.warp.line.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
 		},
 	}
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
+
+	os.Setenv("TERM", "xterm-256color")
+	d, e := NewDisplay(true)
+	if e != nil {
+		t.Errorf("#test NewFrame() create display error: %s\n", e)
+	}
 
 	for _, v := range tc {
 		oldE.cf.fillCells(v.bgRune, oldE.attrs)
