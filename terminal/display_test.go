@@ -89,3 +89,52 @@ func TestOpenClose(t *testing.T) {
 		t.Errorf("#test close() expect %q, got %q\n", expect, got)
 	}
 }
+
+func TestNewFrame(t *testing.T) {
+	os.Setenv("TERM", "xterm-256color")
+	d, e := NewDisplay(true)
+	if e != nil {
+		t.Errorf("#test NewFrame() create display error: %s\n", e)
+	}
+
+	tc := []struct {
+		label       string
+		bgRune      rune
+		mix         string
+		initialized bool
+		expectSeq   string
+		row         int
+		expectRow   string
+	}{
+		{
+			"same screen update one wrap line", 'X', "\x1B[24;74Houtput for normal warp line.", true,
+			"\x1b[?25l\x1b[24;74Houtput \r\nfor normal warp line.\x1b[?25h", 24,
+			"[ 24] for.normal.warp.line.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+		},
+	}
+	oldE := NewEmulator3(80, 40, 40)
+	newE := NewEmulator3(80, 40, 40)
+
+	for _, v := range tc {
+		oldE.cf.fillCells(v.bgRune, oldE.attrs)
+		newE.cf.fillCells(v.bgRune, newE.attrs)
+
+		// make difference between terminal states
+		newE.HandleStream(v.mix)
+
+		// check the difference sequence
+		gotSeq := d.NewFrame(v.initialized, oldE, newE)
+		if gotSeq != v.expectSeq {
+			t.Errorf("%q expect %q, got %q\n", v.label, v.expectSeq, gotSeq)
+		}
+
+		// apply difference sequence to target
+		oldE.HandleStream(gotSeq)
+		gotRow := printCells(oldE.cf, v.row)
+
+		// check the replicate result.
+		if !strings.Contains(gotRow, v.expectRow) {
+			t.Errorf("%q expect \n%s, got \n%s\n", v.label, v.expectRow, gotRow)
+		}
+	}
+}

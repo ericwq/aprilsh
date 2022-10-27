@@ -1478,10 +1478,17 @@ func (p *Parser) processStream(str string, hds []*Handler) []*Handler {
 			for graphemes.Next() {
 				input = graphemes.Runes()
 
-				hd = p.ProcessInput(input...)
-				if hd != nil {
-					hds = append(hds, hd)
+				if len(input) == 2 && input[0] == '\u000D' && input[1] == '\u000A' {
+					// special case for CR+LF
+					hds = append(hds, p.ProcessInput(input[0]))
+					hds = append(hds, p.ProcessInput(input[1]))
+				} else {
+					hd = p.ProcessInput(input...)
+					if hd != nil {
+						hds = append(hds, hd)
+					}
 				}
+
 				_, to := graphemes.Positions()
 
 				if to == len(str) {

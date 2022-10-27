@@ -40,15 +40,16 @@ import (
 )
 
 /*
-	 questions
-
-	 do we need to package the the terminfo DB into application?
-	    yes, mosh-server depends on ncurses-terminfo-base and  ncurses-libs
-	 how to read terminfo DB? through ncurses lib or directly?
-		yes the answer is read through tcell.
-	 how to operate terminal? through direct escape sequence or through terminfo DB?
-	 how to replace the following functions? setupterm(), tigetnum(), tigetstr(), tigetflag()
-*/
+ *	 The following are some interesting questions I asked several month ago. As I know terminfo
+ *	 and terminal better, the answter is more clear and confident than before.
+ *
+ *	 do we need to package the the terminfo DB into application?
+ *	 - yes, mosh-server depends on ncurses-terminfo-base and  ncurses-libs
+ *	 how to read terminfo DB? through ncurses lib or directly?
+ *	 - yes the answer is read through tcell.
+ *	 how to operate terminal? through direct escape sequence or through terminfo DB?
+ *	 how to replace the following functions? setupterm(), tigetnum(), tigetstr(), tigetflag()
+ */
 type Display struct {
 	// erase character is part of vt200 but not supported by tmux
 	// (or by "screen" terminfo entry, which is what tmux advertises)
@@ -226,6 +227,9 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		d.currentRendition = oldE.GetRenditions()
 	}
 
+	// init showCursorMode from old screen
+	d.showCursorMode = oldE.showCursorMode
+
 	// has the screen buffer mode changed?
 	// change screen buffer is something like resize, except resize remains partial content,
 	// screen buffer mode reset the whole screen.
@@ -288,6 +292,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 
 	// is cursor visibility initialized?
 	if !initialized {
+		// fmt.Printf("#NewFrame initialized=%t, d.showCursorMode=%t\n", initialized, d.showCursorMode)
 		d.showCursorMode = false
 		ti.TPuts(&b, ti.HideCursor) // civis, "\x1B[?25l]" showCursorMode = false
 	}
@@ -314,26 +319,6 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	}
 	oldScreen = nil
 	/* resize and copy old screen */
-
-	// scroll up/down?
-	/* keep it first.
-	scrollHeight := 0
-	linesScrolled := 0
-	if initialized && newE.cf.scrollHead != oldE.cf.scrollHead {
-		if newE.cf.scrollHead > oldE.cf.scrollHead {
-			// old scrollHead < new scrollHead
-			linesScrolled = oldE.cf.scrollHead - newE.cf.scrollHead
-			fmt.Fprint(&b, strings.Repeat("\x1BM", linesScrolled)) // ri, Tputs available
-			// use indn or rin?
-		} else {
-			// old scrollHead > new scrollHead
-			// move
-			linesScrolled = newE.cf.scrollHead - oldE.cf.scrollHead
-			fmt.Fprint(&b, strings.Repeat("\x0A", linesScrolled)) // ind
-			// use indn or rin?
-		}
-	}
-	*/
 
 	var frameY int
 	var oldRow []Cell
@@ -386,8 +371,8 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 				// Common case:  if we're already on the bottom line and we're scrolling the whole
 				// creen, just do a CR and LFs.
 				if scrollHeight+linesScrolled == newE.GetHeight() && d.cursorY+1 == newE.GetHeight() {
-					fmt.Fprint(&b, "\x0D")
-					fmt.Fprint(&b, strings.Repeat("\x0A", linesScrolled)) // ind
+					fmt.Fprint(&b, "\u000D")
+					fmt.Fprint(&b, strings.Repeat("\u000A", linesScrolled)) // ind
 					d.cursorX = 0
 				} else {
 					// set scrolling region
@@ -399,7 +384,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 					d.appendSilentMove(&b, bottomMargin, 0)
 
 					// scroll
-					fmt.Fprint(&b, strings.Repeat("\x0A", linesScrolled)) // ind
+					fmt.Fprint(&b, strings.Repeat("\u000A", linesScrolled)) // ind
 
 					// reset scrolling region
 					fmt.Fprint(&b, "\x1B[r")
@@ -438,7 +423,10 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	}
 
 	// has cursor visibility changed?
+	// during update row, appendSilentMove() might close the cursor,
+	// Here we open cursor based on the new terminal state.
 	if !initialized || newE.showCursorMode != d.showCursorMode {
+		// fmt.Printf("#NewFrame newE=%t, d=%t, oldE=%t\n", newE.showCursorMode, d.showCursorMode, oldE.showCursorMode)
 		if newE.showCursorMode {
 			fmt.Fprint(&b, "\x1B[?25h") // cvvis
 		} else {
@@ -808,7 +796,7 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 			return true
 		} else {
 			// Resort to CR/LF and update our cursor.
-			fmt.Fprint(out, "\x0D\x0A")
+			fmt.Fprint(out, "\u000D\u000A")
 			d.cursorX = 0
 			d.cursorY++
 		}
@@ -852,14 +840,14 @@ func (d *Display) appendMove(out io.Writer, y int, x int) {
 		if x == 0 && y-lastY >= 0 && y-lastY < 5 {
 			// less than 5 is efficient than CUP
 			if lastX != 0 {
-				fmt.Fprint(out, "\x0D") // CR
+				fmt.Fprint(out, "\u000D") // CR
 			}
-			fmt.Fprint(out, strings.Repeat("\x0A", y-lastY)) // LF
+			fmt.Fprint(out, strings.Repeat("\u000A", y-lastY)) // LF
 			return
 		}
 		// Backspaces are good too.
 		if y == lastY && x-lastX < 0 && x-lastX > -5 {
-			fmt.Fprint(out, strings.Repeat("\x08", y-lastY)) // BS
+			fmt.Fprint(out, strings.Repeat("\u0008", y-lastY)) // BS
 			return
 		}
 		// More optimizations are possible.
