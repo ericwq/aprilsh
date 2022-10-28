@@ -283,7 +283,7 @@ func (emu *Emulator) clearScreen() {
 	emu.posX = 0
 	emu.posY = 0
 	emu.lastCol = false
-	// emu.fillScreen(' ') // don't fill the screen with ' '
+	emu.fillScreen('\x00') // clear the screen contents
 }
 
 func (emu *Emulator) fillScreen(ch rune) {

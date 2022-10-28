@@ -173,6 +173,7 @@ func (fb *Framebuffer) resetMargins() (marginTop, marginBottom int) {
 }
 
 // fill current screen with specified rune and renditions.
+// ch = 0x00 meabs clear the contents.
 func (fb *Framebuffer) fillCells(ch rune, attrs Cell) {
 	for r := 0; r < fb.nRows; r++ {
 
@@ -180,7 +181,11 @@ func (fb *Framebuffer) fillCells(ch rune, attrs Cell) {
 		end := start + fb.nCols
 		for k := start; k < end; k++ {
 			fb.cells[k] = attrs
-			fb.cells[k].contents = string(ch)
+			if ch == 0x00 {
+				fb.cells[k].contents = ""
+			} else {
+				fb.cells[k].contents = string(ch)
+			}
 		}
 		fb.damage.add(start, end)
 	}
