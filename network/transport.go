@@ -42,7 +42,7 @@ type State[C any] interface {
 	Equal(x C) bool
 
 	// interface from code
-	// ResetInput()
+	ResetInput()
 }
 
 // A type T that must implement the State interface for type T - that is, for itself.
