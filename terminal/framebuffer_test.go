@@ -598,7 +598,7 @@ func TestGetSelectedUtf8(t *testing.T) {
 			"rectangular selection area", "\x1B[35;21Hrectangular \x0D\x0Cselection area",
 			Rect{Point{0, 34}, Point{80, 35}, true},
 			SelectSnapTo_Line,
-			"                    rectangular\nselection area", true,
+			"rectangular\nselection area", true,
 		},
 	}
 	emu := NewEmulator3(80, 40, 0)

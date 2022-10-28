@@ -2603,9 +2603,9 @@ func TestHandle_DECALN_RIS(t *testing.T) {
 		want  string
 	}{
 		{"ESC DECLAN", "\x1B#8", 3, 7, []int{ESC_DECALN}, "E"},                 // the whole screen is filled with 'E'
-		{"ESC RIS   ", "\x1Bc", 3, 7, []int{ESC_RIS}, " "},                     // after reset, the screen is empty
+		{"ESC RIS   ", "\x1Bc", 3, 7, []int{ESC_RIS}, ""},                     // after reset, the screen is empty
 		{"ESC DECLAN", "\x1B#8", 3, 7, []int{ESC_DECALN}, "E"},                 // the whole screen is filled with 'E'
-		{"VT52 ESC c", "\x1B[?2l\x1Bc", 3, 7, []int{CSI_privRM, ESC_RIS}, " "}, // after reset, the screen is empty
+		{"VT52 ESC c", "\x1B[?2l\x1Bc", 3, 7, []int{CSI_privRM, ESC_RIS}, ""}, // after reset, the screen is empty
 	}
 
 	p := NewParser()
@@ -2615,6 +2615,7 @@ func TestHandle_DECALN_RIS(t *testing.T) {
 	emu.logT.SetOutput(&place)
 
 	for _, v := range tc {
+		emu.resetTerminal()
 		hds := make([]*Handler, 0, 16)
 		hds = p.processStream(v.seq, hds)
 

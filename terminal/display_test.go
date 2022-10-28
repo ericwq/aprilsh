@@ -101,16 +101,17 @@ func TestNewFrame(t *testing.T) {
 		expectRow   string
 	}{
 		{
-			"empty screen update one wrap line", 'N', "\x1B[11;74Houtput for normal warp line.", true,
-			"\x1b[?25l\x1b[11;74Houtput for normal warp line.\x1b[?25h", 11,
-			"[ 11] for.normal.warp.line............................................................",
+			"empty screen update one wrap line", 'N', "\x1B[11;74Houtput for normal wrap line.", true,
+			"\x1b[?25l\x1b[11;74Houtput for normal wrap line.\x1b[?25h", 11,
+			"[ 11] for.normal.wrap.line.***********************************************************",
 		},
-		{
-			"same screen update one wrap line", 'X', "\x1B[24;74Houtput for normal warp line.", true,
-			"\x1b[?25l\x1b[24;74Houtput for normal warp line.\x1b[?25h", 24,
-			"[ 24] for.normal.warp.line.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-		},
+		// {
+		// 	"same screen update one wrap line", 'X', "\x1B[24;74Houtput for normal wrap line.", true,
+		// 	"\x1b[?25l\x1b[24;74Houtput for normal warp line.\x1b[?25h", 24,
+		// 	"[ 24] for.normal.warp.line.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+		// },
 	}
+
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
 
@@ -133,7 +134,7 @@ func TestNewFrame(t *testing.T) {
 		// check the difference sequence
 		gotSeq := d.NewFrame(v.initialized, oldE, newE)
 		if gotSeq != v.expectSeq {
-			t.Errorf("%q expect %q, got %q\n", v.label, v.expectSeq, gotSeq)
+			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
 		}
 
 		// apply difference sequence to target
