@@ -181,11 +181,7 @@ func (fb *Framebuffer) fillCells(ch rune, attrs Cell) {
 		end := start + fb.nCols
 		for k := start; k < end; k++ {
 			fb.cells[k] = attrs
-			if ch == 0x00 {
-				fb.cells[k].contents = ""
-			} else {
-				fb.cells[k].contents = string(ch)
-			}
+			fb.cells[k].contents = string(ch)
 		}
 		fb.damage.add(start, end)
 	}
