@@ -295,7 +295,7 @@ func hdl_graphemes(emu *Emulator, chs ...rune) {
 		hdl_csi_ich(emu, 1)
 	}
 
-	// print the current cursor cell
+	// print grapheme in current cursor position with default renditions.
 	c := emu.cf.getCellPtr(emu.posY, emu.posX)
 	*c = emu.attrs
 	c.SetContents(chs)

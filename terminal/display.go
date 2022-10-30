@@ -159,7 +159,7 @@ func getRow(newE *Emulator, posY int) (row []Cell) {
 	return row
 }
 
-// return the specified row from the new screen.
+// extract specified row from the resize screen.
 func getRowFrom(from []Cell, posY int, w int) (row []Cell) {
 	start := posY * w
 	end := start + w
