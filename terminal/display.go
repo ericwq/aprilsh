@@ -409,7 +409,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 			}
 		}
 	}
-
+	// fmt.Printf("#NewFrame display start from (%2d,%2d)\n", d.cursorY, d.cursorX)
 	// Now update the display, row by row
 	wrap := false
 	for ; frameY < newE.GetHeight(); frameY++ {
@@ -417,10 +417,14 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		wrap = d.putRow(&b, initialized, oldE, newE, frameY, oldRow, wrap)
 	}
 
+	// fmt.Printf("#NewFrame display end at (%2d,%2d)\n", d.cursorY, d.cursorX)
 	// has cursor location changed?
 	if !initialized || newE.GetCursorRow() != d.cursorY || newE.GetCursorCol() != d.cursorX {
+		// fmt.Printf("#NewFrame display at (%2d,%2d), newE at (%2d,%2d)\n",
+		// 	d.cursorY, d.cursorX, newE.GetCursorRow(), newE.GetCursorCol())
 		d.appendMove(&b, newE.GetCursorRow(), newE.GetCursorCol())
 	}
+	// fmt.Printf("#NewFrame display adjust at (%2d,%2d)\n", d.cursorY, d.cursorX)
 
 	// has cursor visibility changed?
 	// during update row, appendSilentMove() might close the cursor,
@@ -702,18 +706,19 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 		// Does cell need to be drawn?  Skip all this.
 		if initialized && clearCount == 0 && cell == oldRow[frameX] {
 			// TODO: how to print combining grapheme and double width grapheme?
-			// fmt.Printf("#putRow r,c=%2d,%2d is the same\n", frameY, frameX)
+			// fmt.Printf("#putRow r,c=%2d,%2d is the same: %q\n", frameY, frameX, cell.contents)
 			frameX += cell.GetWidth()
 			continue
 		}
 
 		// Slurp up all the empty cells
-		if cell.Empty() {
+		if cell.IsBlank() {
 			if clearCount == 0 {
 				blankRenditions = cell.GetRenditions()
 			}
 			if cell.GetRenditions() == blankRenditions {
 				// Remember run of blank cells
+				// fmt.Printf("#putRow r,c=%2d,%2d is %q\n", frameY, frameX, cell.contents)
 				clearCount++
 				frameX++
 				continue
@@ -724,6 +729,7 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 		if clearCount > 0 {
 			// Move to the right(correct) position.
 			d.appendSilentMove(out, frameY, frameX-clearCount)
+			// fmt.Printf("#putRow blank x=%2d, cell=%q, rend=%v\n", frameX, cell.contents, cell.renditions)
 			d.updateRendition(out, blankRenditions, false)
 
 			canUseErase := d.hasBCE || d.currentRendition == Renditions{}
@@ -737,7 +743,7 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 			// If the current character is *another* empty cell in a different rendition,
 			// we restart counting and continue here
 			clearCount = 0
-			if cell.Empty() {
+			if cell.IsBlank() {
 				blankRenditions = cell.GetRenditions()
 				clearCount = 1
 				frameX++
@@ -757,11 +763,12 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 			80"), and we want to be able to apply the diff to either, for
 			verification.
 		*/
-		if wrapThis && frameX+cellWidth > rowWidth {
+		if wrapThis && frameX+cellWidth >= rowWidth {
 			d.cursorX = -1
 			d.cursorY = -1
 		}
 		d.appendSilentMove(out, frameY, frameX)
+		// fmt.Printf("#putRow print x=%2d, cell=%q, rend=%v\n", frameX, cell.contents, cell.renditions)
 		d.updateRendition(out, cell.GetRenditions(), false)
 		d.appendCell(out, cell)
 		frameX += cellWidth
@@ -790,6 +797,7 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 	}
 
 	if wroteLastCell && frameY < newE.nRows-1 {
+		fmt.Printf("#test wrapThis=%t, wroteLastCell=%t, frameY=%d\n", wrapThis, wroteLastCell, frameY)
 		// To hint that a word-select should group the end of one line with the beginning of the next,
 		// we let the real cursor actually wrap around in cases where it wrapped around for us.
 		if wrapThis {
@@ -802,6 +810,7 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 			fmt.Fprint(out, "\u000D\u000A")
 			d.cursorX = 0
 			d.cursorY++
+			// fmt.Printf("#putRow display cursor position (%2d,%3d)\n", d.cursorY, d.cursorX)
 		}
 	}
 	return false
@@ -837,6 +846,7 @@ func (d *Display) appendMove(out io.Writer, y int, x int) {
 	d.cursorX = x
 	d.cursorY = y
 
+	// fmt.Printf("#appendMove display change to (%2d,%2d)\n", d.cursorY, d.cursorX)
 	// Only optimize if cursor position is known
 	if lastX != -1 && lastY != -1 {
 		// Can we use CR and/or LF?  They're cheap and easier to trace.

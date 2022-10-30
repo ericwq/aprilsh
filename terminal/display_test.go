@@ -90,10 +90,11 @@ func TestOpenClose(t *testing.T) {
 	}
 }
 
-func TestNewFrame(t *testing.T) {
+func TestNewFrame_PutRow(t *testing.T) {
 	tc := []struct {
 		label       string
-		bgRune      rune
+		bgRune1     rune
+		bgRune2     rune
 		mix         string
 		initialized bool
 		expectSeq   string
@@ -101,15 +102,31 @@ func TestNewFrame(t *testing.T) {
 		expectRow   string
 	}{
 		{
-			"empty screen update one wrap line", 'N', "\x1B[11;74Houtput for normal wrap line.", true,
-			"\x1b[?25l\x1b[11;74Houtput for normal wrap line.\x1b[?25h", 11,
-			"[ 11] for.normal.wrap.line.***********************************************************",
+			"empty screen update one wrap line", ' ', ' ', "\x1B[11;74Houtput for normal wrap line.", true,
+			"\x1b[?25l\x1b[11;74Houtput for\x1b[12;5Hnormal\x1b[12;12Hwrap\x1b[12;17Hline.\x1b[?25h", 11,
+			"[ 11] for.normal.wrap.line............................................................",
 		},
-		// {
-		// 	"same screen update one wrap line", 'X', "\x1B[24;74Houtput for normal wrap line.", true,
-		// 	"\x1b[?25l\x1b[24;74Houtput for normal warp line.\x1b[?25h", 24,
-		// 	"[ 24] for.normal.warp.line.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
-		// },
+		{
+			"same screen update one wrap line", 'X', 'X', "\x1B[24;74Houtput for normal wrap line.", true,
+			"\x1b[?25l\x1b[24;74Houtput for normal wrap line.\x1b[?25h", 24,
+			"[ 24] for.normal.wrap.line.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+		},
+		{
+			"new screen with empty line", 'U', 'U', "\x1B[4;4HErase to the end of line\x1B[0K.", true,
+			"\x1b[?25l\x1b[4;4HErase to the end of line.\x1b[K\x1b[?25h", 3,
+			"[  3] UUUErase.to.the.end.of.line.....................................................",
+		},
+		{
+			"new screen with big space gap", 'V', 'V',
+			"\x1B[5;1H1st space\x1B[0K\x1b[5;21H2nd!   \x1B[1;37;40m   3rd\x1b[5;79HEOL", true,
+			"\x1b[?25l\r\n1st space\x1b[11X\x1b[5;21H2nd!   \x1b[0;1;37;40m   3rd\x1b[45X\x1b[5;79H\x1b[0;1;37;40mE\x1b[5;80HOL\x1b[?25h", 4,
+			"[  4] 1st.space...........2nd!......3rd.............................................EO",
+		},
+		{
+			"last cell", 'W', 'W', "\x1B[6;77HLAST", true,
+			"\x1b[?25l\x1b[6;77HLAST\r\n\x1b[6;80H\x1b[?25h", 5,
+			"[  5] WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWLAST",
+		},
 	}
 
 	oldE := NewEmulator3(80, 40, 40)
@@ -122,13 +139,11 @@ func TestNewFrame(t *testing.T) {
 	}
 
 	for _, v := range tc {
-		// 'N' means don't fill the screen
-		if v.bgRune != 'N' {
-			oldE.cf.fillCells(v.bgRune, oldE.attrs)
-			newE.cf.fillCells(v.bgRune, newE.attrs)
-		}
+		oldE.cf.fillCells(v.bgRune1, oldE.attrs)
+		newE.cf.fillCells(v.bgRune2, newE.attrs)
 
 		// make difference between terminal states
+		// fmt.Printf("#test NewFrame() newE cursor at (%2d,%2d)\n", newE.GetCursorRow(), newE.GetCursorCol())
 		newE.HandleStream(v.mix)
 
 		// check the difference sequence
@@ -138,6 +153,7 @@ func TestNewFrame(t *testing.T) {
 		}
 
 		// apply difference sequence to target
+		// fmt.Printf("#test NewFrame() oldE cursor at (%2d,%2d)\n", oldE.GetCursorRow(), oldE.GetCursorCol())
 		oldE.HandleStream(gotSeq)
 		gotRow := printCells(oldE.cf, v.row)
 
