@@ -41,9 +41,10 @@ type Cell struct {
 	renditions Renditions
 	// fallback   bool
 	dirty      bool
-	wrap       bool
-	dwidth     bool
-	dwidthCont bool
+	wrap       bool // indicate single/double width grapheme which is the last cell in the row.
+	earlyWrap  bool // indicate double width grapheme which start from position nColsEff-1
+	dwidth     bool // indicate this cell is the first cell of double width grapheme if true
+	dwidthCont bool // indicate this cell is the second cell of double width grapheme if true
 }
 
 func (c Cell) IsBlank() bool {
@@ -59,6 +60,14 @@ func (c Cell) GetRenditions() Renditions {
 
 func (c Cell) String() string {
 	return c.contents
+}
+
+func (c Cell) IsEarlyWrap() bool {
+	return c.earlyWrap
+}
+
+func (c *Cell) SetEarlyWrap(v bool) {
+	c.earlyWrap = v
 }
 
 // 32 seems like a reasonable limit on combining characters

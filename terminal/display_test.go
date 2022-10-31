@@ -127,6 +127,16 @@ func TestNewFrame_PutRow(t *testing.T) {
 			"\x1b[?25l\x1b[6;77HLAST\r\n\x1b[6;80H\x1b[?25h", 5,
 			"[  5] WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWLAST",
 		},
+		{
+			"last chinese cell", ' ', ' ', "\x1B[7;7H左边\x1B[7;77H中文", true,
+			"\x1b[?25l\x1b[7;7H左边\x1b[7;77H中文\r\n\x1b[7;80H\x1b[?25h", 6,
+			"[  6] ......左边..................................................................中文",
+		},
+		{
+			"last chinese cell early wrap", ' ', ' ', "\x1B[8;7H提早\x1B[8;78H换行", true,
+			"\x1b[?25l\x1b[8;7H提早\x1b[8;78H换\r\n行\x1b[?25h", 7,
+			"[  7] ......提早...................................................................换.",
+		},
 	}
 
 	oldE := NewEmulator3(80, 40, 40)

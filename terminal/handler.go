@@ -278,8 +278,12 @@ func hdl_graphemes(emu *Emulator, chs ...rune) {
 
 	// the first condition deal with the new graphemes should wrap on next row
 	// the second condition deal with widh graphemes in special position: posX = nColsEff-1 and width is 2
-	if (emu.autoWrapMode && emu.lastCol && emu.posX == emu.nColsEff-1) || (w == 2 && emu.posX == emu.nColsEff-1) {
-		emu.cf.getCellPtr(emu.posY, emu.posX).wrap = true
+	if (emu.autoWrapMode && emu.lastCol) || (w == 2 && emu.posX == emu.nColsEff-1) {
+		lastCell := emu.cf.getCellPtr(emu.posY, emu.posX)
+		if w == 2 && emu.posX == emu.nColsEff-1 {
+			lastCell.SetEarlyWrap(true) // mark the last chinese cell early wrap case
+		}
+		lastCell.wrap = true
 		hdl_c0_cr(emu)
 		hdl_c0_lf(emu)
 	}

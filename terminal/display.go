@@ -705,7 +705,6 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 
 		// Does cell need to be drawn?  Skip all this.
 		if initialized && clearCount == 0 && cell == oldRow[frameX] {
-			// TODO: how to print combining grapheme and double width grapheme?
 			// fmt.Printf("#putRow r,c=%2d,%2d is the same: %q\n", frameY, frameX, cell.contents)
 			frameX += cell.GetWidth()
 			continue
@@ -713,6 +712,11 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 
 		// Slurp up all the empty cells
 		if cell.IsBlank() {
+			if cell.IsEarlyWrap() { // skip the early wrap cell.
+				frameX++
+				continue
+			}
+
 			if clearCount == 0 {
 				blankRenditions = cell.GetRenditions()
 			}
@@ -774,7 +778,6 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 		frameX += cellWidth
 		d.cursorX += cellWidth
 		if frameX >= rowWidth {
-			// TODO consider the double width grapheme
 			wroteLastCell = true
 		}
 	}
@@ -797,7 +800,7 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 	}
 
 	if wroteLastCell && frameY < newE.nRows-1 {
-		fmt.Printf("#test wrapThis=%t, wroteLastCell=%t, frameY=%d\n", wrapThis, wroteLastCell, frameY)
+		// fmt.Printf("#putRow wrapThis=%t, wroteLastCell=%t, frameY=%d\n", wrapThis, wroteLastCell, frameY)
 		// To hint that a word-select should group the end of one line with the beginning of the next,
 		// we let the real cursor actually wrap around in cases where it wrapped around for us.
 		if wrapThis {
