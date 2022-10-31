@@ -28,6 +28,7 @@ package terminal
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -175,5 +176,69 @@ func TestNewFrame_PutRow(t *testing.T) {
 		if !strings.Contains(gotRow, v.expectRow) {
 			t.Errorf("%q expect \n%s, got \n%s\n", v.label, v.expectRow, gotRow)
 		}
+	}
+}
+
+func TestNewFrame_ScrollDown(t *testing.T) {
+	tc := []struct {
+		label       string
+		bgRune1     rune
+		bgRune2     rune
+		mixSeq      string
+		extraSeq    string
+		scrollSeq   string
+		initialized bool
+		expectSeq   string
+		row         int
+		expectRow   string
+	}{
+		{
+			"empty screen update one wrap line", ' ', ' ', "\x1B[5;1Hscroll\x1B[6;1Hdown\x1B[7;1H10\x1B[8;1Hlines!",
+			"\r\ndifferent line", "\x1B[4S", true, "TBD", 0,
+			"[  0] for.normal.wrap.line............................................................",
+		},
+	}
+
+	oldE := NewEmulator3(80, 40, 40)
+	newE := NewEmulator3(80, 40, 40)
+
+	// oldE.logT.SetOutput(io.Discard)
+	// newE.logT.SetOutput(io.Discard)
+
+	os.Setenv("TERM", "xterm-256color")
+	d, e := NewDisplay(true)
+	if e != nil {
+		t.Errorf("#test NewFrame() create display error: %s\n", e)
+	}
+
+	for _, v := range tc {
+		oldE.cf.fillCells(v.bgRune1, oldE.attrs)
+		newE.cf.fillCells(v.bgRune2, newE.attrs)
+
+		// make difference between terminal states
+		// fmt.Printf("#test NewFrame() newE cursor at (%2d,%2d)\n", newE.GetCursorRow(), newE.GetCursorCol())
+		newE.HandleStream(v.mixSeq + v.extraSeq + v.scrollSeq)
+		oldE.HandleStream(v.mixSeq)
+
+		// check the difference sequence
+		gotSeq := d.NewFrame(v.initialized, oldE, newE)
+		if gotSeq != v.expectSeq {
+			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
+		}
+
+		fmt.Printf("OLD:\n%s", printCells(oldE.cf))
+		fmt.Printf("NEW:\n%s", printCells(newE.cf))
+
+		// apply difference sequence to target
+		// fmt.Printf("#test NewFrame() oldE cursor at (%2d,%2d)\n", oldE.GetCursorRow(), oldE.GetCursorCol())
+		oldE.HandleStream(gotSeq)
+
+		fmt.Printf("OLD with diff:\n%s", printCells(oldE.cf))
+		// gotRow := printCells(oldE.cf, v.row)
+		//
+		// // check the replicate result.
+		// if !strings.Contains(gotRow, v.expectRow) {
+		// 	t.Errorf("%q expect \n%s, got \n%s\n", v.label, v.expectRow, gotRow)
+		// }
 	}
 }
