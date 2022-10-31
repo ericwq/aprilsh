@@ -771,8 +771,9 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 			d.cursorX = -1
 			d.cursorY = -1
 		}
+		// fmt.Printf("#putRow print x=%2d, wrapThis=%t, cell=%q, rend=%v\n", frameX, wrapThis, cell.contents, cell.renditions)
+		// fmt.Printf("#putRow move from (%2d,%2d) to (%2d,%2d)\n", d.cursorY, d.cursorX, frameY, frameX)
 		d.appendSilentMove(out, frameY, frameX)
-		// fmt.Printf("#putRow print x=%2d, cell=%q, rend=%v\n", frameX, cell.contents, cell.renditions)
 		d.updateRendition(out, cell.GetRenditions(), false)
 		d.appendCell(out, cell)
 		frameX += cellWidth

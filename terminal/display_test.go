@@ -28,6 +28,7 @@ package terminal
 
 import (
 	"errors"
+	"io"
 	"os"
 	"strings"
 	"testing"
@@ -141,6 +142,9 @@ func TestNewFrame_PutRow(t *testing.T) {
 
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
+
+	oldE.logT.SetOutput(io.Discard)
+	newE.logT.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
