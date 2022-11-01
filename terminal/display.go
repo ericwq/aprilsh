@@ -211,7 +211,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	// has size changed?
 	// the size of the display terminal isn't changed.
 	// the size of the received terminal is changed by ApplyString()
-	if !initialized || newE.GetWidth() != oldE.GetWidth() || newE.GetHeight() != oldE.GetHeight() {
+	if !initialized || newE.nCols != oldE.nCols || newE.nRows != oldE.nRows {
 		// TODO why reset scrolling region?
 		fmt.Fprintf(&b, "\x1B[r") // smgtb, reset scrolling region, reset top/bottom margin
 		ti.TPuts(&b, ti.AttrOff)  // sgr0, "\x1B[0m" turn off all attribute modes
@@ -248,10 +248,12 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		}
 	}
 
-	// has the vertical margin changed?
+	// has the margin changed?
 	if !initialized || (newE.marginTop != oldE.marginTop || newE.marginBottom != oldE.marginBottom) {
 		if newE.cf.margin {
-			fmt.Fprintf(&b, "\x1B[%d;%ds", newE.marginTop+1, newE.marginBottom)
+			fmt.Fprintf(&b, "\x1B[%d;%dr", newE.marginTop+1, newE.marginBottom) // new margin
+		} else {
+			fmt.Fprint(&b, "\x1B[r") // reset margin
 		}
 	}
 

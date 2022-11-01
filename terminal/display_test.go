@@ -459,3 +459,47 @@ func TestNewFrame_AltScreenBufferMode(t *testing.T) {
 		}
 	}
 }
+
+func TestNewFrame_margin(t *testing.T) {
+	tc := []struct {
+		label       string
+		initialized bool
+		margin      bool
+		seq         string
+		expectSeq   string
+	}{
+		{"already initialized, new has margin", true, true, "\x1B[2;6r", "\x1b[2;6r"},
+		{"already initialized, old has margin", true, false, "\x1B[2;6r", "\x1b[r"},
+	}
+	oldE := NewEmulator3(8, 8, 4)
+	newE := NewEmulator3(8, 8, 4)
+
+	// oldE.logT.SetOutput(io.Discard)
+	// newE.logT.SetOutput(io.Discard)
+
+	os.Setenv("TERM", "xterm-256color")
+	d, e := NewDisplay(true)
+	if e != nil {
+		t.Errorf("#test create display error: %s\n", e)
+	}
+
+	for _, v := range tc {
+		// reset the terminal to avoid overlap
+		oldE.resetTerminal()
+		newE.resetTerminal()
+
+		if v.margin {
+			// margin: newE true, oldE false
+			newE.HandleStream(v.seq)
+		} else {
+			// margin: newE false, oldE true
+			oldE.HandleStream(v.seq)
+		}
+
+		// check the expect difference sequence
+		gotSeq := d.NewFrame(v.initialized, oldE, newE)
+		if gotSeq != v.expectSeq {
+			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
+		}
+	}
+}
