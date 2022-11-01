@@ -230,6 +230,8 @@ func (emu *Emulator) resetTerminal() {
 
 	emu.switchColMode(ColMode_C80)
 	emu.cf.dropScrollbackHistory()
+	emu.cf.resetBell()
+	emu.cf.resetTitle()
 	emu.marginTop, emu.marginBottom = emu.cf.resetMargins()
 	emu.clearScreen()
 

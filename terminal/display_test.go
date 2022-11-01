@@ -249,3 +249,90 @@ func TestNewFrame_ScrollUp(t *testing.T) {
 		// fmt.Printf("OLD with diff:\n%s", printCells(oldE.cf))
 	}
 }
+
+func TestNewFrame_Bell(t *testing.T) {
+	tc := []struct {
+		label       string
+		initialized bool
+		bell        bool
+		expectSeq   string
+	}{
+		{"no bell", true, false, ""},
+		{"has bell", true, true, "\a"},
+	}
+	oldE := NewEmulator3(80, 40, 40)
+	newE := NewEmulator3(80, 40, 40)
+
+	oldE.logT.SetOutput(io.Discard)
+	newE.logT.SetOutput(io.Discard)
+
+	os.Setenv("TERM", "xterm-256color")
+	d, e := NewDisplay(true)
+	if e != nil {
+		t.Errorf("#test NewFrame() create display error: %s\n", e)
+	}
+
+	for _, v := range tc {
+		// reset the terminal to avoid overlap
+		oldE.resetTerminal()
+		newE.resetTerminal()
+
+		if v.bell {
+			newE.cf.ringBell()
+		}
+
+		// check the expect difference sequence
+		gotSeq := d.NewFrame(v.initialized, oldE, newE)
+		if gotSeq != v.expectSeq {
+			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
+		}
+	}
+}
+
+func TestNewFrame_WindowTitleIconName(t *testing.T) {
+	tc := []struct {
+		label       string
+		initialized bool
+		windowTitle string
+		iconName    string
+		expectSeq   string
+	}{
+		{"no window title and icon name", true, "", "", ""},
+		{"has window title", true, "window title", "", "\x1b]1;\a\x1b]2;window title\a"},
+		{"has chinese icon name", true, "", "图标名称", "\x1b]1;图标名称\a\x1b]2;\a"},
+		{"has same window title & icon name", true, "中文标题", "中文标题", "\x1b]0;中文标题\a"},
+	}
+	oldE := NewEmulator3(80, 40, 40)
+	newE := NewEmulator3(80, 40, 40)
+
+	oldE.logT.SetOutput(io.Discard)
+	newE.logT.SetOutput(io.Discard)
+
+	os.Setenv("TERM", "xterm-256color")
+	d, e := NewDisplay(true)
+	if e != nil {
+		t.Errorf("#test NewFrame() create display error: %s\n", e)
+	}
+
+	for _, v := range tc {
+		// reset the terminal to avoid overlap
+		oldE.resetTerminal()
+		newE.resetTerminal()
+
+		if v.windowTitle != "" {
+			newE.cf.setWindowTitle(v.windowTitle)
+			newE.cf.setTitleInitialized()
+		}
+
+		if v.iconName != "" {
+			newE.cf.setIconName(v.iconName)
+			newE.cf.setTitleInitialized()
+		}
+
+		// check the expect difference sequence
+		gotSeq := d.NewFrame(v.initialized, oldE, newE)
+		if gotSeq != v.expectSeq {
+			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
+		}
+	}
+}

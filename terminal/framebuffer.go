@@ -850,6 +850,11 @@ func (fb *Framebuffer) setIconName(iconName string) { fb.iconName = iconName }
 func (fb *Framebuffer) setWindowTitle(title string) { fb.windowTitle = title }
 func (fb *Framebuffer) getIconName() string         { return fb.iconName }
 func (fb *Framebuffer) getWindowTitle() string      { return fb.windowTitle }
+func (fb *Framebuffer) resetTitle() {
+	fb.windowTitle = ""
+	fb.iconName = ""
+	fb.titleInitialized = false
+}
 
 func (fb *Framebuffer) prefixWindowTitle(s string) {
 	if fb.iconName == fb.windowTitle {
@@ -931,6 +936,7 @@ func (fb *Framebuffer) resizeCols(width, oldWidth int) {
 // func (fb *Framebuffer) ResetRow(r *Row)   { r.Reset(uint32(fb.DS.GetBackgroundRendition())) }
 func (fb *Framebuffer) ringBell()         { fb.bellCount += 1 }
 func (fb *Framebuffer) getBellCount() int { return fb.bellCount }
+func (fb *Framebuffer) resetBell()        { fb.bellCount = 0 }
 
 func cycleSelectSnapTo2(snapTo SelectSnapTo) SelectSnapTo {
 	return SelectSnapTo((int(snapTo) + 1) % int(SelectSnapTo_COUNT))
