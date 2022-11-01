@@ -336,3 +336,47 @@ func TestNewFrame_WindowTitleIconName(t *testing.T) {
 		}
 	}
 }
+
+func TestNewFrame_ReverseVideo(t *testing.T) {
+	tc := []struct {
+		label        string
+		initialized  bool
+		reverseVideo bool // determine the reverseVideo value of pair terminal
+		seq          string
+		expectSeq    string
+	}{
+		{"has reverse video", true, true, "\x1B[?5h", "\x1b[?5h"},
+		{"no reverse video", true, false, "\x1B[?5h", "\x1B[?5l"},
+	}
+	oldE := NewEmulator3(80, 40, 40)
+	newE := NewEmulator3(80, 40, 40)
+
+	// oldE.logT.SetOutput(io.Discard)
+	// newE.logT.SetOutput(io.Discard)
+
+	os.Setenv("TERM", "xterm-256color")
+	d, e := NewDisplay(true)
+	if e != nil {
+		t.Errorf("#test NewFrame() create display error: %s\n", e)
+	}
+
+	for _, v := range tc {
+		// reset the terminal to avoid overlap
+		oldE.resetTerminal()
+		newE.resetTerminal()
+
+		if v.reverseVideo {
+			// reverseVideo: newE true, oldE false
+			newE.HandleStream(v.seq)
+		} else {
+			// reverseVideo: newE false, oldE true
+			oldE.HandleStream(v.seq)
+		}
+
+		// check the expect difference sequence
+		gotSeq := d.NewFrame(v.initialized, oldE, newE)
+		if gotSeq != v.expectSeq {
+			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
+		}
+	}
+}
