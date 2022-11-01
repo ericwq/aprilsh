@@ -380,3 +380,38 @@ func TestNewFrame_ReverseVideo(t *testing.T) {
 		}
 	}
 }
+
+func TestNewFrame_Resize(t *testing.T) {
+	tc := []struct {
+		label         string
+		initialized   bool // for resize, it's always set to false internally
+		width, height int
+	}{
+		{"extend width and height", true, 90, 50},
+		{"shrink both width and height", false, 70, 30},
+	}
+	os.Setenv("TERM", "xterm-256color")
+	d, e := NewDisplay(true)
+	if e != nil {
+		t.Errorf("#test NewFrame() create display error: %s\n", e)
+	}
+
+	for _, v := range tc {
+		oldE := NewEmulator3(80, 40, 40)
+		newE := NewEmulator3(80, 40, 40)
+
+		// oldE.logT.SetOutput(io.Discard)
+		// newE.logT.SetOutput(io.Discard)
+
+		newE.resize(v.width, v.height)
+
+		// fmt.Printf("OLD: w=%d, h=%d\n%s", oldE.GetWidth(), oldE.GetHeight(), printCells(oldE.cf))
+		// fmt.Printf("NEW: w=%d, h=%d\n%s", newE.GetWidth(), newE.GetHeight(), printCells(newE.cf))
+
+		// resize result in initialize, we can't predict the got sequence on different platform.
+		gotSeq := d.NewFrame(v.initialized, oldE, newE)
+		if len(gotSeq) < 100 {
+			t.Errorf("%q , the diff seq should be greater than 100, got %d\n%q\n", v.label, len(gotSeq), gotSeq)
+		}
+	}
+}

@@ -62,14 +62,14 @@ type Framebuffer struct {
 // create a framebuffer, with zero saveLines.
 func NewFramebuffer2(nCols, nRows int) Framebuffer {
 	pfb, _, _ := NewFramebuffer3(nCols, nRows, 0)
-	return *pfb
+	return pfb
 }
 
 // create a framebuffer according to the specified nCols, nRows and saveLines.
 // saveLines: for alternate screen buffer default is 0, for normal screen buffer the default is 500, max 50000
-// return the framebuffer pointer and external marginTop,marginBottom.
-func NewFramebuffer3(nCols, nRows, saveLines int) (fb *Framebuffer, marginTop int, marginBottom int) {
-	fb = &Framebuffer{}
+// return the framebuffer and external marginTop,marginBottom.
+func NewFramebuffer3(nCols, nRows, saveLines int) (fb Framebuffer, marginTop int, marginBottom int) {
+	fb = Framebuffer{}
 
 	fb.cells = make([]Cell, nCols*(nRows+saveLines))
 	fb.nCols = nCols

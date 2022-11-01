@@ -217,7 +217,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		ti.TPuts(&b, ti.AttrOff)  // sgr0, "\x1B[0m" turn off all attribute modes
 		ti.TPuts(&b, ti.Clear)    // clear, "\x1B[H\x1B[2J" clear screen and home cursor
 
-		initialized = false
+		initialized = false // resize will force the initialized
 		d.cursorX = 0
 		d.cursorY = 0
 		d.currentRendition = Renditions{}
@@ -239,14 +239,13 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		} else {
 			fmt.Fprint(&b, "\x1B[?47l")
 		}
-		// d.cursorX = 0
-		// d.cursorY = 0
-		// d.currentRendition = Renditions{}
 	}
 
 	// has the vertical margin changed?
 	if !initialized || (newE.marginTop != oldE.marginTop || newE.marginBottom != oldE.marginBottom) {
-		fmt.Fprintf(&b, "\x1B[%d;%ds", newE.marginTop+1, newE.marginBottom)
+		if newE.cf.margin {
+			fmt.Fprintf(&b, "\x1B[%d;%ds", newE.marginTop+1, newE.marginBottom)
+		}
 	}
 
 	// has the horizontal margin changed?
@@ -254,6 +253,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		if newE.horizMarginMode {
 			fmt.Fprint(&b, "\x1B[?69h")
 			if newE.hMargin != oldE.hMargin || newE.nColsEff != oldE.nColsEff {
+				// decslrm set left/right margin
 				fmt.Fprintf(&b, "\x1B[%d;%ds", newE.hMargin+1, newE.nColsEff)
 			}
 		} else {

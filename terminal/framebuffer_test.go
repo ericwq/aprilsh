@@ -125,7 +125,7 @@ func TestResize(t *testing.T) {
 
 		// fmt.Printf("%s\n", v.name)
 		fb.resize(v.w1, v.h1)
-		output := printCells(fb)
+		output := printCells(&fb)
 		// fmt.Printf("%s\n", output)
 
 		for _, row := range v.rows {
@@ -167,7 +167,7 @@ func TestUnwrapCellStorage(t *testing.T) {
 	// fmt.Printf("%s\n", printCells(fb))
 
 	fb.unwrapCellStorage()
-	output := printCells(fb)
+	output := printCells(&fb)
 	// fmt.Printf("%s\n", output)
 
 	for _, row := range rows {

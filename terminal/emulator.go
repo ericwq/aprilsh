@@ -118,8 +118,8 @@ func NewEmulator3(nCols, nRows, saveLines int) *Emulator {
 
 	emu := &Emulator{}
 	emu.parser = NewParser()
-	emu.cf, emu.marginTop, emu.marginBottom = NewFramebuffer3(nCols, nRows, saveLines)
-	emu.frame_pri = *emu.cf
+	emu.frame_pri, emu.marginTop, emu.marginBottom = NewFramebuffer3(nCols, nRows, saveLines)
+	emu.cf = &emu.frame_pri
 	emu.frame_alt = NewFramebuffer2(1, 1)
 
 	emu.nCols = nCols
@@ -170,9 +170,7 @@ func (emu *Emulator) resize(nCols, nRows int) {
 
 	if emu.altScreenBufferMode {
 		// create a new frame buffer
-		var alt *Framebuffer
-		alt, emu.marginTop, emu.marginBottom = NewFramebuffer3(nCols, nRows, 0)
-		emu.frame_alt = *alt
+		emu.frame_alt, emu.marginTop, emu.marginBottom = NewFramebuffer3(nCols, nRows, 0)
 	} else {
 		// adjust the cursor position if the nRow shrinked
 		if nRows < emu.posY+1 {
@@ -427,8 +425,8 @@ func (emu *Emulator) switchScreenBufferMode(altScreenBufferMode bool) {
 	}
 
 	if altScreenBufferMode {
-		emu.cf, emu.marginTop, emu.marginBottom = NewFramebuffer3(emu.nCols, emu.nRows, 0)
-		emu.frame_alt = *emu.cf
+		emu.frame_alt, emu.marginTop, emu.marginBottom = NewFramebuffer3(emu.nCols, emu.nRows, 0)
+		emu.cf = &emu.frame_alt
 
 		emu.savedCursor_DEC = &emu.savedCursor_DEC_alt
 		emu.altScreenBufferMode = true
