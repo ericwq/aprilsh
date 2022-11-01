@@ -324,7 +324,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	var oldRow []Cell
 	var newRow []Cell
 
-	// shortcut -- has display moved up by a certain number of lines?
+	// shortcut -- has display moved up(text up, window down) by a certain number of lines?
 	if initialized {
 		var linesScrolled int
 		var scrollHeight int
@@ -367,27 +367,32 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 
 				topMargin := 0
 				bottomMargin := topMargin + linesScrolled + scrollHeight - 1
+				// fmt.Printf("#NewFrame scrollHeight=%2d, linesScrolled=%2d, frameY=%2d, bottomMargin=%2d\n",
+				// 	scrollHeight, linesScrolled, frameY, bottomMargin)
 
 				// Common case:  if we're already on the bottom line and we're scrolling the whole
 				// creen, just do a CR and LFs.
 				if scrollHeight+linesScrolled == newE.GetHeight() && d.cursorY+1 == newE.GetHeight() {
-					fmt.Fprint(&b, "\u000D")
-					fmt.Fprint(&b, strings.Repeat("\u000A", linesScrolled)) // ind
+					fmt.Fprint(&b, "\r")
+					// fmt.Fprint(&b, strings.Repeat("\n", linesScrolled)) // ind
+					fmt.Fprintf(&b, "\x1B[%dS", linesScrolled)
 					d.cursorX = 0
 				} else {
 					// set scrolling region
-					fmt.Fprintf(&b, "\x1B[%d;%dr", topMargin+1, bottomMargin+1)
+					// fmt.Fprintf(&b, "\x1B[%d;%dr", topMargin+1, bottomMargin+1)
 
 					// go to bottom of scrolling region
 					d.cursorY = -1
 					d.cursorX = -1
 					d.appendSilentMove(&b, bottomMargin, 0)
 
-					// scroll
-					fmt.Fprint(&b, strings.Repeat("\u000A", linesScrolled)) // ind
+					// scroll text up by <linesScrolled>
+					fmt.Fprintf(&b, "\x1B[%dS", linesScrolled)
+					// fmt.Fprint(&b, strings.Repeat("\r", linesScrolled)) // ind
 
 					// reset scrolling region
-					fmt.Fprint(&b, "\x1B[r")
+					// fmt.Fprint(&b, "\x1B[r")
+
 					// invalidate cursor position after unsetting scrolling region
 					d.cursorY = -1
 					d.cursorX = -1
@@ -395,6 +400,10 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 
 				// Now we need a proper blank row.
 				blankRow := make([]Cell, newE.nCols)
+				for i := range blankRow {
+					// set both contents and renditions
+					blankRow[i] = newE.attrs
+				}
 
 				// do the move in our local new screen
 				for i := topMargin; i <= bottomMargin; i++ {
@@ -811,7 +820,7 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 			return true
 		} else {
 			// Resort to CR/LF and update our cursor.
-			fmt.Fprint(out, "\u000D\u000A")
+			fmt.Fprint(out, "\r\n")
 			d.cursorX = 0
 			d.cursorY++
 			// fmt.Printf("#putRow display cursor position (%2d,%3d)\n", d.cursorY, d.cursorX)
@@ -857,9 +866,9 @@ func (d *Display) appendMove(out io.Writer, y int, x int) {
 		if x == 0 && y-lastY >= 0 && y-lastY < 5 {
 			// less than 5 is efficient than CUP
 			if lastX != 0 {
-				fmt.Fprint(out, "\u000D") // CR
+				fmt.Fprint(out, "\r") // CR
 			}
-			fmt.Fprint(out, strings.Repeat("\u000A", y-lastY)) // LF
+			fmt.Fprint(out, strings.Repeat("\n", y-lastY)) // LF
 			return
 		}
 		// Backspaces are good too.

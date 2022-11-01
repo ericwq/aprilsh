@@ -28,9 +28,9 @@ package terminal
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"os"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -179,7 +179,7 @@ func TestNewFrame_PutRow(t *testing.T) {
 	}
 }
 
-func TestNewFrame_ScrollDown(t *testing.T) {
+func TestNewFrame_ScrollUp(t *testing.T) {
 	tc := []struct {
 		label       string
 		bgRune1     rune
@@ -189,21 +189,24 @@ func TestNewFrame_ScrollDown(t *testing.T) {
 		scrollSeq   string
 		initialized bool
 		expectSeq   string
-		row         int
-		expectRow   string
 	}{
 		{
-			"empty screen update one wrap line", ' ', ' ', "\x1B[5;1Hscroll\x1B[6;1Hdown\x1B[7;1H10\x1B[8;1Hlines!",
-			"\r\ndifferent line", "\x1B[4S", true, "TBD", 0,
-			"[  0] for.normal.wrap.line............................................................",
+			"scroll up 5 lines", ' ', ' ', "\x1B[5;1Hscroll\r\ndown\r\nmore\r\nthan\r\n5 lines!",
+			"\r\ndifferent line", "\x1B[4S", true,
+			"\x1b[?25l\x1b[9;1H\x1b[4S\x1b[6;1Hdifferent\x1b[6;11Hline\x1b[10;15H\x1b[?25h",
+		},
+		{
+			"scroll up 6 lines", ' ', ' ', "\x1B[35;1Hscroll\r\ndown\r\nmore\r\nthan\r\n6\r\nlines!",
+			"", "\x1B[34S", true,
+			"\r\x1b[34S\x1b[40;7H",
 		},
 	}
 
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
 
-	// oldE.logT.SetOutput(io.Discard)
-	// newE.logT.SetOutput(io.Discard)
+	oldE.logT.SetOutput(io.Discard)
+	newE.logT.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
@@ -212,33 +215,37 @@ func TestNewFrame_ScrollDown(t *testing.T) {
 	}
 
 	for _, v := range tc {
+		// reset the terminal to avoid overlap
+		oldE.resetTerminal()
+		newE.resetTerminal()
+
+		// prepare the screen background
 		oldE.cf.fillCells(v.bgRune1, oldE.attrs)
 		newE.cf.fillCells(v.bgRune2, newE.attrs)
 
-		// make difference between terminal states
-		// fmt.Printf("#test NewFrame() newE cursor at (%2d,%2d)\n", newE.GetCursorRow(), newE.GetCursorCol())
+		// make scroll difference between terminal states
 		newE.HandleStream(v.mixSeq + v.extraSeq + v.scrollSeq)
 		oldE.HandleStream(v.mixSeq)
 
-		// check the difference sequence
+		// check the expect difference sequence
 		gotSeq := d.NewFrame(v.initialized, oldE, newE)
 		if gotSeq != v.expectSeq {
 			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
 		}
 
-		fmt.Printf("OLD:\n%s", printCells(oldE.cf))
-		fmt.Printf("NEW:\n%s", printCells(newE.cf))
+		// fmt.Printf("OLD:\n%s", printCells(oldE.cf))
+		// fmt.Printf("NEW:\n%s", printCells(newE.cf))
 
 		// apply difference sequence to target
-		// fmt.Printf("#test NewFrame() oldE cursor at (%2d,%2d)\n", oldE.GetCursorRow(), oldE.GetCursorCol())
 		oldE.HandleStream(gotSeq)
 
-		fmt.Printf("OLD with diff:\n%s", printCells(oldE.cf))
-		// gotRow := printCells(oldE.cf, v.row)
-		//
-		// // check the replicate result.
-		// if !strings.Contains(gotRow, v.expectRow) {
-		// 	t.Errorf("%q expect \n%s, got \n%s\n", v.label, v.expectRow, gotRow)
-		// }
+		// compare the first row to validate the scroll
+		newRow := getRow(newE, 0)
+		oldRow := getRow(oldE, 0)
+		if !reflect.DeepEqual(newRow, oldRow) {
+			t.Errorf("%q expect \n%q\n, got \n%q\n", v.label, newRow[:], oldRow[:])
+		}
+
+		// fmt.Printf("OLD with diff:\n%s", printCells(oldE.cf))
 	}
 }
