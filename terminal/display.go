@@ -230,6 +230,13 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	// init showCursorMode from old screen
 	d.showCursorMode = oldE.showCursorMode
 
+	// is cursor visibility initialized?
+	if !initialized {
+		// fmt.Printf("#NewFrame initialized=%t, d.showCursorMode=%t\n", initialized, d.showCursorMode)
+		d.showCursorMode = false
+		ti.TPuts(&b, ti.HideCursor) // civis, "\x1B[?25l]" showCursorMode = false
+	}
+
 	// has the screen buffer mode changed?
 	// change screen buffer is something like resize, except resize remains partial content,
 	// screen buffer mode reset the whole screen.
@@ -288,13 +295,6 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		} else {
 			fmt.Fprint(&b, "\x1B[u") // SCORC
 		}
-	}
-
-	// is cursor visibility initialized?
-	if !initialized {
-		// fmt.Printf("#NewFrame initialized=%t, d.showCursorMode=%t\n", initialized, d.showCursorMode)
-		d.showCursorMode = false
-		ti.TPuts(&b, ti.HideCursor) // civis, "\x1B[?25l]" showCursorMode = false
 	}
 
 	/* resize and copy old screen */

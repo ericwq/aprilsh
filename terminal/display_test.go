@@ -415,3 +415,47 @@ func TestNewFrame_Resize(t *testing.T) {
 		}
 	}
 }
+
+func TestNewFrame_AltScreenBufferMode(t *testing.T) {
+	tc := []struct {
+		label               string
+		initialized         bool
+		altScreenBufferMode bool
+		seq                 string
+		expectSeq           string
+	}{
+		{"already initialized, has altScreenBufferMode", true, true, "\x1B[?47h", "\x1B[?47h"},
+		{"already initialized, no altScreenBufferMode", true, false, "\x1B[?47h", "\x1B[?47l"},
+	}
+	oldE := NewEmulator3(8, 4, 4)
+	newE := NewEmulator3(8, 4, 4)
+
+	// oldE.logT.SetOutput(io.Discard)
+	// newE.logT.SetOutput(io.Discard)
+
+	os.Setenv("TERM", "xterm-256color")
+	d, e := NewDisplay(true)
+	if e != nil {
+		t.Errorf("#test create display error: %s\n", e)
+	}
+
+	for _, v := range tc {
+		// reset the terminal to avoid overlap
+		oldE.resetTerminal()
+		newE.resetTerminal()
+
+		if v.altScreenBufferMode {
+			// altScreenBufferMode: newE true, oldE false
+			newE.HandleStream(v.seq)
+		} else {
+			// altScreenBufferMode: newE false, oldE true
+			oldE.HandleStream(v.seq)
+		}
+
+		// check the expect difference sequence
+		gotSeq := d.NewFrame(v.initialized, oldE, newE)
+		if !strings.Contains(gotSeq, v.expectSeq) {
+			t.Errorf("%q expect \n%q\n contains %q\n", v.label, gotSeq, v.expectSeq)
+		}
+	}
+}
