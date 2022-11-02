@@ -386,7 +386,7 @@ func hdl_c0_so(emu *Emulator) {
 
 // VT52: switch gl to charset DEC special
 func hdl_vt52_egm(emu *Emulator) {
-	emu.resetCharsetState()
+	resetCharsetState(&emu.charsetState)
 	emu.charsetState.g[emu.charsetState.gl] = &vt_DEC_Special
 }
 
@@ -454,13 +454,13 @@ func hdl_esc_ls3r(emu *Emulator) {
 // ESC % G   Select UTF-8 character set, ISO 2022.
 // https://en.wikipedia.org/wiki/ISO/IEC_2022#Interaction_with_other_coding_systems
 func hdl_esc_docs_utf8(emu *Emulator) {
-	emu.resetCharsetState()
+	resetCharsetState(&emu.charsetState)
 }
 
 // ESC % @   Select default character set.  That is ISO 8859-1 (ISO 2022).
 // https://www.cl.cam.ac.uk/~mgk25/unicode.html#utf-8
 func hdl_esc_docs_iso8859_1(emu *Emulator) {
-	emu.resetCharsetState()
+	resetCharsetState(&emu.charsetState)
 	emu.charsetState.g[emu.charsetState.gr] = &vt_ISO_8859_1 // Charset_IsoLatin1
 	emu.charsetState.vtMode = true
 }
@@ -1334,7 +1334,7 @@ func hdl_csi_privSM(emu *Emulator, params []int) {
 			// emu.framebuffer.DS.ApplicationModeCursorKeys = true // DECCKM Apllication zutty:cursorKeyMode
 			emu.cursorKeyMode = CursorKeyMode_Application
 		case 2:
-			emu.resetCharsetState() // Designate USASCII for character sets G0-G3 (DECANM), VT100, and set VT100 mode.
+			resetCharsetState(&emu.charsetState) // Designate USASCII for character sets G0-G3 (DECANM), VT100, and set VT100 mode.
 			emu.setCompatLevel(CompatLevel_VT400)
 			// emu.framebuffer.DS.compatLevel = CompatLevelVT400
 		case 3:
@@ -1376,7 +1376,8 @@ func hdl_csi_privSM(emu *Emulator, params []int) {
 			// emu.framebuffer.DS.mouseTrk.mode = MouseModeVT200
 			emu.mouseTrk.mode = MouseTrackingMode_VT200
 		case 1001:
-			emu.logU.Println("Set VT200 Highlight Mouse mode")
+			// emu.logU.Println("Set VT200 Highlight Mouse mode")
+			emu.mouseTrk.mode = MouseTrackingMode_VT200_HighLight
 		case 1002:
 			// emu.framebuffer.DS.mouseTrk.mode = MouseModeButtonEvent
 			emu.mouseTrk.mode = MouseTrackingMode_VT200_ButtonEvent
@@ -1428,7 +1429,7 @@ func hdl_csi_privRM(emu *Emulator, params []int) {
 			// emu.framebuffer.DS.ApplicationModeCursorKeys = false // ANSI
 			emu.cursorKeyMode = CursorKeyMode_ANSI
 		case 2:
-			emu.resetCharsetState() // Designate VT52 mode (DECANM), VT100.
+			resetCharsetState(&emu.charsetState) // Designate VT52 mode (DECANM), VT100.
 			emu.setCompatLevel(CompatLevel_VT52)
 			// emu.framebuffer.DS.compatLevel = CompatLevel_VT52
 		case 3:
@@ -1446,7 +1447,7 @@ func hdl_csi_privRM(emu *Emulator, params []int) {
 			emu.autoWrapMode = false
 		case 8:
 			emu.logU.Println("DECARM: Reset auto-repeat mode")
-		case 9, 1000, 1002, 1003:
+		case 9, 1000, 1001, 1002, 1003:
 			// emu.framebuffer.DS.mouseTrk.mode = MouseModeNone
 			emu.mouseTrk.mode = MouseTrackingMode_Disable
 		case 12:
@@ -1466,8 +1467,8 @@ func hdl_csi_privRM(emu *Emulator, params []int) {
 			emu.horizMarginMode = false
 			emu.hMargin = 0
 			emu.nColsEff = emu.nCols
-		case 1001:
-			emu.logU.Println("Reset VT200 Highlight Mouse mode")
+		// case 1001:
+		// 	emu.logU.Println("Reset VT200 Highlight Mouse mode")
 		case 1004:
 			// TODO replace MouseFocusEvent with mouseTrk.focusEventMode
 			// emu.framebuffer.DS.MouseFocusEvent = false

@@ -151,9 +151,8 @@ func NewEmulator3(nCols, nRows, saveLines int) *Emulator {
 	emu.fg = emu.attrs.renditions.fgColor
 	emu.bg = emu.attrs.renditions.bgColor
 
-	// emu.savedCursor_DEC_pri = SavedCursor_DEC{}
-	emu.savedCursor_DEC_alt.originMode = OriginMode_Absolute
-	emu.savedCursor_DEC_pri.originMode = OriginMode_Absolute
+	emu.savedCursor_DEC_pri = newSavedCursor_DEC()
+	emu.savedCursor_DEC_alt = newSavedCursor_DEC()
 	emu.savedCursor_DEC = &emu.savedCursor_DEC_pri
 	emu.initSelectionData()
 	emu.initLog()
@@ -161,6 +160,25 @@ func NewEmulator3(nCols, nRows, saveLines int) *Emulator {
 	emu.resetTerminal()
 
 	return emu
+}
+
+func resetCharsetState(charsetState *CharsetState) {
+	// we don't use vt100 charset by default
+	charsetState.vtMode = false
+
+	// default nil will fall to UTF-8
+	charsetState.g[0] = nil
+	charsetState.g[1] = nil
+	charsetState.g[2] = nil
+	charsetState.g[3] = nil
+
+	// Locking shift states (index into g[]):
+	charsetState.gl = 0 // G0 in GL
+	charsetState.gr = 2 // G2 in GR
+
+	// Single shift state (0 if none active):
+	// 0 - not active; 2: G2 in GL; 3: G3 in GL
+	charsetState.ss = 0
 }
 
 func (emu *Emulator) resize(nCols, nRows int) {
@@ -277,12 +295,12 @@ func (emu *Emulator) resetScreen() {
 	emu.cursorKeyMode = CursorKeyMode_ANSI
 	emu.keypadMode = KeypadMode_Normal
 	emu.originMode = OriginMode_Absolute
-	emu.resetCharsetState()
+	resetCharsetState(&emu.charsetState)
 
 	emu.savedCursor_SCO.isSet = false
 	emu.savedCursor_DEC.isSet = false
 
-	emu.mouseTrk = MouseTrackingState{}
+	emu.mouseTrk = newMouseTrackingState()
 	emu.tabStops = make([]int, 0)
 	emu.cf.getSelectionPtr().clear()
 }
@@ -485,25 +503,6 @@ func (emu *Emulator) initLog() {
 	emu.logE = log.New(os.Stderr, "ERRO: ", log.Ldate|log.Ltime|log.Lshortfile)
 	emu.logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 	emu.logU = log.New(os.Stderr, "(Uimplemented): ", log.Ldate|log.Ltime|log.Lshortfile)
-}
-
-func (emu *Emulator) resetCharsetState() {
-	// we don't use vt100 charset by default
-	emu.charsetState.vtMode = false
-
-	// default nil will fall to UTF-8
-	emu.charsetState.g[0] = nil
-	emu.charsetState.g[1] = nil
-	emu.charsetState.g[2] = nil
-	emu.charsetState.g[3] = nil
-
-	// Locking shift states (index into g[]):
-	emu.charsetState.gl = 0 // G0 in GL
-	emu.charsetState.gr = 2 // G2 in GR
-
-	// Single shift state (0 if none active):
-	// 0 - not active; 2: G2 in GL; 3: G3 in GL
-	emu.charsetState.ss = 0
 }
 
 func (emu *Emulator) lookupCharset(p rune) (r rune) {

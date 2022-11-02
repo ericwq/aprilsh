@@ -167,7 +167,7 @@ func TestJumpToNextTabStop(t *testing.T) {
 func TestLookupCharset(t *testing.T) {
 	emu := NewEmulator3(80, 40, 0)
 
-	emu.resetCharsetState()
+	resetCharsetState(&emu.charsetState)
 	// gr = 2, g[2]= DEC special
 	emu.charsetState.g[emu.charsetState.gr] = &vt_DEC_Special
 

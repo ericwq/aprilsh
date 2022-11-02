@@ -164,11 +164,19 @@ type SavedCursor struct {
 }
 */
 
-// TODO default constructor checking
+// check resetScreen() for default value
 type MouseTrackingState struct {
-	mode           MouseTrackingMode // replicated by NewFrame()
-	enc            MouseTrackingEnc  // replicated by NewFrame()
-	focusEventMode bool              // replicated by NewFrame()
+	mode           MouseTrackingMode // replicated by NewFrame(), default: MouseTrackingMode_Disable
+	enc            MouseTrackingEnc  // replicated by NewFrame(), default: MouseTrackingEnc_Default
+	focusEventMode bool              // replicated by NewFrame(), default: false
+}
+
+func newMouseTrackingState() MouseTrackingState {
+	mouseTrk := MouseTrackingState{}
+	mouseTrk.enc = MouseTrackingEnc_Default
+	mouseTrk.mode = MouseTrackingMode_Disable
+	mouseTrk.focusEventMode = false
+	return mouseTrk
 }
 
 type SavedCursor_SCO struct {
@@ -178,12 +186,20 @@ type SavedCursor_SCO struct {
 	lastCol bool
 }
 
-// TODO refine the constructor
 type SavedCursor_DEC struct {
 	SavedCursor_SCO
 	attrs        Cell
 	originMode   OriginMode // default: OriginMode_Absolute
 	charsetState CharsetState
+}
+
+func newSavedCursor_DEC() SavedCursor_DEC {
+	decsc := SavedCursor_DEC{}
+
+	resetCharsetState(&decsc.charsetState)
+	decsc.originMode = OriginMode_Absolute
+
+	return decsc
 }
 
 /*

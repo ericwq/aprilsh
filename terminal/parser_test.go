@@ -3311,13 +3311,13 @@ func TestHandle_privSM_privRM_Log(t *testing.T) {
 		{"privSM:   4", "\x1B[?4h", CSI_privSM, "DECSCLM: Set smooth scroll"},
 		{"privSM:   8", "\x1B[?8h", CSI_privSM, "DECARM: Set auto-repeat mode"},
 		{"privSM:  12", "\x1B[?12h", CSI_privSM, "Start blinking cursor"},
-		{"privSM:1001", "\x1B[?1001h", CSI_privSM, "Set VT200 Highlight Mouse mode"},
+		// {"privSM:1001", "\x1B[?1001h", CSI_privSM, "Set VT200 Highlight Mouse mode"},
 		{"privSM:unknow", "\x1B[?2022h", CSI_privSM, "set priv mode"},
 
 		{"privRM:   4", "\x1B[?4l", CSI_privRM, "DECSCLM: Set jump scroll"},
 		{"privRM:   8", "\x1B[?8l", CSI_privRM, "DECARM: Reset auto-repeat mode"},
 		{"privRM:  12", "\x1B[?12l", CSI_privRM, "Stop blinking cursor"},
-		{"privRM:1001", "\x1B[?1001l", CSI_privRM, "Reset VT200 Highlight Mouse mode"},
+		// {"privRM:1001", "\x1B[?1001l", CSI_privRM, "Reset VT200 Highlight Mouse mode"},
 		{"privRM:unknow", "\x1B[?2022l", CSI_privRM, "reset priv mode"},
 	}
 
@@ -3447,11 +3447,13 @@ func TestHandle_privSM_privRM_MouseTrackingMode(t *testing.T) {
 	}{
 		{"privSM:   9", "\x1B[?9l\x1B[?9h", []int{CSI_privRM, CSI_privSM}, MouseTrackingMode_X10_Compat},
 		{"privSM:1000", "\x1B[?1000l\x1B[?1000h", []int{CSI_privRM, CSI_privSM}, MouseTrackingMode_VT200},
+		{"privSM:1001", "\x1B[?1001l\x1B[?1001h", []int{CSI_privRM, CSI_privSM}, MouseTrackingMode_VT200_HighLight},
 		{"privSM:1002", "\x1B[?1002l\x1B[?1002h", []int{CSI_privRM, CSI_privSM}, MouseTrackingMode_VT200_ButtonEvent},
 		{"privSM:1003", "\x1B[?1003l\x1B[?1003h", []int{CSI_privRM, CSI_privSM}, MouseTrackingMode_VT200_AnyEvent},
 
 		{"privRM:   9", "\x1B[?9h\x1B[?9l", []int{CSI_privSM, CSI_privRM}, MouseTrackingMode_Disable},
 		{"privRM:1000", "\x1B[?1000h\x1B[?1000l", []int{CSI_privSM, CSI_privRM}, MouseTrackingMode_Disable},
+		{"privRM:1001", "\x1B[?1001h\x1B[?1001l", []int{CSI_privSM, CSI_privRM}, MouseTrackingMode_Disable},
 		{"privRM:1002", "\x1B[?1002h\x1B[?1002l", []int{CSI_privSM, CSI_privRM}, MouseTrackingMode_Disable},
 		{"privRM:1003", "\x1B[?1003h\x1B[?1003l", []int{CSI_privSM, CSI_privRM}, MouseTrackingMode_Disable},
 	}
