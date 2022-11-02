@@ -683,3 +683,48 @@ func TestNewFrame_ShowCursorMode(t *testing.T) {
 		}
 	}
 }
+
+func TestNewFrame_BracketedPasteMode(t *testing.T) {
+	tc := []struct {
+		label              string
+		initialized        bool
+		bracketedPasteMode bool
+		seq                string
+		expectSeq          string
+	}{
+		{"already initialized, new has bracketedPasteMode", true, true, "\x1B[?2004h", "\x1b[?2004h"},
+		{"already initialized, old has bracketedPasteMode", true, false, "\x1B[?2004h", "\x1b[?2004l"},
+		{"already initialized, both no bracketedPasteMode", true, false, "", ""},
+	}
+	oldE := NewEmulator3(8, 8, 4)
+	newE := NewEmulator3(8, 8, 4)
+
+	// oldE.logT.SetOutput(io.Discard)
+	// newE.logT.SetOutput(io.Discard)
+
+	os.Setenv("TERM", "xterm-256color")
+	d, e := NewDisplay(true)
+	if e != nil {
+		t.Errorf("#test create display error: %s\n", e)
+	}
+
+	for _, v := range tc {
+		// reset the terminal to avoid overlap
+		oldE.resetTerminal()
+		newE.resetTerminal()
+
+		if v.bracketedPasteMode {
+			// newE true, oldE false
+			newE.HandleStream(v.seq)
+		} else {
+			// newE false, oldE true
+			oldE.HandleStream(v.seq)
+		}
+
+		// check the expect difference sequence
+		gotSeq := d.NewFrame(v.initialized, oldE, newE)
+		if gotSeq != v.expectSeq {
+			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
+		}
+	}
+}

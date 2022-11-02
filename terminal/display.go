@@ -449,7 +449,6 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	d.updateRendition(&b, newE.GetRenditions(), !initialized)
 
 	// has bracketed paste mode changed?
-	// TODO the using of keyboardLocked is not finished: pasteSelection?
 	if !initialized || newE.bracketedPasteMode != oldE.bracketedPasteMode {
 		if newE.bracketedPasteMode {
 			fmt.Fprint(&b, "\x1B[?2004h")

@@ -27,6 +27,7 @@ SOFTWARE.
 package terminal
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"strings"
@@ -237,6 +238,33 @@ func (emu *Emulator) setHasFocus(hasFocus bool) {
 	emu.hasFocus = hasFocus
 	emu.showCursor()
 	// redraw()?
+}
+
+// encapsulate selection data according to bracketedPasteMode.
+//
+// When bracketed paste mode is set, pasted text is bracketed with control
+// sequences so that the program can differentiate pasted text from typed-
+// in text.  When bracketed paste mode is set, the program will receive:
+//
+//	ESC [ 2 0 0 ~ ,
+//
+// followed by the pasted text, followed by
+//
+//	ESC [ 2 0 1 ~ .
+func (emu *Emulator) pasteSelection(utf8selection string) string {
+	var b strings.Builder
+
+	if emu.bracketedPasteMode {
+		fmt.Fprint(&b, "\x1b[200~")
+	}
+
+	fmt.Fprint(&b, strings.ReplaceAll(utf8selection, "\n", "\r"))
+
+	if emu.bracketedPasteMode {
+		fmt.Fprint(&b, "\x1b[201~")
+	}
+
+	return b.String()
 }
 
 // return the terminal feedback, clean feedback buffer.
