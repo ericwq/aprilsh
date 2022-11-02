@@ -283,19 +283,19 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	// Selective erase attribute
 	// Any single shift 2 (SS2) or single shift 3 (SS3) functions sent
 	if !initialized || newE.savedCursor_DEC.isSet != oldE.savedCursor_DEC.isSet {
-		if newE.savedCursor_DEC.isSet {
-			fmt.Fprint(&b, "\x1B[7") // sc
-		} else {
-			fmt.Fprint(&b, "\x1B[8") // rc
+		if newE.savedCursor_DEC.isSet && !oldE.savedCursor_DEC.isSet {
+			fmt.Fprint(&b, "\x1B7") // decsc
+		} else if !newE.savedCursor_DEC.isSet && oldE.savedCursor_DEC.isSet {
+			fmt.Fprint(&b, "\x1B8") // decrc
 		}
 	}
 
 	// has SCO saved cursor changed
 	if !initialized || newE.savedCursor_SCO.isSet != oldE.savedCursor_SCO.isSet {
-		if newE.savedCursor_SCO.isSet {
-			fmt.Fprint(&b, "\x1B[s") // SCOSC
-		} else {
-			fmt.Fprint(&b, "\x1B[u") // SCORC
+		if newE.savedCursor_SCO.isSet && !oldE.savedCursor_SCO.isSet {
+			fmt.Fprint(&b, "\x1B[s") // scosc
+		} else if !newE.savedCursor_SCO.isSet && oldE.savedCursor_SCO.isSet {
+			fmt.Fprint(&b, "\x1B[u") // scorc
 		}
 	}
 

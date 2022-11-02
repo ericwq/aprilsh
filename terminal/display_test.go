@@ -460,7 +460,7 @@ func TestNewFrame_AltScreenBufferMode(t *testing.T) {
 	}
 }
 
-func TestNewFrame_margin(t *testing.T) {
+func TestNewFrame_Margin(t *testing.T) {
 	tc := []struct {
 		label       string
 		initialized bool
@@ -493,6 +493,141 @@ func TestNewFrame_margin(t *testing.T) {
 			newE.HandleStream(v.seq)
 		} else {
 			// margin: newE false, oldE true
+			oldE.HandleStream(v.seq)
+		}
+
+		// check the expect difference sequence
+		gotSeq := d.NewFrame(v.initialized, oldE, newE)
+		if gotSeq != v.expectSeq {
+			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
+		}
+	}
+}
+
+func TestNewFrame_HMargin(t *testing.T) {
+	tc := []struct {
+		label       string
+		initialized bool
+		margin      bool
+		seq         string
+		expectSeq   string
+	}{
+		{"already initialized, new has margin", true, true, "\x1B[?69h\x1B[2;6s", "\x1b[?69h\x1b[2;6s"},
+		{"already initialized, old has margin", true, false, "\x1B[?69h\x1B[2;6s", "\x1b[?69l"},
+		{"already initialized, both no margin", true, false, "", ""},
+	}
+	oldE := NewEmulator3(8, 8, 4)
+	newE := NewEmulator3(8, 8, 4)
+
+	// oldE.logT.SetOutput(io.Discard)
+	// newE.logT.SetOutput(io.Discard)
+
+	os.Setenv("TERM", "xterm-256color")
+	d, e := NewDisplay(true)
+	if e != nil {
+		t.Errorf("#test create display error: %s\n", e)
+	}
+
+	for _, v := range tc {
+		// reset the terminal to avoid overlap
+		oldE.resetTerminal()
+		newE.resetTerminal()
+
+		if v.margin {
+			// margin: newE true, oldE false
+			newE.HandleStream(v.seq)
+		} else {
+			// margin: newE false, oldE true
+			oldE.HandleStream(v.seq)
+		}
+
+		// check the expect difference sequence
+		gotSeq := d.NewFrame(v.initialized, oldE, newE)
+		if gotSeq != v.expectSeq {
+			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
+		}
+	}
+}
+
+func TestNewFrame_Decsc(t *testing.T) {
+	tc := []struct {
+		label       string
+		initialized bool
+		decsc     bool
+		seq         string
+		expectSeq   string
+	}{
+		{"already initialized, new has decsc", true, true, "\x1B7", "\x1b7"},
+		{"already initialized, old has decsc", true, false, "\x1B7", "\x1b8"},
+		{"already initialized, both no decsc", true, false, "", ""},
+	}
+	oldE := NewEmulator3(8, 8, 4)
+	newE := NewEmulator3(8, 8, 4)
+
+	// oldE.logT.SetOutput(io.Discard)
+	// newE.logT.SetOutput(io.Discard)
+
+	os.Setenv("TERM", "xterm-256color")
+	d, e := NewDisplay(true)
+	if e != nil {
+		t.Errorf("#test create display error: %s\n", e)
+	}
+
+	for _, v := range tc {
+		// reset the terminal to avoid overlap
+		oldE.resetTerminal()
+		newE.resetTerminal()
+
+		if v.decsc {
+			// decsc: newE true, oldE false
+			newE.HandleStream(v.seq)
+		} else {
+			// decsc: newE false, oldE true
+			oldE.HandleStream(v.seq)
+		}
+
+		// check the expect difference sequence
+		gotSeq := d.NewFrame(v.initialized, oldE, newE)
+		if gotSeq != v.expectSeq {
+			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
+		}
+	}
+}
+
+func TestNewFrame_Scosc(t *testing.T) {
+	tc := []struct {
+		label       string
+		initialized bool
+		scosc     bool
+		seq         string
+		expectSeq   string
+	}{
+		{"already initialized, new has scosc", true, true, "\x1B[s", "\x1b[s"},
+		{"already initialized, old has scosc", true, false, "\x1B[s", "\x1b[u"},
+		{"already initialized, both no scosc", true, false, "", ""},
+	}
+	oldE := NewEmulator3(8, 8, 4)
+	newE := NewEmulator3(8, 8, 4)
+
+	// oldE.logT.SetOutput(io.Discard)
+	// newE.logT.SetOutput(io.Discard)
+
+	os.Setenv("TERM", "xterm-256color")
+	d, e := NewDisplay(true)
+	if e != nil {
+		t.Errorf("#test create display error: %s\n", e)
+	}
+
+	for _, v := range tc {
+		// reset the terminal to avoid overlap
+		oldE.resetTerminal()
+		newE.resetTerminal()
+
+		if v.scosc {
+			// scosc: newE true, oldE false
+			newE.HandleStream(v.seq)
+		} else {
+			// scosc: newE false, oldE true
 			oldE.HandleStream(v.seq)
 		}
 
