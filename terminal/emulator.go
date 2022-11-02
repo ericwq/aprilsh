@@ -419,8 +419,9 @@ func (emu *Emulator) deleteCols(startX, count int) {
 }
 
 func (emu *Emulator) showCursor() {
-	// if emu.showCursorMode && emu.parser.getState() == InputState_Normal {
 	// TODO figure out why we need the parser state?
+	// if emu.showCursorMode && emu.parser.getState() == InputState_Normal {
+
 	if emu.showCursorMode {
 		emu.cf.setCursorPos(emu.posY, emu.posX)
 		if emu.hasFocus {

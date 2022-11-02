@@ -184,3 +184,54 @@ func TestLookupCharset(t *testing.T) {
 		}
 	}
 }
+
+func TestPasteSelection(t *testing.T) {
+	tc := []struct {
+		label              string
+		bracketedPasteMode bool
+		selection          string
+		expect             string
+	}{
+		{"bracketedPasteMode is false", false, "lock down", "lock down"},
+		{"bracketedPasteMode is true, english ", true, "lock down", "\x1b[200~lock down\x1b[201~"},
+		{"bracketedPasteMode is true, chinese ", true, "解除封控", "\x1b[200~解除封控\x1b[201~"},
+	}
+
+	emu := NewEmulator3(80, 40, 0)
+
+	for _, v := range tc {
+		emu.bracketedPasteMode = v.bracketedPasteMode
+		got := emu.pasteSelection(v.selection)
+		if got != v.expect {
+			t.Errorf("%q expect %q, got %q\n", v.label, v.expect, got)
+		}
+	}
+
+	if emu.GetParser() == nil {
+		t.Errorf("#test pasteSelection() should return non-nil parser.\n")
+	}
+}
+
+func TestHasFocus(t *testing.T) {
+	tc := []struct {
+		label          string
+		hasFocus       bool
+		showCursorMode bool
+		expect         CursorStyle
+	}{
+		{"hasFocus any, showCursorMode false", false, false, CursorStyle_Hidden},
+		{"hasFocus false, showCursorMode true", false, true, CursorStyle_HollowBlock},
+		{"hasFocus true, showCursorMode true", true, true, CursorStyle_FillBlock},
+	}
+	emu := NewEmulator3(80, 40, 0)
+
+	for _, v := range tc {
+		emu.showCursorMode = v.showCursorMode
+		emu.setHasFocus(v.hasFocus)
+
+		got := emu.cf.cursor.style
+		if got != v.expect {
+			t.Errorf("%q expect cursor style %d, got %d\n", v.label, v.expect, got)
+		}
+	}
+}
