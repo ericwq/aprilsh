@@ -56,6 +56,7 @@ type Emulator struct {
 
 	// Terminal state - N.B.: keep resetTerminal () in sync with this!
 	reverseVideo        bool // replicated by NewFrame(),
+	hasFocus            bool // default true
 	showCursorMode      bool // replicated by NewFrame(), default true, ds.cursor_visible
 	altScreenBufferMode bool // replicated by NewFrame(), , Alternate Screen Buffer
 	autoWrapMode        bool // replicated by NewFrame(), default:true
@@ -125,6 +126,7 @@ func NewEmulator3(nCols, nRows, saveLines int) *Emulator {
 	emu.nCols = nCols
 	emu.nRows = nRows
 
+	emu.hasFocus = true
 	emu.showCursorMode = true
 	emu.altScreenBufferMode = false
 	emu.autoWrapMode = true
@@ -211,6 +213,12 @@ func (emu *Emulator) resize(nCols, nRows int) {
 // hide the implementation of write back
 func (emu *Emulator) writePty(resp string) {
 	emu.terminalToHost.WriteString(resp)
+}
+
+func (emu *Emulator) setHasFocus(hasFocus bool) {
+	emu.hasFocus = hasFocus
+	emu.showCursor()
+	// redraw()?
 }
 
 // return the terminal feedback, clean feedback buffer.
@@ -364,16 +372,19 @@ func (emu *Emulator) deleteCols(startX, count int) {
 	}
 }
 
-// TODO need implementation
 func (emu *Emulator) showCursor() {
-	if emu.showCursorMode && emu.parser.getState() == InputState_Normal {
+	// if emu.showCursorMode && emu.parser.getState() == InputState_Normal {
+	// TODO figure out why we need the parser state?
+	if emu.showCursorMode {
 		emu.cf.setCursorPos(emu.posY, emu.posX)
-		emu.cf.setCursorStyle(CursorStyle_FillBlock)
-		// TODO set HollowBlock for no focus case
+		if emu.hasFocus {
+			emu.cf.setCursorStyle(CursorStyle_FillBlock)
+		} else {
+			emu.cf.setCursorStyle(CursorStyle_HollowBlock)
+		}
 	}
 }
 
-// TODO need implementation
 func (emu *Emulator) hideCursor() {
 	emu.cf.setCursorStyle(CursorStyle_Hidden)
 }

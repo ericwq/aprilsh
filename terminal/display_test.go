@@ -553,7 +553,7 @@ func TestNewFrame_Decsc(t *testing.T) {
 	tc := []struct {
 		label       string
 		initialized bool
-		decsc     bool
+		decsc       bool
 		seq         string
 		expectSeq   string
 	}{
@@ -598,7 +598,7 @@ func TestNewFrame_Scosc(t *testing.T) {
 	tc := []struct {
 		label       string
 		initialized bool
-		scosc     bool
+		scosc       bool
 		seq         string
 		expectSeq   string
 	}{
@@ -628,6 +628,51 @@ func TestNewFrame_Scosc(t *testing.T) {
 			newE.HandleStream(v.seq)
 		} else {
 			// scosc: newE false, oldE true
+			oldE.HandleStream(v.seq)
+		}
+
+		// check the expect difference sequence
+		gotSeq := d.NewFrame(v.initialized, oldE, newE)
+		if gotSeq != v.expectSeq {
+			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
+		}
+	}
+}
+
+func TestNewFrame_ShowCursorMode(t *testing.T) {
+	tc := []struct {
+		label                string
+		initialized          bool
+		showcursorModeForNew bool
+		seq                  string
+		expectSeq            string
+	}{
+		{"already initialized, new show no cursor", true, true, "\x1B[?25l", "\x1b[?25l"},
+		{"already initialized, old show no cursor", true, false, "\x1B[?25l", "\x1b[?25h"},
+		{"already initialized, both show cursor", true, false, "", ""},
+	}
+	oldE := NewEmulator3(8, 8, 4)
+	newE := NewEmulator3(8, 8, 4)
+
+	// oldE.logT.SetOutput(io.Discard)
+	// newE.logT.SetOutput(io.Discard)
+
+	os.Setenv("TERM", "xterm-256color")
+	d, e := NewDisplay(true)
+	if e != nil {
+		t.Errorf("#test create display error: %s\n", e)
+	}
+
+	for _, v := range tc {
+		// reset the terminal to avoid conflict
+		oldE.resetTerminal()
+		newE.resetTerminal()
+
+		if v.showcursorModeForNew {
+			// newE false, oldE true
+			newE.HandleStream(v.seq)
+		} else {
+			// newE true, oldE false
 			oldE.HandleStream(v.seq)
 		}
 

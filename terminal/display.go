@@ -420,7 +420,6 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 			}
 		}
 	}
-	// fmt.Printf("#NewFrame display start from (%2d,%2d)\n", d.cursorY, d.cursorX)
 	// Now update the display, row by row
 	wrap := false
 	for ; frameY < newE.GetHeight(); frameY++ {
@@ -428,20 +427,17 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		wrap = d.putRow(&b, initialized, oldE, newE, frameY, oldRow, wrap)
 	}
 
-	// fmt.Printf("#NewFrame display end at (%2d,%2d)\n", d.cursorY, d.cursorX)
 	// has cursor location changed?
 	if !initialized || newE.GetCursorRow() != d.cursorY || newE.GetCursorCol() != d.cursorX {
-		// fmt.Printf("#NewFrame display at (%2d,%2d), newE at (%2d,%2d)\n",
-		// 	d.cursorY, d.cursorX, newE.GetCursorRow(), newE.GetCursorCol())
+		// TODO using cursor position from display or cursor position from terminal?
 		d.appendMove(&b, newE.GetCursorRow(), newE.GetCursorCol())
 	}
-	// fmt.Printf("#NewFrame display adjust at (%2d,%2d)\n", d.cursorY, d.cursorX)
 
 	// has cursor visibility changed?
 	// during update row, appendSilentMove() might close the cursor,
 	// Here we open cursor based on the new terminal state.
+	// fmt.Printf("#NewFrame newE=%t, d=%t, oldE=%t\n", newE.showCursorMode, d.showCursorMode, oldE.showCursorMode)
 	if !initialized || newE.showCursorMode != d.showCursorMode {
-		// fmt.Printf("#NewFrame newE=%t, d=%t, oldE=%t\n", newE.showCursorMode, d.showCursorMode, oldE.showCursorMode)
 		if newE.showCursorMode {
 			fmt.Fprint(&b, "\x1B[?25h") // cvvis
 		} else {
