@@ -845,7 +845,7 @@ func TestNewFrame_Modes(t *testing.T) {
 		{"new has altSendsEscape", "\x1B[?1036h", "\x1B[?1036l", "\x1b[?1036h"},
 		{"old has altSendsEscape", "\x1B[?1036l", "\x1B[?1036h", "\x1b[?1036l"},
 		{"new has altScrollMode", "\x1B[?1007h", "\x1B[?1007l", "\x1b[?1007h"},
-		{"old has altScrollMode", "\x1B[?1009l", "\x1B[?1007h", "\x1b[?1007l"},
+		{"old has altScrollMode", "\x1B[?1007l", "\x1B[?1007h", "\x1b[?1007l"},
 		{"new has bkspSendsDel", "\x1B[?67l", "\x1B[?67h", "\x1b[?67l"},
 		{"old has bkspSendsDel", "\x1B[?67h", "\x1B[?67l", "\x1b[?67h"},
 		{"new has autoWrapMode", "\x1B[?7h", "\x1B[?7l", "\x1b[?7h"},
@@ -860,8 +860,57 @@ func TestNewFrame_Modes(t *testing.T) {
 	oldE := NewEmulator3(8, 8, 4)
 	newE := NewEmulator3(8, 8, 4)
 
-	// oldE.logT.SetOutput(io.Discard)
-	// newE.logT.SetOutput(io.Discard)
+	oldE.logT.SetOutput(io.Discard)
+	newE.logT.SetOutput(io.Discard)
+
+	os.Setenv("TERM", "xterm-256color")
+	d, e := NewDisplay(true)
+	if e != nil {
+		t.Errorf("#test create display error: %s\n", e)
+	}
+
+	for _, v := range tc {
+		// reset the terminal to avoid overlap
+		oldE.resetTerminal()
+		newE.resetTerminal()
+
+		newE.HandleStream(v.newSeq)
+		oldE.HandleStream(v.oldSeq)
+
+		// check the expect difference sequence
+		gotSeq := d.NewFrame(true, oldE, newE)
+		if gotSeq != v.expectSeq {
+			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
+		}
+	}
+}
+
+func TestNewFrame_TabStops(t *testing.T) {
+	tc := []struct {
+		label     string
+		newSeq    string
+		oldSeq    string
+		expectSeq string
+	}{
+		{
+			"new has 3 tab stops",
+			"\x1B[1;7H\x1BH\x1B[1;17H\x1BH\x1B[1;27H\x1BH\x1B[8;8H",
+			"\x1B[8;8H",
+			"\x1b[1;7H\x1bH\x1b[1;17H\x1bH\x1b[1;27H\x1bH\x1b[8;8H",
+		},
+		{
+			"old has 3 tab stops",
+			"\x1B[1;1H",
+			"\x1B[1;7H\x1BH\x1B[1;17H\x1BH\x1B[1;27H\x1BH\x1B[1;1H",
+			"\x1b[3g",
+		},
+	}
+
+	oldE := NewEmulator3(80, 8, 4)
+	newE := NewEmulator3(80, 8, 4)
+
+	oldE.logT.SetOutput(io.Discard)
+	newE.logT.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)

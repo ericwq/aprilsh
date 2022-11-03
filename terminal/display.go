@@ -617,13 +617,18 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 			// clear tab stop if necessary
 			fmt.Fprint(&b, "\x1B[3g") // TBC
 		} else {
+			// save the cursor position
+			cursorY := d.cursorY
+			cursorX := d.cursorX
+
 			// rebuild the tab stop
 			for _, tabStop := range newE.tabStops {
 				d.appendMove(&b, 0, tabStop) // CUP: move cursor to the tab stop position
 				fmt.Fprint(&b, "\x1BH")      // HTS: set current position as tab stop
 			}
+
 			// restore the cursor position
-			d.appendMove(&b, d.cursorY, d.cursorX)
+			d.appendMove(&b, cursorY, cursorX)
 		}
 	}
 
