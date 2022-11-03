@@ -728,3 +728,98 @@ func TestNewFrame_BracketedPasteMode(t *testing.T) {
 		}
 	}
 }
+
+func TestNewFrame_MouseTrk(t *testing.T) {
+	tc := []struct {
+		label     string
+		diffCase  string // see the switch statement for the means
+		seq       string
+		expectSeq string
+	}{
+		{"New is diffrent mode, old is default", "new", "\x1b[?1001h", "\x1b[?1001h"},
+		{"New is default, old is different mode", "old", "\x1b[?1003h", "\x1b[?1003l\x1b[?1002l\x1b[?1001l\x1b[?1000l"},
+		{"both have different mode", "\x1b[?1002h", "\x1b[?1003h", "\x1b[?1003l\x1b[?1002h"},
+		{"both terminal keep default value", "both", "", ""},
+		{"New is diffrent encoding, old is default", "new", "\x1b[?1005h", "\x1b[?1005h"},
+		{"New is default, old is different encoding", "old", "\x1b[?1006h", "\x1b[?1015l\x1b[?1006l\x1b[?1005l"},
+		{"both has different encoding", "\x1b[?1006h", "\x1b[?1015h", "\x1b[?1015l\x1b[?1006h"},
+	}
+	oldE := NewEmulator3(8, 8, 4)
+	newE := NewEmulator3(8, 8, 4)
+
+	// oldE.logT.SetOutput(io.Discard)
+	// newE.logT.SetOutput(io.Discard)
+
+	os.Setenv("TERM", "xterm-256color")
+	d, e := NewDisplay(true)
+	if e != nil {
+		t.Errorf("#test create display error: %s\n", e)
+	}
+
+	for _, v := range tc {
+		// reset the terminal to avoid overlap
+		oldE.resetTerminal()
+		newE.resetTerminal()
+
+		switch v.diffCase {
+		case "new":
+			newE.HandleStream(v.seq)
+		case "old":
+			oldE.HandleStream(v.seq)
+		case "both":
+		default:
+			newE.HandleStream(v.diffCase)
+			oldE.HandleStream(v.seq)
+		}
+
+		// check the expect difference sequence
+		gotSeq := d.NewFrame(true, oldE, newE)
+		if gotSeq != v.expectSeq {
+			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
+		}
+	}
+}
+
+func TestNewFrame_MouseTrkFocusEventMode(t *testing.T) {
+	tc := []struct {
+		label          string
+		focusEventMode bool
+		seq            string
+		expectSeq      string
+	}{
+		{"new has focusEventMode", true, "\x1B[?1004h", "\x1b[?1004h"},
+		{"old has focusEventMode", false, "\x1B[?1004h", "\x1b[?1004l"},
+		{"both no focusEventMode", false, "", ""},
+	}
+	oldE := NewEmulator3(8, 8, 4)
+	newE := NewEmulator3(8, 8, 4)
+
+	// oldE.logT.SetOutput(io.Discard)
+	// newE.logT.SetOutput(io.Discard)
+
+	os.Setenv("TERM", "xterm-256color")
+	d, e := NewDisplay(true)
+	if e != nil {
+		t.Errorf("#test create display error: %s\n", e)
+	}
+
+	for _, v := range tc {
+		// reset the terminal to avoid overlap
+		oldE.resetTerminal()
+		newE.resetTerminal()
+
+		if v.focusEventMode {
+			// newE true, oldE false
+			newE.HandleStream(v.seq)
+		} else {
+			// newE false, oldE true
+			oldE.HandleStream(v.seq)
+		}
+
+		// check the expect difference sequence
+		gotSeq := d.NewFrame(true, oldE, newE)
+		if gotSeq != v.expectSeq {
+			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
+		}
+	}
+}
