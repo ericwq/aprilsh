@@ -234,6 +234,8 @@ func (emu *Emulator) writePty(resp string) {
 	emu.terminalToHost.WriteString(resp)
 }
 
+// TODO consider to add pageUp, pageDown, mouseWheelUp, mouseWheelDown
+
 func (emu *Emulator) setHasFocus(hasFocus bool) {
 	emu.hasFocus = hasFocus
 	emu.showCursor()

@@ -536,27 +536,24 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	}
 
 	// has local echo changed?
-	// TODO the using of localEcho is not finished: writePty?
 	if !initialized || newE.localEcho != oldE.localEcho {
 		if newE.localEcho {
-			fmt.Fprint(&b, "\x1B[12h")
+			fmt.Fprint(&b, "\x1B[12l") // reverse order
 		} else {
-			fmt.Fprint(&b, "\x1B[12l")
+			fmt.Fprint(&b, "\x1B[12h") // reverse order
 		}
 	}
 
 	// has backspace send delete changed?
-	// TODO the using of bkspSendsDel is not finished: InputSpecTable?
 	if !initialized || newE.bkspSendsDel != oldE.bkspSendsDel {
 		if newE.bkspSendsDel {
-			fmt.Fprint(&b, "\x1B[?67h") // DECSET
+			fmt.Fprint(&b, "\x1B[?67l") // DECRST reverse order
 		} else {
-			fmt.Fprint(&b, "\x1B[?67l") // DECRST
+			fmt.Fprint(&b, "\x1B[?67h") // DECSET reverse order
 		}
 	}
 
 	// has alt key as ESC changed?
-	// TODO the using of altSendsEscape is not finished: InputSpecTable?
 	if !initialized || newE.altSendsEscape != oldE.altSendsEscape {
 		if newE.altSendsEscape {
 			fmt.Fprint(&b, "\x1B[?1036h") // DECSET
@@ -566,7 +563,6 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	}
 
 	// has altScrollMode changed?
-	// TODO the using of altScrollMode is not finished: pageUp, pageDown?
 	if !initialized || newE.altScrollMode != oldE.altScrollMode {
 		if newE.altScrollMode {
 			fmt.Fprint(&b, "\x1B[?1007h") // DECSET
@@ -576,7 +572,6 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	}
 
 	// has cursor key mode changed?
-	// TODO the using of cursorKeyMode is not finished: InputSpecTable?
 	if !initialized || newE.cursorKeyMode != oldE.cursorKeyMode {
 		switch newE.cursorKeyMode {
 		case CursorKeyMode_Application:
@@ -597,7 +592,6 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	}
 
 	// has keypad mode changed?
-	// TODO the using of keypadMode is not finished: InputSpecTable?
 	if !initialized || newE.keypadMode != oldE.keypadMode {
 		switch newE.keypadMode {
 		case KeypadMode_Application:
