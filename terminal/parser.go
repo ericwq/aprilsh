@@ -306,6 +306,7 @@ func (p *Parser) copyArgs() (args []int) {
 }
 
 // set compatLevel if params contains value '2',or just set the compatLevel.
+// only set compatLevel for parser.
 func (p *Parser) setCompatLevel(cl CompatibilityLevel, params ...int) {
 	if len(params) == 0 {
 		if p.compatLevel != cl && cl != CompatLevel_Unused {

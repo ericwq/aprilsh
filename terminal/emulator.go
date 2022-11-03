@@ -501,12 +501,13 @@ func (emu *Emulator) switchScreenBufferMode(altScreenBufferMode bool) {
 	}
 }
 
-// set compatibility level for both parser and emulator
+// only set compatibility level for emulator
 func (emu *Emulator) setCompatLevel(cl CompatibilityLevel) {
 	if emu.compatLevel != cl {
 		emu.compatLevel = cl
 	}
 	// emu.parser.compatLevel = cl
+	// we seperate the parser compatLevel and emulator compatLevel.
 }
 
 func (emu *Emulator) initSelectionData() {
