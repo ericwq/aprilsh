@@ -824,19 +824,32 @@ func TestNewFrame_MouseTrkFocusEventMode(t *testing.T) {
 	}
 }
 
-func TestNewFrame_AutoWrapMode(t *testing.T) {
+func TestNewFrame_Modes(t *testing.T) {
 	tc := []struct {
 		label     string
 		newSeq    string
 		oldSeq    string
 		expectSeq string
 	}{
-		{"new has autoWrapMode", "\x1B[20h", "\x1B[20l", "\x1b[20h"},
-		{"old has autoWrapMode", "\x1B[20l", "\x1B[20h", "\x1b[20l"},
-		{"both has autoWrapMode", "", "", ""},
+		{"new has autoNewlineMode", "\x1B[20h", "\x1B[20l", "\x1b[20h"},
+		{"old has autoNewlineMode", "\x1B[20l", "\x1B[20h", "\x1b[20l"},
+		{"new has insertMode", "\x1B[4h", "\x1B[4l", "\x1b[4h"},
+		{"old has insertMode", "\x1B[4l", "\x1B[4h", "\x1b[4l"},
+		{"new has keyboardLocked", "\x1B[2h", "\x1B[2l", "\x1b[2h"},
+		{"old has keyboardLocked", "\x1B[2l", "\x1B[2h", "\x1b[2l"},
+		{"equal mode", "", "", ""},
+		{"new has autoWrapMode", "\x1B[?7h", "\x1B[?7l", "\x1b[?7h"},
+		{"old has autoWrapMode", "\x1B[?7l", "\x1B[?7h", "\x1b[?7l"},
+		{"new has originMode", "\x1B[?6h", "\x1B[?6l", "\x1b[?6h"},
+		{"old has originMode", "\x1B[?6l", "\x1B[?6h", "\x1b[?6l"},
+		{"new has colMode", "\x1B[?3h", "\x1B[?3l", "\x1b[?3h"},
+		{"old has colMode", "\x1B[?3l", "\x1B[?3h", "\x1b[?3l"},
 	}
 	oldE := NewEmulator3(8, 8, 4)
 	newE := NewEmulator3(8, 8, 4)
+
+	// oldE.logT.SetOutput(io.Discard)
+	// newE.logT.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)

@@ -61,7 +61,7 @@ type Emulator struct {
 	showCursorMode      bool // replicated by NewFrame(), default true, ds.cursor_visible
 	altScreenBufferMode bool // replicated by NewFrame(), , Alternate Screen Buffer
 	autoWrapMode        bool // replicated by NewFrame(), default:true
-	autoNewlineMode     bool // replicated by NewFrame(),
+	autoNewlineMode     bool // replicated by NewFrame(), LNM
 	keyboardLocked      bool // replicated by NewFrame(),
 	insertMode          bool // replicated by NewFrame(),
 	bkspSendsDel        bool // replicated by NewFrame(), default:true, backspace send delete

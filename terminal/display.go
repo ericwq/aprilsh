@@ -509,7 +509,6 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	}
 
 	// has auto newline mode changed?
-	// TODO the using of autoNewlineMode is not finished: InputSpecTable?
 	if !initialized || newE.autoNewlineMode != oldE.autoNewlineMode {
 		if newE.autoNewlineMode {
 			fmt.Fprint(&b, "\x1B[20h")
@@ -519,7 +518,6 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	}
 
 	// has keyboard action mode changed?
-	// TODO the using of keyboardLocked is not finished: writePty?
 	if !initialized || newE.keyboardLocked != oldE.keyboardLocked {
 		if newE.keyboardLocked {
 			fmt.Fprint(&b, "\x1B[2h")
