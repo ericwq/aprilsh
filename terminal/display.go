@@ -508,7 +508,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		}
 	}
 
-	// has auto wrap mode changed?
+	// has auto newline mode changed?
 	// TODO the using of autoNewlineMode is not finished: InputSpecTable?
 	if !initialized || newE.autoNewlineMode != oldE.autoNewlineMode {
 		if newE.autoNewlineMode {

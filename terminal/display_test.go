@@ -823,3 +823,39 @@ func TestNewFrame_MouseTrkFocusEventMode(t *testing.T) {
 		}
 	}
 }
+
+func TestNewFrame_AutoWrapMode(t *testing.T) {
+	tc := []struct {
+		label     string
+		newSeq    string
+		oldSeq    string
+		expectSeq string
+	}{
+		{"new has autoWrapMode", "\x1B[20h", "\x1B[20l", "\x1b[20h"},
+		{"old has autoWrapMode", "\x1B[20l", "\x1B[20h", "\x1b[20l"},
+		{"both has autoWrapMode", "", "", ""},
+	}
+	oldE := NewEmulator3(8, 8, 4)
+	newE := NewEmulator3(8, 8, 4)
+
+	os.Setenv("TERM", "xterm-256color")
+	d, e := NewDisplay(true)
+	if e != nil {
+		t.Errorf("#test create display error: %s\n", e)
+	}
+
+	for _, v := range tc {
+		// reset the terminal to avoid overlap
+		oldE.resetTerminal()
+		newE.resetTerminal()
+
+		newE.HandleStream(v.newSeq)
+		oldE.HandleStream(v.oldSeq)
+
+		// check the expect difference sequence
+		gotSeq := d.NewFrame(true, oldE, newE)
+		if gotSeq != v.expectSeq {
+			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
+		}
+	}
+}
