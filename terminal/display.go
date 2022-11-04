@@ -633,7 +633,6 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	}
 
 	// has conformance level changed?
-	// TODO the using of compatLevel is not finished: zutty?
 	if !initialized || newE.compatLevel != oldE.compatLevel {
 		switch newE.compatLevel {
 		case CompatLevel_VT52:

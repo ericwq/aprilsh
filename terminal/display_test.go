@@ -27,7 +27,9 @@ SOFTWARE.
 package terminal
 
 import (
+	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"reflect"
@@ -856,6 +858,9 @@ func TestNewFrame_Modes(t *testing.T) {
 		{"old has colMode", "\x1B[?3l", "\x1B[?3h", "\x1b[?3l"},
 		{"new has cursorKeyMode", "\x1B[?1h", "\x1B[?1l", "\x1b[?1h"},
 		{"old has cursorKeyMode", "\x1B[?1l", "\x1B[?1h", "\x1b[?1l"},
+		{"new is VT52 compatLevel", "\x1B[?2l", "\x1B[62\"p", "\x1B[?2l"},
+		{"new is VT400 compatLevel", "\x1B[64\"p", "\x1B[61\"p", "\x1B[64\"p"},
+		{"new is VT100 compatLevel", "\x1B[61\"p", "\x1B[62\"p", "\x1B[61\"p"},
 	}
 	oldE := NewEmulator3(8, 8, 4)
 	newE := NewEmulator3(8, 8, 4)
@@ -932,4 +937,61 @@ func TestNewFrame_TabStops(t *testing.T) {
 			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
 		}
 	}
+}
+
+func TestNewFrame_SelectionData(t *testing.T) {
+	tc := []struct {
+		label     string
+		newRaw    string
+		oldRaw    string
+		expectSeq string
+	}{
+		{
+			"use new selection data",
+			"new terminal has selection data",
+			"old terminal has selection data",
+			"\x1b]52;pc;bmV3IHRlcm1pbmFsIGhhcyBzZWxlY3Rpb24gZGF0YQ==\x1b\\",
+		},
+		{
+			"clear selection data",
+			"",
+			"old terminal has seelction data",
+			"\x1b]52;pc;\x1b\\",
+		},
+	}
+
+	oldE := NewEmulator3(80, 8, 4)
+	newE := NewEmulator3(80, 8, 4)
+
+	oldE.logT.SetOutput(io.Discard)
+	newE.logT.SetOutput(io.Discard)
+
+	os.Setenv("TERM", "xterm-256color")
+	d, e := NewDisplay(true)
+	if e != nil {
+		t.Errorf("#test create display error: %s\n", e)
+	}
+
+	for _, v := range tc {
+		// reset the terminal to avoid overlap
+		oldE.resetTerminal()
+		newE.resetTerminal()
+
+		newE.HandleStream(buildSelectionDataSequence(v.newRaw))
+		oldE.HandleStream(buildSelectionDataSequence(v.oldRaw))
+
+		// check the expect difference sequence
+		gotSeq := d.NewFrame(true, oldE, newE)
+		if gotSeq != v.expectSeq {
+			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
+		}
+	}
+}
+
+func buildSelectionDataSequence(raw string) string {
+	Pd := base64.StdEncoding.EncodeToString([]byte(raw))
+	// s := fmt.Sprintf("\x1B]%d;%s;%s\x1B\\", 52, "pc", Pd)
+	// fmt.Printf("#test buildSelectionDataSequence() s=%q\n", s)
+	// return s
+	return fmt.Sprintf("\x1B]%d;%s;%s\x1B\\", 52, "pc", Pd)
 }

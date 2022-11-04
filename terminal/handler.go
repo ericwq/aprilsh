@@ -1129,7 +1129,7 @@ func hdl_osc_52(emu *Emulator, cmd int, arg string) {
 		primary/clipboard selection and cut-buffer 0.
 	*/
 	if Pc == "" {
-		Pc = "s0"
+		Pc = "s0" // zutty support pc instead of s0
 	}
 
 	// validate Pc
@@ -1157,7 +1157,8 @@ func hdl_osc_52(emu *Emulator, cmd int, arg string) {
 		// TODO please consider the race condition
 		_, err := base64.StdEncoding.DecodeString(Pd)
 		set := false
-		if err == nil { // it's a base64 string
+		// fmt.Printf("#hdl_osc_52 Pd=%q, err==nil is %t\n", Pd, err==nil)
+		if err == nil && len(Pd) != 0 { // it's a base64 string
 			/*
 			   The second parameter, Pd, gives the selection data.  Normally
 			   this is a string encoded in base64 (RFC-4648).  The data
@@ -1195,7 +1196,7 @@ func hdl_osc_52(emu *Emulator, cmd int, arg string) {
 	}
 }
 
-// validate hte Pc content is in the specified set
+// validate the Pc content is in the fix set
 func osc52InRange(Pc string) (ret bool) {
 	specSet := "cpqs01234567"
 	for _, ch := range Pc {

@@ -3902,7 +3902,7 @@ func TestHandle_OSC_Abort(t *testing.T) {
 
 func TestHandle_OSC_52(t *testing.T) {
 	tc := []struct {
-		name       string
+		label       string
 		hdIDs      []int
 		wantPc     string
 		wantPd     string
@@ -3945,38 +3945,38 @@ func TestHandle_OSC_52(t *testing.T) {
 		emu.selectionData = ""
 		emu.terminalToHost.Reset()
 
-		t.Run(v.name, func(t *testing.T) {
+		t.Run(v.label, func(t *testing.T) {
 			// process control sequence
 			hds := make([]*Handler, 0, 16)
 			hds = p.processStream(v.seq, hds)
 
 			if len(hds) == 0 {
-				t.Errorf("%s got zero handlers.", v.name)
+				t.Errorf("%s got zero handlers.", v.label)
 			}
 
 			// execute the control sequence
 			for j, hd := range hds {
 				hd.handle(emu)
 				if hd.id != v.hdIDs[j] { // validate the control sequences id
-					t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+					t.Errorf("%s: seq=%q expect %s, got %s\n", v.label, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 				}
 			}
 
 			if v.noReply {
 				if v.wantString != emu.selectionData {
-					t.Errorf("%s: seq=%q expect %q, got %q\n", v.name, v.seq, v.wantString, emu.selectionData)
+					t.Errorf("%s: seq=%q expect %q, got %q\n", v.label, v.seq, v.wantString, emu.selectionData)
 				}
 				for _, ch := range v.wantPc {
 					if data, ok := emu.selectionStore[ch]; ok && data == v.wantPd {
 						continue
 					} else {
-						t.Errorf("%s: seq=%q, expect[%c]%q, got [%c]%q\n", v.name, v.seq, ch, v.wantPc, ch, emu.selectionStore[ch])
+						t.Errorf("%s: seq=%q, expect[%c]%q, got [%c]%q\n", v.label, v.seq, ch, v.wantPc, ch, emu.selectionStore[ch])
 					}
 				}
 			} else {
 				got := emu.terminalToHost.String()
 				if got != v.wantString {
-					t.Errorf("%s: seq=%q, expect %q, got %q\n", v.name, v.seq, v.wantString, got)
+					t.Errorf("%s: seq=%q, expect %q, got %q\n", v.label, v.seq, v.wantString, got)
 				}
 			}
 		})
