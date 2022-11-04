@@ -141,6 +141,11 @@ func TestNewFrame_PutRow(t *testing.T) {
 			"\x1b[?25l\x1b[8;7H提早\x1b[8;78H换\r\n行\x1b[?25h", 7,
 			"[  7] ......提早...................................................................换.",
 		},
+		{
+			"backspace case",' ',' ',"\x1b[9;1Hbackspace case\x1b[9;11H",true,
+			"\x1b[?25l\rbackspace\x1b[9;11Hcase\b\b\b\b\x1b[?25h",8,
+			"[  8] backspace.case..................................................................",
+		},
 	}
 
 	oldE := NewEmulator3(80, 40, 40)
@@ -861,6 +866,9 @@ func TestNewFrame_Modes(t *testing.T) {
 		{"new is VT52 compatLevel", "\x1B[?2l", "\x1B[62\"p", "\x1B[?2l"},
 		{"new is VT400 compatLevel", "\x1B[64\"p", "\x1B[61\"p", "\x1B[64\"p"},
 		{"new is VT100 compatLevel", "\x1B[61\"p", "\x1B[62\"p", "\x1B[61\"p"},
+		{"new has modifyOtherKeys = 0","\x1B[>4m","\x1B[>4;1m","\x1B[>4;0m"},
+		{"new has modifyOtherKeys = 1","\x1B[>4;1m","\x1B[>4;2m","\x1B[>4;1m"},
+		{"new has modifyOtherKeys = 2","\x1B[>4;2m","\x1B[>4;1m","\x1B[>4;2m"},
 	}
 	oldE := NewEmulator3(8, 8, 4)
 	newE := NewEmulator3(8, 8, 4)

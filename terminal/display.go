@@ -427,6 +427,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		wrap = d.putRow(&b, initialized, oldE, newE, frameY, oldRow, wrap)
 	}
 
+	// fmt.Printf("#NewFrame d.cursorY=%d,d.cursorX=%d newE (%d,%d)\n", d.cursorY, d.cursorX, newE.GetCursorRow(), newE.GetCursorCol())
 	// has cursor location changed?
 	if !initialized || newE.GetCursorRow() != d.cursorY || newE.GetCursorCol() != d.cursorX {
 		// TODO using cursor position from display or cursor position from terminal?
@@ -645,7 +646,6 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	}
 
 	// has key modifier encoding level changed?
-	// TODO the using of modifyOtherKeys is not finished: zutty?
 	if !initialized || newE.modifyOtherKeys != oldE.modifyOtherKeys {
 		// the possible value for modifyOtherKeys is [0,1,2]
 		fmt.Fprintf(&b, "\x1B[>4;%dm", newE.modifyOtherKeys)
@@ -866,7 +866,7 @@ func (d *Display) appendMove(out io.Writer, y int, x int) {
 		}
 		// Backspaces are good too.
 		if y == lastY && x-lastX < 0 && x-lastX > -5 {
-			fmt.Fprint(out, strings.Repeat("\u0008", y-lastY)) // BS
+			fmt.Fprint(out, strings.Repeat("\b", lastX-x)) // BS
 			return
 		}
 		// More optimizations are possible.
