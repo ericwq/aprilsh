@@ -38,8 +38,8 @@ The project name `Aprilsh` is derived from `April+sh`. I started this project in
 - 2022/Oct/02: add terminfo module.
 - 2022/Oct/13: finish the Framebuffer for completeness.
 - 2022/Oct/14: finish Complete state.
-- 2022/Oct/19: working on Display.
-- 2022/Oct/26: finish 1st iteration for Display.
+- 2022/Nov/04: finish Display.
+- 2022/Nov/05: second iteration for terminfo module.
 
 ## Architecture view
 
