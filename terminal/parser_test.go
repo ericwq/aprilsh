@@ -3927,8 +3927,8 @@ func TestHandle_OSC_52(t *testing.T) {
 		{
 			"empty selection",
 			[]int{OSC_52},
-			"s0", "5Zub5aeR5aiY5bGxCg==", // echo "四姑娘山" | base64
-			"\x1B]52;s0;5Zub5aeR5aiY5bGxCg==\x1B\\", true,
+			"pc", "5Zub5aeR5aiY5bGxCg==", // echo "四姑娘山" | base64
+			"\x1B]52;pc;5Zub5aeR5aiY5bGxCg==\x1B\\", true,
 			"\x1B]52;;5Zub5aeR5aiY5bGxCg==\x1B\\",
 		},
 		{

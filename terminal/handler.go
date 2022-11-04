@@ -1129,7 +1129,7 @@ func hdl_osc_52(emu *Emulator, cmd int, arg string) {
 		primary/clipboard selection and cut-buffer 0.
 	*/
 	if Pc == "" {
-		Pc = "s0" // zutty support pc instead of s0
+		Pc = "pc" // zutty support pc instead of xterm s0
 	}
 
 	// validate Pc
