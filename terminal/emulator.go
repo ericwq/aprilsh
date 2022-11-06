@@ -669,8 +669,12 @@ func (emu *Emulator) GetWindowTitle() string {
 	return emu.cf.getWindowTitle()
 }
 
-func (emu *Emulator) GetIconName() string {
-	return emu.cf.getIconName()
+func (emu *Emulator) GetIconLabel() string {
+	return emu.cf.getIconLabel()
+}
+
+func (emu *Emulator) isTitleInitialized() bool {
+	return emu.cf.isTitleInitialized()
 }
 
 func (emu *Emulator) SetCursorVisible(visible bool) {

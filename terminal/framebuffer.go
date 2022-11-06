@@ -53,7 +53,7 @@ type Framebuffer struct {
 	snapTo       SelectSnapTo // selection state
 	damage       Damage       // damage scope
 
-	iconName         string // replicated by NewFrame()
+	iconLabel        string // replicated by NewFrame()
 	windowTitle      string // replicated by NewFrame()
 	bellCount        int    // replicated by NewFrame()
 	titleInitialized bool   // replicated by NewFrame()
@@ -844,22 +844,22 @@ func (fb *Framebuffer) SoftReset() {
 	fb.DS.ClearSavedCursor()
 }
 */
-func (fb *Framebuffer) setTitleInitialized()        { fb.titleInitialized = true }
-func (fb *Framebuffer) isTitleInitialized() bool    { return fb.titleInitialized }
-func (fb *Framebuffer) setIconName(iconName string) { fb.iconName = iconName }
-func (fb *Framebuffer) setWindowTitle(title string) { fb.windowTitle = title }
-func (fb *Framebuffer) getIconName() string         { return fb.iconName }
-func (fb *Framebuffer) getWindowTitle() string      { return fb.windowTitle }
+func (fb *Framebuffer) setTitleInitialized()          { fb.titleInitialized = true }
+func (fb *Framebuffer) isTitleInitialized() bool      { return fb.titleInitialized }
+func (fb *Framebuffer) setIconLabel(iconLabel string) { fb.iconLabel = iconLabel }
+func (fb *Framebuffer) setWindowTitle(title string)   { fb.windowTitle = title }
+func (fb *Framebuffer) getIconLabel() string          { return fb.iconLabel }
+func (fb *Framebuffer) getWindowTitle() string        { return fb.windowTitle }
 func (fb *Framebuffer) resetTitle() {
 	fb.windowTitle = ""
-	fb.iconName = ""
+	fb.iconLabel = ""
 	fb.titleInitialized = false
 }
 
 func (fb *Framebuffer) prefixWindowTitle(s string) {
-	if fb.iconName == fb.windowTitle {
+	if fb.iconLabel == fb.windowTitle {
 		/* preserve equivalence */
-		fb.iconName = s + fb.iconName
+		fb.iconLabel = s + fb.iconLabel
 	}
 	fb.windowTitle = s + fb.windowTitle
 }

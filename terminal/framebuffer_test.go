@@ -55,15 +55,15 @@ func TestIconNameWindowTitle(t *testing.T) {
 	fb, _, _ := NewFramebuffer3(80, 40, 40)
 	for _, v := range tc {
 		fb.setWindowTitle(v.windowTitle)
-		fb.setIconName(v.iconName)
+		fb.setIconLabel(v.iconName)
 		fb.setTitleInitialized()
 
 		if !fb.isTitleInitialized() {
 			t.Errorf("%q expect isTitleInitialized %t, got %t\n", v.name, true, fb.isTitleInitialized())
 		}
 
-		if fb.getIconName() != v.iconName {
-			t.Errorf("%q expect IconName %q, got %q\n", v.name, v.iconName, fb.getIconName())
+		if fb.getIconLabel() != v.iconName {
+			t.Errorf("%q expect IconName %q, got %q\n", v.name, v.iconName, fb.getIconLabel())
 		}
 
 		if fb.getWindowTitle() != v.windowTitle {
@@ -71,8 +71,8 @@ func TestIconNameWindowTitle(t *testing.T) {
 		}
 
 		fb.prefixWindowTitle(v.prefix)
-		if fb.getIconName() != v.expect {
-			t.Errorf("%q expect prefix iconName %q, got %q\n", v.name, v.expect, fb.getIconName())
+		if fb.getIconLabel() != v.expect {
+			t.Errorf("%q expect prefix iconName %q, got %q\n", v.name, v.expect, fb.getIconLabel())
 		}
 
 	}

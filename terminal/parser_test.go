@@ -3839,7 +3839,7 @@ func TestHandle_OSC_0_1_2(t *testing.T) {
 
 			// get the result
 			windowTitle := emu.cf.windowTitle
-			iconName := emu.cf.iconName
+			iconName := emu.cf.iconLabel
 
 			if hd.id != v.hdIDs[0] {
 				t.Errorf("%s seq=%q handler expect %q, got %q\n", v.name, v.seq, strHandlerID[v.hdIDs[0]], strHandlerID[hd.id])

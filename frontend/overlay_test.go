@@ -778,7 +778,7 @@ func TestTitleEngine(t *testing.T) {
 		if v.result != got {
 			t.Errorf("%q window title expect %q, got %q\n", v.name, v.result, got)
 		}
-		got = emu.GetIconName()
+		got = emu.GetIconLabel()
 		if v.result != got {
 			t.Errorf("%q icon name expect %q, got %q\n", v.name, v.result, got)
 		}

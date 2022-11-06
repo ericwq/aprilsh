@@ -182,19 +182,19 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		ti.TPuts(&b, ti.Bell)
 	}
 
-	// has icon name or window title changed?
-	if d.hasTitle && newE.cf.isTitleInitialized() &&
-		(!initialized || newE.cf.getIconName() != oldE.cf.getIconName() || newE.cf.getWindowTitle() != oldE.cf.getWindowTitle()) {
-		if newE.cf.getIconName() == newE.cf.getWindowTitle() {
-			// write combined Icon Name and Window Title
-			fmt.Fprintf(&b, "\x1B]0;%s\x07", newE.cf.getWindowTitle())
+	// has icon label or window title changed?
+	if d.hasTitle && newE.isTitleInitialized() &&
+		(!initialized || newE.GetIconLabel() != oldE.GetIconLabel() || newE.GetWindowTitle() != oldE.GetWindowTitle()) {
+		if newE.GetIconLabel() == newE.GetWindowTitle() {
+			// write combined Icon label and Window Title
+			fmt.Fprintf(&b, "\x1B]0;%s\x07", newE.GetWindowTitle())
 			// ST is more correct, but BEL more widely supported
 		} else {
-			// write Icon Name
-			fmt.Fprintf(&b, "\x1B]1;%s\x07", newE.cf.getIconName())
+			// write Icon label
+			fmt.Fprintf(&b, "\x1B]1;%s\x07", newE.GetIconLabel())
 
 			// write Window Title
-			fmt.Fprintf(&b, "\x1B]2;%s\x07", newE.cf.getWindowTitle())
+			fmt.Fprintf(&b, "\x1B]2;%s\x07", newE.GetWindowTitle())
 		}
 	}
 

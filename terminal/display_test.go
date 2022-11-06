@@ -332,7 +332,7 @@ func TestNewFrame_WindowTitleIconName(t *testing.T) {
 		}
 
 		if v.iconName != "" {
-			newE.cf.setIconName(v.iconName)
+			newE.cf.setIconLabel(v.iconName)
 			newE.cf.setTitleInitialized()
 		}
 

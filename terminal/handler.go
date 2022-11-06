@@ -1273,7 +1273,7 @@ func hdl_osc_0_1_2(emu *Emulator, cmd int, arg string) {
 		emu.cf.setTitleInitialized()
 
 		if setIcon {
-			emu.cf.setIconName(arg)
+			emu.cf.setIconLabel(arg)
 		}
 
 		if setTitle {
