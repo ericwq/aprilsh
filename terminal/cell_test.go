@@ -27,6 +27,7 @@ SOFTWARE.
 package terminal
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/rivo/uniseg"
@@ -241,6 +242,35 @@ func TestSetUnderline(t *testing.T) {
 	}
 }
 
+func TestCellPrintGrapheme(t *testing.T) {
+	tc := []struct {
+		ch       rune
+		fallback bool
+		want     string
+	}{
+		{-1, true, " "},   // print empty contents
+		{'a', false, "a"}, // print regular english contents
+		{'中', false, "中"}, // print regular chinese contents
+	}
+	var cell Cell
+	var base Cell
+	var out strings.Builder
+
+	for _, c := range tc {
+		cell.Reset2(base)
+		out.Reset()
+
+		if c.ch != -1 {
+			cell.SetContents([]rune{c.ch})
+		}
+
+		cell.printGrapheme(&out)
+		if out.String() != c.want {
+			t.Errorf("expect [%s], got [%s]\n", c.want, out.String())
+		}
+	}
+}
+
 /*
 func TestCellAppend(t *testing.T) {
 	tc := []struct {
@@ -280,81 +310,4 @@ func TestCellAppend(t *testing.T) {
 	}
 }
 
-func TestCellIsPrintISO8859_1(t *testing.T) {
-	tc := []struct {
-		r rune
-		b bool
-	}{
-		{'a', true},
-		{'#', true},
-		{'0', true},
-		{'\x20', true},
-		{'\x7e', true},
-		{'\xa0', true},
-		{'\xff', true},
-		{'\u4e16', false},
-	}
-
-	for _, c := range tc {
-		d := IsPrintISO8859_1(c.r)
-		if d != c.b {
-			t.Errorf("for %c expect %t, got %t\n", c.r, c.b, d)
-		}
-	}
-}
-*/
-
-/*
-func TestCellPrintGrapheme(t *testing.T) {
-	tc := []struct {
-		ch       rune
-		fallback bool
-		want     string
-	}{
-		{-1, true, " "},
-		{'a', false, "a"},
-		{'b', true, "\xC2\xA0b"},
-	}
-	var cell Cell
-	var base Cell
-	for _, c := range tc {
-		cell.Reset2(base)
-		var output strings.Builder
-
-		if c.ch != -1 {
-			cell.Append(c.ch)
-		}
-		// cell.SetFallback(c.fallback)
-
-		cell.PrintGrapheme(&output)
-		if output.String() != c.want {
-			t.Errorf("expect [%s], got [%s]\n", c.want, output.String())
-		}
-	}
-}
-
-func TestCelldebugContents(t *testing.T) {
-	tc := []struct {
-		name string
-		ch   rune
-		want string
-	}{
-		{"empty", -1, "'_' []"},
-		{"space", '\x20', "' ' [0x20, ]"},
-		{"scope", '\x7e', "'~' [0x7e, ]"},
-		{"scope", '\xa0', "' ' [0xc2, , 0xa0, ]"},
-		{"scope", '\xff', "'ÿ' [0xc3, , 0xbf, ]"},
-		{"chinese", '\u4e16', "'世' [0xe4, , 0xb8, , 0x96, ]"},
-	}
-
-	for _, v := range tc {
-		cell := Cell{}
-		if v.ch != -1 {
-			cell.Append(v.ch)
-		}
-		if v.want != cell.debugContents() {
-			t.Errorf("%s:\t expect [%s], got [%s]", v.name, v.want, cell.debugContents())
-		}
-	}
-}
 */

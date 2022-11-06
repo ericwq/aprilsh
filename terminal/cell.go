@@ -47,6 +47,7 @@ type Cell struct {
 	dwidthCont bool // indicate this cell is the second cell of double width grapheme if true
 }
 
+// return true if the contents is "" or " " or non-break space(\uC2A0).
 func (c Cell) IsBlank() bool {
 	if c.dwidth || c.dwidthCont {
 		return false
@@ -76,17 +77,6 @@ func (c *Cell) full() bool {
 	return len(c.contents) >= 32
 }
 
-// reset cell with default renditions and contents
-// the default contents is empty string
-/*
-func (c *Cell) Reset() {
-	c.contents = ""
-	c.renditions = Renditions{}
-	c.fallback = false
-	c.wrap = false
-}
-*/
-
 // reset cell with specified renditions
 // TODO : the default contents is " "?
 func (c *Cell) Reset2(attrs Cell) {
@@ -96,15 +86,7 @@ func (c *Cell) Reset2(attrs Cell) {
 	c.dwidthCont = false
 }
 
-/*
-// ease of testing
-var _output io.Writer
-
-func init() {
-	_output = os.Stderr
-}
-*/
-
+// return true is the contents is "".
 func (c *Cell) Empty() bool {
 	return len(c.contents) == 0
 }
@@ -117,70 +99,6 @@ func (c *Cell) Clear() {
 func (c *Cell) ContentsMatch(x Cell) bool {
 	return (c.IsBlank() && x.IsBlank()) || c.contents == x.contents
 }
-
-/*
-func (c *Cell) debugContents() string {
-	if c.Empty() {
-		return "'_' []"
-	}
-	var chars strings.Builder
-
-	chars.WriteString("'")
-	c.PrintGrapheme(&chars)
-	chars.WriteString("' [")
-
-	// convert string to bytes
-	b2 := []byte(c.contents)
-
-	// print each byte in hex
-	comma := ""
-	for i := 0; i < len(b2); i++ {
-		fmt.Fprintf(&chars, "%s0x%02x, ", comma, b2[i])
-		comma = ", "
-	}
-	chars.WriteString("]")
-
-	return chars.String()
-}
-
-func (c Cell) Compare(other Cell) bool {
-	var ret bool
-	var grapheme strings.Builder
-	var other_grapheme strings.Builder
-
-	c.PrintGrapheme(&grapheme)
-	other.PrintGrapheme(&other_grapheme)
-
-	if grapheme.String() != other_grapheme.String() {
-		ret = true
-		fmt.Fprintf(_output, "Graphemes: '%s' vs. '%s'\n", grapheme.String(), other_grapheme.String())
-	}
-
-	if !c.ContentsMatch(other) {
-		fmt.Fprintf(_output, "Contents: %s (%d) vs. %s (%d)\n", c.debugContents(), len(c.contents), other.debugContents(), len(other.contents))
-	}
-
-	if c.fallback != other.fallback {
-		fmt.Fprintf(_output, "fallback: %t vs. %t\n", c.fallback, other.fallback)
-	}
-
-	if c.wide != other.wide {
-		ret = true
-		fmt.Fprintf(_output, "width: %t vs. %t\n", c.wide, other.wide)
-	}
-
-	if c.renditions != other.renditions {
-		ret = true
-		fmt.Fprintf(_output, "renditions differ\n")
-	}
-
-	if c.wrap != other.wrap {
-		ret = true
-		fmt.Fprintf(_output, "wrap: %t vs. %t\n", c.wrap, other.wrap)
-	}
-	return ret
-}
-*/
 
 // append to the contents
 func (c *Cell) Append(r rune) {
@@ -228,18 +146,6 @@ func (c *Cell) IsDoubleWidthCont() bool {
 	return c.dwidthCont
 }
 
-/*
-hide it
-
-	func runeCount(s string) bool {
-		if utf8.RuneCountInString(s)>1 {
-			return true
-		} else {
-			return false
-		}
-	}
-
-*/
 // print grapheme to output
 func (c *Cell) printGrapheme(out io.Writer) {
 	if c.Empty() {
@@ -258,10 +164,6 @@ func (c *Cell) SetUnderline(underline bool) {
 	c.renditions.underline = underline
 }
 
-// func (c Cell) GetWide() bool {
-// 	return c.wide
-// }
-
 // return cell grapheme width: 0,1,2
 func (c *Cell) GetWidth() int {
 	if c.dwidthCont { // it's a place holder for wide grapheme
@@ -274,10 +176,6 @@ func (c *Cell) GetWidth() int {
 		return 1
 	}
 }
-
-// func (c *Cell) SetWide(w bool) {
-// 	c.wide = w
-// }
 
 /*
 func (c *Cell) GetFallback() bool {
@@ -294,22 +192,5 @@ func (c *Cell) GetWrap() bool {
 
 func (c *Cell) SetWrap(w bool) {
 	c.wrap = w
-}
-*/
-
-/*
-// Is this a printing ISO 8859-1 character?
-func IsPrintISO8859_1(r rune) bool {
-	return (r <= 0xff && r >= 0xa0) || (r <= 0x7e && r >= 0x20)
-	// return unicode.IsGraphic(r)
-	// return unicode.In(r, unicode.Latin, unicode.Number, unicode.Punct)
-}
-func AppendToStr(dest *strings.Builder, r rune) {
-	// ASCII?  Cheat.
-	if r < 0x7f {
-		dest.WriteByte(byte(r))
-		return
-	}
-	dest.WriteRune(r)
 }
 */
