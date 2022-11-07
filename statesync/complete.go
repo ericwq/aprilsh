@@ -89,6 +89,7 @@ func (c *Complete) getEchoAck() int64 {
 }
 
 // shrink input history according to timestamp. return true if newestEchoAck changed.
+// update echoAck if find the newest state.
 func (c *Complete) setEchoAck(now int64) (ret bool) {
 	var newestEchoAck int64 = 0
 	for _, v := range c.inputHistory {
@@ -133,6 +134,8 @@ func (c *Complete) waitTime(now int64) int {
 		return math.MaxInt
 	}
 	nextEchoAckTime := c.inputHistory[1].timestamp + ECHO_TIMEOUT
+	// fmt.Printf("#registerInputFrame now=%d, nextEchoAckTime=%d, nextEchoAckTime <= now is %t\n",
+	// 	now, nextEchoAckTime, nextEchoAckTime <= now)
 
 	if nextEchoAckTime <= now {
 		return 0

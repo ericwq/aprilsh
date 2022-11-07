@@ -27,6 +27,7 @@ SOFTWARE.
 package statesync
 
 import (
+	"math"
 	"testing"
 	"time"
 )
@@ -93,5 +94,52 @@ func TestCompleteSetEchoAck(t *testing.T) {
 		if v.expect != got {
 			t.Errorf("%q expect %t, got %t\n", v.label, v.expect, got)
 		}
+	}
+}
+
+func TestCompleteWaitTime(t *testing.T) {
+	tc := []struct {
+		label  string
+		data   []pair
+		time   int64
+		expect int
+	}{
+		{"history size <2", []pair{{1, 49}}, 0, math.MaxInt},
+		{"response < ECHO_TIMEOUT", []pair{{1, 49}, {2, 43}}, 0, 50},
+		{"response > ECHO_TIMEOUT", []pair{{1, 49}, {2, 43}}, 50, 0},
+	}
+
+	c, _ := NewComplete(8, 4, 4)
+	now := time.Now().UnixMilli()
+
+	for _, v := range tc {
+		// reset history
+		c.inputHistory = make([]pair, 0)
+		c.echoAck = 0
+
+		// register the frame number and time
+		var ts int64 = 0
+		for _, p := range v.data {
+
+			ts += p.timestamp
+			// note: the timestamp is delta value in ms.
+			c.registerInputFrame(p.frameNum, now+ts)
+			// fmt.Printf("#test setEchoAck timestamp=%d, ts=%d\n", p.timestamp, ts)
+		}
+
+		got := c.waitTime(now + ts + v.time)
+		if v.expect != got {
+			t.Errorf("%q expect %d, got %d\n", v.label, v.expect, got)
+		}
+	}
+}
+
+func TestCompleteResetInput(t *testing.T) {
+	c, _ := NewComplete(8, 4, 4)
+
+	c.resetInput()
+	if c.terminal.GetCursorCol() != 0 || c.terminal.GetCursorRow() != 0 {
+		t.Errorf("#test after resetInput() the cursor should be in (0,0), got (%d,%d)\n",
+			c.terminal.GetCursorRow(), c.terminal.GetCursorCol())
 	}
 }
