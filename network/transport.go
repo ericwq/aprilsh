@@ -26,25 +26,6 @@ SOFTWARE.
 
 package network
 
-// State is implemented by UserSteam or CompleteTerminal. The type parameter is
-// required to meet the requirement: the concrete type, such as UserSteam or CompleteTerminal,
-// can use the concrete type for method parameter or return type instead of interface.
-// self reference in method parameter and return type is not common, pay attention to it.
-// [ref](https://appliedgo.com/blog/generic-interface-functions)
-// The meaning of [C any]:
-// the following methods requires a quite unspecified type C - basically, it can be anything.
-type State[C any] interface {
-	// interface for Network::Transport
-	Subtract(x C)
-	DiffFrom(x C) string
-	InitDiff() string
-	ApplyString(diff string) error
-	Equal(x C) bool
-
-	// interface from code
-	ResetInput()
-}
-
 // A type T that must implement the State interface for type T - that is, for itself.
 type Transport[L State[L], R State[R]] struct {
 	sender            TransportSender[L]
