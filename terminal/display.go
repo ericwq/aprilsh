@@ -573,6 +573,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	}
 
 	// has cursor key mode changed?
+	// Note: This depends on real terminal emulator to apply cursorKeyMode.
 	if !initialized || newE.cursorKeyMode != oldE.cursorKeyMode {
 		switch newE.cursorKeyMode {
 		case CursorKeyMode_Application:
@@ -593,6 +594,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	}
 
 	// has keypad mode changed?
+	// Note: This depends on real terminal emulator to apply keypadMode.
 	if !initialized || newE.keypadMode != oldE.keypadMode {
 		switch newE.keypadMode {
 		case KeypadMode_Application:
@@ -646,6 +648,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	}
 
 	// has key modifier encoding level changed?
+	// Note: This depends on real terminal emulator to apply modifyOtherKeys.
 	if !initialized || newE.modifyOtherKeys != oldE.modifyOtherKeys {
 		// the possible value for modifyOtherKeys is [0,1,2]
 		fmt.Fprintf(&b, "\x1B[>4;%dm", newE.modifyOtherKeys)
