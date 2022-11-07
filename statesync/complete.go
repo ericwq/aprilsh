@@ -41,25 +41,26 @@ const (
 )
 
 type pair struct {
-	frameNum  uint64 // remote frame number
-	timestamp uint64
+	frameNum  int64 // remote frame number
+	timestamp int64
 }
 
 // Complete implements network.State[C any] interface
 type Complete struct {
 	terminal     *terminal.Emulator
 	inputHistory []pair
-	echoAck      uint64
+	echoAck      int64
 	display      *terminal.Display
 }
 
-func NewComplete(nCols, nRows, saveLines int) *Complete {
+func NewComplete(nCols, nRows, saveLines int) (*Complete, error) {
 	c := &Complete{}
 	c.terminal = terminal.NewEmulator3(nCols, nRows, saveLines)
 	c.inputHistory = make([]pair, 0)
 	c.echoAck = 0
+	c.display, _ = terminal.NewDisplay(false)
 
-	return c
+	return c, nil
 }
 
 // let the terminal parse and handle the data stream.
@@ -83,13 +84,16 @@ func (c *Complete) resetInput() {
 	c.terminal.GetParser().ResetInput()
 }
 
-func (c *Complete) getEchoAck() uint64 {
+func (c *Complete) getEchoAck() int64 {
 	return c.echoAck
 }
 
-func (c *Complete) setEchoAck(now uint64) (ret bool) {
-	var newestEchoAck uint64 = 0
+// shrink input history according to timestamp. return true if newestEchoAck changed.
+func (c *Complete) setEchoAck(now int64) (ret bool) {
+	var newestEchoAck int64 = 0
 	for _, v := range c.inputHistory {
+		// fmt.Printf("#setEchoAck timestamp=%d, now-ECHO_TIMEOUT=%d, condition is %t\n",
+		// 	v.timestamp, now-ECHO_TIMEOUT, v.timestamp <= now-ECHO_TIMEOUT)
 		if v.timestamp <= now-ECHO_TIMEOUT {
 			newestEchoAck = v.frameNum
 		}
@@ -102,25 +106,29 @@ func (c *Complete) setEchoAck(now uint64) (ret bool) {
 	// slice. Of course, the original contents are modified.
 	b := c.inputHistory[:0]
 	for _, x := range c.inputHistory {
-		if x.frameNum < newestEchoAck {
+		if x.frameNum >= newestEchoAck {
 			b = append(b, x)
 		}
 	}
 	c.inputHistory = b
 
 	if c.echoAck != newestEchoAck {
+		// fmt.Printf("#setEchoAck echoAck=%d, newestEchoAck=%d\n", c.echoAck, newestEchoAck)
 		ret = true
 	}
 
+	// fmt.Printf("#setEchoAck echoAck changed(%t) to %d\n", ret, c.echoAck)
 	c.echoAck = newestEchoAck
 	return
 }
 
-func (c *Complete) registerInputFrame(num, now uint64) {
+// register the latest remote state number and time.
+// the latest remote state is the client input state.
+func (c *Complete) registerInputFrame(num, now int64) {
 	c.inputHistory = append(c.inputHistory, pair{num, now})
 }
 
-func (c *Complete) waitTime(now uint64) int {
+func (c *Complete) waitTime(now int64) int {
 	if len(c.inputHistory) < 2 {
 		return math.MaxInt
 	}
@@ -172,8 +180,8 @@ func (c *Complete) DiffFrom(existing *Complete) string {
 // implements network.State[C any] interface
 // get difference between this Complete and a new one.
 func (c *Complete) InitDiff() string {
-	// TODO what about saveLines? use 0 or other value?
-	return c.DiffFrom(NewComplete(c.terminal.GetWidth(), c.terminal.GetHeight(), 0))
+	blank, _ := NewComplete(c.terminal.GetWidth(), c.terminal.GetHeight(), c.terminal.GetSaveLines())
+	return c.DiffFrom(blank)
 }
 
 // implements network.State[C any] interface

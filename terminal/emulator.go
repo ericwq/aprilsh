@@ -619,6 +619,10 @@ func (emu *Emulator) GetWidth() int {
 	return emu.nCols
 }
 
+func (emu *Emulator) GetSaveLines() int {
+	return emu.cf.saveLines
+}
+
 func (emu *Emulator) GetCell(posY, posX int) Cell {
 	posY, posX = emu.getCellPos(posY, posX)
 

@@ -25,7 +25,7 @@ message ResizeMessage {
 }
 
 message EchoAck {
-  optional uint64 echo_ack_num = 8;
+  optional int64 echo_ack_num = 8;
 }
 
 /* extend Instruction { */
