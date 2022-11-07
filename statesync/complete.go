@@ -129,13 +129,16 @@ func (c *Complete) registerInputFrame(num, now int64) {
 	c.inputHistory = append(c.inputHistory, pair{num, now})
 }
 
+// return 0 if history frame state + 50ms < now. That means now is larger than 50ms.
+// return max int if there is only one history frame.
+// return normal gap between now and history frame + 50ms.
 func (c *Complete) waitTime(now int64) int {
 	if len(c.inputHistory) < 2 {
 		return math.MaxInt
 	}
 	nextEchoAckTime := c.inputHistory[1].timestamp + ECHO_TIMEOUT
-	// fmt.Printf("#registerInputFrame now=%d, nextEchoAckTime=%d, nextEchoAckTime <= now is %t\n",
-	// 	now, nextEchoAckTime, nextEchoAckTime <= now)
+	fmt.Printf("#registerInputFrame now=%d, nextEchoAckTime=%d, nextEchoAckTime <= now is %t\n",
+		now, nextEchoAckTime, nextEchoAckTime <= now)
 
 	if nextEchoAckTime <= now {
 		return 0
