@@ -72,7 +72,7 @@ func (c *Complete) Act(str string) string {
 
 // run the action in terminal, return the contents in terminalToHost.
 func (c *Complete) ActOne(x terminal.ActOn) string {
-	x.Handle(*c.terminal)
+	x.Handle(c.terminal)
 	return c.terminal.ReadOctetsToHost()
 }
 

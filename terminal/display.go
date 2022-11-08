@@ -175,11 +175,12 @@ func getRowFrom(from []Cell, posY int, w int) (row []Cell) {
 // - newE: the new terminal state.
 func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	var b strings.Builder
-	ti := d.ti
+	// ti := d.ti
 
 	// has bell been rung?
 	if newE.cf.getBellCount() != oldE.cf.getBellCount() {
-		ti.TPuts(&b, ti.Bell)
+		// ti.TPuts(&b, ti.Bell)
+		fmt.Fprint(&b, "\a")
 	}
 
 	// has icon label or window title changed?
@@ -214,8 +215,11 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	if !initialized || newE.nCols != oldE.nCols || newE.nRows != oldE.nRows {
 		// TODO why reset scrolling region?
 		fmt.Fprintf(&b, "\x1B[r") // smgtb, reset scrolling region, reset top/bottom margin
-		ti.TPuts(&b, ti.AttrOff)  // sgr0, "\x1B[0m" turn off all attribute modes
-		ti.TPuts(&b, ti.Clear)    // clear, "\x1B[H\x1B[2J" clear screen and home cursor
+
+		// ti.TPuts(&b, ti.AttrOff)  // sgr0, "\x1B[0m" turn off all attribute modes
+		// ti.TPuts(&b, ti.Clear)    // clear, "\x1B[H\x1B[2J" clear screen and home cursor
+		fmt.Fprint(&b, "\x1B[0m")
+		fmt.Fprint(&b, "\x1B[H\x1B[2J")
 
 		initialized = false // resize will force the initialized
 		d.cursorX = 0
@@ -234,7 +238,8 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	if !initialized {
 		// fmt.Printf("#NewFrame initialized=%t, d.showCursorMode=%t\n", initialized, d.showCursorMode)
 		d.showCursorMode = false
-		ti.TPuts(&b, ti.HideCursor) // civis, "\x1B[?25l]" showCursorMode = false
+		// ti.TPuts(&b, ti.HideCursor) // civis, "\x1B[?25l]" showCursorMode = false
+		fmt.Fprint(&b, "\x1B[?25l]")
 	}
 
 	// has the screen buffer mode changed?
@@ -651,6 +656,8 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	// Note: This depends on real terminal emulator to apply modifyOtherKeys.
 	if !initialized || newE.modifyOtherKeys != oldE.modifyOtherKeys {
 		// the possible value for modifyOtherKeys is [0,1,2]
+		// fmt.Printf("#NewFrame modifyOtherKeys newE=%d, oldE=%d, initialized=%t\n",
+		// 	newE.modifyOtherKeys, oldE.modifyOtherKeys, initialized)
 		fmt.Fprintf(&b, "\x1B[>4;%dm", newE.modifyOtherKeys)
 	}
 

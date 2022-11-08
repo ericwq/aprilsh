@@ -12,16 +12,16 @@ type Resize struct {
 }
 
 type ActOn interface {
-	Handle(emu Emulator)
+	Handle(emu *Emulator)
 }
 
-func (u UserByte) Handle(emu Emulator) {
+func (u UserByte) Handle(emu *Emulator) {
 	// TODO it seems that Parser can't handle Application mode?
 	ret := emu.user.parse(u, emu.cursorKeyMode)
 	emu.writePty(ret)
 }
 
-func (r Resize) Handle(emu Emulator) {
+func (r Resize) Handle(emu *Emulator) {
 	emu.resize(r.Width, r.Height)
 }
 

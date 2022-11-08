@@ -28,6 +28,7 @@ package terminal
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
@@ -557,6 +558,10 @@ func (emu *Emulator) lookupCharset(p rune) (r rune) {
 
 func (emu *Emulator) GetParser() *Parser {
 	return emu.parser
+}
+
+func (emu *Emulator) SetLogTraceOutput(w io.Writer) {
+	emu.logT.SetOutput(w)
 }
 
 // parse and handle the stream together.

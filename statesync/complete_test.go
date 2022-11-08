@@ -27,9 +27,13 @@ SOFTWARE.
 package statesync
 
 import (
+	"fmt"
+	"io"
 	"math"
 	"testing"
 	"time"
+
+	"github.com/ericwq/aprilsh/terminal"
 )
 
 func TestCompleteSubtract(t *testing.T) {
@@ -48,15 +52,52 @@ func TestCompleteInitDiff(t *testing.T) {
 }
 
 func TestCompleteApplyString(t *testing.T) {
-	// tc := []struct {
-	// 	label  string
-	// 	seq    string
-	// 	expect string
-	// }{}
-	//
-	// for _, v := range tc {
-	// 	c1, _ := NewComplete(80, 40, 40)
-	// }
+	tc := []struct {
+		label         string
+		seq           string
+		width, height int
+		echoAck       int64
+	}{
+		{"fill one row with string", "\x1B[4;4HErase to the end of line\x1B[0K.", 0, 0, 0},
+		{"fill one row and resize", "\x1B[6;67HLAST", 70, 30, 0},
+		{"fill one row and set ack", "\x1B[7;7H左边\x1B[7;77H中文", 0, 0, 3},
+	}
+
+	for _, v := range tc {
+		c0, _ := NewComplete(80, 40, 40)
+		c1, _ := NewComplete(80, 40, 40)
+
+		// disable log trace
+		c0.terminal.SetLogTraceOutput(io.Discard)
+		c1.terminal.SetLogTraceOutput(io.Discard)
+
+		// resize new state if necessary
+		if v.height != 0 && v.width != 0 {
+			r := terminal.Resize{Width: v.width, Height: v.height}
+			emu := c1.terminal
+			r.Handle(emu)
+		}
+
+		// print some data on screen
+		c1.terminal.HandleStream(v.seq)
+
+		// set echoAck for new state
+		if v.echoAck != 0 {
+			c1.echoAck = v.echoAck
+		}
+
+		// new state calculate difference with old state as parameter
+		diff := c1.DiffFrom(c0)
+		fmt.Printf("%q got diff %q\n", v.label, diff)
+
+		// apply to the old state
+		c0.ApplyString(diff)
+
+		// validate the result
+		if got := c0.DiffFrom(c1); got != "" {
+			t.Errorf("%q expect empty result after ApplyString(), got %q\n", v.label, got)
+		}
+	}
 }
 
 func TestCompleteSetEchoAck(t *testing.T) {
