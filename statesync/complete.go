@@ -137,8 +137,8 @@ func (c *Complete) waitTime(now int64) int {
 		return math.MaxInt
 	}
 	nextEchoAckTime := c.inputHistory[1].timestamp + ECHO_TIMEOUT
-	fmt.Printf("#registerInputFrame now=%d, nextEchoAckTime=%d, nextEchoAckTime <= now is %t\n",
-		now, nextEchoAckTime, nextEchoAckTime <= now)
+	// fmt.Printf("#registerInputFrame now=%d, nextEchoAckTime=%d, nextEchoAckTime <= now is %t\n",
+	// 	now, nextEchoAckTime, nextEchoAckTime <= now)
 
 	if nextEchoAckTime <= now {
 		return 0

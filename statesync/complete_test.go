@@ -105,8 +105,8 @@ func TestCompleteWaitTime(t *testing.T) {
 		expect int
 	}{
 		{"history size <2", []pair{{1, 49}}, 0, math.MaxInt},
-		{"now < last +50", []pair{{1, 49}, {2, 43}}, 3, 50},
-		{"now > last +50", []pair{{1, 49}, {2, 43}}, 50, 0},
+		{"now < last +50 ", []pair{{1, 49}, {2, 43}}, 9, 50 - 9},
+		{"last +50 <= now", []pair{{1, 49}, {2, 43}}, 50, 0},
 	}
 
 	c, _ := NewComplete(8, 4, 4)
