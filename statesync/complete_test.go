@@ -80,6 +80,11 @@ func TestCompleteApplyString(t *testing.T) {
 		// print some data on screen
 		c1.terminal.HandleStream(v.seq)
 
+		// validate the equal is false
+		if c1.Equal(c0) {
+			t.Errorf("%q expect false equal(), got true", v.label)
+		}
+
 		// set echoAck for new state
 		if v.echoAck != 0 {
 			c1.echoAck = v.echoAck
@@ -92,9 +97,20 @@ func TestCompleteApplyString(t *testing.T) {
 		c0.ApplyString(diff)
 
 		// validate the result
-		if got := c0.DiffFrom(c1); got != "" {
+		// if got := c0.DiffFrom(c1); got != "" {
+		if !c0.Equal(c1) {
+			got := c0.DiffFrom(c1)
 			t.Errorf("%q expect empty result after ApplyString(), got %q\n", v.label, got)
 		}
+	}
+}
+
+func TestCompleteApplyString_Fail(t *testing.T) {
+	diff := "mislead\n\x04:\x02@\x03\n2\x120\"."
+
+	c, _ := NewComplete(80, 40, 40)
+	if err := c.ApplyString(diff); err == nil {
+		t.Error("#test feed ApplyString with wrong parameter, expect error.")
 	}
 }
 

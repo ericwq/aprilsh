@@ -27,7 +27,6 @@ SOFTWARE.
 package statesync
 
 import (
-	"fmt"
 	"math"
 	"reflect"
 
@@ -202,11 +201,12 @@ func (c *Complete) ApplyString(diff string) error {
 
 	for i := range input.Instruction {
 		if input.Instruction[i].Hostbytes != nil {
-			terminalToHost := c.Act(string(input.Instruction[i].Hostbytes.Hoststring))
 			// server never interrogates client terminal
-			if terminalToHost != "" {
-				fmt.Printf("warn: terminalToHost=%s\n", terminalToHost)
-			}
+			c.Act(string(input.Instruction[i].Hostbytes.Hoststring))
+			// terminalToHost := c.Act(string(input.Instruction[i].Hostbytes.Hoststring))
+			// if terminalToHost != "" {
+			// 	fmt.Printf("warn: terminalToHost=%s\n", terminalToHost)
+			// }
 		} else if input.Instruction[i].Resize != nil {
 			newSize := terminal.Resize{
 				Height: int(input.Instruction[i].Resize.GetHeight()),
@@ -224,5 +224,9 @@ func (c *Complete) ApplyString(diff string) error {
 
 // implements network.State[C any] interface
 func (c *Complete) Equal(x *Complete) bool {
-	return false
+	// use DiffFrom to compare the state
+	if diff := c.DiffFrom(x); diff != "" {
+		return false
+	}
+	return true
 }
