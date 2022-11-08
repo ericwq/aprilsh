@@ -27,7 +27,6 @@ SOFTWARE.
 package statesync
 
 import (
-	"fmt"
 	"io"
 	"math"
 	"testing"
@@ -88,7 +87,6 @@ func TestCompleteApplyString(t *testing.T) {
 
 		// new state calculate difference with old state as parameter
 		diff := c1.DiffFrom(c0)
-		fmt.Printf("%q got diff %q\n", v.label, diff)
 
 		// apply to the old state
 		c0.ApplyString(diff)
