@@ -26,10 +26,76 @@ SOFTWARE.
 
 package network
 
+import "time"
+
 type TransportSender[T State[T]] struct {
-	currentState         T
-	sendStates           []TimestampedState[T]
+	// state of sender
+	connection   *Connection
+	currentState T
+	// first element: known, acknowledged receiver sentStates
+	// last element: last sent state
+	sentStates []TimestampedState[T]
+
+	// somewhere in the middle: the assumed state of the receiver
 	assumedReceiverState *TimestampedState[T]
+
+	// for fragment creation
+	fragmenter *Fragmenter
+
+	// timing state
+	nextAckTime  int64
+	nextSendTime int64
+
+	verbose            uint
+	shutdownInProgress bool
+	shutdownTries      int
+	shutdownStart      int64
+
+	// information about receiver state
+	ackNum         int64
+	pendingDataAct bool
+	SEND_MINDELAY  uint  // ms to collect all input
+	lastHeard      int64 // last time received new state
+
+	mindelayClock int64 // time of first pending change to current state
+}
+
+func NewTransportSender[T State[T]](connection *Connection, initialState T) *TransportSender[T] {
+	ts := &TransportSender[T]{}
+	ts.connection = connection
+	ts.currentState = initialState
+	ts.sentStates = make([]TimestampedState[T], 0)
+	ts.assumedReceiverState = &ts.sentStates[0]
+
+	ts.fragmenter = NewFragmenter()
+
+	ts.nextAckTime = time.Now().UnixMilli()
+	ts.nextSendTime = time.Now().UnixMilli()
+
+	ts.shutdownStart = -1
+	ts.SEND_MINDELAY = 8
+	ts.mindelayClock = -1
+	return ts
+}
+
+// Send data or an ack if necessary
+func (ts *TransportSender[T]) tick() {
+}
+
+func (ts *TransportSender[T]) calculateTimers() {
+	now := time.Now().UnixMilli()
+}
+
+func (ts *TransportSender[T]) updateAssumedReceiverState() {
+	now := time.Now().UnixMilli()
+
+	// start from what is known and give benefit of the doubt to unacknowledged states
+	// transmitted recently enough ago
+
+	ts.assumedReceiverState = &ts.sentStates[0]
+	for i := range ts.sentStates {
+		// if now - ts.sentStates[i].timestamp< ts.connection.timout
+	}
 }
 
 func (t *TransportSender[T]) addSendState(theTimestamp int64, num int64, state T) {
