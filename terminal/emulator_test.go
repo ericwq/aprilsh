@@ -228,8 +228,13 @@ func TestHasFocus(t *testing.T) {
 	emu := NewEmulator3(80, 40, 0)
 
 	for _, v := range tc {
-		emu.showCursorMode = v.showCursorMode
 		emu.setHasFocus(v.hasFocus)
+		emu.showCursorMode = v.showCursorMode
+		if !emu.showCursorMode {
+			emu.hideCursor()
+		} else {
+			emu.showCursor()
+		}
 
 		got := emu.cf.cursor.style
 		if got != v.expect {
@@ -286,6 +291,69 @@ func TestEmulatorMoveCursor(t *testing.T) {
 
 		if emu.posY != v.expectY || emu.posX != v.expectX {
 			t.Errorf("%q expect cursor position (%d,%d), got (%d,%d)\n", v.label, v.expectY, v.expectX, emu.posY, emu.posX)
+		}
+	}
+}
+
+func TestCompleteSetCursorVisible(t *testing.T) {
+	emu := NewEmulator3(80, 40, 40)
+
+	emu.SetCursorVisible(false)
+	if emu.cf.cursor.style != CursorStyle_Hidden {
+		t.Errorf("#test SetCursorVisible expect %d, got %d\n", CursorStyle_Hidden, emu.cf.cursor.style)
+	}
+
+	emu.SetCursorVisible(true)
+	if emu.cf.cursor.style != CursorStyle_FillBlock {
+		t.Errorf("#test SetCursorVisible expect %d, got %d\n", CursorStyle_FillBlock, emu.cf.cursor.style)
+	}
+}
+
+func TestCompletePrefixWindowTitle(t *testing.T) {
+	emu := NewEmulator3(80, 40, 40)
+
+	base := "base title"
+	prefix := "前缀"
+	emu.cf.setTitleInitialized()
+	emu.cf.setWindowTitle(base)
+
+	emu.PrefixWindowTitle(prefix)
+
+	expect := prefix + base
+	got := emu.cf.getWindowTitle()
+
+	if got != expect {
+		t.Errorf("#test PrefixWindowTitle() expect %q, got %q\n", expect, got)
+	}
+}
+
+func TestCompleteGetCell(t *testing.T) {
+	tc := []struct {
+		label      string
+		seq        string
+		posY, posX int
+		contents   string
+	}{
+		{"in the middle", "\x1B[11;74Houtput for normal wrap line.", 10, 73, "o"},
+		{"in the last cols", "", 10, 79, " "},
+		{"in the first cols", "", 11, 0, "f"},
+	}
+
+	emu := NewEmulator3(80, 40, 40)
+
+	emu.SetLogTraceOutput(io.Discard)
+
+	for _, v := range tc {
+		emu.HandleStream(v.seq)
+		c := emu.GetCell(v.posY, v.posX)
+
+		if v.contents != c.contents {
+			t.Errorf("%q expect (%d,%d) contains %q, got %q\n", v.label, v.posY, v.posX, v.contents, c.contents)
+		}
+
+		pc := emu.GetCellPtr(v.posY, v.posX)
+		if v.contents != pc.contents {
+			t.Errorf("%q expect (%d,%d) contains %q, got %q\n", v.label, v.posY, v.posX, v.contents, pc.contents)
 		}
 	}
 }
