@@ -592,9 +592,12 @@ by control sequence. It use the Emulator internal coordinate, starts from [0,0].
 
 // move cursor to specified position
 func (emu *Emulator) MoveCursor(posY, posX int) {
-	emu.posX = posX
-	emu.posY = posY
-	emu.normalizeCursorPos()
+	// emu.posX = posX
+	// emu.posY = posY
+	//
+	// emu.normalizeCursorPos()
+
+	emu.posY, emu.posX = emu.regulatePos(posY, posX)
 }
 
 // get current cursor column
@@ -629,40 +632,47 @@ func (emu *Emulator) GetSaveLines() int {
 }
 
 func (emu *Emulator) GetCell(posY, posX int) Cell {
-	posY, posX = emu.getCellPos(posY, posX)
+	posY, posX = emu.regulatePos(posY, posX)
 
 	return emu.cf.getCell(posY, posX)
 }
 
 func (emu *Emulator) GetCellPtr(posY, posX int) *Cell {
-	posY, posX = emu.getCellPos(posY, posX)
+	posY, posX = emu.regulatePos(posY, posX)
 
 	return emu.cf.getCellPtr(posY, posX)
 }
 
 // convert the [posY,posX] into right position coordinates
-func (emu *Emulator) getCellPos(posY, posX int) (posY2, posX2 int) {
+func (emu *Emulator) regulatePos(posY, posX int) (posY2, posX2 int) {
+	// fmt.Printf("#regulatePos convert (%d,%d)", posY, posX)
 	// in case we don't provide the row or col
-	if posY < 0 || posY > emu.GetHeight() {
+	if posY < 0 {
 		posY = emu.GetCursorRow()
 	}
 
-	if posX < 0 || posX > emu.GetWidth() {
+	if posX < 0 {
 		posX = emu.GetCursorCol()
 	}
 
-	// the logic is from hdl_csi_cup()
 	switch emu.originMode {
 	case OriginMode_Absolute:
-		posY = Max(0, Min(posY, emu.nRows))
+		posY = Max(0, Min(posY, emu.nRows-1))
 	case OriginMode_ScrollingRegion:
-		posY = Max(0, Min(posY, emu.marginBottom))
+		posY = Max(0, Min(posY, emu.marginBottom-1))
 		posY += emu.marginTop
 	}
-	posX = Max(0, Min(posX, emu.nCols))
+
+	if emu.horizMarginMode {
+		posX = Max(emu.hMargin, Min(posX, emu.nColsEff-1))
+	} else {
+		posX = Max(0, Min(posX, emu.nCols-1))
+	}
 
 	posX2 = posX
 	posY2 = posY
+
+	// fmt.Printf(" into (%d,%d)\n", posY2, posX2)
 	return
 }
 

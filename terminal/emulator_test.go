@@ -27,6 +27,8 @@ SOFTWARE.
 package terminal
 
 import (
+	"io"
+	"strings"
 	"testing"
 )
 
@@ -232,6 +234,58 @@ func TestHasFocus(t *testing.T) {
 		got := emu.cf.cursor.style
 		if got != v.expect {
 			t.Errorf("%q expect cursor style %d, got %d\n", v.label, v.expect, got)
+		}
+	}
+}
+
+func TestEmulatorGetWidth(t *testing.T) {
+	emu := NewEmulator3(80, 40, 40)
+
+	// validate get GetWidth
+	if emu.GetWidth() != 80 {
+		t.Errorf("#test GetWidth() expect %d, got %d\n", 80, emu.GetWidth())
+	}
+
+	emu.SetLogTraceOutput(io.Discard)
+	// set horizontal margin
+	emu.HandleStream("\x1b[9;1Hset hMargin\x1B[?69h\x1B[2;78s")
+
+	if emu.GetWidth() != 77 {
+		t.Errorf("#test GetWidth() expect %d, got %d\n", 77, emu.GetWidth())
+	}
+
+	if emu.GetSaveLines() != 40 {
+		t.Errorf("#test GetSaveLines() expect %d, got %d\n", 40, emu.GetSaveLines())
+	}
+}
+
+func TestEmulatorMoveCursor(t *testing.T) {
+	tc := []struct {
+		label            string
+		posY, posX       int
+		expectY, expectX int
+	}{
+		{"in the top,left corner", 0, 0, 0, 0},
+		{"in the middle", 20, 40, 20, 40},
+		{"in the right,bottom corner", 39, 79, 39, 79},
+		{"reset to top/left corner with origin mode", 0, 0, 1, 1}, // reset the cursor to top/left position
+		{"out of range negative", -1, -1, 1, 1},
+		{"out of range 2", 50, 90, 38, 67},
+		{"out of range 3", 39, 79, 38, 67},
+	}
+	emu := NewEmulator3(80, 40, 40)
+
+	for _, v := range tc {
+		if strings.Contains(v.label, "origin mode") {
+			// set origin mode, top/bottom margin, horizontal margin
+			emu.HandleStream("\x1B[?6h\x1B[2;38r\x1B[?69h\x1B[2;68s")
+			// fmt.Printf("#test originMode=%d, top=%d, bottom=%d\n", emu.originMode, emu.marginTop, emu.marginBottom)
+			// fmt.Printf("#test horizMarginMode=%t, hMargin=%d, nColsEff=%d\n", emu.horizMarginMode, emu.hMargin, emu.nColsEff)
+		}
+		emu.MoveCursor(v.posY, v.posX)
+
+		if emu.posY != v.expectY || emu.posX != v.expectX {
+			t.Errorf("%q expect cursor position (%d,%d), got (%d,%d)\n", v.label, v.expectY, v.expectX, emu.posY, emu.posX)
 		}
 	}
 }
