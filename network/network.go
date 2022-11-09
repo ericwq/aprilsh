@@ -176,8 +176,8 @@ const (
 	/* IPv6 MTU. Use the guaranteed minimum to avoid fragmentation. */
 	DEFAULT_IPV6_MTU = 1280
 
-	MIN_RTO uint64 = 50   // ms
-	MAX_RTO uint64 = 1000 // ms
+	MIN_RTO int64 = 50   // ms
+	MAX_RTO int64 = 1000 // ms
 
 	PORT_RANGE_LOW  = 60001
 	PORT_RANGE_HIGH = 60999
@@ -754,6 +754,38 @@ func (c *Connection) recv() (payload string, err error) {
 		return
 	}
 	return
+}
+
+func (c *Connection) getMTU() int {
+	return c.mtu
+}
+
+func (c *Connection) getKey() string {
+	return c.key.String()
+}
+
+func (c *Connection) getHasRemoteAddr() bool {
+	return c.hasRemoteAddr
+}
+
+// calculate and restrict the RTO (retransmission timeout) between 40-1000 ms.
+func (c *Connection) timeout() int64 {
+	// uint64_t RTO = lrint(ceil(SRTT + 4 * RTTVAR))
+	RTO := (int64)(math.Round(math.Ceil(c.SRTT + 4*c.RTTVAR)))
+	if RTO < MIN_RTO {
+		RTO = MIN_RTO
+	} else if RTO > MAX_RTO {
+		RTO = MAX_RTO
+	}
+	return RTO
+}
+
+func (c *Connection) getSRTT() float64 {
+	return c.SRTT
+}
+
+func (c *Connection) getRemoteAddr() net.Addr {
+	return c.remoteAddr
 }
 
 func (c *Connection) setLastRoundtripSuccess(success int64) {
