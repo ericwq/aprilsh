@@ -26,7 +26,20 @@ SOFTWARE.
 
 package network
 
-import "time"
+import (
+	"time"
+
+	"github.com/ericwq/aprilsh/encrypt"
+)
+
+const (
+	SEND_INTERVAL_MIN    = 20    /* ms between frames */
+	SEND_INTERVAL_MAX    = 250   /* ms between frames */
+	ACK_INTERVAL         = 3000  /* ms between empty acks */
+	ACK_DELAY            = 100   /* ms before delayed ack */
+	SHUTDOWN_RETRIES     = 16    /* number of shutdown packets to send before giving up */
+	ACTIVE_RETRY_TIMEOUT = 10000 /* attempt to resend at frame rate */
+)
 
 type TransportSender[T State[T]] struct {
 	// state of sender
@@ -65,12 +78,15 @@ func NewTransportSender[T State[T]](connection *Connection, initialState T) *Tra
 	ts.connection = connection
 	ts.currentState = initialState
 	ts.sentStates = make([]TimestampedState[T], 0)
+
+	now := time.Now().UnixMilli()
+	ts.addSendState(now, 0, initialState)
 	ts.assumedReceiverState = &ts.sentStates[0]
 
 	ts.fragmenter = NewFragmenter()
 
-	ts.nextAckTime = time.Now().UnixMilli()
-	ts.nextSendTime = time.Now().UnixMilli()
+	ts.nextAckTime = now
+	ts.nextSendTime = now
 
 	ts.shutdownStart = -1
 	ts.SEND_MINDELAY = 8
@@ -78,37 +94,62 @@ func NewTransportSender[T State[T]](connection *Connection, initialState T) *Tra
 	return ts
 }
 
-// Send data or an ack if necessary
-func (ts *TransportSender[T]) tick() {
+// update assumedReceiverState according to connection timeout and ack delay.
+func (ts *TransportSender[T]) updateAssumedReceiverState() {
+	now := time.Now().UnixMilli()
+
+	// start from what is known and give benefit of the doubt to unacknowledged states
+	// transmitted recently enough ago
+	ts.assumedReceiverState = &ts.sentStates[0]
+
+	for i := 1; i < len(ts.sentStates); i++ {
+		// fmt.Printf("#updateAssumedReceiverState now-ts.sentStates[%2d].timestamp=%4d, ts.connection.timeout()+ACK_DELAY=%d ",
+		// 	i, now-ts.sentStates[i].timestamp, ts.connection.timeout()+ACK_DELAY)
+		if now-ts.sentStates[i].timestamp < ts.connection.timeout()+ACK_DELAY {
+			ts.assumedReceiverState = &ts.sentStates[i]
+			// fmt.Printf("assumedReceiverState=%2d \n", i)
+		} else {
+			// fmt.Printf("assumedReceiverState=%2d return\n", i)
+			return
+		}
+	}
+}
+
+// add state into the send states list.
+func (ts *TransportSender[T]) addSendState(timestamp int64, num int64, state T) {
+	s := TimestampedState[T]{timestamp, num, state}
+	ts.sentStates = append(ts.sentStates, s)
+
+	if len(ts.sentStates) > 32 { // limit on state queue
+		ts.sentStates = ts.sentStates[16:] // erase state from middle of queue
+	}
 }
 
 func (ts *TransportSender[T]) calculateTimers() {
 	// now := time.Now().UnixMilli()
 }
 
-func (ts *TransportSender[T]) updateAssumedReceiverState() {
-	// now := time.Now().UnixMilli()
-	//
-	// // start from what is known and give benefit of the doubt to unacknowledged states
-	// // transmitted recently enough ago
-	//
-	// ts.assumedReceiverState = &ts.sentStates[0]
-	// for i := range ts.sentStates {
-	// 	// if now - ts.sentStates[i].timestamp< ts.connection.timout
-	// }
+// make chaff with random length and random contents.
+func (ts *TransportSender[T]) makeChaff() string {
+	CHAFF_MAX := 16
+	chaffLen := (int)(encrypt.PrngUint8()) % (CHAFF_MAX + 1)
+
+	chaff := encrypt.PrngFill(chaffLen)
+	return string(chaff)
 }
 
-func (t *TransportSender[T]) addSendState(theTimestamp int64, num int64, state T) {
+// Send data or an ack if necessary
+func (ts *TransportSender[T]) tick() {
 }
 
-func (t *TransportSender[T]) getCurrentState() T {
-	return t.currentState
+func (ts *TransportSender[T]) getCurrentState() T {
+	return ts.currentState
 }
 
 // TODO careful about the pointer
-func (t *TransportSender[T]) setCurrentState(x T) {
-	t.currentState = x
-	t.currentState.ResetInput()
+func (ts *TransportSender[T]) setCurrentState(x T) {
+	ts.currentState = x
+	// t.currentState.ResetInput()
 }
 
 // func NewTransportSender2() *TransportSender[CompleteTerminal] {
