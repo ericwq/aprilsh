@@ -45,7 +45,7 @@ const (
 var logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 
 // use sys call to generate random number
-func prngFill(size int) (dst []byte) {
+func PrngFill(size int) (dst []byte) {
 	dst = make([]byte, size)
 	if size == 0 {
 		return dst
@@ -62,7 +62,7 @@ func prngFill(size int) (dst []byte) {
 func PrngUint8() uint8 {
 	var u8 uint8
 	for u8 == 0 {
-		dst := prngFill(1)
+		dst := PrngFill(1)
 		u8 = dst[0]
 	}
 	return u8
@@ -101,7 +101,7 @@ type Base64Key struct {
 // random key 128bit
 func NewBase64Key() *Base64Key {
 	b := &Base64Key{}
-	b.key = prngFill(16)
+	b.key = PrngFill(16)
 	return b
 }
 

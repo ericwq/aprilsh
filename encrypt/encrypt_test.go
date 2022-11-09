@@ -39,7 +39,7 @@ func TestPrng(t *testing.T) {
 	tc := []int{0, 1, 2, 4, 8, 16, 32}
 
 	for _, v := range tc {
-		got := prngFill(v)
+		got := PrngFill(v)
 		if v != len(got) {
 			t.Errorf("prngFill got %#v\n", got)
 		}
@@ -75,7 +75,7 @@ func TestBase64Key(t *testing.T) {
 	}
 
 	// key length is short
-	shortLengthKey := &Base64Key{key: prngFill(8)}
+	shortLengthKey := &Base64Key{key: PrngFill(8)}
 	key4 := NewBase64Key2(shortLengthKey.String())
 	if key4 != nil {
 		t.Error("key length is short.")
@@ -131,13 +131,13 @@ func TestSessionError(t *testing.T) {
 	logW.SetOutput(io.Discard)
 
 	b := Base64Key{}
-	b.key = prngFill(9)
+	b.key = PrngFill(9)
 
 	if _, err := NewSession(b); err == nil {
 		t.Errorf("expect wrong key size error, got %s\n", err)
 	}
 
-	b.key = prngFill(32)
+	b.key = PrngFill(32)
 	s, _ := NewSession(b)
 	nilMessage, _ := s.Decrypt([]byte("zb0SLh88rdSHswjcgcC6949ZUuopGXTt"))
 	if nilMessage != nil {
