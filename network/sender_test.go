@@ -72,7 +72,7 @@ func TestSenderUpdateAssumedReceiverState(t *testing.T) {
 			s, _ := statesync.NewComplete(80, 40, 0)
 			now := time.Now().UnixMilli()
 			time.Sleep(time.Millisecond * time.Duration(v.pause))
-			ts.addSendState(now, int64(i+2), s)
+			ts.addSentState(now, int64(i+2), s)
 		}
 
 		ts.updateAssumedReceiverState()

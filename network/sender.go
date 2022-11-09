@@ -27,9 +27,12 @@ SOFTWARE.
 package network
 
 import (
+	"fmt"
+	"math"
 	"time"
 
 	"github.com/ericwq/aprilsh/encrypt"
+	pb "github.com/ericwq/aprilsh/protobufs"
 )
 
 const (
@@ -80,7 +83,7 @@ func NewTransportSender[T State[T]](connection *Connection, initialState T) *Tra
 	ts.sentStates = make([]TimestampedState[T], 0)
 
 	now := time.Now().UnixMilli()
-	ts.addSendState(now, 0, initialState)
+	ts.addSentState(now, 0, initialState)
 	ts.assumedReceiverState = &ts.sentStates[0]
 
 	ts.fragmenter = NewFragmenter()
@@ -115,8 +118,100 @@ func (ts *TransportSender[T]) updateAssumedReceiverState() {
 	}
 }
 
+// Investigate diff against known receiver state instead
+// return mutated propsedDiff
+func (ts *TransportSender[T]) attemptProspectiveResendOptimization(propsedDiff string) string {
+	if ts.assumedReceiverState == &ts.sentStates[0] {
+		return propsedDiff
+	}
+
+	resendDiff := ts.currentState.DiffFrom(ts.sentStates[0].state)
+
+	// We do a prophylactic resend if it would make the diff shorter,
+	// or if it would lengthen it by no more than 100 bytes and still be
+	// less than 1000 bytes.
+	rLen := len(resendDiff)
+	pLen := len(propsedDiff)
+	if rLen <= pLen || (rLen < 1000 && rLen-pLen < 100) {
+		ts.assumedReceiverState = &ts.sentStates[0]
+		propsedDiff = resendDiff
+	}
+
+	return propsedDiff
+}
+
+func (ts *TransportSender[T]) rationalizeStates() {
+	knownReceiverState := ts.sentStates[0].state
+
+	ts.currentState.Subtract(knownReceiverState)
+	for i := len(ts.sentStates) - 1; i >= 0; i-- {
+		ts.sentStates[i].state.Subtract(knownReceiverState)
+	}
+}
+
+func (ts *TransportSender[T]) sendToReceiver(diff string) {
+	var newNum int64
+	back := len(ts.sentStates) - 1
+	if ts.currentState.Equal(ts.sentStates[back].state) { // previously sent
+		newNum = ts.sentStates[back].num
+	} else { // new state
+		newNum = ts.sentStates[back].num + 1
+	}
+
+	// special case for shutdown sequence
+	if ts.shutdownInProgress {
+		newNum = -1
+	}
+
+	now := time.Now().UnixMilli()
+	if newNum == ts.sentStates[back].num {
+		ts.sentStates[back].timestamp = now
+	} else {
+		ts.addSentState(now, newNum, ts.currentState)
+	}
+
+	ts.sendInFragments(diff, newNum) // Can throw NetworkException TODO make it happens
+
+	/* successfully sent, probably */
+	/* ("probably" because the FIRST size-exceeded datagram doesn't get an error) */
+	ts.assumedReceiverState = &ts.sentStates[len(ts.sentStates)-1]
+	ts.nextAckTime = now + ACK_INTERVAL
+	ts.nextSendTime = -1
+}
+
+func (ts *TransportSender[T]) sendInFragments(diff string, newNum int64) {
+	inst := pb.Instruction{}
+	inst.ProtocolVersion = APRILSH_PROTOCOL_VERSION
+	inst.OldNum = ts.assumedReceiverState.num
+	inst.NewNum = newNum
+	inst.OldNum = ts.ackNum
+	inst.ThrowawayNum = ts.sentStates[0].num
+	inst.Diff = []byte(diff)
+	inst.Chaff = []byte(ts.makeChaff())
+
+	if newNum == -1 {
+		ts.shutdownTries++
+	}
+
+	// TODO we don't use OCB, so remove the encrypt.ADDED_BYTES ?
+	fragments := ts.fragmenter.makeFragments(&inst, ts.connection.getMTU()-ADDED_BYTES-encrypt.ADDED_BYTES)
+	for i := range fragments {
+		ts.connection.send(fragments[i].String())
+
+		if ts.verbose > 0 {
+			fmt.Printf("[%d] Sent [%d=>%d] id %d, frag %d ack=%d, throwaway=%d, len=%d, frame rate=%.2f, timeout=%d, srtt=%.1f\n",
+				(time.Now().UnixMilli() % 100000), inst.OldNum, inst.NewNum,
+				fragments[i].id, fragments[i].fragmentNum, inst.AckNum,
+				inst.ThrowawayNum, len(fragments[i].contents),
+				1000.0/float64(ts.sendInterval()), ts.connection.timeout(), ts.connection.getSRTT())
+		}
+	}
+
+	ts.pendingDataAct = false
+}
+
 // add state into the send states list.
-func (ts *TransportSender[T]) addSendState(timestamp int64, num int64, state T) {
+func (ts *TransportSender[T]) addSentState(timestamp int64, num int64, state T) {
 	s := TimestampedState[T]{timestamp, num, state}
 	ts.sentStates = append(ts.sentStates, s)
 
@@ -152,15 +247,14 @@ func (ts *TransportSender[T]) setCurrentState(x T) {
 	// t.currentState.ResetInput()
 }
 
-// func NewTransportSender2() *TransportSender[CompleteTerminal] {
-// 	ts := TransportSender[CompleteTerminal]{}
-// 	prefix := new(CompleteTerminal)
-// 	ts.sendStates[3].state.subtract(prefix)
-// 	return &ts
-// }
-
-// type TransportSender2 struct {
-// 	currentState         State
-// 	sendStates           []TimestampedState2
-// 	assumedReceiverState *TimestampedState2
-// }
+// Try to send roughly two frames per RTT, bounded by limits on frame rate
+func (ts *TransportSender[T]) sendInterval() int {
+	// int SEND_INTERVAL = lrint(ceil(connection->get_SRTT() / 2.0))
+	SEND_INTERVAL := math.Round(math.Ceil(ts.connection.getSRTT() / 2.0))
+	if SEND_INTERVAL < SEND_INTERVAL_MIN {
+		SEND_INTERVAL = SEND_INTERVAL_MIN
+	} else if SEND_INTERVAL > SEND_INTERVAL_MAX {
+		SEND_INTERVAL = SEND_INTERVAL_MAX
+	}
+	return int(SEND_INTERVAL)
+}

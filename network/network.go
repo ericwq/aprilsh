@@ -51,6 +51,8 @@ import (
 type Direction uint
 
 const (
+	APRILSH_PROTOCOL_VERSION = 3 // bumped for echo-ack
+
 	TO_SERVER Direction = iota
 	TO_CLIENT
 )
@@ -191,6 +193,9 @@ const (
 	CONGESTION_TIMESTAMP_PENALTY = 500 // ms
 
 	NETWORK = "udp4"
+
+	// Network transport overhead.
+	ADDED_BYTES = 8 /* seqno/nonce */ + 4 /* timestamps */
 )
 
 var (

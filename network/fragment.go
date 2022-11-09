@@ -237,7 +237,8 @@ func NewFragmenter() *Fragmenter {
 }
 
 func (f *Fragmenter) lastAckSent() uint64 {
-	return f.lastInstruction.AckNum
+	return uint64(f.lastInstruction.AckNum)
+	// return f.lastInstruction.AckNum
 }
 
 // convert Instruction into Fragments slice.

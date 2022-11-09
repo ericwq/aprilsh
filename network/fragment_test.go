@@ -93,7 +93,7 @@ func TestFragmenter(t *testing.T) {
 
 	frags := fe.makeFragments(in0, mtu)
 	got := fe.lastAckSent()
-	if got != in0.AckNum {
+	if got != uint64(in0.AckNum) {
 		t.Errorf("%q expect AckNum=%d, got %d\n", name, in0.AckNum, got)
 	}
 

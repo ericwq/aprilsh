@@ -40,6 +40,9 @@ import (
 
 const (
 	NONCE_LEN = 12
+
+	RECEIVE_MTU = 2048
+	ADDED_BYTES = 16 /* final OCB block */
 )
 
 var logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
