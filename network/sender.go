@@ -179,6 +179,23 @@ func (ts *TransportSender[T]) sendToReceiver(diff string) {
 	ts.nextSendTime = -1
 }
 
+func (ts *TransportSender[T]) sendEmptyAck() {
+	now := time.Now().UnixMilli()
+	back := len(ts.sentStates) - 1
+	newNum := ts.sentStates[back].num + 1
+
+	// special case for shutdown sequence
+	if ts.shutdownInProgress {
+		newNum = -1
+	}
+
+	ts.addSentState(now, newNum, ts.currentState)
+	ts.sendInFragments("", newNum)
+
+	ts.nextAckTime = now + ACK_INTERVAL
+	ts.nextSendTime = -1
+}
+
 func (ts *TransportSender[T]) sendInFragments(diff string, newNum int64) {
 	inst := pb.Instruction{}
 	inst.ProtocolVersion = APRILSH_PROTOCOL_VERSION
@@ -244,7 +261,7 @@ func (ts *TransportSender[T]) getCurrentState() T {
 // TODO careful about the pointer
 func (ts *TransportSender[T]) setCurrentState(x T) {
 	ts.currentState = x
-	// t.currentState.ResetInput()
+	ts.currentState.ResetInput()
 }
 
 // Try to send roughly two frames per RTT, bounded by limits on frame rate

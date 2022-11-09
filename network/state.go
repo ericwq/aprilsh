@@ -42,7 +42,7 @@ type State[C any] interface {
 	Equal(x C) bool
 
 	// interface from code
-	// ResetInput()
+	ResetInput()
 }
 
 type TimestampedState[T State[T]] struct {

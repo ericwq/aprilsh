@@ -79,7 +79,7 @@ func (c *Complete) getFramebuffer() *terminal.Framebuffer {
 	return c.terminal.GetFramebuffer()
 }
 
-func (c *Complete) resetInput() {
+func (c *Complete) ResetInput() {
 	c.terminal.GetParser().ResetInput()
 }
 
