@@ -83,19 +83,19 @@ func (ts *TransportSender[T]) tick() {
 }
 
 func (ts *TransportSender[T]) calculateTimers() {
-	now := time.Now().UnixMilli()
+	// now := time.Now().UnixMilli()
 }
 
 func (ts *TransportSender[T]) updateAssumedReceiverState() {
-	now := time.Now().UnixMilli()
-
-	// start from what is known and give benefit of the doubt to unacknowledged states
-	// transmitted recently enough ago
-
-	ts.assumedReceiverState = &ts.sentStates[0]
-	for i := range ts.sentStates {
-		// if now - ts.sentStates[i].timestamp< ts.connection.timout
-	}
+	// now := time.Now().UnixMilli()
+	//
+	// // start from what is known and give benefit of the doubt to unacknowledged states
+	// // transmitted recently enough ago
+	//
+	// ts.assumedReceiverState = &ts.sentStates[0]
+	// for i := range ts.sentStates {
+	// 	// if now - ts.sentStates[i].timestamp< ts.connection.timout
+	// }
 }
 
 func (t *TransportSender[T]) addSendState(theTimestamp int64, num int64, state T) {

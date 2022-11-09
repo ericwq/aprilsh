@@ -444,14 +444,22 @@ func markECN(fd int,
 	return nil
 }
 
-// update lastPortChoice timestamp
-func (c *Connection) setup() {
-	c.lastPortChoice = time.Now().UnixMilli()
-}
+func (c *Connection) dialUDP(ip, port string) bool {
+	var d net.Dialer
+	d.Control = controlFunc
 
-// return the our udp connection
-func (c *Connection) sock() udpConn {
-	return c.socks[len(c.socks)-1].(udpConn)
+	conn, err := d.Dial(NETWORK, net.JoinHostPort(ip, port))
+	if err != nil {
+		c.logW.Printf("#dialUDP %s\n", err)
+		return false
+	}
+
+	c.remoteAddr = conn.RemoteAddr()
+	c.socks = append(c.socks, conn.(udpConn))
+	c.hasRemoteAddr = true
+
+	// c.logW.Printf("#dialUDP successfully connect to %q\n", net.JoinHostPort(ip, port))
+	return true
 }
 
 func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
@@ -493,6 +501,11 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 	return false
 }
 
+// update lastPortChoice timestamp
+func (c *Connection) setup() {
+	c.lastPortChoice = time.Now().UnixMilli()
+}
+
 // build a packet based on sending and receiving timestamp and payload
 func (c *Connection) newPacket(payload string) *Packet {
 	var outgoingTimestampReply uint16
@@ -508,22 +521,22 @@ func (c *Connection) newPacket(payload string) *Packet {
 	return NewPacket(c.direction, timestamp16(), outgoingTimestampReply, []byte(payload))
 }
 
-func (c *Connection) dialUDP(ip, port string) bool {
-	var d net.Dialer
-	d.Control = controlFunc
+// reconnect server with new local address
+func (c *Connection) hopPort() {
+	c.setup()
 
-	conn, err := d.Dial(NETWORK, net.JoinHostPort(ip, port))
-	if err != nil {
-		c.logW.Printf("#dialUDP %s\n", err)
-		return false
+	host, port, _ := net.SplitHostPort(c.remoteAddr.String())
+	if !c.dialUDP(host, port) {
+		c.logW.Printf("#hopPort failed to dial %s\n", c.remoteAddr)
+		return
 	}
 
-	c.remoteAddr = conn.RemoteAddr()
-	c.socks = append(c.socks, conn.(udpConn))
-	c.hasRemoteAddr = true
+	c.pruneSockets()
+}
 
-	// c.logW.Printf("#dialUDP successfully connect to %q\n", net.JoinHostPort(ip, port))
-	return true
+// return the our udp connection
+func (c *Connection) sock() udpConn {
+	return c.socks[len(c.socks)-1].(udpConn)
 }
 
 // clear the old and over size sockets
@@ -545,101 +558,6 @@ func (c *Connection) pruneSockets() {
 		// TODO need to consider race condition
 		c.socks = c.socks[MAX_PORTS_OPEN:]
 	}
-}
-
-// reconnect server with new local address
-func (c *Connection) hopPort() {
-	c.setup()
-
-	host, port, _ := net.SplitHostPort(c.remoteAddr.String())
-	if !c.dialUDP(host, port) {
-		c.logW.Printf("#hopPort failed to dial %s\n", c.remoteAddr)
-		return
-	}
-
-	c.pruneSockets()
-}
-
-func (c *Connection) setMTU(addr net.Addr) {
-	if addr, ok := addr.(*net.UDPAddr); ok {
-		if addr, ok := netip.AddrFromSlice(addr.IP); ok {
-			if addr.Is6() {
-				c.mtu = DEFAULT_IPV6_MTU - IPV6_HEADER_LEN
-				return
-			}
-		}
-	}
-	c.mtu = DEFAULT_IPV4_MTU - IPV4_HEADER_LEN
-}
-
-// use the latest connection to send the message to remote
-func (c *Connection) send(s string) (sendError error) {
-	if !c.hasRemoteAddr {
-		return
-	}
-
-	px := c.newPacket(s)
-	p := c.session.Encrypt(px.toMessage())
-
-	// write data back to remote
-	conn := c.sock()
-	var (
-		bytesSent int
-		err       error
-	)
-	if c.server {
-		bytesSent, err = conn.WriteTo(p, c.remoteAddr)
-	} else {
-		bytesSent, err = conn.Write(p) // only client connection is connected.
-	}
-
-	if err != nil {
-		sendError = fmt.Errorf("#send write: %s", err)
-		return
-	}
-	if bytesSent != len(p) {
-		// Make sendto() failure available to the frontend.
-		// consider change the sendError to error type
-		sendError = fmt.Errorf("#send size: %s", err)
-
-		// with conn.Write() method, there is no chance of EMSGSIZE
-		// payload MTU of last resort
-		c.mtu = DEFAULT_SEND_MTU
-	}
-
-	now := time.Now().UnixMilli()
-	if c.server {
-		if now-c.lastHeard > SERVER_ASSOCIATION_TIMEOUT {
-			c.hasRemoteAddr = false
-			c.logW.Printf("#send server now detached from client: [%s]\n", c.remoteAddr)
-		}
-	} else {
-		if now-c.lastPortChoice > PORT_HOP_INTERVAL && now-c.lastRoundtripSuccess > PORT_HOP_INTERVAL {
-			c.hopPort()
-		}
-	}
-	// fmt.Printf("#send %q from %q to %q\n", p, conn.LocalAddr(), conn.RemoteAddr())
-	return
-}
-
-// receive packet from remote
-func (c *Connection) recv() (payload string, err error) {
-	for i := range c.socks {
-		payload, err = c.recvOne(c.socks[i].(udpConn))
-		if err != nil {
-			if errors.Is(err, unix.EWOULDBLOCK) {
-				// EAGAIN is processed by go netpoll
-				continue
-			} else {
-				c.logW.Printf("#recv %s\n", err)
-				break
-			}
-		}
-
-		c.pruneSockets()
-		return
-	}
-	return
 }
 
 func (c *Connection) recvOne(conn udpConn) (string, error) {
@@ -754,6 +672,88 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 	}
 
 	return string(p.payload), nil // we do return out-of-order or duplicated packets to caller
+}
+
+func (c *Connection) setMTU(addr net.Addr) {
+	if addr, ok := addr.(*net.UDPAddr); ok {
+		if addr, ok := netip.AddrFromSlice(addr.IP); ok {
+			if addr.Is6() {
+				c.mtu = DEFAULT_IPV6_MTU - IPV6_HEADER_LEN
+				return
+			}
+		}
+	}
+	c.mtu = DEFAULT_IPV4_MTU - IPV4_HEADER_LEN
+}
+
+// use the latest connection to send the message to remote
+func (c *Connection) send(s string) (sendError error) {
+	if !c.hasRemoteAddr {
+		return
+	}
+
+	px := c.newPacket(s)
+	p := c.session.Encrypt(px.toMessage())
+
+	// write data back to remote
+	conn := c.sock()
+	var (
+		bytesSent int
+		err       error
+	)
+	if c.server {
+		bytesSent, err = conn.WriteTo(p, c.remoteAddr)
+	} else {
+		bytesSent, err = conn.Write(p) // only client connection is connected.
+	}
+
+	if err != nil {
+		sendError = fmt.Errorf("#send write: %s", err)
+		return
+	}
+	if bytesSent != len(p) {
+		// Make sendto() failure available to the frontend.
+		// consider change the sendError to error type
+		sendError = fmt.Errorf("#send size: %s", err)
+
+		// with conn.Write() method, there is no chance of EMSGSIZE
+		// payload MTU of last resort
+		c.mtu = DEFAULT_SEND_MTU
+	}
+
+	now := time.Now().UnixMilli()
+	if c.server {
+		if now-c.lastHeard > SERVER_ASSOCIATION_TIMEOUT {
+			c.hasRemoteAddr = false
+			c.logW.Printf("#send server now detached from client: [%s]\n", c.remoteAddr)
+		}
+	} else {
+		if now-c.lastPortChoice > PORT_HOP_INTERVAL && now-c.lastRoundtripSuccess > PORT_HOP_INTERVAL {
+			c.hopPort()
+		}
+	}
+	// fmt.Printf("#send %q from %q to %q\n", p, conn.LocalAddr(), conn.RemoteAddr())
+	return
+}
+
+// receive packet from remote
+func (c *Connection) recv() (payload string, err error) {
+	for i := range c.socks {
+		payload, err = c.recvOne(c.socks[i].(udpConn))
+		if err != nil {
+			if errors.Is(err, unix.EWOULDBLOCK) {
+				// EAGAIN is processed by go netpoll
+				continue
+			} else {
+				c.logW.Printf("#recv %s\n", err)
+				break
+			}
+		}
+
+		c.pruneSockets()
+		return
+	}
+	return
 }
 
 func (c *Connection) setLastRoundtripSuccess(success int64) {
