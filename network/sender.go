@@ -416,6 +416,10 @@ func (ts *TransportSender[T]) setCurrentState(x T) {
 	ts.currentState.ResetInput()
 }
 
+func (ts *TransportSender[T]) getSentStateAckedTimestamp() int64 {
+	return ts.sentStates[0].timestamp
+}
+
 // Try to send roughly two frames per RTT, bounded by limits on frame rate
 func (ts *TransportSender[T]) sendInterval() int {
 	// int SEND_INTERVAL = lrint(ceil(connection->get_SRTT() / 2.0))
