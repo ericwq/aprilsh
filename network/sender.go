@@ -33,6 +33,7 @@ import (
 
 	"github.com/ericwq/aprilsh/encrypt"
 	pb "github.com/ericwq/aprilsh/protobufs"
+	"github.com/ericwq/aprilsh/terminal"
 )
 
 const (
@@ -70,7 +71,7 @@ type TransportSender[T State[T]] struct {
 	// information about receiver state
 	ackNum         int64
 	pendingDataAct bool
-	SEND_MINDELAY  uint  // ms to collect all input
+	SEND_MINDELAY  int64 // ms to collect all input
 	lastHeard      int64 // last time received new state
 
 	mindelayClock int64 // time of first pending change to current state
@@ -237,8 +238,43 @@ func (ts *TransportSender[T]) addSentState(timestamp int64, num int64, state T) 
 	}
 }
 
+// Housekeeping routine to calculate next send and ack times
 func (ts *TransportSender[T]) calculateTimers() {
-	// now := time.Now().UnixMilli()
+	now := time.Now().UnixMilli()
+
+	// Update assumed receiver state
+	ts.updateAssumedReceiverState()
+
+	// Cut out common prefix of all states
+	ts.rationalizeStates()
+
+	if ts.pendingDataAct && ts.nextAckTime > now+ACK_DELAY {
+		ts.nextAckTime = now + ACK_DELAY
+	}
+
+	back := len(ts.sentStates) - 1
+	if !ts.currentState.Equal(ts.sentStates[back].state) {
+		if ts.mindelayClock == -1 {
+			ts.mindelayClock = now
+		}
+
+		ts.nextSendTime = terminal.Max(ts.mindelayClock+ts.SEND_MINDELAY,
+			ts.sentStates[back].timestamp+int64(ts.sendInterval()))
+	} else if !ts.currentState.Equal(ts.assumedReceiverState.state) && ts.lastHeard+ACTIVE_RETRY_TIMEOUT > now {
+		ts.nextSendTime = ts.sentStates[back].timestamp + int64(ts.sendInterval())
+		if ts.mindelayClock != -1 {
+			ts.nextSendTime = terminal.Max(ts.nextSendTime, ts.mindelayClock+ts.SEND_MINDELAY)
+		}
+	} else if !ts.currentState.Equal(ts.sentStates[0].state) && ts.lastHeard+ACTIVE_RETRY_TIMEOUT > now {
+		ts.nextSendTime = ts.sentStates[back].timestamp + ts.connection.timeout() + ACK_DELAY
+	} else {
+		ts.nextSendTime = -1
+	}
+
+	// speed up shutdown sequence
+	if ts.shutdownInProgress || ts.ackNum == -1 {
+		ts.nextAckTime = ts.sentStates[back].timestamp + int64(ts.sendInterval())
+	}
 }
 
 // make chaff with random length and random contents.
@@ -252,13 +288,113 @@ func (ts *TransportSender[T]) makeChaff() string {
 
 // Send data or an ack if necessary
 func (ts *TransportSender[T]) tick() {
+	ts.calculateTimers() // updates assumed receiver state and rationalizes
+
+	if !ts.connection.getHasRemoteAddr() {
+		return
+	}
+
+	now := time.Now().UnixMilli()
+	if now < ts.nextAckTime && now < ts.nextSendTime {
+		return
+	}
+
+	// Determine if a new diff or empty ack needs to be sent
+	diff := ts.currentState.DiffFrom(ts.assumedReceiverState.state)
+	diff = ts.attemptProspectiveResendOptimization(diff)
+
+	// TODO add verbose part
+	if ts.verbose > 0 {
+		// verify diff has round-trip identity (modulo Unicode fallback rendering)
+
+		// Also verify that both the original frame and generated frame have the same initial diff.
+	}
+	if len(diff) == 0 {
+		if now >= ts.nextAckTime {
+			ts.sendEmptyAck()
+			ts.mindelayClock = -1
+		}
+
+		if now >= ts.nextSendTime {
+			ts.nextSendTime = -1
+			ts.mindelayClock = -1
+		}
+	} else if now >= ts.nextSendTime || now >= ts.nextAckTime {
+		// send diff or ack
+		ts.sendToReceiver(diff)
+		ts.mindelayClock = -1
+	}
 }
 
+// Returns the number of ms to wait until next possible event.
+func (ts *TransportSender[T]) waitTime() int {
+	ts.calculateTimers()
+
+	nextWakeup := ts.nextAckTime
+	if ts.nextSendTime < nextWakeup {
+		nextWakeup = ts.nextSendTime
+	}
+
+	now := time.Now().UnixMilli()
+	if !ts.connection.getHasRemoteAddr() {
+		return math.MaxInt
+	}
+
+	if nextWakeup > now {
+		return int(nextWakeup - now)
+	} else {
+		return 0
+	}
+}
+
+// Executed upon receipt of ack
+func (ts *TransportSender[T]) processAcknowledgmentThrough(ackNum int64) {
+	// Ignore ack if we have culled the state it's acknowledging
+
+	for i := range ts.sentStates {
+		if ts.sentStates[i].numEq(ackNum) {
+			ss := ts.sentStates[:0]
+			for j := range ts.sentStates {
+				if ts.sentStates[j].numLt(ackNum) {
+					// skip this means remove this element
+				} else {
+					ss = append(ss, ts.sentStates[j])
+				}
+			}
+			ts.sentStates = ss
+			break // find the first element for which the above condition is true
+		}
+	}
+}
+
+// Executed upon entry to new receiver state
+func (ts *TransportSender[T]) setAckNum(ackNum int64) {
+	ts.ackNum = ackNum
+}
+
+// Accelerate reply ack
+func (ts *TransportSender[T]) setDataAck() {
+	ts.pendingDataAct = true
+}
+
+// Received something
+func (ts *TransportSender[T]) remoteHeard(x int64) {
+	ts.lastHeard = x
+}
+
+// Starts shutdown sequence
+func (ts *TransportSender[T]) startShutdown() {
+	if !ts.shutdownInProgress {
+		ts.shutdownStart = time.Now().UnixMilli()
+		ts.shutdownInProgress = true
+	}
+}
+
+// Cannot modify current_state while shutdown in progress
 func (ts *TransportSender[T]) getCurrentState() T {
 	return ts.currentState
 }
 
-// TODO careful about the pointer
 func (ts *TransportSender[T]) setCurrentState(x T) {
 	ts.currentState = x
 	ts.currentState.ResetInput()
