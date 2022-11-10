@@ -150,7 +150,7 @@ func (ts *TransportSender[T]) rationalizeStates() {
 	}
 }
 
-func (ts *TransportSender[T]) sendToReceiver(diff string) {
+func (ts *TransportSender[T]) sendToReceiver(diff string) error {
 	var newNum int64
 	back := len(ts.sentStates) - 1
 	if ts.currentState.Equal(ts.sentStates[back].state) { // previously sent
@@ -171,16 +171,20 @@ func (ts *TransportSender[T]) sendToReceiver(diff string) {
 		ts.addSentState(now, newNum, ts.currentState)
 	}
 
-	ts.sendInFragments(diff, newNum) // Can throw NetworkException TODO make it happens
+	if err := ts.sendInFragments(diff, newNum); err != nil {
+		return err
+	}
 
 	/* successfully sent, probably */
 	/* ("probably" because the FIRST size-exceeded datagram doesn't get an error) */
 	ts.assumedReceiverState = &ts.sentStates[len(ts.sentStates)-1]
 	ts.nextAckTime = now + ACK_INTERVAL
 	ts.nextSendTime = -1
+
+	return nil
 }
 
-func (ts *TransportSender[T]) sendEmptyAck() {
+func (ts *TransportSender[T]) sendEmptyAck() error {
 	now := time.Now().UnixMilli()
 	back := len(ts.sentStates) - 1
 	newNum := ts.sentStates[back].num + 1
@@ -191,18 +195,22 @@ func (ts *TransportSender[T]) sendEmptyAck() {
 	}
 
 	ts.addSentState(now, newNum, ts.currentState)
-	ts.sendInFragments("", newNum)
+	if err := ts.sendInFragments("", newNum); err != nil {
+		return err
+	}
 
 	ts.nextAckTime = now + ACK_INTERVAL
 	ts.nextSendTime = -1
+
+	return nil
 }
 
-func (ts *TransportSender[T]) sendInFragments(diff string, newNum int64) {
+func (ts *TransportSender[T]) sendInFragments(diff string, newNum int64) error {
 	inst := pb.Instruction{}
 	inst.ProtocolVersion = APRILSH_PROTOCOL_VERSION
 	inst.OldNum = ts.assumedReceiverState.num
 	inst.NewNum = newNum
-	inst.OldNum = ts.ackNum
+	inst.AckNum = ts.ackNum
 	inst.ThrowawayNum = ts.sentStates[0].num
 	inst.Diff = []byte(diff)
 	inst.Chaff = []byte(ts.makeChaff())
@@ -214,7 +222,9 @@ func (ts *TransportSender[T]) sendInFragments(diff string, newNum int64) {
 	// TODO we don't use OCB, so remove the encrypt.ADDED_BYTES ?
 	fragments := ts.fragmenter.makeFragments(&inst, ts.connection.getMTU()-ADDED_BYTES-encrypt.ADDED_BYTES)
 	for i := range fragments {
-		ts.connection.send(fragments[i].String())
+		if err := ts.connection.send(fragments[i].String()); err != nil {
+			return err
+		}
 
 		if ts.verbose > 0 {
 			fmt.Printf("[%d] Sent [%d=>%d] id %d, frag %d ack=%d, throwaway=%d, len=%d, frame rate=%.2f, timeout=%d, srtt=%.1f\n",
@@ -226,6 +236,7 @@ func (ts *TransportSender[T]) sendInFragments(diff string, newNum int64) {
 	}
 
 	ts.pendingDataAct = false
+	return nil
 }
 
 // add state into the send states list.
@@ -287,6 +298,7 @@ func (ts *TransportSender[T]) makeChaff() string {
 }
 
 // Send data or an ack if necessary
+// before tick, currentState is updated to the latest.
 func (ts *TransportSender[T]) tick() {
 	ts.calculateTimers() // updates assumed receiver state and rationalizes
 
@@ -311,7 +323,9 @@ func (ts *TransportSender[T]) tick() {
 	}
 	if len(diff) == 0 {
 		if now >= ts.nextAckTime {
-			ts.sendEmptyAck()
+			if err := ts.sendEmptyAck(); err != nil {
+				fmt.Printf("#tick sendEmptyAck(): %s", err)
+			}
 			ts.mindelayClock = -1
 		}
 
@@ -321,7 +335,9 @@ func (ts *TransportSender[T]) tick() {
 		}
 	} else if now >= ts.nextSendTime || now >= ts.nextAckTime {
 		// send diff or ack
-		ts.sendToReceiver(diff)
+		if err := ts.sendToReceiver(diff); err != nil {
+			fmt.Printf("#tick sendToReceiver(): %s", err)
+		}
 		ts.mindelayClock = -1
 	}
 }

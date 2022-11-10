@@ -103,8 +103,6 @@ func (u *UserStream) pushBackResize(width, height int) {
 	u.actions = append(u.actions, NewUserEventResize(resize))
 }
 
-func (u *UserStream) ResetInput() {}
-
 // implements network.State[C any] interface
 // Subtract() the prefix UserStream from current UserStream
 func (u *UserStream) Subtract(prefix *UserStream) {
@@ -218,3 +216,6 @@ func (u *UserStream) Equal(x *UserStream) bool {
 	}
 	return reflect.DeepEqual(u.actions, x.actions)
 }
+
+// implements network.State[C any] interface
+func (u *UserStream) ResetInput() {}

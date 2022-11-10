@@ -79,10 +79,6 @@ func (c *Complete) getFramebuffer() *terminal.Framebuffer {
 	return c.terminal.GetFramebuffer()
 }
 
-func (c *Complete) ResetInput() {
-	c.terminal.GetParser().ResetInput()
-}
-
 func (c *Complete) getEchoAck() int64 {
 	return c.echoAck
 }
@@ -229,4 +225,9 @@ func (c *Complete) Equal(x *Complete) bool {
 		return false
 	}
 	return true
+}
+
+// implements network.State[C any] interface
+func (c *Complete) ResetInput() {
+	c.terminal.GetParser().ResetInput()
 }
