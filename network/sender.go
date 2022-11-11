@@ -368,7 +368,9 @@ func (ts *TransportSender[T]) processAcknowledgmentThrough(ackNum int64) {
 	// Ignore ack if we have culled the state it's acknowledging
 
 	for i := range ts.sentStates {
+		// find the first element for which its num == ackNum
 		if ts.sentStates[i].numEq(ackNum) {
+			// remove the element for which its num < ackNum
 			ss := ts.sentStates[:0]
 			for j := range ts.sentStates {
 				if ts.sentStates[j].numLt(ackNum) {
@@ -378,7 +380,7 @@ func (ts *TransportSender[T]) processAcknowledgmentThrough(ackNum int64) {
 				}
 			}
 			ts.sentStates = ss
-			break // find the first element for which the above condition is true
+			break
 		}
 	}
 }
@@ -416,8 +418,19 @@ func (ts *TransportSender[T]) setCurrentState(x T) {
 	ts.currentState.ResetInput()
 }
 
+// get the first sent state timestamp
 func (ts *TransportSender[T]) getSentStateAckedTimestamp() int64 {
 	return ts.sentStates[0].timestamp
+}
+
+// get the first sent state num
+func (ts *TransportSender[T]) getSentStateAcked() int64 {
+	return ts.sentStates[0].num
+}
+
+// get the last sent state num
+func (ts *TransportSender[T]) getSentStateLast() int64 {
+	return ts.sentStates[len(ts.sentStates)-1].num
 }
 
 // Try to send roughly two frames per RTT, bounded by limits on frame rate

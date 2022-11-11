@@ -29,7 +29,6 @@ package network
 import (
 	"errors"
 	"fmt"
-	"sort"
 	"time"
 )
 
@@ -49,30 +48,40 @@ type Transport[S State[S], R State[R]] struct {
 	verbose             uint
 }
 
-func NewTransportServer[S State[S], R State[R]](initialState S, initialRemote R, desiredIp, desiredPort string) *Transport[S, R] {
+func NewTransportServer[S State[S], R State[R]](initialState S, initialRemote R,
+	desiredIp, desiredPort string,
+) *Transport[S, R] {
 	ts := &Transport[S, R]{}
 	ts.connection = NewConnection(desiredIp, desiredPort)
 	ts.sender = NewTransportSender(ts.connection, initialState)
+
 	ts.receivedState = make([]TimestampedState[R], 0)
-	ts.receivedState = append(ts.receivedState, TimestampedState[R]{time.Now().UnixMilli(), 0, initialRemote})
+	ts.receivedState = append(ts.receivedState,
+		TimestampedState[R]{time.Now().UnixMilli(), 0, initialRemote})
+
 	ts.lastReceiverState = initialRemote
 	ts.fragments = NewFragmentAssembly()
 	return ts
 }
 
-func NewTransportClient[S State[S], R State[R]](initialState S, initialRemote R, keyStr, ip, port string) *Transport[S, R] {
+func NewTransportClient[S State[S], R State[R]](initialState S, initialRemote R,
+	keyStr, ip, port string,
+) *Transport[S, R] {
 	tc := &Transport[S, R]{}
 	tc.connection = NewConnectionClient(keyStr, ip, port)
 	tc.sender = NewTransportSender(tc.connection, initialState)
+
 	tc.receivedState = make([]TimestampedState[R], 0)
-	tc.receivedState = append(tc.receivedState, TimestampedState[R]{time.Now().UnixMilli(), 0, initialRemote})
+	tc.receivedState = append(tc.receivedState,
+		TimestampedState[R]{time.Now().UnixMilli(), 0, initialRemote})
+
 	tc.lastReceiverState = initialRemote
 	tc.fragments = NewFragmentAssembly()
 	return tc
 }
 
-// The sender uses throwawayNum to tell us the earliest received state
-// that we need to keep around
+// The sender uses throwawayNum to tell us the earliest received state that
+// we need to keep around
 func (t *Transport[S, R]) processThrowawayUntil(throwawayNum int64) {
 	rs := t.receivedState[:0]
 	for i := range t.receivedState {
@@ -110,6 +119,7 @@ func (t *Transport[S, R]) recv() error {
 			return errors.New("aprilsh protocol version mismatch.")
 		}
 
+		// remove the state for which num < AckNum
 		t.sender.processAcknowledgmentThrough(inst.AckNum)
 
 		// inform network layer of roundtrip (end-to-end-to-end) connectivity
@@ -124,10 +134,9 @@ func (t *Transport[S, R]) recv() error {
 
 		// now, make sure we do have the old state
 		found := false
-		referenceState := 0
-		for i := range t.receivedState {
-			referenceState = i
-			if inst.OldNum == t.receivedState[i].num {
+		refStateIdx := 0
+		for refStateIdx = range t.receivedState {
+			if inst.OldNum == t.receivedState[refStateIdx].num {
 				found = true
 				break
 			}
@@ -139,7 +148,8 @@ func (t *Transport[S, R]) recv() error {
 			return nil // this is security-sensitive and part of how we enforce idempotency
 		}
 
-		// Do not accept state if our queue is full
+		// Do not accept state if our queue is full.
+		//
 		// This is better than dropping states from the middle of the
 		// queue (as sender does), because we don't want to ACK a state
 		// and then discard it later.
@@ -159,7 +169,7 @@ func (t *Transport[S, R]) recv() error {
 		}
 
 		// apply diff to reference state
-		newState := t.receivedState[referenceState] // maybe we need to clone the state
+		newState := t.receivedState[refStateIdx] // maybe we need to clone the state
 		newState.timestamp = time.Now().UnixMilli()
 		newState.num = inst.NewNum
 		if len(inst.Diff) > 0 {
@@ -167,25 +177,27 @@ func (t *Transport[S, R]) recv() error {
 		}
 
 		// Insert new state in sorted place
-		b := t.receivedState[:0]
+		rs := t.receivedState[:0]
 		for i := range t.receivedState {
 			if t.receivedState[i].num > newState.num {
-				b = append(b, newState)
-				b = append(b, t.receivedState[i:]...)
-				t.receivedState = b
+				// insert out-of-order new state
+				rs = append(rs, newState)
+				rs = append(rs, t.receivedState[i:]...)
+				t.receivedState = rs
+
 				if t.verbose > 0 {
 					fmt.Printf("[%d] Received OUT-OF-ORDER state %d [ack %d]\n",
 						time.Now().UnixMilli()%100000, newState.num, inst.AckNum)
 				}
 				return nil
 			}
-			b = append(b, t.receivedState[i])
+			rs = append(rs, t.receivedState[i])
 		}
 		if t.verbose > 0 {
-			fmt.Printf("[%u] Received state %d [coming from %d, ack %d]\n",
+			fmt.Printf("[%d] Received state %d [coming from %d, ack %d]\n",
 				time.Now().UnixMilli()%100000, newState.num, inst.OldNum, inst.AckNum)
 		}
-		t.receivedState = append(t.receivedState, newState)
+		t.receivedState = append(t.receivedState, newState) // insert new state
 		t.sender.setAckNum(t.receivedState[len(t.receivedState)-1].num)
 
 		t.sender.remoteHeard(newState.timestamp)
@@ -194,6 +206,20 @@ func (t *Transport[S, R]) recv() error {
 		}
 	}
 	return nil
+}
+
+func (t *Transport[S, R]) getRemoteDiff() string {
+	// find diff between last receiver state and current remote state, then rationalize states
+	back := len(t.receivedState) - 1
+	ret := t.receivedState[back].state.DiffFrom(t.lastReceiverState)
+
+	oldestReceivedState := t.receivedState[0].state
+	for i := back; i >= 0; i-- {
+		t.receivedState[i].state.Subtract(oldestReceivedState)
+	}
+
+	t.lastReceiverState = t.receivedState[back].state
+	return ret
 }
 
 func (t *Transport[S, R]) getCurrentState() S {
