@@ -64,3 +64,13 @@ func (t *TimestampedState[T]) numEq(v int64) bool {
 func (t *TimestampedState[T]) numLt(v int64) bool {
 	return t.num < v
 }
+
+func (t *TimestampedState[T]) clone() TimestampedState[T] {
+	clone := TimestampedState[T]{}
+
+	clone.timestamp = t.timestamp
+	clone.num = t.num
+	clone.state = t.state.Clone()
+
+	return clone
+}

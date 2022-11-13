@@ -315,11 +315,20 @@ func (ts *TransportSender[T]) tick() {
 	diff := ts.currentState.DiffFrom(ts.assumedReceiverState.state)
 	diff = ts.attemptProspectiveResendOptimization(diff)
 
-	// TODO add verbose part
 	if ts.verbose > 0 {
 		// verify diff has round-trip identity (modulo Unicode fallback rendering)
+		newState := ts.assumedReceiverState.state.Clone()
+		newState.ApplyString(diff)
+		if ts.currentState.Equal(newState) {
+			fmt.Println("Warning, round-trip Instruction verification failed!")
+		}
 
 		// Also verify that both the original frame and generated frame have the same initial diff.
+		currentDiff := ts.currentState.InitDiff()
+		newDiff := newState.InitDiff()
+		if currentDiff != newDiff {
+			fmt.Println("Warning, target state Instruction verification failed!")
+		}
 	}
 	if len(diff) == 0 {
 		if now >= ts.nextAckTime {

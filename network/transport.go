@@ -169,7 +169,8 @@ func (t *Transport[S, R]) recv() error {
 		}
 
 		// apply diff to reference state
-		newState := t.receivedState[refStateIdx] // maybe we need to clone the state
+		// we clone the state to avoid pollute reference state
+		newState := t.receivedState[refStateIdx].clone()
 		newState.timestamp = time.Now().UnixMilli()
 		newState.num = inst.NewNum
 		if len(inst.Diff) > 0 {
