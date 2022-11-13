@@ -333,7 +333,7 @@ func (ts *TransportSender[T]) tick() {
 	if len(diff) == 0 {
 		if now >= ts.nextAckTime {
 			if err := ts.sendEmptyAck(); err != nil {
-				fmt.Printf("#tick sendEmptyAck(): %s", err)
+				fmt.Printf("#tick sendEmptyAck(): %s\n", err)
 			}
 			ts.mindelayClock = -1
 		}
@@ -345,7 +345,7 @@ func (ts *TransportSender[T]) tick() {
 	} else if now >= ts.nextSendTime || now >= ts.nextAckTime {
 		// send diff or ack
 		if err := ts.sendToReceiver(diff); err != nil {
-			fmt.Printf("#tick sendToReceiver(): %s", err)
+			fmt.Printf("#tick sendToReceiver(): %s\n", err)
 		}
 		ts.mindelayClock = -1
 	}
