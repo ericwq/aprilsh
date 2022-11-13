@@ -922,3 +922,13 @@ func (d *Display) close() string {
 	}
 	return b.String()
 }
+
+func (d *Display) Clone() *Display {
+	clone := Display{}
+	// clone regular data fields
+	clone = *d
+
+	// ignore logW
+	// ignore terminfo
+	return &clone
+}

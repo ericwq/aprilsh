@@ -219,3 +219,23 @@ func (u *UserStream) Equal(x *UserStream) bool {
 
 // implements network.State[C any] interface
 func (u *UserStream) ResetInput() {}
+
+// implements network.State[C any] interface
+func (u *UserStream) Clone() *UserStream {
+	clone := UserStream{}
+	clone.actions = make([]UserEvent, len(u.actions))
+
+	for i := range u.actions {
+		if u.actions[i].theType == UserByteType {
+			chs := make([]rune, len(u.actions[i].userByte.Chs))
+			copy(chs, u.actions[i].userByte.Chs)
+
+			clone.actions[i].userByte = terminal.UserByte{}
+			clone.actions[i].userByte.Chs = chs
+		} else {
+			clone.actions[i] = u.actions[i]
+		}
+	}
+
+	return &clone
+}

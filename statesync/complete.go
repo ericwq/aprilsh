@@ -231,3 +231,16 @@ func (c *Complete) Equal(x *Complete) bool {
 func (c *Complete) ResetInput() {
 	c.terminal.GetParser().ResetInput()
 }
+
+// implements network.State[C any] interface
+func (c *Complete) Clone() *Complete {
+	clone := Complete{}
+	clone = *c
+	clone.display = c.display.Clone()
+	clone.terminal = c.terminal.Clone()
+
+	clone.inputHistory = make([]pair, len(c.inputHistory))
+	copy(clone.inputHistory, c.inputHistory)
+
+	return &clone
+}

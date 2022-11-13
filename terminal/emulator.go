@@ -156,7 +156,7 @@ func NewEmulator3(nCols, nRows, saveLines int) *Emulator {
 	emu.savedCursor_DEC_pri = newSavedCursor_DEC()
 	emu.savedCursor_DEC_alt = newSavedCursor_DEC()
 	emu.savedCursor_DEC = &emu.savedCursor_DEC_pri
-	emu.initSelectionData()
+	emu.initSelectionStore()
 	emu.initLog()
 
 	emu.resetTerminal()
@@ -511,7 +511,7 @@ func (emu *Emulator) setCompatLevel(cl CompatibilityLevel) {
 	// we seperate the parser compatLevel and emulator compatLevel.
 }
 
-func (emu *Emulator) initSelectionData() {
+func (emu *Emulator) initSelectionStore() {
 	// prepare selection data storage for OSC 52
 	// https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands
 	emu.selectionStore = make(map[rune]string)
@@ -703,4 +703,56 @@ func (emu *Emulator) SetCursorVisible(visible bool) {
 		emu.cf.setCursorStyle(CursorStyle_FillBlock)
 		// TODO keep the old style?
 	}
+}
+
+func (emu *Emulator) Clone() *Emulator {
+	clone := Emulator{}
+
+	// clone regular data fields
+	clone = *emu
+
+	// clone cf, frame_alt, frame_pri
+	clone.frame_alt.cells = make([]Cell, len(emu.frame_alt.cells))
+	copy(clone.frame_alt.cells, emu.frame_alt.cells)
+
+	clone.frame_pri.cells = make([]Cell, len(emu.frame_pri.cells))
+	copy(clone.frame_pri.cells, emu.frame_pri.cells)
+
+	if emu.cf == &emu.frame_alt {
+		clone.cf = &clone.frame_alt
+	} else {
+		clone.cf = &clone.frame_pri
+	}
+
+	// create a new parser
+	clone.parser = &Parser{}
+	clone.parser.reset()
+
+	// clone tabStops
+	clone.tabStops = make([]int, len(emu.tabStops))
+	copy(clone.tabStops, emu.tabStops)
+
+	// clone charsetState
+	for i := range emu.charsetState.g {
+		clone.charsetState.g[i] = emu.charsetState.g[i]
+	}
+
+	// clone savedCursor_DEC, savedCursor_DEC_pri, savedCursor_DEC_alt
+	for i := range emu.savedCursor_DEC_alt.charsetState.g {
+		clone.savedCursor_DEC_alt.charsetState.g[i] = emu.savedCursor_DEC_alt.charsetState.g[i]
+	}
+	for i := range emu.savedCursor_DEC_pri.charsetState.g {
+		clone.savedCursor_DEC_pri.charsetState.g[i] = emu.savedCursor_DEC_pri.charsetState.g[i]
+	}
+	if emu.savedCursor_DEC == &emu.savedCursor_DEC_alt {
+		clone.savedCursor_DEC = &clone.savedCursor_DEC_alt
+	} else {
+		clone.savedCursor_DEC = &clone.savedCursor_DEC_pri
+	}
+
+	// init selectionStore
+	clone.initSelectionStore()
+
+	// ignore logI,logT,logU,logW
+	return &clone
 }

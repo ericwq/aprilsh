@@ -142,8 +142,8 @@ func TestNewFrame_PutRow(t *testing.T) {
 			"[  7] ......提早...................................................................换.",
 		},
 		{
-			"backspace case",' ',' ',"\x1b[9;1Hbackspace case\x1b[9;11H",true,
-			"\x1b[?25l\rbackspace\x1b[9;11Hcase\b\b\b\b\x1b[?25h",8,
+			"backspace case", ' ', ' ', "\x1b[9;1Hbackspace case\x1b[9;11H", true,
+			"\x1b[?25l\rbackspace\x1b[9;11Hcase\b\b\b\b\x1b[?25h", 8,
 			"[  8] backspace.case..................................................................",
 		},
 	}
@@ -866,9 +866,9 @@ func TestNewFrame_Modes(t *testing.T) {
 		{"new is VT52 compatLevel", "\x1B[?2l", "\x1B[62\"p", "\x1B[?2l"},
 		{"new is VT400 compatLevel", "\x1B[64\"p", "\x1B[61\"p", "\x1B[64\"p"},
 		{"new is VT100 compatLevel", "\x1B[61\"p", "\x1B[62\"p", "\x1B[61\"p"},
-		{"new has modifyOtherKeys = 0","\x1B[>4m","\x1B[>4;1m","\x1B[>4;0m"},
-		{"new has modifyOtherKeys = 1","\x1B[>4;1m","\x1B[>4;2m","\x1B[>4;1m"},
-		{"new has modifyOtherKeys = 2","\x1B[>4;2m","\x1B[>4;1m","\x1B[>4;2m"},
+		{"new has modifyOtherKeys = 0", "\x1B[>4m", "\x1B[>4;1m", "\x1B[>4;0m"},
+		{"new has modifyOtherKeys = 1", "\x1B[>4;1m", "\x1B[>4;2m", "\x1B[>4;1m"},
+		{"new has modifyOtherKeys = 2", "\x1B[>4;2m", "\x1B[>4;1m", "\x1B[>4;2m"},
 	}
 	oldE := NewEmulator3(8, 8, 4)
 	newE := NewEmulator3(8, 8, 4)
@@ -1002,4 +1002,28 @@ func buildSelectionDataSequence(raw string) string {
 	// fmt.Printf("#test buildSelectionDataSequence() s=%q\n", s)
 	// return s
 	return fmt.Sprintf("\x1B]%d;%s;%s\x1B\\", 52, "pc", Pd)
+}
+
+func TestDisplayCone(t *testing.T) {
+	os.Setenv("TERM", "xterm-256color")
+	d, e := NewDisplay(true)
+	if e != nil {
+		t.Errorf("#test create display error: %s\n", e)
+	}
+
+	// clone and make some difference
+	d.smcup = "clone"
+	d.currentRendition.buildRendition(34)
+
+	c := d.Clone()
+
+	if c.smcup != d.smcup {
+		t.Errorf("#test Clone() expect hasTitle %q, got %q\n", d.smcup, c.smcup)
+	}
+
+	rend := Renditions{}
+	rend.buildRendition(34)
+	if c.currentRendition != rend {
+		t.Errorf("#test Clone() expect currentRendition %#v, got %#v\n", rend, c.currentRendition)
+	}
 }

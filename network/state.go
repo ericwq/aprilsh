@@ -43,6 +43,7 @@ type State[C any] interface {
 
 	// interface from code
 	ResetInput()
+	Clone() C
 }
 
 type TimestampedState[T State[T]] struct {
