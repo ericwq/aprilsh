@@ -373,6 +373,7 @@ func (ts *TransportSender[T]) waitTime() int {
 }
 
 // Executed upon receipt of ack
+// remove sent states whose num less than ack num.
 func (ts *TransportSender[T]) processAcknowledgmentThrough(ackNum int64) {
 	// Ignore ack if we have culled the state it's acknowledging
 
