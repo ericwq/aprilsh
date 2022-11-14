@@ -27,6 +27,7 @@ SOFTWARE.
 package network
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -81,6 +82,9 @@ func TestSenderUpdateAssumedReceiverState(t *testing.T) {
 			t.Errorf("%q expect %p, got %p\n", v.label, &ts.sentStates[v.expect], ts.assumedReceiverState)
 		}
 
+		// for i := range ts.sentStates {
+		// 	fmt.Printf("%q No.%2d state in sentStates, point to %p\n", v.label, i, ts.sentStates[i].state)
+		// }
 		connection.sock().Close()
 	}
 }
