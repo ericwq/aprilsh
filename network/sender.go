@@ -150,10 +150,12 @@ func (ts *TransportSender[T]) rationalizeStates() {
 
 	ts.currentState.Subtract(knownReceiverState)
 	fmt.Printf("#rationalizeStates after Subtract() currentState=%v\n", ts.currentState)
-	for i := len(ts.sentStates) - 1; i >= 0; i-- {
-		ts.sentStates[i].state.Subtract(knownReceiverState)
-		fmt.Printf("#rationalizeStates after Subtract() sentStates %d =%v\n", i, ts.sentStates[i].state)
-	}
+	/*
+		for i := len(ts.sentStates) - 1; i >= 0; i-- {
+			ts.sentStates[i].state.Subtract(knownReceiverState)
+			fmt.Printf("#rationalizeStates after Subtract() sentStates %d =%v\n", i, ts.sentStates[i].state)
+		}
+	*/
 }
 
 func (ts *TransportSender[T]) sendToReceiver(diff string) error {

@@ -112,13 +112,19 @@ func (u *UserStream) Subtract(prefix *UserStream) {
 		return
 	}
 
+	// a := u.actions[:0]
 	for i := range prefix.actions {
+		// fmt.Printf("#Subtract compare %q[0] vs %q[%d]\n", u.actions[0], prefix.actions[i], i)
 		if len(u.actions) > 0 && reflect.DeepEqual(u.actions[0], prefix.actions[i]) {
+			// fmt.Printf("#Subtract equal %d %q\n", i, prefix.actions[i])
 			u.actions = u.actions[1:]
 		} else {
+			// a = append(a, u.actions[i])
+			// fmt.Printf("#Subtract save %d %q\n", i, prefix.actions[i])
 			break
 		}
 	}
+	// u.actions = a
 }
 
 // implements network.State[C any] interface

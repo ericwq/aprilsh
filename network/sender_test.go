@@ -125,11 +125,11 @@ func TestSenderRationalizeStates(t *testing.T) {
 	tc := []struct {
 		label      string
 		userBytes  []string
-		prefix string
+		prefix     string
 		currentIdx int
 		expect     []string
 	}{
-		{"remove first", []string{"abc", "abcde", "abcdef", "abcdefg"},"abc", 1, []string{"", "de", "def", "defg", ""}},
+		{"remove first", []string{"abc", "abcde", "abcdef", "abcdefg"}, "ab", 1, []string{"", "de", "def", "defg", ""}},
 	}
 
 	for _, v := range tc {
@@ -146,21 +146,22 @@ func TestSenderRationalizeStates(t *testing.T) {
 			for gs.Next() {
 				rs := gs.Runes()
 				state.PushBack(rs)
+				// fmt.Printf("%q add %q to state %d, total=%d\n", v.label, rs, i+1, len(state.actions))
 			}
 			ts.addSentState(time.Now().UnixMilli(), int64(i+1), state)
-			// fmt.Printf("%q add userBytes %q to %2d\n", v.label, str, ts.sentStates[len(ts.sentStates)-1].num)
+			// fmt.Printf("%q add userBytes %q to %2d\n", v.label, state, ts.sentStates[len(ts.sentStates)-1].num)
 		}
 
-		for i := range ts.sentStates {
-			fmt.Printf("#test rationalizeStates() No. %d state contains:%q\n", i, ts.sentStates[i].state.String())
-		}
+		// for i := range ts.sentStates {
+		// 	fmt.Printf("%q No.A%d state contains:%v\n", v.label, i, ts.sentStates[i].state)
+		// }
 		ts.setCurrentState(ts.sentStates[v.currentIdx].state.Clone())
 
-		fmt.Printf("#test rationalizeStates() current state %d = %q\n", v.currentIdx, ts.sentStates[v.currentIdx].state.String())
+		// fmt.Printf("%q current state %d = %v\n", v.label, v.currentIdx, ts.sentStates[v.currentIdx].state.String())
 		ts.rationalizeStates()
 
 		for i := range ts.sentStates {
-			fmt.Printf("#test rationalizeStates() after No. %d state contains:%q\n", i, ts.sentStates[i].state.String())
+			fmt.Printf("%q No.B%d state contains:%q\n", v.label, i, ts.sentStates[i].state.String())
 			got := ts.sentStates[i].state.String()
 			if got != v.expect[i] {
 				t.Errorf("%q expect No.%d state %q, got %q\n", v.label, i, v.expect[i], got)

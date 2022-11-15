@@ -27,6 +27,7 @@ SOFTWARE.
 package statesync
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -61,10 +62,10 @@ func TestSubtract(t *testing.T) {
 		// add user keystroke
 		chs := []rune(v.keystroke)
 		for i := range chs {
-			// u1.pushBack(terminal.UserByte{Chs: []rune{chs[i]}})
 			u1.PushBack([]rune{chs[i]})
+			// fmt.Printf("#test Subtract() PushBack %q into u1\n", chs[i])
 		}
-		// fmt.Printf("#test DiffFrom() base %s\n", &u1)
+		// fmt.Printf("#test Subtract() base %s\n", &u1)
 
 		// add size data
 		if v.sizeB {
@@ -80,10 +81,10 @@ func TestSubtract(t *testing.T) {
 		// add prefix user keystroke
 		prefix := []rune(v.prefix)
 		for i := range prefix {
-			// u2.pushBack(terminal.UserByte{C: prefix[i]})
 			u2.PushBack([]rune{prefix[i]})
+			// fmt.Printf("#test Subtract() PushBack %q into u2\n", prefix[i])
 		}
-		// fmt.Printf("#test DiffFrom() prefix %s\n", &u2)
+		// fmt.Printf("#test Subtract() prefix %s\n", &u2)
 
 		// subtract the prefix from u1
 		u1.Subtract(&u2)
@@ -95,7 +96,7 @@ func TestSubtract(t *testing.T) {
 				output.WriteString(string(v.userByte.Chs))
 			}
 		}
-		// fmt.Printf("#test DiffFrom() result %#v\n", &u1)
+		// fmt.Printf("#test Subtract() result %s\n", &u1)
 
 		// validate the result
 		got := output.String()
