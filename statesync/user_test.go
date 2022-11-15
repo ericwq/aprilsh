@@ -62,7 +62,7 @@ func TestSubtract(t *testing.T) {
 		chs := []rune(v.keystroke)
 		for i := range chs {
 			// u1.pushBack(terminal.UserByte{Chs: []rune{chs[i]}})
-			u1.pushBack([]rune{chs[i]})
+			u1.PushBack([]rune{chs[i]})
 		}
 		// fmt.Printf("#test DiffFrom() base %s\n", &u1)
 
@@ -81,7 +81,7 @@ func TestSubtract(t *testing.T) {
 		prefix := []rune(v.prefix)
 		for i := range prefix {
 			// u2.pushBack(terminal.UserByte{C: prefix[i]})
-			u2.pushBack([]rune{prefix[i]})
+			u2.PushBack([]rune{prefix[i]})
 		}
 		// fmt.Printf("#test DiffFrom() prefix %s\n", &u2)
 
@@ -152,7 +152,7 @@ func TestApplyString(t *testing.T) {
 		graphemes := uniseg.NewGraphemes(v.keystroke)
 		for graphemes.Next() {
 			chs := graphemes.Runes()
-			u1.pushBack(chs)
+			u1.PushBack(chs)
 			// if v.prefix == "" {
 			// 	fmt.Printf("#test ApplyString() %c %q %x\n", chs, chs, chs)
 			// }
@@ -169,7 +169,7 @@ func TestApplyString(t *testing.T) {
 		graphemes = uniseg.NewGraphemes(v.prefix)
 		for graphemes.Next() {
 			chs := graphemes.Runes()
-			u2.pushBack(chs)
+			u2.PushBack(chs)
 		}
 
 		// add delta size data
@@ -235,7 +235,7 @@ func TestString(t *testing.T) {
 		// add user keystroke
 		chs := []rune(v.keystroke)
 		for i := range chs {
-			u1.pushBack([]rune{chs[i]})
+			u1.PushBack([]rune{chs[i]})
 		}
 
 		// add size data

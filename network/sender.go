@@ -145,10 +145,14 @@ func (ts *TransportSender[T]) attemptProspectiveResendOptimization(propsedDiff s
 // only works for UserStream state.
 func (ts *TransportSender[T]) rationalizeStates() {
 	knownReceiverState := ts.sentStates[0].state
+	fmt.Printf("#rationalizeStates knownReceiverState=%v\n", knownReceiverState)
+	fmt.Printf("#rationalizeStates currentState=%v\n", ts.currentState)
 
 	ts.currentState.Subtract(knownReceiverState)
+	fmt.Printf("#rationalizeStates after Subtract() currentState=%v\n", ts.currentState)
 	for i := len(ts.sentStates) - 1; i >= 0; i-- {
 		ts.sentStates[i].state.Subtract(knownReceiverState)
+		fmt.Printf("#rationalizeStates after Subtract() sentStates %d =%v\n", i, ts.sentStates[i].state)
 	}
 }
 
@@ -245,6 +249,8 @@ func (ts *TransportSender[T]) sendInFragments(diff string, newNum int64) error {
 func (ts *TransportSender[T]) addSentState(timestamp int64, num int64, state T) {
 	s := TimestampedState[T]{timestamp, num, state}
 	ts.sentStates = append(ts.sentStates, s)
+
+	// fmt.Printf("#addSentState No.%2d state in sendStates, %T\n", num, ts.sentStates[len(ts.sentStates)-1].state)
 
 	if len(ts.sentStates) > 32 { // limit on state queue
 		ts.sentStates = ts.sentStates[16:] // erase state from middle of queue

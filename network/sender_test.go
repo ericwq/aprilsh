@@ -32,6 +32,7 @@ import (
 	"time"
 
 	"github.com/ericwq/aprilsh/statesync"
+	"github.com/rivo/uniseg"
 )
 
 func TestSenderMakeChaff(t *testing.T) {
@@ -82,9 +83,88 @@ func TestSenderUpdateAssumedReceiverState(t *testing.T) {
 			t.Errorf("%q expect %p, got %p\n", v.label, &ts.sentStates[v.expect], ts.assumedReceiverState)
 		}
 
-		// for i := range ts.sentStates {
-		// 	fmt.Printf("%q No.%2d state in sentStates, point to %p\n", v.label, i, ts.sentStates[i].state)
-		// }
 		connection.sock().Close()
+	}
+}
+
+func TestSenderProcessAcknowledgmentThrough(t *testing.T) {
+	tc := []struct {
+		label  string
+		pause  int
+		ackNum int64
+		expect int
+	}{
+		{"remove first state", 50, 1, 5},
+		{"keep last state", 52, 5, 1},
+		{"keep all state", 51, 8, 6},
+	}
+
+	for _, v := range tc {
+		connection := NewConnection("localhost", "8080")
+		initialState, _ := statesync.NewComplete(80, 40, 0)
+
+		ts := NewTransportSender(connection, initialState)
+		s, _ := statesync.NewComplete(80, 40, 0)
+
+		for i := 1; i < 6; i++ {
+			now := time.Now().UnixMilli()
+			time.Sleep(time.Millisecond * time.Duration(v.pause))
+			ts.addSentState(now, int64(i), s)
+			// fmt.Printf("%q No.%2d state in sendStates, point to %p\n", v.label, i, ts.sentStates[i].state)
+		}
+
+		ts.processAcknowledgmentThrough(v.ackNum)
+		if len(ts.sentStates) != v.expect {
+			t.Errorf("%q expect sentStates lengh %d, got %d\n", v.label, v.expect, len(ts.sentStates))
+		}
+		connection.sock().Close()
+	}
+}
+
+func TestSenderRationalizeStates(t *testing.T) {
+	tc := []struct {
+		label      string
+		userBytes  []string
+		prefix string
+		currentIdx int
+		expect     []string
+	}{
+		{"remove first", []string{"abc", "abcde", "abcdef", "abcdefg"},"abc", 1, []string{"", "de", "def", "defg", ""}},
+	}
+
+	for _, v := range tc {
+		connection := NewConnection("localhost", "8080")
+		initialState := &statesync.UserStream{} // first sent state
+		initialState.PushBack([]rune(v.prefix))
+		ts := NewTransportSender(connection, initialState)
+
+		for i, str := range v.userBytes {
+
+			state := &statesync.UserStream{}
+
+			gs := uniseg.NewGraphemes(str)
+			for gs.Next() {
+				rs := gs.Runes()
+				state.PushBack(rs)
+			}
+			ts.addSentState(time.Now().UnixMilli(), int64(i+1), state)
+			// fmt.Printf("%q add userBytes %q to %2d\n", v.label, str, ts.sentStates[len(ts.sentStates)-1].num)
+		}
+
+		for i := range ts.sentStates {
+			fmt.Printf("#test rationalizeStates() No. %d state contains:%q\n", i, ts.sentStates[i].state.String())
+		}
+		ts.setCurrentState(ts.sentStates[v.currentIdx].state.Clone())
+
+		fmt.Printf("#test rationalizeStates() current state %d = %q\n", v.currentIdx, ts.sentStates[v.currentIdx].state.String())
+		ts.rationalizeStates()
+
+		for i := range ts.sentStates {
+			fmt.Printf("#test rationalizeStates() after No. %d state contains:%q\n", i, ts.sentStates[i].state.String())
+			got := ts.sentStates[i].state.String()
+			if got != v.expect[i] {
+				t.Errorf("%q expect No.%d state %q, got %q\n", v.label, i, v.expect[i], got)
+			}
+		}
 	}
 }

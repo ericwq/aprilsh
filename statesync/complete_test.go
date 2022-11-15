@@ -192,7 +192,7 @@ func TestCompleteWaitTime(t *testing.T) {
 func TestCompleteResetInput(t *testing.T) {
 	c, _ := NewComplete(8, 4, 4)
 
-	c.resetInput()
+	c.ResetInput()
 	if c.terminal.GetCursorCol() != 0 || c.terminal.GetCursorRow() != 0 {
 		t.Errorf("#test after resetInput() the cursor should be in (0,0), got (%d,%d)\n",
 			c.terminal.GetCursorRow(), c.terminal.GetCursorCol())

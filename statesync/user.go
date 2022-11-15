@@ -93,7 +93,7 @@ func (u *UserStream) String() string {
 	return fmt.Sprintf("Keystroke:%q, Resize:%s", output1.String(), output2.String())
 }
 
-func (u *UserStream) pushBack(x []rune) {
+func (u *UserStream) PushBack(x []rune) {
 	userStroke := terminal.UserByte{Chs: x}
 	u.actions = append(u.actions, NewUserEvent(userStroke))
 }

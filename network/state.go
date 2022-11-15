@@ -52,11 +52,6 @@ type TimestampedState[T State[T]] struct {
 	state     T
 }
 
-// func NewTimestampedState2() *TimestampedState[UserStream] {
-// 	ts := TimestampedState[UserStream]{}
-// 	return &ts
-// }
-
 func (t *TimestampedState[T]) numEq(v int64) bool {
 	return t.num == v
 }
