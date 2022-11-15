@@ -141,6 +141,8 @@ func (ts *TransportSender[T]) attemptProspectiveResendOptimization(propsedDiff s
 	return propsedDiff
 }
 
+// clear currentState and sentStates by remove the oldest sent state from them.
+// only works for UserStream state.
 func (ts *TransportSender[T]) rationalizeStates() {
 	knownReceiverState := ts.sentStates[0].state
 

@@ -225,15 +225,15 @@ func (u *UserStream) Clone() *UserStream {
 	clone := UserStream{}
 	clone.actions = make([]UserEvent, len(u.actions))
 
-	for i := range u.actions {
-		if u.actions[i].theType == UserByteType {
+	for i := range u.actions { // actions slice
+		if u.actions[i].theType == UserByteType { // clone UserByte
 			chs := make([]rune, len(u.actions[i].userByte.Chs))
 			copy(chs, u.actions[i].userByte.Chs)
 
 			clone.actions[i].userByte = terminal.UserByte{}
 			clone.actions[i].userByte.Chs = chs
 		} else {
-			clone.actions[i] = u.actions[i]
+			clone.actions[i] = u.actions[i] // clone Resize
 		}
 	}
 
