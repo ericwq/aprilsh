@@ -185,12 +185,12 @@ func TestSenderRationalizeStates(t *testing.T) {
 
 func TestSenderAttemptProspectiveResendOptimization(t *testing.T) {
 	tc := []struct {
-		label       string
-		initalState string
-		states      []string
-		currentIdx  int
-		assumedIdx  int
-		expect      string
+		label        string
+		initialState string
+		states       []string
+		currentIdx   int
+		assumedIdx   int
+		expect       string
 	}{
 		{"assumed receiver state is the first state", "ab", []string{"abc", "abcde", "abcdef", "abcdefg"}, 2, 0, "\n\a\x12\x05\"\x03cde"},
 		{"resend length - diff length < 100", "ab", []string{"abc", "abcde", "abcdef", "abcdefg"}, 4, 1, "\n\t\x12\a\"\x05cdefg"},
@@ -199,7 +199,7 @@ func TestSenderAttemptProspectiveResendOptimization(t *testing.T) {
 	for _, v := range tc {
 		connection := NewConnection("localhost", "8080")
 		initialState := &statesync.UserStream{} // initial state
-		pushUserBytesTo(initialState, v.initalState)
+		pushUserBytesTo(initialState, v.initialState)
 		ts := NewTransportSender(connection, initialState)
 
 		// prepare sentStates data
@@ -222,6 +222,47 @@ func TestSenderAttemptProspectiveResendOptimization(t *testing.T) {
 		if got != v.expect {
 			t.Errorf("%q expect %q, got %q\n", v.label, v.expect, got)
 		}
+		connection.sock().Close()
+	}
+}
+
+func TestSenderCalculateTimers(t *testing.T) {
+	tc := []struct {
+		label              string
+		initialState       string
+		states             []string
+		currentIdx         int
+		assumedIdx         int
+		expectNextSendTime int64
+		expectNextAckTime  int64
+	}{}
+
+	for _, v := range tc {
+		connection := NewConnection("localhost", "8080")
+		initialState := &statesync.UserStream{} // initial state
+		pushUserBytesTo(initialState, v.initialState)
+		ts := NewTransportSender(connection, initialState)
+
+		// prepare sentStates data
+		for i, keystroke := range v.states {
+			state := &statesync.UserStream{}
+			pushUserBytesTo(state, keystroke)
+			ts.addSentState(time.Now().UnixMilli(), int64(i+1), state)
+		}
+
+		// prepare currentState and assumedReceiverState
+		ts.setCurrentState(ts.sentStates[v.currentIdx].state.Clone())
+		ts.assumedReceiverState = &ts.sentStates[v.assumedIdx]
+
+		ts.calculateTimers()
+		gotNextAckTime := ts.nextAckTime
+		gotNextSendTime := ts.nextSendTime
+
+		if gotNextAckTime != v.expectNextAckTime || gotNextSendTime != v.expectNextSendTime {
+			t.Errorf("%q expect nextSendTime %d, got %d\n", v.label, v.expectNextSendTime, gotNextSendTime)
+			t.Errorf("%q expect nextAckTime %d, got %d\n", v.label, v.expectNextAckTime, gotNextAckTime)
+		}
+
 		connection.sock().Close()
 	}
 }

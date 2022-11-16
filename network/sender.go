@@ -70,7 +70,7 @@ type TransportSender[T State[T]] struct {
 
 	// information about receiver state
 	ackNum         int64
-	pendingDataAct bool
+	pendingDataAck bool
 	SEND_MINDELAY  int64 // ms to collect all input
 	lastHeard      int64 // last time received new state
 
@@ -239,7 +239,7 @@ func (ts *TransportSender[T]) sendInFragments(diff string, newNum int64) error {
 		}
 	}
 
-	ts.pendingDataAct = false
+	ts.pendingDataAck = false
 	return nil
 }
 
@@ -265,12 +265,13 @@ func (ts *TransportSender[T]) calculateTimers() {
 	// Cut out common prefix of all states
 	ts.rationalizeStates()
 
-	if ts.pendingDataAct && ts.nextAckTime > now+ACK_DELAY {
+	if ts.pendingDataAck && ts.nextAckTime > now+ACK_DELAY {
 		ts.nextAckTime = now + ACK_DELAY
 	}
 
 	back := len(ts.sentStates) - 1
 	if !ts.currentState.Equal(ts.sentStates[back].state) {
+		// currentState is not the newest sent states
 		if ts.mindelayClock == -1 {
 			ts.mindelayClock = now
 		}
@@ -278,14 +279,16 @@ func (ts *TransportSender[T]) calculateTimers() {
 		ts.nextSendTime = terminal.Max(ts.mindelayClock+ts.SEND_MINDELAY,
 			ts.sentStates[back].timestamp+int64(ts.sendInterval()))
 	} else if !ts.currentState.Equal(ts.assumedReceiverState.state) && ts.lastHeard+ACTIVE_RETRY_TIMEOUT > now {
+		// currentState is not the assumed receiver state and lastHeard over due
 		ts.nextSendTime = ts.sentStates[back].timestamp + int64(ts.sendInterval())
 		if ts.mindelayClock != -1 {
 			ts.nextSendTime = terminal.Max(ts.nextSendTime, ts.mindelayClock+ts.SEND_MINDELAY)
 		}
 	} else if !ts.currentState.Equal(ts.sentStates[0].state) && ts.lastHeard+ACTIVE_RETRY_TIMEOUT > now {
+		// currentState is not the oldest sent state and lastHeard over due
 		ts.nextSendTime = ts.sentStates[back].timestamp + ts.connection.timeout() + ACK_DELAY
 	} else {
-		ts.nextSendTime = -1
+		ts.nextSendTime = -1 // math.MaxInt64
 	}
 
 	// speed up shutdown sequence
@@ -408,7 +411,7 @@ func (ts *TransportSender[T]) setAckNum(ackNum int64) {
 
 // Accelerate reply ack
 func (ts *TransportSender[T]) setDataAck() {
-	ts.pendingDataAct = true
+	ts.pendingDataAck = true
 }
 
 // Received something
