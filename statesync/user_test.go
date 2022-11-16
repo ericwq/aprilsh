@@ -27,7 +27,6 @@ SOFTWARE.
 package statesync
 
 import (
-	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -70,7 +69,6 @@ func TestSubtract(t *testing.T) {
 		// add size data
 		if v.sizeB {
 			for _, v := range sizes {
-				// u1.pushBackResize(terminal.Resize{Width: v.width, Height: v.height})
 				u1.pushBackResize(v.width, v.height)
 			}
 			// fmt.Printf("#test DiffFrom() base+size %s\n", &u1)
@@ -88,11 +86,12 @@ func TestSubtract(t *testing.T) {
 
 		// subtract the prefix from u1
 		u1.Subtract(&u2)
+
+		// only collect the UserByteType part
 		var output strings.Builder
 		for _, v := range u1.actions {
 			switch v.theType {
 			case UserByteType:
-				// output.WriteRune(v.userByte.C)
 				output.WriteString(string(v.userByte.Chs))
 			}
 		}

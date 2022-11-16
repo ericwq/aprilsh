@@ -145,11 +145,8 @@ func (ts *TransportSender[T]) attemptProspectiveResendOptimization(propsedDiff s
 // only works for UserStream state.
 func (ts *TransportSender[T]) rationalizeStates() {
 	knownReceiverState := ts.sentStates[0].state
-	// fmt.Printf("#rationalizeStates knownReceiverState=%v\n", knownReceiverState)
-	// fmt.Printf("#rationalizeStates currentState=%v\n", ts.currentState)
 
 	ts.currentState.Subtract(knownReceiverState)
-	// fmt.Printf("#rationalizeStates after Subtract() currentState=%v\n", ts.currentState)
 
 	for i := len(ts.sentStates) - 1; i >= 0; i-- {
 		ts.sentStates[i].state.Subtract(knownReceiverState)

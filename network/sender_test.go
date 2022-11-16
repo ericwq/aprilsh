@@ -28,11 +28,11 @@ package network
 
 import (
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/ericwq/aprilsh/statesync"
-	"github.com/rivo/uniseg"
 )
 
 func TestSenderMakeChaff(t *testing.T) {
@@ -121,6 +121,14 @@ func TestSenderProcessAcknowledgmentThrough(t *testing.T) {
 	}
 }
 
+func pushUserBytesTo(t *statesync.UserStream, raw string) {
+	chs := []rune(raw)
+	for i := range chs {
+		t.PushBack([]rune{chs[i]})
+		// fmt.Printf("#addUserByteTo %q into state %p\n", chs[i], t)
+	}
+}
+
 func TestSenderRationalizeStates(t *testing.T) {
 	tc := []struct {
 		label      string
@@ -129,43 +137,47 @@ func TestSenderRationalizeStates(t *testing.T) {
 		currentIdx int
 		expect     []string
 	}{
-		{"remove first", []string{"abc", "abcde", "abcdef", "abcdefg"}, "ab", 1, []string{"", "de", "def", "defg", ""}},
+		{"remove first", []string{"abc", "abcde", "abcdef", "abcdefg"}, "ab", 1, []string{"", "c", "cde", "cdef", "cdefg"}},
 	}
 
 	for _, v := range tc {
 		connection := NewConnection("localhost", "8080")
 		initialState := &statesync.UserStream{} // first sent state
-		initialState.PushBack([]rune(v.prefix))
-		ts := NewTransportSender(connection, initialState)
+		pushUserBytesTo(initialState, v.prefix)
 
-		for i, str := range v.userBytes {
+		ts := NewTransportSender(connection, initialState)
+		// fmt.Printf("%q add state %s to 0\n", v.label, initialState)
+
+		for i, keystroke := range v.userBytes {
 
 			state := &statesync.UserStream{}
 
-			gs := uniseg.NewGraphemes(str)
-			for gs.Next() {
-				rs := gs.Runes()
-				state.PushBack(rs)
-				// fmt.Printf("%q add %q to state %d, total=%d\n", v.label, rs, i+1, len(state.actions))
-			}
+			pushUserBytesTo(state, keystroke)
+
 			ts.addSentState(time.Now().UnixMilli(), int64(i+1), state)
-			// fmt.Printf("%q add userBytes %q to %2d\n", v.label, state, ts.sentStates[len(ts.sentStates)-1].num)
+			// fmt.Printf("%q add state %s to %2d\n", v.label, state, i+1)
 		}
 
-		// for i := range ts.sentStates {
-		// 	fmt.Printf("%q No.A%d state contains:%v\n", v.label, i, ts.sentStates[i].state)
-		// }
 		ts.setCurrentState(ts.sentStates[v.currentIdx].state.Clone())
+		// fmt.Printf("%q current state %d = %s\n", v.label, v.currentIdx, ts.currentState)
 
-		// fmt.Printf("%q current state %d = %v\n", v.label, v.currentIdx, ts.sentStates[v.currentIdx].state.String())
 		ts.rationalizeStates()
 
+		// validate the sent states
 		for i := range ts.sentStates {
-			fmt.Printf("%q No.B%d state contains:%q\n", v.label, i, ts.sentStates[i].state.String())
+			// fmt.Printf("%q No.%2d state contains:%s\n", v.label, i, ts.sentStates[i].state)
 			got := ts.sentStates[i].state.String()
-			if got != v.expect[i] {
-				t.Errorf("%q expect No.%d state %q, got %q\n", v.label, i, v.expect[i], got)
+
+			if !strings.Contains(got, fmt.Sprintf("\"%s\"", v.expect[i])) {
+				t.Errorf("%q expect No.%d state %s, got %s\n", v.label, i, v.expect[i], got)
 			}
+		}
+
+		// validate the result of current state
+		currentStr := v.userBytes[v.currentIdx-1]
+		expect := strings.Replace(currentStr, v.prefix, "", 1)
+		if !strings.Contains(ts.getCurrentState().String(), fmt.Sprintf("\"%s\"", expect)) {
+			t.Errorf("%q expct current state %q, got %q\n", v.label, expect, ts.currentState.String())
 		}
 	}
 }
