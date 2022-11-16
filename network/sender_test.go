@@ -179,5 +179,49 @@ func TestSenderRationalizeStates(t *testing.T) {
 		if !strings.Contains(ts.getCurrentState().String(), fmt.Sprintf("\"%s\"", expect)) {
 			t.Errorf("%q expct current state %q, got %q\n", v.label, expect, ts.currentState.String())
 		}
+		connection.sock().Close()
+	}
+}
+
+func TestSenderAttemptProspectiveResendOptimization(t *testing.T) {
+	tc := []struct {
+		label       string
+		initalState string
+		states      []string
+		currentIdx  int
+		assumedIdx  int
+		expect      string
+	}{
+		{"assumed receiver state is the first state", "ab", []string{"abc", "abcde", "abcdef", "abcdefg"}, 2, 0, "\n\a\x12\x05\"\x03cde"},
+		{"resend length - diff length < 100", "ab", []string{"abc", "abcde", "abcdef", "abcdefg"}, 4, 1, "\n\t\x12\a\"\x05cdefg"},
+	}
+
+	for _, v := range tc {
+		connection := NewConnection("localhost", "8080")
+		initialState := &statesync.UserStream{} // initial state
+		pushUserBytesTo(initialState, v.initalState)
+		ts := NewTransportSender(connection, initialState)
+
+		// prepare sentStates data
+		for i, keystroke := range v.states {
+			state := &statesync.UserStream{}
+			pushUserBytesTo(state, keystroke)
+			ts.addSentState(time.Now().UnixMilli(), int64(i+1), state)
+		}
+
+		// prepare currentState and assumedReceiverState
+		ts.setCurrentState(ts.sentStates[v.currentIdx].state.Clone())
+		ts.assumedReceiverState = &ts.sentStates[v.assumedIdx]
+
+		diff := ts.currentState.DiffFrom(ts.assumedReceiverState.state)
+		// fmt.Printf("#test attemptProspectiveResendOptimization() diff=%q\n", diff)
+
+		got := ts.attemptProspectiveResendOptimization(diff)
+
+		// validate the diff
+		if got != v.expect {
+			t.Errorf("%q expect %q, got %q\n", v.label, v.expect, got)
+		}
+		connection.sock().Close()
 	}
 }
