@@ -256,6 +256,7 @@ func (ts *TransportSender[T]) addSentState(timestamp int64, num int64, state T) 
 }
 
 // Housekeeping routine to calculate next send and ack times
+// update assumed receiver state, cut out common prefix of all states
 func (ts *TransportSender[T]) calculateTimers() {
 	now := time.Now().UnixMilli()
 
@@ -367,15 +368,20 @@ func (ts *TransportSender[T]) tick() {
 func (ts *TransportSender[T]) waitTime() int {
 	ts.calculateTimers()
 
+	// if nextSendTime < nextAckTime, use the nextSendTime
 	nextWakeup := ts.nextAckTime
 	if ts.nextSendTime < nextWakeup {
 		nextWakeup = ts.nextSendTime
 	}
 
 	now := time.Now().UnixMilli()
+
 	if !ts.connection.getHasRemoteAddr() {
 		return math.MaxInt
 	}
+
+	// fmt.Printf("#waitTime nextSendTime=%d, nextAckTime=%d, nextWakeup=%d, now=%d\n",
+	// 	ts.nextSendTime, ts.nextAckTime, nextWakeup, now)
 
 	if nextWakeup > now {
 		return int(nextWakeup - now)

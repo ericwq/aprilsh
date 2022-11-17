@@ -28,6 +28,7 @@ package network
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -318,6 +319,41 @@ func TestSenderCalculateTimers(t *testing.T) {
 				t.Errorf("%q expect nextSendTime %d, got %d\n", v.label, v.expectNextSendTime, gotNextSendTime)
 			}
 		}
+
+		// fmt.Printf("#calculateTimers nextSendTime=%d, nextAckTime=%d\n", ts.nextSendTime, ts.nextAckTime)
+		// ts.connection.hasRemoteAddr = true
+		// waitTime := ts.waitTime()
+		// fmt.Printf("#calculateTimers waitTime=%d\n", waitTime)
+
+		connection.sock().Close()
+	}
+}
+
+func TestSenderWaitTime(t *testing.T) {
+	tc := []struct {
+		label         string
+		initialState  string
+		hasRemoteAddr bool
+		expect        int
+	}{
+		{"no remote address", "wait", false, math.MaxInt},
+		{"has remote address", "wait", true, 0},
+	}
+	for _, v := range tc {
+		connection := NewConnection("localhost", "8080")
+		initialState := &statesync.UserStream{} // initial state
+		pushUserBytesTo(initialState, v.initialState)
+		ts := NewTransportSender(connection, initialState)
+
+		ts.connection.hasRemoteAddr = v.hasRemoteAddr
+		// fmt.Printf("%q nextAckTime=%d, nextSendTime=%d\n", v.label, ts.nextAckTime, ts.nextSendTime)
+		got := ts.waitTime()
+		// fmt.Printf("%q got =%d\n", v.label, got)
+
+		if got != v.expect {
+			t.Errorf("%q expect waitTime %d, got %d\n", v.label, v.expect, got)
+		}
+
 		connection.sock().Close()
 	}
 }
