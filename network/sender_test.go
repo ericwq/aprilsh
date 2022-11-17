@@ -55,32 +55,35 @@ func TestSenderMakeChaff(t *testing.T) {
 
 func TestSenderUpdateAssumedReceiverState(t *testing.T) {
 	tc := []struct {
-		label  string
-		pause  int
-		expect int
+		label            string
+		fakeNetworkDelay int
+		expect           int
 	}{
-		{"quick response", 55, 17},
-		{"slow response", 70, 0},
+		{"quick response", 2, 17},
+		{"slow response", 65, 0},
 	}
 
 	for _, v := range tc {
-
+		// prepare the environment
 		connection := NewConnection("localhost", "8080")
 		initialState, _ := statesync.NewComplete(80, 40, 0)
 
 		ts := NewTransportSender(connection, initialState)
 
-		for i := 0; i < 33; i++ {
+		// add enough state and mimic the delay between states
+		for i := 0; i < 33; i++ { // addSentState require upper limit 32
 			s, _ := statesync.NewComplete(80, 40, 0)
 			now := time.Now().UnixMilli()
-			time.Sleep(time.Millisecond * time.Duration(v.pause))
-			ts.addSentState(now, int64(i+2), s)
+			time.Sleep(time.Millisecond * time.Duration(v.fakeNetworkDelay))
+			ts.addSentState(now, int64(i+1), s)
 		}
 
 		ts.updateAssumedReceiverState()
 
-		if ts.assumedReceiverState != &ts.sentStates[v.expect] {
-			t.Errorf("%q expect %p, got %p\n", v.label, &ts.sentStates[v.expect], ts.assumedReceiverState)
+		// validate the result
+		idx := ts.getAssumedReceiverStateIdx()
+		if idx != v.expect {
+			t.Errorf("%q expect %d, got %d\n", v.label, v.expect, idx)
 		}
 
 		connection.sock().Close()
@@ -232,10 +235,40 @@ func TestSenderCalculateTimers(t *testing.T) {
 		initialState       string
 		states             []string
 		currentIdx         int
-		assumedIdx         int
+		fakeNetworkDelay   int
+		lastHeard          int64
+		mindelayClock      int64
+		pendingDataAck     bool
+		shutdown           bool
 		expectNextSendTime int64
 		expectNextAckTime  int64
-	}{}
+	}{
+		{
+			"current !=newest", "abc",
+			[]string{"abcd", "abcde", "abcdef", "abcdefg"},
+			0, 2, 0, -1, false, false, 0, 0,
+		},
+		{
+			"current = newest != assumed", "abc",
+			[]string{"abcd", "abcde", "abcdef", "abcdefg"},
+			4, 450, 1, 5, false, false, 0, 0,
+		},
+		{
+			"current = newest = assumed != oldest", "abc",
+			[]string{"abcd", "abcde", "abcdef", "abcdefg"},
+			4, 10, 0, 5, false, false, 0, 0,
+		},
+		{
+			"current = newest, lastHeard over due ", "abc",
+			[]string{"abcd", "abcde", "abcdef", "abcdefg"},
+			4, 10, -2 * ACTIVE_RETRY_TIMEOUT, 5, false, true, -1, 0,
+		},
+		{
+			"current = newest, lastHeard over due ", "abc",
+			[]string{"abcd", "abcde", "abcdef", "abcdefg"},
+			4, 10, -2 * ACTIVE_RETRY_TIMEOUT, 5, true, false, -1, 0,
+		},
+	}
 
 	for _, v := range tc {
 		connection := NewConnection("localhost", "8080")
@@ -247,22 +280,44 @@ func TestSenderCalculateTimers(t *testing.T) {
 		for i, keystroke := range v.states {
 			state := &statesync.UserStream{}
 			pushUserBytesTo(state, keystroke)
+			time.Sleep(time.Duration(v.fakeNetworkDelay) * time.Millisecond)
+			// change assumedReceiverState through fakeNetworkDelay
 			ts.addSentState(time.Now().UnixMilli(), int64(i+1), state)
 		}
 
 		// prepare currentState and assumedReceiverState
 		ts.setCurrentState(ts.sentStates[v.currentIdx].state.Clone())
-		ts.assumedReceiverState = &ts.sentStates[v.assumedIdx]
+		ts.remoteHeard(time.Now().UnixMilli() + v.lastHeard)
+		if v.mindelayClock != -1 {
+			ts.mindelayClock = time.Now().UnixMilli()
+		}
+
+		if v.pendingDataAck {
+			ts.setDataAck()
+			ts.nextAckTime = time.Now().UnixMilli() + 2*ACK_DELAY
+		}
+		if v.shutdown { // corner case for shutdown
+			ts.setAckNum(-1)
+		}
+		// ts.assumedReceiverState = &ts.sentStates[v.assumedIdx]
 
 		ts.calculateTimers()
+
+		// validate the result
 		gotNextAckTime := ts.nextAckTime
 		gotNextSendTime := ts.nextSendTime
 
-		if gotNextAckTime != v.expectNextAckTime || gotNextSendTime != v.expectNextSendTime {
-			t.Errorf("%q expect nextSendTime %d, got %d\n", v.label, v.expectNextSendTime, gotNextSendTime)
-			t.Errorf("%q expect nextAckTime %d, got %d\n", v.label, v.expectNextAckTime, gotNextAckTime)
+		if gotNextAckTime != v.expectNextAckTime {
+			if v.expectNextAckTime == -1 {
+				t.Errorf("%q expect nextAckTime %d, got %d\n", v.label, v.expectNextAckTime, gotNextAckTime)
+			}
 		}
 
+		if gotNextSendTime != v.expectNextSendTime {
+			if v.expectNextSendTime == -1 {
+				t.Errorf("%q expect nextSendTime %d, got %d\n", v.label, v.expectNextSendTime, gotNextSendTime)
+			}
+		}
 		connection.sock().Close()
 	}
 }

@@ -261,6 +261,9 @@ func (ts *TransportSender[T]) calculateTimers() {
 
 	// Update assumed receiver state
 	ts.updateAssumedReceiverState()
+	// fmt.Printf("#calculateTimers assumedReceiverState = %d\n", ts.getAssumedReceiverStateIdx())
+	// fmt.Printf("#calculateTimers nextAckTime=%d, lastHeard=%d, mindelayClock=%d, pendingDataAck=%t, nextAckTime=%d\n",
+	// 	ts.nextAckTime, ts.lastHeard, ts.mindelayClock, ts.pendingDataAck, ts.nextAckTime)
 
 	// Cut out common prefix of all states
 	ts.rationalizeStates()
@@ -279,13 +282,13 @@ func (ts *TransportSender[T]) calculateTimers() {
 		ts.nextSendTime = terminal.Max(ts.mindelayClock+ts.SEND_MINDELAY,
 			ts.sentStates[back].timestamp+int64(ts.sendInterval()))
 	} else if !ts.currentState.Equal(ts.assumedReceiverState.state) && ts.lastHeard+ACTIVE_RETRY_TIMEOUT > now {
-		// currentState is not the assumed receiver state and lastHeard over due
+		// currentState is newest sent state but not the assumed receiver state
 		ts.nextSendTime = ts.sentStates[back].timestamp + int64(ts.sendInterval())
 		if ts.mindelayClock != -1 {
 			ts.nextSendTime = terminal.Max(ts.nextSendTime, ts.mindelayClock+ts.SEND_MINDELAY)
 		}
 	} else if !ts.currentState.Equal(ts.sentStates[0].state) && ts.lastHeard+ACTIVE_RETRY_TIMEOUT > now {
-		// currentState is not the oldest sent state and lastHeard over due
+		// currentState is the newest and assumed receiver state but not the oldest sent state
 		ts.nextSendTime = ts.sentStates[back].timestamp + ts.connection.timeout() + ACK_DELAY
 	} else {
 		ts.nextSendTime = -1 // math.MaxInt64
@@ -462,4 +465,14 @@ func (ts *TransportSender[T]) sendInterval() int {
 		SEND_INTERVAL = SEND_INTERVAL_MAX
 	}
 	return int(SEND_INTERVAL)
+}
+
+func (ts *TransportSender[T]) getAssumedReceiverStateIdx() int {
+	idx := 0
+	for j := 0; j < len(ts.sentStates); j++ {
+		if ts.assumedReceiverState == &ts.sentStates[j] {
+			idx = j
+		}
+	}
+	return idx
 }
