@@ -48,9 +48,7 @@ type Transport[S State[S], R State[R]] struct {
 	verbose             uint
 }
 
-func NewTransportServer[S State[S], R State[R]](initialState S, initialRemote R,
-	desiredIp, desiredPort string,
-) *Transport[S, R] {
+func NewTransportServer[S State[S], R State[R]](initialState S, initialRemote R, desiredIp, desiredPort string) *Transport[S, R] {
 	ts := &Transport[S, R]{}
 	ts.connection = NewConnection(desiredIp, desiredPort)
 	ts.sender = NewTransportSender(ts.connection, initialState)
@@ -64,9 +62,7 @@ func NewTransportServer[S State[S], R State[R]](initialState S, initialRemote R,
 	return ts
 }
 
-func NewTransportClient[S State[S], R State[R]](initialState S, initialRemote R,
-	keyStr, ip, port string,
-) *Transport[S, R] {
+func NewTransportClient[S State[S], R State[R]](initialState S, initialRemote R, keyStr, ip, port string) *Transport[S, R] {
 	tc := &Transport[S, R]{}
 	tc.connection = NewConnectionClient(keyStr, ip, port)
 	tc.sender = NewTransportSender(tc.connection, initialState)

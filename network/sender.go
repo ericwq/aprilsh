@@ -326,6 +326,7 @@ func (ts *TransportSender[T]) tick() {
 
 	// Determine if a new diff or empty ack needs to be sent
 	diff := ts.currentState.DiffFrom(ts.assumedReceiverState.state)
+	fmt.Printf("#tick diff between currentState and assumedReceiverState =%q\n", diff)
 	diff = ts.attemptProspectiveResendOptimization(diff)
 
 	if ts.verbose > 0 {

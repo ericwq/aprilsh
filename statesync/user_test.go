@@ -217,10 +217,10 @@ func TestString(t *testing.T) {
 		size      bool
 		expect    string
 	}{
-		{"no size", "has keystroke, no size data", false, "Keystroke:\"has keystroke, no size data\", Resize:"},
-		{"no keystroke", "", true, "Keystroke:\"\", Resize:(80,40),(132,60),(140,70),"},
-		{"both keystroke and size", "has both keystroke and data", true, "Keystroke:\"has both keystroke and data\", Resize:(80,40),(132,60),(140,70),"},
-		{"empty", "", false, "Keystroke:\"\", Resize:"},
+		{"no size", "has keystroke, no size data", false, "Keystroke:\"has keystroke, no size data\", Resize:, size=27"},
+		{"no keystroke", "", true, "Keystroke:\"\", Resize:(80,40),(132,60),(140,70),, size=3"},
+		{"both keystroke and size", "has both keystroke and data", true, "Keystroke:\"has both keystroke and data\", Resize:(80,40),(132,60),(140,70),, size=30"},
+		{"empty", "", false, "Keystroke:\"\", Resize:, size=0"},
 	}
 
 	sizes := []struct {

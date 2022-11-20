@@ -27,17 +27,33 @@ SOFTWARE.
 package network
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
-	// "github.com/ericwq/aprilsh/statesync"
+	"github.com/ericwq/aprilsh/statesync"
 )
 
-func TestTransport(t *testing.T) {
-	// ts := Transport[*statesync.UserStream, *statesync.UserStream]{}
-	//
-	// currentState := ts.getCurrentState()
-	// currentState.ResetInput()
-	//
-	// us := &statesync.UserStream{}
-	// currentState.Subtract(us)
+func TestTransportTickAndReceive(t *testing.T) {
+	initialStateS, _ := statesync.NewComplete(80, 40, 40)
+	initialRemoteS := &statesync.UserStream{}
+	desiredIp := "localhost"
+	desiredPort := "6000"
+	server := NewTransportServer(initialStateS, initialRemoteS, desiredIp, desiredPort)
+
+	initialState := &statesync.UserStream{}
+	initialRemote, _ := statesync.NewComplete(80, 40, 40)
+	keyStr := server.connection.key.String()
+	ip := "localhost"
+	port := "6000"
+	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
+
+	pushUserBytesTo(client.getCurrentState(), "Hello world!")
+	fmt.Printf("#test tickAndRecv %q\n", client.getCurrentState())
+	client.tick()
+
+	server.recv()
+	time.Sleep(time.Millisecond * 50)
+	server.connection.sock().Close()
+	client.connection.sock().Close()
 }

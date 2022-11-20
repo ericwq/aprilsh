@@ -90,7 +90,7 @@ func (u *UserStream) String() string {
 		}
 	}
 
-	return fmt.Sprintf("Keystroke:%q, Resize:%s", output1.String(), output2.String())
+	return fmt.Sprintf("Keystroke:%q, Resize:%s, size=%d", output1.String(), output2.String(), len(u.actions))
 }
 
 func (u *UserStream) PushBack(x []rune) {
