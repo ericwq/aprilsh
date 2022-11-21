@@ -43,7 +43,7 @@ func TestTransportTickAndReceive(t *testing.T) {
 
 	initialState := &statesync.UserStream{}
 	initialRemote, _ := statesync.NewComplete(80, 40, 40)
-	keyStr := server.connection.key.String() // get the key from server
+	keyStr := server.connection.getKey() // get the key from server
 	ip := "localhost"
 	port := "6000"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
