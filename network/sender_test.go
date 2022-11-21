@@ -129,8 +129,10 @@ func pushUserBytesTo(t *statesync.UserStream, raw string) {
 	chs := []rune(raw)
 	for i := range chs {
 		t.PushBack([]rune{chs[i]})
-		fmt.Printf("#pushUserBytesTo %q into state %p\n", chs[i], t)
+		// fmt.Printf("#pushUserBytesTo %q into state %p\n", chs[i], t)
 	}
+
+	// fmt.Printf("pushUserBytesTo %p %q\n", t, t)
 }
 
 func TestSenderRationalizeStates(t *testing.T) {

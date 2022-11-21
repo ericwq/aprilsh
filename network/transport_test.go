@@ -35,25 +35,39 @@ import (
 )
 
 func TestTransportTickAndReceive(t *testing.T) {
-	initialStateS, _ := statesync.NewComplete(80, 40, 40)
-	initialRemoteS := &statesync.UserStream{}
+	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
+	initialRemoteSrv := &statesync.UserStream{}
 	desiredIp := "localhost"
 	desiredPort := "6000"
-	server := NewTransportServer(initialStateS, initialRemoteS, desiredIp, desiredPort)
+	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
 
 	initialState := &statesync.UserStream{}
 	initialRemote, _ := statesync.NewComplete(80, 40, 40)
-	keyStr := server.connection.key.String()
+	keyStr := server.connection.key.String() // get the key from server
 	ip := "localhost"
 	port := "6000"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
-	pushUserBytesTo(client.getCurrentState(), "Hello world!")
-	fmt.Printf("#test tickAndRecv %q\n", client.getCurrentState())
-	client.tick()
+	pushUserBytesTo(client.getCurrentState(), "Test tick and recv!")
+	// fmt.Printf("#test tickAndRecv currentState=%q pointer=%v, assumed=%d\n",
+	// 	client.getCurrentState(), client.getCurrentState(), client.sender.getAssumedReceiverStateIdx())
 
+	// send user stream to server
+	client.tick()
+	time.Sleep(time.Millisecond * 20)
 	server.recv()
-	time.Sleep(time.Millisecond * 50)
+	time.Sleep(time.Millisecond * 20)
+
+	// send complete to client
+	server.tick()
+	time.Sleep(time.Millisecond * 20)
+	client.recv()
+	time.Sleep(time.Millisecond * 20)
+
+	if !server.getLatestRemoteState().Equal(client.getCurrentState()) {
+		fmt.Printf("#test TickAndReceive client send %q to server, server receive %q from client\n", client.getCurrentState(), server.getLatestRemoteState())
+	}
+
 	server.connection.sock().Close()
 	client.connection.sock().Close()
 }

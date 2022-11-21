@@ -194,6 +194,9 @@ func (t *Transport[S, R]) recv() error {
 			fmt.Printf("[%d] Received state %d [coming from %d, ack %d]\n",
 				time.Now().UnixMilli()%100000, newState.num, inst.OldNum, inst.AckNum)
 		}
+
+		fmt.Printf("#recv receive received state num %d from %q.\n", newState.num, t.connection.remoteAddr)
+
 		t.receivedState = append(t.receivedState, newState) // insert new state
 		t.sender.setAckNum(t.receivedState[len(t.receivedState)-1].num)
 

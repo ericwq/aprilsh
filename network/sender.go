@@ -245,7 +245,7 @@ func (ts *TransportSender[T]) sendInFragments(diff string, newNum int64) error {
 
 // add state into the send states list.
 func (ts *TransportSender[T]) addSentState(timestamp int64, num int64, state T) {
-	s := TimestampedState[T]{timestamp, num, state}
+	s := TimestampedState[T]{timestamp, num, state.Clone()}
 	ts.sentStates = append(ts.sentStates, s)
 
 	// fmt.Printf("#addSentState No.%2d state in sendStates, %T\n", num, ts.sentStates[len(ts.sentStates)-1].state)
@@ -326,7 +326,6 @@ func (ts *TransportSender[T]) tick() {
 
 	// Determine if a new diff or empty ack needs to be sent
 	diff := ts.currentState.DiffFrom(ts.assumedReceiverState.state)
-	fmt.Printf("#tick diff between currentState and assumedReceiverState =%q\n", diff)
 	diff = ts.attemptProspectiveResendOptimization(diff)
 
 	if ts.verbose > 0 {
@@ -344,6 +343,9 @@ func (ts *TransportSender[T]) tick() {
 			fmt.Println("Warning, target state Instruction verification failed!")
 		}
 	}
+
+	fmt.Printf("#tick send %q to receiver %s.\n", diff, ts.connection.getRemoteAddr())
+
 	if len(diff) == 0 {
 		if now >= ts.nextAckTime {
 			if err := ts.sendEmptyAck(); err != nil {

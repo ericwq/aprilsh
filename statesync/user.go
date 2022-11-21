@@ -106,6 +106,7 @@ func (u *UserStream) pushBackResize(width, height int) {
 // implements network.State[C any] interface
 // Subtract() the prefix UserStream from current UserStream
 func (u *UserStream) Subtract(prefix *UserStream) {
+	// fmt.Printf("#Subtract %q %p from %q %p\n", prefix, prefix, u, u)
 	// if we are subtracting ourself from ourself, just clear the deque
 	if u.Equal(prefix) {
 		u.actions = make([]UserEvent, 0)
@@ -214,7 +215,7 @@ func (u *UserStream) ApplyString(diff string) error {
 
 // implements network.State[C any] interface
 func (u *UserStream) Equal(x *UserStream) bool {
-	if len(u.actions) == 0 && len(x.actions) == 0 {
+	if u == x || (len(u.actions) == 0 && len(x.actions) == 0) {
 		return true
 	}
 	return reflect.DeepEqual(u.actions, x.actions)
