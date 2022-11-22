@@ -231,7 +231,7 @@ func (ts *TransportSender[T]) sendInFragments(diff string, newNum int64) error {
 		}
 
 		if ts.verbose > 0 {
-			fmt.Printf("[%d] Sent [%d=>%d] id %d, frag %d ack=%d, throwaway=%d, len=%d, frame rate=%.2f, timeout=%d, srtt=%.1f\n",
+			fmt.Printf("#sendInFragments [%d] Sent [%d=>%d] id %d, frag %d ack=%d, throwaway=%d, len=%d, frame rate=%.2f, timeout=%d, srtt=%.1f\n",
 				(time.Now().UnixMilli() % 100000), inst.OldNum, inst.NewNum,
 				fragments[i].id, fragments[i].fragmentNum, inst.AckNum,
 				inst.ThrowawayNum, len(fragments[i].contents),
@@ -333,14 +333,14 @@ func (ts *TransportSender[T]) tick() {
 		newState := ts.assumedReceiverState.state.Clone()
 		newState.ApplyString(diff)
 		if ts.currentState.Equal(newState) {
-			fmt.Println("Warning, round-trip Instruction verification failed!")
+			fmt.Println("#tick Warning, round-trip Instruction verification failed!")
 		}
 
 		// Also verify that both the original frame and generated frame have the same initial diff.
 		currentDiff := ts.currentState.InitDiff()
 		newDiff := newState.InitDiff()
 		if currentDiff != newDiff {
-			fmt.Println("Warning, target state Instruction verification failed!")
+			fmt.Println("#tick Warning, target state Instruction verification failed!")
 		}
 	}
 

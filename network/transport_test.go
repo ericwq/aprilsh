@@ -67,7 +67,7 @@ func TestTransportClientSend(t *testing.T) {
 
 	// validate client sent and server received contents
 	if !server.getLatestRemoteState().state.Equal(client.getCurrentState()) {
-		fmt.Printf("#test TickAndReceive client send %q to server, server receive %q from client\n",
+		fmt.Printf("#test client send %q to server, server receive %q from client\n",
 			client.getCurrentState(), server.getLatestRemoteState().state)
 	}
 
@@ -76,14 +76,14 @@ func TestTransportClientSend(t *testing.T) {
 }
 
 func TestTransportServerSend(t *testing.T) {
-	terminalInSrv, _ := statesync.NewComplete(80, 40, 40)
-	initialRemoteSrv := &statesync.UserStream{}
+	completeTerminal, _ := statesync.NewComplete(80, 5, 0)
+	blank := &statesync.UserStream{}
 	desiredIp := "localhost"
 	desiredPort := "6001"
-	server := NewTransportServer(terminalInSrv, initialRemoteSrv, desiredIp, desiredPort)
+	server := NewTransportServer(completeTerminal, blank, desiredIp, desiredPort)
 
 	initialState := &statesync.UserStream{}
-	initialRemote, _ := statesync.NewComplete(80, 40, 40)
+	initialRemote, _ := statesync.NewComplete(80, 5, 0)
 	keyStr := server.connection.getKey() // get the key from server
 	ip := "localhost"
 	port := "6001"
@@ -93,7 +93,7 @@ func TestTransportServerSend(t *testing.T) {
 	// fmt.Printf("#test tickAndRecv currentState=%q pointer=%v, assumed=%d\n",
 	// 	client.getCurrentState(), client.getCurrentState(), client.sender.getAssumedReceiverStateIdx())
 
-	// set verbose 
+	// set verbose
 	client.setVerbose(1)
 	server.setVerbose(1)
 
@@ -112,15 +112,19 @@ func TestTransportServerSend(t *testing.T) {
 		action := us.GetAction(i)
 		switch action.(type) {
 		case terminal.UserByte:
+			// fmt.Printf("#test process %#v\n", action)
 		case terminal.Resize:
+			// fmt.Printf("#test process %#v\n", action)
 			// resize the terminal
 		}
-		terminalToHost = terminalInSrv.ActOne(action)
+		terminalToHost += completeTerminal.ActOne(action)
 	}
 
-	fmt.Printf("#test server send: got diff %q, terminalToHost=%q\n", diff, terminalToHost)
-	terminalInSrv.RegisterInputFrame(server.getRemoteStateNum(), time.Now().UnixMilli())
-	server.setCurrentState(terminalInSrv)
+	// fmt.Printf("#test server send: got diff %q, terminalToHost=%q\n", diff, terminalToHost)
+	completeTerminal.Act(terminalToHost)
+	completeTerminal.RegisterInputFrame(server.getRemoteStateNum(), time.Now().UnixMilli())
+	server.setCurrentState(completeTerminal)
+	// fmt.Printf("#test currentState=%p, terminalInSrv=%p\n", server.getCurrentState(), completeTerminal)
 
 	// send complete to client
 	server.tick()
@@ -128,6 +132,10 @@ func TestTransportServerSend(t *testing.T) {
 	client.recv()
 	time.Sleep(time.Millisecond * 20)
 
+	// fmt.Printf("#test server currentState=%p, client last remoteState=%p\n", server.getCurrentState(), client.getLatestRemoteState().state)
+	if !server.getCurrentState().Equal(client.getLatestRemoteState().state) {
+		t.Errorf("#test server send %v to client, client got %v\n ", server.getCurrentState(), client.getLatestRemoteState().state)
+	}
 	server.connection.sock().Close()
 	client.connection.sock().Close()
 }

@@ -55,9 +55,9 @@ func NewTransportServer[S State[S], R State[R]](initialState S, initialRemote R,
 
 	ts.receivedState = make([]TimestampedState[R], 0)
 	ts.receivedState = append(ts.receivedState,
-		TimestampedState[R]{time.Now().UnixMilli(), 0, initialRemote})
+		TimestampedState[R]{time.Now().UnixMilli(), 0, initialRemote.Clone()})
 
-	ts.lastReceiverState = initialRemote
+	ts.lastReceiverState = ts.receivedState[0].state
 	ts.fragments = NewFragmentAssembly()
 	return ts
 }
@@ -69,9 +69,9 @@ func NewTransportClient[S State[S], R State[R]](initialState S, initialRemote R,
 
 	tc.receivedState = make([]TimestampedState[R], 0)
 	tc.receivedState = append(tc.receivedState,
-		TimestampedState[R]{time.Now().UnixMilli(), 0, initialRemote})
+		TimestampedState[R]{time.Now().UnixMilli(), 0, initialRemote.Clone()})
 
-	tc.lastReceiverState = initialRemote
+	tc.lastReceiverState = tc.receivedState[0].state
 	tc.fragments = NewFragmentAssembly()
 	return tc
 }
@@ -155,7 +155,7 @@ func (t *Transport[S, R]) recv() error {
 			now := time.Now().UnixMilli()
 			if now < t.receiverQuenchTimer { // deny letting state grow further
 				if t.verbose > 0 {
-					fmt.Printf("[%d] Receiver queue full, discarding %d (malicious sender or "+
+					fmt.Printf("#recv [%d] Receiver queue full, discarding %d (malicious sender or "+
 						"long-unidirectional connectivity?)\n", now%100000, inst.NewNum)
 				}
 				return nil
@@ -183,7 +183,7 @@ func (t *Transport[S, R]) recv() error {
 				t.receivedState = rs
 
 				if t.verbose > 0 {
-					fmt.Printf("[%d] Received OUT-OF-ORDER state %d [ack %d]\n",
+					fmt.Printf("#recv [%d] Received OUT-OF-ORDER state %d [ack %d]\n",
 						time.Now().UnixMilli()%100000, newState.num, inst.AckNum)
 				}
 				return nil
@@ -191,11 +191,11 @@ func (t *Transport[S, R]) recv() error {
 			rs = append(rs, t.receivedState[i])
 		}
 		if t.verbose > 0 {
-			fmt.Printf("[%d] Received state %d [coming from %d, ack %d]\n",
+			fmt.Printf("#recv [%d] Received state %d [coming from %d, ack %d]\n",
 				time.Now().UnixMilli()%100000, newState.num, inst.OldNum, inst.AckNum)
 		}
 
-		fmt.Printf("#recv receive received state num %d from %q.\n", newState.num, t.connection.remoteAddr)
+		fmt.Printf("#recv receive state num %d from %q got diff=%q.\n", newState.num, t.connection.remoteAddr, inst.Diff)
 
 		t.receivedState = append(t.receivedState, newState) // insert new state
 		t.sender.setAckNum(t.receivedState[len(t.receivedState)-1].num)
