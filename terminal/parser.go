@@ -115,7 +115,7 @@ type Parser struct {
 }
 
 func NewParser() *Parser {
-	p := new(Parser)
+	p := &Parser{}
 
 	// TODO consider to rotate the log file and limit the log file size.
 	// file, err := os.OpenFile("aprish.logs.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)

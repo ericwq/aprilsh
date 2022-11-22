@@ -28,6 +28,7 @@ package terminal
 
 import (
 	"io"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -73,7 +74,7 @@ func TestEmulatorResize(t *testing.T) {
 	}
 }
 
-func TestReadOctetsToHost(t *testing.T) {
+func TestEmulatorReadOctetsToHost(t *testing.T) {
 	tc := []struct {
 		name   string
 		rawStr []string
@@ -97,7 +98,7 @@ func TestReadOctetsToHost(t *testing.T) {
 	}
 }
 
-func TestHandleStreamEmpty(t *testing.T) {
+func TestEmulatorHandleStreamEmpty(t *testing.T) {
 	emu := NewEmulator3(80, 40, 0)
 	hds := emu.HandleStream("")
 	if len(hds) != 0 {
@@ -105,7 +106,7 @@ func TestHandleStreamEmpty(t *testing.T) {
 	}
 }
 
-func TestNormalizeCursorPos(t *testing.T) {
+func TestEmulatorNormalizeCursorPos(t *testing.T) {
 	type Position struct {
 		posX, posY int
 	}
@@ -130,7 +131,7 @@ func TestNormalizeCursorPos(t *testing.T) {
 	}
 }
 
-func TestJumpToNextTabStop(t *testing.T) {
+func TestEmulatorJumpToNextTabStop(t *testing.T) {
 	tc := []struct {
 		name       string
 		setPosX    int
@@ -166,7 +167,7 @@ func TestJumpToNextTabStop(t *testing.T) {
 	}
 }
 
-func TestLookupCharset(t *testing.T) {
+func TestEmulatorLookupCharset(t *testing.T) {
 	emu := NewEmulator3(80, 40, 0)
 
 	resetCharsetState(&emu.charsetState)
@@ -187,7 +188,7 @@ func TestLookupCharset(t *testing.T) {
 	}
 }
 
-func TestPasteSelection(t *testing.T) {
+func TestEmulatorPasteSelection(t *testing.T) {
 	tc := []struct {
 		label              string
 		bracketedPasteMode bool
@@ -214,7 +215,7 @@ func TestPasteSelection(t *testing.T) {
 	}
 }
 
-func TestHasFocus(t *testing.T) {
+func TestEmulatorHasFocus(t *testing.T) {
 	tc := []struct {
 		label          string
 		hasFocus       bool
@@ -295,7 +296,7 @@ func TestEmulatorMoveCursor(t *testing.T) {
 	}
 }
 
-func TestCompleteSetCursorVisible(t *testing.T) {
+func TestEmulatorSetCursorVisible(t *testing.T) {
 	emu := NewEmulator3(80, 40, 40)
 
 	emu.SetCursorVisible(false)
@@ -309,7 +310,7 @@ func TestCompleteSetCursorVisible(t *testing.T) {
 	}
 }
 
-func TestCompletePrefixWindowTitle(t *testing.T) {
+func TestEmulatorPrefixWindowTitle(t *testing.T) {
 	emu := NewEmulator3(80, 40, 40)
 
 	base := "base title"
@@ -327,7 +328,7 @@ func TestCompletePrefixWindowTitle(t *testing.T) {
 	}
 }
 
-func TestCompleteGetCell(t *testing.T) {
+func TestEmulatorGetCell(t *testing.T) {
 	tc := []struct {
 		label      string
 		seq        string
@@ -354,6 +355,73 @@ func TestCompleteGetCell(t *testing.T) {
 		pc := emu.GetCellPtr(v.posY, v.posX)
 		if v.contents != pc.contents {
 			t.Errorf("%q expect (%d,%d) contains %q, got %q\n", v.label, v.posY, v.posX, v.contents, pc.contents)
+		}
+	}
+}
+
+func TestEmulatorClone(t *testing.T) {
+	tc := []struct {
+		label        string
+		nRows, nCols int    // resize
+		seq          string // mix data stream
+	}{
+		{"seq, no resize", 0, 0, "\x1B[11;74Houtput for normal wrap line."},
+		{"alter screen buffer, no resize", 0, 0, "\x1B[?47h\x1B[11;74Houtput for normal wrap line."},
+	}
+
+	for _, v := range tc {
+		emu := NewEmulator3(80, 40, 40)
+		emu.SetLogTraceOutput(io.Discard)
+
+		emu.HandleStream(v.seq)
+		if v.nCols != 0 && v.nRows != 0 {
+			emu.resize(v.nCols, v.nRows)
+		}
+
+		got := emu.Clone()
+
+		if !reflect.DeepEqual(emu, got) {
+			if !reflect.DeepEqual(emu.cf, got.cf) {
+				t.Errorf("%q cf is not equal\n", v.label)
+			}
+			if !reflect.DeepEqual(emu.frame_alt, got.frame_alt) {
+				t.Errorf("%q frame_alt is not equal\n", v.label)
+			}
+			if !reflect.DeepEqual(emu.frame_pri, got.frame_pri) {
+				t.Errorf("%q frame_pri is not equal\n", v.label)
+			}
+			if !reflect.DeepEqual(emu.savedCursor_DEC, got.savedCursor_DEC) {
+				t.Errorf("%q savedCursor_DEC is not equal\n", v.label)
+			}
+			if !reflect.DeepEqual(emu.savedCursor_DEC_alt, got.savedCursor_DEC_alt) {
+				t.Errorf("%q savedCursor_DEC_alt is not equal\n", v.label)
+			}
+			if !reflect.DeepEqual(emu.savedCursor_DEC_pri, got.savedCursor_DEC_pri) {
+				t.Errorf("%q savedCursor_DEC_pri is not equal\n", v.label)
+			}
+			if !reflect.DeepEqual(emu.tabStops, got.tabStops) {
+				t.Errorf("%q tabStops is not equal\n", v.label)
+			}
+			if !reflect.DeepEqual(emu.charsetState, got.charsetState) {
+				t.Errorf("%q charsetState is not equal\n", v.label)
+			}
+			if !reflect.DeepEqual(emu.selectionData, got.selectionData) {
+				t.Errorf("%q selectionData is not equal\n", v.label)
+			}
+			if !reflect.DeepEqual(emu.selectionStore, got.selectionStore) {
+				t.Errorf("%q selectionStore is not equal\n", v.label)
+			}
+			if !reflect.DeepEqual(emu.user, got.user) {
+				t.Errorf("%q user is not equal\n", v.label)
+			}
+			if !reflect.DeepEqual(emu.logE, got.logE) {
+				t.Errorf("%q logE is not equal\n", v.label)
+			}
+			if !reflect.DeepEqual(emu.parser, got.parser) {
+			} else {
+				t.Errorf("%q expect clone emulator is not equal with origin emulator\n", v.label)
+				t.Errorf("%q parser is not equal\n", v.label)
+			}
 		}
 	}
 }
