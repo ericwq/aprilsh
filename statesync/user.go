@@ -103,6 +103,21 @@ func (u *UserStream) pushBackResize(width, height int) {
 	u.actions = append(u.actions, NewUserEventResize(resize))
 }
 
+func (u *UserStream) Size() int {
+	return len(u.actions)
+}
+
+func (u *UserStream) GetAction(i int) terminal.ActOn {
+	switch u.actions[i].theType {
+	case UserByteType:
+		return u.actions[i].userByte
+	case ResizeType:
+		return u.actions[i].resize
+	default:
+		return nil
+	}
+}
+
 // implements network.State[C any] interface
 // Subtract() the prefix UserStream from current UserStream
 func (u *UserStream) Subtract(prefix *UserStream) {

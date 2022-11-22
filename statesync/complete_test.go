@@ -138,7 +138,7 @@ func TestCompleteSetEchoAck(t *testing.T) {
 
 			ts += p.timestamp
 			// note: the timestamp is delta value in ms.
-			c.registerInputFrame(p.frameNum, now+ts)
+			c.RegisterInputFrame(p.frameNum, now+ts)
 			// fmt.Printf("#test setEchoAck timestamp=%d, ts=%d\n", p.timestamp, ts)
 		}
 
@@ -178,7 +178,7 @@ func TestCompleteWaitTime(t *testing.T) {
 
 			ts += p.timestamp
 			// note: the timestamp is delta value in ms.
-			c.registerInputFrame(p.frameNum, now+ts)
+			c.RegisterInputFrame(p.frameNum, now+ts)
 			// fmt.Printf("#test setEchoAck timestamp=%d, ts=%d\n", p.timestamp, ts)
 		}
 

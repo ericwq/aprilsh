@@ -230,7 +230,17 @@ func (t *Transport[S, R]) setCurrentState(x S) {
 	t.sender.setCurrentState(x)
 }
 
-func (t *Transport[S, R]) getLatestRemoteState() R {
+func (t *Transport[S, R]) getLatestRemoteState() TimestampedState[R] {
 	last := len(t.receivedState) - 1
-	return t.receivedState[last].state
+	return t.receivedState[last]
+}
+
+func (t *Transport[S, R]) getRemoteStateNum() int64 {
+	last := len(t.receivedState) - 1
+	return t.receivedState[last].num
+}
+
+func (t *Transport[S, R]) setVerbose(verbose uint) {
+	t.sender.setVerbose(verbose)
+	t.verbose = verbose
 }

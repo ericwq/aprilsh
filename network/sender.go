@@ -449,6 +449,10 @@ func (ts *TransportSender[T]) setCurrentState(x T) {
 	ts.currentState.ResetInput()
 }
 
+func (ts *TransportSender[T]) setVerbose(verbose uint) {
+	ts.verbose = verbose
+}
+
 // get the first sent state timestamp
 func (ts *TransportSender[T]) getSentStateAckedTimestamp() int64 {
 	return ts.sentStates[0].timestamp

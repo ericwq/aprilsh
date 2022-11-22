@@ -32,9 +32,10 @@ import (
 	"time"
 
 	"github.com/ericwq/aprilsh/statesync"
+	"github.com/ericwq/aprilsh/terminal"
 )
 
-func TestTransportTickAndReceive(t *testing.T) {
+func TestTransportClientSend(t *testing.T) {
 	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
 	initialRemoteSrv := &statesync.UserStream{}
 	desiredIp := "localhost"
@@ -48,7 +49,7 @@ func TestTransportTickAndReceive(t *testing.T) {
 	port := "6000"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
-	pushUserBytesTo(client.getCurrentState(), "Test tick and recv!")
+	pushUserBytesTo(client.getCurrentState(), "Test client send and server empty ack.")
 	// fmt.Printf("#test tickAndRecv currentState=%q pointer=%v, assumed=%d\n",
 	// 	client.getCurrentState(), client.getCurrentState(), client.sender.getAssumedReceiverStateIdx())
 
@@ -64,9 +65,68 @@ func TestTransportTickAndReceive(t *testing.T) {
 	client.recv()
 	time.Sleep(time.Millisecond * 20)
 
-	if !server.getLatestRemoteState().Equal(client.getCurrentState()) {
-		fmt.Printf("#test TickAndReceive client send %q to server, server receive %q from client\n", client.getCurrentState(), server.getLatestRemoteState())
+	// validate client sent and server received contents
+	if !server.getLatestRemoteState().state.Equal(client.getCurrentState()) {
+		fmt.Printf("#test TickAndReceive client send %q to server, server receive %q from client\n",
+			client.getCurrentState(), server.getLatestRemoteState().state)
 	}
+
+	server.connection.sock().Close()
+	client.connection.sock().Close()
+}
+
+func TestTransportServerSend(t *testing.T) {
+	terminalInSrv, _ := statesync.NewComplete(80, 40, 40)
+	initialRemoteSrv := &statesync.UserStream{}
+	desiredIp := "localhost"
+	desiredPort := "6001"
+	server := NewTransportServer(terminalInSrv, initialRemoteSrv, desiredIp, desiredPort)
+
+	initialState := &statesync.UserStream{}
+	initialRemote, _ := statesync.NewComplete(80, 40, 40)
+	keyStr := server.connection.getKey() // get the key from server
+	ip := "localhost"
+	port := "6001"
+	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
+
+	pushUserBytesTo(client.getCurrentState(), "Test server response with terminal state.")
+	// fmt.Printf("#test tickAndRecv currentState=%q pointer=%v, assumed=%d\n",
+	// 	client.getCurrentState(), client.getCurrentState(), client.sender.getAssumedReceiverStateIdx())
+
+	// set verbose 
+	client.setVerbose(1)
+	server.setVerbose(1)
+
+	// send user stream to server
+	client.tick()
+	time.Sleep(time.Millisecond * 20)
+	server.recv()
+	time.Sleep(time.Millisecond * 20)
+
+	// apply remote diff to server current state
+	us := &statesync.UserStream{}
+	diff := server.getRemoteDiff()
+	us.ApplyString(diff)
+	terminalToHost := ""
+	for i := 0; i < us.Size(); i++ {
+		action := us.GetAction(i)
+		switch action.(type) {
+		case terminal.UserByte:
+		case terminal.Resize:
+			// resize the terminal
+		}
+		terminalToHost = terminalInSrv.ActOne(action)
+	}
+
+	fmt.Printf("#test server send: got diff %q, terminalToHost=%q\n", diff, terminalToHost)
+	terminalInSrv.RegisterInputFrame(server.getRemoteStateNum(), time.Now().UnixMilli())
+	server.setCurrentState(terminalInSrv)
+
+	// send complete to client
+	server.tick()
+	time.Sleep(time.Millisecond * 20)
+	client.recv()
+	time.Sleep(time.Millisecond * 20)
 
 	server.connection.sock().Close()
 	client.connection.sock().Close()

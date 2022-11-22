@@ -120,7 +120,7 @@ func (c *Complete) setEchoAck(now int64) (ret bool) {
 
 // register the latest remote state number and time.
 // the latest remote state is the client input state.
-func (c *Complete) registerInputFrame(num, now int64) {
+func (c *Complete) RegisterInputFrame(num, now int64) {
 	c.inputHistory = append(c.inputHistory, pair{num, now})
 }
 
