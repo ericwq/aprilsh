@@ -35,7 +35,7 @@ import (
 	"github.com/rivo/uniseg"
 )
 
-func TestSubtract(t *testing.T) {
+func TestUserStreamSubtract(t *testing.T) {
 	sizes := []struct {
 		width, height int
 	}{
@@ -69,7 +69,7 @@ func TestSubtract(t *testing.T) {
 		// add size data
 		if v.sizeB {
 			for _, v := range sizes {
-				u1.pushBackResize(v.width, v.height)
+				u1.PushBackResize(v.width, v.height)
 			}
 			// fmt.Printf("#test DiffFrom() base+size %s\n", &u1)
 		}
@@ -105,7 +105,7 @@ func TestSubtract(t *testing.T) {
 	}
 }
 
-func TestUserEvent(t *testing.T) {
+func TestUserStreamUserEvent(t *testing.T) {
 	e1 := NewUserEvent(terminal.UserByte{Chs: []rune("🇧🇷")})
 	e2 := NewUserEvent(terminal.UserByte{Chs: []rune("🇧🇷")})
 
@@ -121,7 +121,7 @@ func TestUserEvent(t *testing.T) {
 	}
 }
 
-func TestApplyString(t *testing.T) {
+func TestUserStreamApplyString(t *testing.T) {
 	baseSize := []struct {
 		width, height int
 	}{
@@ -160,7 +160,7 @@ func TestApplyString(t *testing.T) {
 		// add base size data
 		for _, v := range baseSize {
 			// u1.pushBackResize(terminal.Resize{Width: v.width, Height: v.height})
-			u1.pushBackResize(v.width, v.height)
+			u1.PushBackResize(v.width, v.height)
 		}
 		// fmt.Printf("#test ApplyString() base+size %s len=%d\n", &u1, len(u1.actions))
 
@@ -175,7 +175,7 @@ func TestApplyString(t *testing.T) {
 		// add delta size data
 		for _, v := range deltaSize {
 			// u2.pushBackResize(terminal.Resize{Width: v.width, Height: v.height})
-			u2.pushBackResize(v.width, v.height)
+			u2.PushBackResize(v.width, v.height)
 		}
 		// fmt.Printf("#test ApplyString() prefix %s len=%d\n", &u2, len(u2.actions))
 
@@ -193,7 +193,7 @@ func TestApplyString(t *testing.T) {
 	}
 }
 
-func TestInitDiff(t *testing.T) {
+func TestUserStreamInitDiff(t *testing.T) {
 	u3 := UserStream{}
 	got := u3.InitDiff()
 	expect := ""
@@ -202,7 +202,7 @@ func TestInitDiff(t *testing.T) {
 	}
 }
 
-func TestApplyStringFail(t *testing.T) {
+func TestUserStreamApplyStringFail(t *testing.T) {
 	diff := "malformed diff"
 	u3 := &UserStream{}
 	if err := u3.ApplyString(diff); err == nil {
@@ -210,7 +210,7 @@ func TestApplyStringFail(t *testing.T) {
 	}
 }
 
-func TestString(t *testing.T) {
+func TestUserStreamString(t *testing.T) {
 	tc := []struct {
 		title     string
 		keystroke string
@@ -219,7 +219,10 @@ func TestString(t *testing.T) {
 	}{
 		{"no size", "has keystroke, no size data", false, "Keystroke:\"has keystroke, no size data\", Resize:, size=27"},
 		{"no keystroke", "", true, "Keystroke:\"\", Resize:(80,40),(132,60),(140,70),, size=3"},
-		{"both keystroke and size", "has both keystroke and data", true, "Keystroke:\"has both keystroke and data\", Resize:(80,40),(132,60),(140,70),, size=30"},
+		{
+			"both keystroke and size", "has both keystroke and data", true,
+			"Keystroke:\"has both keystroke and data\", Resize:(80,40),(132,60),(140,70),, size=30",
+		},
 		{"empty", "", false, "Keystroke:\"\", Resize:, size=0"},
 	}
 
@@ -241,7 +244,7 @@ func TestString(t *testing.T) {
 		// add size data
 		if v.size {
 			for _, v := range sizes {
-				u1.pushBackResize(v.width, v.height)
+				u1.PushBackResize(v.width, v.height)
 			}
 		}
 
@@ -249,6 +252,80 @@ func TestString(t *testing.T) {
 		if v.expect != got {
 			t.Errorf("%q expect [%s], got [%s]\n", v.title, v.expect, got)
 		}
+	}
+}
 
+func TestUserStreamGetAction(t *testing.T) {
+	tc := []struct {
+		title        string
+		keystrokeStr string
+		addSizeItem  bool
+		expectSize   int
+		idx01        int
+		item1        terminal.UserByte
+		idx02        int
+		item2        terminal.Resize
+		idx03        int
+		item3        terminal.ActOn
+	}{
+		{
+			"english keystroke and size", "has both keystroke and data", true, 30,
+			6,
+			terminal.UserByte{Chs: []rune{'t'}},
+			28,
+			terminal.Resize{Width: 132, Height: 60},
+			31, nil,
+		},
+		{
+			"chinese keystroke and size", "包含用户输入和窗口大小调整数据", true, 18,
+			6,
+			terminal.UserByte{Chs: []rune("和")},
+			15,
+			terminal.Resize{Width: 80, Height: 40},
+			18, nil,
+		},
+	}
+
+	sizes := []struct {
+		width, height int
+	}{
+		{80, 40}, {132, 60}, {140, 70},
+	}
+	for _, v := range tc {
+
+		us := UserStream{}
+
+		// add user keystroke
+		chs := []rune(v.keystrokeStr)
+		for i := range chs {
+			us.PushBack([]rune{chs[i]})
+		}
+
+		// add size data
+		if v.addSizeItem {
+			for _, v := range sizes {
+				us.PushBackResize(v.width, v.height)
+			}
+		}
+
+		// validate size
+		if v.expectSize != us.Size() {
+			t.Errorf("%q expect size %d, got %d\n", v.title, v.expectSize, us.Size())
+		}
+
+		// validate user byte item
+		if !reflect.DeepEqual(v.item1, us.GetAction(v.idx01)) {
+			t.Errorf("%q expect index %d contains %q, got %q\n", v.title, v.idx01, v.item1, us.GetAction(v.idx01))
+		}
+
+		// validate size item
+		if !reflect.DeepEqual(v.item2, us.GetAction(v.idx02)) {
+			t.Errorf("%q expect index %d contains %q, got %q\n", v.title, v.idx02, v.item2, us.GetAction(v.idx02))
+		}
+
+		// validate out-of-range item
+		if us.GetAction(v.idx03) != v.item3 {
+			t.Errorf("%q getAction() expect %q, got %q\n", v.title, v.item3, us.GetAction(v.idx03))
+		}
 	}
 }

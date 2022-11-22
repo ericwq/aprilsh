@@ -98,7 +98,7 @@ func (u *UserStream) PushBack(x []rune) {
 	u.actions = append(u.actions, NewUserEvent(userStroke))
 }
 
-func (u *UserStream) pushBackResize(width, height int) {
+func (u *UserStream) PushBackResize(width, height int) {
 	resize := terminal.Resize{Width: width, Height: height}
 	u.actions = append(u.actions, NewUserEventResize(resize))
 }
@@ -108,14 +108,16 @@ func (u *UserStream) Size() int {
 }
 
 func (u *UserStream) GetAction(i int) terminal.ActOn {
-	switch u.actions[i].theType {
-	case UserByteType:
-		return u.actions[i].userByte
-	case ResizeType:
-		return u.actions[i].resize
-	default:
-		return nil
+	if 0 <= i && i < len(u.actions) {
+		switch u.actions[i].theType {
+		case UserByteType:
+			return u.actions[i].userByte
+		case ResizeType:
+			return u.actions[i].resize
+		}
 	}
+
+	return nil
 }
 
 // implements network.State[C any] interface
