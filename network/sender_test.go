@@ -28,6 +28,7 @@ package network
 
 import (
 	"fmt"
+	"io"
 	"math"
 	"strings"
 	"testing"
@@ -358,4 +359,79 @@ func TestSenderWaitTime(t *testing.T) {
 
 		connection.sock().Close()
 	}
+}
+
+func TestSenderShutdown(t *testing.T) {
+	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
+	initialRemoteSrv := &statesync.UserStream{}
+	desiredIp := "localhost"
+	desiredPort := "6100"
+	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
+
+	initialState := &statesync.UserStream{}
+	initialRemote, _ := statesync.NewComplete(80, 40, 40)
+	keyStr := server.connection.getKey()
+	client := NewTransportClient(initialState, initialRemote, keyStr, desiredIp, desiredPort)
+
+	// disable log
+	server.connection.logW.SetOutput(io.Discard)
+
+	// prepare for shutdown
+	client.sender.shutdownInProgress = true
+	client.sender.sendEmptyAck()
+	time.Sleep(time.Millisecond * 20)
+
+	// fmt.Println("#test shutdown BEFORE.")
+	// for i := range server.receivedState {
+	// 	fmt.Printf("#test shutdown %d\n", server.receivedState[i].num)
+	// }
+	server.recv()
+	expect := client.sender.getSentStateLast()
+	// got := server.getRemoteStateNum()
+	// TODO shutdown send newNum (-1) to peer, with the sorted receivedState, the shutdown logic need to be checked
+	got := server.receivedState[0].num
+
+	if got != expect {
+		t.Errorf("#test recv repeat expect %d, got %d\n", expect, got)
+	}
+
+	// fmt.Println("#test shutdown AFTER.")
+	// for i := range server.receivedState {
+	// 	fmt.Printf("#test shutdown %d\n", server.receivedState[i].num)
+	// }
+
+	// clean the socket
+	server.connection.sock().Close()
+	client.connection.sock().Close()
+}
+
+func TestSenderSendEmptyAckFail(t *testing.T) {
+	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
+	initialRemoteSrv := &statesync.UserStream{}
+	desiredIp := "localhost"
+	desiredPort := "6100"
+	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
+
+	initialState := &statesync.UserStream{}
+	initialRemote, _ := statesync.NewComplete(80, 40, 40)
+	keyStr := server.connection.getKey()
+	client := NewTransportClient(initialState, initialRemote, keyStr, desiredIp, desiredPort)
+
+	// disable log
+	server.connection.logW.SetOutput(io.Discard)
+
+	// mockUdpConn will send with an error
+	var mock mockUdpConn
+	client.connection.socks = append(client.connection.socks, &mock)
+
+	// validate the result
+	err := client.sender.sendEmptyAck()
+	// fmt.Printf("#test sender sendEmptyAck expect %q\n", err)
+	if err == nil {
+		t.Errorf("#test sender sendEmptyAck expect %q\n", err)
+	}
+
+	// clean the socket
+	server.connection.sock().Close()
+	client.connection.sock().Close()
 }

@@ -29,6 +29,7 @@ package network
 import (
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 	"testing"
 	"time"
@@ -56,6 +57,9 @@ func TestTransportClientSend(t *testing.T) {
 	pushUserBytesTo(client.getCurrentState(), "Test client send and server empty ack.")
 	// fmt.Printf("#test tickAndRecv currentState=%q pointer=%v, assumed=%d\n",
 	// 	client.getCurrentState(), client.getCurrentState(), client.sender.getAssumedReceiverStateIdx())
+
+	// disable log
+	server.connection.logW.SetOutput(io.Discard)
 
 	// send user stream to server
 	client.tick()
@@ -136,6 +140,7 @@ func TestTransportServerSend(t *testing.T) {
 	client.recv()
 	time.Sleep(time.Millisecond * 20)
 
+	// validate the result
 	// fmt.Printf("#test server currentState=%p, client last remoteState=%p\n", server.getCurrentState(), client.getLatestRemoteState().state)
 	if !server.getCurrentState().Equal(client.getLatestRemoteState().state) {
 		t.Errorf("#test server send %v to client, client got %v\n ", server.getCurrentState(), client.getLatestRemoteState().state)

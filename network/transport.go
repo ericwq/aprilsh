@@ -173,7 +173,7 @@ func (t *Transport[S, R]) recv() error {
 		}
 
 		// Insert new state in sorted place
-		rs := t.receivedState[:0]
+		rs := make([]TimestampedState[R],0)
 		for i := range t.receivedState {
 			if t.receivedState[i].num > newState.num {
 				// insert out-of-order new state
@@ -181,6 +181,10 @@ func (t *Transport[S, R]) recv() error {
 				rs = append(rs, t.receivedState[i:]...)
 				t.receivedState = rs
 
+				// fmt.Println("#recv shutdown mark2.")
+				// for i := range t.receivedState {
+				// 	fmt.Printf("#test shutdown %d\n", t.receivedState[i].num)
+				// }
 				if t.verbose > 0 {
 					fmt.Fprintf(os.Stderr, "#recv [%d] Received OUT-OF-ORDER state %d [ack %d]\n",
 						time.Now().UnixMilli()%100000, newState.num, inst.AckNum)
