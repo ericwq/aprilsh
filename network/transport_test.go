@@ -83,14 +83,14 @@ func TestTransportServerSend(t *testing.T) {
 	completeTerminal, _ := statesync.NewComplete(80, 5, 0)
 	blank := &statesync.UserStream{}
 	desiredIp := "localhost"
-	desiredPort := "6001"
+	desiredPort := "6010"
 	server := NewTransportServer(completeTerminal, blank, desiredIp, desiredPort)
 
 	initialState := &statesync.UserStream{}
 	initialRemote, _ := statesync.NewComplete(80, 5, 0)
 	keyStr := server.connection.getKey() // get the key from server
 	ip := "localhost"
-	port := "6001"
+	port := "6010"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
 	pushUserBytesTo(client.getCurrentState(), "Test server response with terminal state.")
@@ -148,7 +148,7 @@ func TestTransportRecvError(t *testing.T) {
 	completeTerminal, _ := statesync.NewComplete(80, 5, 0)
 	blank := &statesync.UserStream{}
 	desiredIp := "localhost"
-	desiredPort := "6001"
+	desiredPort := "6011"
 	server := NewTransportServer(completeTerminal, blank, desiredIp, desiredPort)
 
 	// mockUdpConn with round=0 will return unix.EWOULDBLOCK error
@@ -208,14 +208,14 @@ func TestTransportRecvRepeat(t *testing.T) {
 	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
 	initialRemoteSrv := &statesync.UserStream{}
 	desiredIp := "localhost"
-	desiredPort := "6002"
+	desiredPort := "6003"
 	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
 
 	initialState := &statesync.UserStream{}
 	initialRemote, _ := statesync.NewComplete(80, 40, 40)
 	keyStr := server.connection.getKey() // get the key from server
 	ip := "localhost"
-	port := "6002"
+	port := "6003"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
 	// first round
@@ -248,14 +248,14 @@ func TestTransportRecvNotFoundOld(t *testing.T) {
 	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
 	initialRemoteSrv := &statesync.UserStream{}
 	desiredIp := "localhost"
-	desiredPort := "6002"
+	desiredPort := "6004"
 	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
 
 	initialState := &statesync.UserStream{}
 	initialRemote, _ := statesync.NewComplete(80, 40, 40)
 	keyStr := server.connection.getKey() // get the key from server
 	ip := "localhost"
-	port := "6002"
+	port := "6004"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
 	// send customized instruction to server
@@ -276,6 +276,129 @@ func TestTransportRecvNotFoundOld(t *testing.T) {
 	expect := "Ignoring out-of-order packet. Reference state"
 	if !strings.Contains(err.Error(), expect) {
 		t.Errorf("#test recv expect %q, got %q\n", expect, err)
+	}
+
+	server.connection.sock().Close()
+	client.connection.sock().Close()
+}
+
+func TestTransportRecvOverLimit(t *testing.T) {
+	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
+	initialRemoteSrv := &statesync.UserStream{}
+	desiredIp := "localhost"
+	desiredPort := "6005"
+	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
+
+	initialState := &statesync.UserStream{}
+	initialRemote, _ := statesync.NewComplete(80, 40, 40)
+	keyStr := server.connection.getKey() // get the key from server
+	ip := "localhost"
+	port := "6005"
+	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
+
+	// set verbose
+	server.setVerbose(1)
+
+	// prepare the receivedState list
+	for i := 0; i < 1024; i++ {
+		server.receivedState = append(server.receivedState,
+			TimestampedState[*statesync.UserStream]{time.Now().UnixMilli(), +1, initialState.Clone()})
+		// time.Sleep(time.Millisecond * 2)
+	}
+
+	// send customized instruction to server
+	var newNum int64 = 1024
+	client.sender.sendInFragments("", newNum)
+	time.Sleep(time.Millisecond * 20)
+
+	server.recv()
+	if server.receiverQuenchTimer-time.Now().UnixMilli() > 1000 {
+		// that is the expected result
+		// t.Logf("#test recv over limit, receivedQuenchTimer=%d, now=%d\n", server.receiverQuenchTimer, time.Now().UnixMilli())
+	} else {
+		t.Errorf("#test recv over limit, receivedQuenchTimer=%d, now=%d\n", server.receiverQuenchTimer, time.Now().UnixMilli())
+	}
+
+	server.connection.sock().Close()
+	client.connection.sock().Close()
+}
+
+func TestTransportRecvOverLimit2(t *testing.T) {
+	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
+	initialRemoteSrv := &statesync.UserStream{}
+	desiredIp := "localhost"
+	desiredPort := "6005"
+	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
+
+	initialState := &statesync.UserStream{}
+	initialRemote, _ := statesync.NewComplete(80, 40, 40)
+	keyStr := server.connection.getKey() // get the key from server
+	ip := "localhost"
+	port := "6005"
+	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
+
+	// set verbose
+	server.setVerbose(1)
+
+	// prepare the receivedState list
+	for i := 0; i < 1024; i++ {
+		server.receivedState = append(server.receivedState,
+			TimestampedState[*statesync.UserStream]{time.Now().UnixMilli(), +1, initialState.Clone()})
+		// time.Sleep(time.Millisecond * 2)
+	}
+
+	// send customized instruction to server
+	var newNum int64 = 1024
+	client.sender.sendInFragments("", newNum)
+	time.Sleep(time.Millisecond * 20)
+
+	// pre-condition for this limit branch
+	server.receiverQuenchTimer = time.Now().UnixMilli() + 100
+
+	// validate the result
+	err := server.recv()
+	if err != nil {
+		t.Errorf("#test recv over limit, receivedQuenchTimer=%d, now=%d\n", server.receiverQuenchTimer, time.Now().UnixMilli())
+	}
+	server.connection.sock().Close()
+	client.connection.sock().Close()
+}
+
+func TestTransportRecvOutOfOrder(t *testing.T) {
+	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
+	initialRemoteSrv := &statesync.UserStream{}
+	desiredIp := "localhost"
+	desiredPort := "6026"
+	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
+
+	initialState := &statesync.UserStream{}
+	initialRemote, _ := statesync.NewComplete(80, 40, 40)
+	keyStr := server.connection.getKey() // get the key from server
+	ip := "localhost"
+	port := "6026"
+	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
+
+	// set verbose
+	// client.setVerbose(1)
+	server.setVerbose(1)
+
+	// prepare the receivedState list
+	server.receivedState = append(server.receivedState,
+		TimestampedState[*statesync.UserStream]{time.Now().UnixMilli(), 1, initialState.Clone()})
+	time.Sleep(time.Millisecond * 10)
+	server.receivedState = append(server.receivedState,
+		TimestampedState[*statesync.UserStream]{time.Now().UnixMilli(), 4, initialState.Clone()})
+	time.Sleep(time.Millisecond * 10)
+
+	// send customized instruction to server
+	var newNum int64 = 3
+	client.sender.sendInFragments("", newNum)
+	time.Sleep(time.Millisecond * 20)
+
+	// validate the order of state
+	server.recv()
+	if server.receivedState[2].num != newNum {
+		t.Errorf("#test recv expect %d, got %q\n", newNum, server.receivedState[2].num)
 	}
 
 	server.connection.sock().Close()
