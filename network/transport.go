@@ -29,6 +29,7 @@ package network
 import (
 	"errors"
 	"fmt"
+	"os"
 	"time"
 )
 
@@ -81,11 +82,9 @@ func NewTransportClient[S State[S], R State[R]](initialState S, initialRemote R,
 func (t *Transport[S, R]) processThrowawayUntil(throwawayNum int64) {
 	rs := t.receivedState[:0]
 	for i := range t.receivedState {
-		if t.receivedState[i].num < throwawayNum {
-			// skip means erase this element
-		} else {
+		if t.receivedState[i].num >= throwawayNum {
 			rs = append(rs, t.receivedState[i])
-		}
+		} // else condition means erase this element
 	}
 	t.receivedState = rs
 }
@@ -155,7 +154,7 @@ func (t *Transport[S, R]) recv() error {
 			now := time.Now().UnixMilli()
 			if now < t.receiverQuenchTimer { // deny letting state grow further
 				if t.verbose > 0 {
-					fmt.Printf("#recv [%d] Receiver queue full, discarding %d (malicious sender or "+
+					fmt.Fprintf(os.Stderr, "#recv [%d] Receiver queue full, discarding %d (malicious sender or "+
 						"long-unidirectional connectivity?)\n", now%100000, inst.NewNum)
 				}
 				return nil
@@ -183,7 +182,7 @@ func (t *Transport[S, R]) recv() error {
 				t.receivedState = rs
 
 				if t.verbose > 0 {
-					fmt.Printf("#recv [%d] Received OUT-OF-ORDER state %d [ack %d]\n",
+					fmt.Fprintf(os.Stderr, "#recv [%d] Received OUT-OF-ORDER state %d [ack %d]\n",
 						time.Now().UnixMilli()%100000, newState.num, inst.AckNum)
 				}
 				return nil
@@ -191,11 +190,11 @@ func (t *Transport[S, R]) recv() error {
 			rs = append(rs, t.receivedState[i])
 		}
 		if t.verbose > 0 {
-			fmt.Printf("#recv [%d] Received state %d [coming from %d, ack %d]\n",
+			fmt.Fprintf(os.Stderr, "#recv [%d] Received state %d [coming from %d, ack %d]\n",
 				time.Now().UnixMilli()%100000, newState.num, inst.OldNum, inst.AckNum)
 		}
 
-		fmt.Printf("#recv receive state num %d from %q got diff=%q.\n", newState.num, t.connection.remoteAddr, inst.Diff)
+		// fmt.Printf("#recv receive state num %d from %q got diff=%q.\n", newState.num, t.connection.remoteAddr, inst.Diff)
 
 		t.receivedState = append(t.receivedState, newState) // insert new state
 		t.sender.setAckNum(t.receivedState[len(t.receivedState)-1].num)
