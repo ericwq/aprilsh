@@ -27,12 +27,16 @@ SOFTWARE.
 package network
 
 import (
+	"errors"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
+	pb "github.com/ericwq/aprilsh/protobufs"
 	"github.com/ericwq/aprilsh/statesync"
 	"github.com/ericwq/aprilsh/terminal"
+	"golang.org/x/sys/unix"
 )
 
 func TestTransportClientSend(t *testing.T) {
@@ -136,6 +140,144 @@ func TestTransportServerSend(t *testing.T) {
 	if !server.getCurrentState().Equal(client.getLatestRemoteState().state) {
 		t.Errorf("#test server send %v to client, client got %v\n ", server.getCurrentState(), client.getLatestRemoteState().state)
 	}
+	server.connection.sock().Close()
+	client.connection.sock().Close()
+}
+
+func TestTransportRecvError(t *testing.T) {
+	completeTerminal, _ := statesync.NewComplete(80, 5, 0)
+	blank := &statesync.UserStream{}
+	desiredIp := "localhost"
+	desiredPort := "6001"
+	server := NewTransportServer(completeTerminal, blank, desiredIp, desiredPort)
+
+	// mockUdpConn with round=0 will return unix.EWOULDBLOCK error
+	var mock mockUdpConn
+	server.connection.socks = append(server.connection.socks, &mock)
+	server.connection.socks = server.connection.socks[len(server.connection.socks)-1:]
+
+	// validate
+	if err := server.recv(); err != nil {
+		if !errors.Is(err, unix.EWOULDBLOCK) {
+			t.Errorf("#test recv error expect err=%q, got %q\n", unix.EWOULDBLOCK, err)
+		}
+	}
+}
+
+func TestTransportRecvVersionError(t *testing.T) {
+	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
+	initialRemoteSrv := &statesync.UserStream{}
+	desiredIp := "localhost"
+	desiredPort := "6002"
+	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
+
+	initialState := &statesync.UserStream{}
+	initialRemote, _ := statesync.NewComplete(80, 40, 40)
+	keyStr := server.connection.getKey() // get the key from server
+	ip := "localhost"
+	port := "6002"
+	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
+
+	// send customized instruction to server
+	var newNum int64 = 1
+	inst := pb.Instruction{}
+	inst.ProtocolVersion = APRILSH_PROTOCOL_VERSION + 1 // mock version
+	inst.OldNum = client.sender.assumedReceiverState.num
+	inst.NewNum = newNum
+	inst.AckNum = client.sender.ackNum
+	inst.ThrowawayNum = client.sender.sentStates[0].num
+	inst.Diff = []byte("")
+	inst.Chaff = []byte(client.sender.makeChaff())
+	client.sender.sendFragments(&inst, newNum)
+
+	time.Sleep(time.Millisecond * 20)
+
+	err := server.recv()
+	if err != nil {
+		expect := errors.New("aprilsh protocol version mismatch.")
+		if err.Error() != expect.Error() {
+			t.Errorf("#test recv error expect %q, got %q\n", expect, err)
+		}
+	}
+
+	server.connection.sock().Close()
+	client.connection.sock().Close()
+}
+
+func TestTransportRecvRepeat(t *testing.T) {
+	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
+	initialRemoteSrv := &statesync.UserStream{}
+	desiredIp := "localhost"
+	desiredPort := "6002"
+	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
+
+	initialState := &statesync.UserStream{}
+	initialRemote, _ := statesync.NewComplete(80, 40, 40)
+	keyStr := server.connection.getKey() // get the key from server
+	ip := "localhost"
+	port := "6002"
+	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
+
+	// first round
+	pushUserBytesTo(client.getCurrentState(), "first regular send")
+	client.tick()
+	time.Sleep(time.Millisecond * 20)
+	server.recv()
+	time.Sleep(time.Millisecond * 20)
+
+	// second round, send repeat state
+	var newNum int64 = 1
+	client.sender.sendInFragments("", newNum)
+	time.Sleep(time.Millisecond * 20)
+
+	server.recv()
+	got := server.receivedState[1].num
+	if got != newNum {
+		t.Errorf("#test recv repeat expect %q, got %q\n", newNum, got)
+	}
+
+	// coverage for waitTime
+	server.waitTime()
+
+	// clean the socket
+	server.connection.sock().Close()
+	client.connection.sock().Close()
+}
+
+func TestTransportRecvNotFoundOld(t *testing.T) {
+	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
+	initialRemoteSrv := &statesync.UserStream{}
+	desiredIp := "localhost"
+	desiredPort := "6002"
+	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
+
+	initialState := &statesync.UserStream{}
+	initialRemote, _ := statesync.NewComplete(80, 40, 40)
+	keyStr := server.connection.getKey() // get the key from server
+	ip := "localhost"
+	port := "6002"
+	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
+
+	// send customized instruction to server
+	var newNum int64 = 1
+	inst := pb.Instruction{}
+	inst.ProtocolVersion = APRILSH_PROTOCOL_VERSION
+	inst.OldNum = 3 // oldNum doesn't exist
+	inst.NewNum = newNum
+	inst.AckNum = client.sender.ackNum
+	inst.ThrowawayNum = client.sender.sentStates[0].num
+	inst.Diff = []byte("")
+	inst.Chaff = []byte(client.sender.makeChaff())
+	client.sender.sendFragments(&inst, newNum)
+
+	time.Sleep(time.Millisecond * 20)
+
+	err := server.recv()
+	expect := "Ignoring out-of-order packet. Reference state"
+	if !strings.Contains(err.Error(), expect) {
+		t.Errorf("#test recv expect %q, got %q\n", expect, err)
+	}
+
 	server.connection.sock().Close()
 	client.connection.sock().Close()
 }

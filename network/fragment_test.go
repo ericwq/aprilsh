@@ -81,7 +81,7 @@ func TestFragmenter(t *testing.T) {
 	fe := NewFragmenter()
 
 	in0 := new(pb.Instruction)
-	in0.ProtocolVersion = 2
+	in0.ProtocolVersion = APRILSH_PROTOCOL_VERSION
 	in0.OldNum = 9
 	in0.NewNum = 10
 	in0.AckNum = 8

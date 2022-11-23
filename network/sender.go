@@ -220,12 +220,16 @@ func (ts *TransportSender[T]) sendInFragments(diff string, newNum int64) error {
 	inst.Diff = []byte(diff)
 	inst.Chaff = []byte(ts.makeChaff())
 
+	return ts.sendFragments(&inst, newNum)
+}
+
+func (ts *TransportSender[T]) sendFragments(inst *pb.Instruction, newNum int64) error {
 	if newNum == -1 {
 		ts.shutdownTries++
 	}
 
 	// TODO we don't use OCB, so remove the encrypt.ADDED_BYTES ?
-	fragments := ts.fragmenter.makeFragments(&inst, ts.connection.getMTU()-ADDED_BYTES-encrypt.ADDED_BYTES)
+	fragments := ts.fragmenter.makeFragments(inst, ts.connection.getMTU()-ADDED_BYTES-encrypt.ADDED_BYTES)
 	for i := range fragments {
 		if err := ts.connection.send(fragments[i].String()); err != nil {
 			return err

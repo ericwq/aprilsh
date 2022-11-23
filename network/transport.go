@@ -138,9 +138,9 @@ func (t *Transport[S, R]) recv() error {
 		}
 
 		if !found {
-			fmt.Printf("Ignoring out-of-order packet. Reference state %d has been "+
+			return fmt.Errorf("Ignoring out-of-order packet. Reference state %d has been "+
 				"discarded or hasn't yet been received.\n", inst.OldNum)
-			return nil // this is security-sensitive and part of how we enforce idempotency
+			// this is security-sensitive and part of how we enforce idempotency
 		}
 
 		// Do not accept state if our queue is full.
