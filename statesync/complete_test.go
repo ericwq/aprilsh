@@ -198,3 +198,12 @@ func TestCompleteResetInput(t *testing.T) {
 			c.terminal.GetCursorRow(), c.terminal.GetCursorCol())
 	}
 }
+
+func TestCompleteClone(t *testing.T) {
+	c, _ := NewComplete(8, 4, 4)
+	clone := c.Clone()
+
+	if !c.Equal(clone) {
+		t.Errorf("#test clone expect %v, got %v\n", c, clone)
+	}
+}

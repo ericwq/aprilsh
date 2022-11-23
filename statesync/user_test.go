@@ -329,3 +329,32 @@ func TestUserStreamGetAction(t *testing.T) {
 		}
 	}
 }
+
+func TestUserStreamClone(t *testing.T) {
+	us := &UserStream{}
+
+	// prepare user input data
+	keystrokeStr := "data for clone"
+	chs := []rune(keystrokeStr)
+	for i := range chs {
+		us.PushBack([]rune{chs[i]})
+	}
+
+	// prepare resize data
+	sizes := []struct {
+		width, height int
+	}{
+		{80, 40}, {132, 60}, {140, 70},
+	}
+	for _, v := range sizes {
+		us.PushBackResize(v.width, v.height)
+	}
+
+	clone := us.Clone()
+
+	if !reflect.DeepEqual(us, clone) {
+		t.Errorf("#test expect %v, got %v\n", us, clone)
+	}
+
+	clone.ResetInput() // just for coverage
+}

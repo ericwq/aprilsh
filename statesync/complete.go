@@ -53,13 +53,15 @@ type Complete struct {
 }
 
 func NewComplete(nCols, nRows, saveLines int) (*Complete, error) {
+	var err error
+
 	c := &Complete{}
 	c.terminal = terminal.NewEmulator3(nCols, nRows, saveLines)
 	c.inputHistory = make([]pair, 0)
 	c.echoAck = 0
-	c.display, _ = terminal.NewDisplay(false)
+	c.display, err = terminal.NewDisplay(false)
 
-	return c, nil
+	return c, err
 }
 
 // let the terminal parse and handle the data stream.
@@ -235,6 +237,7 @@ func (c *Complete) ResetInput() {
 // implements network.State[C any] interface
 func (c *Complete) Clone() *Complete {
 	clone := Complete{}
+
 	clone = *c
 	clone.display = c.display.Clone()
 	clone.terminal = c.terminal.Clone()
