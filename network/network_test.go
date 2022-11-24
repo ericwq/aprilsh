@@ -647,7 +647,7 @@ func TestSendFail(t *testing.T) {
 			var mock mockUdpConn
 			client.socks = append(client.socks, &mock)
 			err := client.send(v.name)
-			expect := "#send size:"
+			expect := "doesn't match expected data"
 			if !strings.Contains(err.Error(), expect) {
 				t.Errorf("%q expect %q, got %q\n", v.name, expect, err)
 			}

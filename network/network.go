@@ -719,7 +719,7 @@ func (c *Connection) send(s string) (sendError error) {
 	if bytesSent != len(p) {
 		// Make sendto() failure available to the frontend.
 		// consider change the sendError to error type
-		sendError = fmt.Errorf("#send size: %s", err)
+		sendError = fmt.Errorf("#send data sent (%d) doesn't match expected data (%d)", bytesSent, len(p))
 
 		// with conn.Write() method, there is no chance of EMSGSIZE
 		// payload MTU of last resort
