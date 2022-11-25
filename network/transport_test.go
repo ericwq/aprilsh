@@ -125,6 +125,11 @@ func TestTransportServerSend(t *testing.T) {
 	server.recv()
 	time.Sleep(time.Millisecond * 20)
 
+	// check remote address
+	if server.getRemoteAddr() == nil {
+		t.Errorf("#test server send expect remote address %v, got nil\n", server.getRemoteAddr())
+	}
+
 	// apply remote diff to server current state
 	us := &statesync.UserStream{}
 	diff := server.getRemoteDiff()

@@ -29,6 +29,7 @@ package network
 import (
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"time"
 )
@@ -246,4 +247,8 @@ func (t *Transport[S, R]) getRemoteStateNum() int64 {
 func (t *Transport[S, R]) setVerbose(verbose uint) {
 	t.sender.setVerbose(verbose)
 	t.verbose = verbose
+}
+
+func (t *Transport[S, R]) getRemoteAddr() net.Addr {
+	return t.connection.getRemoteAddr()
 }
