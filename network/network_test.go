@@ -1079,20 +1079,25 @@ func TestRecvSRTT(t *testing.T) {
 		toClient := fmt.Sprintf("%d round from server to client", i)
 
 		client.send(toServer)
-		time.Sleep(time.Millisecond * 20)
+		time.Sleep(time.Millisecond * 10)
 		server.recv()
 
 		server.send(toClient)
-		time.Sleep(time.Millisecond * 20)
+		time.Sleep(time.Millisecond * 10)
 		got, _ = client.recv()
 
 		if got != toClient {
 			t.Errorf("%q expect %q, got %q\n", title, toClient, got)
 		}
-		// fmt.Printf("%q %d RTTHit=%t SRTT=%f, RTTVAR=%f\n", title, i, client.RTTHit, client.SRTT, client.RTTVAR)
+		fmt.Printf("%q %d RTTHit=%t SRTT=%f, RTTVAR=%f\n", title, i, client.RTTHit, client.SRTT, client.RTTVAR)
 	}
-	if client.SRTT < 40 || client.SRTT > 47 {
+	if  client.SRTT < 20 || client.SRTT > 25 {
 		t.Errorf("%q RTTHit=%t SRTT=%f, RTTVAR=%f\n", title, client.RTTHit, client.SRTT, client.RTTVAR)
+	}
+
+	gotRTO := client.timeout()
+	if gotRTO != MIN_RTO {
+		t.Errorf("%q expect timeout %d, got %d\n", title, MIN_RTO, gotRTO)
 	}
 
 	// restor the logFunc
