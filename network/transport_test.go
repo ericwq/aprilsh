@@ -28,7 +28,6 @@ package network
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -82,7 +81,7 @@ func TestTransportClientSend(t *testing.T) {
 
 	// validate client sent and server received contents
 	if !server.getLatestRemoteState().state.Equal(client.getCurrentState()) {
-		fmt.Printf("#test client send %q to server, server receive %q from client\n",
+		t.Errorf("#test client send %q to server, server receive %q from client\n",
 			client.getCurrentState(), server.getLatestRemoteState().state)
 	}
 

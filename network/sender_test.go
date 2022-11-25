@@ -562,7 +562,6 @@ func TestSenderTickSendToReceiverFail(t *testing.T) {
 	client.connection.sock().Close()
 }
 
-/*
 func TestSenderTickVerify(t *testing.T) {
 	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
 	initialRemoteSrv := &statesync.UserStream{}
@@ -575,18 +574,32 @@ func TestSenderTickVerify(t *testing.T) {
 	keyStr := server.connection.getKey() // get the key from server
 	client := NewTransportClient(initialState, initialRemote, keyStr, desiredIp, desiredPort)
 
-	pushUserBytesTo(client.getCurrentState(), "Test client send and server empty ack.")
+	pushUserBytesTo(client.getCurrentState(), "first mock input.")
+
+	// set verbose
+	server.setVerbose(1)
 
 	// disable log
 	server.connection.logW.SetOutput(io.Discard)
 
 	// send user stream to server
-	fmt.Printf("#test before tick assumedReceiverState=%d\n ", client.sender.getAssumedReceiverStateIdx())
 	client.tick()
-	fmt.Printf("#test after tick assumedReceiverState=%d\n ", client.sender.getAssumedReceiverStateIdx())
 	time.Sleep(time.Millisecond * 20)
 	server.recv()
 	time.Sleep(time.Millisecond * 20)
+
+	// prepare hook func to change assumedReceiverState
+	server.sender.hookForTick = func() {
+		// create a fake state
+		state, _ := statesync.NewComplete(80, 40, 40)
+		state.Act("second mock input")
+		num := server.sender.getSentStateLast() + 1
+		server.sender.addSentState(time.Now().UnixMilli(), num, state)
+
+		// change the assumedReceiverState
+		back := len(server.sender.sentStates) - 1
+		server.sender.assumedReceiverState = &server.sender.sentStates[back]
+	}
 
 	// send complete to client
 	server.tick()
@@ -594,13 +607,14 @@ func TestSenderTickVerify(t *testing.T) {
 	client.recv()
 	time.Sleep(time.Millisecond * 20)
 
+	// check the stderr output to validate the result.
+
 	// validate client sent and server received contents
 	if !server.getLatestRemoteState().state.Equal(client.getCurrentState()) {
-		fmt.Printf("#test client send %q to server, server receive %q from client\n",
+		t.Errorf("#test client send %q to server, server receive %q from client\n",
 			client.getCurrentState(), server.getLatestRemoteState().state)
 	}
 
 	server.connection.sock().Close()
 	client.connection.sock().Close()
 }
-*/

@@ -56,6 +56,8 @@ type TransportSender[T State[T]] struct {
 
 	// somewhere in the middle: the assumed state of the receiver
 	assumedReceiverState *TimestampedState[T]
+	// helper function for testing, it's nil by default
+	hookForTick func()
 
 	// for fragment creation
 	fragmenter *Fragmenter
@@ -337,19 +339,23 @@ func (ts *TransportSender[T]) tick() error {
 	// fmt.Printf("#tick B assumedReceiverState=%d\n ", ts.getAssumedReceiverStateIdx())
 
 	if ts.verbose > 0 {
+		if ts.hookForTick != nil { // hook function for testing
+			ts.hookForTick()
+		}
 		// verify diff has round-trip identity (modulo Unicode fallback rendering)
 		newState := ts.assumedReceiverState.state.Clone()
 		newState.ApplyString(diff)
 		if !ts.currentState.Equal(newState) {
-			fmt.Fprintf(os.Stderr, "#tick Warning, round-trip Instruction verification failed!")
+			fmt.Fprintf(os.Stderr, "#tick Warning, round-trip Instruction verification failed!\n")
 		}
 
 		// Also verify that both the original frame and generated frame have the same initial diff.
 		currentDiff := ts.currentState.InitDiff()
 		newDiff := newState.InitDiff()
 		if currentDiff != newDiff {
-			fmt.Fprintf(os.Stderr, "#tick Warning, target state Instruction verification failed!")
+			fmt.Fprintf(os.Stderr, "#tick Warning, target state Instruction verification failed!\n")
 		}
+		// fmt.Printf("#tick newDiff=%q, currentDiff=%q, diff=%q\n", newDiff, currentDiff, diff)
 	}
 
 	// fmt.Printf("#tick send %q to receiver %s.\n", diff, ts.connection.getRemoteAddr())
