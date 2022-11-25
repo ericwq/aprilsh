@@ -198,7 +198,6 @@ func (u *UserStream) DiffFrom(existing *UserStream) string {
 
 // implements network.State[C any] interface
 func (u *UserStream) InitDiff() string {
-	// this should not be called
 	return ""
 }
 

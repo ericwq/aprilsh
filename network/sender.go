@@ -317,21 +317,24 @@ func (ts *TransportSender[T]) makeChaff() string {
 
 // Send data or an ack if necessary
 // before tick, currentState is updated to the latest.
-func (ts *TransportSender[T]) tick() {
+func (ts *TransportSender[T]) tick() error {
 	ts.calculateTimers() // updates assumed receiver state and rationalizes
 
 	if !ts.connection.getHasRemoteAddr() {
-		return
+		return nil
 	}
 
 	now := time.Now().UnixMilli()
+	// fmt.Printf("#tick now=%d, nextAckTime=%d, nextSendTime=%d\n", now, ts.nextAckTime, ts.nextSendTime)
 	if now < ts.nextAckTime && now < ts.nextSendTime {
-		return
+		return nil
 	}
 
 	// Determine if a new diff or empty ack needs to be sent
 	diff := ts.currentState.DiffFrom(ts.assumedReceiverState.state)
+	// fmt.Printf("#tick A assumedReceiverState=%d\n ", ts.getAssumedReceiverStateIdx())
 	diff = ts.attemptProspectiveResendOptimization(diff)
+	// fmt.Printf("#tick B assumedReceiverState=%d\n ", ts.getAssumedReceiverStateIdx())
 
 	if ts.verbose > 0 {
 		// verify diff has round-trip identity (modulo Unicode fallback rendering)
@@ -354,7 +357,7 @@ func (ts *TransportSender[T]) tick() {
 	if len(diff) == 0 {
 		if now >= ts.nextAckTime {
 			if err := ts.sendEmptyAck(); err != nil {
-				fmt.Printf("#tick sendEmptyAck(): %s\n", err)
+				return err // fmt.Printf("#tick sendEmptyAck(): %s\n", err)
 			}
 			ts.mindelayClock = -1
 		}
@@ -366,10 +369,12 @@ func (ts *TransportSender[T]) tick() {
 	} else if now >= ts.nextSendTime || now >= ts.nextAckTime {
 		// send diff or ack
 		if err := ts.sendToReceiver(diff); err != nil {
-			fmt.Printf("#tick sendToReceiver(): %s\n", err)
+			return err // fmt.Printf("#tick sendToReceiver(): %s\n", err)
 		}
 		ts.mindelayClock = -1
 	}
+
+	return nil
 }
 
 // Returns the number of ms to wait until next possible event.

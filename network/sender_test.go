@@ -424,8 +424,15 @@ func TestSenderSendEmptyAckFail(t *testing.T) {
 	var mock mockUdpConn
 	client.connection.socks = append(client.connection.socks, &mock)
 
-	// validate the result
-	err := client.sender.sendEmptyAck()
+	// // validate the result
+	// err := client.sender.sendEmptyAck()
+	// // fmt.Printf("#test sender sendEmptyAck expect %q\n", err)
+	// if err == nil {
+	// 	t.Errorf("#test sender sendEmptyAck expect %q\n", err)
+	// }
+
+	// validate the tick result
+	err := client.tick()
 	// fmt.Printf("#test sender sendEmptyAck expect %q\n", err)
 	if err == nil {
 		t.Errorf("#test sender sendEmptyAck expect %q\n", err)
@@ -483,7 +490,7 @@ func TestSenderSendToReceiverShutdown(t *testing.T) {
 	server.connection.logW.SetOutput(io.Discard)
 
 	// prepare for shutdown
-	client.sender.shutdownInProgress = true
+	client.sender.startShutdown()
 	client.sender.sendToReceiver("prepare for shutdown")
 	time.Sleep(time.Millisecond * 20)
 
@@ -510,3 +517,90 @@ func TestSenderSendToReceiverShutdown(t *testing.T) {
 	server.connection.sock().Close()
 	client.connection.sock().Close()
 }
+
+func TestSenderTickNoRemoteAddr(t *testing.T) {
+	connection := NewConnection("localhost", "6104")
+	completeTerminal, _ := statesync.NewComplete(80, 40, 0)
+	ts := NewTransportSender(connection, completeTerminal)
+
+	// tick return quickly, nothing to validate.
+	ts.tick()
+
+	connection.sock().Close()
+}
+
+func TestSenderTickSendToReceiverFail(t *testing.T) {
+	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
+	initialRemoteSrv := &statesync.UserStream{}
+	desiredIp := "localhost"
+	desiredPort := "6104"
+	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
+
+	initialState := &statesync.UserStream{}
+	initialRemote, _ := statesync.NewComplete(80, 40, 40)
+	keyStr := server.connection.getKey()
+	client := NewTransportClient(initialState, initialRemote, keyStr, desiredIp, desiredPort)
+
+	pushUserBytesTo(client.getCurrentState(), "sendToReceiver failed.")
+
+	// disable log
+	server.connection.logW.SetOutput(io.Discard)
+
+	// mockUdpConn will send with an error: send size doesn't match
+	var mock mockUdpConn
+	client.connection.socks = append(client.connection.socks, &mock)
+
+	// validate the result
+	err := client.tick()
+	// fmt.Printf("#test sender sendEmptyAck expect %s\n", err)
+	if err == nil {
+		t.Errorf("#test sender sendToReceiver expect %q\n", err)
+	}
+
+	// clean the socket
+	server.connection.sock().Close()
+	client.connection.sock().Close()
+}
+
+/*
+func TestSenderTickVerify(t *testing.T) {
+	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
+	initialRemoteSrv := &statesync.UserStream{}
+	desiredIp := "localhost"
+	desiredPort := "6005"
+	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
+
+	initialState := &statesync.UserStream{}
+	initialRemote, _ := statesync.NewComplete(80, 40, 40)
+	keyStr := server.connection.getKey() // get the key from server
+	client := NewTransportClient(initialState, initialRemote, keyStr, desiredIp, desiredPort)
+
+	pushUserBytesTo(client.getCurrentState(), "Test client send and server empty ack.")
+
+	// disable log
+	server.connection.logW.SetOutput(io.Discard)
+
+	// send user stream to server
+	fmt.Printf("#test before tick assumedReceiverState=%d\n ", client.sender.getAssumedReceiverStateIdx())
+	client.tick()
+	fmt.Printf("#test after tick assumedReceiverState=%d\n ", client.sender.getAssumedReceiverStateIdx())
+	time.Sleep(time.Millisecond * 20)
+	server.recv()
+	time.Sleep(time.Millisecond * 20)
+
+	// send complete to client
+	server.tick()
+	time.Sleep(time.Millisecond * 20)
+	client.recv()
+	time.Sleep(time.Millisecond * 20)
+
+	// validate client sent and server received contents
+	if !server.getLatestRemoteState().state.Equal(client.getCurrentState()) {
+		fmt.Printf("#test client send %q to server, server receive %q from client\n",
+			client.getCurrentState(), server.getLatestRemoteState().state)
+	}
+
+	server.connection.sock().Close()
+	client.connection.sock().Close()
+}
+*/

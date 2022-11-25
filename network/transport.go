@@ -90,8 +90,8 @@ func (t *Transport[S, R]) processThrowawayUntil(throwawayNum int64) {
 }
 
 // Send data or an ack if necessary.
-func (t *Transport[S, R]) tick() {
-	t.sender.tick()
+func (t *Transport[S, R]) tick() error {
+	return t.sender.tick()
 }
 
 // Returns the number of ms to wait until next possible event.
@@ -173,7 +173,7 @@ func (t *Transport[S, R]) recv() error {
 		}
 
 		// Insert new state in sorted place
-		rs := make([]TimestampedState[R],0)
+		rs := make([]TimestampedState[R], 0)
 		for i := range t.receivedState {
 			if t.receivedState[i].num > newState.num {
 				// insert out-of-order new state

@@ -67,6 +67,13 @@ func TestTransportClientSend(t *testing.T) {
 	server.recv()
 	time.Sleep(time.Millisecond * 20)
 
+	// validate sentStates status
+	var expectNum int64
+	gotNum := client.sender.getSentStateAcked()
+	if gotNum != expectNum {
+		t.Errorf("#test R1 client sentStates expect first num %d, got %d\n", expectNum, gotNum)
+	}
+
 	// send complete to client
 	server.tick()
 	time.Sleep(time.Millisecond * 20)
@@ -77,6 +84,13 @@ func TestTransportClientSend(t *testing.T) {
 	if !server.getLatestRemoteState().state.Equal(client.getCurrentState()) {
 		fmt.Printf("#test client send %q to server, server receive %q from client\n",
 			client.getCurrentState(), server.getLatestRemoteState().state)
+	}
+
+	// validate sentStates shrink after a server response
+	expectNum = 1
+	gotNum = client.sender.getSentStateAcked()
+	if gotNum != expectNum {
+		t.Errorf("#test client sentStates expect first num %d, got %d\n", expectNum, gotNum)
 	}
 
 	server.connection.sock().Close()
