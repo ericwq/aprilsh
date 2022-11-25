@@ -618,3 +618,47 @@ func TestSenderTickVerify(t *testing.T) {
 	server.connection.sock().Close()
 	client.connection.sock().Close()
 }
+
+func TestSenderSendInterval(t *testing.T) {
+	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
+	initialRemoteSrv := &statesync.UserStream{}
+	desiredIp := "localhost"
+	desiredPort := "6005"
+	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
+
+	initialState := &statesync.UserStream{}
+	initialRemote, _ := statesync.NewComplete(80, 40, 40)
+	keyStr := server.connection.getKey() // get the key from server
+	client := NewTransportClient(initialState, initialRemote, keyStr, desiredIp, desiredPort)
+
+	// round-trip several times to build a reasonable SRTT
+	var got string
+	maxMsg := 10
+	// for i, msg := range messages {
+	for i := 0; i < maxMsg; i++ {
+		toServer := fmt.Sprintf("%d round from client to server", i)
+		toClient := fmt.Sprintf("%d round from server to client", i)
+
+		client.connection.send(toServer)
+		time.Sleep(time.Millisecond * 5)
+		server.recv()
+
+		server.connection.send(toClient)
+		time.Sleep(time.Millisecond * 5)
+		got, _ = client.connection.recv()
+
+		if got != toClient {
+			t.Errorf("#test sendInterval expect %q, got %q\n", toClient, got)
+		}
+		// fmt.Printf("#test sendInterval %d RTTHit=%t SRTT=%f, RTTVAR=%f\n",
+		// 	i, client.connection.RTTHit, client.connection.SRTT, client.connection.RTTVAR)
+	}
+
+	gotInterval := client.sender.sendInterval()
+	if gotInterval != SEND_INTERVAL_MIN {
+		t.Errorf("#test sendInterval expect interval %d < %d\n", gotInterval, SEND_INTERVAL_MIN)
+	}
+
+	server.connection.sock().Close()
+	client.connection.sock().Close()
+}

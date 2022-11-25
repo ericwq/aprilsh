@@ -488,6 +488,7 @@ func (ts *TransportSender[T]) getSentStateLast() int64 {
 func (ts *TransportSender[T]) sendInterval() int {
 	// int SEND_INTERVAL = lrint(ceil(connection->get_SRTT() / 2.0))
 	SEND_INTERVAL := math.Round(math.Ceil(ts.connection.getSRTT() / 2.0))
+	// fmt.Printf("#sendInterval SEND_INTERVAL=%f, SRTT=%f\n", SEND_INTERVAL, ts.connection.getSRTT())
 	if SEND_INTERVAL < SEND_INTERVAL_MIN {
 		SEND_INTERVAL = SEND_INTERVAL_MIN
 	} else if SEND_INTERVAL > SEND_INTERVAL_MAX {
