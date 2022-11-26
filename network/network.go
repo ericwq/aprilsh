@@ -773,7 +773,7 @@ func (c *Connection) getHasRemoteAddr() bool {
 	return c.hasRemoteAddr
 }
 
-// calculate and restrict the RTO (retransmission timeout) between 40-1000 ms.
+// calculate and restrict the RTO (retransmission timeout) between 50-1000 ms.
 func (c *Connection) timeout() int64 {
 	// uint64_t RTO = lrint(ceil(SRTT + 4 * RTTVAR))
 	RTO := (int64)(math.Round(math.Ceil(c.SRTT + 4*c.RTTVAR)))

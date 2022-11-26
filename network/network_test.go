@@ -1089,7 +1089,7 @@ func TestRecvSRTT(t *testing.T) {
 		if got != toClient {
 			t.Errorf("%q expect %q, got %q\n", title, toClient, got)
 		}
-		fmt.Printf("%q %d RTTHit=%t SRTT=%f, RTTVAR=%f\n", title, i, client.RTTHit, client.SRTT, client.RTTVAR)
+		// fmt.Printf("%q %d RTTHit=%t SRTT=%f, RTTVAR=%f\n", title, i, client.RTTHit, client.SRTT, client.RTTVAR)
 	}
 	if  client.SRTT < 20 || client.SRTT > 25 {
 		t.Errorf("%q RTTHit=%t SRTT=%f, RTTVAR=%f\n", title, client.RTTHit, client.SRTT, client.RTTVAR)

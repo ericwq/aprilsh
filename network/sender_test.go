@@ -236,13 +236,13 @@ func TestSenderAttemptProspectiveResendOptimization(t *testing.T) {
 func TestSenderCalculateTimers(t *testing.T) {
 	tc := []struct {
 		label              string
-		initialState       string
-		states             []string
-		currentIdx         int
-		fakeNetworkDelay   int
-		lastHeard          int64
-		mindelayClock      int64
-		pendingDataAck     bool
+		initialState       string   // first sent state
+		states             []string // use string to build sent states
+		currentIdx         int      // current state index
+		fakeNetworkDelay   int64    // delay between sent states
+		lastHeard          int64    // last heard delta
+		mindelayClock      int64    // -1 means use current time
+		pendingDataAck     bool     // pending data ack
 		shutdown           bool
 		expectNextSendTime int64
 		expectNextAckTime  int64
@@ -255,7 +255,7 @@ func TestSenderCalculateTimers(t *testing.T) {
 		{
 			"current = newest != assumed", "abc",
 			[]string{"abcd", "abcde", "abcdef", "abcdefg"},
-			4, 450, 1, 5, false, false, 0, 0,
+			4, 450, 1, 5, true, false, 0, 0,
 		},
 		{
 			"current = newest = assumed != oldest", "abc",
@@ -274,19 +274,29 @@ func TestSenderCalculateTimers(t *testing.T) {
 		},
 	}
 
-	for _, v := range tc {
+	waitTime := []int{0, 8, 0, 0, 0}
+
+	for k, v := range tc {
+		// for _, v := range tc {
 		connection := NewConnection("localhost", "8080")
 		initialState := &statesync.UserStream{} // initial state
 		pushUserBytesTo(initialState, v.initialState)
 		ts := NewTransportSender(connection, initialState)
 
 		// prepare sentStates data
+		now := time.Now().UnixMilli()
 		for i, keystroke := range v.states {
 			state := &statesync.UserStream{}
 			pushUserBytesTo(state, keystroke)
-			time.Sleep(time.Duration(v.fakeNetworkDelay) * time.Millisecond)
-			// change assumedReceiverState through fakeNetworkDelay
-			ts.addSentState(time.Now().UnixMilli(), int64(i+1), state)
+			ts.addSentState(now, int64(i+1), state)
+		}
+
+		// change the timestamp to avoid wait
+		timestamp := now - int64(len(ts.sentStates))*v.fakeNetworkDelay
+		for i := range ts.sentStates {
+			ts.sentStates[i].timestamp = timestamp + int64(i)*v.fakeNetworkDelay
+			// fmt.Printf("#test calculateTimers i=%d, timestamp=%d, delta=%d\n",
+			// 	i, timestamp+int64(i)*v.fakeNetworkDelay, int64(i)*v.fakeNetworkDelay)
 		}
 
 		// prepare currentState and assumedReceiverState
@@ -323,11 +333,27 @@ func TestSenderCalculateTimers(t *testing.T) {
 			}
 		}
 
-		// fmt.Printf("#calculateTimers nextSendTime=%d, nextAckTime=%d\n", ts.nextSendTime, ts.nextAckTime)
-		// ts.connection.hasRemoteAddr = true
-		// waitTime := ts.waitTime()
-		// fmt.Printf("#calculateTimers waitTime=%d\n", waitTime)
+		// fmt.Printf("#test nextAckTime=%d, nextSendTime=%d, now=%d\n", ts.nextAckTime, ts.nextSendTime, now)
 
+		// validate waitTime() corner case
+		// wait time need:
+		// 1) send>now or ack>now
+		// 2) hasRemoteAddr = true
+		// 3) send < ack
+		ts.connection.hasRemoteAddr = true
+		gotWaitTiem := ts.waitTime()
+		if gotWaitTiem != waitTime[k] {
+			fmt.Printf("#test send<ack=%t, send>now=%t, ack>now=%t, gotWaitTiem=%d\n",
+				ts.nextSendTime < ts.nextAckTime, ts.nextSendTime > now, ts.nextAckTime > now, gotWaitTiem)
+			t.Errorf("#test waitTime round:%d, expect %d, got %d\n", k, waitTime[k], gotWaitTiem)
+		}
+
+		// validate corner case for tick()
+		if now < ts.nextAckTime && now < ts.nextSendTime {
+			if ts.tick() != nil {
+				t.Errorf("#test for now<send, now<ack, tick() should return nil\n")
+			}
+		}
 		connection.sock().Close()
 	}
 }

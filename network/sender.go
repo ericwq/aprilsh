@@ -269,9 +269,10 @@ func (ts *TransportSender[T]) calculateTimers() {
 
 	// Update assumed receiver state
 	ts.updateAssumedReceiverState()
-	// fmt.Printf("#calculateTimers assumedReceiverState = %d\n", ts.getAssumedReceiverStateIdx())
-	// fmt.Printf("#calculateTimers nextAckTime=%d, lastHeard=%d, mindelayClock=%d, pendingDataAck=%t, nextAckTime=%d\n",
-	// 	ts.nextAckTime, ts.lastHeard, ts.mindelayClock, ts.pendingDataAck, ts.nextAckTime)
+	// fmt.Printf("#calculateTimers assumedReceiverState=%d, lastHeard=%d, mindelayClock=%d, pendingDataAck=%t\n",
+	// 	ts.getAssumedReceiverStateIdx(), ts.lastHeard, ts.mindelayClock, ts.pendingDataAck)
+	// fmt.Printf("#calculateTimers nextAckTime=%d, nextSendTime=%d\n",
+	// 	ts.nextAckTime, ts.nextSendTime)
 
 	// Cut out common prefix of all states
 	ts.rationalizeStates()
