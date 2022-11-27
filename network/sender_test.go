@@ -58,7 +58,7 @@ func TestSenderMakeChaff(t *testing.T) {
 func TestSenderUpdateAssumedReceiverState(t *testing.T) {
 	tc := []struct {
 		label            string
-		fakeNetworkDelay int
+		fakeNetworkDelay int64
 		expect           int
 	}{
 		{"quick response", 2, 17},
@@ -72,12 +72,17 @@ func TestSenderUpdateAssumedReceiverState(t *testing.T) {
 
 		ts := NewTransportSender(connection, initialState)
 
-		// add enough state and mimic the delay between states
+		// add enough state
+		now := time.Now().UnixMilli()
 		for i := 0; i < 33; i++ { // addSentState require upper limit 32
 			s, _ := statesync.NewComplete(80, 40, 0)
-			now := time.Now().UnixMilli()
-			time.Sleep(time.Millisecond * time.Duration(v.fakeNetworkDelay))
 			ts.addSentState(now, int64(i+1), s)
+		}
+
+		// change the timestamp to avoid wait
+		timestamp := now - int64(len(ts.sentStates))*v.fakeNetworkDelay
+		for i := range ts.sentStates {
+			ts.sentStates[i].timestamp = timestamp + int64(i)*v.fakeNetworkDelay
 		}
 
 		ts.updateAssumedReceiverState()
