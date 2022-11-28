@@ -131,3 +131,8 @@ On the client side, the client synchronize the client terminal to real terminal 
 - The mix is written to the `pty` slave, which will output to the real terminal emulator.
 
 Thus, we have the opportunity to use terminfo to output to the real terminal. Between the client and server, we are free to optimize the state synchronization.
+
+## Terminal design
+
+- [Understanding The Linux TTY Subsystem](https://ishuah.com/2021/02/04/understanding-the-linux-tty-subsystem/)
+- [Build A Simple Terminal Emulator In 100 Lines of Golang](https://ishuah.com/2021/03/10/build-a-terminal-emulator-in-100-lines-of-go/)
