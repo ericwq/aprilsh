@@ -64,9 +64,25 @@ func TestPrintMotd(t *testing.T) {
 		}
 	}
 
+	// validate the result
 	if !found {
 		t.Errorf("#test expect found %s, found nothing\n", files)
 	}
+
+	// output.Reset()
+	//
+	// creat a .hide file and write random data into it
+	// fName := ".hide"
+	// hide, _ := os.Create(fName)
+	// data := encrypt.PrngFill(4)
+	// hide.Write(data)
+	// hide.Close()
+	//
+	// if printMotd(&output, fName) {
+	// 	t.Errorf("#test printMotd should return false, instead it return true. %q", output.String())
+	// }
+	//
+	// os.Remove(fName)
 }
 
 func TestPrintVersion(t *testing.T) {
@@ -114,16 +130,30 @@ func TestChdirHomedir(t *testing.T) {
 	// save the current dir
 	oldPwd := os.Getenv("PWD")
 
+	// use the HOME
 	got := ""
-	if !chdirHomedir() {
+	if !chdirHomedir("") {
 		got = os.Getenv("PWD")
 		t.Errorf("#test chdirHomedir expect change to home directory, got %s\n", got)
 	}
 
+	// validate the PWD
 	got = os.Getenv("PWD")
 	// fmt.Printf("#test chdirHomedir home=%q\n", got)
 	if got == oldPwd {
 		t.Errorf("#test chdirHomedir home dir %q, is different from old dir %q\n", got, oldPwd)
+	}
+
+	// unset HOME
+	os.Unsetenv("HOME")
+	// validate the false
+	if chdirHomedir("") {
+		t.Errorf("#test chdirHomedir return false.\n")
+	}
+
+	// use the parameter as HOME
+	if chdirHomedir("/does/not/exist") {
+		t.Errorf("#test chdirHomedir should return false\n")
 	}
 
 	// restore the current dir and PWD

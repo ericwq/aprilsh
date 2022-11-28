@@ -67,24 +67,27 @@ func printMotd(w io.Writer, filename string) bool {
 		fmt.Fprintf(w, "%s\n", scanner.Text())
 	}
 
-	if err := scanner.Err(); err != nil {
-		return false
-	}
+	// if err := scanner.Err(); err != nil {
+	// 	return false
+	// }
 
 	return true
 }
 
-func chdirHomedir() bool {
-	home, _ := os.UserHomeDir()
-	err := os.Chdir(home)
-	if err != nil {
-		return false
+func chdirHomedir(home string) bool {
+	var err error
+	if home == "" {
+		home, err = os.UserHomeDir()
+		if err != nil {
+			return false
+		}
 	}
 
-	err = os.Setenv("PWD", home)
+	err = os.Chdir(home)
 	if err != nil {
 		return false
 	}
+	os.Setenv("PWD", home)
 
 	// fmt.Printf("#chdirHomedir home=%q\n", home)
 	return true
