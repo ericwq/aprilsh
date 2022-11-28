@@ -28,6 +28,7 @@ package main
 
 import (
 	"bytes"
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -107,6 +108,27 @@ func TestPrintUsage(t *testing.T) {
 	if found != len(usage) {
 		t.Errorf("#test printUsage expect %q, got %q\n", usage, result)
 	}
+}
+
+func TestChdirHomedir(t *testing.T) {
+	// save the current dir
+	oldPwd := os.Getenv("PWD")
+
+	got := ""
+	if !chdirHomedir() {
+		got = os.Getenv("PWD")
+		t.Errorf("#test chdirHomedir expect change to home directory, got %s\n", got)
+	}
+
+	got = os.Getenv("PWD")
+	// fmt.Printf("#test chdirHomedir home=%q\n", got)
+	if got == oldPwd {
+		t.Errorf("#test chdirHomedir home dir %q, is different from old dir %q\n", got, oldPwd)
+	}
+
+	// restore the current dir and PWD
+	os.Chdir(oldPwd)
+	os.Setenv("PWD", oldPwd)
 }
 
 func TestMotdHushed(t *testing.T) {

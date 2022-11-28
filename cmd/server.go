@@ -74,6 +74,22 @@ func printMotd(w io.Writer, filename string) bool {
 	return true
 }
 
+func chdirHomedir() bool {
+	home, _ := os.UserHomeDir()
+	err := os.Chdir(home)
+	if err != nil {
+		return false
+	}
+
+	err = os.Setenv("PWD", home)
+	if err != nil {
+		return false
+	}
+
+	// fmt.Printf("#chdirHomedir home=%q\n", home)
+	return true
+}
+
 func motdHushed() bool {
 	// must be in home directory already
 	_, err := os.Lstat(".hushlogin")
