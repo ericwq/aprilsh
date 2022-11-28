@@ -74,4 +74,14 @@ func printMotd(w io.Writer, filename string) bool {
 	return true
 }
 
+func motdHushed() bool {
+	// must be in home directory already
+	_, err := os.Lstat(".hushlogin")
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
 func main() {}

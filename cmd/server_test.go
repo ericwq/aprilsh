@@ -28,6 +28,7 @@ package main
 
 import (
 	"bytes"
+	"os/exec"
 	"strings"
 	"testing"
 )
@@ -105,5 +106,25 @@ func TestPrintUsage(t *testing.T) {
 	}
 	if found != len(usage) {
 		t.Errorf("#test printUsage expect %q, got %q\n", usage, result)
+	}
+}
+
+func TestMotdHushed(t *testing.T) {
+	label := "#test motdHushed "
+	if motdHushed() != false {
+		t.Errorf("%s should report false, got %t\n", label, motdHushed())
+	}
+
+	cmd := exec.Command("touch", ".hushlogin")
+	if err := cmd.Run(); err != nil {
+		t.Errorf("%s create .hushlogin failed, %s\n", label, err)
+	}
+	if motdHushed() != true {
+		t.Errorf("%s should report true, got %t\n", label, motdHushed())
+	}
+
+	cmd = exec.Command("rm", ".hushlogin")
+	if err := cmd.Run(); err != nil {
+		t.Errorf("%s delete .hushlogin failed, %s\n", label, err)
 	}
 }
