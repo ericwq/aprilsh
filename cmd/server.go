@@ -67,9 +67,9 @@ func printMotd(w io.Writer, filename string) bool {
 		fmt.Fprintf(w, "%s\n", scanner.Text())
 	}
 
-	// if err := scanner.Err(); err != nil {
-	// 	return false
-	// }
+	if err := scanner.Err(); err != nil {
+		return false
+	}
 
 	return true
 }

@@ -69,20 +69,22 @@ func TestPrintMotd(t *testing.T) {
 		t.Errorf("#test expect found %s, found nothing\n", files)
 	}
 
-	// output.Reset()
-	//
-	// creat a .hide file and write random data into it
-	// fName := ".hide"
-	// hide, _ := os.Create(fName)
-	// data := encrypt.PrngFill(4)
-	// hide.Write(data)
-	// hide.Close()
-	//
-	// if printMotd(&output, fName) {
-	// 	t.Errorf("#test printMotd should return false, instead it return true. %q", output.String())
-	// }
-	//
-	// os.Remove(fName)
+	output.Reset()
+
+	// creat a .hide file and write long token into it
+	fName := ".hide"
+	hide, _ := os.Create(fName)
+	for i := 0; i < 1025; i++ {
+		data := bytes.Repeat([]byte{'s'}, 64)
+		hide.Write(data)
+	}
+	hide.Close()
+
+	if printMotd(&output, fName) {
+		t.Errorf("#test printMotd should return false, instead it return true.")
+	}
+
+	os.Remove(fName)
 }
 
 func TestPrintVersion(t *testing.T) {
