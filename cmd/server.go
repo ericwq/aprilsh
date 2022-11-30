@@ -32,6 +32,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 )
 
 const (
@@ -101,6 +102,37 @@ func motdHushed() bool {
 	}
 
 	return true
+}
+
+// extract server ip addresss from SSH_CONNECTION
+func getSSHip() string {
+	env := os.Getenv("SSH_CONNECTION")
+	if len(env) == 0 { // Older sshds don't set this
+		fmt.Fprintf(os.Stderr, "Warning: SSH_CONNECTION not found; binding to any interface.\n")
+		return ""
+	}
+
+	// SSH_CONNECTION' Identifies the client and server ends of the connection.
+	// The variable contains four space-separated values: client IP address,
+	// client port number, server IP address, and server port number.
+	//
+	// ipv4 sample: SSH_CONNECTION=172.17.0.1 58774 172.17.0.2 22
+	sshConn := strings.Split(env, " ")
+	if len(sshConn) != 4 {
+		fmt.Fprintf(os.Stderr, "Warning: Could not parse SSH_CONNECTION; binding to any interface.\n")
+		// fmt.Printf("#getSSHip env=%q, size=%d\n", sshConn, len(sshConn))
+		return ""
+	}
+
+	localInterfaceIP := strings.ToLower(sshConn[2])
+	prefixIPv6 := "::ffff:"
+
+	// fmt.Printf("#getSSHip localInterfaceIP=%q, prefixIPv6=%q\n", localInterfaceIP, prefixIPv6)
+	if len(localInterfaceIP) > len(prefixIPv6) && strings.HasPrefix(localInterfaceIP, prefixIPv6) {
+		return localInterfaceIP[len(prefixIPv6):]
+	}
+
+	return localInterfaceIP
 }
 
 // [-s] [-v] [-i LOCALADDR] [-p PORT[:PORT2]] [-c COLORS] [-l NAME=VALUE] [-- COMMAND...]

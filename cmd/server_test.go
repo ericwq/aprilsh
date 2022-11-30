@@ -194,9 +194,14 @@ func TestMainHelp(t *testing.T) {
 		os.Args = []string{COMMAND_NAME, "--help"}
 		// test help
 		main()
+
+		// it's a good time to cover Usage
+		// the result is repeated as printUsage does
+		flag.Usage()
 	}
 
 	out := captureStdoutRun(testHelpFunc)
+	// fmt.Printf("#test main help %s\n", out)
 
 	// validate result
 	expect := []string{
@@ -264,5 +269,27 @@ func TestMainVersion(t *testing.T) {
 	}
 	if found != len(expect) {
 		t.Errorf("#test printVersion expect %q, got %q\n", expect, result)
+	}
+}
+
+func TestGetSSHip(t *testing.T) {
+	tc := []struct {
+		label  string
+		env    string
+		expect string
+	}{
+		{"no env variable", "", ""},
+		{"ipv4 address", "172.17.0.1 58774 172.17.0.2 22", "172.17.0.2"},
+		{"malform variable", " 1 2 3 4", ""},
+		{"ipv6 address", "fe80::14d5:1215:f8c9:11fa%en0 42000 fe80::aede:48ff:fe00:1122%en5 22", "fe80::aede:48ff:fe00:1122%en5"},
+		{"ipv4 mapped address", "::FFFF:172.17.0.1 42200 ::FFFF:129.144.52.38 22", "129.144.52.38"},
+	}
+
+	for _, v := range tc {
+		os.Setenv("SSH_CONNECTION", v.env)
+		got := getSSHip()
+		if got != v.expect {
+			t.Errorf("%q expect %q, got %q\n", v.label, v.expect, got)
+		}
 	}
 }
