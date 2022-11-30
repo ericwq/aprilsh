@@ -28,6 +28,7 @@ package main
 
 import (
 	"bytes"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"strings"
@@ -89,7 +90,7 @@ func TestPrintMotd(t *testing.T) {
 
 func TestPrintVersion(t *testing.T) {
 	var b strings.Builder
-	expect := []string{"aprish-server", "build", "wangqi ericwq057[AT]qq[dot]com"}
+	expect := []string{"aprilsh-server", "build", "wangqi ericwq057[AT]qq[dot]com"}
 
 	printVersion(&b)
 
@@ -180,5 +181,82 @@ func TestMotdHushed(t *testing.T) {
 	cmd = exec.Command("rm", ".hushlogin")
 	if err := cmd.Run(); err != nil {
 		t.Errorf("%s delete .hushlogin failed, %s\n", label, err)
+	}
+}
+
+func TestMainHelp(t *testing.T) {
+	testHelpArgs := func() {
+		// prepare data
+		os.Args = []string{"aprilsh-server", "-help"}
+		// test help
+		main()
+	}
+
+	out := captureStdoutRun(testHelpArgs)
+
+	// validate result
+	usage := []string{
+		"Usage:", "aprilsh-server",
+		"[-s] [-v] [-i LOCALADDR] [-p PORT[:PORT2]] [-c COLORS] [-l NAME=VALUE]", "[-- COMMAND...]",
+	}
+
+	// validate the result
+	result := string(out)
+	found := 0
+	for i := range usage {
+		if strings.Contains(result, usage[i]) {
+			found++
+		}
+	}
+	if found != len(usage) {
+		t.Errorf("#test printUsage expect %q, got %q\n", usage, result)
+	}
+}
+
+// capture the stdout and run the
+func captureStdoutRun(f func()) []byte {
+	// save the stdout and create replaced pipe
+	rescueStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	// replace stdout with pipe writer
+	// alll the output to stdout is captured
+	os.Stdout = w
+
+	// os.Args is a "global variable", so keep the state from before the test, and restore it after.
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	f()
+
+	// close pipe writer
+	w.Close()
+	// get the output
+	out, _ := ioutil.ReadAll(r)
+	os.Stdout = rescueStdout
+
+	return out
+}
+
+func TestMainVersion(t *testing.T) {
+	testHelpArgs := func() {
+		// prepare data
+		os.Args = []string{"aprilsh-server", "-version"}
+		// test help
+		main()
+	}
+
+	out := captureStdoutRun(testHelpArgs)
+
+	// validate result
+	expect := []string{"aprilsh-server", "build", "wangqi ericwq057[AT]qq[dot]com"}
+	result := string(out)
+	found := 0
+	for i := range expect {
+		if strings.Contains(result, expect[i]) {
+			found++
+		}
+	}
+	if found != len(expect) {
+		t.Errorf("#test printVersion expect %q, got %q\n", expect, result)
 	}
 }

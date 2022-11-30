@@ -28,6 +28,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"io"
 	"os"
@@ -39,7 +40,7 @@ const (
 )
 
 func printVersion(w io.Writer) {
-	fmt.Fprintf(w, "aprish-server (%s) [build %s]\n", PACKAGE_STRING, BUILD_VERSION)
+	fmt.Fprintf(w, "aprilsh-server (%s) [build %s]\n", PACKAGE_STRING, BUILD_VERSION)
 	fmt.Fprintf(w, "Copyright (c) 2022~2023 wangqi ericwq057[AT]qq[dot]com\n")
 	// TODO add a slogans here.
 }
@@ -103,4 +104,18 @@ func motdHushed() bool {
 	return true
 }
 
-func main() {}
+var (
+	help    = flag.Bool("help", false, "print help message.")
+	version = flag.Bool("version", false, "print software version.")
+)
+
+func main() {
+	flag.Parse()
+	if *help {
+		printUsage(os.Stdout, os.Args[0])
+	}
+
+	if *version {
+		printVersion(os.Stdout)
+	}
+}
