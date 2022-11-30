@@ -35,20 +35,19 @@ import (
 )
 
 const (
-	PACKAGE_STRING = "aprish"
+	PACKAGE_STRING = "aprilsh"
+	COMMAND_NAME   = "aprilsh-server"
 	BUILD_VERSION  = "0.1.0"
 )
 
 func printVersion(w io.Writer) {
-	fmt.Fprintf(w, "aprilsh-server (%s) [build %s]\n", PACKAGE_STRING, BUILD_VERSION)
+	fmt.Fprintf(w, "%s (%s) [build %s]\n", COMMAND_NAME, PACKAGE_STRING, BUILD_VERSION)
 	fmt.Fprintf(w, "Copyright (c) 2022~2023 wangqi ericwq057[AT]qq[dot]com\n")
 	// TODO add a slogans here.
 }
 
-func printUsage(w io.Writer, argv0 string) {
-	fmt.Fprintf(w,
-		"Usage: %s [-s] [-v] [-i LOCALADDR] [-p PORT[:PORT2]] [-c COLORS] [-l NAME=VALUE] [-- COMMAND...]\n",
-		argv0)
+func printUsage(w io.Writer, usage string) {
+	fmt.Fprintf(w, "%s", usage)
 }
 
 // Print the motd from a given file, if available
@@ -104,18 +103,54 @@ func motdHushed() bool {
 	return true
 }
 
-var (
-	help    = flag.Bool("help", false, "print help message.")
-	version = flag.Bool("version", false, "print software version.")
-)
+// [-s] [-v] [-i LOCALADDR] [-p PORT[:PORT2]] [-c COLORS] [-l NAME=VALUE] [-- COMMAND...]
+var usage = `Usage:
+  ` + COMMAND_NAME + ` [--version] [--help]
+  ` + COMMAND_NAME + ` [--server] [--verbose] [--ip ADDR] [--port PORT[:PORT2]] [--command] [command arguments]
+Options:
+  -h, --help     print this message
+  -v, --version  print version information
+  -s, --server   listen with SSH ip
+  -i, --ip       listen ip
+  -p, --port     listen port range
+  -c, --command  server shell
+      --verbose  verbose output
+`
 
 func main() {
+	var version, help, server, verbose bool
+	var desiredIP, desiredPort, command string
+
+	flag.BoolVar(&verbose, "verbose", false, "verbose output")
+
+	flag.BoolVar(&version, "version", false, "print version information")
+	flag.BoolVar(&version, "v", false, "print version information")
+
+	flag.BoolVar(&help, "help", false, "print this message")
+	flag.BoolVar(&help, "h", false, "print this message")
+
+	flag.BoolVar(&server, "server", false, "listen with SSH ip")
+	flag.BoolVar(&server, "s", false, "listen with SSH ip")
+
+	flag.StringVar(&desiredIP, "ip", "", "listen ip")
+	flag.StringVar(&desiredIP, "i", "", "listen ip")
+
+	flag.StringVar(&desiredPort, "port", "", "listen port range")
+	flag.StringVar(&desiredPort, "p", "", "listen port range")
+
+	flag.StringVar(&command, "command", "", "server shell")
+	flag.StringVar(&command, "c", "", "server shell")
+
+	flag.Usage = func() { fmt.Print(usage) }
 	flag.Parse()
-	if *help {
-		printUsage(os.Stdout, os.Args[0])
+
+	if help {
+		printUsage(os.Stdout, usage)
+		return
 	}
 
-	if *version {
+	if version {
 		printVersion(os.Stdout)
+		return
 	}
 }

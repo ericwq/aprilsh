@@ -28,6 +28,7 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -90,7 +91,7 @@ func TestPrintMotd(t *testing.T) {
 
 func TestPrintVersion(t *testing.T) {
 	var b strings.Builder
-	expect := []string{"aprilsh-server", "build", "wangqi ericwq057[AT]qq[dot]com"}
+	expect := []string{COMMAND_NAME, "build", "wangqi ericwq057[AT]qq[dot]com"}
 
 	printVersion(&b)
 
@@ -109,23 +110,23 @@ func TestPrintVersion(t *testing.T) {
 
 func TestPrintUsage(t *testing.T) {
 	var b strings.Builder
-	usage := []string{
-		"Usage:", "aprilsh-server",
-		"[-s] [-v] [-i LOCALADDR] [-p PORT[:PORT2]] [-c COLORS] [-l NAME=VALUE]", "[-- COMMAND...]",
+	expect := []string{
+		"Usage:", COMMAND_NAME,
+		"[--server] [--verbose] [--ip ADDR] [--port PORT[:PORT2]] [--command] [command arguments]",
 	}
 
-	printUsage(&b, usage[1])
+	printUsage(&b, usage)
 
 	// validate the result
 	result := b.String()
 	found := 0
-	for i := range usage {
-		if strings.Contains(result, usage[i]) {
+	for i := range expect {
+		if strings.Contains(result, expect[i]) {
 			found++
 		}
 	}
-	if found != len(usage) {
-		t.Errorf("#test printUsage expect %q, got %q\n", usage, result)
+	if found != len(expect) {
+		t.Errorf("#test printUsage expect %q, got %q\n", expect, result)
 	}
 }
 
@@ -185,31 +186,34 @@ func TestMotdHushed(t *testing.T) {
 }
 
 func TestMainHelp(t *testing.T) {
-	testHelpArgs := func() {
+	// flag is a global variable, reset it before test
+	flag.CommandLine = flag.NewFlagSet("TestMainHelp", flag.ExitOnError)
+
+	testHelpFunc := func() {
 		// prepare data
-		os.Args = []string{"aprilsh-server", "-help"}
+		os.Args = []string{COMMAND_NAME, "--help"}
 		// test help
 		main()
 	}
 
-	out := captureStdoutRun(testHelpArgs)
+	out := captureStdoutRun(testHelpFunc)
 
 	// validate result
-	usage := []string{
-		"Usage:", "aprilsh-server",
-		"[-s] [-v] [-i LOCALADDR] [-p PORT[:PORT2]] [-c COLORS] [-l NAME=VALUE]", "[-- COMMAND...]",
+	expect := []string{
+		"Usage:", COMMAND_NAME,
+		"[--server] [--verbose] [--ip ADDR] [--port PORT[:PORT2]] [--command] [command arguments]",
 	}
 
 	// validate the result
 	result := string(out)
 	found := 0
-	for i := range usage {
-		if strings.Contains(result, usage[i]) {
+	for i := range expect {
+		if strings.Contains(result, expect[i]) {
 			found++
 		}
 	}
-	if found != len(usage) {
-		t.Errorf("#test printUsage expect %q, got %q\n", usage, result)
+	if found != len(expect) {
+		t.Errorf("#test printUsage expect %q, got %q\n", expect, result)
 	}
 }
 
@@ -238,17 +242,19 @@ func captureStdoutRun(f func()) []byte {
 }
 
 func TestMainVersion(t *testing.T) {
-	testHelpArgs := func() {
+	// flag is a global variable, reset it before test
+	flag.CommandLine = flag.NewFlagSet("TestMainVersion", flag.ExitOnError)
+	testVersionFunc := func() {
 		// prepare data
-		os.Args = []string{"aprilsh-server", "-version"}
+		os.Args = []string{COMMAND_NAME, "--version"}
 		// test help
 		main()
 	}
 
-	out := captureStdoutRun(testHelpArgs)
+	out := captureStdoutRun(testVersionFunc)
 
 	// validate result
-	expect := []string{"aprilsh-server", "build", "wangqi ericwq057[AT]qq[dot]com"}
+	expect := []string{COMMAND_NAME, "build", "wangqi ericwq057[AT]qq[dot]com"}
 	result := string(out)
 	found := 0
 	for i := range expect {
