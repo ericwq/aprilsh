@@ -32,10 +32,12 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"log"
 	"os"
 	"sync/atomic"
+	"syscall"
 )
 
 const (
@@ -259,6 +261,43 @@ func (s *Session) Decrypt(text []byte) (*Message, error) {
 	// fmt.Printf("#decrypt nonce=% x, plaintext=% x\n", nonce, plainText)
 
 	return &m, nil
+}
+
+var savedCoreLimit uint64
+
+// Disable dumping core, as a precaution to avoid saving sensitive data to disk.
+func DisableDumpingCore() error {
+	// the value argument is provided by last parameter of accessRlimit
+	f := func(rlim *syscall.Rlimit, value uint64) {
+		savedCoreLimit = rlim.Cur
+		rlim.Cur = value
+	}
+	return accessRlimit(syscall.RLIMIT_CORE, f, 0)
+}
+
+// restore the dumping core to saved value
+func ReenableDumpingCore() error {
+	f := func(rlim *syscall.Rlimit, _ uint64) {
+		rlim.Cur = savedCoreLimit
+	}
+
+	// we don't use value parameter, so it's not important the specific value
+	return accessRlimit(syscall.RLIMIT_CORE, f, 0)
+}
+
+// get specified resource, then do some action defined by f, finally set the specififed resource
+func accessRlimit(resource int, f func(rlim *syscall.Rlimit, value uint64), value uint64) error {
+	var rlim syscall.Rlimit
+	if err := syscall.Getrlimit(resource, &rlim); err != nil {
+		return fmt.Errorf("Getrlimit() reports %s", err.Error())
+	}
+
+	f(&rlim, value)
+
+	if err := syscall.Setrlimit(resource, &rlim); err != nil {
+		return fmt.Errorf("Setrlimit() reports %s", err.Error())
+	}
+	return nil
 }
 
 // https://commandcenter.blogspot.com/2012/04/byte-order-fallacy.html

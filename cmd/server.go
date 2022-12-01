@@ -28,11 +28,14 @@ package main
 
 import (
 	"bufio"
+	"crypto"
 	"flag"
 	"fmt"
 	"io"
 	"os"
 	"strings"
+
+	"github.com/ericwq/aprilsh/encrypt"
 )
 
 const (
@@ -141,22 +144,26 @@ var usage = `Usage:
   ` + COMMAND_NAME + ` [--server] [--verbose] [--ip ADDR] [--port PORT[:PORT2]] [--command] [command arguments]
 Options:
   -h, --help     print this message
-  -v, --version  print version information
+      --version  print version information
+  -v, --verbose  verbose output
   -s, --server   listen with SSH ip
   -i, --ip       listen ip
   -p, --port     listen port range
   -c, --command  server shell
-      --verbose  verbose output
 `
 
 func main() {
+	// For security, make sure we don't dump core
+	encrypt.DisableDumpingCore()
+
+	// verbose : don't close stdin/stdout/stderr
 	var version, help, server, verbose bool
 	var desiredIP, desiredPort, command string
 
 	flag.BoolVar(&verbose, "verbose", false, "verbose output")
+	flag.BoolVar(&verbose, "v", false, "verbose output")
 
 	flag.BoolVar(&version, "version", false, "print version information")
-	flag.BoolVar(&version, "v", false, "print version information")
 
 	flag.BoolVar(&help, "help", false, "print this message")
 	flag.BoolVar(&help, "h", false, "print this message")
@@ -180,9 +187,13 @@ func main() {
 		printUsage(os.Stdout, usage)
 		return
 	}
-
 	if version {
 		printVersion(os.Stdout)
 		return
+	}
+	if server {
+		if sshIP := getSSHip(); len(sshIP) != 0 {
+			desiredIP = sshIP
+		}
 	}
 }

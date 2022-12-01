@@ -32,6 +32,7 @@ import (
 	"log"
 	"os"
 	"reflect"
+	"syscall"
 	"testing"
 )
 
@@ -200,5 +201,45 @@ func TestMessage(t *testing.T) {
 		if string(m.GetPayload()) != v.payload {
 			t.Errorf("%q expect payload %x got %x\n", v.name, v.payload, m.GetPayload())
 		}
+	}
+}
+
+func TestDisableDumpingCore(t *testing.T) {
+	// get the RLIMIT_CORE
+	var rlim syscall.Rlimit
+	syscall.Getrlimit(syscall.RLIMIT_CORE, &rlim)
+	expect := rlim.Cur
+
+	DisableDumpingCore()
+
+	// validate the result
+	if savedCoreLimit != expect {
+		t.Errorf("#test DisableDumpingCore should be %d, got %d\n", expect, savedCoreLimit)
+	}
+
+	ReenableDumpingCore()
+	syscall.Getrlimit(syscall.RLIMIT_CORE, &rlim)
+}
+
+func TestDisableDumpingCoreError(t *testing.T) {
+	f0 := func(rlim *syscall.Rlimit, value uint64) {
+		// do nothing
+	}
+
+	// test get fail
+	// the resouce argument 20 is invalid
+	if err := accessRlimit(20, f0, 0); err == nil {
+		t.Errorf("#test accessRlimit should return error, got %s\n", err.Error())
+	}
+
+	f1 := func(rlim *syscall.Rlimit, value uint64) {
+		// increase the hard limit
+		rlim.Cur = rlim.Max + 1
+	}
+
+	// test set fail
+	// increase hard limit is a privilege action
+	if err := accessRlimit(syscall.RLIMIT_NOFILE, f1, 0); err == nil {
+		t.Errorf("#test accessRlimit should return error, got %s\n", err.Error())
 	}
 }
