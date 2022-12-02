@@ -28,14 +28,16 @@ package main
 
 import (
 	"bufio"
-	"crypto"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"strings"
 
 	"github.com/ericwq/aprilsh/encrypt"
+	"github.com/ericwq/aprilsh/network"
 )
 
 const (
@@ -141,7 +143,8 @@ func getSSHip() string {
 // [-s] [-v] [-i LOCALADDR] [-p PORT[:PORT2]] [-c COLORS] [-l NAME=VALUE] [-- COMMAND...]
 var usage = `Usage:
   ` + COMMAND_NAME + ` [--version] [--help]
-  ` + COMMAND_NAME + ` [--server] [--verbose] [--ip ADDR] [--port PORT[:PORT2]] [--command] [command arguments]
+  ` + COMMAND_NAME + ` [--server] [--verbose] [--ip ADDR] [--port PORT[:PORT2]] [--color COLORS]` +
+	` [--locale NAME=VALUE] [--command] [command arguments]
 Options:
   -h, --help     print this message
       --version  print version information
@@ -149,16 +152,24 @@ Options:
   -s, --server   listen with SSH ip
   -i, --ip       listen ip
   -p, --port     listen port range
-  -c, --command  server shell
+      --command  server shell
+  -l, --locale   key-value pairs
+  -c, --color    xterm color
 `
+var logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 
 func main() {
 	// For security, make sure we don't dump core
-	encrypt.DisableDumpingCore()
+	if err := encrypt.DisableDumpingCore(); err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+		os.Exit(1)
+	}
 
 	// verbose : don't close stdin/stdout/stderr
 	var version, help, server, verbose bool
 	var desiredIP, desiredPort, command string
+	var locales localeVar = make(localeVar)
+	var colors int
 
 	flag.BoolVar(&verbose, "verbose", false, "verbose output")
 	flag.BoolVar(&verbose, "v", false, "verbose output")
@@ -178,7 +189,12 @@ func main() {
 	flag.StringVar(&desiredPort, "p", "", "listen port range")
 
 	flag.StringVar(&command, "command", "", "server shell")
-	flag.StringVar(&command, "c", "", "server shell")
+
+	flag.Var(&locales, "locale", "locale list")
+	flag.Var(&locales, "l", "locale list")
+
+	flag.IntVar(&colors, "color", 0, "xterm color")
+	flag.IntVar(&colors, "c", 0, "xterm color")
 
 	flag.Usage = func() { fmt.Print(usage) }
 	flag.Parse()
@@ -194,6 +210,50 @@ func main() {
 	if server {
 		if sshIP := getSSHip(); len(sshIP) != 0 {
 			desiredIP = sshIP
+			// fmt.Printf("#main sshIP=%s\n", desiredIP)
 		}
 	}
+
+	if len(desiredPort) > 0 {
+		// Sanity-check arguments
+
+		// fmt.Printf("#main desiredPort=%s\n", desiredPort)
+		_, _, ok := network.ParsePortRange(desiredPort, logW)
+		if !ok {
+			logW.Printf("%s: Bad UDP port range (%s)", COMMAND_NAME, desiredPort)
+			return
+		}
+	}
+
+	if len(command) > 0 {
+		fmt.Printf("#main %q\n", command)
+		fmt.Printf("#main unparsed string =%q\n", flag.Args())
+	}
+	if len(locales) > 0 {
+		fmt.Printf("#main %s\n", locales)
+	}
+
+	if colors > 0 {
+		fmt.Printf("#main %d\n", colors)
+	}
+}
+
+type localeVar map[string]string
+
+func (lv *localeVar) String() string {
+	return fmt.Sprint(*lv)
+}
+
+func (lv *localeVar) Set(value string) error {
+	kv := strings.Split(value, "=")
+	if len(kv) != 2 {
+		return errors.New("malform locale parameter: " + value)
+	}
+
+	(*lv)[kv[0]] = kv[1]
+	return nil
+}
+
+func (lv *localeVar) IsBoolFlag() bool {
+	return false
 }

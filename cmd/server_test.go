@@ -30,6 +30,7 @@ import (
 	"bytes"
 	"flag"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -112,7 +113,7 @@ func TestPrintUsage(t *testing.T) {
 	var b strings.Builder
 	expect := []string{
 		"Usage:", COMMAND_NAME,
-		"[--server] [--verbose] [--ip ADDR] [--port PORT[:PORT2]] [--command] [command arguments]",
+		"[--server] [--verbose] [--ip ADDR] [--port PORT[:PORT2]] [--color COLORS] [--locale NAME=VALUE] [--command] [command arguments]",
 	}
 
 	printUsage(&b, usage)
@@ -206,7 +207,7 @@ func TestMainHelp(t *testing.T) {
 	// validate result
 	expect := []string{
 		"Usage:", COMMAND_NAME,
-		"[--server] [--verbose] [--ip ADDR] [--port PORT[:PORT2]] [--command] [command arguments]",
+		"[--server] [--verbose] [--ip ADDR] [--port PORT[:PORT2]] [--color COLORS] [--locale NAME=VALUE] [--command] [command arguments]",
 	}
 
 	// validate the result
@@ -272,6 +273,28 @@ func TestMainVersion(t *testing.T) {
 	}
 }
 
+func TestMainServerPortrange(t *testing.T) {
+	// flag is a global variable, reset it before test
+	flag.CommandLine = flag.NewFlagSet("TestMainServerPortrange", flag.ExitOnError)
+
+	var b strings.Builder
+	logW.SetOutput(&b)
+
+	os.Args = []string{COMMAND_NAME, "-s", "-p=3a"}
+	os.Setenv("SSH_CONNECTION", "172.17.0.1 58774 172.17.0.2 22")
+	main()
+
+	// validate port range check
+	expect := "Bad UDP port range"
+	got := b.String()
+	if !strings.Contains(got, expect) {
+		t.Errorf("#test --port should contains %q, got %s\n", expect, got)
+	}
+
+	// restore logW
+	logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+}
+
 func TestGetSSHip(t *testing.T) {
 	tc := []struct {
 		label  string
@@ -285,6 +308,13 @@ func TestGetSSHip(t *testing.T) {
 		{"ipv4 mapped address", "::FFFF:172.17.0.1 42200 ::FFFF:129.144.52.38 22", "129.144.52.38"},
 	}
 
+	// save the stdout and create replaced pipe
+	rescueStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
 	for _, v := range tc {
 		os.Setenv("SSH_CONNECTION", v.env)
 		got := getSSHip()
@@ -292,4 +322,9 @@ func TestGetSSHip(t *testing.T) {
 			t.Errorf("%q expect %q, got %q\n", v.label, v.expect, got)
 		}
 	}
+
+	// read and restore the stdout
+	w.Close()
+	ioutil.ReadAll(r)
+	os.Stderr = rescueStderr
 }
