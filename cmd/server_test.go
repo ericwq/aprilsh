@@ -113,7 +113,7 @@ func TestPrintUsage(t *testing.T) {
 	var b strings.Builder
 	expect := []string{
 		"Usage:", COMMAND_NAME,
-		"[--server] [--verbose] [--ip ADDR] [--port PORT[:PORT2]] [--color COLORS] [--locale NAME=VALUE] [--command] [command arguments]",
+		"[--server] [--verbose] [--ip ADDR] [--port PORT[:PORT2]] [--color COLORS] [--locale NAME=VALUE] [-- command...]",
 	}
 
 	printUsage(&b, usage)
@@ -207,7 +207,7 @@ func TestMainHelp(t *testing.T) {
 	// validate result
 	expect := []string{
 		"Usage:", COMMAND_NAME,
-		"[--server] [--verbose] [--ip ADDR] [--port PORT[:PORT2]] [--color COLORS] [--locale NAME=VALUE] [--command] [command arguments]",
+		"[--server] [--verbose] [--ip ADDR] [--port PORT[:PORT2]] [--color COLORS] [--locale NAME=VALUE] [-- command...]",
 	}
 
 	// validate the result

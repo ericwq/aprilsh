@@ -1,28 +1,6 @@
-/*
-
-MIT License
-
-Copyright (c) 2022~2023 wangqi
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-*/
+// Copyright 2022 wangqi. All rights reserved.
+// Use of this source code is governed by a MIT-style
+// license that can be found in the LICENSE file.
 
 package main
 
@@ -144,7 +122,7 @@ func getSSHip() string {
 var usage = `Usage:
   ` + COMMAND_NAME + ` [--version] [--help]
   ` + COMMAND_NAME + ` [--server] [--verbose] [--ip ADDR] [--port PORT[:PORT2]] [--color COLORS]` +
-	` [--locale NAME=VALUE] [--command] [command arguments]
+	` [--locale NAME=VALUE] [-- command...]
 Options:
   -h, --help     print this message
       --version  print version information
@@ -152,7 +130,6 @@ Options:
   -s, --server   listen with SSH ip
   -i, --ip       listen ip
   -p, --port     listen port range
-      --command  server shell
   -l, --locale   key-value pairs
   -c, --color    xterm color
 `
@@ -187,8 +164,6 @@ func main() {
 
 	flag.StringVar(&desiredPort, "port", "", "listen port range")
 	flag.StringVar(&desiredPort, "p", "", "listen port range")
-
-	flag.StringVar(&command, "command", "", "server shell")
 
 	flag.Var(&locales, "locale", "locale list")
 	flag.Var(&locales, "l", "locale list")
@@ -225,7 +200,7 @@ func main() {
 		}
 	}
 
-	if len(command) > 0 {
+	if len(command) == 0 {
 		fmt.Printf("#main %q\n", command)
 		fmt.Printf("#main unparsed string =%q\n", flag.Args())
 	}
@@ -236,8 +211,18 @@ func main() {
 	if colors > 0 {
 		fmt.Printf("#main %d\n", colors)
 	}
+	getShell()
 }
 
+// func getCommandPath() {
+// 	shell := os.Getenv("SHELL")
+// 	if len(shell) == 0 {
+// 		getShell()
+// 	}
+// }
+
+
+//  https://www.antoniojgutierrez.com/posts/2021-05-14-short-and-long-options-in-go-flags-pkg/
 type localeVar map[string]string
 
 func (lv *localeVar) String() string {
