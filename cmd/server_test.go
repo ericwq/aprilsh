@@ -328,3 +328,21 @@ func TestGetSSHip(t *testing.T) {
 	ioutil.ReadAll(r)
 	os.Stderr = rescueStderr
 }
+
+func TestGetShellNameFrom(t *testing.T) {
+	tc := []struct {
+		label     string
+		shellPath string
+		shellName string
+	}{
+		{"normal", "/bin/sh","-sh"},
+		{"no slash sign","noslash","-noslash"},
+	}
+
+	for _, v := range tc {
+		got := getShellNameFrom(v.shellPath)
+		if got != v.shellName {
+			t.Errorf("%q expect %q, got %q\n", v.label, v.shellName, got)
+		}
+	}
+}

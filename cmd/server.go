@@ -22,6 +22,8 @@ const (
 	PACKAGE_STRING = "aprilsh"
 	COMMAND_NAME   = "aprilsh-server"
 	BUILD_VERSION  = "0.1.0"
+
+	_PATH_BSHELL = "/bin/sh"
 )
 
 func printVersion(w io.Writer) {
@@ -144,7 +146,7 @@ func main() {
 
 	// verbose : don't close stdin/stdout/stderr
 	var version, help, server, verbose bool
-	var desiredIP, desiredPort, command string
+	var desiredIP, desiredPort string
 	var locales localeVar = make(localeVar)
 	var colors int
 
@@ -200,29 +202,63 @@ func main() {
 		}
 	}
 
-	if len(command) == 0 {
-		fmt.Printf("#main %q\n", command)
-		fmt.Printf("#main unparsed string =%q\n", flag.Args())
-	}
-	if len(locales) > 0 {
-		fmt.Printf("#main %s\n", locales)
+	// get the non-flag command-line arguments.
+	commandArgv := flag.Args()
+
+	commandPath := ""
+	withMotd := false
+
+	fmt.Printf("#main before get shell commandArgv=%q\n", commandArgv)
+	// Get shell
+	if len(commandArgv) == 0 {
+		shell := os.Getenv("SHELL")
+		if len(shell) == 0 {
+			shell, _ = getShell() // another way to get shell path
+		}
+
+		shellPath := shell
+		if len(shellPath) == 0 { // empty shell means Bourne shell
+			shellPath = _PATH_BSHELL
+		}
+
+		commandPath = shellPath
+
+		shellName := getShellNameFrom(shellPath)
+
+		commandArgv = []string{shellName}
+
+		withMotd = true
 	}
 
-	if colors > 0 {
-		fmt.Printf("#main %d\n", colors)
+	if len(commandPath) == 0 {
+		// TODO the commandArgv is different from the default value,
+		// consider to update commandArgv to be the same.
+		commandPath = commandArgv[0]
 	}
-	getShell()
+
+	fmt.Printf("#main commandPath=%q\n", commandPath)
+	fmt.Printf("#main commandArgv=%q\n", commandArgv)
+	fmt.Printf("#main withMotd=%t\n", withMotd)
+	fmt.Printf("#main locales=%s\n", locales)
+	fmt.Printf("#main colors=%d\n", colors)
 }
 
-// func getCommandPath() {
-// 	shell := os.Getenv("SHELL")
-// 	if len(shell) == 0 {
-// 		getShell()
-// 	}
-// }
+// extract shell name from shellPath and prepend '-' to the returned shell name
+func getShellNameFrom(shellPath string) (shellName string) {
+	shellSplash := strings.LastIndex(shellPath, "/")
+	if shellSplash == -1 {
+		shellName = shellPath
+	} else {
+		shellName = shellPath[shellSplash+1:]
+	}
 
+	// prepend '-' to make login shell
+	shellName = "-" + shellName
 
-//  https://www.antoniojgutierrez.com/posts/2021-05-14-short-and-long-options-in-go-flags-pkg/
+	return
+}
+
+// https://www.antoniojgutierrez.com/posts/2021-05-14-short-and-long-options-in-go-flags-pkg/
 type localeVar map[string]string
 
 func (lv *localeVar) String() string {

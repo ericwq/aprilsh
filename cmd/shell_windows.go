@@ -4,6 +4,10 @@
 
 package main
 
+import (
+	"os"
+)
+
 // https://github.com/riywo/loginshell/blob/master/loginshell.go
 func getShell() (string, error) {
 	consoleApp := os.Getenv("COMSPEC")
