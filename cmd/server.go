@@ -147,7 +147,7 @@ func main() {
 	// verbose : don't close stdin/stdout/stderr
 	var version, help, server, verbose bool
 	var desiredIP, desiredPort string
-	var locales localeVar = make(localeVar)
+	var locales localeFlag = make(localeFlag)
 	var colors int
 
 	flag.BoolVar(&verbose, "verbose", false, "verbose output")
@@ -236,6 +236,34 @@ func main() {
 		commandPath = commandArgv[0]
 	}
 
+	// Adopt implementation locale
+	setNativeLocale()
+	if !isUtf8Locale() {
+		nativeType := getCtype()
+		nativeCharset := localeCharset()
+
+		// apply locale-related environment variables from client
+		clearLocaleVariables()
+		for _, l := range locales {
+			kv := strings.Split(l, "=")
+			if len(kv) == 2 {
+				os.Setenv(kv[0], kv[1])
+			}
+		}
+
+		// check again
+		setNativeLocale()
+		if !isUtf8Locale() {
+			clientType := getCtype()
+			clientCharset := localeCharset()
+			fmt.Fprintf(os.Stderr, "mosh-server needs a UTF-8 native locale to run.\n\n")
+			fmt.Fprintf(os.Stderr, "Unfortunately, the local environment (%s) specifies\n"+
+				"the character set \"%s\",\n\n", nativeType.str(), nativeCharset)
+			fmt.Fprintf(os.Stderr, "The client-supplied environment (%s) specifies\n"+
+				"the character set \"%s\".\n\n", clientType.str(), clientCharset)
+		}
+		return
+	}
 	fmt.Printf("#main commandPath=%q\n", commandPath)
 	fmt.Printf("#main commandArgv=%q\n", commandArgv)
 	fmt.Printf("#main withMotd=%t\n", withMotd)
@@ -259,13 +287,13 @@ func getShellNameFrom(shellPath string) (shellName string) {
 }
 
 // https://www.antoniojgutierrez.com/posts/2021-05-14-short-and-long-options-in-go-flags-pkg/
-type localeVar map[string]string
+type localeFlag map[string]string
 
-func (lv *localeVar) String() string {
+func (lv *localeFlag) String() string {
 	return fmt.Sprint(*lv)
 }
 
-func (lv *localeVar) Set(value string) error {
+func (lv *localeFlag) Set(value string) error {
 	kv := strings.Split(value, "=")
 	if len(kv) != 2 {
 		return errors.New("malform locale parameter: " + value)
@@ -275,6 +303,6 @@ func (lv *localeVar) Set(value string) error {
 	return nil
 }
 
-func (lv *localeVar) IsBoolFlag() bool {
+func (lv *localeFlag) IsBoolFlag() bool {
 	return false
 }
