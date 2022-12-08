@@ -208,7 +208,7 @@ func main() {
 	commandPath := ""
 	withMotd := false
 
-	fmt.Printf("#main before get shell commandArgv=%q\n", commandArgv)
+	// fmt.Printf("#main before get shell commandArgv=%q\n", commandArgv)
 	// Get shell
 	if len(commandArgv) == 0 {
 		shell := os.Getenv("SHELL")

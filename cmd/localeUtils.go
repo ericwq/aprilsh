@@ -49,7 +49,7 @@ func localeCharset() (ret string) {
 
 func isUtf8Locale() bool {
 	cs := localeCharset()
-	if strings.Compare(strings.ToLower(cs), "utf8") != 0 {
+	if strings.Compare(strings.ToLower(cs), "utf-8") != 0 {
 		return false
 	}
 	return true
