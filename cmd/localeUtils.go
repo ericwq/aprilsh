@@ -36,7 +36,7 @@ func getCtype() localeVar {
 
 func localeCharset() (ret string) {
 	ASCII_name := "US-ASCII"
-	ret, err := nlLangInfo()
+	ret, err := nlLangInfo("locale", []string{"charmap"})
 	if err != nil {
 		ret = ""
 	}

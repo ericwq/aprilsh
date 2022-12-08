@@ -42,8 +42,8 @@ func setlocale(lc C.int, locale string) string {
 //	the selected locale, such as "UTF-8", "ISO-8859-1", or
 //	"ANSI_X3.4-1968" (better known as US-ASCII).  This is the same
 //	string that you get with "locale charmap".
-func nlLangInfo() (string, error) {
-	out, err := exec.Command("locale", "charmap").Output()
+func nlLangInfo(cmd string, args []string) (string, error) {
+	out, err := exec.Command(cmd, args...).Output()
 	if err != nil {
 		return "", err
 	}

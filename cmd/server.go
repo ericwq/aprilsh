@@ -269,6 +269,8 @@ func main() {
 	fmt.Printf("#main withMotd=%t\n", withMotd)
 	fmt.Printf("#main locales=%s\n", locales)
 	fmt.Printf("#main colors=%d\n", colors)
+
+	runServer(desiredIP, desiredPort, commandPath, commandArgv, colors, verbose, withMotd)
 }
 
 // extract shell name from shellPath and prepend '-' to the returned shell name
@@ -305,4 +307,8 @@ func (lv *localeFlag) Set(value string) error {
 
 func (lv *localeFlag) IsBoolFlag() bool {
 	return false
+}
+
+func runServer(desiredIP string, desiredPort string, commandPath string, commandArgv []string,
+	colors int, verbose bool, withMotd bool) {
 }
