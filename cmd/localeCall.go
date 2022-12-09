@@ -5,8 +5,8 @@
 package main
 
 // #include <locale.h>
+// #include <langinfo.h>
 // #include <stdlib.h>
-// #include <errno.h>
 import "C"
 
 import (
@@ -23,6 +23,7 @@ const (
 	LC_MONETARY = 4
 	LC_MESSAGES = 5
 	LC_ALL      = 6
+	CODESET     = 14
 )
 
 func setlocale(lc C.int, locale string) string {
@@ -42,7 +43,7 @@ func setlocale(lc C.int, locale string) string {
 //	the selected locale, such as "UTF-8", "ISO-8859-1", or
 //	"ANSI_X3.4-1968" (better known as US-ASCII).  This is the same
 //	string that you get with "locale charmap".
-func nlLangInfo(cmd string, args []string) (string, error) {
+func nl_langinfo2(cmd string, args []string) (string, error) {
 	out, err := exec.Command(cmd, args...).Output()
 	if err != nil {
 		return "", err
@@ -50,4 +51,9 @@ func nlLangInfo(cmd string, args []string) (string, error) {
 
 	charmap := strings.TrimSuffix(string(out), "\n")
 	return charmap, nil
+}
+
+func nl_langinfo(item C.int) string {
+	ret := C.nl_langinfo(item)
+	return C.GoString(ret)
 }

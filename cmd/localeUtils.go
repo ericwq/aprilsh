@@ -15,7 +15,7 @@ type localeVar struct {
 	value string
 }
 
-func (lv *localeVar) str() string {
+func (lv *localeVar) String() string {
 	if lv.name == "" {
 		return "[no charset variables]"
 	}
@@ -35,16 +35,13 @@ func getCtype() localeVar {
 }
 
 func localeCharset() (ret string) {
-	ASCII_name := "US-ASCII"
-	ret, err := nlLangInfo("locale", []string{"charmap"})
+	ret, err := nl_langinfo2("locale", []string{"charmap"})
 	if err != nil {
 		ret = ""
 	}
-	if ret == "ANSI_X3.4-1968" {
-		ret = ASCII_name
-	}
-
 	return
+
+	// return nl_langinfo(CODESET)
 }
 
 func isUtf8Locale() bool {
@@ -58,9 +55,9 @@ func isUtf8Locale() bool {
 func setNativeLocale() {
 	if setlocale(LC_ALL, "") == "" {
 		ctype := getCtype()
-		fmt.Fprintf(os.Stderr, "The locale requested by %s isn't available here.\n", ctype.str())
+		fmt.Fprintf(os.Stderr, "The locale requested by %s isn't available here.\n", ctype)
 		if ctype.name != "" {
-			fmt.Fprintf(os.Stderr, "Running `locale-gen %s' may be necessary.\n\n", ctype.value)
+			fmt.Fprintf(os.Stderr, "Running 'locale-gen %s' may be necessary.\n\n", ctype.value)
 		}
 	}
 }

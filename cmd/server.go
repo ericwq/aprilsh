@@ -258,9 +258,9 @@ func main() {
 			clientCharset := localeCharset()
 			fmt.Fprintf(os.Stderr, "mosh-server needs a UTF-8 native locale to run.\n\n")
 			fmt.Fprintf(os.Stderr, "Unfortunately, the local environment (%s) specifies\n"+
-				"the character set \"%s\",\n\n", nativeType.str(), nativeCharset)
+				"the character set \"%s\",\n\n", nativeType, nativeCharset)
 			fmt.Fprintf(os.Stderr, "The client-supplied environment (%s) specifies\n"+
-				"the character set \"%s\".\n\n", clientType.str(), clientCharset)
+				"the character set \"%s\".\n\n", clientType, clientCharset)
 		}
 		return
 	}
