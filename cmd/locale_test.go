@@ -5,28 +5,57 @@
 package main
 
 import (
+	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 )
 
 func TestLocaleSetNativeLocale(t *testing.T) {
-	// prepare differ locale
+	// validate the non utf-8 result
 	zhLocale := "zh_CN.GB2312"
 	os.Setenv("LC_ALL", zhLocale)
-
-	// validate the non utf-8 result
 	setNativeLocale()
 	if isUtf8Locale() {
 		t.Errorf("#test expect non-UTF-8 locale, got %s\n", localeCharset())
 	}
 
+	// validate the utf-8 result
 	utf8Locale := "en_US.UTF-8"
 	os.Setenv("LC_ALL", utf8Locale)
-
-	// validate the utf-8 result
 	setNativeLocale()
 	if !isUtf8Locale() {
 		t.Errorf("#test expect UTF-8 locale, got %s\n", localeCharset())
+	}
+
+	// save the stderr and create replaced pipe
+	rescueStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	// replace stderr with pipe writer
+	// alll the output to stderr is captured
+	os.Stderr = w
+
+	badLocale := "un_KN.ow"
+	os.Setenv("LC_ALL", badLocale)
+	setNativeLocale()
+
+	// close pipe writer
+	w.Close()
+	// get the output
+	out, _ := ioutil.ReadAll(r)
+	os.Stderr = rescueStderr
+
+	// validate the error handling
+	got := string(out)
+	expect := []string{"The locale requested by", "isn't available here", "may be necessary."}
+	found := 0
+	for i := range expect {
+		if strings.Contains(got, expect[i]) {
+			found++
+		}
+	}
+	if found != len(expect) {
+		t.Errorf("#test printUsage expect %q, got %q\n", expect, got)
 	}
 }
 
