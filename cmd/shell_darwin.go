@@ -7,15 +7,25 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"regexp"
-	"errors"
 )
 
 const (
+	// https://codeberg.org/FreeBSD/freebsd-src/src/branch/main/include/langinfo.h
 	CODESET = 0
+
+	// https://codeberg.org/FreeBSD/freebsd-src/src/branch/main/include/locale.h
+	LC_ALL      = 0
+	LC_COLLATE  = 1
+	LC_CTYPE    = 2
+	LC_MONETARY = 3
+	LC_NUMERIC  = 4
+	LC_TIME     = 5
+	LC_MESSAGES = 6
 )
 
 func getShell() (string, error) {

@@ -14,7 +14,14 @@ import (
 )
 
 const (
-	CODESET = 14
+	CODESET     = 14
+	LC_CTYPE    = 0
+	LC_NUMERIC  = 1
+	LC_TIME     = 2
+	LC_COLLATE  = 3
+	LC_MONETARY = 4
+	LC_MESSAGES = 5
+	LC_ALL      = 6
 )
 
 func getShell() (string, error) {

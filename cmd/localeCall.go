@@ -15,16 +15,6 @@ import (
 	"unsafe"
 )
 
-const (
-	LC_CTYPE    = 0
-	LC_NUMERIC  = 1
-	LC_TIME     = 2
-	LC_COLLATE  = 3
-	LC_MONETARY = 4
-	LC_MESSAGES = 5
-	LC_ALL      = 6
-)
-
 func setlocale(lc C.int, locale string) string {
 	param := C.CString(locale)
 	defer C.free(unsafe.Pointer(param))
