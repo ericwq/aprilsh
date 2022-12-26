@@ -55,7 +55,7 @@ func TestLocaleSetNativeLocale(t *testing.T) {
 		}
 	}
 	if found != len(expect) {
-		t.Errorf("#test printUsage expect %q, got %q\n", expect, got)
+		t.Errorf("#test malform locale expect %q, got %q\n", expect, got)
 	}
 }
 
@@ -67,8 +67,10 @@ func TestLocaleNlLangInfo2(t *testing.T) {
 }
 
 func TestLocalseNl_langinfo(t *testing.T) {
-	ret0 := nl_langinfo(CODESET)
+	os.Setenv("LC_ALL", "en_US.UTF-8")
+	setNativeLocale()
 	ret1, err := nl_langinfo2("locale", []string{"charmap"})
+	ret0 := nl_langinfo(CODESET)
 	if err != nil {
 		t.Errorf("#test should return nil error, got %s\n", err)
 	}

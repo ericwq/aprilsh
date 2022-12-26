@@ -23,7 +23,6 @@ const (
 	LC_MONETARY = 4
 	LC_MESSAGES = 5
 	LC_ALL      = 6
-	CODESET     = 14
 )
 
 func setlocale(lc C.int, locale string) string {
@@ -49,6 +48,7 @@ func nl_langinfo2(cmd string, args []string) (string, error) {
 		return "", err
 	}
 
+	// fmt.Printf("#nl_langinfo2 got %q\n", out)
 	charmap := strings.TrimSuffix(string(out), "\n")
 	return charmap, nil
 }

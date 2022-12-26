@@ -13,6 +13,10 @@ import (
 	"strings"
 )
 
+const (
+	CODESET = 14
+)
+
 func getShell() (string, error) {
 	user, err := user.Current()
 	if err != nil {

@@ -14,6 +14,10 @@ import (
 	"errors"
 )
 
+const (
+	CODESET = 0
+)
+
 func getShell() (string, error) {
 	dir := "Local/Default/Users/" + os.Getenv("USER")
 	out, err := exec.Command("dscl", "localhost", "-read", dir, "UserShell").Output()
