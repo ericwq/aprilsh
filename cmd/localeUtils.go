@@ -35,13 +35,13 @@ func getCtype() localeVar {
 }
 
 func localeCharset() (ret string) {
-	ret, err := nl_langinfo2("locale", []string{"charmap"})
-	if err != nil {
-		ret = ""
-	}
-	return
+	// ret, err := nl_langinfo2("locale", []string{"charmap"})
+	// if err != nil {
+	// 	ret = ""
+	// }
+	// return
 
-	// return nl_langinfo(CODESET)
+	return nl_langinfo(CODESET)
 }
 
 func isUtf8Locale() bool {
