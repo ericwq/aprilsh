@@ -33,6 +33,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -187,22 +188,14 @@ func TestMotdHushed(t *testing.T) {
 }
 
 func TestMainHelp(t *testing.T) {
-	// flag is a global variable, reset it before test
-	flag.CommandLine = flag.NewFlagSet("TestMainHelp", flag.ExitOnError)
-
 	testHelpFunc := func() {
 		// prepare data
 		os.Args = []string{COMMAND_NAME, "--help"}
 		// test help
 		main()
-
-		// it's a good time to cover Usage
-		// the result is repeated as printUsage does
-		flag.Usage()
 	}
 
 	out := captureStdoutRun(testHelpFunc)
-	// fmt.Printf("#test main help %s\n", out)
 
 	// validate result
 	expect := []string{
@@ -248,12 +241,10 @@ func captureStdoutRun(f func()) []byte {
 }
 
 func TestMainVersion(t *testing.T) {
-	// flag is a global variable, reset it before test
-	flag.CommandLine = flag.NewFlagSet("TestMainVersion", flag.ExitOnError)
 	testVersionFunc := func() {
 		// prepare data
 		os.Args = []string{COMMAND_NAME, "--version"}
-		// test help
+		// test
 		main()
 	}
 
@@ -273,10 +264,132 @@ func TestMainVersion(t *testing.T) {
 	}
 }
 
-func TestMainServerPortrange(t *testing.T) {
-	// flag is a global variable, reset it before test
-	flag.CommandLine = flag.NewFlagSet("TestMainServerPortrange", flag.ExitOnError)
+func TestMainParseError(t *testing.T) {
+	testFunc := func() {
+		// prepare data
+		os.Args = []string{COMMAND_NAME, "--foo"}
+		// test
+		main()
+	}
 
+	out := captureStdoutRun(testFunc)
+
+	// validate result
+	expect := []string{"flag provided but not defined", "Usage of aprilsh-server"}
+	result := string(out)
+	found := 0
+	for i := range expect {
+		if strings.Contains(result, expect[i]) {
+			found++
+		}
+	}
+	if found != len(expect) {
+		t.Errorf("#test parserError expect %q, got \n%s\n", expect, result)
+	}
+}
+
+func TestParseFlagsUsage(t *testing.T) {
+	usageArgs := []string{"-help", "-h", "--help"}
+
+	for _, arg := range usageArgs {
+		t.Run(arg, func(t *testing.T) {
+			conf, output, err := parseFlags("prog", []string{arg})
+			if err != flag.ErrHelp {
+				t.Errorf("err got %v, want ErrHelp", err)
+			}
+			if conf != nil {
+				t.Errorf("conf got %v, want nil", conf)
+			}
+			if strings.Index(output, "Usage of") < 0 {
+				t.Errorf("output can't find \"Usage of\": %q", output)
+			}
+		})
+	}
+}
+
+func TestParseFlagsCorrect(t *testing.T) {
+	tc := []struct {
+		args []string
+		conf Config
+	}{
+		{
+			[]string{"-locale", "ALL=en_US.UTF-8", "-l", "LANG=UTF-8"},
+			Config{
+				version: false, server: false, verbose: false, validate: false, desiredIP: "", desiredPort: "",
+				locales: localeFlag{"ALL": "en_US.UTF-8", "LANG": "UTF-8"}, color: 0,
+				commandPath: "", commandArgv: []string{}, withMotd: false, args: []string{},
+			},
+		},
+	}
+
+	for _, v := range tc {
+		t.Run(strings.Join(v.args, " "), func(t *testing.T) {
+			conf, output, err := parseFlags("prog", v.args)
+			if err != nil {
+				t.Errorf("err got %v, want nil", err)
+			}
+			if output != "" {
+				t.Errorf("output got %q, want empty", output)
+			}
+			if !reflect.DeepEqual(*conf, v.conf) {
+				t.Errorf("conf got \n%+v, want \n%+v", *conf, v.conf)
+			}
+		})
+	}
+}
+
+func TestParseFlagsError(t *testing.T) {
+	tests := []struct {
+		args   []string
+		errstr string
+	}{
+		{[]string{"-foo"}, "flag provided but not defined"},
+		{[]string{"-color", "joe"}, "invalid value"},
+	}
+
+	for _, tt := range tests {
+		t.Run(strings.Join(tt.args, " "), func(t *testing.T) {
+			conf, output, err := parseFlags("prog", tt.args)
+			if conf != nil {
+				t.Errorf("conf got %v, want nil", conf)
+			}
+			if strings.Index(err.Error(), tt.errstr) < 0 {
+				t.Errorf("err got %q, want to find %q", err.Error(), tt.errstr)
+			}
+			if strings.Index(output, "Usage of prog") < 0 {
+				t.Errorf("output got %q", output)
+			}
+		})
+	}
+}
+
+func testMainParameters(t *testing.T) {
+	// flag is a global variable, reset it before test
+	flag.CommandLine = flag.NewFlagSet("TestMainParameters", flag.ExitOnError)
+	testParaFunc := func() {
+		// prepare data
+		os.Args = []string{COMMAND_NAME, "-validate", "--"} //"-l LC_ALL=en_US.UTF-8", "--"}
+		// test
+		main()
+	}
+
+	out := captureStdoutRun(testParaFunc)
+
+	// validate result
+	expect := []string{"main", "commandPath=", "commandArgv=", "withMotd=", "locales=", "color="}
+	result := string(out)
+	found := 0
+	for i := range expect {
+		if strings.Contains(result, expect[i]) {
+			found++
+		}
+	}
+	if found != len(expect) {
+		t.Errorf("#test main() expect %q, got %q\n", expect, result)
+	}
+}
+
+func TestMainServerPortrangeError(t *testing.T) {
 	var b strings.Builder
 	logW.SetOutput(&b)
 
@@ -335,8 +448,8 @@ func TestGetShellNameFrom(t *testing.T) {
 		shellPath string
 		shellName string
 	}{
-		{"normal", "/bin/sh","-sh"},
-		{"no slash sign","noslash","-noslash"},
+		{"normal", "/bin/sh", "-sh"},
+		{"no slash sign", "noslash", "-noslash"},
 	}
 
 	for _, v := range tc {

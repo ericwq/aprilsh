@@ -6,6 +6,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"errors"
 	"flag"
 	"fmt"
@@ -137,6 +138,68 @@ Options:
 `
 var logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 
+type Config struct {
+	version     bool // verbose : don't close stdin/stdout/stderr
+	server      bool
+	verbose     bool
+	validate    bool
+	desiredIP   string
+	desiredPort string
+	locales     localeFlag
+	color       int
+
+	commandPath string
+	commandArgv []string
+	withMotd    bool
+	// args are the positional (non-flag) command-line arguments.
+	args []string
+}
+
+// parseFlags parses the command-line arguments provided to the program.
+// Typically os.Args[0] is provided as 'progname' and os.args[1:] as 'args'.
+// Returns the Config in case parsing succeeded, or an error. In any case, the
+// output of the flag.Parse is returned in output.
+// A special case is usage requests with -h or -help: then the error
+// flag.ErrHelp is returned and output will contain the usage message.
+func parseFlags(progname string, args []string) (config *Config, output string, err error) {
+	flags := flag.NewFlagSet(progname, flag.ContinueOnError)
+	var buf bytes.Buffer
+	flags.SetOutput(&buf)
+
+	var conf Config
+	conf.locales = make(localeFlag)
+	conf.commandArgv = []string{}
+
+	flags.BoolVar(&conf.verbose, "verbose", false, "verbose output")
+	flags.BoolVar(&conf.verbose, "v", false, "verbose output")
+
+	flags.BoolVar(&conf.version, "version", false, "print version information")
+
+	flags.BoolVar(&conf.server, "server", false, "listen with SSH ip")
+	flags.BoolVar(&conf.server, "s", false, "listen with SSH ip")
+
+	flags.BoolVar(&conf.validate, "validate", false, "validate parameter")
+
+	flags.StringVar(&conf.desiredIP, "ip", "", "listen ip")
+	flags.StringVar(&conf.desiredIP, "i", "", "listen ip")
+
+	flags.StringVar(&conf.desiredPort, "port", "", "listen port range")
+	flags.StringVar(&conf.desiredPort, "p", "", "listen port range")
+
+	flags.Var(&conf.locales, "locale", "locale list, key=value pair")
+	flags.Var(&conf.locales, "l", "locale list, key=value pair")
+
+	flags.IntVar(&conf.color, "color", 0, "xterm color")
+	flags.IntVar(&conf.color, "c", 0, "xterm color")
+
+	err = flags.Parse(args)
+	if err != nil {
+		return nil, buf.String(), err
+	}
+	conf.args = flags.Args()
+	return &conf, buf.String(), nil
+}
+
 func main() {
 	// For security, make sure we don't dump core
 	if err := encrypt.DisableDumpingCore(); err != nil {
@@ -144,73 +207,62 @@ func main() {
 		os.Exit(1)
 	}
 
-	// verbose : don't close stdin/stdout/stderr
-	var version, help, server, verbose bool
-	var desiredIP, desiredPort string
-	var locales localeFlag = make(localeFlag)
-	var colors int
-
-	flag.BoolVar(&verbose, "verbose", false, "verbose output")
-	flag.BoolVar(&verbose, "v", false, "verbose output")
-
-	flag.BoolVar(&version, "version", false, "print version information")
-
-	flag.BoolVar(&help, "help", false, "print this message")
-	flag.BoolVar(&help, "h", false, "print this message")
-
-	flag.BoolVar(&server, "server", false, "listen with SSH ip")
-	flag.BoolVar(&server, "s", false, "listen with SSH ip")
-
-	flag.StringVar(&desiredIP, "ip", "", "listen ip")
-	flag.StringVar(&desiredIP, "i", "", "listen ip")
-
-	flag.StringVar(&desiredPort, "port", "", "listen port range")
-	flag.StringVar(&desiredPort, "p", "", "listen port range")
-
-	flag.Var(&locales, "locale", "locale list")
-	flag.Var(&locales, "l", "locale list")
-
-	flag.IntVar(&colors, "color", 0, "xterm color")
-	flag.IntVar(&colors, "c", 0, "xterm color")
-
-	flag.Usage = func() { fmt.Print(usage) }
-	flag.Parse()
-
-	if help {
+	conf, output, err := parseFlags(os.Args[0], os.Args[1:])
+	if err == flag.ErrHelp {
 		printUsage(os.Stdout, usage)
 		return
+	} else if err != nil {
+		// fmt.Println("got error:", err)
+		fmt.Println("output:\n", output)
+		return
 	}
-	if version {
+
+	if conf.version {
 		printVersion(os.Stdout)
 		return
 	}
-	if server {
+	if conf.server {
 		if sshIP := getSSHip(); len(sshIP) != 0 {
-			desiredIP = sshIP
+			conf.desiredIP = sshIP
 			// fmt.Printf("#main sshIP=%s\n", desiredIP)
 		}
 	}
 
-	if len(desiredPort) > 0 {
+	if len(conf.desiredPort) > 0 {
 		// Sanity-check arguments
 
 		// fmt.Printf("#main desiredPort=%s\n", desiredPort)
-		_, _, ok := network.ParsePortRange(desiredPort, logW)
+		_, _, ok := network.ParsePortRange(conf.desiredPort, logW)
 		if !ok {
-			logW.Printf("%s: Bad UDP port range (%s)", COMMAND_NAME, desiredPort)
+			logW.Printf("%s: Bad UDP port range (%s)", COMMAND_NAME, conf.desiredPort)
 			return
 		}
 	}
 
-	// get the non-flag command-line arguments.
-	commandArgv := flag.Args()
+	doConfig(conf)
 
-	commandPath := ""
-	withMotd := false
+	// if conf.validate {
+	// 	fmt.Printf("#main commandPath=%q\n", conf.commandPath)
+	// 	fmt.Printf("#main commandArgv=%q\n", conf.commandArgv)
+	// 	fmt.Printf("#main withMotd=%t\n", conf.withMotd)
+	// 	fmt.Printf("#main locales=%q\n", conf.locales)
+	// 	fmt.Printf("#main colors=%d\n", conf.color)
+	// 	return
+	// }
+
+	runServer(conf)
+}
+
+func doConfig(conf *Config) {
+	// get the non-flag command-line arguments.
+	conf.commandArgv = flag.Args()
+
+	conf.commandPath = ""
+	conf.withMotd = false
 
 	// fmt.Printf("#main before get shell commandArgv=%q\n", commandArgv)
 	// Get shell
-	if len(commandArgv) == 0 {
+	if len(conf.commandArgv) == 0 {
 		shell := os.Getenv("SHELL")
 		if len(shell) == 0 {
 			shell, _ = getShell() // another way to get shell path
@@ -221,19 +273,19 @@ func main() {
 			shellPath = _PATH_BSHELL
 		}
 
-		commandPath = shellPath
+		conf.commandPath = shellPath
 
 		shellName := getShellNameFrom(shellPath)
 
-		commandArgv = []string{shellName}
+		conf.commandArgv = []string{shellName}
 
-		withMotd = true
+		conf.withMotd = true
 	}
 
-	if len(commandPath) == 0 {
+	if len(conf.commandPath) == 0 {
 		// TODO the commandArgv is different from the default value,
 		// consider to update commandArgv to be the same.
-		commandPath = commandArgv[0]
+		conf.commandPath = conf.commandArgv[0]
 	}
 
 	// Adopt implementation locale
@@ -244,7 +296,7 @@ func main() {
 
 		// apply locale-related environment variables from client
 		clearLocaleVariables()
-		for _, l := range locales {
+		for _, l := range conf.locales {
 			kv := strings.Split(l, "=")
 			if len(kv) == 2 {
 				os.Setenv(kv[0], kv[1])
@@ -264,13 +316,6 @@ func main() {
 		}
 		return
 	}
-	fmt.Printf("#main commandPath=%q\n", commandPath)
-	fmt.Printf("#main commandArgv=%q\n", commandArgv)
-	fmt.Printf("#main withMotd=%t\n", withMotd)
-	fmt.Printf("#main locales=%s\n", locales)
-	fmt.Printf("#main colors=%d\n", colors)
-
-	runServer(desiredIP, desiredPort, commandPath, commandArgv, colors, verbose, withMotd)
 }
 
 // extract shell name from shellPath and prepend '-' to the returned shell name
@@ -309,6 +354,5 @@ func (lv *localeFlag) IsBoolFlag() bool {
 	return false
 }
 
-func runServer(desiredIP string, desiredPort string, commandPath string, commandArgv []string,
-	colors int, verbose bool, withMotd bool) {
+func runServer(config *Config) {
 }
