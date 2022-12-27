@@ -142,17 +142,14 @@ type Config struct {
 	version     bool // verbose : don't close stdin/stdout/stderr
 	server      bool
 	verbose     bool
-	validate    bool
 	desiredIP   string
 	desiredPort string
 	locales     localeFlag
 	color       int
 
 	commandPath string
-	commandArgv []string
+	commandArgv []string // the positional (non-flag) command-line arguments.
 	withMotd    bool
-	// args are the positional (non-flag) command-line arguments.
-	args []string
 }
 
 // parseFlags parses the command-line arguments provided to the program.
@@ -162,44 +159,41 @@ type Config struct {
 // A special case is usage requests with -h or -help: then the error
 // flag.ErrHelp is returned and output will contain the usage message.
 func parseFlags(progname string, args []string) (config *Config, output string, err error) {
-	flags := flag.NewFlagSet(progname, flag.ContinueOnError)
+	flagSet := flag.NewFlagSet(progname, flag.ContinueOnError)
 	var buf bytes.Buffer
-	flags.SetOutput(&buf)
+	flagSet.SetOutput(&buf)
 
 	var conf Config
 	conf.locales = make(localeFlag)
 	conf.commandArgv = []string{}
 
-	flags.BoolVar(&conf.verbose, "verbose", false, "verbose output")
-	flags.BoolVar(&conf.verbose, "v", false, "verbose output")
+	flagSet.BoolVar(&conf.verbose, "verbose", false, "verbose output")
+	flagSet.BoolVar(&conf.verbose, "v", false, "verbose output")
 
-	flags.BoolVar(&conf.version, "version", false, "print version information")
+	flagSet.BoolVar(&conf.version, "version", false, "print version information")
 
-	flags.BoolVar(&conf.server, "server", false, "listen with SSH ip")
-	flags.BoolVar(&conf.server, "s", false, "listen with SSH ip")
+	flagSet.BoolVar(&conf.server, "server", false, "listen with SSH ip")
+	flagSet.BoolVar(&conf.server, "s", false, "listen with SSH ip")
 
-	flags.BoolVar(&conf.validate, "validate", false, "validate parameter")
+	flagSet.StringVar(&conf.desiredIP, "ip", "", "listen ip")
+	flagSet.StringVar(&conf.desiredIP, "i", "", "listen ip")
 
-	flags.StringVar(&conf.desiredIP, "ip", "", "listen ip")
-	flags.StringVar(&conf.desiredIP, "i", "", "listen ip")
+	flagSet.StringVar(&conf.desiredPort, "port", "", "listen port range")
+	flagSet.StringVar(&conf.desiredPort, "p", "", "listen port range")
 
-	flags.StringVar(&conf.desiredPort, "port", "", "listen port range")
-	flags.StringVar(&conf.desiredPort, "p", "", "listen port range")
+	flagSet.Var(&conf.locales, "locale", "locale list, key=value pair")
+	flagSet.Var(&conf.locales, "l", "locale list, key=value pair")
 
-	flags.Var(&conf.locales, "locale", "locale list, key=value pair")
-	flags.Var(&conf.locales, "l", "locale list, key=value pair")
+	flagSet.IntVar(&conf.color, "color", 0, "xterm color")
+	flagSet.IntVar(&conf.color, "c", 0, "xterm color")
 
-	flags.IntVar(&conf.color, "color", 0, "xterm color")
-	flags.IntVar(&conf.color, "c", 0, "xterm color")
-
-	err = flags.Parse(args)
+	err = flagSet.Parse(args)
 	if err != nil {
 		return nil, buf.String(), err
 	}
-	conf.args = flags.Args()
 
 	// get the non-flag command-line arguments.
-	conf.commandArgv = conf.args
+	conf.commandArgv = flagSet.Args()
 	return &conf, buf.String(), nil
 }
 
