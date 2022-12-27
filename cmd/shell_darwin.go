@@ -42,6 +42,6 @@ func getShell() (string, error) {
 		return "", errors.New(fmt.Sprintf("Invalid output: %s", string(out)))
 	}
 
-	fmt.Printf("#getShell() darwin reports: %s\n", shell)
+	// fmt.Printf("#getShell() darwin reports: %s\n", shell)
 	return shell, nil
 }

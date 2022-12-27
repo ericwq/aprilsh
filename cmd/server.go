@@ -197,6 +197,9 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 		return nil, buf.String(), err
 	}
 	conf.args = flags.Args()
+
+	// get the non-flag command-line arguments.
+	conf.commandArgv = conf.args
 	return &conf, buf.String(), nil
 }
 
@@ -241,26 +244,13 @@ func main() {
 
 	doConfig(conf)
 
-	// if conf.validate {
-	// 	fmt.Printf("#main commandPath=%q\n", conf.commandPath)
-	// 	fmt.Printf("#main commandArgv=%q\n", conf.commandArgv)
-	// 	fmt.Printf("#main withMotd=%t\n", conf.withMotd)
-	// 	fmt.Printf("#main locales=%q\n", conf.locales)
-	// 	fmt.Printf("#main colors=%d\n", conf.color)
-	// 	return
-	// }
-
 	runServer(conf)
 }
 
-func doConfig(conf *Config) {
-	// get the non-flag command-line arguments.
-	conf.commandArgv = flag.Args()
-
+func doConfig(conf *Config) error {
 	conf.commandPath = ""
 	conf.withMotd = false
 
-	// fmt.Printf("#main before get shell commandArgv=%q\n", commandArgv)
 	// Get shell
 	if len(conf.commandArgv) == 0 {
 		shell := os.Getenv("SHELL")
@@ -296,11 +286,9 @@ func doConfig(conf *Config) {
 
 		// apply locale-related environment variables from client
 		clearLocaleVariables()
-		for _, l := range conf.locales {
-			kv := strings.Split(l, "=")
-			if len(kv) == 2 {
-				os.Setenv(kv[0], kv[1])
-			}
+		for k, v := range conf.locales {
+			// fmt.Printf("#doConfig setenv %s=%s\n", k, v)
+			os.Setenv(k, v)
 		}
 
 		// check again
@@ -313,9 +301,10 @@ func doConfig(conf *Config) {
 				"the character set \"%s\",\n\n", nativeType, nativeCharset)
 			fmt.Fprintf(os.Stderr, "The client-supplied environment (%s) specifies\n"+
 				"the character set \"%s\".\n\n", clientType, clientCharset)
+			return errors.New("UTF-8 locale fail.")
 		}
-		return
 	}
+	return nil
 }
 
 // extract shell name from shellPath and prepend '-' to the returned shell name

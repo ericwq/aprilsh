@@ -7,7 +7,6 @@
 package main
 
 import (
-	"fmt"
 	"os/exec"
 	"os/user"
 	"strings"
@@ -36,6 +35,6 @@ func getShell() (string, error) {
 	}
 
 	ent := strings.Split(strings.TrimSuffix(string(out), "\n"), ":")
-	fmt.Printf("#getShell() linux reports: %s\n", ent[6])
+	// fmt.Printf("#getShell() linux reports: %s\n", ent[6])
 	return ent[6], nil
 }

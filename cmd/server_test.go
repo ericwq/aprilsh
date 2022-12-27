@@ -28,6 +28,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"flag"
 	"io/ioutil"
 	"log"
@@ -320,6 +321,14 @@ func TestParseFlagsCorrect(t *testing.T) {
 				commandPath: "", commandArgv: []string{}, withMotd: false, args: []string{},
 			},
 		},
+		{
+			[]string{"--", "/bin/sh"},
+			Config{
+				version: false, server: false, verbose: false, validate: false, desiredIP: "", desiredPort: "",
+				locales: localeFlag{}, color: 0,
+				commandPath: "", commandArgv: []string{"/bin/sh"}, withMotd: false, args: []string{"/bin/sh"},
+			},
+		},
 	}
 
 	for _, v := range tc {
@@ -338,6 +347,80 @@ func TestParseFlagsCorrect(t *testing.T) {
 	}
 }
 
+func TestDoConfig(t *testing.T) {
+	tc := []struct {
+		lable string
+		conf0 Config
+		conf2 Config
+		err   error
+	}{
+		{
+			"UTF-8 locale",
+			Config{
+				version: false, server: false, verbose: false, validate: false, desiredIP: "", desiredPort: "",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
+				commandPath: "", commandArgv: []string{"/bin/sh"}, withMotd: false, args: []string{},
+			},
+			Config{
+				version: false, server: false, verbose: false, validate: false, desiredIP: "", desiredPort: "",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
+				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false, args: []string{},
+			},
+			nil,
+		},
+		{
+			"non UTF-8 locale",
+			Config{
+				version: false, server: false, verbose: false, validate: false, desiredIP: "", desiredPort: "",
+				locales: localeFlag{"LC_ALL": "zh_CN.GB2312", "LANG": "zh_CN.GB2312"}, color: 0,
+				commandPath: "", commandArgv: []string{"/bin/sh"}, withMotd: false, args: []string{},
+			},
+			Config{
+				version: false, server: false, verbose: false, validate: false, desiredIP: "", desiredPort: "",
+				locales: localeFlag{}, color: 0,
+				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false, args: []string{},
+			},
+			errors.New("UTF-8 locale fail."),
+		},
+		{
+			"empty commandArgv",
+			Config{
+				version: false, server: false, verbose: false, validate: false, desiredIP: "", desiredPort: "",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8"}, color: 0,
+				commandPath: "", commandArgv: []string{}, withMotd: false, args: []string{},
+			},
+			Config{
+				version: false, server: false, verbose: false, validate: false, desiredIP: "", desiredPort: "",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8"}, color: 0,
+				commandPath: "/bin/zsh", commandArgv: []string{"-zsh"}, withMotd: true, args: []string{},
+			},
+			nil,
+		},
+	}
+
+	for _, v := range tc {
+		t.Run(v.lable, func(t *testing.T) {
+			// set SHELL for empty commandArgv
+			if len(v.conf0.commandArgv) == 0 {
+				shell := os.Getenv("SHELL")
+				defer os.Setenv("SHELL", shell)
+				os.Unsetenv("SHELL")
+			}
+
+			err := doConfig(&v.conf0)
+			if err != nil {
+				if err.Error() != v.err.Error() {
+					t.Errorf("#test doConfig expect %q, got %q\n", v.err, err)
+				}
+			} else if !reflect.DeepEqual(v.conf0, v.conf2) {
+				t.Errorf("#test doConfig got \n%+v, expect \n%+v\n", v.conf0, v.conf2)
+			}
+			// reset the environment
+			clearLocaleVariables()
+		})
+	}
+}
+
 func TestParseFlagsError(t *testing.T) {
 	tests := []struct {
 		args   []string
@@ -345,6 +428,7 @@ func TestParseFlagsError(t *testing.T) {
 	}{
 		{[]string{"-foo"}, "flag provided but not defined"},
 		{[]string{"-color", "joe"}, "invalid value"},
+		{[]string{"-locale", "a=b=c"}, "malform locale parameter"},
 	}
 
 	for _, tt := range tests {
