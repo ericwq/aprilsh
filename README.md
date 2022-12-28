@@ -40,7 +40,8 @@ The project name `Aprilsh` is derived from `April+sh`. I started this project in
 - 2022/Oct/14: finish Complete state.
 - 2022/Nov/04: finish Display.
 - 2022/Nov/08: finish Complete testing.
-- 2022/Nov/27: finish Transport and TransportSender
+- 2022/Nov/27: finish Transport and TransportSender.
+- 2022/Dec/28: finish command-line parameter parsing and locale validation.
 
 ## Architecture view
 
