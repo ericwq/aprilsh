@@ -160,6 +160,7 @@ type Config struct {
 // A special case is usage requests with -h or -help: then the error
 // flag.ErrHelp is returned and output will contain the usage message.
 func parseFlags(progname string, args []string) (config *Config, output string, err error) {
+	// https://eli.thegreenplace.net/2020/testing-flag-parsing-in-go-programs/
 	flagSet := flag.NewFlagSet(progname, flag.ContinueOnError)
 	var buf bytes.Buffer
 	flagSet.SetOutput(&buf)
