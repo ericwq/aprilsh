@@ -1,28 +1,6 @@
-/*
-
-MIT License
-
-Copyright (c) 2022~2023 wangqi
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-
-*/
+// Copyright 2022 wangqi. All rights reserved.
+// Use of this source code is governed by a MIT-style
+// license that can be found in the LICENSE file.
 
 package main
 
@@ -308,6 +286,59 @@ func TestParseFlagsUsage(t *testing.T) {
 	}
 }
 
+func TestMainDoConfig(t *testing.T) {
+	testFunc := func() {
+		// abort doConfig() for test environment
+		os.Setenv(DOCONFIG_TEST, "TRUE")
+		defer os.Unsetenv(DOCONFIG_TEST)
+		// prepare data
+		os.Args = []string{COMMAND_NAME, "-locale", "LC_ALL=en_US.UTF-8", "--", "/bin/sh"}
+		// test
+		main()
+	}
+
+	// save the stderr and create replaced pipe
+	rescueStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	// intercept logW
+	var b strings.Builder
+	logW.SetOutput(&b)
+
+	testFunc()
+
+	// read and restore the stderr
+	w.Close()
+	out, _ := ioutil.ReadAll(r)
+	os.Stderr = rescueStderr
+
+	// validate result
+	expect := []string{COMMAND_NAME, "needs a UTF-8 native locale to run."}
+	result := string(out)
+	found := 0
+	for i := range expect {
+		if strings.Contains(result, expect[i]) {
+			found++
+		}
+	}
+	if found != 0 {
+		t.Errorf("#test doConfig expect %q, got %q\n", expect, result)
+	}
+
+	// validate logW
+	var expectLog string = DOCONFIG_TEST + " is set."
+	got := b.String()
+	if !strings.Contains(got, expectLog) {
+		t.Errorf("#test doConfig expect %q, got %s\n", expectLog, got)
+	}
+
+	// restore logW
+	logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+}
+
 func TestParseFlagsCorrect(t *testing.T) {
 	tc := []struct {
 		args []string
@@ -407,6 +438,14 @@ func TestDoConfig(t *testing.T) {
 				os.Unsetenv("SHELL")
 			}
 
+			// save the stderr and create replaced pipe
+			rescueStderr := os.Stderr
+			r, w, _ := os.Pipe()
+			os.Stderr = w
+			oldArgs := os.Args
+			defer func() { os.Args = oldArgs }()
+
+			// validate doConfig
 			err := doConfig(&v.conf0)
 			if err != nil {
 				if err.Error() != v.err.Error() {
@@ -417,6 +456,11 @@ func TestDoConfig(t *testing.T) {
 			}
 			// reset the environment
 			clearLocaleVariables()
+
+			// read and restore the stderr
+			w.Close()
+			ioutil.ReadAll(r)
+			os.Stderr = rescueStderr
 		})
 	}
 }
@@ -505,7 +549,7 @@ func TestGetSSHip(t *testing.T) {
 		{"ipv4 mapped address", "::FFFF:172.17.0.1 42200 ::FFFF:129.144.52.38 22", "129.144.52.38"},
 	}
 
-	// save the stdout and create replaced pipe
+	// save the stderr and create replaced pipe
 	rescueStderr := os.Stderr
 	r, w, _ := os.Pipe()
 	os.Stderr = w
@@ -520,7 +564,7 @@ func TestGetSSHip(t *testing.T) {
 		}
 	}
 
-	// read and restore the stdout
+	// read and restore the stderr
 	w.Close()
 	ioutil.ReadAll(r)
 	os.Stderr = rescueStderr

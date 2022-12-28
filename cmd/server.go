@@ -23,6 +23,7 @@ const (
 	PACKAGE_STRING = "aprilsh"
 	COMMAND_NAME   = "aprilsh-server"
 	BUILD_VERSION  = "0.1.0"
+	DOCONFIG_TEST  = PACKAGE_STRING + "_doconfig_test_only"
 
 	_PATH_BSHELL = "/bin/sh"
 )
@@ -236,7 +237,10 @@ func main() {
 		}
 	}
 
-	doConfig(conf)
+	if err := doConfig(conf); err != nil {
+		logW.Printf("%s: %s\n", COMMAND_NAME, err.Error())
+		return
+	}
 
 	runServer(conf)
 }
@@ -267,8 +271,10 @@ func doConfig(conf *Config) error {
 	}
 
 	if len(conf.commandPath) == 0 {
-		// TODO the commandArgv is different from the default value,
-		// consider to update commandArgv to be the same.
+		// TODO logic flaw?
+		// if commandArgv is empty, the previous block asssign '-sh' to commandArgv[0]
+		// if commandArgv is not empty, commandArgv[0] is in the form of '/bin/sh'
+		// commandPath got the same value '/bin/sh', while commandArgv[0] got '-sh' or '/bin/sh'.
 		conf.commandPath = conf.commandArgv[0]
 	}
 
@@ -290,13 +296,17 @@ func doConfig(conf *Config) error {
 		if !isUtf8Locale() {
 			clientType := getCtype()
 			clientCharset := localeCharset()
-			fmt.Fprintf(os.Stderr, "mosh-server needs a UTF-8 native locale to run.\n\n")
+			fmt.Fprintf(os.Stderr, "%s needs a UTF-8 native locale to run.\n\n", COMMAND_NAME)
 			fmt.Fprintf(os.Stderr, "Unfortunately, the local environment (%s) specifies\n"+
 				"the character set \"%s\",\n\n", nativeType, nativeCharset)
 			fmt.Fprintf(os.Stderr, "The client-supplied environment (%s) specifies\n"+
 				"the character set \"%s\".\n\n", clientType, clientCharset)
 			return errors.New("UTF-8 locale fail.")
 		}
+	}
+
+	if _, ok := os.LookupEnv(DOCONFIG_TEST); ok {
+		return errors.New(DOCONFIG_TEST + " is set.")
 	}
 	return nil
 }
