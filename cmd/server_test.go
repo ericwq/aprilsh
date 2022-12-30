@@ -587,3 +587,36 @@ func TestGetShellNameFrom(t *testing.T) {
 		}
 	}
 }
+
+func TestGetTimeFrom(t *testing.T) {
+	tc := []struct {
+		lable      string
+		key, value string
+		expect     int64
+	}{
+		{"positive int64", "ENV1", "123", 123},
+		{"malform int64", "ENV2", "123a", 0},
+		{"negative int64", "ENV3", "-123", 0},
+	}
+
+	// save the stderr and create replaced pipe
+	rescueStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+	oldArgs := os.Args
+	defer func() { os.Args = oldArgs }()
+
+	for _, v := range tc {
+		os.Setenv(v.key, v.value)
+
+		got := getTimeFrom(v.key, 0)
+		if got != v.expect {
+			t.Errorf("%s expct %d, got %d\n", v.lable, v.expect, got)
+		}
+	}
+
+	// read and restore the stderr
+	w.Close()
+	ioutil.ReadAll(r)
+	os.Stderr = rescueStderr
+}

@@ -13,6 +13,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/ericwq/aprilsh/encrypt"
@@ -349,4 +350,25 @@ func (lv *localeFlag) IsBoolFlag() bool {
 }
 
 func runServer(config *Config) {
+	networkTimeout := getTimeFrom("APRILSH_SERVER_NETWORK_TMOUT", 0)
+	networkSignaledTimeout := getTimeFrom("APRILSH_SERVER_SIGNAL_TMOUT", 0)
+
+	fmt.Printf("#runServer networkTimeout=%d, networkSignaledTimeout=%d\n", networkTimeout, networkSignaledTimeout)
+}
+
+func getTimeFrom(env string, def int64) (ret int64) {
+	ret = def
+
+	v, exist := os.LookupEnv(env)
+	if exist {
+		var err error
+		ret, err = strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "%s not a valid integer, ignoring\n", env)
+		} else if ret < 0 {
+			fmt.Fprintf(os.Stderr, "%s is negative, ignoring\n", env)
+			ret = 0
+		}
+	}
+	return
 }
