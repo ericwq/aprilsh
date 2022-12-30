@@ -18,6 +18,9 @@ import (
 
 	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/network"
+	"github.com/ericwq/aprilsh/statesync"
+	"golang.org/x/sys/unix"
+	"golang.org/x/term"
 )
 
 const (
@@ -349,11 +352,38 @@ func (lv *localeFlag) IsBoolFlag() bool {
 	return false
 }
 
-func runServer(config *Config) {
+func runServer(conf *Config) {
 	networkTimeout := getTimeFrom("APRILSH_SERVER_NETWORK_TMOUT", 0)
 	networkSignaledTimeout := getTimeFrom("APRILSH_SERVER_SIGNAL_TMOUT", 0)
 
 	fmt.Printf("#runServer networkTimeout=%d, networkSignaledTimeout=%d\n", networkTimeout, networkSignaledTimeout)
+
+	// get initial window size
+	windowSize, err := unix.IoctlGetWinsize(int(os.Stdin.Fd()), unix.TIOCGWINSZ)
+	if err != nil || windowSize.Col == 0 || windowSize.Row == 0 {
+		// Fill in sensible defaults. */
+		// They will be overwritten by client on first connection.
+		windowSize.Col = 80
+		windowSize.Row = 24
+	}
+
+	// open parser and terminal
+	terminal, err := statesync.NewComplete(int(windowSize.Col), int(windowSize.Row), 0)
+
+	// open network
+	blank := &statesync.UserStream{}
+	network := network.NewTransportServer(terminal, blank, conf.desiredIP, conf.desiredPort)
+	if conf.verbose {
+		network.SetVerbose(1)
+	}
+
+	// If server is run on a pty, then typeahead may echo and break mosh.pl's
+	// detection of the CONNECT message.  Print it on a new line to bodge
+	// around that.
+	if term.IsTerminal(int(os.Stdin.Fd())) {
+		fmt.Printf("\r\n")
+	}
+	fmt.Printf("%s CONNECT %s %s\n", COMMAND_NAME, network.Port(), network.GetKey())
 }
 
 func getTimeFrom(env string, def int64) (ret int64) {

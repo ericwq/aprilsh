@@ -222,11 +222,19 @@ func (t *Transport[S, R]) getRemoteStateNum() int64 {
 	return t.receivedState[last].num
 }
 
-func (t *Transport[S, R]) setVerbose(verbose uint) {
+func (t *Transport[S, R]) SetVerbose(verbose uint) {
 	t.sender.setVerbose(verbose)
 	t.verbose = verbose
 }
 
 func (t *Transport[S, R]) getRemoteAddr() net.Addr {
 	return t.connection.getRemoteAddr()
+}
+
+func (t *Transport[S, R]) Port() string {
+	return t.connection.port()
+}
+
+func (t *Transport[S, R]) GetKey() string {
+	return t.connection.getKey()
 }

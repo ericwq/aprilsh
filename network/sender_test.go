@@ -586,7 +586,7 @@ func TestSenderTickVerify(t *testing.T) {
 	pushUserBytesTo(client.getCurrentState(), "first mock input.")
 
 	// set verbose
-	server.setVerbose(1)
+	server.SetVerbose(1)
 
 	// disable log
 	server.connection.logW.SetOutput(io.Discard)

@@ -93,8 +93,8 @@ func TestTransportServerSend(t *testing.T) {
 	// 	client.getCurrentState(), client.getCurrentState(), client.sender.getAssumedReceiverStateIdx())
 
 	// set verbose
-	client.setVerbose(1)
-	server.setVerbose(1)
+	client.SetVerbose(1)
+	server.SetVerbose(1)
 
 	// send user stream to server
 	client.tick()
@@ -298,7 +298,7 @@ func TestTransportRecvOverLimit(t *testing.T) {
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
 	// set verbose
-	server.setVerbose(1)
+	server.SetVerbose(1)
 
 	// prepare the receivedState list
 	for i := 0; i < 1024; i++ {
@@ -339,7 +339,7 @@ func TestTransportRecvOverLimit2(t *testing.T) {
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
 	// set verbose
-	server.setVerbose(1)
+	server.SetVerbose(1)
 
 	// prepare the receivedState list
 	for i := 0; i < 1024; i++ {
@@ -381,7 +381,7 @@ func TestTransportRecvOutOfOrder(t *testing.T) {
 
 	// set verbose
 	// client.setVerbose(1)
-	server.setVerbose(1)
+	server.SetVerbose(1)
 
 	// prepare the receivedState list
 	server.receivedState = append(server.receivedState,
