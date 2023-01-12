@@ -43,6 +43,14 @@ The project name `Aprilsh` is derived from `April+sh`. I started this project in
 - 2022/Nov/27: finish Transport and TransportSender.
 - 2022/Dec/28: finish command-line parameter parsing and locale validation.
 
+## Musl locales
+
+```
+% apk add musl-locales-lang musl-locales
+```
+
+Use the above command to add musl locales support for alpine.
+
 ## Architecture view
 
 ![aprilsh.svg](img/aprilsh.svg)
