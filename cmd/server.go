@@ -417,7 +417,10 @@ func printWelcome(w io.Writer, pid int) {
 
 	if !inputUTF8 {
 		// Input is UTF-8 (since Linux 2.6.4)
-		fmt.Fprintf(w, "\nWarning: termios IUTF8 flag not defined.\nCharacter-erase of multibyte character sequence\nprobably does not work properly on this platform.\n")
+		fmt.Fprintf(w, "%s%s%s",
+			"\nWarning: termios IUTF8 flag not defined.\n",
+			"Character-erase of multibyte character sequence\n",
+			"probably does not work properly on this platform.\n")
 	}
 }
 
