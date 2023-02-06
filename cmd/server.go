@@ -402,3 +402,34 @@ func getTimeFrom(env string, def int64) (ret int64) {
 	}
 	return
 }
+
+func printWelcome(w io.Writer, pid int) {
+	fmt.Fprintf(w, "%s [build %s]\n", COMMAND_NAME, BUILD_VERSION)
+	fmt.Fprintf(w, "Copyright 2022 wangqi.\n")
+	fmt.Fprintf(w, "Use of this source code is governed by a MIT-style\n")
+	fmt.Fprintf(w, "license that can be found in the LICENSE file.\n\n")
+	fmt.Fprintf(w, "[%s detached, pid= %d]\n", COMMAND_NAME, pid)
+
+	inputUTF8, err := checkInputUTF8(int(os.Stdin.Fd()))
+	if err != nil {
+		// TODO error handling
+	}
+
+	if !inputUTF8 {
+		// Input is UTF-8 (since Linux 2.6.4)
+		fmt.Fprintf(w, "\nWarning: termios IUTF8 flag not defined.\nCharacter-erase of multibyte character sequence\nprobably does not work properly on this platform.\n")
+	}
+}
+
+func checkInputUTF8(fd int) (bool, error) {
+	termios, err := unix.IoctlGetTermios(int(os.Stdin.Fd()), unix.TCGETS)
+	if err != nil {
+		return false, err
+	}
+
+	// Input is UTF-8 (since Linux 2.6.4)
+	if termios.Iflag|unix.IUTF8 == 0 {
+		return false, nil
+	}
+	return true, nil
+}
