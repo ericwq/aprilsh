@@ -384,6 +384,8 @@ func runServer(conf *Config) {
 		fmt.Printf("\r\n")
 	}
 	fmt.Printf("%s CONNECT %s %s\n", COMMAND_NAME, network.Port(), network.GetKey())
+
+	printWelcome(os.Stderr, os.Getpid())
 }
 
 func getTimeFrom(env string, def int64) (ret int64) {
@@ -410,9 +412,9 @@ func printWelcome(w io.Writer, pid int) {
 	fmt.Fprintf(w, "license that can be found in the LICENSE file.\n\n")
 	fmt.Fprintf(w, "[%s detached, pid= %d]\n", COMMAND_NAME, pid)
 
-	inputUTF8, err := checkInputUTF8(int(os.Stdin.Fd()))
+	inputUTF8, err := checkInputFlag(int(os.Stdin.Fd()), unix.IUTF8)
 	if err != nil {
-		// TODO error handling
+		fmt.Fprintf(w, "\nWarning: %s\n", err)
 	}
 
 	if !inputUTF8 {
@@ -424,15 +426,29 @@ func printWelcome(w io.Writer, pid int) {
 	}
 }
 
-func checkInputUTF8(fd int) (bool, error) {
-	termios, err := unix.IoctlGetTermios(int(os.Stdin.Fd()), unix.TCGETS)
+func checkInputFlag(fd int, flag uint32) (bool, error) {
+	termios, err := unix.IoctlGetTermios(fd, unix.TCGETS)
 	if err != nil {
 		return false, err
 	}
 
 	// Input is UTF-8 (since Linux 2.6.4)
-	if termios.Iflag|unix.IUTF8 == 0 {
+	if termios.Iflag|flag == 0 {
 		return false, nil
 	}
 	return true, nil
+}
+
+func setInputFlag(fd int, flag uint32) error {
+	termios, err := unix.IoctlGetTermios(fd, unix.TCGETS)
+	if err != nil {
+		return err
+	}
+
+	termios.Iflag |= flag
+
+	if err := unix.IoctlSetTermios(fd, unix.TCSETS, termios); err != nil {
+		return err
+	}
+	return nil
 }
