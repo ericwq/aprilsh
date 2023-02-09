@@ -412,7 +412,7 @@ func printWelcome(w io.Writer, pid int) {
 	fmt.Fprintf(w, "license that can be found in the LICENSE file.\n\n")
 	fmt.Fprintf(w, "[%s detached, pid= %d]\n", COMMAND_NAME, pid)
 
-	inputUTF8, err := checkInputFlag(int(os.Stdin.Fd()), unix.IUTF8)
+	inputUTF8, err := checkIUTF8(int(os.Stdin.Fd()))
 	if err != nil {
 		fmt.Fprintf(w, "\nWarning: %s\n", err)
 	}
@@ -426,28 +426,28 @@ func printWelcome(w io.Writer, pid int) {
 	}
 }
 
-func checkInputFlag(fd int, flag uint32) (bool, error) {
-	termios, err := unix.IoctlGetTermios(fd, unix.TCGETS)
+func checkIUTF8(fd int) (bool, error) {
+	termios, err := unix.IoctlGetTermios(fd, getTermios)
 	if err != nil {
 		return false, err
 	}
 
 	// Input is UTF-8 (since Linux 2.6.4)
-	if termios.Iflag|flag == 0 {
+	if termios.Iflag|unix.IUTF8 == 0 {
 		return false, nil
 	}
 	return true, nil
 }
 
-func setInputFlag(fd int, flag uint32) error {
-	termios, err := unix.IoctlGetTermios(fd, unix.TCGETS)
+func setIUTF8(fd int) error {
+	termios, err := unix.IoctlGetTermios(fd, getTermios)
 	if err != nil {
 		return err
 	}
 
-	termios.Iflag |= flag
+	termios.Iflag |= unix.IUTF8
 
-	if err := unix.IoctlSetTermios(fd, unix.TCSETS, termios); err != nil {
+	if err := unix.IoctlSetTermios(fd, setTermios, termios); err != nil {
 		return err
 	}
 	return nil
