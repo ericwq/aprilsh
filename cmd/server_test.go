@@ -628,13 +628,31 @@ func TestGetTimeFrom(t *testing.T) {
 }
 
 func TestCheckIUTF8(t *testing.T) {
-	flag, err := checkIUTF8(int(os.Stdin.Fd()))
+	// try pts master and slave first.
+	pty, tty, err := pty.Open()
 	if err != nil {
-		t.Errorf("Warning: %s\n", err)
+		t.Errorf("checkIUTF8: Open %s\n", err)
+	}
+	flag, err := checkIUTF8(int(pty.Fd()))
+	if err != nil {
+		t.Errorf("checkIUTF8: Master %s\n", err)
+	}
+	if !flag {
+		t.Errorf("checkIUTF8 master got %t, expect %t\n", flag, true)
 	}
 
-	if flag {
-		t.Errorf("checkInputFlag got %t, expect %t\n", flag, true)
+	flag, err = checkIUTF8(int(tty.Fd()))
+	if err != nil {
+		t.Errorf("checkIUTF8: Slave %s\n", err)
+	}
+	if !flag {
+		t.Errorf("checkIUTF8 slave got %t, expect %t\n", flag, true)
+	}
+
+	// STDIN device should return error
+	flag, err = checkIUTF8(int(os.Stdin.Fd()))
+	if err == nil {
+		t.Errorf("checkIUTF8: STDIN should report error, got nil\n")
 	}
 }
 
