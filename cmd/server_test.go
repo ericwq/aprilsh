@@ -631,7 +631,7 @@ func TestCheckIUTF8(t *testing.T) {
 	// try pts master and slave first.
 	pty, tty, err := pty.Open()
 	if err != nil {
-		t.Errorf("checkIUTF8: Open %s\n", err)
+		t.Errorf("#checkIUTF8 Open %s\n", err)
 	}
 
 	// clean pts fd
@@ -644,24 +644,36 @@ func TestCheckIUTF8(t *testing.T) {
 
 	flag, err := checkIUTF8(int(pty.Fd()))
 	if err != nil {
-		t.Errorf("checkIUTF8: Master %s\n", err)
+		t.Errorf("#checkIUTF8 master %s\n", err)
 	}
-	if !flag {
-		t.Errorf("checkIUTF8 master got %t, expect %t\n", flag, true)
+	if flag {
+		t.Errorf("#checkIUTF8 master got %t, expect %t\n", flag, false)
 	}
 
 	flag, err = checkIUTF8(int(tty.Fd()))
 	if err != nil {
-		t.Errorf("checkIUTF8: Slave %s\n", err)
+		t.Errorf("#checkIUTF8 slave %s\n", err)
 	}
-	if !flag {
-		t.Errorf("checkIUTF8 slave got %t, expect %t\n", flag, true)
+	if flag {
+		t.Errorf("#checkIUTF8 slave got %t, expect %t\n", flag, false)
 	}
 
-	// STDIN device should return error
+	// STDIN fd should return error
 	flag, err = checkIUTF8(int(os.Stdin.Fd()))
 	if err == nil {
-		t.Errorf("checkIUTF8: STDIN should report error, got nil\n")
+		t.Errorf("#checkIUTF8 stdin should report error, got nil\n")
+	}
+
+	nullFD, err := os.OpenFile("/dev/null", os.O_RDWR, 0)
+	if err != nil {
+		t.Errorf("#checkIUTF8 open %s failed, %s\n", "/dev/null", err)
+	}
+	defer nullFD.Close()
+
+	// null fd should return error
+	flag, err = checkIUTF8(int(nullFD.Fd()))
+	if err == nil {
+		t.Errorf("#checkIUTF8 null fd should return error, got nil\n")
 	}
 }
 
@@ -669,7 +681,7 @@ func TestSetIUTF8(t *testing.T) {
 	// try pts master and slave first.
 	pty, tty, err := pty.Open()
 	if err != nil {
-		t.Errorf("setIUTF8: Open %s\n", err)
+		t.Errorf("#setIUTF8 Open %s\n", err)
 	}
 
 	// clean pts fd
@@ -685,15 +697,45 @@ func TestSetIUTF8(t *testing.T) {
 		t.Errorf("#setIUTF8 master got %s, expect nil\n", err)
 	}
 
+	// pts master support IUTF8 now
+	flag, err := checkIUTF8(int(pty.Fd()))
+	if err != nil {
+		t.Errorf("#setIUTF8 master %s\n", err)
+	}
+	if !flag {
+		t.Errorf("#checkIUTF8 master got %t, expect %t\n", flag, true)
+	}
+
 	err = setIUTF8(int(tty.Fd()))
 	if err != nil {
 		t.Errorf("#setIUTF8 slave got %s, expect nil\n", err)
 	}
 
-	// STDIN device should return error
+	// pts slave support IUTF8 now
+	flag, err = checkIUTF8(int(tty.Fd()))
+	if err != nil {
+		t.Errorf("#setIUTF8 slave %s\n", err)
+	}
+	if !flag {
+		t.Errorf("#checkIUTF8 slave got %t, expect %t\n", flag, true)
+	}
+
+	// STDIN fd should return error
 	err = setIUTF8(int(os.Stdin.Fd()))
 	if err == nil {
 		t.Errorf("#setIUTF8 should report error, got nil\n")
+	}
+
+	nullFD, err := os.OpenFile("/dev/null", os.O_RDWR, 0)
+	if err != nil {
+		t.Errorf("#setIUTF8 open %s failed, %s\n", "/dev/null", err)
+	}
+	defer nullFD.Close()
+
+	// null fd should return error
+	err = setIUTF8(int(nullFD.Fd()))
+	if err == nil {
+		t.Errorf("#setIUTF8 null fd should return nil, error: %s\n", err)
 	}
 }
 
