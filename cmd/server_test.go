@@ -633,6 +633,15 @@ func TestCheckIUTF8(t *testing.T) {
 	if err != nil {
 		t.Errorf("checkIUTF8: Open %s\n", err)
 	}
+
+	// clean pts fd
+	defer func() {
+		if err != nil {
+			pty.Close()
+			tty.Close()
+		}
+	}()
+
 	flag, err := checkIUTF8(int(pty.Fd()))
 	if err != nil {
 		t.Errorf("checkIUTF8: Master %s\n", err)
@@ -653,6 +662,38 @@ func TestCheckIUTF8(t *testing.T) {
 	flag, err = checkIUTF8(int(os.Stdin.Fd()))
 	if err == nil {
 		t.Errorf("checkIUTF8: STDIN should report error, got nil\n")
+	}
+}
+
+func TestSetIUTF8(t *testing.T) {
+	// try pts master and slave first.
+	pty, tty, err := pty.Open()
+	if err != nil {
+		t.Errorf("setIUTF8: Open %s\n", err)
+	}
+
+	// clean pts fd
+	defer func() {
+		if err != nil {
+			pty.Close()
+			tty.Close()
+		}
+	}()
+
+	err = setIUTF8(int(pty.Fd()))
+	if err != nil {
+		t.Errorf("#setIUTF8 master got %s, expect nil\n", err)
+	}
+
+	err = setIUTF8(int(tty.Fd()))
+	if err != nil {
+		t.Errorf("#setIUTF8 slave got %s, expect nil\n", err)
+	}
+
+	// STDIN device should return error
+	err = setIUTF8(int(os.Stdin.Fd()))
+	if err == nil {
+		t.Errorf("#setIUTF8 should report error, got nil\n")
 	}
 }
 

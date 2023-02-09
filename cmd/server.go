@@ -433,10 +433,7 @@ func checkIUTF8(fd int) (bool, error) {
 	}
 
 	// Input is UTF-8 (since Linux 2.6.4)
-	if termios.Iflag|unix.IUTF8 == 0 {
-		return false, nil
-	}
-	return true, nil
+	return termios.Iflag|unix.IUTF8 == 0, nil
 }
 
 func setIUTF8(fd int) error {
