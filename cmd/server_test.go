@@ -692,45 +692,54 @@ func TestSetIUTF8(t *testing.T) {
 		}
 	}()
 
+	// pty master doesn't support IUTF8
+	flag, err := checkIUTF8(int(pty.Fd()))
+	if flag {
+		t.Errorf("#checkIUTF8 master got %t, expect %t\n", flag, false)
+	}
+
+	// set IUTF8 for master
 	err = setIUTF8(int(pty.Fd()))
 	if err != nil {
 		t.Errorf("#setIUTF8 master got %s, expect nil\n", err)
 	}
 
-	// pts master support IUTF8 now
-	flag, err := checkIUTF8(int(pty.Fd()))
-	if err != nil {
-		t.Errorf("#setIUTF8 master %s\n", err)
-	}
+	// pty master support IUTF8 now
+	flag, err = checkIUTF8(int(pty.Fd()))
 	if !flag {
 		t.Errorf("#checkIUTF8 master got %t, expect %t\n", flag, true)
 	}
 
+	// pty slave support IUTF8
+	flag, err = checkIUTF8(int(tty.Fd()))
+	if !flag {
+		t.Errorf("#checkIUTF8 slave got %t, expect %t\n", flag, true)
+	}
+
+	// set IUTF8 for slave
 	err = setIUTF8(int(tty.Fd()))
 	if err != nil {
 		t.Errorf("#setIUTF8 slave got %s, expect nil\n", err)
 	}
 
-	// pts slave support IUTF8 now
-	flag, err = checkIUTF8(int(tty.Fd()))
-	if err != nil {
-		t.Errorf("#setIUTF8 slave %s\n", err)
-	}
-	if !flag {
-		t.Errorf("#checkIUTF8 slave got %t, expect %t\n", flag, true)
-	}
-
-	// STDIN fd should return error
+	// STDIN fd doesn't support termios, setIUTF8 return error
 	err = setIUTF8(int(os.Stdin.Fd()))
 	if err == nil {
 		t.Errorf("#setIUTF8 should report error, got nil\n")
 	}
 
+	// open /dev/null
 	nullFD, err := os.OpenFile("/dev/null", os.O_RDWR, 0)
 	if err != nil {
 		t.Errorf("#setIUTF8 open %s failed, %s\n", "/dev/null", err)
 	}
 	defer nullFD.Close()
+
+	// null fd doesn't support termios, checkIUTF8 return error
+	flag, err = checkIUTF8(int(nullFD.Fd()))
+	if err == nil {
+		t.Errorf("#setIUTF8 check %s failed, %s\n", "/dev/null", err)
+	}
 
 	// null fd should return error
 	err = setIUTF8(int(nullFD.Fd()))
