@@ -659,6 +659,7 @@ func TestCheckIUTF8(t *testing.T) {
 	}
 
 	// STDIN fd should return error
+	// only works for go test command
 	flag, err = checkIUTF8(int(os.Stdin.Fd()))
 	if err == nil {
 		t.Errorf("#checkIUTF8 stdin should report error, got nil\n")
@@ -723,6 +724,7 @@ func TestSetIUTF8(t *testing.T) {
 	}
 
 	// STDIN fd doesn't support termios, setIUTF8 return error
+	// only works for go test command
 	err = setIUTF8(int(os.Stdin.Fd()))
 	if err == nil {
 		t.Errorf("#setIUTF8 should report error, got nil\n")
