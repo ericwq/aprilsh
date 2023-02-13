@@ -13,9 +13,11 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 
+	"github.com/creack/pty"
 	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/network"
 	"github.com/ericwq/aprilsh/statesync"
@@ -83,6 +85,16 @@ func chdirHomedir(home string) bool {
 
 	// fmt.Printf("#chdirHomedir home=%q\n", home)
 	return true
+}
+
+// get current user home directory
+func getHomeDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+
+	return home
 }
 
 func motdHushed() bool {
@@ -360,6 +372,7 @@ func runServer(conf *Config) {
 
 	// get initial window size
 	windowSize, err := unix.IoctlGetWinsize(int(os.Stdin.Fd()), unix.TIOCGWINSZ)
+	// windowSize, err := pty.GetsizeFull(os.Stdin)
 	if err != nil || windowSize.Col == 0 || windowSize.Row == 0 {
 		// Fill in sensible defaults. */
 		// They will be overwritten by client on first connection.
@@ -385,7 +398,7 @@ func runServer(conf *Config) {
 	}
 	fmt.Printf("%s CONNECT %s %s\n", COMMAND_NAME, network.Port(), network.GetKey())
 
-	printWelcome(os.Stderr, os.Getpid())
+	printWelcome(os.Stderr, os.Getpid(), os.Stdin)
 }
 
 func getTimeFrom(env string, def int64) (ret int64) {
@@ -405,14 +418,14 @@ func getTimeFrom(env string, def int64) (ret int64) {
 	return
 }
 
-func printWelcome(w io.Writer, pid int) {
+func printWelcome(w io.Writer, pid int, tty *os.File) {
 	fmt.Fprintf(w, "%s [build %s]\n", COMMAND_NAME, BUILD_VERSION)
 	fmt.Fprintf(w, "Copyright 2022 wangqi.\n")
 	fmt.Fprintf(w, "Use of this source code is governed by a MIT-style\n")
 	fmt.Fprintf(w, "license that can be found in the LICENSE file.\n\n")
 	fmt.Fprintf(w, "[%s detached, pid= %d]\n", COMMAND_NAME, pid)
 
-	inputUTF8, err := checkIUTF8(int(os.Stdin.Fd()))
+	inputUTF8, err := checkIUTF8(int(tty.Fd()))
 	if err != nil {
 		fmt.Fprintf(w, "\nWarning: %s\n", err)
 	}
@@ -448,4 +461,52 @@ func setIUTF8(fd int) error {
 		return err
 	}
 	return nil
+}
+
+func runShell(shell, args string, sz *pty.Winsize) (*os.File, error) {
+	cmd := exec.Command(shell, args)
+
+	// open pts master and slave
+	ptmx, pts, err := pty.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = pts.Close() }() // Best effort.
+
+	if sz != nil {
+		if err := pty.Setsize(ptmx, sz); err != nil {
+			_ = ptmx.Close() // Best effort.
+			return nil, err
+		}
+	}
+	if cmd.Stdout == nil {
+		cmd.Stdout = pts
+	}
+	if cmd.Stderr == nil {
+		cmd.Stderr = pts
+	}
+	if cmd.Stdin == nil {
+		cmd.Stdin = pts
+	}
+
+	// set IUTF8 if available
+	if err := setIUTF8(int(pts.Fd())); err != nil {
+		return nil, err
+	}
+
+	// set TERM
+
+	// ask ncurses to send UTF-8 instead of ISO 2022 for line-drawing chars
+	additionalEnv := "NCURSES_NO_UTF8_ACS=1"
+	newEnv := append(os.Environ(), additionalEnv)
+	cmd.Env = newEnv
+
+	cmd.Dir = getHomeDir()
+	cmd.SysProcAttr = nil
+
+	if err := cmd.Start(); err != nil {
+		_ = ptmx.Close() // Best effort.
+		return nil, err
+	}
+	return ptmx, err
 }
