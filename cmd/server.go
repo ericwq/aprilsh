@@ -16,6 +16,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/creack/pty"
 	"github.com/ericwq/aprilsh/encrypt"
@@ -463,22 +464,24 @@ func setIUTF8(fd int) error {
 	return nil
 }
 
-func runShell(shell, args string, sz *pty.Winsize) (*os.File, error) {
-	cmd := exec.Command(shell, args)
+func runShell(sz *pty.Winsize, conf *Config) (*os.File, error) {
+	cmd := exec.Command(conf.commandPath, conf.commandArgv...)
 
 	// open pts master and slave
-	ptmx, pts, err := pty.Open()
+	ptmx, pts, err := pty.Open() // open pty master and slave
 	if err != nil {
 		return nil, err
 	}
 	defer func() { _ = pts.Close() }() // Best effort.
 
-	if sz != nil {
+	if sz != nil { // set terminal size
 		if err := pty.Setsize(ptmx, sz); err != nil {
 			_ = ptmx.Close() // Best effort.
 			return nil, err
 		}
 	}
+
+	// set stdin, stdout, stderr for pty slave
 	if cmd.Stdout == nil {
 		cmd.Stdout = pts
 	}
@@ -495,14 +498,38 @@ func runShell(shell, args string, sz *pty.Winsize) (*os.File, error) {
 	}
 
 	// set TERM
+	// TODO we should set the TERM based on user client TERM
+
+	// clear STY environment variable so GNU screen regards us as top level
+	os.Unsetenv("STY")
+
+	chdirHomedir("")
 
 	// ask ncurses to send UTF-8 instead of ISO 2022 for line-drawing chars
-	additionalEnv := "NCURSES_NO_UTF8_ACS=1"
-	newEnv := append(os.Environ(), additionalEnv)
+	ncursesEnv := "NCURSES_NO_UTF8_ACS=1"
+	newEnv := append(os.Environ(), ncursesEnv)
 	cmd.Env = newEnv
 
+	// set working directory
 	cmd.Dir = getHomeDir()
-	cmd.SysProcAttr = nil
+
+	cmd.SysProcAttr = &syscall.SysProcAttr{}
+	cmd.SysProcAttr.Setsid = true  // start a new session
+	cmd.SysProcAttr.Setctty = true // set controlling terminal
+
+	if conf.withMotd && !motdHushed() {
+		// For Ubuntu, try and print one of {,/var}/run/motd.dynamic.
+		// This file is only updated when pam_motd is run, but when
+		// mosh-server is run in the usual way with ssh via the script,
+		// this always happens.
+		// XXX Hackish knowledge of Ubuntu PAM configuration.
+		// But this seems less awful than build-time detection with autoconf.
+		if !printMotd(cmd.Stdout, "/run/motd.dynamic") {
+			printMotd(cmd.Stdout, "/var/run/motd.dynamic")
+		}
+		// Always print traditional /etc/motd.
+		printMotd(cmd.Stdout, "/etc/motd")
+	}
 
 	if err := cmd.Start(); err != nil {
 		_ = ptmx.Close() // Best effort.
