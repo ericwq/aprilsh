@@ -531,6 +531,8 @@ func runShell(sz *pty.Winsize, conf *Config) (*os.File, error) {
 		printMotd(cmd.Stdout, "/etc/motd")
 	}
 
+	encrypt.ReenableDumpingCore()
+
 	if err := cmd.Start(); err != nil {
 		_ = ptmx.Close() // Best effort.
 		return nil, err
