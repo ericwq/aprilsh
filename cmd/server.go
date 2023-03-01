@@ -14,6 +14,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strconv"
 	"strings"
 	"syscall"
@@ -153,6 +154,7 @@ Options:
   -p, --port     listen port range
   -l, --locale   key-value pairs
   -c, --color    xterm color
+  -t, --term     client TERM
 `
 var logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 
@@ -164,6 +166,7 @@ type Config struct {
 	desiredPort string
 	locales     localeFlag
 	color       int
+	term        string // client TERM
 
 	commandPath string
 	commandArgv []string // the positional (non-flag) command-line arguments.
@@ -199,6 +202,9 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 
 	flagSet.StringVar(&conf.desiredPort, "port", "", "listen port range")
 	flagSet.StringVar(&conf.desiredPort, "p", "", "listen port range")
+
+	flagSet.StringVar(&conf.term, "term", "", "client TERM")
+	flagSet.StringVar(&conf.term, "t", "", "client TERM")
 
 	flagSet.Var(&conf.locales, "locale", "locale list, key=value pair")
 	flagSet.Var(&conf.locales, "l", "locale list, key=value pair")
@@ -400,6 +406,8 @@ func runServer(conf *Config) {
 	fmt.Printf("%s CONNECT %s %s\n", COMMAND_NAME, network.Port(), network.GetKey())
 
 	printWelcome(os.Stderr, os.Getpid(), os.Stdin)
+
+	runShell(windowSize, conf)
 }
 
 func getTimeFrom(env string, def int64) (ret int64) {
@@ -464,8 +472,28 @@ func setIUTF8(fd int) error {
 	return nil
 }
 
-func runShell(sz *pty.Winsize, conf *Config) (*os.File, error) {
+func convertWinsize(windowSize *unix.Winsize) *pty.Winsize {
+	var sz pty.Winsize
+	sz.Cols = windowSize.Col
+	sz.Rows = windowSize.Row
+	sz.X = windowSize.Xpixel
+	sz.Y = windowSize.Ypixel
+
+	return &sz
+}
+
+func runShell(windowSize *unix.Winsize, conf *Config) (*os.File, error) {
 	cmd := exec.Command(conf.commandPath, conf.commandArgv...)
+
+	// copy from pty.StartWithSize()
+	cmd.SysProcAttr = &syscall.SysProcAttr{}
+	cmd.SysProcAttr.Setsid = true  // start a new session
+	cmd.SysProcAttr.Setctty = true // set controlling terminal
+
+	/*
+		copy from pty.StartWithAttrs()
+		need to add some logic inside pty.StartWithAttrs()
+	*/
 
 	// open pts master and slave
 	ptmx, pts, err := pty.Open() // open pty master and slave
@@ -474,6 +502,7 @@ func runShell(sz *pty.Winsize, conf *Config) (*os.File, error) {
 	}
 	defer func() { _ = pts.Close() }() // Best effort.
 
+	sz := convertWinsize(windowSize)
 	if sz != nil { // set terminal size
 		if err := pty.Setsize(ptmx, sz); err != nil {
 			_ = ptmx.Close() // Best effort.
@@ -492,30 +521,40 @@ func runShell(sz *pty.Winsize, conf *Config) (*os.File, error) {
 		cmd.Stdin = pts
 	}
 
+	/*
+		additional logic for pty.StartWithAttrs() begin
+	*/
+
+	// reenable signals for cmd.Start
+	signal.Reset(syscall.SIGHUP) // reset means using default signal handler
+	signal.Reset(syscall.SIGPIPE)
+
 	// set IUTF8 if available
 	if err := setIUTF8(int(pts.Fd())); err != nil {
 		return nil, err
 	}
 
-	// set TERM
-	// TODO we should set the TERM based on user client TERM
+	// set TERM based on client TERM
+	if conf.term != "" {
+		os.Setenv("TERM", conf.term)
+	} else {
+		os.Setenv("TERM", "xterm-256color") // default TERM
+	}
 
 	// clear STY environment variable so GNU screen regards us as top level
 	os.Unsetenv("STY")
 
+	// the following function will set PWD environment variable
 	chdirHomedir("")
 
 	// ask ncurses to send UTF-8 instead of ISO 2022 for line-drawing chars
 	ncursesEnv := "NCURSES_NO_UTF8_ACS=1"
+	// should be the last statement related to environment variable
 	newEnv := append(os.Environ(), ncursesEnv)
 	cmd.Env = newEnv
 
 	// set working directory
 	cmd.Dir = getHomeDir()
-
-	cmd.SysProcAttr = &syscall.SysProcAttr{}
-	cmd.SysProcAttr.Setsid = true  // start a new session
-	cmd.SysProcAttr.Setctty = true // set controlling terminal
 
 	if conf.withMotd && !motdHushed() {
 		// For Ubuntu, try and print one of {,/var}/run/motd.dynamic.
@@ -531,11 +570,41 @@ func runShell(sz *pty.Winsize, conf *Config) (*os.File, error) {
 		printMotd(cmd.Stdout, "/etc/motd")
 	}
 
+	// TODO: Wait for parent to release us.
 	encrypt.ReenableDumpingCore()
+
+	/*
+		additional logic for pty.StartWithAttrs() end
+	*/
 
 	if err := cmd.Start(); err != nil {
 		_ = ptmx.Close() // Best effort.
 		return nil, err
 	}
+
+	// Make sure to close the pty at the end.
+	defer func() { _ = ptmx.Close() }() // Best effort.
+
+	// Handle pty size.
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGWINCH)
+	go func() {
+		for range ch {
+			// TODO ptmx,pts?
+			if err := pty.InheritSize(os.Stdin, ptmx); err != nil {
+				log.Printf("error resizing pty: %s", err)
+			}
+		}
+	}()
+	ch <- syscall.SIGWINCH                        // Initial resize.
+	defer func() { signal.Stop(ch); close(ch) }() // Cleanup signals when done.
+
+	// Set stdin in raw mode.
+	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	if err != nil {
+		panic(err)
+	}
+	defer func() { _ = term.Restore(int(os.Stdin.Fd()), oldState) }() // Best effort.
+
 	return ptmx, err
 }
