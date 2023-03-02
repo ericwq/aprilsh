@@ -15,10 +15,12 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"os/user"
 	"strconv"
 	"strings"
 	"syscall"
 
+	utmp "blitter.com/go/goutmp"
 	"github.com/creack/pty"
 	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/network"
@@ -407,7 +409,53 @@ func runServer(conf *Config) {
 
 	printWelcome(os.Stderr, os.Getpid(), os.Stdin)
 
-	runShell(windowSize, conf)
+	shell, ptmx, err := runShell(windowSize, conf)
+
+	// Make sure to close the pty at the end.
+	defer func() { _ = ptmx.Close() }() // Best effort.
+
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "#runShell report: %s\n", err)
+	}
+
+	// wait for the shell to finish.
+	go func() {
+		if err2 := shell.Wait(); err2 != nil {
+			fmt.Fprintf(os.Stderr, "start shell error: %s\n", err2)
+		}
+	}()
+
+	// kill the shell when the server done
+	defer func() { shell.Process.Kill()}()
+
+	// make utmp entry
+	ptsName := ptmx.Name()
+	host := fmt.Sprintf("mosh [%d]", os.Getpid())
+	utmpEntry := utmp.Put_utmp(getCurrentUser(), ptsName, host)
+
+	if err := serve(ptmx, terminal, network, networkTimeout, networkSignaledTimeout); err != nil {
+		fmt.Fprintf(os.Stderr, "#runServer report: %s\n", err)
+	}
+
+	// clear utmp entry
+	utmp.Unput_utmp(utmpEntry)
+}
+
+func getCurrentUser() string {
+	user, err := user.Current()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "#getCurrentUser report: %s\n", err)
+		return ""
+	}
+
+	return user.Username
+}
+
+func serve(ptmx *os.File, terminal *statesync.Complete,
+	network *network.Transport[*statesync.Complete, *statesync.UserStream],
+	networkTimeout int64, networkSignaledTimeout int64,
+) error {
+	return nil
 }
 
 func getTimeFrom(env string, def int64) (ret int64) {
@@ -482,7 +530,7 @@ func convertWinsize(windowSize *unix.Winsize) *pty.Winsize {
 	return &sz
 }
 
-func runShell(windowSize *unix.Winsize, conf *Config) (*os.File, error) {
+func runShell(windowSize *unix.Winsize, conf *Config) (*exec.Cmd, *os.File, error) {
 	cmd := exec.Command(conf.commandPath, conf.commandArgv...)
 
 	// copy from pty.StartWithSize()
@@ -498,7 +546,7 @@ func runShell(windowSize *unix.Winsize, conf *Config) (*os.File, error) {
 	// open pts master and slave
 	ptmx, pts, err := pty.Open() // open pty master and slave
 	if err != nil {
-		return nil, err
+		return cmd, nil, err
 	}
 	defer func() { _ = pts.Close() }() // Best effort.
 
@@ -506,7 +554,7 @@ func runShell(windowSize *unix.Winsize, conf *Config) (*os.File, error) {
 	if sz != nil { // set terminal size
 		if err := pty.Setsize(ptmx, sz); err != nil {
 			_ = ptmx.Close() // Best effort.
-			return nil, err
+			return cmd, nil, err
 		}
 	}
 
@@ -531,7 +579,7 @@ func runShell(windowSize *unix.Winsize, conf *Config) (*os.File, error) {
 
 	// set IUTF8 if available
 	if err := setIUTF8(int(pts.Fd())); err != nil {
-		return nil, err
+		return cmd, nil, err
 	}
 
 	// set TERM based on client TERM
@@ -579,32 +627,34 @@ func runShell(windowSize *unix.Winsize, conf *Config) (*os.File, error) {
 
 	if err := cmd.Start(); err != nil {
 		_ = ptmx.Close() // Best effort.
-		return nil, err
+		return cmd, nil, err
 	}
 
-	// Make sure to close the pty at the end.
-	defer func() { _ = ptmx.Close() }() // Best effort.
+	/*
+		// Make sure to close the pty at the end.
+		defer func() { _ = ptmx.Close() }() // Best effort.
 
-	// Handle pty size.
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, syscall.SIGWINCH)
-	go func() {
-		for range ch {
-			// TODO ptmx,pts?
-			if err := pty.InheritSize(os.Stdin, ptmx); err != nil {
-				log.Printf("error resizing pty: %s", err)
+		// Handle pty size.
+		ch := make(chan os.Signal, 1)
+		signal.Notify(ch, syscall.SIGWINCH)
+		go func() {
+			for range ch {
+				// TODO ptmx,pts?
+				if err := pty.InheritSize(os.Stdin, ptmx); err != nil {
+					log.Printf("error resizing pty: %s", err)
+				}
 			}
+		}()
+		ch <- syscall.SIGWINCH                        // Initial resize.
+		defer func() { signal.Stop(ch); close(ch) }() // Cleanup signals when done.
+
+		// Set stdin in raw mode.
+		oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+		if err != nil {
+			panic(err)
 		}
-	}()
-	ch <- syscall.SIGWINCH                        // Initial resize.
-	defer func() { signal.Stop(ch); close(ch) }() // Cleanup signals when done.
+		defer func() { _ = term.Restore(int(os.Stdin.Fd()), oldState) }() // Best effort.
 
-	// Set stdin in raw mode.
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil {
-		panic(err)
-	}
-	defer func() { _ = term.Restore(int(os.Stdin.Fd()), oldState) }() // Best effort.
-
-	return ptmx, err
+	*/
+	return cmd, ptmx, err
 }
