@@ -426,19 +426,27 @@ func runServer(conf *Config) {
 	}()
 
 	// kill the shell when the server done
-	defer func() { shell.Process.Kill()}()
+	defer func() { shell.Process.Kill() }()
 
-	// make utmp entry
+	// add utmp entry
 	ptsName := ptmx.Name()
 	host := fmt.Sprintf("mosh [%d]", os.Getpid())
-	utmpEntry := utmp.Put_utmp(getCurrentUser(), ptsName, host)
+	usr := getCurrentUser()
+	utmpEntry := utmp.Put_utmp(usr, ptsName, host)
 
+	// update last log
+	utmp.Put_lastlog_entry(COMMAND_NAME, usr, ptsName, host)
+
+	// serve the remote request
 	if err := serve(ptmx, terminal, network, networkTimeout, networkSignaledTimeout); err != nil {
 		fmt.Fprintf(os.Stderr, "#runServer report: %s\n", err)
 	}
 
 	// clear utmp entry
 	utmp.Unput_utmp(utmpEntry)
+
+	fmt.Printf("\n[%s is exiting.]\n", COMMAND_NAME)
+	// https://www.dolthub.com/blog/2022-11-28-go-os-exec-patterns/
 }
 
 func getCurrentUser() string {
