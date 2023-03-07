@@ -7,6 +7,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -409,7 +410,7 @@ func runServer(conf *Config) {
 
 	printWelcome(os.Stderr, os.Getpid(), os.Stdin)
 
-	shell, ptmx, err := runShell(windowSize, conf)
+	shell, ptmx, err := runShell(context.Background(), windowSize, conf)
 
 	// Make sure to close the pty at the end.
 	defer func() { _ = ptmx.Close() }() // Best effort.
@@ -418,15 +419,18 @@ func runServer(conf *Config) {
 		fmt.Fprintf(os.Stderr, "#runShell report: %s\n", err)
 	}
 
+	done := make(chan error)
 	// wait for the shell to finish.
 	go func() {
 		if err2 := shell.Wait(); err2 != nil {
 			fmt.Fprintf(os.Stderr, "start shell error: %s\n", err2)
 		}
+		// notify the udp server
+		done <- errors.New("shell exit")
 	}()
 
 	// kill the shell when the server done
-	defer func() { shell.Process.Kill() }()
+	defer func() { shell.Cancel() }()
 
 	// add utmp entry
 	ptsName := ptmx.Name()
@@ -438,7 +442,7 @@ func runServer(conf *Config) {
 	utmp.Put_lastlog_entry(COMMAND_NAME, usr, ptsName, host)
 
 	// serve the remote request
-	if err := serve(ptmx, terminal, network, networkTimeout, networkSignaledTimeout); err != nil {
+	if err := serve(done, ptmx, terminal, network, networkTimeout, networkSignaledTimeout); err != nil {
 		fmt.Fprintf(os.Stderr, "#runServer report: %s\n", err)
 	}
 
@@ -459,7 +463,7 @@ func getCurrentUser() string {
 	return user.Username
 }
 
-func serve(ptmx *os.File, terminal *statesync.Complete,
+func serve(done chan error, ptmx *os.File, terminal *statesync.Complete,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
 	networkTimeout int64, networkSignaledTimeout int64,
 ) error {
@@ -538,8 +542,8 @@ func convertWinsize(windowSize *unix.Winsize) *pty.Winsize {
 	return &sz
 }
 
-func runShell(windowSize *unix.Winsize, conf *Config) (*exec.Cmd, *os.File, error) {
-	cmd := exec.Command(conf.commandPath, conf.commandArgv...)
+func runShell(ctx context.Context, windowSize *unix.Winsize, conf *Config) (*exec.Cmd, *os.File, error) {
+	cmd := exec.CommandContext(ctx, conf.commandPath, conf.commandArgv...)
 
 	// copy from pty.StartWithSize()
 	cmd.SysProcAttr = &syscall.SysProcAttr{}
