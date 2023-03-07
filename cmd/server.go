@@ -451,6 +451,7 @@ func runServer(conf *Config) {
 
 	fmt.Printf("\n[%s is exiting.]\n", COMMAND_NAME)
 	// https://www.dolthub.com/blog/2022-11-28-go-os-exec-patterns/
+	// https://www.prakharsrivastav.com/posts/golang-context-and-cancellation/
 }
 
 func getCurrentUser() string {
