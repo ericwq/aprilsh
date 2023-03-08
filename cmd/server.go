@@ -430,7 +430,7 @@ func runServer(conf *Config) {
 	utmp.Unput_utmp(utmpEntry)
 
 	// start the shell
-	shell, err := runShell(ptmx, pts, conf)
+	shell, err := startShell(ptmx, pts, conf)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "#runServer report: %s\n", err)
 	}
@@ -559,7 +559,7 @@ func openPTS(windowSize *unix.Winsize, conf *Config) (ptmx *os.File, pts *os.Fil
 	return ptmx, pts, nil
 }
 
-func runShell(ptmx *os.File, pts *os.File, conf *Config) (*exec.Cmd, error) {
+func startShell(ptmx *os.File, pts *os.File, conf *Config) (*exec.Cmd, error) {
 	cmd := exec.Command(conf.commandPath, conf.commandArgv...)
 
 	// copy from pty.StartWithSize()
