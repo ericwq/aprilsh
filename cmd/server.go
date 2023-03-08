@@ -7,7 +7,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -410,44 +409,42 @@ func runServer(conf *Config) {
 
 	printWelcome(os.Stderr, os.Getpid(), os.Stdin)
 
-	shell, ptmx, err := runShell(context.Background(), windowSize, conf)
-
-	// Make sure to close the pty at the end.
-	defer func() { _ = ptmx.Close() }() // Best effort.
-
+	ptmx, pts, err := openPTS(windowSize, conf)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "#runShell report: %s\n", err)
+		fmt.Fprintf(os.Stderr, "#runServer prepare pts error: %s\n", err)
 	}
-
-	done := make(chan error)
-	// wait for the shell to finish.
-	go func() {
-		if err2 := shell.Wait(); err2 != nil {
-			fmt.Fprintf(os.Stderr, "start shell error: %s\n", err2)
-		}
-		// notify the udp server
-		done <- errors.New("shell exit")
-	}()
-
-	// kill the shell when the server done
-	defer func() { shell.Cancel() }()
 
 	// add utmp entry
 	ptsName := ptmx.Name()
-	host := fmt.Sprintf("mosh [%d]", os.Getpid())
+	host := fmt.Sprintf("aprilsh [%d]", os.Getpid())
 	usr := getCurrentUser()
 	utmpEntry := utmp.Put_utmp(usr, ptsName, host)
 
 	// update last log
 	utmp.Put_lastlog_entry(COMMAND_NAME, usr, ptsName, host)
 
-	// serve the remote request
-	if err := serve(done, ptmx, terminal, network, networkTimeout, networkSignaledTimeout); err != nil {
-		fmt.Fprintf(os.Stderr, "#runServer report: %s\n", err)
-	}
+	// start the udp server, serve the udp request
+	go serve(ptmx, terminal, network, networkTimeout, networkSignaledTimeout)
 
 	// clear utmp entry
 	utmp.Unput_utmp(utmpEntry)
+
+	// start the shell
+	shell, err := runShell(ptmx, pts, conf)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "#runServer report: %s\n", err)
+	}
+
+	// Make sure to close the pty at the end.
+	defer func() { _ = ptmx.Close() }() // Best effort.
+
+	// wait for the shell to finish.
+	if err2 := shell.Wait(); err2 != nil {
+		fmt.Fprintf(os.Stderr, "#runServer start shell error: %s\n", err2)
+	}
+
+	// kill the shell when the server done
+	defer func() { shell.Cancel() }()
 
 	fmt.Printf("\n[%s is exiting.]\n", COMMAND_NAME)
 	// https://www.dolthub.com/blog/2022-11-28-go-os-exec-patterns/
@@ -464,7 +461,7 @@ func getCurrentUser() string {
 	return user.Username
 }
 
-func serve(done chan error, ptmx *os.File, terminal *statesync.Complete,
+func serve(ptmx *os.File, terminal *statesync.Complete,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
 	networkTimeout int64, networkSignaledTimeout int64,
 ) error {
@@ -543,8 +540,27 @@ func convertWinsize(windowSize *unix.Winsize) *pty.Winsize {
 	return &sz
 }
 
-func runShell(ctx context.Context, windowSize *unix.Winsize, conf *Config) (*exec.Cmd, *os.File, error) {
-	cmd := exec.CommandContext(ctx, conf.commandPath, conf.commandArgv...)
+func openPTS(windowSize *unix.Winsize, conf *Config) (ptmx *os.File, pts *os.File, err error) {
+	// open pts master and slave
+	ptmx, pts, err = pty.Open() // open pty master and slave
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() { _ = pts.Close() }() // Best effort.
+
+	sz := convertWinsize(windowSize)
+	if sz != nil { // set terminal size
+		if err := pty.Setsize(ptmx, sz); err != nil {
+			_ = ptmx.Close() // Best effort.
+			return nil, nil, err
+		}
+	}
+
+	return ptmx, pts, nil
+}
+
+func runShell(ptmx *os.File, pts *os.File, conf *Config) (*exec.Cmd, error) {
+	cmd := exec.Command(conf.commandPath, conf.commandArgv...)
 
 	// copy from pty.StartWithSize()
 	cmd.SysProcAttr = &syscall.SysProcAttr{}
@@ -556,20 +572,22 @@ func runShell(ctx context.Context, windowSize *unix.Winsize, conf *Config) (*exe
 		need to add some logic inside pty.StartWithAttrs()
 	*/
 
-	// open pts master and slave
-	ptmx, pts, err := pty.Open() // open pty master and slave
-	if err != nil {
-		return cmd, nil, err
-	}
-	defer func() { _ = pts.Close() }() // Best effort.
-
-	sz := convertWinsize(windowSize)
-	if sz != nil { // set terminal size
-		if err := pty.Setsize(ptmx, sz); err != nil {
-			_ = ptmx.Close() // Best effort.
+	/*
+		// open pts master and slave
+		ptmx, pts, err := pty.Open() // open pty master and slave
+		if err != nil {
 			return cmd, nil, err
 		}
-	}
+		defer func() { _ = pts.Close() }() // Best effort.
+
+		sz := convertWinsize(windowSize)
+		if sz != nil { // set terminal size
+			if err := pty.Setsize(ptmx, sz); err != nil {
+				_ = ptmx.Close() // Best effort.
+				return cmd, nil, err
+			}
+		}
+	*/
 
 	// set stdin, stdout, stderr for pty slave
 	if cmd.Stdout == nil {
@@ -592,7 +610,7 @@ func runShell(ctx context.Context, windowSize *unix.Winsize, conf *Config) (*exe
 
 	// set IUTF8 if available
 	if err := setIUTF8(int(pts.Fd())); err != nil {
-		return cmd, nil, err
+		return cmd, err
 	}
 
 	// set TERM based on client TERM
@@ -631,7 +649,12 @@ func runShell(ctx context.Context, windowSize *unix.Winsize, conf *Config) (*exe
 		printMotd(cmd.Stdout, "/etc/motd")
 	}
 
-	// TODO: Wait for parent to release us.
+	// Wait for parent to release us.
+	var buf string
+	if _, err := fmt.Fscanf(cmd.Stdin, "%s", &buf); err != nil {
+		return cmd, err
+	}
+
 	encrypt.ReenableDumpingCore()
 
 	/*
@@ -640,34 +663,8 @@ func runShell(ctx context.Context, windowSize *unix.Winsize, conf *Config) (*exe
 
 	if err := cmd.Start(); err != nil {
 		_ = ptmx.Close() // Best effort.
-		return cmd, nil, err
+		return cmd, err
 	}
 
-	/*
-		// Make sure to close the pty at the end.
-		defer func() { _ = ptmx.Close() }() // Best effort.
-
-		// Handle pty size.
-		ch := make(chan os.Signal, 1)
-		signal.Notify(ch, syscall.SIGWINCH)
-		go func() {
-			for range ch {
-				// TODO ptmx,pts?
-				if err := pty.InheritSize(os.Stdin, ptmx); err != nil {
-					log.Printf("error resizing pty: %s", err)
-				}
-			}
-		}()
-		ch <- syscall.SIGWINCH                        // Initial resize.
-		defer func() { signal.Stop(ch); close(ch) }() // Cleanup signals when done.
-
-		// Set stdin in raw mode.
-		oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
-		if err != nil {
-			panic(err)
-		}
-		defer func() { _ = term.Restore(int(os.Stdin.Fd()), oldState) }() // Best effort.
-
-	*/
-	return cmd, ptmx, err
+	return cmd, nil
 }
