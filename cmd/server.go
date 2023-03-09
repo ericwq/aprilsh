@@ -224,6 +224,7 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	return &conf, buf.String(), nil
 }
 
+// parse the flag first, print help or version based on flag
 func main() {
 	// For security, make sure we don't dump core
 	if err := encrypt.DisableDumpingCore(); err != nil {
