@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -225,6 +226,7 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 }
 
 // parse the flag first, print help or version based on flag
+// then run the main listening server
 func main() {
 	// For security, make sure we don't dump core
 	if err := encrypt.DisableDumpingCore(); err != nil {
@@ -269,9 +271,17 @@ func main() {
 		return
 	}
 
-	runServer(conf)
+	m := mainServe{port: conf.desiredPort}
+	if err := m.serveOn(); err != nil {
+		logW.Printf("%s: %s\n", COMMAND_NAME, err.Error())
+		return
+	}
+
+	<-m.done
 }
 
+// build the config instance and check the utf-8 locale. return error if the terminal
+// can't support utf-8 locale.
 func doConfig(conf *Config) error {
 	conf.commandPath = ""
 	conf.withMotd = false
@@ -374,7 +384,7 @@ func (lv *localeFlag) IsBoolFlag() bool {
 	return false
 }
 
-func runServer(conf *Config) {
+func runServer(conf *Config, x chan string) {
 	networkTimeout := getTimeFrom("APRILSH_SERVER_NETWORK_TMOUT", 0)
 	networkSignaledTimeout := getTimeFrom("APRILSH_SERVER_SIGNAL_TMOUT", 0)
 
@@ -407,6 +417,7 @@ func runServer(conf *Config) {
 		fmt.Printf("\r\n")
 	}
 	fmt.Printf("%s CONNECT %s %s\n", COMMAND_NAME, network.Port(), network.GetKey())
+	x <- network.GetKey()
 
 	printWelcome(os.Stderr, os.Getpid(), os.Stdin)
 
@@ -668,4 +679,55 @@ func startShell(ptmx *os.File, pts *os.File, conf *Config) (*exec.Cmd, error) {
 	}
 
 	return cmd, nil
+}
+
+type mainServe struct {
+	port     string
+	clients  map[int]bool
+	nextPort int
+	done     chan bool
+}
+
+// to support multiple clients, mainServe listen on the specified port.
+// start udp server for each new client.
+func (m *mainServe) serveOn() error {
+	local_addr, err := net.ResolveUDPAddr("udp", m.port)
+	if err != nil {
+		return err
+	}
+
+	conn, err := net.ListenUDP("udp", local_addr)
+	if err != nil {
+		return err
+	}
+
+	buf := make([]byte, 128)
+	m.done = make(chan bool)
+
+	fmt.Printf("listening on %s\n", m.port)
+	go func() {
+		defer conn.Close()
+		for {
+			n, addr, err := conn.ReadFromUDP(buf)
+			if err != nil {
+				fmt.Println("Error: ", err) // write error to log?
+				continue
+			}
+			// fmt.Printf("Received %q from %s\n", strings.TrimSpace(string(buf[0:n])), addr)
+
+			// only response to request start with 'open aprilsh'
+			req := strings.TrimSpace(string(buf[0:n]))
+			if strings.HasPrefix(req, "open aprilsh") {
+				m.nextPort++
+				m.clients[m.nextPort] = true
+				key := "generate key"
+
+				resp := fmt.Sprintf("%d,%s\n", m.nextPort, key)
+				// response with session key and target udp port to client
+				conn.WriteToUDP([]byte(resp), addr)
+			}
+		}
+	}()
+
+	return nil
 }
