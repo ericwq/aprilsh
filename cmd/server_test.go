@@ -452,7 +452,7 @@ func TestDoConfig(t *testing.T) {
 			defer func() { os.Args = oldArgs }()
 
 			// validate doConfig
-			err := doConfig(&v.conf0)
+			err := buildConfig(&v.conf0)
 			if err != nil {
 				if err.Error() != v.err.Error() {
 					t.Errorf("#test doConfig expect %q, got %q\n", v.err, err)

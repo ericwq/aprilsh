@@ -266,13 +266,13 @@ func main() {
 		}
 	}
 
-	if err := doConfig(conf); err != nil {
+	if err := buildConfig(conf); err != nil {
 		logW.Printf("%s: %s\n", COMMAND_NAME, err.Error())
 		return
 	}
 
-	m := mainServe{port: conf.desiredPort}
-	if err := m.serveOn(); err != nil {
+	m := mainServer{port: conf.desiredPort}
+	if err := m.start(conf); err != nil {
 		logW.Printf("%s: %s\n", COMMAND_NAME, err.Error())
 		return
 	}
@@ -282,7 +282,7 @@ func main() {
 
 // build the config instance and check the utf-8 locale. return error if the terminal
 // can't support utf-8 locale.
-func doConfig(conf *Config) error {
+func buildConfig(conf *Config) error {
 	conf.commandPath = ""
 	conf.withMotd = false
 
@@ -681,16 +681,16 @@ func startShell(ptmx *os.File, pts *os.File, conf *Config) (*exec.Cmd, error) {
 	return cmd, nil
 }
 
-type mainServe struct {
+type mainServer struct {
 	port     string
 	clients  map[int]bool
 	nextPort int
-	done     chan bool
+	done     chan int
 }
 
 // to support multiple clients, mainServe listen on the specified port.
 // start udp server for each new client.
-func (m *mainServe) serveOn() error {
+func (m *mainServer) start(conf *Config) error {
 	local_addr, err := net.ResolveUDPAddr("udp", m.port)
 	if err != nil {
 		return err
@@ -702,9 +702,12 @@ func (m *mainServe) serveOn() error {
 	}
 
 	buf := make([]byte, 128)
-	m.done = make(chan bool)
+	m.done = make(chan int)
+	m.nextPort, _ = strconv.Atoi(m.port)
+	m.nextPort++
+	m.clients = make(map[int]bool)
 
-	fmt.Printf("listening on %s\n", m.port)
+	fmt.Printf("listening on %s, next port is %d\n", m.port, m.nextPort)
 	go func() {
 		defer conn.Close()
 		for {
@@ -721,6 +724,12 @@ func (m *mainServe) serveOn() error {
 				m.nextPort++
 				m.clients[m.nextPort] = true
 				key := "generate key"
+
+				// read the key from runServer
+				keyChan := make(chan string)
+				conf2 := *conf
+				go runServer(&conf2, keyChan)
+				key = <- keyChan
 
 				resp := fmt.Sprintf("%d,%s\n", m.nextPort, key)
 				// response with session key and target udp port to client
