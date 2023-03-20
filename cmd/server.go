@@ -19,7 +19,9 @@ import (
 	"os/user"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
+	"time"
 
 	utmp "blitter.com/go/goutmp"
 	"github.com/creack/pty"
@@ -271,13 +273,39 @@ func main() {
 		return
 	}
 
+	// init udp server
 	m := mainServer{port: conf.desiredPort}
+	m.done = make(chan bool)
+	m.nextPort, _ = strconv.Atoi(m.port)
+	m.clients = make(map[int]bool)
+	m.zeroWorker = true
+	m.workerFinish = make(chan string)
+
+	// handle signal: SIGTERM, SIGHUP
+	go func() {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, syscall.SIGHUP, syscall.SIGTERM)
+		for s := range sig {
+			switch s {
+			case syscall.SIGHUP: // TODO:what we need to do?
+				logW.Println("got message SIGHUP.")
+			case syscall.SIGTERM:
+				logW.Println("got message SIGQUIT.")
+				m.done <- true
+				return
+			}
+		}
+	}()
+
+	// start udp server
+	m.wg.Add(1)
 	if err := m.start(conf); err != nil {
+		m.wg.Done()
 		logW.Printf("%s: %s\n", COMMAND_NAME, err.Error())
 		return
 	}
 
-	<-m.done
+	m.wg.Wait()
 }
 
 // build the config instance and check the utf-8 locale. return error if the terminal
@@ -384,7 +412,7 @@ func (lv *localeFlag) IsBoolFlag() bool {
 	return false
 }
 
-func runServer(conf *Config, x chan string) {
+func runServer(conf *Config, keyChan chan string, worker chan string) {
 	networkTimeout := getTimeFrom("APRILSH_SERVER_NETWORK_TMOUT", 0)
 	networkSignaledTimeout := getTimeFrom("APRILSH_SERVER_SIGNAL_TMOUT", 0)
 
@@ -417,7 +445,7 @@ func runServer(conf *Config, x chan string) {
 		fmt.Printf("\r\n")
 	}
 	fmt.Printf("%s CONNECT %s %s\n", COMMAND_NAME, network.Port(), network.GetKey())
-	x <- network.GetKey()
+	keyChan <- network.GetKey()
 
 	printWelcome(os.Stderr, os.Getpid(), os.Stdin)
 
@@ -458,6 +486,8 @@ func runServer(conf *Config, x chan string) {
 	// kill the shell when the server done
 	defer func() { shell.Cancel() }()
 
+	// notify the main server
+	worker <- conf.desiredPort
 	fmt.Printf("\n[%s is exiting.]\n", COMMAND_NAME)
 	// https://www.dolthub.com/blog/2022-11-28-go-os-exec-patterns/
 	// https://www.prakharsrivastav.com/posts/golang-context-and-cancellation/
@@ -682,10 +712,13 @@ func startShell(ptmx *os.File, pts *os.File, conf *Config) (*exec.Cmd, error) {
 }
 
 type mainServer struct {
-	port     string
-	clients  map[int]bool
-	nextPort int
-	done     chan int
+	port         string
+	clients      map[int]bool
+	nextPort     int
+	done         chan bool
+	workerFinish chan string
+	zeroWorker   bool
+	wg           sync.WaitGroup
 }
 
 // to support multiple clients, mainServe listen on the specified port.
@@ -702,41 +735,81 @@ func (m *mainServer) start(conf *Config) error {
 	}
 
 	buf := make([]byte, 128)
-	m.done = make(chan int)
-	m.nextPort, _ = strconv.Atoi(m.port)
-	m.nextPort++
-	m.clients = make(map[int]bool)
 
-	fmt.Printf("listening on %s, next port is %d\n", m.port, m.nextPort)
+	fmt.Printf("#start listening on %s, next port is %d\n", m.port, m.nextPort)
 	go func() {
-		defer conn.Close()
+		defer func() {
+			conn.Close()
+			m.wg.Done()
+		}()
+
 		for {
+			select {
+			case portStr := <-m.workerFinish:
+				// got finish messsage from finish
+				p, err := strconv.Atoi(portStr)
+				if err != nil {
+					fmt.Printf("#start got %s from finish channel. error: %s\n", portStr, err)
+					break
+				}
+				delete(m.clients, p)
+			case <-m.done:
+				if m.zeroWorker {
+					return
+				}
+			default:
+			}
+
+			m.checkZeroWorker()
+
+			// set read time out 2 seconds
+			conn.SetDeadline(time.Now().Add(time.Second * 2))
 			n, addr, err := conn.ReadFromUDP(buf)
 			if err != nil {
-				fmt.Println("Error: ", err) // write error to log?
-				continue
+				if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
+					// read time out
+					continue
+				} else {
+					fmt.Println("#start Error: ", err) // read error to log?
+					continue
+				}
 			}
 			// fmt.Printf("Received %q from %s\n", strings.TrimSpace(string(buf[0:n])), addr)
 
 			// only response to request start with 'open aprilsh'
 			req := strings.TrimSpace(string(buf[0:n]))
 			if strings.HasPrefix(req, "open aprilsh") {
+				// prepare next port
 				m.nextPort++
-				m.clients[m.nextPort] = true
-				key := "generate key"
 
-				// read the key from runServer
-				keyChan := make(chan string)
+				// start the worker server
 				conf2 := *conf
-				go runServer(&conf2, keyChan)
-				key = <- keyChan
+				conf2.desiredPort = fmt.Sprintf("%d", m.nextPort)
+				keyChan := make(chan string)
+				go runServer(&conf2, keyChan, m.workerFinish)
 
+				// blocking read the key from runServer
+				key := <-keyChan
+
+				// mark the worker server
+				m.clients[m.nextPort] = true
+				m.zeroWorker = false
+
+				// response session key and udp port to client
 				resp := fmt.Sprintf("%d,%s\n", m.nextPort, key)
-				// response with session key and target udp port to client
 				conn.WriteToUDP([]byte(resp), addr)
 			}
 		}
 	}()
 
 	return nil
+}
+
+func (m *mainServer) checkZeroWorker() bool {
+	if len(m.clients) == 0 {
+		m.zeroWorker = true
+		return true
+	}
+	m.zeroWorker = false
+	return false
 }
