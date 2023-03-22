@@ -279,7 +279,7 @@ func main() {
 	m.nextWorkerPort, _ = strconv.Atoi(conf.desiredPort) // start from this port (exclude)
 	m.workers = make(map[int]bool)
 	m.shutdown = make(chan bool, 1)
-	m.workerFinish = make(chan string, 1)
+	m.workerDone = make(chan string, 1)
 
 	// handle signal: SIGTERM, SIGHUP
 	go func() {
@@ -412,7 +412,7 @@ func (lv *localeFlag) IsBoolFlag() bool {
 	return false
 }
 
-func runWorker(conf *Config, keyChan chan string, worker chan string) {
+func runWorker(conf *Config, keyChan chan string, workerDone chan string) {
 	networkTimeout := getTimeFrom("APRILSH_SERVER_NETWORK_TMOUT", 0)
 	networkSignaledTimeout := getTimeFrom("APRILSH_SERVER_SIGNAL_TMOUT", 0)
 
@@ -486,8 +486,8 @@ func runWorker(conf *Config, keyChan chan string, worker chan string) {
 	// kill the shell when the server done
 	defer func() { shell.Cancel() }()
 
-	// notify the main server
-	worker <- conf.desiredPort
+	// notify the server which worker is done
+	workerDone <- conf.desiredPort
 	fmt.Printf("\n[%s is exiting.]\n", COMMAND_NAME)
 	// https://www.dolthub.com/blog/2022-11-28-go-os-exec-patterns/
 	// https://www.prakharsrivastav.com/posts/golang-context-and-cancellation/
@@ -713,10 +713,10 @@ func startShell(ptmx *os.File, pts *os.File, conf *Config) (*exec.Cmd, error) {
 
 type mainServer struct {
 	workers        map[int]bool
-	runWorker      func(*Config, chan string, chan string)
-	nextWorkerPort int
-	workerFinish   chan string
-	shutdown       chan bool
+	runWorker      func(*Config, chan string, chan string) // worker
+	nextWorkerPort int                                     // next worker port
+	workerDone     chan string                             // some worker is done
+	shutdown       chan bool                               // shutdown ther server
 	wg             sync.WaitGroup
 	conn           *net.UDPConn
 }
@@ -759,7 +759,7 @@ func (m *mainServer) run(conf *Config) {
 		fmt.Printf("#run workers=%v, len=%d\n", m.workers, len(m.workers))
 
 		select {
-		case portStr := <-m.workerFinish: // got finish messsage from worker
+		case portStr := <-m.workerDone: // got finish messsage from worker
 			p, err := strconv.Atoi(portStr)
 			if err != nil {
 				fmt.Printf("#run got %s from finish channel. error: %s\n", portStr, err)
@@ -782,12 +782,10 @@ func (m *mainServer) run(conf *Config) {
 		n, addr, err := m.conn.ReadFromUDP(buf)
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
-				// if opErr, ok := err.(*net.OpError); ok && opErr.Timeout() {
-				// read time out
-				fmt.Printf("#run read time out, workers=%d, shutdown=%t\n", len(m.workers), shutdown)
+				fmt.Printf("#run read time out, workers=%d, shutdown=%t, err=%s\n", len(m.workers), shutdown, err)
 				continue
 			} else {
-				fmt.Println("#run Error: ", err) // read error to log?
+				fmt.Println("#run read error: ", err) // read error to log?
 				continue
 			}
 		}
@@ -802,8 +800,8 @@ func (m *mainServer) run(conf *Config) {
 			// start the worker
 			conf2 := *conf
 			conf2.desiredPort = fmt.Sprintf("%d", m.nextWorkerPort)
-			keyChan := make(chan string)
-			go m.runWorker(&conf2, keyChan, m.workerFinish)
+			keyChan := make(chan string, 1)
+			go m.runWorker(&conf2, keyChan, m.workerDone)
 			fmt.Printf("#run start a worker at %s\n", conf2.desiredPort)
 
 			// blocking read the key from runWorker

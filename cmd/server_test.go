@@ -819,7 +819,7 @@ func TestMainServer(t *testing.T) {
 			m.nextWorkerPort, _ = strconv.Atoi(v.conf.desiredPort)
 			m.workers = make(map[int]bool)
 			m.shutdown = make(chan bool, 1)
-			m.workerFinish = make(chan string, 1)
+			m.workerDone = make(chan string, 1)
 
 			// send shutdown message after some time
 			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
@@ -868,9 +868,7 @@ func mockClient(port string, pause int) string {
 	// send handshake message
 	txbuf := []byte("open aprilsh")
 	_, err := conn.Write(txbuf)
-
 	// fmt.Printf("#mockClient send %q to server: %v from %v\n", txbuf, server_addr, conn.LocalAddr())
-
 	if err != nil {
 		fmt.Printf("#mockClient send %s, error %s\n", string(txbuf), err)
 	}
