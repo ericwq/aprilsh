@@ -756,16 +756,16 @@ func (m *mainServer) run(conf *Config) {
 	shutdown := false
 
 	for {
-		fmt.Printf("#run workers=%v, len=%d\n", m.workers, len(m.workers))
+		// fmt.Printf("#run workers=%v, len=%d\n", m.workers, len(m.workers))
 
 		select {
 		case portStr := <-m.workerDone: // got finish messsage from worker
 			p, err := strconv.Atoi(portStr)
 			if err != nil {
-				fmt.Printf("#run got %s from finish channel. error: %s\n", portStr, err)
+				fmt.Printf("#run got %s from workDone channel. error: %s\n", portStr, err)
 				break
 			}
-			fmt.Printf("#run got finish message from %s\n", portStr)
+			fmt.Printf("#run got workDone message from %s\n", portStr)
 			delete(m.workers, p)
 		case sd := <-m.shutdown: // got shutdown message from signal handler
 			fmt.Printf("#run got shutdown message %t\n", sd)
@@ -789,7 +789,7 @@ func (m *mainServer) run(conf *Config) {
 				continue
 			}
 		}
-		fmt.Printf("#run received %q from %s\n", strings.TrimSpace(string(buf[0:n])), addr)
+		fmt.Printf("#run receive %q from %s\n", strings.TrimSpace(string(buf[0:n])), addr)
 
 		// only response to request start with 'open aprilsh'
 		req := strings.TrimSpace(string(buf[0:n]))

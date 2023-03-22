@@ -357,7 +357,7 @@ func TestParseFlagsCorrect(t *testing.T) {
 		{
 			[]string{"-locale", "ALL=en_US.UTF-8", "-l", "LANG=UTF-8"},
 			Config{
-				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "",
+				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "6000",
 				locales: localeFlag{"ALL": "en_US.UTF-8", "LANG": "UTF-8"}, color: 0,
 				commandPath: "", commandArgv: []string{}, withMotd: false,
 			},
@@ -365,7 +365,7 @@ func TestParseFlagsCorrect(t *testing.T) {
 		{
 			[]string{"--", "/bin/sh"},
 			Config{
-				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "",
+				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "6000",
 				locales: localeFlag{}, color: 0,
 				commandPath: "", commandArgv: []string{"/bin/sh"}, withMotd: false,
 			},
@@ -849,22 +849,29 @@ func TestMainServer(t *testing.T) {
 	}
 }
 
+// the mock runWorker send the key, pause some time and close the
 func mockRunWorker(conf *Config, key chan string, worker chan string) {
 	// send the mock key
 	// fmt.Println("#mockRunWorker send mock key to run().")
 	key <- "This is the mock key"
 
+	// pause some time
+	time.Sleep(time.Duration(2) * time.Millisecond)
+
 	// notify the server
 	// fmt.Println("#mockRunWorker finish run().")
-	worker <- "7001"
+	worker <- conf.desiredPort
 }
 
+// mock client connect to the port, send handshake message, pause some time
+// return the response message.
 func mockClient(port string, pause int) string {
 	server_addr, _ := net.ResolveUDPAddr("udp", "localhost:"+port)
 	local_addr, _ := net.ResolveUDPAddr("udp", "localhost:0")
 	conn, _ := net.DialUDP("udp", local_addr, server_addr)
 
 	defer conn.Close()
+
 	// send handshake message
 	txbuf := []byte("open aprilsh")
 	_, err := conn.Write(txbuf)
@@ -872,6 +879,8 @@ func mockClient(port string, pause int) string {
 	if err != nil {
 		fmt.Printf("#mockClient send %s, error %s\n", string(txbuf), err)
 	}
+
+	// pause some time
 	time.Sleep(time.Millisecond * time.Duration(pause))
 
 	// read the response
