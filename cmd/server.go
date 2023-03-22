@@ -33,10 +33,10 @@ import (
 )
 
 const (
-	PACKAGE_STRING = "aprilsh"
-	COMMAND_NAME   = "aprilsh-server"
-	BUILD_VERSION  = "0.1.0"
-	DOCONFIG_TEST  = PACKAGE_STRING + "_doconfig_test_only"
+	PACKAGE_STRING    = "aprilsh"
+	COMMAND_NAME      = "aprilsh-server"
+	BUILD_VERSION     = "0.1.0"
+	BUILD_CONFIG_TEST = PACKAGE_STRING + "_doconfig_test_only"
 
 	_PATH_BSHELL = "/bin/sh"
 )
@@ -356,7 +356,7 @@ func buildConfig(conf *Config) error {
 		// apply locale-related environment variables from client
 		clearLocaleVariables()
 		for k, v := range conf.locales {
-			// fmt.Printf("#doConfig setenv %s=%s\n", k, v)
+			// fmt.Printf("#buildConfig setenv %s=%s\n", k, v)
 			os.Setenv(k, v)
 		}
 
@@ -374,8 +374,8 @@ func buildConfig(conf *Config) error {
 		}
 	}
 
-	if _, ok := os.LookupEnv(DOCONFIG_TEST); ok {
-		return errors.New(DOCONFIG_TEST + " is set.")
+	if _, ok := os.LookupEnv(BUILD_CONFIG_TEST); ok {
+		return errors.New(BUILD_CONFIG_TEST + " is set.")
 	}
 	return nil
 }

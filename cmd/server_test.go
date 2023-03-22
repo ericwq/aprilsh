@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -296,11 +297,11 @@ func TestParseFlagsUsage(t *testing.T) {
 	}
 }
 
-func TestMainDoConfig(t *testing.T) {
+func TestMainBuildConfig(t *testing.T) {
 	testFunc := func() {
-		// abort doConfig() for test environment
-		os.Setenv(DOCONFIG_TEST, "TRUE")
-		defer os.Unsetenv(DOCONFIG_TEST)
+		// abort buildConfig() for test environment
+		os.Setenv(BUILD_CONFIG_TEST, "TRUE")
+		defer os.Unsetenv(BUILD_CONFIG_TEST)
 		// prepare data
 		os.Args = []string{COMMAND_NAME, "-locale", "LC_ALL=en_US.UTF-8", "--", "/bin/sh"}
 		// test
@@ -335,14 +336,14 @@ func TestMainDoConfig(t *testing.T) {
 		}
 	}
 	if found != 0 {
-		t.Errorf("#test doConfig expect %q, got %q\n", expect, result)
+		t.Errorf("#test buildConfig expect %q, got %q\n", expect, result)
 	}
 
 	// validate logW
-	var expectLog string = DOCONFIG_TEST + " is set."
+	var expectLog string = BUILD_CONFIG_TEST + " is set."
 	got := b.String()
 	if !strings.Contains(got, expectLog) {
-		t.Errorf("#test doConfig expect %q, got %s\n", expectLog, got)
+		t.Errorf("#test buildConfig expect %q, got %s\n", expectLog, got)
 	}
 
 	// restore logW
@@ -410,6 +411,22 @@ func TestBuildConfig(t *testing.T) {
 			nil,
 		},
 		{
+			"empty commandArgv",
+			Config{
+				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8"}, color: 0,
+				commandPath: "", commandArgv: []string{}, withMotd: false,
+			},
+			Config{
+				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8"}, color: 0,
+				commandPath: "/bin/ash", commandArgv: []string{"-ash"}, withMotd: true,
+			},
+			// macOS: /bin/zsh
+			// alpine: /bin/ash
+			nil,
+		},
+		{
 			"non UTF-8 locale",
 			Config{
 				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "",
@@ -423,20 +440,16 @@ func TestBuildConfig(t *testing.T) {
 			},
 			errors.New("UTF-8 locale fail."),
 		},
-		{
-			"empty commandArgv",
-			Config{
-				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "",
-				locales: localeFlag{"LC_ALL": "en_US.UTF-8"}, color: 0,
-				commandPath: "", commandArgv: []string{}, withMotd: false,
-			},
-			Config{
-				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "",
-				locales: localeFlag{"LC_ALL": "en_US.UTF-8"}, color: 0,
-				commandPath: "/bin/zsh", commandArgv: []string{"-zsh"}, withMotd: true,
-			}, // TODO /bin/zsh is macOS only
-			nil,
-		},
+	}
+
+	// change the tc[2].conf2 value according to runtime.GOOS
+	switch runtime.GOOS {
+	case "darwin":
+		tc[1].conf2.commandArgv = []string{"-zsh"}
+		tc[1].conf2.commandPath = "/bin/zsh"
+	case "linux":
+		tc[1].conf2.commandArgv = []string{"-ash"}
+		tc[1].conf2.commandPath = "/bin/ash"
 	}
 
 	for _, v := range tc {
@@ -455,14 +468,15 @@ func TestBuildConfig(t *testing.T) {
 			oldArgs := os.Args
 			defer func() { os.Args = oldArgs }()
 
-			// validate doConfig
+			// validate buildConfig
 			err := buildConfig(&v.conf0)
 			if err != nil {
-				if err.Error() != v.err.Error() {
-					t.Errorf("#test doConfig expect %q, got %q\n", v.err, err)
+				// if err.Error() != v.err.Error() {
+				if !errors.Is(err, v.err) {
+					t.Errorf("#test buildConfig expect %q, got %q\n", v.err, err)
 				}
 			} else if !reflect.DeepEqual(v.conf0, v.conf2) {
-				t.Errorf("#test doConfig got \n%+v, expect \n%+v\n", v.conf0, v.conf2)
+				t.Errorf("#test buildConfig got \n%+v, expect \n%+v\n", v.conf0, v.conf2)
 			}
 			// reset the environment
 			clearLocaleVariables()

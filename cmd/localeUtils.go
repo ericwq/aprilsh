@@ -46,14 +46,16 @@ func localeCharset() (ret string) {
 
 func isUtf8Locale() bool {
 	cs := localeCharset()
-	if strings.Compare(strings.ToLower(cs), "utf-8") != 0 {
-		return false
+	// fmt.Printf("#isUtf8Locale cs=%s\n", cs)
+
+	if strings.Compare(strings.ToLower(cs), "utf-8") == 0 {
+		return true
 	}
-	return true
+	return false
 }
 
 func setNativeLocale() {
-	if setlocale(LC_ALL, "") == "" {
+	if setlocale(LC_ALL, "") == "" { // cognizant of the locale environment variable
 		ctype := getCtype()
 		fmt.Fprintf(os.Stderr, "The locale requested by %s isn't available here.\n", ctype)
 		if ctype.name != "" {
