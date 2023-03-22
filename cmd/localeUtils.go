@@ -54,14 +54,18 @@ func isUtf8Locale() bool {
 	return false
 }
 
-func setNativeLocale() {
-	if setlocale(LC_ALL, "") == "" { // cognizant of the locale environment variable
+func setNativeLocale() (ret string) {
+	ret = setlocale(LC_ALL, "")
+	if ret == "" { // cognizant of the locale environment variable
 		ctype := getCtype()
 		fmt.Fprintf(os.Stderr, "The locale requested by %s isn't available here.\n", ctype)
 		if ctype.name != "" {
 			fmt.Fprintf(os.Stderr, "Running 'locale-gen %s' may be necessary.\n\n", ctype.value)
 		}
+		// } else {
+		// 	fmt.Fprintf(os.Stderr, "#setNativeLocale setlocale return %q\n", setlocale(LC_ALL, ""))
 	}
+	return
 }
 
 func clearLocaleVariables() {

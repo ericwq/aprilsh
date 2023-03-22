@@ -14,15 +14,17 @@ import (
 
 func TestLocaleSetNativeLocale(t *testing.T) {
 	// validate the non utf-8 result
-	zhLocale := "zh_CN.GB2312"
+	var zhLocale string
+	switch runtime.GOOS {
+	case "darwin":
+		zhLocale = "zh_CN.GB2312"
+	case "linux":
+		zhLocale = "zh_TW.ASCII"
+	}
 	os.Setenv("LC_ALL", zhLocale)
 	setNativeLocale()
 	if isUtf8Locale() {
-		if runtime.GOOS == "linux" {
-			t.Logf("#test expect non-UTF-8 locale, got %s\n", localeCharset())
-		} else {
-			t.Errorf("#test expect non-UTF-8 locale, got %s\n", localeCharset())
-		}
+		t.Errorf("#test expect non-UTF-8 locale, got %s\n", localeCharset())
 	}
 
 	// validate the utf-8 result
@@ -42,16 +44,16 @@ func TestLocaleSetNativeLocale(t *testing.T) {
 
 	badLocale := "un_KN.ow"
 	os.Setenv("LC_ALL", badLocale)
-	setNativeLocale()
+	ret := setNativeLocale()
 
 	// close pipe writer
 	w.Close()
 	// get the output
-	out, _ := ioutil.ReadAll(r)
+	ioutil.ReadAll(r)
 	os.Stderr = rescueStderr
 
 	// validate the error handling
-	got := string(out)
+	got := ret //string(out)
 	expect := []string{"The locale requested by", "isn't available here", "may be necessary."}
 	found := 0
 	for i := range expect {

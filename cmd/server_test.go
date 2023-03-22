@@ -442,7 +442,7 @@ func TestBuildConfig(t *testing.T) {
 		},
 	}
 
-	// change the tc[2].conf2 value according to runtime.GOOS
+	// change the tc[1].conf2 value according to runtime.GOOS
 	switch runtime.GOOS {
 	case "darwin":
 		tc[1].conf2.commandArgv = []string{"-zsh"}
