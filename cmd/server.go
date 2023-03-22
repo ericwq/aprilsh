@@ -273,6 +273,10 @@ func main() {
 		return
 	}
 
+	startMainServer(conf)
+}
+
+func startMainServer(conf *Config) {
 	// init udp server
 	m := mainServer{}
 	m.runWorker = runWorker
