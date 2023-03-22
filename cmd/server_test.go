@@ -8,16 +8,20 @@ import (
 	"bytes"
 	"errors"
 	"flag"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"os/signal"
 	"reflect"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/creack/pty"
 	"golang.org/x/term"
@@ -384,9 +388,9 @@ func TestParseFlagsCorrect(t *testing.T) {
 	}
 }
 
-func TestDoConfig(t *testing.T) {
+func TestBuildConfig(t *testing.T) {
 	tc := []struct {
-		lable string
+		label string
 		conf0 Config
 		conf2 Config
 		err   error
@@ -436,7 +440,7 @@ func TestDoConfig(t *testing.T) {
 	}
 
 	for _, v := range tc {
-		t.Run(v.lable, func(t *testing.T) {
+		t.Run(v.label, func(t *testing.T) {
 			// set SHELL for empty commandArgv
 			if len(v.conf0.commandArgv) == 0 {
 				shell := os.Getenv("SHELL")
@@ -788,4 +792,94 @@ func testPTY() error {
 	_, _ = io.Copy(os.Stdout, ptmx)
 
 	return nil
+}
+
+func TestMainServer(t *testing.T) {
+	tc := []struct {
+		label  string
+		pause  int    // pause between client send and read
+		resp   string // response client read
+		finish int    // pause before shutdown message
+		conf   Config
+	}{
+		{
+			"", 20, "7001,This is the mock key", 50,
+			Config{
+				version: false, server: true, verbose: false, desiredIP: "", desiredPort: "7000",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
+				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
+			},
+		},
+	}
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			m := mainServer{}
+			m.runWorker = mockRunWorker
+			m.nextWorkerPort, _ = strconv.Atoi(v.conf.desiredPort)
+			m.workers = make(map[int]bool)
+			m.shutdown = make(chan bool, 1)
+			m.workerFinish = make(chan string, 1)
+
+			// send shutdown message after some time
+			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
+			go func() {
+				<-timer1.C
+				m.shutdown <- true
+				// fmt.Println("#test send shutdown msg.")
+			}()
+			// fmt.Println("#test start timer for shutdown")
+
+			// start mainserver
+			m.wg.Add(1)
+			if err := m.start(&v.conf); err != nil {
+				fmt.Printf("#test start() return %q\n", err)
+			}
+
+			// mock client operation
+			resp := mockClient(v.conf.desiredPort, v.pause)
+			if resp != v.resp {
+				t.Errorf("#test run expect %q got %q\n", v.resp, resp)
+			}
+
+			// fmt.Println("#test wait for finish.")
+			m.wg.Wait()
+			// fmt.Println("#test finished.")
+		})
+	}
+}
+
+func mockRunWorker(conf *Config, key chan string, worker chan string) {
+	// send the mock key
+	// fmt.Println("#mockRunWorker send mock key to run().")
+	key <- "This is the mock key"
+
+	// notify the server
+	// fmt.Println("#mockRunWorker finish run().")
+	worker <- "7001"
+}
+
+func mockClient(port string, pause int) string {
+	server_addr, _ := net.ResolveUDPAddr("udp", "localhost:"+port)
+	local_addr, _ := net.ResolveUDPAddr("udp", "localhost:0")
+	conn, _ := net.DialUDP("udp", local_addr, server_addr)
+
+	defer conn.Close()
+	// send handshake message
+	txbuf := []byte("open aprilsh")
+	_, err := conn.Write(txbuf)
+
+	// fmt.Printf("#mockClient send %q to server: %v from %v\n", txbuf, server_addr, conn.LocalAddr())
+
+	if err != nil {
+		fmt.Printf("#mockClient send %s, error %s\n", string(txbuf), err)
+	}
+	time.Sleep(time.Millisecond * time.Duration(pause))
+
+	// read the response
+	rxbuf := make([]byte, 512)
+	n, _, err := conn.ReadFromUDP(rxbuf)
+
+	// fmt.Printf("#mockClient read %q from server: %v\n", rxbuf[0:n], server_addr)
+	return string(rxbuf[0:n])
 }
