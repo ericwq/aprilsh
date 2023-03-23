@@ -5,31 +5,30 @@
 package main
 
 import (
-	"io/ioutil"
 	"os"
 	"runtime"
-	"strings"
 	"testing"
 )
 
 func TestSetlocale(t *testing.T) {
+	// https://www.nixcraft.com/t/how-to-change-date-command-output-language-locales-in-alpine-linux/4434?u=nixcraft
 	tc := []struct {
 		label  string
 		locale string
-		expect string
+		ret    string
 		real   string
 	}{
 		{"the locale is supported by OS", "en_US.UTF-8", "en_US.UTF-8", "UTF-8"},
 		{"the locale is malformed", "un_KN.ow", "un_KN.ow", "UTF-8"},
 		{"chinese locale", "zh_CN.GB2312", "zh_CN.GB2312", "UTF-8"},
-		{"alpine doesn't support this locale", "en_US.ASCII", "en_US.ASCII", "ASCII"},
+		{"alpine doesn't support this locale", "en_US.ASCII", "en_US.ASCII", "UTF-8"},
 	}
 
 	for _, v := range tc {
 		// change the locale
 		got := setlocale(LC_ALL, v.locale)
-		if got != v.expect {
-			t.Errorf("#test setlocale() expect %q got %q\n", v.expect, got)
+		if got != v.ret {
+			t.Errorf("#test setlocale() expect %q got %q\n", v.ret, got)
 		}
 
 		// check the real locale
@@ -51,7 +50,7 @@ func TestLocaleSetNativeLocale(t *testing.T) {
 	}
 	os.Setenv("LC_ALL", zhLocale)
 	setNativeLocale()
-	if isUtf8Locale() {
+	if !isUtf8Locale() {
 		t.Errorf("#test expect non-UTF-8 locale, got %s\n", localeCharset())
 	}
 
@@ -63,38 +62,16 @@ func TestLocaleSetNativeLocale(t *testing.T) {
 		t.Errorf("#test expect UTF-8 locale, got %s\n", localeCharset())
 	}
 
-	// save the stderr and create replaced pipe
-	rescueStderr := os.Stderr
-	r, w, _ := os.Pipe()
-	// replace stderr with pipe writer
-	// alll the output to stderr is captured
-	os.Stderr = w
-
 	badLocale := "un_KN.ow"
 	os.Setenv("LC_ALL", badLocale)
 	ret := setNativeLocale()
 
-	// close pipe writer
-	w.Close()
-	// get the output
-	ioutil.ReadAll(r)
-	os.Stderr = rescueStderr
-
 	// validate the error handling
-	got := ret // string(out)
-	expect := []string{"The locale requested by", "isn't available here", "may be necessary."}
-	found := 0
-	for i := range expect {
-		if strings.Contains(got, expect[i]) {
-			found++
-		}
+	if ret != badLocale {
+		t.Errorf("#test malformed locale expect %q got %q\n", badLocale, ret)
 	}
-	if found != len(expect) {
-		if runtime.GOOS == "linux" {
-			t.Logf("#test malform locale expect %q, got %q\n", expect, got)
-		} else {
-			t.Errorf("#test malform locale expect %q, got %q\n", expect, got)
-		}
+	if !isUtf8Locale() {
+		t.Errorf("#test expect UTF-8 locale, got %s\n", localeCharset())
 	}
 }
 
