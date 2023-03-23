@@ -12,6 +12,34 @@ import (
 	"testing"
 )
 
+func TestSetlocale(t *testing.T) {
+	tc := []struct {
+		label  string
+		locale string
+		expect string
+		real   string
+	}{
+		{"the locale is supported by OS", "en_US.UTF-8", "en_US.UTF-8", "UTF-8"},
+		{"the locale is malformed", "un_KN.ow", "un_KN.ow", "UTF-8"},
+		{"chinese locale", "zh_CN.GB2312", "zh_CN.GB2312", "UTF-8"},
+		{"alpine doesn't support this locale", "en_US.ASCII", "en_US.ASCII", "ASCII"},
+	}
+
+	for _, v := range tc {
+		// change the locale
+		got := setlocale(LC_ALL, v.locale)
+		if got != v.expect {
+			t.Errorf("#test setlocale() expect %q got %q\n", v.expect, got)
+		}
+
+		// check the real locale
+		got = localeCharset()
+		if got != v.real {
+			t.Errorf("#test localeCharset() expect %q got %q\n", v.real, got)
+		}
+	}
+}
+
 func TestLocaleSetNativeLocale(t *testing.T) {
 	// validate the non utf-8 result
 	var zhLocale string
@@ -53,7 +81,7 @@ func TestLocaleSetNativeLocale(t *testing.T) {
 	os.Stderr = rescueStderr
 
 	// validate the error handling
-	got := ret //string(out)
+	got := ret // string(out)
 	expect := []string{"The locale requested by", "isn't available here", "may be necessary."}
 	found := 0
 	for i := range expect {

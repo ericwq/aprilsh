@@ -19,7 +19,6 @@ func setlocale(lc C.int, locale string) string {
 	param := C.CString(locale)
 	defer C.free(unsafe.Pointer(param))
 
-	// TODO we didn't check the possible errno
 	ret := C.setlocale(lc, param)
 	return C.GoString(ret)
 }
