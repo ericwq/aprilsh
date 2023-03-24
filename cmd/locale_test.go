@@ -24,17 +24,20 @@ func TestSetlocale(t *testing.T) {
 		{"alpine doesn't support this locale", "en_GB.UTF-8", "en_GB.UTF-8", "UTF-8"},
 	}
 
+	// initialize locale
+	setlocale(LC_ALL, "en_US.UTF-8")
+
 	for _, v := range tc {
 		// change the locale
 		got := setlocale(LC_ALL, v.locale)
 		if got != v.ret {
-			t.Errorf("#test %q setlocale() expect %q got %q\n",v.label, v.ret, got)
+			t.Errorf("#test %q setlocale() expect %q got %q\n", v.label, v.ret, got)
 		}
 
 		// check the real locale
 		got = localeCharset()
 		if got != v.real {
-			t.Errorf("#test %q localeCharset() expect %q got %q\n",v.label, v.real, got)
+			t.Errorf("#test %q localeCharset() expect %q got %q\n", v.label, v.real, got)
 		}
 	}
 }

@@ -23,7 +23,7 @@ import (
 	"syscall"
 	"time"
 
-	utmp "blitter.com/go/goutmp"
+	// utmp "blitter.com/go/goutmp"
 	"github.com/creack/pty"
 	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/network"
@@ -459,19 +459,19 @@ func runWorker(conf *Config, keyChan chan string, workerDone chan string) {
 	}
 
 	// add utmp entry
-	ptsName := ptmx.Name()
-	host := fmt.Sprintf("aprilsh [%d]", os.Getpid())
-	usr := getCurrentUser()
-	utmpEntry := utmp.Put_utmp(usr, ptsName, host)
+	// ptsName := ptmx.Name()
+	// host := fmt.Sprintf("aprilsh [%d]", os.Getpid())
+	// usr := getCurrentUser()
+	// utmpEntry := utmp.Put_utmp(usr, ptsName, host)
 
 	// update last log
-	utmp.Put_lastlog_entry(COMMAND_NAME, usr, ptsName, host)
+	// utmp.Put_lastlog_entry(COMMAND_NAME, usr, ptsName, host)
 
 	// start the udp server, serve the udp request
 	go serve(ptmx, terminal, network, networkTimeout, networkSignaledTimeout)
 
 	// clear utmp entry
-	utmp.Unput_utmp(utmpEntry)
+	// utmp.Unput_utmp(utmpEntry)
 
 	// start the shell
 	shell, err := startShell(ptmx, pts, conf)
@@ -488,7 +488,7 @@ func runWorker(conf *Config, keyChan chan string, workerDone chan string) {
 	}
 
 	// kill the shell when the server done
-	defer func() { shell.Cancel() }()
+	defer shell.Process.Kill()
 
 	// notify the server which worker is done
 	workerDone <- conf.desiredPort
