@@ -18,23 +18,23 @@ func TestSetlocale(t *testing.T) {
 		ret    string
 		real   string
 	}{
-		{"the locale is supported by OS", "en_US.UTF-8", "en_US.UTF-8", "UTF-8"},
 		{"the locale is malformed", "un_KN.ow", "un_KN.ow", "UTF-8"},
-		{"chinese locale", "zh_CN.GB2312", "zh_CN.GB2312", "UTF-8"},
-		{"alpine doesn't support this locale", "en_US.ASCII", "en_US.ASCII", "UTF-8"},
+		{"the locale is supported by OS", "en_US.UTF-8", "en_US.UTF-8", "UTF-8"},
+		{"chinese locale", "zh_CN.GB18030", "zh_CN.GB18030", "GB18030"},
+		{"alpine doesn't support this locale", "en_GB.UTF-8", "en_GB.UTF-8", "UTF-8"},
 	}
 
 	for _, v := range tc {
 		// change the locale
 		got := setlocale(LC_ALL, v.locale)
 		if got != v.ret {
-			t.Errorf("#test setlocale() expect %q got %q\n", v.ret, got)
+			t.Errorf("#test %q setlocale() expect %q got %q\n",v.label, v.ret, got)
 		}
 
 		// check the real locale
 		got = localeCharset()
 		if got != v.real {
-			t.Errorf("#test localeCharset() expect %q got %q\n", v.real, got)
+			t.Errorf("#test %q localeCharset() expect %q got %q\n",v.label, v.real, got)
 		}
 	}
 }
