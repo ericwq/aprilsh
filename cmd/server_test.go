@@ -471,8 +471,8 @@ func TestBuildConfig(t *testing.T) {
 			// validate buildConfig
 			err := buildConfig(&v.conf0)
 			if err != nil {
-				// if err.Error() != v.err.Error() {
-				if !errors.Is(err, v.err) {
+				if err.Error() != v.err.Error() {
+					// if !errors.Is(err, v.err) {
 					t.Errorf("#test buildConfig expect %q, got %q\n", v.err, err)
 				}
 			} else if !reflect.DeepEqual(v.conf0, v.conf2) {

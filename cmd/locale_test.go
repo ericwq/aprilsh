@@ -18,7 +18,7 @@ func TestSetlocale(t *testing.T) {
 		ret    string
 		real   string
 	}{
-		{"the locale is malformed", "un_KN.ow", "un_KN.ow", "UTF-8"},
+		{"the locale is malformed", "un_KN.ow", "", "UTF-8"},
 		{"the locale is supported by OS", "en_US.UTF-8", "en_US.UTF-8", "UTF-8"},
 		{"chinese locale", "zh_CN.GB18030", "zh_CN.GB18030", "GB18030"},
 		{"alpine doesn't support this locale", "en_GB.UTF-8", "en_GB.UTF-8", "UTF-8"},
@@ -53,7 +53,7 @@ func TestLocaleSetNativeLocale(t *testing.T) {
 	}
 	os.Setenv("LC_ALL", zhLocale)
 	setNativeLocale()
-	if !isUtf8Locale() {
+	if isUtf8Locale() {
 		t.Errorf("#test expect non-UTF-8 locale, got %s\n", localeCharset())
 	}
 
@@ -70,7 +70,7 @@ func TestLocaleSetNativeLocale(t *testing.T) {
 	ret := setNativeLocale()
 
 	// validate the error handling
-	if ret != badLocale {
+	if ret != "" {
 		t.Errorf("#test malformed locale expect %q got %q\n", badLocale, ret)
 	}
 	if !isUtf8Locale() {
