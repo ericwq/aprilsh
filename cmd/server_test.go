@@ -157,6 +157,32 @@ func TestChdirHomedir(t *testing.T) {
 	os.Setenv("PWD", oldPwd)
 }
 
+func TestGetHomeDir(t *testing.T) {
+	tc := []struct {
+		label  string
+		env    string
+		expect string
+	}{
+		{"normal case", "/home/aprish", "/home/aprish"},
+		{"no HOME case", "", ""}, // for unix anc macOS, no HOME means getHomeDir() return ""
+	}
+
+	for _, v := range tc {
+		oldHome := os.Getenv("HOME")
+		if v.env == "" { // unset HOME env
+			os.Unsetenv("HOME")
+		} else {
+			os.Setenv("HOME", v.env)
+		}
+		got := getHomeDir()
+
+		if got != v.expect {
+			t.Errorf("%s getHomeDir() expect %q got %q\n", v.label, v.expect, got)
+		}
+		os.Setenv("HOME", oldHome)
+	}
+}
+
 func TestMotdHushed(t *testing.T) {
 	label := "#test motdHushed "
 	if motdHushed() != false {
