@@ -37,8 +37,12 @@ func getShell() (string, error) {
 
 	re := regexp.MustCompile("UserShell: (/[^ ]+)\n")
 	matched := re.FindStringSubmatch(string(out))
-	shell := matched[1]
-	if shell == "" {
+	var shell string
+
+	if matched != nil {
+		shell = matched[1]
+	}
+	if matched == nil || shell == "" {
 		return "", errors.New(fmt.Sprintf("Invalid output: %s", string(out)))
 	}
 
