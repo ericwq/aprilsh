@@ -273,17 +273,16 @@ func main() {
 		return
 	}
 
-	startMainServer(conf)
+	startMainServer(conf, runWorker)
 }
 
-func startMainServer(conf *Config) {
+// start main server, which will listen on the specified udp port.
+// each new client will send a `open aprish` message to main server.
+// main server will response with the session key and new udp port
+// for the new client.
+func startMainServer(conf *Config, runWorker func(*Config, chan string, chan string)) {
 	// init udp server
-	m := mainServer{}
-	m.runWorker = runWorker
-	m.nextWorkerPort, _ = strconv.Atoi(conf.desiredPort) // start from this port (exclude)
-	m.workers = make(map[int]bool)
-	m.shutdown = make(chan bool, 1)
-	m.workerDone = make(chan string, 1)
+	m := newServer(conf, runWorker)
 
 	// handle signal: SIGTERM, SIGHUP
 	go func() {
@@ -301,7 +300,7 @@ func startMainServer(conf *Config) {
 		}
 	}()
 
-	// start udp server
+	// start udp server upon receive the shake hands message.
 	m.wg.Add(1)
 	if err := m.start(conf); err != nil {
 		m.wg.Done()
@@ -724,6 +723,17 @@ type mainServer struct {
 	shutdown       chan bool                               // shutdown ther server
 	wg             sync.WaitGroup
 	conn           *net.UDPConn
+}
+
+func newServer(conf *Config, runWorker func(*Config, chan string, chan string)) *mainServer {
+	m := mainServer{}
+	m.runWorker = runWorker
+	m.nextWorkerPort, _ = strconv.Atoi(conf.desiredPort)
+	m.workers = make(map[int]bool)
+	m.shutdown = make(chan bool, 1)
+	m.workerDone = make(chan string, 1)
+
+	return &m
 }
 
 // to support multiple clients, mainServer listen on the specified port.

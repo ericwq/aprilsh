@@ -18,7 +18,6 @@ import (
 	"os/signal"
 	"reflect"
 	"runtime"
-	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -855,12 +854,7 @@ func TestMainServer(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			m := mainServer{}
-			m.runWorker = mockRunWorker
-			m.nextWorkerPort, _ = strconv.Atoi(v.conf.desiredPort)
-			m.workers = make(map[int]bool)
-			m.shutdown = make(chan bool, 1)
-			m.workerDone = make(chan string, 1)
+			m := newServer(&v.conf, mockRunWorker)
 
 			// send shutdown message after some time
 			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
