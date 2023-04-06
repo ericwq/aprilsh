@@ -930,3 +930,56 @@ func mockClient(port string, pause int) string {
 	// fmt.Printf("#mockClient read %q from server: %v\n", rxbuf[0:n], server_addr)
 	return string(rxbuf[0:n])
 }
+
+func TestPrintWelcome(t *testing.T) {
+	// open pts master and slave first.
+	pty, tty, err := pty.Open()
+	if err != nil {
+		t.Errorf("#test printWelcome Open %s\n", err)
+	}
+
+	// clean pts fd
+	defer func() {
+		if err != nil {
+			pty.Close()
+			tty.Close()
+		}
+	}()
+
+	// pty master doesn't support IUTF8
+	flag, err := checkIUTF8(int(pty.Fd()))
+	if flag {
+		t.Errorf("#test printWelcome master got %t, expect %t\n", flag, false)
+	}
+
+	var b strings.Builder
+	expect := []string{
+		COMMAND_NAME, "build", "Use of this source code is governed by a MIT-style",
+		"Warning: termios IUTF8 flag not defined.",
+	}
+
+	tc := []struct {
+		label string
+		tty   *os.File
+	}{
+		{"tty doesn't support IUTF8 flag", pty},
+		{"tty failed with checkIUTF8", os.Stdin},
+	}
+
+	for _, v := range tc {
+		b.Reset()
+		printWelcome(&b, os.Getpid(), v.tty)
+		// validate the result
+		result := b.String()
+		found := 0
+		for i := range expect {
+			if strings.Contains(result, expect[i]) {
+				found++
+			}
+		}
+		if found != len(expect) {
+			t.Errorf("#test printWelcome expect %q, got %q\n", expect, result)
+		}
+
+	}
+}

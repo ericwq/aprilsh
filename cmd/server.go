@@ -536,7 +536,7 @@ func printWelcome(w io.Writer, pid int, tty *os.File) {
 	fmt.Fprintf(w, "Copyright 2022 wangqi.\n")
 	fmt.Fprintf(w, "Use of this source code is governed by a MIT-style\n")
 	fmt.Fprintf(w, "license that can be found in the LICENSE file.\n\n")
-	fmt.Fprintf(w, "[%s detached, pid= %d]\n", COMMAND_NAME, pid)
+	fmt.Fprintf(w, "[%s detached, pid=%d]\n", COMMAND_NAME, pid)
 
 	inputUTF8, err := checkIUTF8(int(tty.Fd()))
 	if err != nil {
