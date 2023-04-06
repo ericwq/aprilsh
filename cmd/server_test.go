@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/creack/pty"
+	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )
 
@@ -981,5 +982,28 @@ func TestPrintWelcome(t *testing.T) {
 			t.Errorf("#test printWelcome expect %q, got %q\n", expect, result)
 		}
 
+	}
+}
+
+func TestConvertWinsize(t *testing.T) {
+	tc := []struct {
+		label  string
+		win    *unix.Winsize
+		expect *pty.Winsize
+	}{
+		{
+			"normal case",
+			&unix.Winsize{Col: 80, Row: 40, Xpixel: 0, Ypixel: 0},
+			&pty.Winsize{Cols: 80, Rows: 40, X: 0, Y: 0},
+		},
+		{"nil case", nil, nil},
+	}
+
+	for _, v := range tc {
+		got := convertWinsize(v.win)
+
+		if (v.expect == got && v.expect == nil) || (*got != *v.expect) {
+			t.Errorf("#test %q expect %v, got %v\n", v.label, v.expect, got)
+		}
 	}
 }

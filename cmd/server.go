@@ -577,6 +577,9 @@ func setIUTF8(fd int) error {
 }
 
 func convertWinsize(windowSize *unix.Winsize) *pty.Winsize {
+	if windowSize == nil {
+		return nil
+	}
 	var sz pty.Winsize
 	sz.Cols = windowSize.Col
 	sz.Rows = windowSize.Row
