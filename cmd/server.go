@@ -273,16 +273,17 @@ func main() {
 		return
 	}
 
-	startMainServer(conf, runWorker)
+	s := newServer(conf, runWorker)
+	startMainServer(conf, s)
+	s.wait()
 }
 
 // start main server, which will listen on the specified udp port.
 // each new client will send a `open aprish` message to main server.
 // main server will response with the session key and new udp port
 // for the new client.
-func startMainServer(conf *Config, runWorker func(*Config, chan string, chan string)) {
+func startMainServer(conf *Config, m *mainServer) {
 	// init udp server
-	m := newServer(conf, runWorker)
 
 	// handle signal: SIGTERM, SIGHUP
 	go func() {
@@ -831,4 +832,8 @@ func (m *mainServer) run(conf *Config) {
 			m.conn.WriteToUDP([]byte(resp), addr)
 		}
 	}
+}
+
+func (m *mainServer) wait() {
+	m.wg.Wait()
 }

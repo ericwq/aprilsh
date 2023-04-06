@@ -834,6 +834,56 @@ func testPTY() error {
 	return nil
 }
 
+func TestStartMainServer(t *testing.T) {
+	tc := []struct {
+		label  string
+		pause  int    // pause between client send and read
+		resp   string // response client read
+		finish int    // pause before shutdown message
+		conf   Config
+	}{
+		{
+			"", 20, "7101,This is the mock key", 50,
+			Config{
+				version: false, server: true, verbose: false, desiredIP: "", desiredPort: "7100",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
+				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
+			},
+		},
+	}
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			m := newServer(&v.conf, mockRunWorker)
+
+			// send shutdown message after some time
+			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
+			go func() {
+				<-timer1.C
+				m.shutdown <- true
+				// fmt.Println("#test send shutdown msg.")
+			}()
+			// fmt.Println("#test start timer for shutdown")
+
+			startMainServer(&v.conf, m)
+			// start mainserver
+			m.wg.Add(1)
+			if err := m.start(&v.conf); err != nil {
+				fmt.Printf("#test start() return %q\n", err)
+			}
+
+			// mock client operation
+			resp := mockClient(v.conf.desiredPort, v.pause)
+			if resp != v.resp {
+				t.Errorf("#test run expect %q got %q\n", v.resp, resp)
+			}
+
+			// fmt.Println("#test wait for finish.")
+			m.wg.Wait()
+			// fmt.Println("#test finished.")
+		})
+	}
+}
 func TestMainServer(t *testing.T) {
 	tc := []struct {
 		label  string
