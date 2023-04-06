@@ -1002,7 +1002,11 @@ func TestConvertWinsize(t *testing.T) {
 	for _, v := range tc {
 		got := convertWinsize(v.win)
 
-		if (v.expect == got && v.expect == nil) || (*got != *v.expect) {
+		if (v.expect != nil) && (*got != *v.expect) {
+			t.Errorf("#test %q expect %v, got %v\n", v.label, v.expect, got)
+		}
+
+		if v.expect == nil && got != nil {
 			t.Errorf("#test %q expect %v, got %v\n", v.label, v.expect, got)
 		}
 	}

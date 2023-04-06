@@ -569,10 +569,8 @@ func setIUTF8(fd int) error {
 	}
 
 	termios.Iflag |= unix.IUTF8
+	unix.IoctlSetTermios(fd, setTermios, termios)
 
-	if err := unix.IoctlSetTermios(fd, setTermios, termios); err != nil {
-		return err
-	}
 	return nil
 }
 
