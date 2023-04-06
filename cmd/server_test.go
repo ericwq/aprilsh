@@ -1049,3 +1049,37 @@ func TestConvertWinsize(t *testing.T) {
 		}
 	}
 }
+
+func TestListen(t *testing.T) {
+	tc := []struct {
+		label  string
+		port   string
+		repeat bool // if true, will listen twice.
+	}{
+		{"illegal port number", "22a", false},
+		{"port already in use", "22", true},
+	}
+	for _, v := range tc {
+		conf := &Config{desiredPort: v.port}
+		s := newMainSrv(conf, mockRunWorker)
+
+		var e error
+		e = s.listen(conf)
+		if v.repeat {
+			e = s.listen(conf)
+		}
+
+		// check the error does happens
+		if e == nil {
+			t.Errorf("#test %q expect error return, got nil\n", v.label)
+		}
+		// else {
+		// 	fmt.Printf("#test %q got error: %q\n", v.label, e)
+		// }
+
+		// close the listen port
+		if v.repeat {
+			s.workerDone <- conf.desiredPort
+		}
+	}
+}
