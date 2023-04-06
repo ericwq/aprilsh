@@ -854,7 +854,7 @@ func TestStart(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			srv := newServer(&v.conf, mockRunWorker)
+			srv := newMainSrv(&v.conf, mockRunWorker)
 
 			// send shutdown message after some time
 			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
@@ -865,7 +865,7 @@ func TestStart(t *testing.T) {
 			}()
 			// fmt.Println("#test start timer for shutdown")
 
-			srv.Start(&v.conf)
+			srv.start(&v.conf)
 
 			// mock client operation
 			resp := mockClient(v.conf.desiredPort, v.pause)
@@ -874,13 +874,13 @@ func TestStart(t *testing.T) {
 			}
 
 			// fmt.Println("#test wait for finish.")
-			srv.Wait()
+			srv.wait()
 			// fmt.Println("#test finished.")
 		})
 	}
 }
 
-func TestMainServer(t *testing.T) {
+func TestMainSrv(t *testing.T) {
 	tc := []struct {
 		label  string
 		pause  int    // pause between client send and read
@@ -900,22 +900,20 @@ func TestMainServer(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			m := newServer(&v.conf, mockRunWorker)
+			m := newMainSrv(&v.conf, mockRunWorker)
 
 			// send shutdown message after some time
 			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
 			go func() {
 				<-timer1.C
-				m.shutdown <- true
+				// m.shutdown <- true
+				syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
 				// fmt.Println("#test send shutdown msg.")
 			}()
 			// fmt.Println("#test start timer for shutdown")
 
 			// start mainserver
-			m.wg.Add(1)
-			if err := m.start(&v.conf); err != nil {
-				fmt.Printf("#test start() return %q\n", err)
-			}
+			m.start(&v.conf)
 
 			// mock client operation
 			resp := mockClient(v.conf.desiredPort, v.pause)
@@ -924,7 +922,7 @@ func TestMainServer(t *testing.T) {
 			}
 
 			// fmt.Println("#test wait for finish.")
-			m.wg.Wait()
+			m.wait()
 			// fmt.Println("#test finished.")
 		})
 	}

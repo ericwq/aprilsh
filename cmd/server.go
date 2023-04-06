@@ -273,9 +273,9 @@ func main() {
 		return
 	}
 
-	s := newServer(conf, runWorker)
-	s.Start(conf)
-	s.Wait()
+	srv := newMainSrv(conf, runWorker)
+	srv.start(conf)
+	srv.wait()
 }
 
 // build the config instance and check the utf-8 locale. return error if the terminal
@@ -682,7 +682,7 @@ func startShell(ptmx *os.File, pts *os.File, conf *Config) (*exec.Cmd, error) {
 	return cmd, nil
 }
 
-type mainServer struct {
+type mainSrv struct {
 	workers        map[int]bool
 	runWorker      func(*Config, chan string, chan string) // worker
 	nextWorkerPort int                                     // next worker port
@@ -692,8 +692,8 @@ type mainServer struct {
 	conn           *net.UDPConn
 }
 
-func newServer(conf *Config, runWorker func(*Config, chan string, chan string)) *mainServer {
-	m := mainServer{}
+func newMainSrv(conf *Config, runWorker func(*Config, chan string, chan string)) *mainSrv {
+	m := mainSrv{}
 	m.runWorker = runWorker
 	m.nextWorkerPort, _ = strconv.Atoi(conf.desiredPort)
 	m.workers = make(map[int]bool)
@@ -707,7 +707,7 @@ func newServer(conf *Config, runWorker func(*Config, chan string, chan string)) 
 // each new client will send a `open aprish` message to main server.
 // main server will response with the session key and new udp port
 // for the new client.
-func (m *mainServer) Start(conf *Config) {
+func (m *mainSrv) start(conf *Config) {
 	// init udp server
 
 	// handle signal: SIGTERM, SIGHUP
@@ -728,7 +728,7 @@ func (m *mainServer) Start(conf *Config) {
 
 	// start udp server upon receive the shake hands message.
 	m.wg.Add(1)
-	if err := m.start(conf); err != nil {
+	if err := m.listen(conf); err != nil {
 		m.wg.Done()
 		logW.Printf("%s: %s\n", COMMAND_NAME, err.Error())
 		return
@@ -737,7 +737,7 @@ func (m *mainServer) Start(conf *Config) {
 
 // to support multiple clients, mainServer listen on the specified port.
 // start udp server for each new client.
-func (m *mainServer) start(conf *Config) error {
+func (m *mainSrv) listen(conf *Config) error {
 	// fmt.Println("#start ResolveUDPAddr.")
 	local_addr, err := net.ResolveUDPAddr("udp", ":"+conf.desiredPort)
 	if err != nil {
@@ -756,7 +756,7 @@ func (m *mainServer) start(conf *Config) error {
 	return nil
 }
 
-func (m *mainServer) run(conf *Config) {
+func (m *mainSrv) run(conf *Config) {
 	if m.conn == nil {
 		return
 	}
@@ -832,6 +832,6 @@ func (m *mainServer) run(conf *Config) {
 	}
 }
 
-func (m *mainServer) Wait() {
+func (m *mainSrv) wait() {
 	m.wg.Wait()
 }
