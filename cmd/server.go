@@ -274,42 +274,8 @@ func main() {
 	}
 
 	s := newServer(conf, runWorker)
-	startMainServer(conf, s)
-	s.wait()
-}
-
-// start main server, which will listen on the specified udp port.
-// each new client will send a `open aprish` message to main server.
-// main server will response with the session key and new udp port
-// for the new client.
-func startMainServer(conf *Config, m *mainServer) {
-	// init udp server
-
-	// handle signal: SIGTERM, SIGHUP
-	go func() {
-		sig := make(chan os.Signal, 1)
-		signal.Notify(sig, syscall.SIGHUP, syscall.SIGTERM)
-		for s := range sig {
-			switch s {
-			case syscall.SIGHUP: // TODO:what we need to do?
-				logW.Println("got message SIGHUP.")
-			case syscall.SIGTERM:
-				logW.Println("got message SIGQUIT.")
-				m.shutdown <- true
-				return
-			}
-		}
-	}()
-
-	// start udp server upon receive the shake hands message.
-	m.wg.Add(1)
-	if err := m.start(conf); err != nil {
-		m.wg.Done()
-		logW.Printf("%s: %s\n", COMMAND_NAME, err.Error())
-		return
-	}
-
-	m.wg.Wait()
+	s.Start(conf)
+	s.Wait()
 }
 
 // build the config instance and check the utf-8 locale. return error if the terminal
@@ -737,6 +703,38 @@ func newServer(conf *Config, runWorker func(*Config, chan string, chan string)) 
 	return &m
 }
 
+// start main server, which will listen on the specified udp port.
+// each new client will send a `open aprish` message to main server.
+// main server will response with the session key and new udp port
+// for the new client.
+func (m *mainServer) Start(conf *Config) {
+	// init udp server
+
+	// handle signal: SIGTERM, SIGHUP
+	go func() {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, syscall.SIGHUP, syscall.SIGTERM)
+		for s := range sig {
+			switch s {
+			case syscall.SIGHUP: // TODO:what we need to do?
+				logW.Println("got message SIGHUP.")
+			case syscall.SIGTERM:
+				logW.Println("got message SIGTERM.")
+				m.shutdown <- true
+				return
+			}
+		}
+	}()
+
+	// start udp server upon receive the shake hands message.
+	m.wg.Add(1)
+	if err := m.start(conf); err != nil {
+		m.wg.Done()
+		logW.Printf("%s: %s\n", COMMAND_NAME, err.Error())
+		return
+	}
+}
+
 // to support multiple clients, mainServer listen on the specified port.
 // start udp server for each new client.
 func (m *mainServer) start(conf *Config) error {
@@ -834,6 +832,6 @@ func (m *mainServer) run(conf *Config) {
 	}
 }
 
-func (m *mainServer) wait() {
+func (m *mainServer) Wait() {
 	m.wg.Wait()
 }

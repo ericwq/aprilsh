@@ -834,7 +834,7 @@ func testPTY() error {
 	return nil
 }
 
-func TestStartMainServer(t *testing.T) {
+func TestStart(t *testing.T) {
 	tc := []struct {
 		label  string
 		pause  int    // pause between client send and read
@@ -854,23 +854,18 @@ func TestStartMainServer(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			m := newServer(&v.conf, mockRunWorker)
+			srv := newServer(&v.conf, mockRunWorker)
 
 			// send shutdown message after some time
 			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
 			go func() {
 				<-timer1.C
-				m.shutdown <- true
-				// fmt.Println("#test send shutdown msg.")
+				// srv.shutdown <- true
+				syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
 			}()
 			// fmt.Println("#test start timer for shutdown")
 
-			startMainServer(&v.conf, m)
-			// start mainserver
-			m.wg.Add(1)
-			if err := m.start(&v.conf); err != nil {
-				fmt.Printf("#test start() return %q\n", err)
-			}
+			srv.Start(&v.conf)
 
 			// mock client operation
 			resp := mockClient(v.conf.desiredPort, v.pause)
@@ -879,11 +874,12 @@ func TestStartMainServer(t *testing.T) {
 			}
 
 			// fmt.Println("#test wait for finish.")
-			m.wg.Wait()
+			srv.Wait()
 			// fmt.Println("#test finished.")
 		})
 	}
 }
+
 func TestMainServer(t *testing.T) {
 	tc := []struct {
 		label  string
