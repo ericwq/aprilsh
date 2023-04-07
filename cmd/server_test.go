@@ -880,7 +880,7 @@ func TestStart(t *testing.T) {
 	}
 }
 
-func TestMainSrv(t *testing.T) {
+func TestStartFail(t *testing.T) {
 	tc := []struct {
 		label  string
 		pause  int    // pause between client send and read
@@ -889,9 +889,9 @@ func TestMainSrv(t *testing.T) {
 		conf   Config
 	}{
 		{
-			"", 20, "7001,This is the mock key", 50,
+			"illegal port", 20, "", 50,
 			Config{
-				version: false, server: true, verbose: false, desiredIP: "", desiredPort: "7000",
+				version: false, server: true, verbose: false, desiredIP: "", desiredPort: "7000a",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 			},
@@ -902,28 +902,38 @@ func TestMainSrv(t *testing.T) {
 		t.Run(v.label, func(t *testing.T) {
 			m := newMainSrv(&v.conf, mockRunWorker)
 
-			// send shutdown message after some time
+			// send SIGHUP and SIGTERM message after some time
 			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
 			go func() {
 				<-timer1.C
 				// m.shutdown <- true
+				syscall.Kill(syscall.Getpid(), syscall.SIGHUP)
 				syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
-				// fmt.Println("#test send shutdown msg.")
 			}()
-			// fmt.Println("#test start timer for shutdown")
+
+			// intercept logW
+			var b strings.Builder
+			logW.SetOutput(&b)
+			defer func() {
+				logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+			}()
 
 			// start mainserver
 			m.start(&v.conf)
+			// fmt.Println("#test start fail!")
 
-			// mock client operation
-			resp := mockClient(v.conf.desiredPort, v.pause)
-			if resp != v.resp {
-				t.Errorf("#test run expect %q got %q\n", v.resp, resp)
+			// validate result: result contains WARN and COMMAND_NAME
+			expect := []string{COMMAND_NAME, "WARN"}
+			result := b.String()
+			found := 0
+			for i := range expect {
+				if strings.Contains(result, expect[i]) {
+					found++
+				}
 			}
-
-			// fmt.Println("#test wait for finish.")
-			m.wait()
-			// fmt.Println("#test finished.")
+			if found != 2 {
+				t.Errorf("#test buildConfig expect %q, got %q\n", expect, result)
+			}
 		})
 	}
 }
