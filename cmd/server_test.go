@@ -18,6 +18,7 @@ import (
 	"os/signal"
 	"reflect"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -1060,7 +1061,7 @@ func TestConvertWinsize(t *testing.T) {
 	}
 }
 
-func TestListen(t *testing.T) {
+func TestListenFail(t *testing.T) {
 	tc := []struct {
 		label  string
 		port   string
@@ -1091,4 +1092,72 @@ func TestListen(t *testing.T) {
 			s.workerDone <- conf.desiredPort
 		}
 	}
+}
+
+func TestRunFail(t *testing.T) {
+	tc := []struct {
+		label  string
+		pause  int    // pause between client send and read
+		resp   string // response client read
+		finish int    // pause before shutdown message
+		conf   Config
+	}{
+		{
+			"", 20, "7101,mock key from mockRunWorker2", 50,
+			Config{
+				version: false, server: true, verbose: false, desiredIP: "", desiredPort: "7100",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
+				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
+			},
+		},
+	}
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			srv := newMainSrv(&v.conf, mockRunWorker2)
+
+			// send shutdown message after some time
+			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
+			go func() {
+				<-timer1.C
+				// prepare to shudown the mainSrv
+				syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+				// stop the worker correctly, because mockRunWorker2 failed to
+				// do it on purpose.
+				time.Sleep(time.Duration(2) * time.Millisecond)
+				port, _ := strconv.Atoi(v.conf.desiredPort)
+				srv.workerDone <- fmt.Sprintf("%d", port+1)
+			}()
+			// fmt.Println("#test start timer for shutdown")
+
+			srv.start(&v.conf)
+
+			// mock client operation
+			resp := mockClient(v.conf.desiredPort, v.pause)
+
+			// validate the result.
+			if resp != v.resp {
+				t.Errorf("#test run expect %q got %q\n", v.resp, resp)
+			}
+
+			srv.wait()
+		})
+	}
+
+	// test case for run() without connection
+	srv2 := &mainSrv{}
+	srv2.run(&Config{})
+}
+
+// the mock runWorker send the key, pause some time and try to close the
+// worker by send wrong finish message: port+"x"
+func mockRunWorker2(conf *Config, key chan string, worker chan string) {
+	// send the mock key
+	key <- "mock key from mockRunWorker2"
+
+	// pause some time
+	time.Sleep(time.Duration(2) * time.Millisecond)
+
+	// fail to stop the worker on purpose
+	worker <- conf.desiredPort + "x"
 }
