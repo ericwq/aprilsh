@@ -690,6 +690,7 @@ type mainSrv struct {
 	shutdown       chan bool                               // shutdown ther server
 	wg             sync.WaitGroup
 	conn           *net.UDPConn
+	timeout        int // read udp time out,
 }
 
 func newMainSrv(conf *Config, runWorker func(*Config, chan string, chan string)) *mainSrv {
@@ -699,6 +700,7 @@ func newMainSrv(conf *Config, runWorker func(*Config, chan string, chan string))
 	m.workers = make(map[int]bool)
 	m.shutdown = make(chan bool, 1)
 	m.workerDone = make(chan string, 1)
+	m.timeout = 200
 
 	return &m
 }
@@ -779,10 +781,10 @@ func (m *mainSrv) run(conf *Config) {
 				fmt.Printf("#run got %s from workDone channel. error: %s\n", portStr, err)
 				break
 			}
-			fmt.Printf("#run got workDone message from %s\n", portStr)
+			// fmt.Printf("#run got workDone message from %s\n", portStr)
 			delete(m.workers, p)
 		case sd := <-m.shutdown: // got shutdown message from signal handler
-			fmt.Printf("#run got shutdown message %t\n", sd)
+			// fmt.Printf("#run got shutdown message %t\n", sd)
 			shutdown = sd
 		default:
 		}
@@ -792,14 +794,16 @@ func (m *mainSrv) run(conf *Config) {
 		}
 
 		// set read time out: 200ms
-		m.conn.SetDeadline(time.Now().Add(time.Millisecond * 200))
+		m.conn.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(m.timeout)))
 		n, addr, err := m.conn.ReadFromUDP(buf)
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
-				fmt.Printf("#run read time out, workers=%d, shutdown=%t, err=%s\n", len(m.workers), shutdown, err)
+				// fmt.Printf("#run read time out, workers=%d, shutdown=%t, err=%s\n", len(m.workers), shutdown, err)
 				continue
 			} else {
-				fmt.Println("#run read error: ", err) // read error to log?
+				// take a break in case reading error
+				time.Sleep(time.Duration(5) * time.Millisecond)
+				// fmt.Println("#run read error: ", err)
 				continue
 			}
 		}

@@ -933,7 +933,7 @@ func TestStartFail(t *testing.T) {
 				}
 			}
 			if found != 2 {
-				t.Errorf("#test buildConfig expect %q, got %q\n", expect, result)
+				t.Errorf("#test start() expect %q, got %q\n", expect, result)
 			}
 		})
 	}
@@ -1103,7 +1103,7 @@ func TestRunFail(t *testing.T) {
 		conf   Config
 	}{
 		{
-			"", 20, "7101,mock key from mockRunWorker2", 50,
+			"worker finish with wrong port number", 20, "7101,mock key from mockRunWorker2", 30,
 			Config{
 				version: false, server: true, verbose: false, desiredIP: "", desiredPort: "7100",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
@@ -1121,7 +1121,8 @@ func TestRunFail(t *testing.T) {
 			go func() {
 				<-timer1.C
 				// prepare to shudown the mainSrv
-				syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+				// syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+				srv.shutdown <- true
 				// stop the worker correctly, because mockRunWorker2 failed to
 				// do it on purpose.
 				time.Sleep(time.Duration(2) * time.Millisecond)
@@ -1160,4 +1161,45 @@ func mockRunWorker2(conf *Config, key chan string, worker chan string) {
 
 	// fail to stop the worker on purpose
 	worker <- conf.desiredPort + "x"
+}
+
+func TestRunFail2(t *testing.T) {
+	tc := []struct {
+		label  string
+		pause  int    // pause between client send and read
+		resp   string // response client read
+		finish int    // pause before shutdown message
+		conf   Config
+	}{
+		{
+			"read udp error", 20, "7101,This is the mock key", 50,
+			Config{
+				version: false, server: true, verbose: false, desiredIP: "", desiredPort: "7100",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
+				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
+			},
+		},
+	}
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			srv := newMainSrv(&v.conf, mockRunWorker)
+
+			// send shutdown message after some time
+			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
+			go func() {
+				<-timer1.C
+				// srv.shutdown <- true
+				syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+			}()
+			// fmt.Println("#test start timer for shutdown")
+
+			srv.start(&v.conf)
+
+			// close the connection, this will cause read error: use of closed network connection.
+			srv.conn.Close()
+
+			srv.wait()
+		})
+	}
 }
