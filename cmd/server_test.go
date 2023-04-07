@@ -844,7 +844,7 @@ func TestStart(t *testing.T) {
 		conf   Config
 	}{
 		{
-			"", 20, "7101,This is the mock key", 50,
+			"start normally", 20, "7101,This is the mock key", 50,
 			Config{
 				version: false, server: true, verbose: false, desiredIP: "", desiredPort: "7100",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
@@ -861,7 +861,7 @@ func TestStart(t *testing.T) {
 			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
 			go func() {
 				<-timer1.C
-				// srv.shutdown <- true
+				syscall.Kill(syscall.Getpid(), syscall.SIGHUP)
 				syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
 			}()
 			// fmt.Println("#test start timer for shutdown")
@@ -902,15 +902,6 @@ func TestStartFail(t *testing.T) {
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			m := newMainSrv(&v.conf, mockRunWorker)
-
-			// send SIGHUP and SIGTERM message after some time
-			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
-			go func() {
-				<-timer1.C
-				// m.shutdown <- true
-				syscall.Kill(syscall.Getpid(), syscall.SIGHUP)
-				syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
-			}()
 
 			// intercept logW
 			var b strings.Builder
@@ -1125,7 +1116,6 @@ func TestRunFail(t *testing.T) {
 				srv.shutdown <- true
 				// stop the worker correctly, because mockRunWorker2 failed to
 				// do it on purpose.
-				time.Sleep(time.Duration(2) * time.Millisecond)
 				port, _ := strconv.Atoi(v.conf.desiredPort)
 				srv.workerDone <- fmt.Sprintf("%d", port+1)
 			}()
@@ -1189,8 +1179,8 @@ func TestRunFail2(t *testing.T) {
 			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
 			go func() {
 				<-timer1.C
-				// srv.shutdown <- true
-				syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+				srv.shutdown <- true
+				// syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
 			}()
 			// fmt.Println("#test start timer for shutdown")
 

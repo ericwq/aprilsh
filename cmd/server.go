@@ -713,20 +713,7 @@ func (m *mainSrv) start(conf *Config) {
 	// init udp server
 
 	// handle signal: SIGTERM, SIGHUP
-	go func() {
-		sig := make(chan os.Signal, 1)
-		signal.Notify(sig, syscall.SIGHUP, syscall.SIGTERM)
-		for s := range sig {
-			switch s {
-			case syscall.SIGHUP: // TODO:what we need to do?
-				logW.Println("got message SIGHUP.")
-			case syscall.SIGTERM:
-				logW.Println("got message SIGTERM.")
-				m.shutdown <- true
-				return
-			}
-		}
-	}()
+	go m.handler()
 
 	// start udp server upon receive the shake hands message.
 	m.wg.Add(1)
@@ -734,6 +721,26 @@ func (m *mainSrv) start(conf *Config) {
 		m.wg.Done()
 		logW.Printf("%s: %s\n", COMMAND_NAME, err.Error())
 		return
+	}
+
+	// fmt.Printf("#start listening on %s, next port is %d\n", conf.desiredPort, m.nextWorkerPort+1)
+	go m.run(conf)
+}
+
+func (m *mainSrv) handler() {
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGTERM)
+	defer signal.Stop(sig)
+
+	for s := range sig {
+		switch s {
+		case syscall.SIGHUP: // TODO:what we need to do?
+			logW.Println("got message SIGHUP.")
+		case syscall.SIGTERM:
+			logW.Println("got message SIGTERM.")
+			m.shutdown <- true
+			return
+		}
 	}
 }
 
@@ -751,9 +758,6 @@ func (m *mainSrv) listen(conf *Config) error {
 	if err != nil {
 		return err
 	}
-
-	// fmt.Printf("#start listening on %s, next port is %d\n", conf.desiredPort, m.nextWorkerPort+1)
-	go m.run(conf)
 
 	return nil
 }
