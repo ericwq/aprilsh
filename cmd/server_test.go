@@ -1057,7 +1057,7 @@ func TestListen(t *testing.T) {
 		repeat bool // if true, will listen twice.
 	}{
 		{"illegal port number", "22a", false},
-		{"port already in use", "22", true},
+		{"port already in use", "60001", true}, // 60001 is the docker port on macOS
 	}
 	for _, v := range tc {
 		conf := &Config{desiredPort: v.port}
@@ -1065,17 +1065,16 @@ func TestListen(t *testing.T) {
 
 		var e error
 		e = s.listen(conf)
+		// fmt.Printf("#test %q got 1st error: %q\n", v.label, e)
 		if v.repeat {
 			e = s.listen(conf)
+			// fmt.Printf("#test %q got 2nd error: %q\n", v.label, e)
 		}
 
 		// check the error does happens
 		if e == nil {
 			t.Errorf("#test %q expect error return, got nil\n", v.label)
 		}
-		// else {
-		// 	fmt.Printf("#test %q got error: %q\n", v.label, e)
-		// }
 
 		// close the listen port
 		if v.repeat {
