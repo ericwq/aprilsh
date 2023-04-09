@@ -422,6 +422,7 @@ func runWorker(conf *Config, keyChan chan string, workerDone chan string) {
 	ptmx, pts, err := openPTS(windowSize, conf)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "#runServer prepare pts error: %s\n", err)
+		os.Exit(1) // what is the value of status code?
 	}
 
 	// add utmp entry
@@ -444,6 +445,7 @@ func runWorker(conf *Config, keyChan chan string, workerDone chan string) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "#runServer report: %s\n", err)
 	}
+	pts.Close() // it's copied by shell process, it's safe to close it here.
 
 	// Make sure to close the pty at the end.
 	defer func() { _ = ptmx.Close() }() // Best effort.
@@ -559,7 +561,7 @@ func openPTS(windowSize *unix.Winsize, conf *Config) (ptmx *os.File, pts *os.Fil
 	if err != nil {
 		return nil, nil, err
 	}
-	defer func() { _ = pts.Close() }() // Best effort.
+	// defer func() { _ = pts.Close() }() // Best effort.
 
 	sz := convertWinsize(windowSize)
 	if sz != nil { // set terminal size
@@ -575,32 +577,14 @@ func openPTS(windowSize *unix.Winsize, conf *Config) (ptmx *os.File, pts *os.Fil
 func startShell(ptmx *os.File, pts *os.File, conf *Config) (*exec.Cmd, error) {
 	cmd := exec.Command(conf.commandPath, conf.commandArgv...)
 
-	// copy from pty.StartWithSize()
-	cmd.SysProcAttr = &syscall.SysProcAttr{}
-	cmd.SysProcAttr.Setsid = true  // start a new session
-	cmd.SysProcAttr.Setctty = true // set controlling terminal
-
 	/*
 		copy from pty.StartWithAttrs()
 		need to add some logic inside pty.StartWithAttrs()
 	*/
 
-	/*
-		// open pts master and slave
-		ptmx, pts, err := pty.Open() // open pty master and slave
-		if err != nil {
-			return cmd, nil, err
-		}
-		defer func() { _ = pts.Close() }() // Best effort.
-
-		sz := convertWinsize(windowSize)
-		if sz != nil { // set terminal size
-			if err := pty.Setsize(ptmx, sz); err != nil {
-				_ = ptmx.Close() // Best effort.
-				return cmd, nil, err
-			}
-		}
-	*/
+	cmd.SysProcAttr = &syscall.SysProcAttr{}
+	cmd.SysProcAttr.Setsid = true  // start a new session
+	cmd.SysProcAttr.Setctty = true // set controlling terminal
 
 	// set stdin, stdout, stderr for pty slave
 	if cmd.Stdout == nil {
@@ -618,6 +602,7 @@ func startShell(ptmx *os.File, pts *os.File, conf *Config) (*exec.Cmd, error) {
 	*/
 
 	// reenable signals for cmd.Start
+	// TODO do we need to do this for golang?
 	signal.Reset(syscall.SIGHUP) // reset means using default signal handler
 	signal.Reset(syscall.SIGPIPE)
 
