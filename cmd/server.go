@@ -764,7 +764,7 @@ func (m *mainSrv) run(conf *Config) {
 		// fmt.Printf("#run workers=%v, len=%d\n", m.workers, len(m.workers))
 
 		select {
-		case portStr := <-m.workerDone: // got finish messsage from worker
+		case portStr := <-m.workerDone: // some worker is done
 			p, err := strconv.Atoi(portStr)
 			if err != nil {
 				fmt.Printf("#run got %s from workDone channel. error: %s\n", portStr, err)
@@ -772,7 +772,7 @@ func (m *mainSrv) run(conf *Config) {
 			}
 			// fmt.Printf("#run got workDone message from %s\n", portStr)
 			delete(m.workers, p)
-		case sd := <-m.shutdown: // got shutdown message from signal handler
+		case sd := <-m.shutdown: // ready to shutdown mainSrv
 			// fmt.Printf("#run got shutdown message %t\n", sd)
 			shutdown = sd
 		default:
@@ -821,7 +821,7 @@ func (m *mainSrv) run(conf *Config) {
 			resp := fmt.Sprintf("%d,%s", m.nextWorkerPort, key)
 			m.conn.SetDeadline(time.Now().Add(time.Millisecond * 200))
 			m.conn.WriteToUDP([]byte(resp), addr)
-		}
+		} // add 'close aprish:[port]' to close the server from client side
 	}
 }
 
