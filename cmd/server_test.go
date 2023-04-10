@@ -330,7 +330,7 @@ func TestMainBuildConfig(t *testing.T) {
 		os.Setenv(BUILD_CONFIG_TEST, "TRUE")
 		defer os.Unsetenv(BUILD_CONFIG_TEST)
 		// prepare data
-		os.Args = []string{COMMAND_NAME, "-locale", "LC_ALL=en_US.UTF-8", "--", "/bin/sh"}
+		os.Args = []string{COMMAND_NAME, "-locale", "LC_ALL=en_US.UTF-8", "--", "/bin/sh", "-sh"}
 		// test
 		main()
 	}
@@ -391,11 +391,19 @@ func TestParseFlagsCorrect(t *testing.T) {
 			},
 		},
 		{
-			[]string{"--", "/bin/sh"},
+			[]string{"--", "/bin/sh", "-sh"},
 			Config{
 				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "6000",
 				locales: localeFlag{}, color: 0,
-				commandPath: "", commandArgv: []string{"/bin/sh"}, withMotd: false,
+				commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
+			},
+		},
+		{
+			[]string{"--", ""},
+			Config{
+				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "6000",
+				locales: localeFlag{}, color: 0,
+				commandPath: "", commandArgv: []string{""}, withMotd: false,
 			},
 		},
 	}
@@ -410,6 +418,7 @@ func TestParseFlagsCorrect(t *testing.T) {
 				t.Errorf("output got %q, want empty", output)
 			}
 			if !reflect.DeepEqual(*conf, v.conf) {
+				t.Logf("#test parseFlags got commandArgv=%+v\n", conf.commandArgv)
 				t.Errorf("conf got \n%+v, want \n%+v", *conf, v.conf)
 			}
 		})
@@ -428,12 +437,12 @@ func TestBuildConfig(t *testing.T) {
 			Config{
 				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
-				commandPath: "", commandArgv: []string{"/bin/sh"}, withMotd: false,
+				commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
 			},
 			Config{
 				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
-				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
+				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: false,
 			},
 			nil,
 		},
@@ -458,14 +467,28 @@ func TestBuildConfig(t *testing.T) {
 			Config{
 				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "",
 				locales: localeFlag{"LC_ALL": "zh_CN.GB2312", "LANG": "zh_CN.GB2312"}, color: 0,
-				commandPath: "", commandArgv: []string{"/bin/sh"}, withMotd: false,
+				commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
 			}, // TODO GB2312 is not available in apline linux
 			Config{
 				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "",
 				locales: localeFlag{}, color: 0,
-				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
+				commandPath: "/bin/sh", commandArgv: []string{"*sh"}, withMotd: false,
 			},
 			errors.New("UTF-8 locale fail."),
+		},
+		{
+			"commandArgv is one string",
+			Config{
+				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
+				commandPath: "", commandArgv: []string{"/bin/sh"}, withMotd: false,
+			},
+			Config{
+				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
+				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: false,
+			},
+			nil,
 		},
 	}
 

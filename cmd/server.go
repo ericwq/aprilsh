@@ -306,11 +306,14 @@ func buildConfig(conf *Config) error {
 	}
 
 	if len(conf.commandPath) == 0 {
-		// TODO logic flaw?
-		// if commandArgv is empty, the previous block asssign '-sh' to commandArgv[0]
-		// if commandArgv is not empty, commandArgv[0] is in the form of '/bin/sh'
-		// commandPath got the same value '/bin/sh', while commandArgv[0] got '-sh' or '/bin/sh'.
 		conf.commandPath = conf.commandArgv[0]
+
+		if len(conf.commandArgv) == 1 {
+			shellName := getShellNameFrom(conf.commandPath)
+			conf.commandArgv = []string{shellName}
+		} else {
+			conf.commandArgv = conf.commandArgv[1:]
+		}
 	}
 
 	// Adopt implementation locale
