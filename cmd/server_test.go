@@ -890,6 +890,13 @@ func TestStart(t *testing.T) {
 			}()
 			// fmt.Println("#test start timer for shutdown")
 
+			// intercept logW
+			var b strings.Builder
+			logW.SetOutput(&b)
+			defer func() {
+				logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+			}()
+
 			srv.start(&v.conf)
 
 			// mock client operation
@@ -900,7 +907,19 @@ func TestStart(t *testing.T) {
 
 			// fmt.Println("#test wait for finish.")
 			srv.wait()
-			// fmt.Println("#test finished.")
+
+			// validate result: result contains expect string
+			expect := []string{"SIGTERM", "SIGHUP"}
+			result := b.String()
+			found := 0
+			for i := range expect {
+				if strings.Contains(result, expect[i]) {
+					found++
+				}
+			}
+			if found != 2 {
+				t.Errorf("#test start() expect %q, got %q\n", expect, result)
+			}
 		})
 	}
 }
