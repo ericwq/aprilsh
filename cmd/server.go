@@ -427,39 +427,36 @@ func runWorker(conf *Config, keyChan chan string, workerDone chan string) {
 		fmt.Fprintf(os.Stderr, "#runServer prepare pts error: %s\n", err)
 		os.Exit(1) // what is the value of status code?
 	}
-
-	// add utmp entry
-	// ptsName := ptmx.Name()
-	// host := fmt.Sprintf("aprilsh [%d]", os.Getpid())
-	// usr := getCurrentUser()
-	// utmpEntry := utmp.Put_utmp(usr, ptsName, host)
-
-	// update last log
-	// utmp.Put_lastlog_entry(COMMAND_NAME, usr, ptsName, host)
-
-	// start the udp server, serve the udp request
-	go serve(ptmx, terminal, network, networkTimeout, networkSignaledTimeout)
-
-	// clear utmp entry
-	// utmp.Unput_utmp(utmpEntry)
+	defer func() { _ = ptmx.Close() }() // Best effort.
 
 	// start the shell
 	shell, err := startShell(ptmx, pts, conf)
+	pts.Close() // it's copied by shell process, it's safe to close it here.
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "#runServer report: %s\n", err)
+		// TODO what happens if start return error
+	} else {
+		// add utmp entry
+		// ptsName := ptmx.Name()
+		// host := fmt.Sprintf("aprilsh [%d]", os.Getpid())
+		// usr := getCurrentUser()
+		// utmpEntry := utmp.Put_utmp(usr, ptsName, host)
+
+		// update last log
+		// utmp.Put_lastlog_entry(COMMAND_NAME, usr, ptsName, host)
+
+		// start the udp server, serve the udp request
+		go serve(ptmx, terminal, network, networkTimeout, networkSignaledTimeout)
+
+		// clear utmp entry
+		// utmp.Unput_utmp(utmpEntry)
+
+		// wait for the shell to finish.
+		if err2 := shell.Wait(); err2 != nil {
+			fmt.Fprintf(os.Stderr, "#runServer start shell error: %s\n", err2)
+			shell.Process.Kill()
+		}
 	}
-	pts.Close() // it's copied by shell process, it's safe to close it here.
-
-	// Make sure to close the pty at the end.
-	defer func() { _ = ptmx.Close() }() // Best effort.
-
-	// wait for the shell to finish.
-	if err2 := shell.Wait(); err2 != nil {
-		fmt.Fprintf(os.Stderr, "#runServer start shell error: %s\n", err2)
-	}
-
-	// kill the shell when the server done
-	defer shell.Process.Kill()
 
 	// notify the server which worker is done
 	workerDone <- conf.desiredPort
@@ -824,7 +821,7 @@ func (m *mainSrv) run(conf *Config) {
 			resp := fmt.Sprintf("%d,%s", m.nextWorkerPort, key)
 			m.conn.SetDeadline(time.Now().Add(time.Millisecond * 200))
 			m.conn.WriteToUDP([]byte(resp), addr)
-		} // add 'close aprish:[port]' to close the server from client side
+		} // TODO add 'close aprish:[port]' to close the server from client side
 	}
 }
 

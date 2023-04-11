@@ -281,7 +281,7 @@ func TestMainVersion(t *testing.T) {
 	}
 }
 
-func TestMainParseError(t *testing.T) {
+func TestMainParseFlagsError(t *testing.T) {
 	testFunc := func() {
 		// prepare data
 		os.Args = []string{COMMAND_NAME, "--foo"}
@@ -565,31 +565,31 @@ func TestParseFlagsError(t *testing.T) {
 	}
 }
 
-func testMainParameters(t *testing.T) {
-	// flag is a global variable, reset it before test
-	flag.CommandLine = flag.NewFlagSet("TestMainParameters", flag.ExitOnError)
-	testParaFunc := func() {
-		// prepare data
-		os.Args = []string{COMMAND_NAME, "-validate", "--"} //"-l LC_ALL=en_US.UTF-8", "--"}
-		// test
-		main()
-	}
-
-	out := captureStdoutRun(testParaFunc)
-
-	// validate result
-	expect := []string{"main", "commandPath=", "commandArgv=", "withMotd=", "locales=", "color="}
-	result := string(out)
-	found := 0
-	for i := range expect {
-		if strings.Contains(result, expect[i]) {
-			found++
-		}
-	}
-	if found != len(expect) {
-		t.Errorf("#test main() expect %q, got %q\n", expect, result)
-	}
-}
+// func TestMainParameters(t *testing.T) {
+// 	// flag is a global variable, reset it before test
+// 	flag.CommandLine = flag.NewFlagSet("TestMainParameters", flag.ExitOnError)
+// 	testParaFunc := func() {
+// 		// prepare data
+// 		os.Args = []string{COMMAND_NAME, "--", "/bin/sh","-sh"} //"-l LC_ALL=en_US.UTF-8", "--"}
+// 		// test
+// 		main()
+// 	}
+//
+// 	out := captureStdoutRun(testParaFunc)
+//
+// 	// validate result
+// 	expect := []string{"main", "commandPath=", "commandArgv=", "withMotd=", "locales=", "color="}
+// 	result := string(out)
+// 	found := 0
+// 	for i := range expect {
+// 		if strings.Contains(result, expect[i]) {
+// 			found++
+// 		}
+// 	}
+// 	if found != len(expect) {
+// 		t.Errorf("#test main() expect %s, got %s\n", expect, result)
+// 	}
+// }
 
 func TestMainServerPortrangeError(t *testing.T) {
 	var b strings.Builder
