@@ -520,6 +520,7 @@ func TestBuildConfig(t *testing.T) {
 
 			// validate buildConfig
 			err := buildConfig(&v.conf0)
+			v.conf0.serve = nil // disable the serve func for testing
 			if err != nil {
 				if err.Error() != v.err.Error() {
 					// if !errors.Is(err, v.err) {

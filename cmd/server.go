@@ -44,7 +44,7 @@ const (
 func printVersion(w io.Writer) {
 	fmt.Fprintf(w, "%s (%s) [build %s]\n", COMMAND_NAME, PACKAGE_STRING, BUILD_VERSION)
 	fmt.Fprintf(w, "Copyright (c) 2022~2023 wangqi ericwq057[AT]qq[dot]com\n")
-	// TODO add a slogans here.
+	fmt.Fprintf(w, "reborn mosh with aprilsh\n")
 }
 
 func printUsage(w io.Writer, usage string) {
@@ -176,6 +176,9 @@ type Config struct {
 	commandPath string
 	commandArgv []string // the positional (non-flag) command-line arguments.
 	withMotd    bool
+	// the serve func
+	serve func(*os.File, *statesync.Complete, *network.Transport[*statesync.Complete,
+		*statesync.UserStream], int64, int64) error
 }
 
 // parseFlags parses the command-line arguments provided to the program.
@@ -283,6 +286,7 @@ func main() {
 func buildConfig(conf *Config) error {
 	conf.commandPath = ""
 	conf.withMotd = false
+	conf.serve = serve
 
 	// Get shell
 	if len(conf.commandArgv) == 0 {
@@ -434,7 +438,6 @@ func runWorker(conf *Config, keyChan chan string, workerDone chan string) {
 	pts.Close() // it's copied by shell process, it's safe to close it here.
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "#runServer report: %s\n", err)
-		// TODO what happens if start return error
 	} else {
 		// add utmp entry
 		// ptsName := ptmx.Name()
@@ -446,7 +449,7 @@ func runWorker(conf *Config, keyChan chan string, workerDone chan string) {
 		// utmp.Put_lastlog_entry(COMMAND_NAME, usr, ptsName, host)
 
 		// start the udp server, serve the udp request
-		go serve(ptmx, terminal, network, networkTimeout, networkSignaledTimeout)
+		go conf.serve(ptmx, terminal, network, networkTimeout, networkSignaledTimeout)
 
 		// clear utmp entry
 		// utmp.Unput_utmp(utmpEntry)
@@ -602,9 +605,10 @@ func startShell(ptmx *os.File, pts *os.File, conf *Config) (*exec.Cmd, error) {
 	*/
 
 	// reenable signals for cmd.Start
-	// TODO do we need to do this for golang?
-	signal.Reset(syscall.SIGHUP) // reset means using default signal handler
-	signal.Reset(syscall.SIGPIPE)
+	// reset means using default signal handler
+	//
+	// signal.Reset(syscall.SIGHUP)
+	// signal.Reset(syscall.SIGPIPE)
 
 	// set IUTF8 if available
 	if err := setIUTF8(int(pts.Fd())); err != nil {
@@ -767,7 +771,7 @@ func (m *mainSrv) run(conf *Config) {
 		case portStr := <-m.workerDone: // some worker is done
 			p, err := strconv.Atoi(portStr)
 			if err != nil {
-				fmt.Printf("#run got %s from workDone channel. error: %s\n", portStr, err)
+				// fmt.Printf("#run got %s from workDone channel. error: %s\n", portStr, err)
 				break
 			}
 			// fmt.Printf("#run got workDone message from %s\n", portStr)
@@ -796,7 +800,7 @@ func (m *mainSrv) run(conf *Config) {
 				continue
 			}
 		}
-		fmt.Printf("#run receive %q from %s\n", strings.TrimSpace(string(buf[0:n])), addr)
+		// fmt.Printf("#run receive %q from %s\n", strings.TrimSpace(string(buf[0:n])), addr)
 
 		// only response to request start with 'open aprilsh'
 		req := strings.TrimSpace(string(buf[0:n]))
@@ -809,7 +813,7 @@ func (m *mainSrv) run(conf *Config) {
 			conf2.desiredPort = fmt.Sprintf("%d", m.nextWorkerPort)
 			keyChan := make(chan string, 1)
 			go m.runWorker(&conf2, keyChan, m.workerDone)
-			fmt.Printf("#run start a worker at %s\n", conf2.desiredPort)
+			// fmt.Printf("#run start a worker at %s\n", conf2.desiredPort)
 
 			// blocking read the key from runWorker
 			key := <-keyChan
