@@ -424,9 +424,11 @@ func runWorker(conf *Config, keyChan chan string, workerDone chan string) {
 	if term.IsTerminal(int(os.Stdin.Fd())) {
 		fmt.Printf("\r\n")
 	}
+	// TODO in aprilsh: we can use nc client to test
 	fmt.Printf("%s CONNECT %s %s\n", COMMAND_NAME, network.Port(), network.GetKey())
 	keyChan <- network.GetKey()
 
+	// TODO in mosh: the parent print this.
 	printWelcome(os.Stderr, os.Getpid(), os.Stdin)
 
 	ptmx, pts, err := openPTS(windowSize, conf)
