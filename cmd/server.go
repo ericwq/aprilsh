@@ -389,6 +389,9 @@ func (lv *localeFlag) IsBoolFlag() bool {
 	return false
 }
 
+// worker started by mainSrv.run(). it will listen on specified port and
+// forward user input to shell (started by runWorker. the output is forward
+// to the network.
 func runWorker(conf *Config, keyChan chan string, workerDone chan string) {
 	networkTimeout := getTimeFrom("APRILSH_SERVER_NETWORK_TMOUT", 0)
 	networkSignaledTimeout := getTimeFrom("APRILSH_SERVER_SIGNAL_TMOUT", 0)
@@ -461,7 +464,7 @@ func runWorker(conf *Config, keyChan chan string, workerDone chan string) {
 		}
 	}
 
-	// notify the server which worker is done
+	// notify this worker is done
 	workerDone <- conf.desiredPort
 	fmt.Printf("\n[%s is exiting.]\n", COMMAND_NAME)
 	// https://www.dolthub.com/blog/2022-11-28-go-os-exec-patterns/
@@ -694,10 +697,11 @@ func newMainSrv(conf *Config, runWorker func(*Config, chan string, chan string))
 	return &m
 }
 
-// start main server, which will listen on the specified udp port.
-// each new client will send a `open aprish` message to main server.
-// main server will response with the session key and new udp port
-// for the new client.
+// start mainSrv, which listen on the main udp port.
+// each new client send a shake hands message to mainSrv. mainSrv response
+// with the session key and target udp port for the new client.
+// mainSrv is shutdown by SIGTERM and all sessions must be done.
+// otherwise mainSrv will wait for the live session.
 func (m *mainSrv) start(conf *Config) {
 	// init udp server
 
