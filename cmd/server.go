@@ -824,7 +824,6 @@ func (m *mainSrv) run(conf *Config) {
 			m.eg.Go(func() error {
 				return m.runWorker(&conf2, keyChan, m.workerDone)
 			})
-			// go m.runWorker(&conf2, keyChan, m.workerDone)
 			// fmt.Printf("#run start a worker at %s\n", conf2.desiredPort)
 
 			// blocking read the key from runWorker
@@ -844,6 +843,6 @@ func (m *mainSrv) run(conf *Config) {
 func (m *mainSrv) wait() {
 	m.wg.Wait()
 	if err := m.eg.Wait(); err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+		fmt.Fprintf(os.Stderr, "#mainSrv wait() reports %s\n", err.Error())
 	}
 }

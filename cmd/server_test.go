@@ -1240,3 +1240,64 @@ func TestRunFail2(t *testing.T) {
 		})
 	}
 }
+
+func TestWaitError(t *testing.T) {
+	tc := []struct {
+		label  string
+		pause  int    // pause between client send and read
+		resp   string // response client read
+		finish int    // pause before shutdown message
+		conf   Config
+	}{
+		{
+			"wait error", 20, "", 50,
+			Config{
+				version: false, server: true, verbose: false, desiredIP: "", desiredPort: "7000",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
+				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
+			},
+		},
+	}
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			m := newMainSrv(&v.conf, failRunWorker)
+
+			// send shutdown message after some time
+			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
+			go func() {
+				<-timer1.C
+				m.shutdown <- true
+				// stop the worker correctly, because mockRunWorker2 failed to
+				// do it on purpose.
+				port, _ := strconv.Atoi(v.conf.desiredPort)
+				m.workerDone <- fmt.Sprintf("%d", port+1)
+			}()
+
+			// start mainserver
+			m.start(&v.conf)
+			// fmt.Println("#test start fail!")
+
+			// mock client operation
+			mockClient(v.conf.desiredPort, v.pause)
+
+			m.wait()
+		})
+	}
+}
+
+// the mock runWorker send the key, pause some time and close the
+func failRunWorker(conf *Config, key chan string, worker chan string) error {
+	// send the empty key
+	// fmt.Println("#mockRunWorker send mock key to run().")
+	key <- ""
+
+	// pause some time
+	time.Sleep(time.Duration(2) * time.Millisecond)
+
+	defer func() {
+		// notify this worker is done
+		worker <- conf.desiredPort
+	}()
+	return errors.New("fail worker")
+}
