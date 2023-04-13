@@ -1268,10 +1268,13 @@ func TestWaitError(t *testing.T) {
 			go func() {
 				<-timer1.C
 				m.shutdown <- true
-				// stop the worker correctly, because mockRunWorker2 failed to
-				// do it on purpose.
-				port, _ := strconv.Atoi(v.conf.desiredPort)
-				m.workerDone <- fmt.Sprintf("%d", port+1)
+			}()
+
+			// intercept logW
+			var b strings.Builder
+			logW.SetOutput(&b)
+			defer func() {
+				logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 			}()
 
 			// start mainserver
@@ -1282,11 +1285,24 @@ func TestWaitError(t *testing.T) {
 			mockClient(v.conf.desiredPort, v.pause)
 
 			m.wait()
+
+			// validate result
+			expect := []string{"#mainSrv wait() reports"}
+			result := b.String()
+			found := 0
+			for i := range expect {
+				if strings.Contains(result, expect[i]) {
+					found++
+				}
+			}
+			if found != 1 {
+				t.Errorf("#test start() expect %q, got %q\n", expect, result)
+			}
 		})
 	}
 }
 
-// the mock runWorker send the key, pause some time and close the
+// the mock runWorker send empty key, pause some time and close the worker
 func failRunWorker(conf *Config, key chan string, worker chan string) error {
 	// send the empty key
 	// fmt.Println("#mockRunWorker send mock key to run().")
@@ -1295,9 +1311,10 @@ func failRunWorker(conf *Config, key chan string, worker chan string) error {
 	// pause some time
 	time.Sleep(time.Duration(2) * time.Millisecond)
 
+	// notify this worker is done
 	defer func() {
-		// notify this worker is done
 		worker <- conf.desiredPort
 	}()
-	return errors.New("fail worker")
+
+	return errors.New("failed worker.")
 }

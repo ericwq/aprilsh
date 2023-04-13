@@ -843,6 +843,6 @@ func (m *mainSrv) run(conf *Config) {
 func (m *mainSrv) wait() {
 	m.wg.Wait()
 	if err := m.eg.Wait(); err != nil {
-		fmt.Fprintf(os.Stderr, "#mainSrv wait() reports %s\n", err.Error())
+		logW.Printf("#mainSrv wait() reports %s\n", err.Error())
 	}
 }
