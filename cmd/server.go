@@ -234,12 +234,6 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 // parse the flag first, print help or version based on flag
 // then run the main listening server
 func main() {
-	// For security, make sure we don't dump core
-	if err := encrypt.DisableDumpingCore(); err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
-		os.Exit(1)
-	}
-
 	conf, output, err := parseFlags(os.Args[0], os.Args[1:])
 	if err == flag.ErrHelp {
 		printUsage(os.Stdout, usage)
@@ -667,7 +661,9 @@ func startShell(pts *os.File, conf *Config) (*exec.Cmd, error) {
 		return cmd, err
 	}
 
-	encrypt.ReenableDumpingCore()
+	if err := encrypt.ReenableDumpingCore(); err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+	}
 
 	/*
 		additional logic for pty.StartWithAttrs() end
@@ -824,6 +820,10 @@ func (m *mainSrv) run(conf *Config) {
 			conf2.desiredPort = fmt.Sprintf("%d", m.nextWorkerPort)
 			keyChan := make(chan string, 1)
 
+			// For security, make sure we don't dump core
+			if err := encrypt.DisableDumpingCore(); err != nil {
+				fmt.Fprintf(os.Stderr, "%s\n", err.Error())
+			}
 			m.eg.Go(func() error {
 				return m.runWorker(&conf2, keyChan, m.workerDone)
 			})
