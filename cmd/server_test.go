@@ -974,7 +974,7 @@ func TestStartFail(t *testing.T) {
 }
 
 // the mock runWorker send the key, pause some time and close the
-func mockRunWorker(conf *Config, key chan string, worker chan string) {
+func mockRunWorker(conf *Config, key chan string, worker chan string) error {
 	// send the mock key
 	// fmt.Println("#mockRunWorker send mock key to run().")
 	key <- "This is the mock key"
@@ -985,6 +985,8 @@ func mockRunWorker(conf *Config, key chan string, worker chan string) {
 	// notify the server
 	// fmt.Println("#mockRunWorker finish run().")
 	worker <- conf.desiredPort
+
+	return nil
 }
 
 // mock client connect to the port, send handshake message, pause some time
@@ -1185,7 +1187,7 @@ func TestRunFail(t *testing.T) {
 
 // the mock runWorker send the key, pause some time and try to close the
 // worker by send wrong finish message: port+"x"
-func mockRunWorker2(conf *Config, key chan string, worker chan string) {
+func mockRunWorker2(conf *Config, key chan string, worker chan string) error {
 	// send the mock key
 	key <- "mock key from mockRunWorker2"
 
@@ -1194,6 +1196,8 @@ func mockRunWorker2(conf *Config, key chan string, worker chan string) {
 
 	// fail to stop the worker on purpose
 	worker <- conf.desiredPort + "x"
+
+	return nil
 }
 
 func TestRunFail2(t *testing.T) {
