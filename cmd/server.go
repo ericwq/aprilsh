@@ -430,11 +430,11 @@ func runWorker(conf *Config, keyChan chan string, workerDone chan string) error 
 	if term.IsTerminal(int(os.Stdin.Fd())) {
 		fmt.Printf("\r\n")
 	}
-	// TODO in aprilsh: we can use nc client to test
+	// in aprilsh: we can use nc client to test
 	fmt.Printf("%s CONNECT %s %s\n", COMMAND_NAME, network.Port(), network.GetKey())
 	keyChan <- network.GetKey()
 
-	// TODO in mosh: the parent print this.
+	// in mosh: the parent print this.
 	printWelcome(os.Stderr, os.Getpid(), os.Stdin)
 
 	ptmx, pts, err := openPTS(windowSize, conf)
@@ -444,8 +444,8 @@ func runWorker(conf *Config, keyChan chan string, workerDone chan string) error 
 	}
 	defer func() { _ = ptmx.Close() }() // Best effort.
 
-	// start the shell
-	shell, err := startShell(ptmx, pts, conf)
+	// start the shell with pts
+	shell, err := startShell(pts, conf)
 	pts.Close() // it's copied by shell process, it's safe to close it here.
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "#runWorker report: %s\n", err)
@@ -580,7 +580,6 @@ func openPTS(windowSize *unix.Winsize, conf *Config) (ptmx *os.File, pts *os.Fil
 	sz := convertWinsize(windowSize)
 	if sz != nil { // set terminal size
 		if err := pty.Setsize(ptmx, sz); err != nil {
-			_ = ptmx.Close() // Best effort.
 			return nil, nil, err
 		}
 	}
@@ -588,7 +587,7 @@ func openPTS(windowSize *unix.Winsize, conf *Config) (ptmx *os.File, pts *os.Fil
 	return ptmx, pts, nil
 }
 
-func startShell(ptmx *os.File, pts *os.File, conf *Config) (*exec.Cmd, error) {
+func startShell(pts *os.File, conf *Config) (*exec.Cmd, error) {
 	cmd := exec.Command(conf.commandPath, conf.commandArgv...)
 
 	/*
@@ -675,7 +674,6 @@ func startShell(ptmx *os.File, pts *os.File, conf *Config) (*exec.Cmd, error) {
 	*/
 
 	if err := cmd.Start(); err != nil {
-		_ = ptmx.Close() // Best effort.
 		return cmd, err
 	}
 
@@ -719,9 +717,7 @@ func (m *mainSrv) start(conf *Config) {
 	go m.handler()
 
 	// start udp server upon receive the shake hands message.
-	m.wg.Add(1)
 	if err := m.listen(conf); err != nil {
-		m.wg.Done()
 		logW.Printf("%s: %s\n", COMMAND_NAME, err.Error())
 		return
 	}
@@ -770,6 +766,7 @@ func (m *mainSrv) run(conf *Config) {
 		return
 	}
 
+	m.wg.Add(1)
 	defer func() {
 		m.conn.Close()
 		m.wg.Done()
