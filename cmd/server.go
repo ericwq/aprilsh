@@ -28,6 +28,7 @@ import (
 	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/network"
 	"github.com/ericwq/aprilsh/statesync"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )
@@ -392,11 +393,16 @@ func (lv *localeFlag) IsBoolFlag() bool {
 // worker started by mainSrv.run(). it will listen on specified port and
 // forward user input to shell (started by runWorker. the output is forward
 // to the network.
-func runWorker(conf *Config, keyChan chan string, workerDone chan string) {
+func runWorker(conf *Config, keyChan chan string, workerDone chan string) error {
+	defer func() {
+		// notify this worker is done
+		workerDone <- conf.desiredPort
+	}()
+
 	networkTimeout := getTimeFrom("APRILSH_SERVER_NETWORK_TMOUT", 0)
 	networkSignaledTimeout := getTimeFrom("APRILSH_SERVER_SIGNAL_TMOUT", 0)
 
-	fmt.Printf("#runServer networkTimeout=%d, networkSignaledTimeout=%d\n", networkTimeout, networkSignaledTimeout)
+	fmt.Printf("#runWorker networkTimeout=%d, networkSignaledTimeout=%d\n", networkTimeout, networkSignaledTimeout)
 
 	// get initial window size
 	windowSize, err := unix.IoctlGetWinsize(int(os.Stdin.Fd()), unix.TIOCGWINSZ)
@@ -433,8 +439,8 @@ func runWorker(conf *Config, keyChan chan string, workerDone chan string) {
 
 	ptmx, pts, err := openPTS(windowSize, conf)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "#runServer prepare pts error: %s\n", err)
-		os.Exit(1) // what is the value of status code?
+		fmt.Fprintf(os.Stderr, "#runWorker prepare pts error: %s\n", err)
+		return err
 	}
 	defer func() { _ = ptmx.Close() }() // Best effort.
 
@@ -442,7 +448,7 @@ func runWorker(conf *Config, keyChan chan string, workerDone chan string) {
 	shell, err := startShell(ptmx, pts, conf)
 	pts.Close() // it's copied by shell process, it's safe to close it here.
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "#runServer report: %s\n", err)
+		fmt.Fprintf(os.Stderr, "#runWorker report: %s\n", err)
 	} else {
 		// add utmp entry
 		// ptsName := ptmx.Name()
@@ -461,16 +467,16 @@ func runWorker(conf *Config, keyChan chan string, workerDone chan string) {
 
 		// wait for the shell to finish.
 		if err2 := shell.Wait(); err2 != nil {
-			fmt.Fprintf(os.Stderr, "#runServer start shell error: %s\n", err2)
+			fmt.Fprintf(os.Stderr, "#runWorker start shell error: %s\n", err2)
 			shell.Process.Kill()
 		}
 	}
 
-	// notify this worker is done
-	workerDone <- conf.desiredPort
-	fmt.Printf("\n[%s is exiting.]\n", COMMAND_NAME)
+	fmt.Printf("\n#runWorker [%s is exiting.]\n", COMMAND_NAME)
 	// https://www.dolthub.com/blog/2022-11-28-go-os-exec-patterns/
 	// https://www.prakharsrivastav.com/posts/golang-context-and-cancellation/
+
+	return err
 }
 
 func getCurrentUser() string {
@@ -678,16 +684,17 @@ func startShell(ptmx *os.File, pts *os.File, conf *Config) (*exec.Cmd, error) {
 
 type mainSrv struct {
 	workers        map[int]bool
-	runWorker      func(*Config, chan string, chan string) // worker
-	nextWorkerPort int                                     // next worker port
-	workerDone     chan string                             // some worker is done
-	shutdown       chan bool                               // shutdown ther server
+	runWorker      func(*Config, chan string, chan string) error // worker
+	nextWorkerPort int                                           // next worker port
+	workerDone     chan string                                   // some worker is done
+	shutdown       chan bool                                     // shutdown ther server
 	wg             sync.WaitGroup
 	conn           *net.UDPConn
 	timeout        int // read udp time out,
+	eg             errgroup.Group
 }
 
-func newMainSrv(conf *Config, runWorker func(*Config, chan string, chan string)) *mainSrv {
+func newMainSrv(conf *Config, runWorker func(*Config, chan string, chan string) error) *mainSrv {
 	m := mainSrv{}
 	m.runWorker = runWorker
 	m.nextWorkerPort, _ = strconv.Atoi(conf.desiredPort)
@@ -695,6 +702,7 @@ func newMainSrv(conf *Config, runWorker func(*Config, chan string, chan string))
 	m.shutdown = make(chan bool, 1)
 	m.workerDone = make(chan string, 1)
 	m.timeout = 200
+	m.eg = errgroup.Group{}
 
 	return &m
 }
@@ -818,7 +826,11 @@ func (m *mainSrv) run(conf *Config) {
 			conf2 := *conf
 			conf2.desiredPort = fmt.Sprintf("%d", m.nextWorkerPort)
 			keyChan := make(chan string, 1)
-			go m.runWorker(&conf2, keyChan, m.workerDone)
+
+			m.eg.Go(func() error {
+				return m.runWorker(&conf2, keyChan, m.workerDone)
+			})
+			// go m.runWorker(&conf2, keyChan, m.workerDone)
 			// fmt.Printf("#run start a worker at %s\n", conf2.desiredPort)
 
 			// blocking read the key from runWorker
