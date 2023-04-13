@@ -661,9 +661,7 @@ func startShell(pts *os.File, conf *Config) (*exec.Cmd, error) {
 		return cmd, err
 	}
 
-	if err := encrypt.ReenableDumpingCore(); err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n", err.Error())
-	}
+	encrypt.ReenableDumpingCore()
 
 	/*
 		additional logic for pty.StartWithAttrs() end
@@ -821,9 +819,8 @@ func (m *mainSrv) run(conf *Config) {
 			keyChan := make(chan string, 1)
 
 			// For security, make sure we don't dump core
-			if err := encrypt.DisableDumpingCore(); err != nil {
-				fmt.Fprintf(os.Stderr, "%s\n", err.Error())
-			}
+			encrypt.DisableDumpingCore()
+
 			m.eg.Go(func() error {
 				return m.runWorker(&conf2, keyChan, m.workerDone)
 			})
