@@ -387,10 +387,10 @@ func (lv *localeFlag) IsBoolFlag() bool {
 // worker started by mainSrv.run(). it will listen on specified port and
 // forward user input to shell (started by runWorker. the output is forward
 // to the network.
-func runWorker(conf *Config, keyChan chan string, workerDone chan string) error {
+func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) error {
 	defer func() {
 		// notify this worker is done
-		workerDone <- conf.desiredPort
+		exChan <- conf.desiredPort
 	}()
 
 	networkTimeout := getTimeFrom("APRILSH_SERVER_NETWORK_TMOUT", 0)
@@ -426,7 +426,8 @@ func runWorker(conf *Config, keyChan chan string, workerDone chan string) error 
 	}
 	// in aprilsh: we can use nc client to test
 	fmt.Printf("%s CONNECT %s %s\n", COMMAND_NAME, network.Port(), network.GetKey())
-	keyChan <- network.GetKey()
+	// send session key to mainSrv
+	exChan <- network.GetKey()
 
 	// in mosh: the parent print this.
 	printWelcome(os.Stderr, os.Getpid(), os.Stdin)
@@ -434,6 +435,7 @@ func runWorker(conf *Config, keyChan chan string, workerDone chan string) error 
 	ptmx, pts, err := openPTS(windowSize, conf)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "#runWorker prepare pts error: %s\n", err)
+		whChan <- &workhorse{}
 		return err
 	}
 	defer func() { _ = ptmx.Close() }() // Best effort.
@@ -443,6 +445,7 @@ func runWorker(conf *Config, keyChan chan string, workerDone chan string) error 
 	pts.Close() // it's copied by shell process, it's safe to close it here.
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "#runWorker report: %s\n", err)
+		whChan <- &workhorse{}
 	} else {
 		// add utmp entry
 		// ptsName := ptmx.Name()
@@ -455,6 +458,7 @@ func runWorker(conf *Config, keyChan chan string, workerDone chan string) error 
 
 		// start the udp server, serve the udp request
 		go conf.serve(ptmx, terminal, network, networkTimeout, networkSignaledTimeout)
+		whChan <- &workhorse{shell, ptmx}
 
 		// clear utmp entry
 		// utmp.Unput_utmp(utmpEntry)
@@ -675,24 +679,31 @@ func startShell(pts *os.File, conf *Config) (*exec.Cmd, error) {
 }
 
 type mainSrv struct {
-	workers        map[int]bool
-	runWorker      func(*Config, chan string, chan string) error // worker
-	nextWorkerPort int                                           // next worker port
-	workerDone     chan string                                   // some worker is done
-	shutdown       chan bool                                     // shutdown ther server
+	workers        map[int]*workhorse
+	runWorker      func(*Config, chan string, chan *workhorse) error // worker
+	exChan         chan string                                       // worker done or passing key
+	whChan         chan *workhorse                                   // workhorse
+	downChan       chan bool                                         // shutdown mainSrv
+	nextWorkerPort int                                               // next worker port
+	timeout        int                                               // read udp time out,
+	conn           *net.UDPConn                                      // mainSrv listen port
 	wg             sync.WaitGroup
-	conn           *net.UDPConn
-	timeout        int // read udp time out,
 	eg             errgroup.Group
 }
 
-func newMainSrv(conf *Config, runWorker func(*Config, chan string, chan string) error) *mainSrv {
+type workhorse struct {
+	cmd  *exec.Cmd
+	ptmx *os.File
+}
+
+func newMainSrv(conf *Config, runWorker func(*Config, chan string, chan *workhorse) error) *mainSrv {
 	m := mainSrv{}
 	m.runWorker = runWorker
 	m.nextWorkerPort, _ = strconv.Atoi(conf.desiredPort)
-	m.workers = make(map[int]bool)
-	m.shutdown = make(chan bool, 1)
-	m.workerDone = make(chan string, 1)
+	m.workers = make(map[int]*workhorse)
+	m.downChan = make(chan bool, 1)
+	m.exChan = make(chan string, 1)
+	m.whChan = make(chan *workhorse, 1)
 	m.timeout = 200
 	m.eg = errgroup.Group{}
 
@@ -731,7 +742,7 @@ func (m *mainSrv) handler() {
 			logW.Println("got message SIGHUP.")
 		case syscall.SIGTERM:
 			logW.Println("got message SIGTERM.")
-			m.shutdown <- true
+			m.downChan <- true
 			return
 		}
 	}
@@ -773,7 +784,7 @@ func (m *mainSrv) run(conf *Config) {
 		// fmt.Printf("#run workers=%v, len=%d\n", m.workers, len(m.workers))
 
 		select {
-		case portStr := <-m.workerDone: // some worker is done
+		case portStr := <-m.exChan: // some worker is done
 			p, err := strconv.Atoi(portStr)
 			if err != nil {
 				// fmt.Printf("#run got %s from workDone channel. error: %s\n", portStr, err)
@@ -781,7 +792,7 @@ func (m *mainSrv) run(conf *Config) {
 			}
 			// fmt.Printf("#run got workDone message from %s\n", portStr)
 			delete(m.workers, p)
-		case sd := <-m.shutdown: // ready to shutdown mainSrv
+		case sd := <-m.downChan: // ready to shutdown mainSrv
 			// fmt.Printf("#run got shutdown message %t\n", sd)
 			shutdown = sd
 		default:
@@ -816,21 +827,24 @@ func (m *mainSrv) run(conf *Config) {
 			// start the worker
 			conf2 := *conf
 			conf2.desiredPort = fmt.Sprintf("%d", m.nextWorkerPort)
-			keyChan := make(chan string, 1)
+			// keyChan := make(chan string, 1)
 
 			// For security, make sure we don't dump core
 			encrypt.DisableDumpingCore()
 
 			m.eg.Go(func() error {
-				return m.runWorker(&conf2, keyChan, m.workerDone)
+				return m.runWorker(&conf2, m.exChan, m.whChan)
 			})
 			// fmt.Printf("#run start a worker at %s\n", conf2.desiredPort)
 
 			// blocking read the key from runWorker
-			key := <-keyChan
+			key := <-m.exChan
 
-			// mark the worker server
-			m.workers[m.nextWorkerPort] = true
+			// blocking read the workhorse from runWorker
+			wh := <-m.whChan
+			if wh.cmd != nil {
+				m.workers[m.nextWorkerPort] = wh
+			}
 
 			// response session key and udp port to client
 			resp := fmt.Sprintf("%d,%s", m.nextWorkerPort, key)

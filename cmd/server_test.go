@@ -974,18 +974,19 @@ func TestStartFail(t *testing.T) {
 }
 
 // the mock runWorker send the key, pause some time and close the
-func mockRunWorker(conf *Config, key chan string, worker chan string) error {
+func mockRunWorker(conf *Config, exChan chan string, whChan chan *workhorse) error {
 	// send the mock key
 	// fmt.Println("#mockRunWorker send mock key to run().")
-	key <- "This is the mock key"
+	exChan <- "This is the mock key"
 
 	// pause some time
 	time.Sleep(time.Duration(2) * time.Millisecond)
 
 	// notify the server
 	// fmt.Println("#mockRunWorker finish run().")
-	worker <- conf.desiredPort
+	exChan <- conf.desiredPort
 
+	whChan <- &workhorse{}
 	return nil
 }
 
@@ -1125,7 +1126,7 @@ func TestListenFail(t *testing.T) {
 
 		// close the listen port
 		if v.repeat {
-			s.workerDone <- conf.desiredPort
+			s.exChan <- conf.desiredPort
 		}
 	}
 }
@@ -1158,11 +1159,11 @@ func TestRunFail(t *testing.T) {
 				<-timer1.C
 				// prepare to shudown the mainSrv
 				// syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
-				srv.shutdown <- true
+				srv.downChan <- true
 				// stop the worker correctly, because mockRunWorker2 failed to
 				// do it on purpose.
 				port, _ := strconv.Atoi(v.conf.desiredPort)
-				srv.workerDone <- fmt.Sprintf("%d", port+1)
+				srv.exChan <- fmt.Sprintf("%d", port+1)
 			}()
 			// fmt.Println("#test start timer for shutdown")
 
@@ -1187,15 +1188,17 @@ func TestRunFail(t *testing.T) {
 
 // the mock runWorker send the key, pause some time and try to close the
 // worker by send wrong finish message: port+"x"
-func mockRunWorker2(conf *Config, key chan string, worker chan string) error {
+func mockRunWorker2(conf *Config, exChan chan string, whChan chan *workhorse) error {
 	// send the mock key
-	key <- "mock key from mockRunWorker2"
+	exChan <- "mock key from mockRunWorker2"
 
 	// pause some time
 	time.Sleep(time.Duration(2) * time.Millisecond)
 
 	// fail to stop the worker on purpose
-	worker <- conf.desiredPort + "x"
+	exChan <- conf.desiredPort + "x"
+
+	whChan <- &workhorse{}
 
 	return nil
 }
@@ -1226,7 +1229,7 @@ func TestRunFail2(t *testing.T) {
 			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
 			go func() {
 				<-timer1.C
-				srv.shutdown <- true
+				srv.downChan <- true
 				// syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
 			}()
 			// fmt.Println("#test start timer for shutdown")
@@ -1267,7 +1270,7 @@ func TestWaitError(t *testing.T) {
 			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
 			go func() {
 				<-timer1.C
-				m.shutdown <- true
+				m.downChan <- true
 			}()
 
 			// intercept logW
@@ -1279,7 +1282,6 @@ func TestWaitError(t *testing.T) {
 
 			// start mainserver
 			m.start(&v.conf)
-			// fmt.Println("#test start fail!")
 
 			// mock client operation
 			mockClient(v.conf.desiredPort, v.pause)
@@ -1303,18 +1305,19 @@ func TestWaitError(t *testing.T) {
 }
 
 // the mock runWorker send empty key, pause some time and close the worker
-func failRunWorker(conf *Config, key chan string, worker chan string) error {
+func failRunWorker(conf *Config, exChan chan string, whChan chan *workhorse) error {
 	// send the empty key
 	// fmt.Println("#mockRunWorker send mock key to run().")
-	key <- ""
+	exChan <- ""
 
 	// pause some time
 	time.Sleep(time.Duration(2) * time.Millisecond)
 
 	// notify this worker is done
 	defer func() {
-		worker <- conf.desiredPort
+		exChan <- conf.desiredPort
 	}()
 
+	whChan <- &workhorse{}
 	return errors.New("failed worker.")
 }
