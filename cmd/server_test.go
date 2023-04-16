@@ -1321,3 +1321,61 @@ func failRunWorker(conf *Config, exChan chan string, whChan chan *workhorse) err
 	whChan <- &workhorse{}
 	return errors.New("failed worker.")
 }
+
+func TestRunWorker(t *testing.T) {
+	tc := []struct {
+		label  string
+		pause  int    // pause between client send and read
+		resp   string // response client read
+		finish int    // pause before shutdown message
+		conf   Config
+	}{
+		{
+			"start normally", 20, "7101,", 50,
+			Config{
+				version: false, server: true, verbose: false, desiredIP: "", desiredPort: "7100",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
+				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: false,
+			},
+		},
+	}
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			v.conf.serve = serve
+			srv := newMainSrv(&v.conf, runWorker)
+
+			v.conf.commandPath = os.Getenv("SHELL")
+			v.conf.commandArgv = []string{getShellNameFrom(v.conf.commandPath)}
+
+			// send shutdown message after some time (finish ms)
+			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
+			go func() {
+				<-timer1.C
+				srv.downChan <- true
+				// srv.exChan <- fmt.Sprintf("%d", srv.nextWorkerPort)
+			}()
+
+			srv.start(&v.conf)
+
+			// mock client operation
+			resp := mockClient(v.conf.desiredPort, v.pause)
+			// if resp != v.resp {
+			if !strings.HasPrefix(resp, v.resp) {
+				t.Errorf("#test run expect %q got %q\n", v.resp, resp)
+			}
+
+			// stop the comd process
+			wh := srv.workers[srv.nextWorkerPort]
+			time.AfterFunc(time.Duration(100)*time.Millisecond, func() {
+				wh.shell.Kill()
+				// fmt.Printf("-- #test stop workhorse reports error=%v\n", e)
+			})
+			// wh.cmd.Process.Signal(syscall.SIGTERM)
+
+			// fmt.Println("#test waiting for finish.")
+			srv.wait()
+			// fmt.Println("#test waiting finish.")
+		})
+	}
+}

@@ -14,7 +14,6 @@ import (
 	"log"
 	"net"
 	"os"
-	"os/exec"
 	"os/signal"
 	"os/user"
 	"strconv"
@@ -425,12 +424,12 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) error {
 		fmt.Printf("\r\n")
 	}
 	// in aprilsh: we can use nc client to test
-	fmt.Printf("%s CONNECT %s %s\n", COMMAND_NAME, network.Port(), network.GetKey())
+	fmt.Printf("#runWorker %s CONNECT %s %s\n", COMMAND_NAME, network.Port(), network.GetKey())
 	// send session key to mainSrv
 	exChan <- network.GetKey()
 
 	// in mosh: the parent print this.
-	printWelcome(os.Stderr, os.Getpid(), os.Stdin)
+	// printWelcome(os.Stderr, os.Getpid(), os.Stdin)
 
 	ptmx, pts, err := openPTS(windowSize, conf)
 	if err != nil {
@@ -439,6 +438,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) error {
 		return err
 	}
 	defer func() { _ = ptmx.Close() }() // Best effort.
+	fmt.Printf("#runWorker openPTS successfully.\n")
 
 	// start the shell with pts
 	shell, err := startShell(pts, conf)
@@ -464,13 +464,15 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) error {
 		// utmp.Unput_utmp(utmpEntry)
 
 		// wait for the shell to finish.
-		if err2 := shell.Wait(); err2 != nil {
+		fmt.Printf("#runWorker shell.Wait() %p %v\n", shell, shell)
+		if state, err2 := shell.Wait(); err2 != nil {
 			fmt.Fprintf(os.Stderr, "#runWorker start shell error: %s\n", err2)
-			shell.Process.Kill()
+		} else {
+			fmt.Printf("#runWorker shell.Wait() return state %s.\n", state)
 		}
 	}
 
-	fmt.Printf("\n#runWorker [%s is exiting.]\n", COMMAND_NAME)
+	fmt.Printf("#runWorker [%s is exiting.]\n\n", COMMAND_NAME)
 	// https://www.dolthub.com/blog/2022-11-28-go-os-exec-patterns/
 	// https://www.prakharsrivastav.com/posts/golang-context-and-cancellation/
 
@@ -585,42 +587,10 @@ func openPTS(windowSize *unix.Winsize, conf *Config) (ptmx *os.File, pts *os.Fil
 	return ptmx, pts, nil
 }
 
-func startShell(pts *os.File, conf *Config) (*exec.Cmd, error) {
-	cmd := exec.Command(conf.commandPath, conf.commandArgv...)
-
-	/*
-		copy from pty.StartWithAttrs()
-		need to add some logic inside pty.StartWithAttrs()
-	*/
-
-	cmd.SysProcAttr = &syscall.SysProcAttr{}
-	cmd.SysProcAttr.Setsid = true  // start a new session
-	cmd.SysProcAttr.Setctty = true // set controlling terminal
-
-	// set stdin, stdout, stderr for pty slave
-	if cmd.Stdout == nil {
-		cmd.Stdout = pts
-	}
-	if cmd.Stderr == nil {
-		cmd.Stderr = pts
-	}
-	if cmd.Stdin == nil {
-		cmd.Stdin = pts
-	}
-
-	/*
-		additional logic for pty.StartWithAttrs() begin
-	*/
-
-	// reenable signals for cmd.Start
-	// reset means using default signal handler
-	//
-	// signal.Reset(syscall.SIGHUP)
-	// signal.Reset(syscall.SIGPIPE)
-
+func startShell(pts *os.File, conf *Config) (*os.Process, error) {
 	// set IUTF8 if available
 	if err := setIUTF8(int(pts.Fd())); err != nil {
-		return cmd, err
+		return nil, err
 	}
 
 	// set TERM based on client TERM
@@ -634,16 +604,26 @@ func startShell(pts *os.File, conf *Config) (*exec.Cmd, error) {
 	os.Unsetenv("STY")
 
 	// the following function will set PWD environment variable
-	chdirHomedir("")
+	// chdirHomedir("")
 
 	// ask ncurses to send UTF-8 instead of ISO 2022 for line-drawing chars
 	ncursesEnv := "NCURSES_NO_UTF8_ACS=1"
 	// should be the last statement related to environment variable
-	newEnv := append(os.Environ(), ncursesEnv)
-	cmd.Env = newEnv
+	env := append(os.Environ(), ncursesEnv)
 
 	// set working directory
-	cmd.Dir = getHomeDir()
+	// cmd.Dir = getHomeDir()
+
+	sysProcAttr := &syscall.SysProcAttr{}
+	sysProcAttr.Setsid = true  // start a new session
+	sysProcAttr.Setctty = true // set controlling terminal
+
+	procAttr := os.ProcAttr{
+		Files: []*os.File{pts, pts, pts}, // use pts as stdin, stdout, stderr
+		Dir:   getHomeDir(),
+		Sys:   sysProcAttr,
+		Env:   env,
+	}
 
 	if conf.withMotd && !motdHushed() {
 		// For Ubuntu, try and print one of {,/var}/run/motd.dynamic.
@@ -652,18 +632,18 @@ func startShell(pts *os.File, conf *Config) (*exec.Cmd, error) {
 		// this always happens.
 		// XXX Hackish knowledge of Ubuntu PAM configuration.
 		// But this seems less awful than build-time detection with autoconf.
-		if !printMotd(cmd.Stdout, "/run/motd.dynamic") {
-			printMotd(cmd.Stdout, "/var/run/motd.dynamic")
+		if !printMotd(pts, "/run/motd.dynamic") {
+			printMotd(pts, "/var/run/motd.dynamic")
 		}
 		// Always print traditional /etc/motd.
-		printMotd(cmd.Stdout, "/etc/motd")
+		printMotd(pts, "/etc/motd")
 	}
 
 	// Wait for parent to release us.
-	var buf string
-	if _, err := fmt.Fscanf(cmd.Stdin, "%s", &buf); err != nil {
-		return cmd, err
-	}
+	// var buf string
+	// if _, err := fmt.Fscanf(cmd.Stdin, "%s", &buf); err != nil {
+	// 	return cmd, err
+	// }
 
 	encrypt.ReenableDumpingCore()
 
@@ -671,11 +651,17 @@ func startShell(pts *os.File, conf *Config) (*exec.Cmd, error) {
 		additional logic for pty.StartWithAttrs() end
 	*/
 
-	if err := cmd.Start(); err != nil {
-		return cmd, err
+	proc, err := os.StartProcess(conf.commandPath, conf.commandArgv, &procAttr)
+	if err != nil {
+		return nil, err
 	}
-
-	return cmd, nil
+	// fmt.Printf("#startShell before cmd.Start(), %q\n", cmd.Path)
+	// if err := cmd.Start(); err != nil {
+	// 	return cmd, err
+	// }
+	//
+	// return cmd, nil
+	return proc, nil
 }
 
 type mainSrv struct {
@@ -692,8 +678,8 @@ type mainSrv struct {
 }
 
 type workhorse struct {
-	cmd  *exec.Cmd
-	ptmx *os.File
+	shell *os.Process
+	ptmx  *os.File
 }
 
 func newMainSrv(conf *Config, runWorker func(*Config, chan string, chan *workhorse) error) *mainSrv {
@@ -781,8 +767,6 @@ func (m *mainSrv) run(conf *Config) {
 	shutdown := false
 
 	for {
-		// fmt.Printf("#run workers=%v, len=%d\n", m.workers, len(m.workers))
-
 		select {
 		case portStr := <-m.exChan: // some worker is done
 			p, err := strconv.Atoi(portStr)
@@ -790,10 +774,10 @@ func (m *mainSrv) run(conf *Config) {
 				// fmt.Printf("#run got %s from workDone channel. error: %s\n", portStr, err)
 				break
 			}
-			// fmt.Printf("#run got workDone message from %s\n", portStr)
+			fmt.Printf("#run got workDone message from %s\n", portStr)
 			delete(m.workers, p)
 		case sd := <-m.downChan: // ready to shutdown mainSrv
-			// fmt.Printf("#run got shutdown message %t\n", sd)
+			fmt.Printf("#run got shutdown message %t\n", sd)
 			shutdown = sd
 		default:
 		}
@@ -807,16 +791,16 @@ func (m *mainSrv) run(conf *Config) {
 		n, addr, err := m.conn.ReadFromUDP(buf)
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
-				// fmt.Printf("#run read time out, workers=%d, shutdown=%t, err=%s\n", len(m.workers), shutdown, err)
+				fmt.Printf("#run read time out, workers=%d, shutdown=%t, err=%s\n", len(m.workers), shutdown, err)
 				continue
 			} else {
 				// take a break in case reading error
 				time.Sleep(time.Duration(5) * time.Millisecond)
-				// fmt.Println("#run read error: ", err)
+				fmt.Println("#run read error: ", err)
 				continue
 			}
 		}
-		// fmt.Printf("#run receive %q from %s\n", strings.TrimSpace(string(buf[0:n])), addr)
+		fmt.Printf("#run receive %q from %s\n", strings.TrimSpace(string(buf[0:n])), addr)
 
 		// only response to request start with 'open aprilsh'
 		req := strings.TrimSpace(string(buf[0:n]))
@@ -827,7 +811,6 @@ func (m *mainSrv) run(conf *Config) {
 			// start the worker
 			conf2 := *conf
 			conf2.desiredPort = fmt.Sprintf("%d", m.nextWorkerPort)
-			// keyChan := make(chan string, 1)
 
 			// For security, make sure we don't dump core
 			encrypt.DisableDumpingCore()
@@ -835,14 +818,16 @@ func (m *mainSrv) run(conf *Config) {
 			m.eg.Go(func() error {
 				return m.runWorker(&conf2, m.exChan, m.whChan)
 			})
-			// fmt.Printf("#run start a worker at %s\n", conf2.desiredPort)
+			fmt.Printf("#run start a worker at %s\n", conf2.desiredPort)
 
 			// blocking read the key from runWorker
 			key := <-m.exChan
+			fmt.Printf("#run got key %q\n", key)
 
 			// blocking read the workhorse from runWorker
 			wh := <-m.whChan
-			if wh.cmd != nil {
+			fmt.Printf("#run got workhorse %p %v\n", wh.shell, wh.shell)
+			if wh.shell != nil {
 				m.workers[m.nextWorkerPort] = wh
 			}
 
@@ -855,8 +840,11 @@ func (m *mainSrv) run(conf *Config) {
 }
 
 func (m *mainSrv) wait() {
+	// fmt.Printf("#wait for wg\n")
 	m.wg.Wait()
+	// fmt.Printf("#wait for eg %v\n", m.eg)
 	if err := m.eg.Wait(); err != nil {
 		logW.Printf("#mainSrv wait() reports %s\n", err.Error())
 	}
+	// fmt.Printf("#wait finish\n")
 }
