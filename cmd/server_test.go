@@ -1333,9 +1333,9 @@ func TestRunWorker(t *testing.T) {
 		{
 			"start normally", 20, "7101,", 50,
 			Config{
-				version: false, server: true, verbose: false, desiredIP: "", desiredPort: "7100",
+				version: false, server: true, verbose: true, desiredIP: "", desiredPort: "7100",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
-				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: false,
+				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
 		},
 	}
