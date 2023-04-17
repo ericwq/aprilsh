@@ -395,7 +395,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) error {
 	networkTimeout := getTimeFrom("APRILSH_SERVER_NETWORK_TMOUT", 0)
 	networkSignaledTimeout := getTimeFrom("APRILSH_SERVER_SIGNAL_TMOUT", 0)
 
-	fmt.Printf("#runWorker networkTimeout=%d, networkSignaledTimeout=%d\n", networkTimeout, networkSignaledTimeout)
+	// fmt.Printf("#runWorker networkTimeout=%d, networkSignaledTimeout=%d\n", networkTimeout, networkSignaledTimeout)
 
 	// get initial window size
 	windowSize, err := unix.IoctlGetWinsize(int(os.Stdin.Fd()), unix.TIOCGWINSZ)
@@ -424,21 +424,21 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) error {
 		fmt.Printf("\r\n")
 	}
 	// in aprilsh: we can use nc client to test
-	fmt.Printf("#runWorker %s CONNECT %s %s\n", COMMAND_NAME, network.Port(), network.GetKey())
+	// fmt.Printf("#runWorker %s CONNECT %s %s\n", COMMAND_NAME, network.Port(), network.GetKey())
 	// send session key to mainSrv
 	exChan <- network.GetKey()
 
 	// in mosh: the parent print this.
 	// printWelcome(os.Stderr, os.Getpid(), os.Stdin)
 
-	ptmx, pts, err := openPTS(windowSize, conf)
+	ptmx, pts, err := openPTS(windowSize)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "#runWorker prepare pts error: %s\n", err)
 		whChan <- &workhorse{}
 		return err
 	}
 	defer func() { _ = ptmx.Close() }() // Best effort.
-	fmt.Printf("#runWorker openPTS successfully.\n")
+	// fmt.Printf("#runWorker openPTS successfully.\n")
 
 	// start the shell with pts
 	shell, err := startShell(pts, conf)
@@ -464,15 +464,15 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) error {
 		// utmp.Unput_utmp(utmpEntry)
 
 		// wait for the shell to finish.
-		fmt.Printf("#runWorker shell.Wait() %p %v\n", shell, shell)
+		// fmt.Printf("#runWorker shell.Wait() %p %v\n", shell, shell)
 		if state, err2 := shell.Wait(); err2 != nil {
-			fmt.Fprintf(os.Stderr, "#runWorker start shell error: %s\n", err2)
-		} else {
-			fmt.Printf("#runWorker shell.Wait() return state %s.\n", state)
+			fmt.Fprintf(os.Stderr, "#runWorker start shell error: %s, %s\n", err2, state)
+		// } else {
+		// 	fmt.Printf("#runWorker shell.Wait() return state %s.\n", state)
 		}
 	}
 
-	fmt.Printf("#runWorker [%s is exiting.]\n\n", COMMAND_NAME)
+	// fmt.Printf("#runWorker [%s is exiting.]\n\n", COMMAND_NAME)
 	// https://www.dolthub.com/blog/2022-11-28-go-os-exec-patterns/
 	// https://www.prakharsrivastav.com/posts/golang-context-and-cancellation/
 
@@ -569,7 +569,7 @@ func convertWinsize(windowSize *unix.Winsize) *pty.Winsize {
 	return &sz
 }
 
-func openPTS(windowSize *unix.Winsize, conf *Config) (ptmx *os.File, pts *os.File, err error) {
+func openPTS(windowSize *unix.Winsize) (ptmx *os.File, pts *os.File, err error) {
 	// open pts master and slave
 	ptmx, pts, err = pty.Open() // open pty master and slave
 	if err != nil {
@@ -578,6 +578,7 @@ func openPTS(windowSize *unix.Winsize, conf *Config) (ptmx *os.File, pts *os.Fil
 	// defer func() { _ = pts.Close() }() // Best effort.
 
 	sz := convertWinsize(windowSize)
+	// fmt.Printf("#openPTS sz=%v\n", sz)
 	if sz != nil { // set terminal size
 		if err := pty.Setsize(ptmx, sz); err != nil {
 			return nil, nil, err
@@ -774,10 +775,10 @@ func (m *mainSrv) run(conf *Config) {
 				// fmt.Printf("#run got %s from workDone channel. error: %s\n", portStr, err)
 				break
 			}
-			fmt.Printf("#run got workDone message from %s\n", portStr)
+			// fmt.Printf("#run got workDone message from %s\n", portStr)
 			delete(m.workers, p)
 		case sd := <-m.downChan: // ready to shutdown mainSrv
-			fmt.Printf("#run got shutdown message %t\n", sd)
+			// fmt.Printf("#run got shutdown message %t\n", sd)
 			shutdown = sd
 		default:
 		}
@@ -791,16 +792,16 @@ func (m *mainSrv) run(conf *Config) {
 		n, addr, err := m.conn.ReadFromUDP(buf)
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
-				fmt.Printf("#run read time out, workers=%d, shutdown=%t, err=%s\n", len(m.workers), shutdown, err)
+				// fmt.Printf("#run read time out, workers=%d, shutdown=%t, err=%s\n", len(m.workers), shutdown, err)
 				continue
 			} else {
 				// take a break in case reading error
 				time.Sleep(time.Duration(5) * time.Millisecond)
-				fmt.Println("#run read error: ", err)
+				// fmt.Println("#run read error: ", err)
 				continue
 			}
 		}
-		fmt.Printf("#run receive %q from %s\n", strings.TrimSpace(string(buf[0:n])), addr)
+		// fmt.Printf("#run receive %q from %s\n", strings.TrimSpace(string(buf[0:n])), addr)
 
 		// only response to request start with 'open aprilsh'
 		req := strings.TrimSpace(string(buf[0:n]))
@@ -818,15 +819,15 @@ func (m *mainSrv) run(conf *Config) {
 			m.eg.Go(func() error {
 				return m.runWorker(&conf2, m.exChan, m.whChan)
 			})
-			fmt.Printf("#run start a worker at %s\n", conf2.desiredPort)
+			// fmt.Printf("#run start a worker at %s\n", conf2.desiredPort)
 
 			// blocking read the key from runWorker
 			key := <-m.exChan
-			fmt.Printf("#run got key %q\n", key)
+			// fmt.Printf("#run got key %q\n", key)
 
 			// blocking read the workhorse from runWorker
 			wh := <-m.whChan
-			fmt.Printf("#run got workhorse %p %v\n", wh.shell, wh.shell)
+			// fmt.Printf("#run got workhorse %p %v\n", wh.shell, wh.shell)
 			if wh.shell != nil {
 				m.workers[m.nextWorkerPort] = wh
 			}

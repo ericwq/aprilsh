@@ -1342,9 +1342,11 @@ func TestRunWorker(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
+			// set serve func and runWorker func
 			v.conf.serve = serve
 			srv := newMainSrv(&v.conf, runWorker)
 
+			/// set commandPath and commandArgv based on environment
 			v.conf.commandPath = os.Getenv("SHELL")
 			v.conf.commandArgv = []string{getShellNameFrom(v.conf.commandPath)}
 
@@ -1353,14 +1355,12 @@ func TestRunWorker(t *testing.T) {
 			go func() {
 				<-timer1.C
 				srv.downChan <- true
-				// srv.exChan <- fmt.Sprintf("%d", srv.nextWorkerPort)
 			}()
 
 			srv.start(&v.conf)
 
 			// mock client operation
 			resp := mockClient(v.conf.desiredPort, v.pause)
-			// if resp != v.resp {
 			if !strings.HasPrefix(resp, v.resp) {
 				t.Errorf("#test run expect %q got %q\n", v.resp, resp)
 			}
@@ -1371,11 +1371,8 @@ func TestRunWorker(t *testing.T) {
 				wh.shell.Kill()
 				// fmt.Printf("-- #test stop workhorse reports error=%v\n", e)
 			})
-			// wh.cmd.Process.Signal(syscall.SIGTERM)
 
-			// fmt.Println("#test waiting for finish.")
 			srv.wait()
-			// fmt.Println("#test waiting finish.")
 		})
 	}
 }
@@ -1387,6 +1384,7 @@ func TestStartShellFail(t *testing.T) {
 		commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false,
 	}
 
+	// os.Stdin doesn't support IUTF8 flag, startShell should failed
 	if _, err := startShell(os.Stdin, conf); err == nil {
 		t.Errorf("#test startShell should report error.\n")
 		// t.Error(err)
@@ -1398,9 +1396,28 @@ func TestStartShellFail(t *testing.T) {
 		pts.Close()
 	}()
 
-	// the commandPath is wrong, the os.StartProcess should failed.
+	// commandPath is wrong, startShell should failed.
 	if _, err := startShell(pts, conf); err == nil {
 		t.Errorf("#test startShell should report error.\n")
 		// t.Error(err)
+	}
+}
+
+func TestOpenPTSFail(t *testing.T) {
+	ws := &unix.Winsize{Col: 20000, Row: 0, Xpixel: 0, Ypixel: 0}
+
+	// we can't test pty.Open() and pty.Setsize()
+	ptmx, pts, err := openPTS(ws)
+	defer func() {
+		if e1 := ptmx.Close(); e1 != nil {
+			t.Errorf("#test close pty master failed: %s\n", e1)
+		}
+		if e2 := pts.Close(); e2 != nil {
+			t.Errorf("#test close pty slave failed,: %s\n", e2)
+		}
+	}()
+
+	if err != nil {
+		t.Errorf("#test openPTS should report error.\n")
 	}
 }
