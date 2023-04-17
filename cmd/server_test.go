@@ -1379,3 +1379,28 @@ func TestRunWorker(t *testing.T) {
 		})
 	}
 }
+
+func TestStartShellFail(t *testing.T) {
+	conf := &Config{
+		version: false, server: true, verbose: true, desiredIP: "", desiredPort: "7100",
+		locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0, term: "kitty",
+		commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false,
+	}
+
+	if _, err := startShell(os.Stdin, conf); err == nil {
+		t.Errorf("#test startShell should report error.\n")
+		// t.Error(err)
+	}
+
+	ptmx, pts, _ := pty.Open() // open pty master and slave
+	defer func() {
+		ptmx.Close()
+		pts.Close()
+	}()
+
+	// the commandPath is wrong, the os.StartProcess should failed.
+	if _, err := startShell(pts, conf); err == nil {
+		t.Errorf("#test startShell should report error.\n")
+		// t.Error(err)
+	}
+}
