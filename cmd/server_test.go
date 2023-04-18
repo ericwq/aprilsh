@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"os/user"
 	"reflect"
 	"runtime"
 	"strconv"
@@ -1524,5 +1525,15 @@ func TestShellWaitFail(t *testing.T) {
 
 			wg.Wait()
 		})
+	}
+}
+
+func TestGetCurrentUser(t *testing.T) {
+	uid := fmt.Sprintf("%d", os.Getuid())
+	expect, _ := user.LookupId(uid)
+
+	got := getCurrentUser()
+	if len(got)==0 || expect.Username != got {
+		t.Errorf("#test getCurrentUser expect %s, got %s\n", expect.Username, got)
 	}
 }
