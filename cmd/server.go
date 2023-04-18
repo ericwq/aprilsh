@@ -32,17 +32,20 @@ import (
 	"golang.org/x/term"
 )
 
+var BuildVersion = "0.1.0" // ready for ldflags
+
 const (
 	PACKAGE_STRING    = "aprilsh"
 	COMMAND_NAME      = "aprilsh-server"
-	BUILD_VERSION     = "0.1.0"
 	BUILD_CONFIG_TEST = PACKAGE_STRING + "_doconfig_test_only"
+	_PATH_BSHELL      = "/bin/sh"
 
-	_PATH_BSHELL = "/bin/sh"
+	VERBOSE_OPEN_PTS    = 99
+	VERBOSE_START_SHELL = 100
 )
 
 func printVersion(w io.Writer) {
-	fmt.Fprintf(w, "%s (%s) [build %s]\n", COMMAND_NAME, PACKAGE_STRING, BUILD_VERSION)
+	fmt.Fprintf(w, "%s (%s) [build %s]\n", COMMAND_NAME, PACKAGE_STRING, BuildVersion)
 	fmt.Fprintf(w, "Copyright (c) 2022~2023 wangqi ericwq057[AT]qq[dot]com\n")
 	fmt.Fprintf(w, "reborn mosh with aprilsh\n")
 }
@@ -166,7 +169,7 @@ var logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 type Config struct {
 	version     bool // verbose : don't close stdin/stdout/stderr
 	server      bool
-	verbose     bool
+	verbose     int
 	desiredIP   string
 	desiredPort string
 	locales     localeFlag
@@ -197,8 +200,8 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	conf.locales = make(localeFlag)
 	conf.commandArgv = []string{}
 
-	flagSet.BoolVar(&conf.verbose, "verbose", false, "verbose output")
-	flagSet.BoolVar(&conf.verbose, "v", false, "verbose output")
+	flagSet.IntVar(&conf.verbose, "verbose", 0, "verbose output")
+	flagSet.IntVar(&conf.verbose, "v", 0, "verbose output")
 
 	flagSet.BoolVar(&conf.version, "version", false, "print version information")
 
@@ -398,6 +401,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) error {
 	// fmt.Printf("#runWorker networkTimeout=%d, networkSignaledTimeout=%d\n", networkTimeout, networkSignaledTimeout)
 
 	// get initial window size
+	var windowSize *unix.Winsize
 	windowSize, err := unix.IoctlGetWinsize(int(os.Stdin.Fd()), unix.TIOCGWINSZ)
 	// windowSize, err := pty.GetsizeFull(os.Stdin)
 	if err != nil || windowSize.Col == 0 || windowSize.Row == 0 {
@@ -413,8 +417,8 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) error {
 	// open network
 	blank := &statesync.UserStream{}
 	network := network.NewTransportServer(terminal, blank, conf.desiredIP, conf.desiredPort)
-	if conf.verbose {
-		network.SetVerbose(1)
+	if conf.verbose == 1 {
+		network.SetVerbose(uint(conf.verbose))
 	}
 
 	// If server is run on a pty, then typeahead may echo and break mosh.pl's
@@ -430,6 +434,11 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) error {
 
 	// in mosh: the parent print this.
 	// printWelcome(os.Stderr, os.Getpid(), os.Stdin)
+
+	if conf.verbose == VERBOSE_OPEN_PTS {
+		// prepare for openPTS fail
+		windowSize = nil
+	}
 
 	ptmx, pts, err := openPTS(windowSize)
 	if err != nil {
@@ -514,7 +523,7 @@ func getTimeFrom(env string, def int64) (ret int64) {
 }
 
 func printWelcome(w io.Writer, pid int, tty *os.File) {
-	fmt.Fprintf(w, "%s [build %s]\n", COMMAND_NAME, BUILD_VERSION)
+	fmt.Fprintf(w, "%s [build %s]\n", COMMAND_NAME, BuildVersion)
 	fmt.Fprintf(w, "Copyright 2022 wangqi.\n")
 	fmt.Fprintf(w, "Use of this source code is governed by a MIT-style\n")
 	fmt.Fprintf(w, "license that can be found in the LICENSE file.\n\n")
@@ -585,7 +594,11 @@ func openPTS(wsize *unix.Winsize) (ptmx *os.File, pts *os.File, err error) {
 	return
 }
 
+// set IUTF8 flag for pts file. start shell process according to Config.
 func startShell(pts *os.File, conf *Config) (*os.Process, error) {
+	if conf.verbose == VERBOSE_START_SHELL {
+		return nil, errors.New("fail to start shell")
+	}
 	// set IUTF8 if available
 	if err := setIUTF8(int(pts.Fd())); err != nil {
 		return nil, err

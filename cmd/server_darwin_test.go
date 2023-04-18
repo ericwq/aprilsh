@@ -15,7 +15,7 @@ import (
 func TestDarwinBuildConfig(t *testing.T) {
 	label := "no SHELL, getShell() return empty string."
 	conf0 := &Config{
-		version: false, server: false, verbose: false, desiredIP: "", desiredPort: "",
+		version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
 		locales: localeFlag{"LC_ALL": "en_US.UTF-8"}, color: 0,
 		commandPath: "", commandArgv: []string{}, withMotd: false,
 	}

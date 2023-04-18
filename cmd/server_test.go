@@ -20,6 +20,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -385,7 +386,7 @@ func TestParseFlagsCorrect(t *testing.T) {
 		{
 			[]string{"-locale", "ALL=en_US.UTF-8", "-l", "LANG=UTF-8"},
 			Config{
-				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "6000",
+				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "6000",
 				locales: localeFlag{"ALL": "en_US.UTF-8", "LANG": "UTF-8"}, color: 0,
 				commandPath: "", commandArgv: []string{}, withMotd: false,
 			},
@@ -393,7 +394,7 @@ func TestParseFlagsCorrect(t *testing.T) {
 		{
 			[]string{"--", "/bin/sh", "-sh"},
 			Config{
-				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "6000",
+				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "6000",
 				locales: localeFlag{}, color: 0,
 				commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
 			},
@@ -401,7 +402,7 @@ func TestParseFlagsCorrect(t *testing.T) {
 		{
 			[]string{"--", ""},
 			Config{
-				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "6000",
+				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "6000",
 				locales: localeFlag{}, color: 0,
 				commandPath: "", commandArgv: []string{""}, withMotd: false,
 			},
@@ -435,12 +436,12 @@ func TestBuildConfig(t *testing.T) {
 		{
 			"UTF-8 locale",
 			Config{
-				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "",
+				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
 				commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
 			},
 			Config{
-				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "",
+				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: false,
 			},
@@ -449,12 +450,12 @@ func TestBuildConfig(t *testing.T) {
 		{
 			"empty commandArgv",
 			Config{
-				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "",
+				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8"}, color: 0,
 				commandPath: "", commandArgv: []string{}, withMotd: false,
 			},
 			Config{
-				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "",
+				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8"}, color: 0,
 				commandPath: "/bin/ash", commandArgv: []string{"-ash"}, withMotd: true,
 			},
@@ -465,12 +466,12 @@ func TestBuildConfig(t *testing.T) {
 		{
 			"non UTF-8 locale",
 			Config{
-				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "",
+				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
 				locales: localeFlag{"LC_ALL": "zh_CN.GB2312", "LANG": "zh_CN.GB2312"}, color: 0,
 				commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
 			}, // TODO GB2312 is not available in apline linux
 			Config{
-				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "",
+				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
 				locales: localeFlag{}, color: 0,
 				commandPath: "/bin/sh", commandArgv: []string{"*sh"}, withMotd: false,
 			},
@@ -479,12 +480,12 @@ func TestBuildConfig(t *testing.T) {
 		{
 			"commandArgv is one string",
 			Config{
-				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "",
+				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
 				commandPath: "", commandArgv: []string{"/bin/sh"}, withMotd: false,
 			},
 			Config{
-				version: false, server: false, verbose: false, desiredIP: "", desiredPort: "",
+				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: false,
 			},
@@ -870,7 +871,7 @@ func TestStart(t *testing.T) {
 		{
 			"start normally", 20, "7101,This is the mock key", 50,
 			Config{
-				version: false, server: true, verbose: false, desiredIP: "", desiredPort: "7100",
+				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7100",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 			},
@@ -935,7 +936,7 @@ func TestStartFail(t *testing.T) {
 		{
 			"illegal port", 20, "", 50,
 			Config{
-				version: false, server: true, verbose: false, desiredIP: "", desiredPort: "7000a",
+				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7000a",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 			},
@@ -1142,7 +1143,7 @@ func TestRunFail(t *testing.T) {
 		{
 			"worker finish with wrong port number", 20, "7101,mock key from mockRunWorker2", 30,
 			Config{
-				version: false, server: true, verbose: false, desiredIP: "", desiredPort: "7100",
+				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7100",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 			},
@@ -1214,7 +1215,7 @@ func TestRunFail2(t *testing.T) {
 		{
 			"read udp error", 20, "7101,This is the mock key", 50,
 			Config{
-				version: false, server: true, verbose: false, desiredIP: "", desiredPort: "7100",
+				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7100",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 			},
@@ -1255,7 +1256,7 @@ func TestWaitError(t *testing.T) {
 		{
 			"wait error", 20, "", 50,
 			Config{
-				version: false, server: true, verbose: false, desiredIP: "", desiredPort: "7000",
+				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7000",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 			},
@@ -1333,7 +1334,7 @@ func TestRunWorker(t *testing.T) {
 		{
 			"start normally", 20, "7101,", 50,
 			Config{
-				version: false, server: true, verbose: true, desiredIP: "", desiredPort: "7100",
+				version: false, server: true, verbose: 1, desiredIP: "", desiredPort: "7100",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
@@ -1379,7 +1380,7 @@ func TestRunWorker(t *testing.T) {
 
 func TestStartShellFail(t *testing.T) {
 	conf := &Config{
-		version: false, server: true, verbose: true, desiredIP: "", desiredPort: "7100",
+		version: false, server: true, verbose: 1, desiredIP: "", desiredPort: "7100",
 		locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0, term: "kitty",
 		commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false,
 	}
@@ -1419,5 +1420,56 @@ func TestOpenPTSFail(t *testing.T) {
 
 	if err == nil {
 		t.Errorf("#test openPTS should report error.\n")
+	}
+}
+
+func TestRunWorkerFail(t *testing.T) {
+	tc := []struct {
+		label string
+		conf  Config
+	}{
+		{
+			"", Config{
+				version: false, server: true, verbose: VERBOSE_OPEN_PTS, desiredIP: "", desiredPort: "7100",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0, term: "kitty",
+				commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false,
+			},
+		},
+		{
+			"", Config{
+				version: false, server: true, verbose: VERBOSE_START_SHELL, desiredIP: "", desiredPort: "7200",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0, term: "kitty",
+				commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false,
+			},
+		},
+	}
+
+	exChan := make(chan string, 1)
+	whChan := make(chan *workhorse, 1)
+
+	for _, v := range tc {
+
+		var wg sync.WaitGroup
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-exChan       // get the key
+			wh := <-whChan // get the workhorse
+			if wh.ptmx != nil || wh.shell != nil {
+				t.Errorf("#test runWorker fail should return empty workhorse\n")
+			}
+			msg := <-exChan // get the done message
+			if msg != v.conf.desiredPort {
+				t.Errorf("#test runWorker fail should return %s, got %s\n", v.conf.desiredPort, msg)
+			}
+		}()
+
+		if err := runWorker(&v.conf, exChan, whChan); err == nil {
+			t.Errorf("#test runWorker should report error.\n")
+			// t.Error(err)
+		}
+
+		wg.Wait()
 	}
 }
