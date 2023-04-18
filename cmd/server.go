@@ -37,7 +37,7 @@ var BuildVersion = "0.1.0" // ready for ldflags
 const (
 	PACKAGE_STRING    = "aprilsh"
 	COMMAND_NAME      = "aprilsh-server"
-	BUILD_CONFIG_TEST = PACKAGE_STRING + "_doconfig_test_only"
+	BUILD_CONFIG_TEST = PACKAGE_STRING + "_build_config_test_only"
 	_PATH_BSHELL      = "/bin/sh"
 
 	VERBOSE_OPEN_PTS    = 99
@@ -389,7 +389,7 @@ func (lv *localeFlag) IsBoolFlag() bool {
 // worker started by mainSrv.run(). it will listen on specified port and
 // forward user input to shell (started by runWorker. the output is forward
 // to the network.
-func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) error {
+func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err error) {
 	defer func() {
 		// notify this worker is done
 		exChan <- conf.desiredPort
@@ -402,7 +402,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) error {
 
 	// get initial window size
 	var windowSize *unix.Winsize
-	windowSize, err := unix.IoctlGetWinsize(int(os.Stdin.Fd()), unix.TIOCGWINSZ)
+	windowSize, err = unix.IoctlGetWinsize(int(os.Stdin.Fd()), unix.TIOCGWINSZ)
 	// windowSize, err := pty.GetsizeFull(os.Stdin)
 	if err != nil || windowSize.Col == 0 || windowSize.Row == 0 {
 		// Fill in sensible defaults. */
@@ -442,7 +442,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) error {
 
 	ptmx, pts, err := openPTS(windowSize)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "#runWorker prepare pts error: %s\n", err)
+		fmt.Fprintf(os.Stderr, "#runWorker openPTS fail: %s\n", err)
 		whChan <- &workhorse{}
 		return err
 	}
@@ -453,7 +453,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) error {
 	shell, err := startShell(pts, conf)
 	pts.Close() // it's copied by shell process, it's safe to close it here.
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "#runWorker report: %s\n", err)
+		fmt.Fprintf(os.Stderr, "#runWorker startShell fail: %s\n", err)
 		whChan <- &workhorse{}
 	} else {
 		// add utmp entry
@@ -474,10 +474,8 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) error {
 
 		// wait for the shell to finish.
 		// fmt.Printf("#runWorker shell.Wait() %p %v\n", shell, shell)
-		if state, err2 := shell.Wait(); err2 != nil {
-			fmt.Fprintf(os.Stderr, "#runWorker start shell error: %s, %s\n", err2, state)
-			// } else {
-			// 	fmt.Printf("#runWorker shell.Wait() return state %s.\n", state)
+		if state, err := shell.Wait(); err != nil || state.Exited() {
+			fmt.Fprintf(os.Stderr, "#runWorker shell.Wait fail: %s, state: %s\n", err, state)
 		}
 	}
 

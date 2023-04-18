@@ -1429,14 +1429,14 @@ func TestRunWorkerFail(t *testing.T) {
 		conf  Config
 	}{
 		{
-			"", Config{
+			"openPTS fail", Config{
 				version: false, server: true, verbose: VERBOSE_OPEN_PTS, desiredIP: "", desiredPort: "7100",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0, term: "kitty",
 				commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false,
 			},
 		},
 		{
-			"", Config{
+			"startShell fail", Config{
 				version: false, server: true, verbose: VERBOSE_START_SHELL, desiredIP: "", desiredPort: "7200",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0, term: "kitty",
 				commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false,
@@ -1448,28 +1448,81 @@ func TestRunWorkerFail(t *testing.T) {
 	whChan := make(chan *workhorse, 1)
 
 	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			var wg sync.WaitGroup
 
-		var wg sync.WaitGroup
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				<-exChan       // get the key
+				wh := <-whChan // get the workhorse
+				if wh.ptmx != nil || wh.shell != nil {
+					t.Errorf("#test runWorker fail should return empty workhorse\n")
+				}
+				msg := <-exChan // get the done message
+				if msg != v.conf.desiredPort {
+					t.Errorf("#test runWorker fail should return %s, got %s\n", v.conf.desiredPort, msg)
+				}
+			}()
 
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
-			<-exChan       // get the key
-			wh := <-whChan // get the workhorse
-			if wh.ptmx != nil || wh.shell != nil {
-				t.Errorf("#test runWorker fail should return empty workhorse\n")
+			if err := runWorker(&v.conf, exChan, whChan); err == nil {
+				t.Errorf("#test runWorker should report error.\n")
+				// t.Error(err)
 			}
-			msg := <-exChan // get the done message
-			if msg != v.conf.desiredPort {
-				t.Errorf("#test runWorker fail should return %s, got %s\n", v.conf.desiredPort, msg)
+
+			wg.Wait()
+		})
+	}
+}
+
+func TestShellWaitFail(t *testing.T) {
+	tc := []struct {
+		label string
+		conf  Config
+	}{
+		{
+			"shell.Wait fail", Config{
+				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7300",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0, term: "kitty",
+				commandPath: "echo", commandArgv: []string{"2"}, withMotd: false,
+			},
+		},
+	}
+
+	exChan := make(chan string, 1)
+	whChan := make(chan *workhorse, 1)
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			if strings.HasPrefix(v.label, "shell.Wait") {
+				// find executable path
+				v.conf.commandPath, _ = exec.LookPath(v.conf.commandPath)
+				// set serve func
+				v.conf.serve = serve
 			}
-		}()
 
-		if err := runWorker(&v.conf, exChan, whChan); err == nil {
-			t.Errorf("#test runWorker should report error.\n")
-			// t.Error(err)
-		}
+			var wg sync.WaitGroup
 
-		wg.Wait()
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				<-exChan       // get the key
+				wh := <-whChan // get the workhorse
+				if wh.ptmx == nil || wh.shell == nil {
+					t.Errorf("#test runWorker fail should return a workhorse.\n")
+				}
+				msg := <-exChan // get the done message
+				if msg != v.conf.desiredPort {
+					t.Errorf("#test runWorker fail should return %s, got %s\n", v.conf.desiredPort, msg)
+				}
+			}()
+
+			if err := runWorker(&v.conf, exChan, whChan); err != nil {
+				t.Errorf("#test runWorker should report error.\n")
+				// t.Error(err)
+			}
+
+			wg.Wait()
+		})
 	}
 }
