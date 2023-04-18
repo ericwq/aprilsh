@@ -467,8 +467,8 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) error {
 		// fmt.Printf("#runWorker shell.Wait() %p %v\n", shell, shell)
 		if state, err2 := shell.Wait(); err2 != nil {
 			fmt.Fprintf(os.Stderr, "#runWorker start shell error: %s, %s\n", err2, state)
-		// } else {
-		// 	fmt.Printf("#runWorker shell.Wait() return state %s.\n", state)
+			// } else {
+			// 	fmt.Printf("#runWorker shell.Wait() return state %s.\n", state)
 		}
 	}
 
@@ -569,23 +569,20 @@ func convertWinsize(windowSize *unix.Winsize) *pty.Winsize {
 	return &sz
 }
 
-func openPTS(windowSize *unix.Winsize) (ptmx *os.File, pts *os.File, err error) {
+// open pts master and slave, set terminal size according to window size.
+func openPTS(wsize *unix.Winsize) (ptmx *os.File, pts *os.File, err error) {
 	// open pts master and slave
-	ptmx, pts, err = pty.Open() // open pty master and slave
-	if err != nil {
-		return nil, nil, err
+	ptmx, pts, err = pty.Open()
+	if wsize == nil {
+		err = errors.New("invalid parameter")
 	}
-	// defer func() { _ = pts.Close() }() // Best effort.
+	if err == nil {
+		sz := convertWinsize(wsize)
+		// fmt.Printf("#openPTS sz=%v\n", sz)
 
-	sz := convertWinsize(windowSize)
-	// fmt.Printf("#openPTS sz=%v\n", sz)
-	if sz != nil { // set terminal size
-		if err := pty.Setsize(ptmx, sz); err != nil {
-			return nil, nil, err
-		}
+		err = pty.Setsize(ptmx, sz) // set terminal size
 	}
-
-	return ptmx, pts, nil
+	return
 }
 
 func startShell(pts *os.File, conf *Config) (*os.Process, error) {

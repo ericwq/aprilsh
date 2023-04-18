@@ -1404,9 +1404,9 @@ func TestStartShellFail(t *testing.T) {
 }
 
 func TestOpenPTSFail(t *testing.T) {
-	ws := &unix.Winsize{Col: 20000, Row: 0, Xpixel: 0, Ypixel: 0}
+	var ws *unix.Winsize
 
-	// we can't test pty.Open() and pty.Setsize()
+	// nil ws is the test condition
 	ptmx, pts, err := openPTS(ws)
 	defer func() {
 		if e1 := ptmx.Close(); e1 != nil {
@@ -1417,7 +1417,7 @@ func TestOpenPTSFail(t *testing.T) {
 		}
 	}()
 
-	if err != nil {
+	if err == nil {
 		t.Errorf("#test openPTS should report error.\n")
 	}
 }
