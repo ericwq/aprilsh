@@ -29,10 +29,13 @@ import (
 	"github.com/ericwq/aprilsh/statesync"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
-	"golang.org/x/term"
+	// "golang.org/x/term"
 )
 
-var BuildVersion = "0.1.0" // ready for ldflags
+var (
+	BuildVersion    = "0.1.0" // ready for ldflags
+	userCurrentTest = false
+)
 
 const (
 	PACKAGE_STRING    = "aprilsh"
@@ -421,22 +424,35 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		network.SetVerbose(uint(conf.verbose))
 	}
 
-	// If server is run on a pty, then typeahead may echo and break mosh.pl's
-	// detection of the CONNECT message.  Print it on a new line to bodge
-	// around that.
-	if term.IsTerminal(int(os.Stdin.Fd())) {
-		fmt.Printf("\r\n")
-	}
-	// in aprilsh: we can use nc client to test
-	// fmt.Printf("#runWorker %s CONNECT %s %s\n", COMMAND_NAME, network.Port(), network.GetKey())
-	// send session key to mainSrv
-	exChan <- network.GetKey()
+	/*
+		// If server is run on a pty, then typeahead may echo and break mosh.pl's
+		// detection of the CONNECT message.  Print it on a new line to bodge
+		// around that.
 
-	// in mosh: the parent print this.
+		if term.IsTerminal(int(os.Stdin.Fd())) {
+			fmt.Printf("\r\n")
+		}
+	*/
+
+	/*
+		in aprilsh: we can use nc client to get the key and send it back to client.
+		we don't print it to the stdout as mosh did.
+
+		fmt.Printf("#runWorker %s CONNECT %s %s\n", COMMAND_NAME, network.Port(), network.GetKey())
+
+		send udp request and read reply
+		% echo "hello world" | nc localhost 8981 -u -w 1
+
+		send udp request to remote host
+		% ssh ide@localhost  "echo 'open aprilsh' | nc localhost 8981 -u -w 1"
+	*/
+	exChan <- network.GetKey() // send the key to run()
+
+	// in mosh: the parent print this to stderr.
 	// printWelcome(os.Stderr, os.Getpid(), os.Stdin)
 
+	// prepare for openPTS fail
 	if conf.verbose == VERBOSE_OPEN_PTS {
-		// prepare for openPTS fail
 		windowSize = nil
 	}
 
@@ -488,7 +504,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 
 func getCurrentUser() string {
 	user, err := user.Current()
-	if err != nil {
+	if err != nil || userCurrentTest {
 		fmt.Fprintf(os.Stderr, "#getCurrentUser report: %s\n", err)
 		return ""
 	}
@@ -775,6 +791,7 @@ func (m *mainSrv) run(conf *Config) {
 	buf := make([]byte, 128)
 	shutdown := false
 
+	printWelcome(os.Stderr, os.Getpid(), os.Stdin)
 	for {
 		select {
 		case portStr := <-m.exChan: // some worker is done

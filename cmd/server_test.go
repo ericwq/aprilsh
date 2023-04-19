@@ -1529,11 +1529,25 @@ func TestShellWaitFail(t *testing.T) {
 }
 
 func TestGetCurrentUser(t *testing.T) {
+	// normal invocation
+	userCurrentTest = false
 	uid := fmt.Sprintf("%d", os.Getuid())
 	expect, _ := user.LookupId(uid)
 
 	got := getCurrentUser()
-	if len(got)==0 || expect.Username != got {
+	if len(got) == 0 || expect.Username != got {
 		t.Errorf("#test getCurrentUser expect %s, got %s\n", expect.Username, got)
+	}
+
+	// getCurrentUser fail
+	old := userCurrentTest
+	defer func() {
+		userCurrentTest = old
+	}()
+
+	userCurrentTest = true
+	got = getCurrentUser()
+	if got != "" {
+		t.Errorf("#test getCurrentUser expect empty string, got %s\n", got)
 	}
 }
