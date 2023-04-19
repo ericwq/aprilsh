@@ -35,13 +35,14 @@ import (
 var (
 	BuildVersion    = "0.1.0" // ready for ldflags
 	userCurrentTest = false
+	buildConfigTest = false
 )
 
 const (
-	PACKAGE_STRING    = "aprilsh"
-	COMMAND_NAME      = "aprilsh-server"
-	BUILD_CONFIG_TEST = PACKAGE_STRING + "_build_config_test_only"
-	_PATH_BSHELL      = "/bin/sh"
+	PACKAGE_STRING = "aprilsh"
+	COMMAND_NAME   = "aprilsh-server"
+	// BUILD_CONFIG_TEST = PACKAGE_STRING + "_build_config_test_only"
+	_PATH_BSHELL = "/bin/sh"
 
 	VERBOSE_OPEN_PTS    = 99
 	VERBOSE_START_SHELL = 100
@@ -263,7 +264,7 @@ func main() {
 	if len(conf.desiredPort) > 0 {
 		// Sanity-check arguments
 
-		// fmt.Printf("#main desiredPort=%s\n", desiredPort)
+		// fmt.Printf("#main desiredPort=%s\n", conf.desiredPort)
 		_, _, ok := network.ParsePortRange(conf.desiredPort, logW)
 		if !ok {
 			logW.Printf("%s: Bad UDP port range (%s)", COMMAND_NAME, conf.desiredPort)
@@ -322,7 +323,7 @@ func buildConfig(conf *Config) error {
 
 	// Adopt implementation locale
 	setNativeLocale()
-	if !isUtf8Locale() {
+	if !isUtf8Locale() || buildConfigTest {
 		nativeType := getCtype()
 		nativeCharset := localeCharset()
 
@@ -335,7 +336,7 @@ func buildConfig(conf *Config) error {
 
 		// check again
 		setNativeLocale()
-		if !isUtf8Locale() {
+		if !isUtf8Locale() || buildConfigTest {
 			clientType := getCtype()
 			clientCharset := localeCharset()
 			fmt.Fprintf(os.Stderr, "%s needs a UTF-8 native locale to run.\n\n", COMMAND_NAME)
@@ -347,9 +348,9 @@ func buildConfig(conf *Config) error {
 		}
 	}
 
-	if _, ok := os.LookupEnv(BUILD_CONFIG_TEST); ok {
-		return errors.New(BUILD_CONFIG_TEST + " is set.")
-	}
+	// if _, ok := os.LookupEnv(BUILD_CONFIG_TEST); ok {
+	// 	return errors.New(BUILD_CONFIG_TEST + " is set.")
+	// }
 	return nil
 }
 
@@ -697,6 +698,7 @@ type mainSrv struct {
 	downChan       chan bool                                         // shutdown mainSrv
 	nextWorkerPort int                                               // next worker port
 	timeout        int                                               // read udp time out,
+	port           int                                               // main listen port
 	conn           *net.UDPConn                                      // mainSrv listen port
 	wg             sync.WaitGroup
 	eg             errgroup.Group
@@ -710,7 +712,8 @@ type workhorse struct {
 func newMainSrv(conf *Config, runWorker func(*Config, chan string, chan *workhorse) error) *mainSrv {
 	m := mainSrv{}
 	m.runWorker = runWorker
-	m.nextWorkerPort, _ = strconv.Atoi(conf.desiredPort)
+	m.port, _ = strconv.Atoi(conf.desiredPort)
+	m.nextWorkerPort = m.port
 	m.workers = make(map[int]*workhorse)
 	m.downChan = make(chan bool, 1)
 	m.exChan = make(chan string, 1)
@@ -739,6 +742,7 @@ func (m *mainSrv) start(conf *Config) {
 	}
 
 	// fmt.Printf("#start listening on %s, next port is %d\n", conf.desiredPort, m.nextWorkerPort+1)
+	m.wg.Add(1)
 	go m.run(conf)
 }
 
@@ -768,7 +772,6 @@ func (m *mainSrv) listen(conf *Config) error {
 		return err
 	}
 
-	// fmt.Println("#start listen UDP.")
 	m.conn, err = net.ListenUDP("udp", local_addr)
 	if err != nil {
 		return err
@@ -782,7 +785,6 @@ func (m *mainSrv) run(conf *Config) {
 		return
 	}
 
-	m.wg.Add(1)
 	defer func() {
 		m.conn.Close()
 		m.wg.Done()
