@@ -328,9 +328,6 @@ func TestParseFlagsUsage(t *testing.T) {
 
 func TestMainRun(t *testing.T) {
 	testFunc := func() {
-		// abort buildConfig() for test environment
-		// os.Setenv(BUILD_CONFIG_TEST, "TRUE")
-		// defer os.Unsetenv(BUILD_CONFIG_TEST)
 		// prepare data
 		os.Args = []string{COMMAND_NAME, "-locale", "LC_ALL=en_US.UTF-8", "-p", "6100", "--", "/bin/sh", "-sh"}
 		// test
@@ -370,14 +367,6 @@ func TestMainRun(t *testing.T) {
 	// }
 	// if found != 0 {
 	// 	t.Errorf("#test buildConfig expect %q, got %q\n", expect, result)
-	// }
-
-	// t.Errorf("#test run got:\n%s\n", result)
-	// validate logW
-	// var expectLog string = BUILD_CONFIG_TEST + " is set."
-	// got := b.String()
-	// if !strings.Contains(got, expectLog) {
-	// 	t.Errorf("#test buildConfig expect %q, got %s\n", expectLog, got)
 	// }
 }
 

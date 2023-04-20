@@ -38,11 +38,15 @@ var (
 	buildConfigTest = false
 )
 
+var (
+	logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	logI = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+)
+
 const (
 	PACKAGE_STRING = "aprilsh"
 	COMMAND_NAME   = "aprilsh-server"
-	// BUILD_CONFIG_TEST = PACKAGE_STRING + "_build_config_test_only"
-	_PATH_BSHELL = "/bin/sh"
+	_PATH_BSHELL   = "/bin/sh"
 
 	VERBOSE_OPEN_PTS    = 99
 	VERBOSE_START_SHELL = 100
@@ -56,6 +60,7 @@ func printVersion(w io.Writer) {
 
 func printUsage(w io.Writer, usage string) {
 	fmt.Fprintf(w, "%s", usage)
+	// logI.Printf("%s", usage)
 }
 
 // Print the motd from a given file, if available
@@ -168,7 +173,6 @@ Options:
   -c, --color    xterm color
   -t, --term     client TERM
 `
-var logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 
 type Config struct {
 	version     bool // verbose : don't close stdin/stdout/stderr
@@ -348,9 +352,6 @@ func buildConfig(conf *Config) error {
 		}
 	}
 
-	// if _, ok := os.LookupEnv(BUILD_CONFIG_TEST); ok {
-	// 	return errors.New(BUILD_CONFIG_TEST + " is set.")
-	// }
 	return nil
 }
 
