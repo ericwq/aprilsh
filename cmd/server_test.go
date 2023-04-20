@@ -1297,6 +1297,11 @@ func TestWaitError(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
+			// intercept stderr
+			saveStderr := os.Stderr
+			r, w, _ := os.Pipe()
+			os.Stderr = w
+
 			m := newMainSrv(&v.conf, failRunWorker)
 
 			// send shutdown message after some time
@@ -1304,13 +1309,6 @@ func TestWaitError(t *testing.T) {
 			go func() {
 				<-timer1.C
 				m.downChan <- true
-			}()
-
-			// intercept logW
-			var b strings.Builder
-			logW.SetOutput(&b)
-			defer func() {
-				logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 			}()
 
 			// start mainserver
@@ -1321,9 +1319,15 @@ func TestWaitError(t *testing.T) {
 
 			m.wait()
 
+			// restore stderr
+			w.Close()
+			out, _ := ioutil.ReadAll(r)
+			os.Stderr = saveStderr
+			r.Close()
+
 			// validate result
 			expect := []string{"#mainSrv wait() reports"}
-			result := b.String()
+			result := string(out)
 			found := 0
 			for i := range expect {
 				if strings.Contains(result, expect[i]) {

@@ -561,7 +561,7 @@ func printWelcome(w io.Writer, pid int, tty *os.File) {
 
 	if !inputUTF8 {
 		// Input is UTF-8 (since Linux 2.6.4)
-		logW.Printf("%s%s%s", "Warning: termios IUTF8 flag not defined.",
+		logW.Printf("%s %s %s", "Warning: termios IUTF8 flag not defined.",
 			"Character-erase of multibyte character sequence",
 			"probably does not work properly on this platform.\n")
 	}
@@ -877,11 +877,8 @@ func (m *mainSrv) run(conf *Config) {
 }
 
 func (m *mainSrv) wait() {
-	// fmt.Printf("#wait for wg\n")
 	m.wg.Wait()
-	// fmt.Printf("#wait for eg %v\n", m.eg)
 	if err := m.eg.Wait(); err != nil {
 		logW.Printf("#mainSrv wait() reports %s\n", err.Error())
 	}
-	// fmt.Printf("#wait finish\n")
 }
