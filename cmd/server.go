@@ -344,11 +344,17 @@ func buildConfig(conf *Config) error {
 		if !isUtf8Locale() || buildConfigTest {
 			clientType := getCtype()
 			clientCharset := localeCharset()
-			fmt.Fprintf(os.Stderr, "%s needs a UTF-8 native locale to run.\n\n", COMMAND_NAME)
-			fmt.Fprintf(os.Stderr, "Unfortunately, the local environment (%s) specifies\n"+
-				"the character set \"%s\",\n\n", nativeType, nativeCharset)
-			fmt.Fprintf(os.Stderr, "The client-supplied environment (%s) specifies\n"+
-				"the character set \"%s\".\n\n", clientType, clientCharset)
+			logW.Printf("%s needs a UTF-8 native locale to run.\n", COMMAND_NAME)
+			logW.Printf("Unfortunately, the local environment (%s) specifies "+
+				"the character set \"%s\",\n", nativeType, nativeCharset)
+			logW.Printf("The client-supplied environment (%s) specifies "+
+				"the character set \"%s\".\n", clientType, clientCharset)
+
+			// fmt.Fprintf(os.Stderr, "%s needs a UTF-8 native locale to run.\n\n", COMMAND_NAME)
+			// fmt.Fprintf(os.Stderr, "Unfortunately, the local environment (%s) specifies\n"+
+			// 	"the character set \"%s\",\n\n", nativeType, nativeCharset)
+			// fmt.Fprintf(os.Stderr, "The client-supplied environment (%s) specifies\n"+
+			// 	"the character set \"%s\".\n\n", clientType, clientCharset)
 			return errors.New("UTF-8 locale fail.")
 		}
 	}
@@ -508,7 +514,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 func getCurrentUser() string {
 	user, err := user.Current()
 	if err != nil || userCurrentTest {
-		fmt.Fprintf(os.Stderr, "#getCurrentUser report: %s\n", err)
+		logW.Printf("#getCurrentUser report: %s\n", err)
 		return ""
 	}
 
@@ -540,22 +546,23 @@ func getTimeFrom(env string, def int64) (ret int64) {
 }
 
 func printWelcome(w io.Writer, pid int, tty *os.File) {
-	fmt.Fprintf(w, "%s [build %s]\n", COMMAND_NAME, BuildVersion)
-	fmt.Fprintf(w, "Copyright 2022 wangqi.\n")
-	fmt.Fprintf(w, "Use of this source code is governed by a MIT-style\n")
-	fmt.Fprintf(w, "license that can be found in the LICENSE file.\n\n")
-	fmt.Fprintf(w, "[%s detached, pid=%d]\n", COMMAND_NAME, pid)
+	logW.SetOutput(w)
+
+	logW.Printf("%s [build %s]\n", COMMAND_NAME, BuildVersion)
+	logW.Printf("Copyright 2022 wangqi.\n")
+	logW.Printf("%s%s", "Use of this source code is governed by a MIT-style",
+		"license that can be found in the LICENSE file.\n")
+	logW.Printf("[%s detached, pid=%d]\n", COMMAND_NAME, pid)
 
 	inputUTF8, err := checkIUTF8(int(tty.Fd()))
 	if err != nil {
-		fmt.Fprintf(w, "\nWarning: %s\n", err)
+		logW.Printf("Warning: %s\n", err)
 	}
 
 	if !inputUTF8 {
 		// Input is UTF-8 (since Linux 2.6.4)
-		fmt.Fprintf(w, "%s%s%s",
-			"\nWarning: termios IUTF8 flag not defined.\n",
-			"Character-erase of multibyte character sequence\n",
+		logW.Printf("%s%s%s", "Warning: termios IUTF8 flag not defined.",
+			"Character-erase of multibyte character sequence",
 			"probably does not work properly on this platform.\n")
 	}
 }

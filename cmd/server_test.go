@@ -305,7 +305,6 @@ func TestMainParseFlagsError(t *testing.T) {
 			found++
 		}
 	}
-	t.Logf("%s", result)
 	if found != len(expect) {
 		t.Errorf("#test parserError expect %q, got \n%s\n", expect, result)
 	}
@@ -382,6 +381,10 @@ func TestMainBuildConfigFail(t *testing.T) {
 		main()
 	}
 
+	// intercept log output
+	var b strings.Builder
+	logW.SetOutput(&b)
+
 	// prepare for buildConfig fail
 	buildConfigTest = true
 	testFunc()
@@ -389,7 +392,18 @@ func TestMainBuildConfigFail(t *testing.T) {
 	// restore the condition
 	buildConfigTest = false
 
-	// TODO validate?
+	// validate the result
+	expect := []string{"UTF-8 locale fail."}
+	result := b.String()
+	found := 0
+	for i := range expect {
+		if strings.Contains(result, expect[i]) {
+			found++
+		}
+	}
+	if found != len(expect) {
+		t.Errorf("#test printVersion expect %q, got %q\n", expect, result)
+	}
 }
 
 func TestParseFlagsCorrect(t *testing.T) {
@@ -519,19 +533,16 @@ func TestBuildConfig(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
+			// intercept log output
+			var b strings.Builder
+			logW.SetOutput(&b)
+
 			// set SHELL for empty commandArgv
 			if len(v.conf0.commandArgv) == 0 {
 				shell := os.Getenv("SHELL")
 				defer os.Setenv("SHELL", shell)
 				os.Unsetenv("SHELL")
 			}
-
-			// save the stderr and create replaced pipe
-			rescueStderr := os.Stderr
-			r, w, _ := os.Pipe()
-			os.Stderr = w
-			oldArgs := os.Args
-			defer func() { os.Args = oldArgs }()
 
 			// validate buildConfig
 			err := buildConfig(&v.conf0)
@@ -547,10 +558,8 @@ func TestBuildConfig(t *testing.T) {
 			// reset the environment
 			clearLocaleVariables()
 
-			// read and restore the stderr
-			w.Close()
-			ioutil.ReadAll(r)
-			os.Stderr = rescueStderr
+			// restore logW
+			logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 		})
 	}
 }
@@ -1058,7 +1067,10 @@ func TestPrintWelcome(t *testing.T) {
 		t.Errorf("#test printWelcome master got %t, expect %t\n", flag, false)
 	}
 
+	// intercept log output
 	var b strings.Builder
+	logW.SetOutput(&b)
+
 	expect := []string{
 		COMMAND_NAME, "build", "Use of this source code is governed by a MIT-style",
 		"Warning: termios IUTF8 flag not defined.",
@@ -1086,8 +1098,10 @@ func TestPrintWelcome(t *testing.T) {
 		if found != len(expect) {
 			t.Errorf("#test printWelcome expect %q, got %q\n", expect, result)
 		}
-
 	}
+
+	// restore logW
+	logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestConvertWinsize(t *testing.T) {
@@ -1562,9 +1576,15 @@ func TestGetCurrentUser(t *testing.T) {
 		userCurrentTest = old
 	}()
 
+	// intercept log output
+	var b strings.Builder
+	logW.SetOutput(&b)
+
 	userCurrentTest = true
 	got = getCurrentUser()
 	if got != "" {
 		t.Errorf("#test getCurrentUser expect empty string, got %s\n", got)
 	}
+	// restore logW
+	logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
