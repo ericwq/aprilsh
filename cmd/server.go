@@ -53,19 +53,22 @@ const (
 )
 
 func printVersion(w io.Writer) {
-	fmt.Fprintf(w, "%s (%s) [build %s]\n", COMMAND_NAME, PACKAGE_STRING, BuildVersion)
-	fmt.Fprintf(w, "Copyright (c) 2022~2023 wangqi ericwq057[AT]qq[dot]com\n")
-	fmt.Fprintf(w, "reborn mosh with aprilsh\n")
+	logI.SetOutput(w)
+
+	logI.Printf("%s (%s) [build %s]\n", COMMAND_NAME, PACKAGE_STRING, BuildVersion)
+	logI.Printf("Copyright (c) 2022~2023 wangqi ericwq057[AT]qq[dot]com\n")
+	logI.Printf("reborn mosh with aprilsh\n")
 }
 
 func printUsage(w io.Writer, usage string) {
-	fmt.Fprintf(w, "%s", usage)
-	// logI.Printf("%s", usage)
+	logI.SetOutput(w)
+	logI.Printf("%s", usage)
 }
 
 // Print the motd from a given file, if available
 func printMotd(w io.Writer, filename string) bool {
-	// fmt.Printf("#printMotd print %q\n", filename)
+	logI.SetOutput(w)
+	// logI.Printf("#printMotd print %q\n", filename)
 	// https://zetcode.com/golang/readfile/
 
 	motd, err := os.Open(filename)
@@ -77,7 +80,7 @@ func printMotd(w io.Writer, filename string) bool {
 	// read line by line, print each line to writer
 	scanner := bufio.NewScanner(motd)
 	for scanner.Scan() {
-		fmt.Fprintf(w, "%s\n", scanner.Text())
+		logI.Printf("%s\n", scanner.Text())
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -102,7 +105,6 @@ func chdirHomedir(home string) bool {
 	}
 	os.Setenv("PWD", home)
 
-	// fmt.Printf("#chdirHomedir home=%q\n", home)
 	return true
 }
 
@@ -130,7 +132,7 @@ func motdHushed() bool {
 func getSSHip() string {
 	env := os.Getenv("SSH_CONNECTION")
 	if len(env) == 0 { // Older sshds don't set this
-		fmt.Fprintf(os.Stderr, "Warning: SSH_CONNECTION not found; binding to any interface.\n")
+		logW.Printf("Warning: SSH_CONNECTION not found; binding to any interface.\n")
 		return ""
 	}
 
@@ -141,7 +143,7 @@ func getSSHip() string {
 	// ipv4 sample: SSH_CONNECTION=172.17.0.1 58774 172.17.0.2 22
 	sshConn := strings.Split(env, " ")
 	if len(sshConn) != 4 {
-		fmt.Fprintf(os.Stderr, "Warning: Could not parse SSH_CONNECTION; binding to any interface.\n")
+		logW.Printf("Warning: Could not parse SSH_CONNECTION; binding to any interface.\n")
 		// fmt.Printf("#getSSHip env=%q, size=%d\n", sshConn, len(sshConn))
 		return ""
 	}

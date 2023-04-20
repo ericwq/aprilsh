@@ -36,19 +36,6 @@ func TestPrintMotd(t *testing.T) {
 	files := []string{"/run/motd.dynamic", "/var/run/motd.dynamic", "/etc/motd", "/etc/hosts"}
 
 	var output bytes.Buffer
-	//
-	// if !printMotd(&output, files[0]) {
-	// 	output.Reset()
-	// 	if printMotd(&output, files[1]) {
-	// 		fmt.Printf("%s", output.String())
-	// 	}
-	// }
-	//
-	// printMotd(files[2])
-	//
-	// if runtime.GOOS == "darwin" {
-	// 	printMotd(files[3])
-	// }
 
 	found := false
 	for i := range files {
@@ -635,14 +622,13 @@ func TestGetSSHip(t *testing.T) {
 		{"ipv4 mapped address", "::FFFF:172.17.0.1 42200 ::FFFF:129.144.52.38 22", "129.144.52.38"},
 	}
 
-	// save the stderr and create replaced pipe
-	rescueStderr := os.Stderr
-	r, w, _ := os.Pipe()
-	os.Stderr = w
-	oldArgs := os.Args
-	defer func() { os.Args = oldArgs }()
+	// intercept log output
+	var b strings.Builder
+	logW.SetOutput(&b)
 
 	for _, v := range tc {
+		b.Reset()
+
 		os.Setenv("SSH_CONNECTION", v.env)
 		got := getSSHip()
 		if got != v.expect {
@@ -650,10 +636,8 @@ func TestGetSSHip(t *testing.T) {
 		}
 	}
 
-	// read and restore the stderr
-	w.Close()
-	ioutil.ReadAll(r)
-	os.Stderr = rescueStderr
+	// restore logW
+	logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestGetShellNameFrom(t *testing.T) {
