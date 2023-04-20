@@ -251,8 +251,7 @@ func main() {
 		printUsage(os.Stdout, usage)
 		return
 	} else if err != nil {
-		// fmt.Println("got error:", err)
-		fmt.Println("output:\n", output)
+		logW.Printf("#main output:%s\n", output)
 		return
 	}
 

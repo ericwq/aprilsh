@@ -223,6 +223,23 @@ func TestMainHelp(t *testing.T) {
 }
 
 // capture the stdout and run the
+func captureLogRun(f func()) string {
+	// intercept log output
+	var b strings.Builder
+	logW.SetOutput(&b)
+	logI.SetOutput(&b)
+
+	// call the test func
+	f()
+
+	// restore logW
+	logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	logI = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+
+	return b.String()
+}
+
+// capture the stdout and run the
 func captureStdoutRun(f func()) []byte {
 	// save the stdout and create replaced pipe
 	rescueStdout := os.Stdout
@@ -278,17 +295,17 @@ func TestMainParseFlagsError(t *testing.T) {
 		main()
 	}
 
-	out := captureStdoutRun(testFunc)
+	result := captureLogRun(testFunc)
 
 	// validate result
-	expect := []string{"flag provided but not defined", "Usage of aprilsh-server"}
-	result := string(out)
+	expect := []string{"flag provided but not defined: -foo", "Usage of aprilsh-server"}
 	found := 0
 	for i := range expect {
 		if strings.Contains(result, expect[i]) {
 			found++
 		}
 	}
+	t.Logf("%s", result)
 	if found != len(expect) {
 		t.Errorf("#test parserError expect %q, got \n%s\n", expect, result)
 	}
