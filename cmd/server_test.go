@@ -260,6 +260,7 @@ func captureStdoutRun(f func()) []byte {
 	// get the output
 	out, _ := ioutil.ReadAll(r)
 	os.Stdout = rescueStdout
+	r.Close()
 
 	return out
 }
@@ -1058,11 +1059,6 @@ func TestPrintWelcome(t *testing.T) {
 		t.Errorf("#test printWelcome master got %t, expect %t\n", flag, false)
 	}
 
-	// intercept log output
-	var b strings.Builder
-	logW.SetOutput(&b)
-	logI.SetOutput(&b)
-
 	expect := []string{
 		COMMAND_NAME, "build", "Use of this source code is governed by a MIT-style",
 		"Warning: termios IUTF8 flag not defined.",
@@ -1077,10 +1073,22 @@ func TestPrintWelcome(t *testing.T) {
 	}
 
 	for _, v := range tc {
-		b.Reset()
-		printWelcome(&b, os.Getpid(), v.tty)
+		// intercept stdout
+		saveStdout := os.Stdout
+		r, w, _ := os.Pipe()
+		os.Stdout = w
+		initLog()
+
+		printWelcome(os.Getpid(), 6000, v.tty)
+
+		// restore stdout
+		w.Close()
+		b, _ := ioutil.ReadAll(r)
+		os.Stdout = saveStdout
+		r.Close()
+
 		// validate the result
-		result := b.String()
+		result := string(b)
 		found := 0
 		for i := range expect {
 			if strings.Contains(result, expect[i]) {
@@ -1091,9 +1099,6 @@ func TestPrintWelcome(t *testing.T) {
 			t.Errorf("#test printWelcome expect %q, got %q\n", expect, result)
 		}
 	}
-
-	// restore logW
-	logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestConvertWinsize(t *testing.T) {

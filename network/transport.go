@@ -238,3 +238,7 @@ func (t *Transport[S, R]) Port() string {
 func (t *Transport[S, R]) GetKey() string {
 	return t.connection.getKey()
 }
+
+func (t *Transport[S, R]) Close() {
+	t.connection.sock().Close()
+}

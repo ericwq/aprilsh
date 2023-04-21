@@ -441,6 +441,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	if conf.verbose == 1 {
 		network.SetVerbose(uint(conf.verbose))
 	}
+	defer network.Close()
 
 	/*
 		// If server is run on a pty, then typeahead may echo and break mosh.pl's
@@ -554,14 +555,12 @@ func getTimeFrom(env string, def int64) (ret int64) {
 	return
 }
 
-func printWelcome(w io.Writer, pid int, tty *os.File) {
-	logW.SetOutput(w)
-
-	logI.Printf("%s [build %s]\n", COMMAND_NAME, BuildVersion)
+func printWelcome(pid int, port int, tty *os.File) {
+	logI.Printf("%s build %s [pid=%d] listening on :%d\n", COMMAND_NAME, BuildVersion, pid, port)
 	logI.Printf("Copyright 2022 wangqi.\n")
 	logI.Printf("%s%s", "Use of this source code is governed by a MIT-style",
 		"license that can be found in the LICENSE file.\n")
-	logI.Printf("[%s detached, pid=%d]\n", COMMAND_NAME, pid)
+	// logI.Printf("[%s detached, pid=%d]\n", COMMAND_NAME, pid)
 
 	inputUTF8, err := checkIUTF8(int(tty.Fd()))
 	if err != nil {
@@ -806,12 +805,13 @@ func (m *mainSrv) run(conf *Config) {
 	defer func() {
 		m.conn.Close()
 		m.wg.Done()
+		logI.Println("stop listening.")
 	}()
 
 	buf := make([]byte, 128)
 	shutdown := false
 
-	printWelcome(os.Stdout, os.Getpid(), os.Stdin)
+	printWelcome(os.Getpid(), m.port, os.Stdin)
 	for {
 		select {
 		case portStr := <-m.exChan: // some worker is done
