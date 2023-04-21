@@ -39,8 +39,8 @@ var (
 )
 
 var (
-	logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-	logI = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	logW *log.Logger
+	logI *log.Logger
 )
 
 const (
@@ -51,6 +51,15 @@ const (
 	VERBOSE_OPEN_PTS    = 99
 	VERBOSE_START_SHELL = 100
 )
+
+func init() {
+	initLog()
+}
+
+func initLog() {
+	logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	logI = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+}
 
 func printVersion(w io.Writer) {
 	logI.SetOutput(w)
@@ -251,7 +260,7 @@ func main() {
 		printUsage(os.Stdout, usage)
 		return
 	} else if err != nil {
-		logW.Printf("#main output:%s\n", output)
+		logW.Printf("#main parseFlags failed: %s\n", output)
 		return
 	}
 
@@ -272,13 +281,13 @@ func main() {
 		// fmt.Printf("#main desiredPort=%s\n", conf.desiredPort)
 		_, _, ok := network.ParsePortRange(conf.desiredPort, logW)
 		if !ok {
-			logW.Printf("%s: Bad UDP port range (%s)", COMMAND_NAME, conf.desiredPort)
+			logW.Printf("#main ParsePortRange failed: Bad UDP port range (%s)", conf.desiredPort)
 			return
 		}
 	}
 
 	if err := buildConfig(conf); err != nil {
-		logW.Printf("%s: %s\n", COMMAND_NAME, err.Error())
+		logW.Printf("#main buildConfig faileds: %s\n", err.Error())
 		return
 	}
 
@@ -350,10 +359,10 @@ func buildConfig(conf *Config) error {
 			logW.Printf("The client-supplied environment (%s) specifies "+
 				"the character set \"%s\".\n", clientType, clientCharset)
 
-			// fmt.Fprintf(os.Stderr, "%s needs a UTF-8 native locale to run.\n\n", COMMAND_NAME)
-			// fmt.Fprintf(os.Stderr, "Unfortunately, the local environment (%s) specifies\n"+
+			// fmt.Fprintf(os.Stdout, "%s needs a UTF-8 native locale to run.\n\n", COMMAND_NAME)
+			// fmt.Fprintf(os.Stdout, "Unfortunately, the local environment (%s) specifies\n"+
 			// 	"the character set \"%s\",\n\n", nativeType, nativeCharset)
-			// fmt.Fprintf(os.Stderr, "The client-supplied environment (%s) specifies\n"+
+			// fmt.Fprintf(os.Stdout, "The client-supplied environment (%s) specifies\n"+
 			// 	"the character set \"%s\".\n\n", clientType, clientCharset)
 			return errors.New("UTF-8 locale fail.")
 		}
@@ -458,7 +467,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	exChan <- network.GetKey() // send the key to run()
 
 	// in mosh: the parent print this to stderr.
-	// printWelcome(os.Stderr, os.Getpid(), os.Stdin)
+	// printWelcome(os.Stdout, os.Getpid(), os.Stdin)
 
 	// prepare for openPTS fail
 	if conf.verbose == VERBOSE_OPEN_PTS {
@@ -536,9 +545,9 @@ func getTimeFrom(env string, def int64) (ret int64) {
 		var err error
 		ret, err = strconv.ParseInt(v, 10, 64)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "%s not a valid integer, ignoring\n", env)
+			fmt.Fprintf(os.Stdout, "%s not a valid integer, ignoring\n", env)
 		} else if ret < 0 {
-			fmt.Fprintf(os.Stderr, "%s is negative, ignoring\n", env)
+			fmt.Fprintf(os.Stdout, "%s is negative, ignoring\n", env)
 			ret = 0
 		}
 	}
@@ -548,11 +557,11 @@ func getTimeFrom(env string, def int64) (ret int64) {
 func printWelcome(w io.Writer, pid int, tty *os.File) {
 	logW.SetOutput(w)
 
-	logW.Printf("%s [build %s]\n", COMMAND_NAME, BuildVersion)
-	logW.Printf("Copyright 2022 wangqi.\n")
-	logW.Printf("%s%s", "Use of this source code is governed by a MIT-style",
+	logI.Printf("%s [build %s]\n", COMMAND_NAME, BuildVersion)
+	logI.Printf("Copyright 2022 wangqi.\n")
+	logI.Printf("%s%s", "Use of this source code is governed by a MIT-style",
 		"license that can be found in the LICENSE file.\n")
-	logW.Printf("[%s detached, pid=%d]\n", COMMAND_NAME, pid)
+	logI.Printf("[%s detached, pid=%d]\n", COMMAND_NAME, pid)
 
 	inputUTF8, err := checkIUTF8(int(tty.Fd()))
 	if err != nil {
@@ -763,9 +772,9 @@ func (m *mainSrv) handler() {
 	for s := range sig {
 		switch s {
 		case syscall.SIGHUP: // TODO:what we need to do?
-			logW.Println("got message SIGHUP.")
+			logI.Println("got message SIGHUP.")
 		case syscall.SIGTERM:
-			logW.Println("got message SIGTERM.")
+			logI.Println("got message SIGTERM.")
 			m.downChan <- true
 			return
 		}
@@ -802,7 +811,7 @@ func (m *mainSrv) run(conf *Config) {
 	buf := make([]byte, 128)
 	shutdown := false
 
-	printWelcome(os.Stderr, os.Getpid(), os.Stdin)
+	printWelcome(os.Stdout, os.Getpid(), os.Stdin)
 	for {
 		select {
 		case portStr := <-m.exChan: // some worker is done

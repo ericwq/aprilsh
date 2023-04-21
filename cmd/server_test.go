@@ -233,7 +233,7 @@ func captureLogRun(f func()) string {
 	f()
 
 	// restore logW
-	logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 	logI = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
 
 	return b.String()
@@ -337,20 +337,22 @@ func TestMainRun(t *testing.T) {
 		syscall.Kill(os.Getpid(), syscall.SIGTERM)
 	})
 
-	// intercept stderr
-	saveStderr := os.Stderr
+	// intercept stdout
+	saveStdout := os.Stdout
 	r, w, _ := os.Pipe()
-	os.Stderr = w
+	os.Stdout = w
+
+	initLog()
 
 	// prepare data
 	os.Args = []string{COMMAND_NAME, "-locale", "LC_ALL=en_US.UTF-8", "-p", "6100", "--", "/bin/sh", "-sh"}
 	// test
 	main()
 
-	// restore stderr
+	// restore stdout
 	w.Close()
 	out, _ := ioutil.ReadAll(r)
-	os.Stderr = saveStderr
+	os.Stdout = saveStdout
 	r.Close()
 
 	// validate the result from printWelcome
@@ -362,6 +364,7 @@ func TestMainRun(t *testing.T) {
 	found := 0
 	for i := range expect {
 		if strings.Contains(result, expect[i]) {
+			// fmt.Printf("found %s\n", expect[i])
 			found++
 		}
 	}
@@ -556,7 +559,7 @@ func TestBuildConfig(t *testing.T) {
 			clearLocaleVariables()
 
 			// restore logW
-			logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+			logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 		})
 	}
 }
@@ -629,7 +632,7 @@ func TestMainServerPortrangeError(t *testing.T) {
 	}
 
 	// restore logW
-	logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestGetSSHip(t *testing.T) {
@@ -660,7 +663,7 @@ func TestGetSSHip(t *testing.T) {
 	}
 
 	// restore logW
-	logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestGetShellNameFrom(t *testing.T) {
@@ -692,10 +695,10 @@ func TestGetTimeFrom(t *testing.T) {
 		{"negative int64", "ENV3", "-123", 0},
 	}
 
-	// save the stderr and create replaced pipe
-	rescueStderr := os.Stderr
+	// save the stdout and create replaced pipe
+	rescueStdout := os.Stdout
 	r, w, _ := os.Pipe()
-	os.Stderr = w
+	os.Stdout = w
 	oldArgs := os.Args
 	defer func() { os.Args = oldArgs }()
 
@@ -708,10 +711,10 @@ func TestGetTimeFrom(t *testing.T) {
 		}
 	}
 
-	// read and restore the stderr
+	// read and restore the stdout
 	w.Close()
 	ioutil.ReadAll(r)
-	os.Stderr = rescueStderr
+	os.Stdout = rescueStdout
 }
 
 func TestCheckIUTF8(t *testing.T) {
@@ -897,10 +900,10 @@ func TestStart(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			// intercept stderr
-			saveStderr := os.Stderr
+			// intercept stdout
+			saveStdout := os.Stdout
 			r, w, _ := os.Pipe()
-			os.Stderr = w
+			os.Stdout = w
 
 			srv := newMainSrv(&v.conf, mockRunWorker)
 
@@ -928,10 +931,10 @@ func TestStart(t *testing.T) {
 
 			srv.wait()
 
-			// restore stderr
+			// restore stdout
 			w.Close()
 			ioutil.ReadAll(r)
-			os.Stderr = saveStderr
+			os.Stdout = saveStdout
 			r.Close()
 		})
 	}
@@ -963,7 +966,7 @@ func TestStartFail(t *testing.T) {
 			var b strings.Builder
 			logW.SetOutput(&b)
 			defer func() {
-				logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+				logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 			}()
 
 			// start mainserver
@@ -1055,6 +1058,7 @@ func TestPrintWelcome(t *testing.T) {
 	// intercept log output
 	var b strings.Builder
 	logW.SetOutput(&b)
+	logI.SetOutput(&b)
 
 	expect := []string{
 		COMMAND_NAME, "build", "Use of this source code is governed by a MIT-style",
@@ -1086,7 +1090,7 @@ func TestPrintWelcome(t *testing.T) {
 	}
 
 	// restore logW
-	logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestConvertWinsize(t *testing.T) {
@@ -1169,10 +1173,10 @@ func TestRunFail(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			// intercept stderr
-			saveStderr := os.Stderr
+			// intercept stdout
+			saveStdout := os.Stdout
 			r, w, _ := os.Pipe()
-			os.Stderr = w
+			os.Stdout = w
 
 			srv := newMainSrv(&v.conf, mockRunWorker2)
 
@@ -1202,10 +1206,10 @@ func TestRunFail(t *testing.T) {
 
 			srv.wait()
 
-			// restore stderr
+			// restore stdout
 			w.Close()
 			ioutil.ReadAll(r)
-			os.Stderr = saveStderr
+			os.Stdout = saveStdout
 			r.Close()
 		})
 	}
@@ -1253,10 +1257,10 @@ func TestRunFail2(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			// intercept stderr
-			saveStderr := os.Stderr
+			// intercept stdout
+			saveStdout := os.Stdout
 			r, w, _ := os.Pipe()
-			os.Stderr = w
+			os.Stdout = w
 
 			srv := newMainSrv(&v.conf, mockRunWorker)
 
@@ -1276,10 +1280,10 @@ func TestRunFail2(t *testing.T) {
 
 			srv.wait()
 
-			// restore stderr
+			// restore stdout
 			w.Close()
 			ioutil.ReadAll(r)
-			os.Stderr = saveStderr
+			os.Stdout = saveStdout
 			r.Close()
 		})
 	}
@@ -1305,10 +1309,10 @@ func TestWaitError(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			// intercept stderr
-			saveStderr := os.Stderr
+			// intercept stdout
+			saveStdout := os.Stdout
 			r, w, _ := os.Pipe()
-			os.Stderr = w
+			os.Stdout = w
 
 			m := newMainSrv(&v.conf, failRunWorker)
 
@@ -1327,10 +1331,10 @@ func TestWaitError(t *testing.T) {
 
 			m.wait()
 
-			// restore stderr
+			// restore stdout
 			w.Close()
 			out, _ := ioutil.ReadAll(r)
-			os.Stderr = saveStderr
+			os.Stdout = saveStdout
 			r.Close()
 
 			// validate result
@@ -1387,10 +1391,10 @@ func TestRunWorker(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			// intercept stderr
-			saveStderr := os.Stderr
+			// intercept stdout
+			saveStdout := os.Stdout
 			r, w, _ := os.Pipe()
-			os.Stderr = w
+			os.Stdout = w
 
 			// set serve func and runWorker func
 			v.conf.serve = serve
@@ -1424,10 +1428,10 @@ func TestRunWorker(t *testing.T) {
 
 			srv.wait()
 
-			// restore stderr
+			// restore stdout
 			w.Close()
 			ioutil.ReadAll(r)
-			os.Stderr = saveStderr
+			os.Stdout = saveStdout
 			r.Close()
 		})
 	}
@@ -1532,7 +1536,7 @@ func TestRunWorkerFail(t *testing.T) {
 			wg.Wait()
 
 			// restore logW
-			logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+			logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 		})
 	}
 }
@@ -1591,7 +1595,7 @@ func TestShellWaitFail(t *testing.T) {
 			wg.Wait()
 
 			// restore logW
-			logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+			logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 		})
 	}
 }
@@ -1623,5 +1627,5 @@ func TestGetCurrentUser(t *testing.T) {
 		t.Errorf("#test getCurrentUser expect empty string, got %s\n", got)
 	}
 	// restore logW
-	logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
