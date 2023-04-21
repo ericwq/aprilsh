@@ -247,6 +247,7 @@ func captureStdoutRun(f func()) []byte {
 	// replace stdout with pipe writer
 	// alll the output to stdout is captured
 	os.Stdout = w
+	initLog()
 
 	// os.Args is a "global variable", so keep the state from before the test, and restore it after.
 	oldArgs := os.Args
@@ -341,7 +342,6 @@ func TestMainRun(t *testing.T) {
 	saveStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
-
 	initLog()
 
 	// prepare data
@@ -699,6 +699,8 @@ func TestGetTimeFrom(t *testing.T) {
 	rescueStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
+	initLog()
+
 	oldArgs := os.Args
 	defer func() { os.Args = oldArgs }()
 
@@ -904,6 +906,7 @@ func TestStart(t *testing.T) {
 			saveStdout := os.Stdout
 			r, w, _ := os.Pipe()
 			os.Stdout = w
+			initLog()
 
 			srv := newMainSrv(&v.conf, mockRunWorker)
 
@@ -1177,6 +1180,7 @@ func TestRunFail(t *testing.T) {
 			saveStdout := os.Stdout
 			r, w, _ := os.Pipe()
 			os.Stdout = w
+			initLog()
 
 			srv := newMainSrv(&v.conf, mockRunWorker2)
 
@@ -1261,6 +1265,7 @@ func TestRunFail2(t *testing.T) {
 			saveStdout := os.Stdout
 			r, w, _ := os.Pipe()
 			os.Stdout = w
+			initLog()
 
 			srv := newMainSrv(&v.conf, mockRunWorker)
 
@@ -1313,6 +1318,7 @@ func TestWaitError(t *testing.T) {
 			saveStdout := os.Stdout
 			r, w, _ := os.Pipe()
 			os.Stdout = w
+			initLog()
 
 			m := newMainSrv(&v.conf, failRunWorker)
 
@@ -1395,6 +1401,7 @@ func TestRunWorker(t *testing.T) {
 			saveStdout := os.Stdout
 			r, w, _ := os.Pipe()
 			os.Stdout = w
+			initLog()
 
 			// set serve func and runWorker func
 			v.conf.serve = serve
