@@ -5,7 +5,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"strings"
 )
@@ -58,9 +57,9 @@ func setNativeLocale() (ret string) {
 	ret = setlocale(LC_ALL, "")
 	if ret == "" { // cognizant of the locale environment variable
 		ctype := getCtype()
-		fmt.Fprintf(os.Stderr, "The locale requested by %s isn't available here.\n", ctype)
+		logW.Printf("The locale requested by %s isn't available here.\n", ctype)
 		if ctype.name != "" {
-			fmt.Fprintf(os.Stderr, "Running 'locale-gen %s' may be necessary.\n\n", ctype.value)
+			logW.Printf("Running 'locale-gen %s' may be necessary.\n", ctype.value)
 		}
 		// } else {
 		// 	fmt.Fprintf(os.Stderr, "#setNativeLocale setlocale return %q\n", setlocale(LC_ALL, ""))

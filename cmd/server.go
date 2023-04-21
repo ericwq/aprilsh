@@ -467,7 +467,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 
 	ptmx, pts, err := openPTS(windowSize)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "#runWorker openPTS fail: %s\n", err)
+		logW.Printf("#runWorker openPTS fail: %s\n", err)
 		whChan <- &workhorse{}
 		return err
 	}
@@ -478,7 +478,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	shell, err := startShell(pts, conf)
 	pts.Close() // it's copied by shell process, it's safe to close it here.
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "#runWorker startShell fail: %s\n", err)
+		logW.Printf("#runWorker startShell fail: %s\n", err)
 		whChan <- &workhorse{}
 	} else {
 		// add utmp entry
@@ -500,7 +500,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		// wait for the shell to finish.
 		// fmt.Printf("#runWorker shell.Wait() %p %v\n", shell, shell)
 		if state, err := shell.Wait(); err != nil || state.Exited() {
-			fmt.Fprintf(os.Stderr, "#runWorker shell.Wait fail: %s, state: %s\n", err, state)
+			logW.Printf("#runWorker shell.Wait fail: %s, state: %s\n", err, state)
 		}
 	}
 

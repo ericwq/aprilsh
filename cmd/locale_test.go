@@ -5,8 +5,10 @@
 package main
 
 import (
+	"log"
 	"os"
 	"runtime"
+	"strings"
 	"testing"
 )
 
@@ -65,10 +67,16 @@ func TestLocaleSetNativeLocale(t *testing.T) {
 		t.Errorf("#test expect UTF-8 locale, got %s\n", localeCharset())
 	}
 
+	// intercept log output
+	var b strings.Builder
+	logW.SetOutput(&b)
+
 	badLocale := "un_KN.ow"
 	os.Setenv("LC_ALL", badLocale)
 	ret := setNativeLocale()
 
+	// restore logW
+	logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 	// validate the error handling
 	if ret != "" {
 		t.Errorf("#test malformed locale expect %q got %q\n", badLocale, ret)

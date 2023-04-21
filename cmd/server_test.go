@@ -330,20 +330,6 @@ func TestParseFlagsUsage(t *testing.T) {
 }
 
 func TestMainRun(t *testing.T) {
-	testFunc := func() {
-		// prepare data
-		os.Args = []string{COMMAND_NAME, "-locale", "LC_ALL=en_US.UTF-8", "-p", "6100", "--", "/bin/sh", "-sh"}
-		// test
-		main()
-	}
-
-	// save the stderr and create replaced pipe
-	// rescueStderr := os.Stderr
-	// r, w, _ := os.Pipe()
-	// os.Stderr = w
-	// oldArgs := os.Args
-	// defer func() { os.Args = oldArgs }()
-
 	// shutdown after 50ms
 	time.AfterFunc(100*time.Millisecond, func() {
 		// fmt.Printf("#test main buildConfig PID:%d\n", os.Getpid())
@@ -351,26 +337,37 @@ func TestMainRun(t *testing.T) {
 		syscall.Kill(os.Getpid(), syscall.SIGTERM)
 	})
 
-	testFunc()
-	// TODO validate?
+	// intercept stderr
+	saveStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
 
-	// read and restore the stderr
-	// w.Close()
-	// out, _ := ioutil.ReadAll(r)
-	// os.Stderr = rescueStderr
+	// prepare data
+	os.Args = []string{COMMAND_NAME, "-locale", "LC_ALL=en_US.UTF-8", "-p", "6100", "--", "/bin/sh", "-sh"}
+	// test
+	main()
 
-	// validate result
-	// expect := []string{COMMAND_NAME, "needs a UTF-8 native locale to run."}
-	// result := string(out)
-	// found := 0
-	// for i := range expect {
-	// 	if strings.Contains(result, expect[i]) {
-	// 		found++
-	// 	}
-	// }
-	// if found != 0 {
-	// 	t.Errorf("#test buildConfig expect %q, got %q\n", expect, result)
-	// }
+	// restore stderr
+	w.Close()
+	out, _ := ioutil.ReadAll(r)
+	os.Stderr = saveStderr
+	r.Close()
+
+	// validate the result from printWelcome
+	expect := []string{
+		"aprilsh-server", "a MIT-stylelicense that can be found in the LICENSE file.",
+		"got message SIGHUP", "got message SIGTERM",
+	}
+	result := string(out)
+	found := 0
+	for i := range expect {
+		if strings.Contains(result, expect[i]) {
+			found++
+		}
+	}
+	if found != len(expect) {
+		t.Errorf("#test expect %q, got %q\n", expect, result)
+	}
 }
 
 func TestMainBuildConfigFail(t *testing.T) {
@@ -900,6 +897,11 @@ func TestStart(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
+			// intercept stderr
+			saveStderr := os.Stderr
+			r, w, _ := os.Pipe()
+			os.Stderr = w
+
 			srv := newMainSrv(&v.conf, mockRunWorker)
 
 			// send shutdown message after some time
@@ -915,14 +917,6 @@ func TestStart(t *testing.T) {
 				// do it on purpose.
 				srv.exChan <- fmt.Sprintf("%d", srv.nextWorkerPort)
 			}()
-			// fmt.Println("#test start timer for shutdown")
-
-			// intercept logW
-			var b strings.Builder
-			logW.SetOutput(&b)
-			defer func() {
-				logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-			}()
 
 			srv.start(&v.conf)
 
@@ -932,22 +926,13 @@ func TestStart(t *testing.T) {
 				t.Errorf("#test run expect %q got %q\n", v.resp, resp)
 			}
 
-			// fmt.Println("#test wait for finish.")
 			srv.wait()
 
-			// validate result: result contains expect string
-			// expect := []string{"SIGTERM", "SIGHUP"}
-			expect := []string{}
-			result := b.String()
-			found := 0
-			for i := range expect {
-				if strings.Contains(result, expect[i]) {
-					found++
-				}
-			}
-			if found != len(expect) {
-				t.Errorf("#test start() expect %q, got %q\n", expect, result)
-			}
+			// restore stderr
+			w.Close()
+			ioutil.ReadAll(r)
+			os.Stderr = saveStderr
+			r.Close()
 		})
 	}
 }
@@ -1184,6 +1169,11 @@ func TestRunFail(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
+			// intercept stderr
+			saveStderr := os.Stderr
+			r, w, _ := os.Pipe()
+			os.Stderr = w
+
 			srv := newMainSrv(&v.conf, mockRunWorker2)
 
 			// send shutdown message after some time
@@ -1211,10 +1201,17 @@ func TestRunFail(t *testing.T) {
 			}
 
 			srv.wait()
+
+			// restore stderr
+			w.Close()
+			ioutil.ReadAll(r)
+			os.Stderr = saveStderr
+			r.Close()
 		})
 	}
 
 	// test case for run() without connection
+
 	srv2 := &mainSrv{}
 	srv2.run(&Config{})
 }
@@ -1256,6 +1253,11 @@ func TestRunFail2(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
+			// intercept stderr
+			saveStderr := os.Stderr
+			r, w, _ := os.Pipe()
+			os.Stderr = w
+
 			srv := newMainSrv(&v.conf, mockRunWorker)
 
 			// send shutdown message after some time
@@ -1273,6 +1275,12 @@ func TestRunFail2(t *testing.T) {
 			srv.conn.Close()
 
 			srv.wait()
+
+			// restore stderr
+			w.Close()
+			ioutil.ReadAll(r)
+			os.Stderr = saveStderr
+			r.Close()
 		})
 	}
 }
@@ -1379,6 +1387,11 @@ func TestRunWorker(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
+			// intercept stderr
+			saveStderr := os.Stderr
+			r, w, _ := os.Pipe()
+			os.Stderr = w
+
 			// set serve func and runWorker func
 			v.conf.serve = serve
 			srv := newMainSrv(&v.conf, runWorker)
@@ -1410,6 +1423,12 @@ func TestRunWorker(t *testing.T) {
 			})
 
 			srv.wait()
+
+			// restore stderr
+			w.Close()
+			ioutil.ReadAll(r)
+			os.Stderr = saveStderr
+			r.Close()
 		})
 	}
 }
@@ -1487,6 +1506,10 @@ func TestRunWorkerFail(t *testing.T) {
 		t.Run(v.label, func(t *testing.T) {
 			var wg sync.WaitGroup
 
+			// intercept log output
+			var b strings.Builder
+			logW.SetOutput(&b)
+
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
@@ -1507,6 +1530,9 @@ func TestRunWorkerFail(t *testing.T) {
 			}
 
 			wg.Wait()
+
+			// restore logW
+			logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 		})
 	}
 }
@@ -1539,6 +1565,10 @@ func TestShellWaitFail(t *testing.T) {
 
 			var wg sync.WaitGroup
 
+			// intercept log output
+			var b strings.Builder
+			logW.SetOutput(&b)
+
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
@@ -1559,6 +1589,9 @@ func TestShellWaitFail(t *testing.T) {
 			}
 
 			wg.Wait()
+
+			// restore logW
+			logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 		})
 	}
 }
