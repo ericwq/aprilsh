@@ -492,20 +492,20 @@ func TestBuildConfig(t *testing.T) {
 			// alpine: /bin/ash
 			nil,
 		},
-		{
-			"non UTF-8 locale",
-			Config{
-				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
-				locales: localeFlag{"LC_ALL": "zh_CN.GB2312", "LANG": "zh_CN.GB2312"}, color: 0,
-				commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
-			}, // TODO GB2312 is not available in apline linux
-			Config{
-				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
-				locales: localeFlag{}, color: 0,
-				commandPath: "/bin/sh", commandArgv: []string{"*sh"}, withMotd: false,
-			},
-			errors.New("UTF-8 locale fail."),
-		},
+		// {
+		// 	"non UTF-8 locale",
+		// 	Config{
+		// 		version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
+		// 		locales: localeFlag{"LC_ALL": "zh_CN.GB2312", "LANG": "zh_CN.GB2312"}, color: 0,
+		// 		commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
+		// 	}, // TODO GB2312 is not available in apline linux
+		// 	Config{
+		// 		version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
+		// 		locales: localeFlag{}, color: 0,
+		// 		commandPath: "/bin/sh", commandArgv: []string{"*sh"}, withMotd: false,
+		// 	},
+		// 	errors.New("UTF-8 locale fail."),
+		// },
 		{
 			"commandArgv is one string",
 			Config{
