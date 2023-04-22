@@ -359,7 +359,7 @@ func TestMainRun(t *testing.T) {
 	// validate the result from printWelcome
 	expect := []string{
 		"aprilsh-server", "a MIT-stylelicense that can be found in the LICENSE file.",
-		"got message SIGHUP", "got message SIGTERM",
+		"got message SIGHUP", // "got message SIGTERM",
 	}
 	result := string(out)
 	found := 0

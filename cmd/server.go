@@ -76,8 +76,7 @@ func printUsage(w io.Writer, usage string) {
 
 // Print the motd from a given file, if available
 func printMotd(w io.Writer, filename string) bool {
-	logI.SetOutput(w)
-	// logI.Printf("#printMotd print %q\n", filename)
+	// fmt.Printf("#printMotd print %q\n", filename)
 	// https://zetcode.com/golang/readfile/
 
 	motd, err := os.Open(filename)
@@ -89,7 +88,7 @@ func printMotd(w io.Writer, filename string) bool {
 	// read line by line, print each line to writer
 	scanner := bufio.NewScanner(motd)
 	for scanner.Scan() {
-		logI.Printf("%s\n", scanner.Text())
+		fmt.Fprintf(w, "%s\n", scanner.Text())
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -556,22 +555,24 @@ func getTimeFrom(env string, def int64) (ret int64) {
 }
 
 func printWelcome(pid int, port int, tty *os.File) {
-	logI.Printf("%s build %s [pid=%d] listening on :%d\n", COMMAND_NAME, BuildVersion, pid, port)
+	logI.Printf("%s listening on :%d. build version %s [pid=%d] \n", COMMAND_NAME, port, BuildVersion, pid)
 	logI.Printf("Copyright 2022 wangqi.\n")
 	logI.Printf("%s%s", "Use of this source code is governed by a MIT-style",
 		"license that can be found in the LICENSE file.\n")
 	// logI.Printf("[%s detached, pid=%d]\n", COMMAND_NAME, pid)
 
-	inputUTF8, err := checkIUTF8(int(tty.Fd()))
-	if err != nil {
-		logW.Printf("Warning: %s\n", err)
-	}
+	if tty != nil {
+		inputUTF8, err := checkIUTF8(int(tty.Fd()))
+		if err != nil {
+			logW.Printf("Warning: %s\n", err)
+		}
 
-	if !inputUTF8 {
-		// Input is UTF-8 (since Linux 2.6.4)
-		logW.Printf("%s %s %s", "Warning: termios IUTF8 flag not defined.",
-			"Character-erase of multibyte character sequence",
-			"probably does not work properly on this platform.\n")
+		if !inputUTF8 {
+			// Input is UTF-8 (since Linux 2.6.4)
+			logW.Printf("%s %s %s", "Warning: termios IUTF8 flag not defined.",
+				"Character-erase of multibyte character sequence",
+				"probably does not work properly on this platform.\n")
+		}
 	}
 }
 
@@ -773,7 +774,7 @@ func (m *mainSrv) handler() {
 		case syscall.SIGHUP: // TODO:what we need to do?
 			logI.Println("got message SIGHUP.")
 		case syscall.SIGTERM:
-			logI.Println("got message SIGTERM.")
+			// logI.Println("got message SIGTERM.")
 			m.downChan <- true
 			return
 		}
@@ -805,13 +806,13 @@ func (m *mainSrv) run(conf *Config) {
 	defer func() {
 		m.conn.Close()
 		m.wg.Done()
-		logI.Println("stop listening.")
+		logI.Printf("%s stop listening on :%d.", COMMAND_NAME, m.port)
 	}()
 
 	buf := make([]byte, 128)
 	shutdown := false
 
-	printWelcome(os.Getpid(), m.port, os.Stdin)
+	printWelcome(os.Getpid(), m.port, nil)
 	for {
 		select {
 		case portStr := <-m.exChan: // some worker is done
