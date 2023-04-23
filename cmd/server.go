@@ -48,6 +48,9 @@ const (
 	COMMAND_NAME   = "aprilsh-server"
 	_PATH_BSHELL   = "/bin/sh"
 
+	_ASH_OPEN  = "open aprilsh:"
+	_ASH_CLOSE = "close aprilsh:"
+
 	VERBOSE_OPEN_PTS    = 99
 	VERBOSE_START_SHELL = 100
 )
@@ -459,10 +462,10 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		fmt.Printf("#runWorker %s CONNECT %s %s\n", COMMAND_NAME, network.Port(), network.GetKey())
 
 		send udp request and read reply
-		% echo "hello world" | nc localhost 8981 -u -w 1
+		% echo "open aprilsh:" | nc localhost 6000 -u -w 1
 
 		send udp request to remote host
-		% ssh ide@localhost  "echo 'open aprilsh' | nc localhost 8981 -u -w 1"
+		% ssh ide@localhost  "echo 'open aprilsh:' | nc localhost 6000 -u -w 1"
 	*/
 	exChan <- network.GetKey() // send the key to run()
 
@@ -824,6 +827,7 @@ func (m *mainSrv) run(conf *Config) {
 				break
 			}
 			// fmt.Printf("#run got workDone message from %s\n", portStr)
+			// clear worker list
 			delete(m.workers, p)
 		case sd := <-m.downChan: // ready to shutdown mainSrv
 			// fmt.Printf("#run got shutdown message %t\n", sd)
@@ -851,9 +855,9 @@ func (m *mainSrv) run(conf *Config) {
 		}
 		// fmt.Printf("#run receive %q from %s\n", strings.TrimSpace(string(buf[0:n])), addr)
 
-		// only response to request start with 'open aprilsh'
 		req := strings.TrimSpace(string(buf[0:n]))
-		if strings.HasPrefix(req, "open aprilsh") {
+		// 'open aprilsh:' to start the server
+		if strings.HasPrefix(req, _ASH_OPEN) {
 			// prepare next port
 			m.nextWorkerPort++
 
@@ -881,10 +885,35 @@ func (m *mainSrv) run(conf *Config) {
 			}
 
 			// response session key and udp port to client
-			resp := fmt.Sprintf("%d,%s", m.nextWorkerPort, key)
+			resp := fmt.Sprintf("%s%d,%s", _ASH_OPEN, m.nextWorkerPort, key)
 			m.conn.SetDeadline(time.Now().Add(time.Millisecond * 200))
 			m.conn.WriteToUDP([]byte(resp), addr)
-		} // TODO add 'close aprish:[port]' to close the server from client side
+		} else if strings.HasPrefix(req, _ASH_CLOSE) {
+			// 'close aprish:[port]' to stop the server
+			pstr := strings.TrimPrefix(req, _ASH_CLOSE)
+			port, err := strconv.Atoi(pstr)
+			if err == nil {
+
+				// find workhorse
+				wh := m.workers[port]
+
+				// kill the process, TODO SIGKILL or SIGTERM?
+				wh.shell.Kill()
+
+				// clear worker list
+				// delete(m.workers, port)
+				// TODO refer to TestRunWorker
+
+				// response session key and udp port to client
+				resp := fmt.Sprintf("%s%s", _ASH_CLOSE, "done")
+				m.conn.SetDeadline(time.Now().Add(time.Millisecond * 200))
+				m.conn.WriteToUDP([]byte(resp), addr)
+			} else {
+				logW.Printf("#mainSrv run() receive malform request:%q\n", req)
+			}
+		} else {
+			logW.Printf("#mainSrv run() ignore unknown request:%q\n", req)
+		}
 	}
 }
 

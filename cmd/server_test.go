@@ -892,7 +892,7 @@ func TestStart(t *testing.T) {
 		conf   Config
 	}{
 		{
-			"start normally", 20, "7101,This is the mock key", 50,
+			"start normally", 20, _ASH_OPEN + "7101,This is the mock key", 50,
 			Config{
 				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7100",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
@@ -1020,7 +1020,7 @@ func mockClient(port string, pause int) string {
 	defer conn.Close()
 
 	// send handshake message
-	txbuf := []byte("open aprilsh")
+	txbuf := []byte(_ASH_OPEN)
 	_, err := conn.Write(txbuf)
 	// fmt.Printf("#mockClient send %q to server: %v from %v\n", txbuf, server_addr, conn.LocalAddr())
 	if err != nil {
@@ -1170,7 +1170,7 @@ func TestRunFail(t *testing.T) {
 		conf   Config
 	}{
 		{
-			"worker finish with wrong port number", 20, "7101,mock key from mockRunWorker2", 30,
+			"worker finish with wrong port number", 20, _ASH_OPEN + "7101,mock key from mockRunWorker2", 30,
 			Config{
 				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7100",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
@@ -1391,7 +1391,7 @@ func TestRunWorker(t *testing.T) {
 		conf   Config
 	}{
 		{
-			"start normally", 20, "7101,", 50,
+			"start normally", 20, _ASH_OPEN + "7101,", 50,
 			Config{
 				version: false, server: true, verbose: 1, desiredIP: "", desiredPort: "7100",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
