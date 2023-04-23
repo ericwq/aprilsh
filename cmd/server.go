@@ -502,6 +502,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		// start the udp server, serve the udp request
 		go conf.serve(ptmx, terminal, network, networkTimeout, networkSignaledTimeout)
 		whChan <- &workhorse{shell, ptmx}
+		logI.Printf("#runWorker listening on :%s\n", conf.desiredPort)
 
 		// clear utmp entry
 		// utmp.Unput_utmp(utmpEntry)
@@ -511,6 +512,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		if state, err := shell.Wait(); err != nil || state.Exited() {
 			logW.Printf("#runWorker shell.Wait fail: %s, state: %s\n", err, state)
 		}
+		logI.Printf("#runWorker stop listening on :%s\n", conf.desiredPort)
 	}
 
 	// fmt.Printf("#runWorker [%s is exiting.]\n\n", COMMAND_NAME)
