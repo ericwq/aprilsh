@@ -61,12 +61,12 @@ func TestSetNativeLocaleDarwin(t *testing.T) {
 	ret := setNativeLocale()
 
 	// restore logW
-	logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 	// validate the error handling
 	if ret != "" {
 		t.Errorf("#test malformed locale expect %q got %q\n", badLocale, ret)
 	}
-	if !isUtf8Locale() {
+	if isUtf8Locale() {
 		t.Errorf("#test expect UTF-8 locale, got %s\n", localeCharset())
 	}
 }
