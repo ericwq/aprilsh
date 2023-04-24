@@ -844,7 +844,7 @@ func (m *mainSrv) run(conf *Config) {
 		n, addr, err := m.conn.ReadFromUDP(buf)
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
-				// fmt.Printf("#run read time out, workers=%d, shutdown=%t, err=%s\n", len(m.workers), shutdown, err)
+				fmt.Printf("#run read time out, workers=%d, shutdown=%t, err=%s\n", len(m.workers), shutdown, err)
 				continue
 			} else {
 				// take a break in case reading error
@@ -879,7 +879,7 @@ func (m *mainSrv) run(conf *Config) {
 
 			// blocking read the workhorse from runWorker
 			wh := <-m.whChan
-			// fmt.Printf("#run got workhorse %p %v\n", wh.shell, wh.shell)
+			logI.Printf("#run got workhorse %p %v\n", wh.shell, wh.shell)
 			if wh.shell != nil {
 				m.workers[m.nextWorkerPort] = wh
 			}
@@ -889,25 +889,30 @@ func (m *mainSrv) run(conf *Config) {
 			m.conn.SetDeadline(time.Now().Add(time.Millisecond * 200))
 			m.conn.WriteToUDP([]byte(resp), addr)
 		} else if strings.HasPrefix(req, _ASH_CLOSE) {
+			fmt.Printf("#mainSrv run() receive request :%q\n", req)
 			// 'close aprish:[port]' to stop the server
 			pstr := strings.TrimPrefix(req, _ASH_CLOSE)
 			port, err := strconv.Atoi(pstr)
 			if err == nil {
 
+				fmt.Printf("#run got request to stop %d\n", port)
 				// find workhorse
-				wh := m.workers[port]
+				if wh, ok := m.workers[port]; ok {
+					// kill the process, TODO SIGKILL or SIGTERM?
+					wh.shell.Kill()
 
-				// kill the process, TODO SIGKILL or SIGTERM?
-				wh.shell.Kill()
+					// clear worker list
+					// delete(m.workers, port)
+					// TODO refer to TestRunWorker
 
-				// clear worker list
-				// delete(m.workers, port)
-				// TODO refer to TestRunWorker
-
-				// response session key and udp port to client
-				resp := fmt.Sprintf("%s%s", _ASH_CLOSE, "done")
-				m.conn.SetDeadline(time.Now().Add(time.Millisecond * 200))
-				m.conn.WriteToUDP([]byte(resp), addr)
+					// response session key and udp port to client
+					resp := fmt.Sprintf("%s%s", _ASH_CLOSE, "done")
+					m.conn.SetDeadline(time.Now().Add(time.Millisecond * 200))
+					m.conn.WriteToUDP([]byte(resp), addr)
+					fmt.Printf("#mainSrv run() send %q to client\n", resp)
+				} else {
+					logW.Printf("#mainSrv run() request port:%d is not on the list\n", port)
+				}
 			} else {
 				logW.Printf("#mainSrv run() receive malform request:%q\n", req)
 			}

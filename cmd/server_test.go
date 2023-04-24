@@ -928,7 +928,7 @@ func TestStart(t *testing.T) {
 			srv.start(&v.conf)
 
 			// mock client operation
-			resp := mockClient(v.conf.desiredPort, v.pause)
+			resp := mockClient(v.conf.desiredPort, v.pause, _ASH_OPEN)
 			if resp != v.resp {
 				t.Errorf("#test run expect %q got %q\n", v.resp, resp)
 			}
@@ -1012,17 +1012,25 @@ func mockRunWorker(conf *Config, exChan chan string, whChan chan *workhorse) err
 
 // mock client connect to the port, send handshake message, pause some time
 // return the response message.
-func mockClient(port string, pause int) string {
+func mockClient(port string, pause int, action string) string {
 	server_addr, _ := net.ResolveUDPAddr("udp", "localhost:"+port)
 	local_addr, _ := net.ResolveUDPAddr("udp", "localhost:0")
 	conn, _ := net.DialUDP("udp", local_addr, server_addr)
 
 	defer conn.Close()
 
-	// send handshake message
-	txbuf := []byte(_ASH_OPEN)
+	// send handshake message based on action & port
+	var txbuf []byte
+	switch action {
+	case _ASH_OPEN:
+		txbuf = []byte(_ASH_OPEN)
+	case _ASH_CLOSE:
+		p, _ := strconv.Atoi(port)
+		txbuf = []byte(fmt.Sprintf("%s%d", _ASH_CLOSE, p+1))
+	}
+
 	_, err := conn.Write(txbuf)
-	// fmt.Printf("#mockClient send %q to server: %v from %v\n", txbuf, server_addr, conn.LocalAddr())
+	fmt.Printf("#mockClient send %q to server: %v from %v\n", txbuf, server_addr, conn.LocalAddr())
 	if err != nil {
 		fmt.Printf("#mockClient send %s, error %s\n", string(txbuf), err)
 	}
@@ -1206,7 +1214,7 @@ func TestRunFail(t *testing.T) {
 			srv.start(&v.conf)
 
 			// mock client operation
-			resp := mockClient(v.conf.desiredPort, v.pause)
+			resp := mockClient(v.conf.desiredPort, v.pause, _ASH_OPEN)
 
 			// validate the result.
 			if resp != v.resp {
@@ -1338,7 +1346,7 @@ func TestWaitError(t *testing.T) {
 			m.start(&v.conf)
 
 			// mock client operation
-			mockClient(v.conf.desiredPort, v.pause)
+			mockClient(v.conf.desiredPort, v.pause, _ASH_OPEN)
 
 			m.wait()
 
@@ -1426,7 +1434,7 @@ func TestRunWorker(t *testing.T) {
 			srv.start(&v.conf)
 
 			// mock client operation
-			resp := mockClient(v.conf.desiredPort, v.pause)
+			resp := mockClient(v.conf.desiredPort, v.pause, _ASH_OPEN)
 			if !strings.HasPrefix(resp, v.resp) {
 				t.Errorf("#test run expect %q got %q\n", v.resp, resp)
 			}
@@ -1445,6 +1453,77 @@ func TestRunWorker(t *testing.T) {
 			ioutil.ReadAll(r)
 			os.Stdout = saveStdout
 			r.Close()
+		})
+	}
+}
+
+func TestRunWorkerStartStop(t *testing.T) {
+	tc := []struct {
+		label  string
+		pause  int    // pause between client send and read
+		resp1  string // response of start action
+		resp2  string // response of stop action
+		finish int    // pause before shutdown message
+		conf   Config
+	}{
+		{
+			"start normally", 20, _ASH_OPEN + "7101,", _ASH_CLOSE + "done", 50,
+			Config{
+				version: false, server: true, verbose: 1, desiredIP: "", desiredPort: "7100",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
+				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
+			},
+		},
+	}
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			// intercept stdout
+			// saveStdout := os.Stdout
+			// r, w, _ := os.Pipe()
+			// os.Stdout = w
+			// initLog()
+
+			// set serve func and runWorker func
+			v.conf.serve = serve
+			srv := newMainSrv(&v.conf, runWorker)
+
+			/// set commandPath and commandArgv based on environment
+			v.conf.commandPath = os.Getenv("SHELL")
+			v.conf.commandArgv = []string{getShellNameFrom(v.conf.commandPath)}
+
+			// send shutdown message after some time (finish ms)
+			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
+			go func() {
+				<-timer1.C
+				srv.downChan <- true
+			}()
+
+			srv.start(&v.conf)
+
+			// start a new connection
+			resp1 := mockClient(v.conf.desiredPort, v.pause, _ASH_OPEN)
+			if !strings.HasPrefix(resp1, v.resp1) {
+				t.Errorf("#test run expect %q got %q\n", v.resp1, resp1)
+			}
+			fmt.Printf("#test got start response %s\n", resp1)
+
+			time.Sleep(100 * time.Millisecond)
+
+			// stop the new connection
+			resp2 := mockClient(v.conf.desiredPort, v.pause, _ASH_CLOSE)
+			if !strings.HasPrefix(resp2, v.resp2) {
+				t.Errorf("#test run expect %q got %q\n", v.resp1, resp2)
+			}
+
+			fmt.Printf("#test got start response %s\n", resp2)
+			srv.wait()
+
+			// restore stdout
+			// w.Close()
+			// ioutil.ReadAll(r)
+			// os.Stdout = saveStdout
+			// r.Close()
 		})
 	}
 }
