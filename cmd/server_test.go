@@ -1012,7 +1012,7 @@ func mockRunWorker(conf *Config, exChan chan string, whChan chan *workhorse) err
 
 // mock client connect to the port, send handshake message, pause some time
 // return the response message.
-func mockClient(port string, pause int, action string) string {
+func mockClient(port string, pause int, action string, ex ...string) string {
 	server_addr, _ := net.ResolveUDPAddr("udp", "localhost:"+port)
 	local_addr, _ := net.ResolveUDPAddr("udp", "localhost:0")
 	conn, _ := net.DialUDP("udp", local_addr, server_addr)
@@ -1026,7 +1026,18 @@ func mockClient(port string, pause int, action string) string {
 		txbuf = []byte(_ASH_OPEN)
 	case _ASH_CLOSE:
 		p, _ := strconv.Atoi(port)
-		txbuf = []byte(fmt.Sprintf("%s%d", _ASH_CLOSE, p+1))
+		if len(ex) == 0 {
+			txbuf = []byte(fmt.Sprintf("%s%d", _ASH_CLOSE, p+1))
+		} else if len(ex) == 2 {
+			txbuf = []byte(fmt.Sprintf("%s%d", "unknow", p+1)) // 2 parameters: unknow header
+		} else if len(ex) == 1 {
+			p2, err := strconv.Atoi(ex[0])
+			if err == nil {
+				txbuf = []byte(fmt.Sprintf("%s%d", _ASH_CLOSE, p2)) // 1 digital parameter: wrong port
+			} else {
+				txbuf = []byte(fmt.Sprintf("%s%s", _ASH_CLOSE, ex[0])) // 1 str parameter: malform port
+			}
+		}
 	}
 
 	_, err := conn.Write(txbuf)
@@ -1457,19 +1468,32 @@ func TestRunWorkerKill(t *testing.T) {
 	}
 }
 
-func TestRunWorkerStartStop(t *testing.T) {
+func TestRunWorkerStop(t *testing.T) {
 	tc := []struct {
 		label  string
-		pause  int    // pause between client send and read
-		resp1  string // response of start action
-		resp2  string // response of stop action
-		finish int    // pause before shutdown message
+		pause  int      // pause between client send and read
+		resp1  string   // response of start action
+		resp2  string   // response of stop action
+		exp    []string // ex parameter
+		finish int      // pause before shutdown message
 		conf   Config
 	}{
 		{
-			"runWorker stopped by " + _ASH_CLOSE, 20, _ASH_OPEN + "7101,", _ASH_CLOSE + "done", 50,
+			"runWorker stopped by " + _ASH_CLOSE, 20, _ASH_OPEN + "7101,", _ASH_CLOSE + "done",
+			[]string{},
+			50,
 			Config{
 				version: false, server: true, verbose: 1, desiredIP: "", desiredPort: "7100",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
+				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
+			},
+		},
+		{
+			"runWorker stop port not exist ", 20, _ASH_OPEN + "7121,", _ASH_CLOSE + "port not exist",
+			[]string{"6500"},
+			50,
+			Config{
+				version: false, server: true, verbose: 1, desiredIP: "", desiredPort: "7120",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
@@ -1479,10 +1503,10 @@ func TestRunWorkerStartStop(t *testing.T) {
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			// intercept stdout
-			saveStdout := os.Stdout
-			r, w, _ := os.Pipe()
-			os.Stdout = w
-			initLog()
+			// saveStdout := os.Stdout
+			// r, w, _ := os.Pipe()
+			// os.Stdout = w
+			// initLog()
 
 			// set serve func and runWorker func
 			v.conf.serve = serve
@@ -1511,19 +1535,28 @@ func TestRunWorkerStartStop(t *testing.T) {
 			time.Sleep(30 * time.Millisecond)
 
 			// stop the new connection
-			resp2 := mockClient(v.conf.desiredPort, v.pause, _ASH_CLOSE)
+			resp2 := mockClient(v.conf.desiredPort, v.pause, _ASH_CLOSE, v.exp...)
 			if !strings.HasPrefix(resp2, v.resp2) {
 				t.Errorf("#test run expect %q got %q\n", v.resp1, resp2)
+			}
+
+			// stop the connection
+			if len(v.exp) > 0 {
+				expect := _ASH_CLOSE + "done"
+				resp2 := mockClient(v.conf.desiredPort, v.pause, _ASH_CLOSE)
+				if !strings.HasPrefix(resp2, expect) {
+					t.Errorf("#test run stop the connection expect %q got %q\n", v.resp1, resp2)
+				}
 			}
 
 			// fmt.Printf("#test got stop response %s\n", resp2)
 			srv.wait()
 
 			// restore stdout
-			w.Close()
-			ioutil.ReadAll(r)
-			os.Stdout = saveStdout
-			r.Close()
+			// w.Close()
+			// ioutil.ReadAll(r)
+			// os.Stdout = saveStdout
+			// r.Close()
 		})
 	}
 }

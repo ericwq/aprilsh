@@ -894,7 +894,6 @@ func (m *mainSrv) run(conf *Config) {
 			pstr := strings.TrimPrefix(req, _ASH_CLOSE)
 			port, err := strconv.Atoi(pstr)
 			if err == nil {
-
 				// fmt.Printf("#run got request to stop %d\n", port)
 				// find workhorse
 				if wh, ok := m.workers[port]; ok {
@@ -911,9 +910,17 @@ func (m *mainSrv) run(conf *Config) {
 					m.conn.WriteToUDP([]byte(resp), addr)
 					// fmt.Printf("#mainSrv run() send %q to client\n", resp)
 				} else {
-					logW.Printf("#mainSrv run() request port:%d is not on the list\n", port)
+					msg := "port not exist."
+					resp := fmt.Sprintf("%s%s", _ASH_CLOSE, msg)
+					m.conn.SetDeadline(time.Now().Add(time.Millisecond * 200))
+					m.conn.WriteToUDP([]byte(resp), addr)
+					logW.Printf("#mainSrv run() request %q got %q\n", req, resp)
 				}
 			} else {
+				msg := "wrong port number."
+				resp := fmt.Sprintf("%s%s", _ASH_CLOSE, msg)
+				m.conn.SetDeadline(time.Now().Add(time.Millisecond * 200))
+				m.conn.WriteToUDP([]byte(resp), addr)
 				logW.Printf("#mainSrv run() receive malform request:%q\n", req)
 			}
 		} else {
