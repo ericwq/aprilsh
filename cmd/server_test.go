@@ -1029,7 +1029,7 @@ func mockClient(port string, pause int, action string, ex ...string) string {
 		if len(ex) == 0 {
 			txbuf = []byte(fmt.Sprintf("%s%d", _ASH_CLOSE, p+1))
 		} else if len(ex) == 2 {
-			txbuf = []byte(fmt.Sprintf("%s%d", "unknow", p+1)) // 2 parameters: unknow header
+			txbuf = []byte(fmt.Sprintf("%s%d", "unknow header:", p+1)) // 2 parameters: unknow header
 		} else if len(ex) == 1 {
 			p2, err := strconv.Atoi(ex[0])
 			if err == nil {
@@ -1489,11 +1489,31 @@ func TestRunWorkerStop(t *testing.T) {
 			},
 		},
 		{
-			"runWorker stop port not exist ", 20, _ASH_OPEN + "7121,", _ASH_CLOSE + "port not exist",
-			[]string{"6500"},
+			"runWorker stop port not exist", 20, _ASH_OPEN + "7121,", _ASH_CLOSE + "port not exist",
+			[]string{"7100"},
 			50,
 			Config{
 				version: false, server: true, verbose: 1, desiredIP: "", desiredPort: "7120",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
+				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
+			},
+		},
+		{
+			"runWorker stop wrong port number", 20, _ASH_OPEN + "7131,", _ASH_CLOSE + "wrong port number",
+			[]string{"7121x"},
+			50,
+			Config{
+				version: false, server: true, verbose: 1, desiredIP: "", desiredPort: "7130",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
+				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
+			},
+		},
+		{
+			"runWorker stop unknow request", 20, _ASH_OPEN + "7141,", _ASH_CLOSE + "unknow request",
+			[]string{"two", "params"},
+			50,
+			Config{
+				version: false, server: true, verbose: 1, desiredIP: "", desiredPort: "7140",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
@@ -1503,10 +1523,10 @@ func TestRunWorkerStop(t *testing.T) {
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			// intercept stdout
-			// saveStdout := os.Stdout
-			// r, w, _ := os.Pipe()
-			// os.Stdout = w
-			// initLog()
+			saveStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+			initLog()
 
 			// set serve func and runWorker func
 			v.conf.serve = serve
@@ -1553,10 +1573,10 @@ func TestRunWorkerStop(t *testing.T) {
 			srv.wait()
 
 			// restore stdout
-			// w.Close()
-			// ioutil.ReadAll(r)
-			// os.Stdout = saveStdout
-			// r.Close()
+			w.Close()
+			ioutil.ReadAll(r)
+			os.Stdout = saveStdout
+			r.Close()
 		})
 	}
 }

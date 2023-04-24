@@ -900,33 +900,28 @@ func (m *mainSrv) run(conf *Config) {
 					// kill the process, TODO SIGKILL or SIGTERM?
 					wh.shell.Kill()
 
-					// clear worker list
-					// delete(m.workers, port)
-					// TODO refer to TestRunWorker
-
-					// response session key and udp port to client
-					resp := fmt.Sprintf("%s%s", _ASH_CLOSE, "done")
-					m.conn.SetDeadline(time.Now().Add(time.Millisecond * 200))
-					m.conn.WriteToUDP([]byte(resp), addr)
+					m.writeRespTo(addr, "done")
 					// fmt.Printf("#mainSrv run() send %q to client\n", resp)
 				} else {
-					msg := "port not exist."
-					resp := fmt.Sprintf("%s%s", _ASH_CLOSE, msg)
-					m.conn.SetDeadline(time.Now().Add(time.Millisecond * 200))
-					m.conn.WriteToUDP([]byte(resp), addr)
+					resp := m.writeRespTo(addr, "port not exist")
 					logW.Printf("#mainSrv run() request %q got %q\n", req, resp)
 				}
 			} else {
-				msg := "wrong port number."
-				resp := fmt.Sprintf("%s%s", _ASH_CLOSE, msg)
-				m.conn.SetDeadline(time.Now().Add(time.Millisecond * 200))
-				m.conn.WriteToUDP([]byte(resp), addr)
-				logW.Printf("#mainSrv run() receive malform request:%q\n", req)
+				resp := m.writeRespTo(addr, "wrong port number")
+				logW.Printf("#mainSrv run() request %q got %q\n", req, resp)
 			}
 		} else {
-			logW.Printf("#mainSrv run() ignore unknown request:%q\n", req)
+			resp := m.writeRespTo(addr, "unknow request")
+			logW.Printf("#mainSrv run() request %q got %q\n", req, resp)
 		}
 	}
+}
+
+func (m *mainSrv) writeRespTo(addr *net.UDPAddr, msg string) (resp string) {
+	resp = fmt.Sprintf("%s%s", _ASH_CLOSE, msg)
+	m.conn.SetDeadline(time.Now().Add(time.Millisecond * 200))
+	m.conn.WriteToUDP([]byte(resp), addr)
+	return
 }
 
 func (m *mainSrv) wait() {
