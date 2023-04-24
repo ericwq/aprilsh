@@ -409,7 +409,7 @@ func (lv *localeFlag) IsBoolFlag() bool {
 	return false
 }
 
-// worker started by mainSrv.run(). it will listen on specified port and
+// worker started by mainSrv.run(). worker will listen on specified port and
 // forward user input to shell (started by runWorker. the output is forward
 // to the network.
 func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err error) {
@@ -455,21 +455,10 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		}
 	*/
 
-	/*
-		in aprilsh: we can use nc client to get the key and send it back to client.
-		we don't print it to the stdout as mosh did.
-
-		fmt.Printf("#runWorker %s CONNECT %s %s\n", COMMAND_NAME, network.Port(), network.GetKey())
-
-		send udp request and read reply
-		% echo "open aprilsh:" | nc localhost 6000 -u -w 1
-
-		send udp request to remote host
-		% ssh ide@localhost  "echo 'open aprilsh:' | nc localhost 6000 -u -w 1"
-	*/
 	exChan <- network.GetKey() // send the key to run()
 
 	// in mosh: the parent print this to stderr.
+	// fmt.Printf("#runWorker %s CONNECT %s %s\n", COMMAND_NAME, network.Port(), network.GetKey())
 	// printWelcome(os.Stdout, os.Getpid(), os.Stdin)
 
 	// prepare for openPTS fail
@@ -803,6 +792,16 @@ func (m *mainSrv) listen(conf *Config) error {
 	return nil
 }
 
+/*
+in aprilsh: we can use nc client to get the key and send it back to client.
+we don't print it to the stdout as mosh did.
+
+send udp request and read reply
+% echo "open aprilsh:" | nc localhost 6000 -u -w 1
+
+send udp request to remote host
+% ssh ide@localhost  "echo 'open aprilsh:' | nc localhost 6000 -u -w 1"
+*/
 func (m *mainSrv) run(conf *Config) {
 	if m.conn == nil {
 		return
@@ -885,9 +884,8 @@ func (m *mainSrv) run(conf *Config) {
 			}
 
 			// response session key and udp port to client
-			resp := fmt.Sprintf("%s%d,%s", _ASH_OPEN, m.nextWorkerPort, key)
-			m.conn.SetDeadline(time.Now().Add(time.Millisecond * 200))
-			m.conn.WriteToUDP([]byte(resp), addr)
+			msg := fmt.Sprintf("%d,%s", m.nextWorkerPort, key)
+			m.writeRespTo(addr, _ASH_OPEN, msg)
 		} else if strings.HasPrefix(req, _ASH_CLOSE) {
 			// fmt.Printf("#mainSrv run() receive request %q\n", req)
 			// 'close aprish:[port]' to stop the server
@@ -900,25 +898,26 @@ func (m *mainSrv) run(conf *Config) {
 					// kill the process, TODO SIGKILL or SIGTERM?
 					wh.shell.Kill()
 
-					m.writeRespTo(addr, "done")
+					m.writeRespTo(addr, _ASH_CLOSE, "done")
 					// fmt.Printf("#mainSrv run() send %q to client\n", resp)
 				} else {
-					resp := m.writeRespTo(addr, "port not exist")
+					resp := m.writeRespTo(addr, _ASH_CLOSE, "port not exist")
 					logW.Printf("#mainSrv run() request %q got %q\n", req, resp)
 				}
 			} else {
-				resp := m.writeRespTo(addr, "wrong port number")
+				resp := m.writeRespTo(addr, _ASH_CLOSE, "wrong port number")
 				logW.Printf("#mainSrv run() request %q got %q\n", req, resp)
 			}
 		} else {
-			resp := m.writeRespTo(addr, "unknow request")
+			resp := m.writeRespTo(addr, _ASH_CLOSE, "unknow request")
 			logW.Printf("#mainSrv run() request %q got %q\n", req, resp)
 		}
 	}
 }
 
-func (m *mainSrv) writeRespTo(addr *net.UDPAddr, msg string) (resp string) {
-	resp = fmt.Sprintf("%s%s", _ASH_CLOSE, msg)
+// write header and message to addr
+func (m *mainSrv) writeRespTo(addr *net.UDPAddr, header, msg string) (resp string) {
+	resp = fmt.Sprintf("%s%s", header, msg)
 	m.conn.SetDeadline(time.Now().Add(time.Millisecond * 200))
 	m.conn.WriteToUDP([]byte(resp), addr)
 	return
