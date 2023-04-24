@@ -1030,7 +1030,7 @@ func mockClient(port string, pause int, action string) string {
 	}
 
 	_, err := conn.Write(txbuf)
-	fmt.Printf("#mockClient send %q to server: %v from %v\n", txbuf, server_addr, conn.LocalAddr())
+	// fmt.Printf("#mockClient send %q to server: %v from %v\n", txbuf, server_addr, conn.LocalAddr())
 	if err != nil {
 		fmt.Printf("#mockClient send %s, error %s\n", string(txbuf), err)
 	}
@@ -1390,7 +1390,7 @@ func failRunWorker(conf *Config, exChan chan string, whChan chan *workhorse) err
 	return errors.New("failed worker.")
 }
 
-func TestRunWorker(t *testing.T) {
+func TestRunWorkerKill(t *testing.T) {
 	tc := []struct {
 		label  string
 		pause  int    // pause between client send and read
@@ -1399,7 +1399,7 @@ func TestRunWorker(t *testing.T) {
 		conf   Config
 	}{
 		{
-			"start normally", 20, _ASH_OPEN + "7101,", 50,
+			"runWorker stopped by signal kill", 20, _ASH_OPEN + "7101,", 50,
 			Config{
 				version: false, server: true, verbose: 1, desiredIP: "", desiredPort: "7100",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
@@ -1467,7 +1467,7 @@ func TestRunWorkerStartStop(t *testing.T) {
 		conf   Config
 	}{
 		{
-			"start normally", 20, _ASH_OPEN + "7101,", _ASH_CLOSE + "done", 50,
+			"runWorker stopped by " + _ASH_CLOSE, 20, _ASH_OPEN + "7101,", _ASH_CLOSE + "done", 50,
 			Config{
 				version: false, server: true, verbose: 1, desiredIP: "", desiredPort: "7100",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
@@ -1479,10 +1479,10 @@ func TestRunWorkerStartStop(t *testing.T) {
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			// intercept stdout
-			// saveStdout := os.Stdout
-			// r, w, _ := os.Pipe()
-			// os.Stdout = w
-			// initLog()
+			saveStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+			initLog()
 
 			// set serve func and runWorker func
 			v.conf.serve = serve
@@ -1506,9 +1506,9 @@ func TestRunWorkerStartStop(t *testing.T) {
 			if !strings.HasPrefix(resp1, v.resp1) {
 				t.Errorf("#test run expect %q got %q\n", v.resp1, resp1)
 			}
-			fmt.Printf("#test got start response %s\n", resp1)
+			// fmt.Printf("#test got start response %s\n", resp1)
 
-			time.Sleep(100 * time.Millisecond)
+			time.Sleep(30 * time.Millisecond)
 
 			// stop the new connection
 			resp2 := mockClient(v.conf.desiredPort, v.pause, _ASH_CLOSE)
@@ -1516,14 +1516,14 @@ func TestRunWorkerStartStop(t *testing.T) {
 				t.Errorf("#test run expect %q got %q\n", v.resp1, resp2)
 			}
 
-			fmt.Printf("#test got start response %s\n", resp2)
+			// fmt.Printf("#test got stop response %s\n", resp2)
 			srv.wait()
 
 			// restore stdout
-			// w.Close()
-			// ioutil.ReadAll(r)
-			// os.Stdout = saveStdout
-			// r.Close()
+			w.Close()
+			ioutil.ReadAll(r)
+			os.Stdout = saveStdout
+			r.Close()
 		})
 	}
 }

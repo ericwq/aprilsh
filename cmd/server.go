@@ -505,7 +505,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		// start the udp server, serve the udp request
 		go conf.serve(ptmx, terminal, network, networkTimeout, networkSignaledTimeout)
 		whChan <- &workhorse{shell, ptmx}
-		logI.Printf("#runWorker listening on :%s\n", conf.desiredPort)
+		logI.Printf("#runWorker start listening on :%s\n", conf.desiredPort)
 
 		// clear utmp entry
 		// utmp.Unput_utmp(utmpEntry)
@@ -560,7 +560,7 @@ func getTimeFrom(env string, def int64) (ret int64) {
 }
 
 func printWelcome(pid int, port int, tty *os.File) {
-	logI.Printf("%s listening on :%d. build version %s [pid=%d] \n", COMMAND_NAME, port, BuildVersion, pid)
+	logI.Printf("%s start listening on :%d. build version %s [pid=%d] \n", COMMAND_NAME, port, BuildVersion, pid)
 	logI.Printf("Copyright 2022 wangqi.\n")
 	logI.Printf("%s%s", "Use of this source code is governed by a MIT-style",
 		"license that can be found in the LICENSE file.\n")
@@ -844,7 +844,7 @@ func (m *mainSrv) run(conf *Config) {
 		n, addr, err := m.conn.ReadFromUDP(buf)
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
-				fmt.Printf("#run read time out, workers=%d, shutdown=%t, err=%s\n", len(m.workers), shutdown, err)
+				// fmt.Printf("#run read time out, workers=%d, shutdown=%t, err=%s\n", len(m.workers), shutdown, err)
 				continue
 			} else {
 				// take a break in case reading error
@@ -879,7 +879,7 @@ func (m *mainSrv) run(conf *Config) {
 
 			// blocking read the workhorse from runWorker
 			wh := <-m.whChan
-			logI.Printf("#run got workhorse %p %v\n", wh.shell, wh.shell)
+			// logI.Printf("#run got workhorse %p %v\n", wh.shell, wh.shell)
 			if wh.shell != nil {
 				m.workers[m.nextWorkerPort] = wh
 			}
@@ -889,13 +889,13 @@ func (m *mainSrv) run(conf *Config) {
 			m.conn.SetDeadline(time.Now().Add(time.Millisecond * 200))
 			m.conn.WriteToUDP([]byte(resp), addr)
 		} else if strings.HasPrefix(req, _ASH_CLOSE) {
-			fmt.Printf("#mainSrv run() receive request :%q\n", req)
+			// fmt.Printf("#mainSrv run() receive request %q\n", req)
 			// 'close aprish:[port]' to stop the server
 			pstr := strings.TrimPrefix(req, _ASH_CLOSE)
 			port, err := strconv.Atoi(pstr)
 			if err == nil {
 
-				fmt.Printf("#run got request to stop %d\n", port)
+				// fmt.Printf("#run got request to stop %d\n", port)
 				// find workhorse
 				if wh, ok := m.workers[port]; ok {
 					// kill the process, TODO SIGKILL or SIGTERM?
@@ -909,7 +909,7 @@ func (m *mainSrv) run(conf *Config) {
 					resp := fmt.Sprintf("%s%s", _ASH_CLOSE, "done")
 					m.conn.SetDeadline(time.Now().Add(time.Millisecond * 200))
 					m.conn.WriteToUDP([]byte(resp), addr)
-					fmt.Printf("#mainSrv run() send %q to client\n", resp)
+					// fmt.Printf("#mainSrv run() send %q to client\n", resp)
 				} else {
 					logW.Printf("#mainSrv run() request port:%d is not on the list\n", port)
 				}
