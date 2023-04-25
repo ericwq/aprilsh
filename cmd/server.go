@@ -64,16 +64,13 @@ func initLog() {
 	logI = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
-func printVersion(w io.Writer) {
-	logI.SetOutput(w)
-
+func printVersion() {
 	logI.Printf("%s (%s) [build %s]\n", COMMAND_NAME, PACKAGE_STRING, BuildVersion)
 	logI.Printf("Copyright (c) 2022~2023 wangqi ericwq057[AT]qq[dot]com\n")
 	logI.Printf("reborn mosh with aprilsh\n")
 }
 
-func printUsage(w io.Writer, usage string) {
-	logI.SetOutput(w)
+func printUsage(usage string) {
 	logI.Printf("%s", usage)
 }
 
@@ -259,7 +256,7 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 func main() {
 	conf, output, err := parseFlags(os.Args[0], os.Args[1:])
 	if err == flag.ErrHelp {
-		printUsage(os.Stdout, usage)
+		printUsage(usage)
 		return
 	} else if err != nil {
 		logW.Printf("#main parseFlags failed: %s\n", output)
@@ -267,7 +264,7 @@ func main() {
 	}
 
 	if conf.version {
-		printVersion(os.Stdout)
+		printVersion()
 		return
 	}
 	if conf.server {

@@ -72,13 +72,24 @@ func TestPrintMotd(t *testing.T) {
 }
 
 func TestPrintVersion(t *testing.T) {
-	var b strings.Builder
+	// intercept stdout
+	saveStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	initLog()
+
 	expect := []string{COMMAND_NAME, "build", "wangqi ericwq057[AT]qq[dot]com"}
 
-	printVersion(&b)
+	printVersion()
+
+	// restore stdout
+	w.Close()
+	b, _ := ioutil.ReadAll(r)
+	os.Stdout = saveStdout
+	r.Close()
 
 	// validate the result
-	result := b.String()
+	result := string(b)
 	found := 0
 	for i := range expect {
 		if strings.Contains(result, expect[i]) {
@@ -91,16 +102,28 @@ func TestPrintVersion(t *testing.T) {
 }
 
 func TestPrintUsage(t *testing.T) {
-	var b strings.Builder
+	// intercept stdout
+	saveStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	initLog()
+
+	// var b strings.Builder
 	expect := []string{
 		"Usage:", COMMAND_NAME,
 		"[--server] [--verbose] [--ip ADDR] [--port PORT[:PORT2]] [--color COLORS] [--locale NAME=VALUE] [-- command...]",
 	}
 
-	printUsage(&b, usage)
+	printUsage(usage)
+
+	// restore stdout
+	w.Close()
+	b, _ := ioutil.ReadAll(r)
+	os.Stdout = saveStdout
+	r.Close()
 
 	// validate the result
-	result := b.String()
+	result := string(b)
 	found := 0
 	for i := range expect {
 		if strings.Contains(result, expect[i]) {
@@ -266,14 +289,22 @@ func captureStdoutRun(f func()) []byte {
 }
 
 func TestMainVersion(t *testing.T) {
-	testVersionFunc := func() {
-		// prepare data
-		os.Args = []string{COMMAND_NAME, "--version"}
-		// test
-		main()
-	}
+	// intercept stdout
+	saveStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+	initLog()
 
-	out := captureStdoutRun(testVersionFunc)
+	// prepare data
+	os.Args = []string{COMMAND_NAME, "--version"}
+	// test
+	main()
+
+	// restore stdout
+	w.Close()
+	out, _ := ioutil.ReadAll(r)
+	os.Stdout = saveStdout
+	r.Close()
 
 	// validate result
 	expect := []string{COMMAND_NAME, "build", "wangqi ericwq057[AT]qq[dot]com"}
