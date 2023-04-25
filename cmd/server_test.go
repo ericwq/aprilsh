@@ -923,7 +923,7 @@ func TestStart(t *testing.T) {
 		conf   Config
 	}{
 		{
-			"start normally", 20, _ASH_OPEN + "7101,This is the mock key", 50,
+			"start normally", 20, _ASH_OPEN + "7101,This is the mock key\n", 50,
 			Config{
 				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7100",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
@@ -1220,7 +1220,7 @@ func TestRunFail(t *testing.T) {
 		conf   Config
 	}{
 		{
-			"worker finish with wrong port number", 20, _ASH_OPEN + "7101,mock key from mockRunWorker2", 30,
+			"worker failed with wrong port number", 20, _ASH_OPEN + "7101,mock key from mockRunWorker2\n", 30,
 			Config{
 				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7100",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
@@ -1520,7 +1520,7 @@ func TestRunWorkerStop(t *testing.T) {
 			},
 		},
 		{
-			"runWorker stop port not exist", 20, _ASH_OPEN + "7121,", _ASH_CLOSE + "port not exist",
+			"runWorker stop port not exist", 20, _ASH_OPEN + "7121,", _ASH_CLOSE + "port does not exist",
 			[]string{"7100"},
 			50,
 			Config{

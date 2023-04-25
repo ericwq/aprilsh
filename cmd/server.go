@@ -795,6 +795,7 @@ we don't print it to the stdout as mosh did.
 
 send udp request and read reply
 % echo "open aprilsh:" | nc localhost 6000 -u -w 1
+% echo "close aprilsh:6001" | nc localhost 6000 -u -w 1
 
 send udp request to remote host
 % ssh ide@localhost  "echo 'open aprilsh:' | nc localhost 6000 -u -w 1"
@@ -898,7 +899,7 @@ func (m *mainSrv) run(conf *Config) {
 					m.writeRespTo(addr, _ASH_CLOSE, "done")
 					// fmt.Printf("#mainSrv run() send %q to client\n", resp)
 				} else {
-					resp := m.writeRespTo(addr, _ASH_CLOSE, "port not exist")
+					resp := m.writeRespTo(addr, _ASH_CLOSE, "port does not exist")
 					logW.Printf("#mainSrv run() request %q got %q\n", req, resp)
 				}
 			} else {
@@ -914,7 +915,7 @@ func (m *mainSrv) run(conf *Config) {
 
 // write header and message to addr
 func (m *mainSrv) writeRespTo(addr *net.UDPAddr, header, msg string) (resp string) {
-	resp = fmt.Sprintf("%s%s", header, msg)
+	resp = fmt.Sprintf("%s%s\n", header, msg)
 	m.conn.SetDeadline(time.Now().Add(time.Millisecond * 200))
 	m.conn.WriteToUDP([]byte(resp), addr)
 	return
