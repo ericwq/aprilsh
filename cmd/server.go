@@ -856,7 +856,7 @@ func (m *mainSrv) run(conf *Config) {
 		// 'open aprilsh:' to start the server
 		if strings.HasPrefix(req, _ASH_OPEN) {
 			// prepare next port
-			m.nextWorkerPort++
+			m.nextWorkerPort++ // TODO consider recycle port number
 
 			// start the worker
 			conf2 := *conf
