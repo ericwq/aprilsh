@@ -857,7 +857,7 @@ func (m *mainSrv) run(conf *Config) {
 		// 'open aprilsh:' to start the server
 		if strings.HasPrefix(req, _ASH_OPEN) {
 			// prepare next port
-			p := m.getAvailabePort()
+			p := m.getAvailabePort() // TODO set limit for port?
 
 			// start the worker
 			conf2 := *conf
