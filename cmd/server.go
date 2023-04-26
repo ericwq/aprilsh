@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/signal"
 	"os/user"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -700,17 +701,17 @@ func startShell(pts *os.File, conf *Config) (*os.Process, error) {
 }
 
 type mainSrv struct {
-	workers        map[int]*workhorse
-	runWorker      func(*Config, chan string, chan *workhorse) error // worker
-	exChan         chan string                                       // worker done or passing key
-	whChan         chan *workhorse                                   // workhorse
-	downChan       chan bool                                         // shutdown mainSrv
-	nextWorkerPort int                                               // next worker port
-	timeout        int                                               // read udp time out,
-	port           int                                               // main listen port
-	conn           *net.UDPConn                                      // mainSrv listen port
-	wg             sync.WaitGroup
-	eg             errgroup.Group
+	workers   map[int]*workhorse
+	runWorker func(*Config, chan string, chan *workhorse) error // worker
+	exChan    chan string                                       // worker done or passing key
+	whChan    chan *workhorse                                   // workhorse
+	downChan  chan bool                                         // shutdown mainSrv
+	maxPort   int                                               // max worker port
+	timeout   int                                               // read udp time out,
+	port      int                                               // main listen port
+	conn      *net.UDPConn                                      // mainSrv listen port
+	wg        sync.WaitGroup
+	eg        errgroup.Group
 }
 
 type workhorse struct {
@@ -722,7 +723,7 @@ func newMainSrv(conf *Config, runWorker func(*Config, chan string, chan *workhor
 	m := mainSrv{}
 	m.runWorker = runWorker
 	m.port, _ = strconv.Atoi(conf.desiredPort)
-	m.nextWorkerPort = m.port
+	m.maxPort = m.port + 1
 	m.workers = make(map[int]*workhorse)
 	m.downChan = make(chan bool, 1)
 	m.exChan = make(chan string, 1)
@@ -762,7 +763,7 @@ func (m *mainSrv) handler() {
 
 	for s := range sig {
 		switch s {
-		case syscall.SIGHUP: // TODO:what we need to do?
+		case syscall.SIGHUP: // TODO:reload the config?
 			logI.Println("got message SIGHUP.")
 		case syscall.SIGTERM:
 			// logI.Println("got message SIGTERM.")
@@ -856,11 +857,11 @@ func (m *mainSrv) run(conf *Config) {
 		// 'open aprilsh:' to start the server
 		if strings.HasPrefix(req, _ASH_OPEN) {
 			// prepare next port
-			m.nextWorkerPort++ // TODO consider recycle port number
+			p := m.getAvailabePort()
 
 			// start the worker
 			conf2 := *conf
-			conf2.desiredPort = fmt.Sprintf("%d", m.nextWorkerPort)
+			conf2.desiredPort = fmt.Sprintf("%d", p)
 
 			// For security, make sure we don't dump core
 			encrypt.DisableDumpingCore()
@@ -878,11 +879,11 @@ func (m *mainSrv) run(conf *Config) {
 			wh := <-m.whChan
 			// logI.Printf("#run got workhorse %p %v\n", wh.shell, wh.shell)
 			if wh.shell != nil {
-				m.workers[m.nextWorkerPort] = wh
+				m.workers[p] = wh
 			}
 
 			// response session key and udp port to client
-			msg := fmt.Sprintf("%d,%s", m.nextWorkerPort, key)
+			msg := fmt.Sprintf("%d,%s", p, key)
 			m.writeRespTo(addr, _ASH_OPEN, msg)
 		} else if strings.HasPrefix(req, _ASH_CLOSE) {
 			// fmt.Printf("#mainSrv run() receive request %q\n", req)
@@ -911,6 +912,38 @@ func (m *mainSrv) run(conf *Config) {
 			logW.Printf("#mainSrv run() request %q got %q\n", req, resp)
 		}
 	}
+}
+
+// return the minimal available port and increase the maxWorkerPort if necessary.
+func (m *mainSrv) getAvailabePort() (port int) {
+	port = m.port
+	if m.maxPort-m.port > 1 {
+		// sort the current ports
+		ports := make([]int, 0, len(m.workers))
+		for k := range m.workers {
+			ports = append(ports, k)
+		}
+		sort.Ints(ports)
+		// fmt.Printf("#getAvailabePort got ports=%v\n", ports)
+
+		// check minimal available port
+		k := 0
+		for i := 0; i < m.maxPort-m.port-1; i++ {
+			k = i + 1
+			// fmt.Printf("#getAvailabePort check port+k=%d, ports[i]=%d\n", port+i+1, ports[i])
+			if (port+k > m.port) && (port+k < ports[i]) {
+				port = port + k
+				break
+			}
+		}
+		// fmt.Printf("#getAvailabePort search port=%d\n", port)
+	}
+	if port == m.port {
+		port = m.maxPort
+		m.maxPort++
+	}
+	// fmt.Printf("#getAvailabePort got port=%d\n", port)
+	return port
 }
 
 // write header and message to addr

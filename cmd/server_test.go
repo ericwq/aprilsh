@@ -953,7 +953,7 @@ func TestStart(t *testing.T) {
 				srv.downChan <- true
 				// stop the worker correctly, because mockRunWorker2 failed to
 				// do it on purpose.
-				srv.exChan <- fmt.Sprintf("%d", srv.nextWorkerPort)
+				srv.exChan <- fmt.Sprintf("%d", srv.maxPort)
 			}()
 
 			srv.start(&v.conf)
@@ -1482,7 +1482,7 @@ func TestRunWorkerKill(t *testing.T) {
 			}
 
 			// stop the comd process
-			wh := srv.workers[srv.nextWorkerPort]
+			wh := srv.workers[7101]
 			time.AfterFunc(time.Duration(100)*time.Millisecond, func() {
 				wh.shell.Kill()
 				// fmt.Printf("-- #test stop workhorse reports error=%v\n", e)
@@ -1803,4 +1803,46 @@ func TestGetCurrentUser(t *testing.T) {
 	}
 	// restore logW
 	logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+}
+
+func TestGetAvailablePort(t *testing.T) {
+	tc := []struct {
+		label   string
+		expect  int
+		max     int
+		workers map[int]*workhorse
+	}{
+		{
+			"empty worker list", 6001, 6001,
+			map[int]*workhorse{},
+		},
+		{
+			"right most", 6004, 6004,
+			map[int]*workhorse{6001: nil, 6002: nil, 6003: nil},
+		},
+		{
+			"left most", 6001, 6006,
+			map[int]*workhorse{6003: nil, 6004: nil, 6005: nil},
+		},
+		{
+			"middle hole", 6004, 6009,
+			map[int]*workhorse{6001: nil, 6002: nil, 6003: nil, 6008: nil},
+		},
+	}
+
+	conf := &Config{desiredPort: "6000"}
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			srv := newMainSrv(conf, mockRunWorker)
+			srv.workers = v.workers
+			srv.maxPort = v.max
+
+			got := srv.getAvailabePort()
+
+			if got != v.expect {
+				t.Errorf("#test %s expect %d, got %d\n", v.label, v.expect, got)
+			}
+		})
+	}
 }
