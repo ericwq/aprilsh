@@ -1,4 +1,4 @@
-// Copyright 2022 wangqi. All rights reserved.
+// Copyright 2022~2023 wangqi. All rights reserved.
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
@@ -23,7 +23,6 @@ import (
 	"syscall"
 	"time"
 
-	// utmp "blitter.com/go/goutmp"
 	"github.com/creack/pty"
 	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/network"
@@ -481,13 +480,15 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		whChan <- &workhorse{}
 	} else {
 		// add utmp entry
-		// ptsName := ptmx.Name()
+		ptsName := ptmx.Name()
 		// host := fmt.Sprintf("aprilsh [%d]", os.Getpid())
 		// usr := getCurrentUser()
 		// utmpEntry := utmp.Put_utmp(usr, ptsName, host)
+		entry := addUtmpEntry(ptsName) //TODO validate fix utmp
 
 		// update last log
 		// utmp.Put_lastlog_entry(COMMAND_NAME, usr, ptsName, host)
+		updateLasLog(ptsName)
 
 		// start the udp server, serve the udp request
 		go conf.serve(ptmx, terminal, network, networkTimeout, networkSignaledTimeout)
@@ -496,6 +497,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 
 		// clear utmp entry
 		// utmp.Unput_utmp(utmpEntry)
+		clearUtmpEntry(entry)
 
 		// wait for the shell to finish.
 		// fmt.Printf("#runWorker shell.Wait() %p %v\n", shell, shell)
