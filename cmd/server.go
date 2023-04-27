@@ -44,15 +44,15 @@ var (
 )
 
 const (
-	PACKAGE_STRING = "aprilsh"
-	COMMAND_NAME   = "aprilsh-server"
-	_PATH_BSHELL   = "/bin/sh"
+	_PACKAGE_STRING = "aprilsh"
+	_COMMAND_NAME   = "aprilsh-server"
+	_PATH_BSHELL    = "/bin/sh"
 
 	_ASH_OPEN  = "open aprilsh:"
 	_ASH_CLOSE = "close aprilsh:"
 
-	VERBOSE_OPEN_PTS    = 99
-	VERBOSE_START_SHELL = 100
+	_VERBOSE_OPEN_PTS    = 99
+	_VERBOSE_START_SHELL = 100
 )
 
 func init() {
@@ -65,7 +65,7 @@ func initLog() {
 }
 
 func printVersion() {
-	logI.Printf("%s (%s) [build %s]\n", COMMAND_NAME, PACKAGE_STRING, BuildVersion)
+	logI.Printf("%s (%s) [build %s]\n", _COMMAND_NAME, _PACKAGE_STRING, BuildVersion)
 	logI.Printf("Copyright (c) 2022~2023 wangqi ericwq057[AT]qq[dot]com\n")
 	logI.Printf("reborn mosh with aprilsh\n")
 }
@@ -169,8 +169,8 @@ func getSSHip() string {
 
 // [-s] [-v] [-i LOCALADDR] [-p PORT[:PORT2]] [-c COLORS] [-l NAME=VALUE] [-- COMMAND...]
 var usage = `Usage:
-  ` + COMMAND_NAME + ` [--version] [--help]
-  ` + COMMAND_NAME + ` [--server] [--verbose] [--ip ADDR] [--port PORT[:PORT2]] [--color COLORS]` +
+  ` + _COMMAND_NAME + ` [--version] [--help]
+  ` + _COMMAND_NAME + ` [--server] [--verbose] [--ip ADDR] [--port PORT[:PORT2]] [--color COLORS]` +
 	` [--locale NAME=VALUE] [-- command...]
 Options:
   -h, --help     print this message
@@ -352,7 +352,7 @@ func buildConfig(conf *Config) error {
 		if !isUtf8Locale() || buildConfigTest {
 			clientType := getCtype()
 			clientCharset := localeCharset()
-			logW.Printf("%s needs a UTF-8 native locale to run.\n", COMMAND_NAME)
+			logW.Printf("%s needs a UTF-8 native locale to run.\n", _COMMAND_NAME)
 			logW.Printf("Unfortunately, the local environment (%s) specifies "+
 				"the character set \"%s\",\n", nativeType, nativeCharset)
 			logW.Printf("The client-supplied environment (%s) specifies "+
@@ -459,7 +459,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	// printWelcome(os.Stdout, os.Getpid(), os.Stdin)
 
 	// prepare for openPTS fail
-	if conf.verbose == VERBOSE_OPEN_PTS {
+	if conf.verbose == _VERBOSE_OPEN_PTS {
 		windowSize = nil
 	}
 
@@ -481,7 +481,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	} else {
 		// add utmp entry
 		ptmxName := ptmx.Name()
-		entry := addUtmpEntry(ptmxName) //TODO validate fix utmp
+		entry := addUtmpEntry(ptmxName) // TODO validate fix utmp
 
 		// update last log
 		updateLasLog(ptmxName)
@@ -544,7 +544,7 @@ func getTimeFrom(env string, def int64) (ret int64) {
 }
 
 func printWelcome(pid int, port int, tty *os.File) {
-	logI.Printf("%s start listening on :%d. build version %s [pid=%d] \n", COMMAND_NAME, port, BuildVersion, pid)
+	logI.Printf("%s start listening on :%d. build version %s [pid=%d] \n", _COMMAND_NAME, port, BuildVersion, pid)
 	logI.Printf("Copyright 2022 wangqi.\n")
 	logI.Printf("%s%s", "Use of this source code is governed by a MIT-style",
 		"license that can be found in the LICENSE file.\n")
@@ -618,7 +618,7 @@ func openPTS(wsize *unix.Winsize) (ptmx *os.File, pts *os.File, err error) {
 
 // set IUTF8 flag for pts file. start shell process according to Config.
 func startShell(pts *os.File, conf *Config) (*os.Process, error) {
-	if conf.verbose == VERBOSE_START_SHELL {
+	if conf.verbose == _VERBOSE_START_SHELL {
 		return nil, errors.New("fail to start shell")
 	}
 	// set IUTF8 if available
@@ -744,7 +744,7 @@ func (m *mainSrv) start(conf *Config) {
 
 	// start udp server upon receive the shake hands message.
 	if err := m.listen(conf); err != nil {
-		logW.Printf("%s: %s\n", COMMAND_NAME, err.Error())
+		logW.Printf("%s: %s\n", _COMMAND_NAME, err.Error())
 		return
 	}
 
@@ -806,7 +806,7 @@ func (m *mainSrv) run(conf *Config) {
 	defer func() {
 		m.conn.Close()
 		m.wg.Done()
-		logI.Printf("%s stop listening on :%d.", COMMAND_NAME, m.port)
+		logI.Printf("%s stop listening on :%d.", _COMMAND_NAME, m.port)
 	}()
 
 	buf := make([]byte, 128)

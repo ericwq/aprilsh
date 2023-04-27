@@ -19,7 +19,7 @@ type utmpEntry struct {
 
 func addUtmpEntry(ptmxName string) *utmpEntry {
 	// ptsName := ptmx.Name()
-	host := fmt.Sprintf("%s [%d]", PACKAGE_STRING, os.Getpid())
+	host := fmt.Sprintf("%s [%d]", _PACKAGE_STRING, os.Getpid())
 	usr := getCurrentUser()
 
 	entry := utmp.Put_utmp(usr, ptmxName, host)
@@ -27,9 +27,9 @@ func addUtmpEntry(ptmxName string) *utmpEntry {
 }
 
 func updateLasLog(ptmxName string) {
-	host := fmt.Sprintf("%s [%d]", PACKAGE_STRING, os.Getpid())
+	host := fmt.Sprintf("%s [%d]", _PACKAGE_STRING, os.Getpid())
 	usr := getCurrentUser()
-	utmp.Put_lastlog_entry(COMMAND_NAME, usr, ptmxName, host)
+	utmp.Put_lastlog_entry(_COMMAND_NAME, usr, ptmxName, host)
 }
 
 func clearUtmpEntry(entry *utmpEntry) {

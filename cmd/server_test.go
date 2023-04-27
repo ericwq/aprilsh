@@ -78,7 +78,7 @@ func TestPrintVersion(t *testing.T) {
 	os.Stdout = w
 	initLog()
 
-	expect := []string{COMMAND_NAME, "build", "wangqi ericwq057[AT]qq[dot]com"}
+	expect := []string{_COMMAND_NAME, "build", "wangqi ericwq057[AT]qq[dot]com"}
 
 	printVersion()
 
@@ -110,7 +110,7 @@ func TestPrintUsage(t *testing.T) {
 
 	// var b strings.Builder
 	expect := []string{
-		"Usage:", COMMAND_NAME,
+		"Usage:", _COMMAND_NAME,
 		"[--server] [--verbose] [--ip ADDR] [--port PORT[:PORT2]] [--color COLORS] [--locale NAME=VALUE] [-- command...]",
 	}
 
@@ -219,7 +219,7 @@ func TestMotdHushed(t *testing.T) {
 func TestMainHelp(t *testing.T) {
 	testHelpFunc := func() {
 		// prepare data
-		os.Args = []string{COMMAND_NAME, "--help"}
+		os.Args = []string{_COMMAND_NAME, "--help"}
 		// test help
 		main()
 	}
@@ -228,7 +228,7 @@ func TestMainHelp(t *testing.T) {
 
 	// validate result
 	expect := []string{
-		"Usage:", COMMAND_NAME,
+		"Usage:", _COMMAND_NAME,
 		"[--server] [--verbose] [--ip ADDR] [--port PORT[:PORT2]] [--color COLORS] [--locale NAME=VALUE] [-- command...]",
 	}
 
@@ -296,7 +296,7 @@ func TestMainVersion(t *testing.T) {
 	initLog()
 
 	// prepare data
-	os.Args = []string{COMMAND_NAME, "--version"}
+	os.Args = []string{_COMMAND_NAME, "--version"}
 	// test
 	main()
 
@@ -307,7 +307,7 @@ func TestMainVersion(t *testing.T) {
 	r.Close()
 
 	// validate result
-	expect := []string{COMMAND_NAME, "build", "wangqi ericwq057[AT]qq[dot]com"}
+	expect := []string{_COMMAND_NAME, "build", "wangqi ericwq057[AT]qq[dot]com"}
 	result := string(out)
 	found := 0
 	for i := range expect {
@@ -323,7 +323,7 @@ func TestMainVersion(t *testing.T) {
 func TestMainParseFlagsError(t *testing.T) {
 	testFunc := func() {
 		// prepare data
-		os.Args = []string{COMMAND_NAME, "--foo"}
+		os.Args = []string{_COMMAND_NAME, "--foo"}
 		// test
 		main()
 	}
@@ -377,7 +377,7 @@ func TestMainRun(t *testing.T) {
 	initLog()
 
 	// prepare data
-	os.Args = []string{COMMAND_NAME, "-locale", "LC_ALL=en_US.UTF-8", "-p", "6100", "--", "/bin/sh", "-sh"}
+	os.Args = []string{_COMMAND_NAME, "-locale", "LC_ALL=en_US.UTF-8", "-p", "6100", "--", "/bin/sh", "-sh"}
 	// test
 	main()
 
@@ -408,7 +408,7 @@ func TestMainRun(t *testing.T) {
 func TestMainBuildConfigFail(t *testing.T) {
 	testFunc := func() {
 		// prepare parameter
-		os.Args = []string{COMMAND_NAME, "-locale", "LC_ALL=en_US.UTF-8", "-p", "6100", "--", "/bin/sh", "-sh"}
+		os.Args = []string{_COMMAND_NAME, "-locale", "LC_ALL=en_US.UTF-8", "-p", "6100", "--", "/bin/sh", "-sh"}
 		// test
 		main()
 	}
@@ -652,7 +652,7 @@ func TestMainServerPortrangeError(t *testing.T) {
 	var b strings.Builder
 	logW.SetOutput(&b)
 
-	os.Args = []string{COMMAND_NAME, "-s", "-p=3a"}
+	os.Args = []string{_COMMAND_NAME, "-s", "-p=3a"}
 	os.Setenv("SSH_CONNECTION", "172.17.0.1 58774 172.17.0.2 22")
 	main()
 
@@ -1009,7 +1009,7 @@ func TestStartFail(t *testing.T) {
 			// fmt.Println("#test start fail!")
 
 			// validate result: result contains WARN and COMMAND_NAME
-			expect := []string{COMMAND_NAME, "WARN"}
+			expect := []string{_COMMAND_NAME, "WARN"}
 			result := b.String()
 			found := 0
 			for i := range expect {
@@ -1110,7 +1110,7 @@ func TestPrintWelcome(t *testing.T) {
 	}
 
 	expect := []string{
-		COMMAND_NAME, "build", "Use of this source code is governed by a MIT-style",
+		_COMMAND_NAME, "build", "Use of this source code is governed by a MIT-style",
 		"Warning: termios IUTF8 flag not defined.",
 	}
 
@@ -1664,14 +1664,14 @@ func TestRunWorkerFail(t *testing.T) {
 	}{
 		{
 			"openPTS fail", Config{
-				version: false, server: true, verbose: VERBOSE_OPEN_PTS, desiredIP: "", desiredPort: "7100",
+				version: false, server: true, verbose: _VERBOSE_OPEN_PTS, desiredIP: "", desiredPort: "7100",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0, term: "kitty",
 				commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false,
 			},
 		},
 		{
 			"startShell fail", Config{
-				version: false, server: true, verbose: VERBOSE_START_SHELL, desiredIP: "", desiredPort: "7200",
+				version: false, server: true, verbose: _VERBOSE_START_SHELL, desiredIP: "", desiredPort: "7200",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0, term: "kitty",
 				commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false,
 			},
