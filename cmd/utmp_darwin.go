@@ -8,12 +8,12 @@ package main
 
 type utmpEntry struct{}
 
-func addUtmpEntry(ptsName string) *utmpEntry {
+func addUtmpEntry(ptmxName string) *utmpEntry {
 	logW.Printf("unimplement %s\n", "addUtmpEntry()")
 	return nil
 }
 
-func updateLasLog(ptsName string) {
+func updateLasLog(ptmxName string) {
 	logW.Printf("unimplement %s\n", "updateLasLog()")
 }
 

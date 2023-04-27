@@ -480,15 +480,11 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		whChan <- &workhorse{}
 	} else {
 		// add utmp entry
-		ptsName := ptmx.Name()
-		// host := fmt.Sprintf("aprilsh [%d]", os.Getpid())
-		// usr := getCurrentUser()
-		// utmpEntry := utmp.Put_utmp(usr, ptsName, host)
-		entry := addUtmpEntry(ptsName) //TODO validate fix utmp
+		ptmxName := ptmx.Name()
+		entry := addUtmpEntry(ptmxName) //TODO validate fix utmp
 
 		// update last log
-		// utmp.Put_lastlog_entry(COMMAND_NAME, usr, ptsName, host)
-		updateLasLog(ptsName)
+		updateLasLog(ptmxName)
 
 		// start the udp server, serve the udp request
 		go conf.serve(ptmx, terminal, network, networkTimeout, networkSignaledTimeout)
@@ -496,7 +492,6 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		logI.Printf("#runWorker start listening on :%s\n", conf.desiredPort)
 
 		// clear utmp entry
-		// utmp.Unput_utmp(utmpEntry)
 		clearUtmpEntry(entry)
 
 		// wait for the shell to finish.
