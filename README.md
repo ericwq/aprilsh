@@ -46,6 +46,7 @@ The project name `Aprilsh` is derived from `April+sh`. I started this project in
 - 2023/Apr/07: support concurrent UDP server.
 - 2023/Apr/21: finish server start/stop part.
 - 2023/May/01: study [s6](https://skarnet.org/software/s6/) as PID 1 process: [utmps](https://skarnet.org/software/utmps/) require s6, aprilsh also require s6 or similar alternative.
+- 2023/May/16: finish [alpine container with s6-rc or openrc support](https://github.com/ericwq/s6)
 
 ## musl locales
 
