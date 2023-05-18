@@ -13,8 +13,8 @@ func addUtmpEntry(ptmxName string) *utmpEntry {
 	return nil
 }
 
-func updateLasLog(ptmxName string) {
-	logW.Printf("unimplement %s\n", "updateLasLog()")
+func updateLastLog(ptmxName string) {
+	logW.Printf("unimplement %s\n", "updateLastLog()")
 }
 
 func clearUtmpEntry(entry *utmpEntry) {

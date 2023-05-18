@@ -26,7 +26,7 @@ func addUtmpEntry(ptmxName string) *utmpEntry {
 	return &utmpEntry{&entry}
 }
 
-func updateLasLog(ptmxName string) {
+func updateLastLog(ptmxName string) {
 	host := fmt.Sprintf("%s [%d]", _PACKAGE_STRING, os.Getpid())
 	usr := getCurrentUser()
 	utmp.Put_lastlog_entry(_COMMAND_NAME, usr, ptmxName, host)

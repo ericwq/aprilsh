@@ -484,7 +484,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		entry := addUtmpEntry(ptmxName) // TODO validate fix utmp
 
 		// update last log
-		updateLasLog(ptmxName)
+		updateLastLog(ptmxName)
 
 		// start the udp server, serve the udp request
 		go conf.serve(ptmx, terminal, network, networkTimeout, networkSignaledTimeout)
