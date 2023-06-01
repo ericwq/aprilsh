@@ -697,6 +697,16 @@ func startShell(pts *os.File, conf *Config) (*os.Process, error) {
 	return proc, nil
 }
 
+func deviceExists(line string) bool {
+	deviceName := fmt.Sprintf("/dev/%s", line)
+	_, err := os.Lstat(deviceName)
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
 type mainSrv struct {
 	workers   map[int]*workhorse
 	runWorker func(*Config, chan string, chan *workhorse) error // worker

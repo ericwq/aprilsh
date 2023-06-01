@@ -1846,3 +1846,25 @@ func TestGetAvailablePort(t *testing.T) {
 		})
 	}
 }
+
+func TestDeviceExists(t *testing.T) {
+	tc := []struct {
+		label  string
+		line   string
+		expect bool
+	}{
+		{"pts/1", "pts/1", true},
+		{"tty", "tty", true},
+		// {"tty0", "tty0", true}, // this one doesn't work for some linux container,
+		{"tty/1", "tty/1", false},
+	}
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			got := deviceExists(v.line)
+			if got != v.expect {
+				t.Errorf("#test %s expect %t, got %t\n", v.label, v.expect, got)
+			}
+		})
+	}
+}
