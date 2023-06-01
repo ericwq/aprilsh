@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"os"
 
-	utmp "blitter.com/go/goutmp"
+	utmp "github.com/ericwq/goutmp"
 )
 
 type utmpEntry struct {

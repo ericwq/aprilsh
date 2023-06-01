@@ -13,3 +13,5 @@ require (
 	golang.org/x/term v0.6.0
 	google.golang.org/protobuf v1.28.1
 )
+
+require github.com/ericwq/goutmp v0.1.0 // indirect
