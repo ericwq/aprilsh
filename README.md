@@ -48,11 +48,12 @@ The project name `Aprilsh` is derived from `April+sh`. I started this project in
 - 2023/May/01: study [s6](https://skarnet.org/software/s6/) as PID 1 process: [utmps](https://skarnet.org/software/utmps/) require s6, aprilsh also require s6 or similar alternative.
 - 2023/May/16: finish [alpine container with openrc support](https://github.com/ericwq/s6)
 - 2023/May/30: finish [eric/goutmp](https://github.com/ericwq/goutmp)
+- 2023/Jun/07: upgrade to `ericwq/goutmp` v0.2.0.
 
-## musl locales
+## build dependency
 
 ```sh
-% apk add musl-locales-lang musl-locales
+% apk add musl-locales-lang musl-locales utmps-dev
 ```
 
 Use the above command to add musl locales support for alpine. Only UTF-8 charmap is supported

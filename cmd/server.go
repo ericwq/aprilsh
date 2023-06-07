@@ -713,7 +713,7 @@ func deviceExists(line string) bool {
 	return true
 }
 
-// check unatttached session and print warning message if there is any
+// check unattached session and print warning message if there is any
 // ignore current session
 func warnUnattached(w io.Writer, ignoreHost string) {
 	userName := getCurrentUser()
