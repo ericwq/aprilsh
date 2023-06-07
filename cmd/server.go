@@ -718,7 +718,7 @@ func deviceExists(line string) bool {
 func warnUnattached(w io.Writer, ignoreHost string) {
 	userName := getCurrentUser()
 
-	// check unatttached sessions
+	// check unattached sessions
 	unatttached := checkUnattachedRecord(userName, ignoreHost)
 
 	if unatttached == nil || len(unatttached) == 0 {
