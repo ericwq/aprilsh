@@ -9,6 +9,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	utmp "github.com/ericwq/goutmp"
 )
@@ -17,9 +18,7 @@ type utmpEntry struct {
 	ent *utmp.UtmpEntry
 }
 
-func addUtmpEntry(ptmxName string) *utmpEntry {
-	// ptsName := ptmx.Name()
-	host := fmt.Sprintf("%s [%d]", _PACKAGE_STRING, os.Getpid())
+func addUtmpEntry(ptmxName string, host string) *utmpEntry {
 	usr := getCurrentUser()
 
 	entry := utmp.Put_utmp(usr, ptmxName, host)
@@ -34,4 +33,22 @@ func updateLastLog(ptmxName string) {
 
 func clearUtmpEntry(entry *utmpEntry) {
 	utmp.Unput_utmp(*(entry.ent))
+}
+
+func checkUnattachedRecord(userName string, ignoreHost string) []string {
+	var unatttached []string
+	unatttached = make([]string, 0)
+
+	r := utmp.GetUtmpx()
+	for r != nil {
+		if r.GetType() == utmp.USER_PROCESS && r.GetUser() == userName {
+			host := r.GetHost()
+			if len(host) >= 5 && strings.Index(host, "aprish") != -1 &&
+				strings.HasSuffix(host, "]") && host != ignoreHost && deviceExists(r.GetLine()) {
+				unatttached = append(unatttached, host)
+			}
+		}
+		r = utmp.GetUtmpx()
+	}
+	return nil
 }

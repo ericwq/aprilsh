@@ -197,6 +197,7 @@ type Config struct {
 	commandPath string
 	commandArgv []string // the positional (non-flag) command-line arguments.
 	withMotd    bool
+
 	// the serve func
 	serve func(*os.File, *statesync.Complete, *network.Transport[*statesync.Complete,
 		*statesync.UserStream], int64, int64) error
@@ -472,8 +473,11 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	defer func() { _ = ptmx.Close() }() // Best effort.
 	// fmt.Printf("#runWorker openPTS successfully.\n")
 
+	// prepare host field for utmp record
+	utmpHost := fmt.Sprintf("%s [%d]", _PACKAGE_STRING, os.Getpid())
+
 	// start the shell with pts
-	shell, err := startShell(pts, conf)
+	shell, err := startShell(pts, utmpHost, conf)
 	pts.Close() // it's copied by shell process, it's safe to close it here.
 	if err != nil {
 		logW.Printf("#runWorker startShell fail: %s\n", err)
@@ -481,7 +485,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	} else {
 		// add utmp entry
 		ptmxName := ptmx.Name()
-		entry := addUtmpEntry(ptmxName) // TODO validate fix utmp
+		entry := addUtmpEntry(ptmxName, utmpHost) // TODO validate fix utmp
 
 		// update last log
 		updateLastLog(ptmxName)
@@ -617,7 +621,7 @@ func openPTS(wsize *unix.Winsize) (ptmx *os.File, pts *os.File, err error) {
 }
 
 // set IUTF8 flag for pts file. start shell process according to Config.
-func startShell(pts *os.File, conf *Config) (*os.Process, error) {
+func startShell(pts *os.File, utmpHost string, conf *Config) (*os.Process, error) {
 	if conf.verbose == _VERBOSE_START_SHELL {
 		return nil, errors.New("fail to start shell")
 	}
@@ -670,6 +674,8 @@ func startShell(pts *os.File, conf *Config) (*os.Process, error) {
 		}
 		// Always print traditional /etc/motd.
 		printMotd(pts, "/etc/motd")
+
+		warnUnattached(pts, utmpHost)
 	}
 
 	// Wait for parent to release us.
@@ -705,6 +711,30 @@ func deviceExists(line string) bool {
 	}
 
 	return true
+}
+
+// check unatttached session and print warning message if there is any
+// ignore current session
+func warnUnattached(w io.Writer, ignoreHost string) {
+	userName := getCurrentUser()
+
+	// check unatttached sessions
+	unatttached := checkUnattachedRecord(userName, ignoreHost)
+
+	if unatttached == nil || len(unatttached) == 0 {
+		return
+	} else if len(unatttached) == 1 {
+		fmt.Fprintf(w, "\033[37;44mAprilsh: You have a detached session on this server (%s).\033[m\n\n",
+			unatttached[0])
+	} else {
+		var sb strings.Builder
+		for _, v := range unatttached {
+			fmt.Fprintf(&sb, "        - %s\n", v)
+		}
+
+		fmt.Fprintf(w, "\033[37;44mAprilsh: You have %d detached sessions on this server, with PIDs:\n%s\033[m\n",
+			len(unatttached), sb.String())
+	}
 }
 
 type mainSrv struct {

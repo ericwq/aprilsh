@@ -1620,7 +1620,7 @@ func TestStartShellFail(t *testing.T) {
 	}
 
 	// os.Stdin doesn't support IUTF8 flag, startShell should failed
-	if _, err := startShell(os.Stdin, conf); err == nil {
+	if _, err := startShell(os.Stdin, "aprilsh [123]", conf); err == nil {
 		t.Errorf("#test startShell should report error.\n")
 		// t.Error(err)
 	}
@@ -1632,7 +1632,7 @@ func TestStartShellFail(t *testing.T) {
 	}()
 
 	// commandPath is wrong, startShell should failed.
-	if _, err := startShell(pts, conf); err == nil {
+	if _, err := startShell(pts, "aprilsh [123]", conf); err == nil {
 		t.Errorf("#test startShell should report error.\n")
 		// t.Error(err)
 	}
