@@ -56,7 +56,7 @@ The project name `Aprilsh` is derived from `April+sh`. I started this project in
 % apk add musl-locales-lang musl-locales utmps-dev
 ```
 
-Use the above command to add musl locales support for alpine. Only UTF-8 charmap is supported
+Use the above command to add musl locales support and utmps support for alpine. Note alpine only support UTF-8 charmap.
 
 ## glibc locales
 
