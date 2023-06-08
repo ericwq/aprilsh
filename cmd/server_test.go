@@ -1873,6 +1873,7 @@ func TestDeviceExists(t *testing.T) {
 var idx = 0
 
 func mockGetUtmpx() *utmp.Utmpx {
+	userName := getCurrentUser()
 	rs := []struct {
 		Type int16
 		User string
@@ -1880,9 +1881,9 @@ func mockGetUtmpx() *utmp.Utmpx {
 		Line string
 	}{
 		{utmp.USER_PROCESS, "root", _PACKAGE_STRING + " [777]", "pts/1"},
-		{utmp.USER_PROCESS, "ide", _PACKAGE_STRING + " [888]", "pts/7"},
-		{utmp.USER_PROCESS, "ide", _PACKAGE_STRING + " [666]", "pts/1"},
-		{utmp.USER_PROCESS, "ide", _PACKAGE_STRING + " [999]", "pts/0"},
+		{utmp.USER_PROCESS, userName, _PACKAGE_STRING + " [888]", "pts/7"},
+		{utmp.USER_PROCESS, userName, _PACKAGE_STRING + " [666]", "pts/1"},
+		{utmp.USER_PROCESS, userName, _PACKAGE_STRING + " [999]", "pts/0"},
 	}
 
 	// if idx out of range, rewind it.
@@ -1937,8 +1938,8 @@ func TestWarnUnattached(t *testing.T) {
 		ignoreHost string
 		count      int
 	}{
-		{"two match", _PACKAGE_STRING + " [888]", 2},
-		{"one matches", _PACKAGE_STRING + " [999]", 1},
+		{"one match", _PACKAGE_STRING + " [999]", 1},
+		{"two matches", _PACKAGE_STRING + " [888]", 2},
 	}
 
 	for _, v := range tc {
