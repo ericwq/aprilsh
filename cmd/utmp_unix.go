@@ -50,8 +50,11 @@ func checkUnattachedRecord(userName string, ignoreHost string) []string {
 		if r.GetType() == utmp.USER_PROCESS && r.GetUser() == userName {
 			// does line show unattached session
 			host := r.GetHost()
+			// fmt.Printf("#checkUnattachedRecord() user=%q,%q; type=%d,%d", r.GetUser(), userName, r.GetType(), utmp.USER_PROCESS)
+			// fmt.Printf(" host=%s, line=%q, ignoreHost=%s\n", host, r.GetLine(), ignoreHost)
 			if len(host) >= 5 && strings.HasPrefix(host, _PACKAGE_STRING) &&
 				strings.HasSuffix(host, "]") && host != ignoreHost && deviceExists(r.GetLine()) {
+				// fmt.Printf("#checkUnattachedRecord() attached session %s\n", host)
 				unatttached = append(unatttached, host)
 			}
 		}
