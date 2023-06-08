@@ -729,7 +729,7 @@ func warnUnattached(w io.Writer, ignoreHost string) {
 	} else {
 		var sb strings.Builder
 		for _, v := range unatttached {
-			fmt.Fprintf(&sb, "        - %s\n", v)
+			fmt.Fprintf(&sb, "- %s\n", v)
 		}
 
 		fmt.Fprintf(w, "\033[37;44mAprilsh: You have %d detached sessions on this server, with PIDs:\n%s\033[m\n",

@@ -1936,6 +1936,25 @@ func TestWarnUnattached(t *testing.T) {
 		t.Run(v.label, func(t *testing.T) {
 			warnUnattached(&out, v.ignoreHost)
 			got := out.String()
+			if len(got) == 0 { // warnUnattached just return without print
+				if v.count != 0 {
+					t.Errorf("#test warnUnattached() %s expect %d, got 0\n", v.label, v.count)
+				} else {
+					t.Errorf("#test warnUnattached() %s return without print, while the test count is %d", v.label, v.count)
+				}
+			} else {
+				count := strings.Count(got, "- ")
+				switch count {
+				case 0: // warnUnattached found one unattached session
+					if strings.Index(got, "detached session on this server") != -1 && v.count != 1 {
+						t.Errorf("#test warnUnattached() %s expect %d warning, got 1.\n", v.label, v.count)
+					}
+				default: // warnUnattached found more than one unattached session
+					if count != v.count {
+						t.Errorf("#test warnUnattached() %s expect %d warning, got %d.\n", v.label, v.count, count)
+					}
+				}
+			}
 		})
 	}
 }
