@@ -35,20 +35,31 @@ func clearUtmpEntry(entry *utmpEntry) {
 	utmp.Unput_utmp(*(entry.ent))
 }
 
+var fp func() *utmp.Utmpx // easy for testing
+
+func init() {
+	fp = utmp.GetUtmpx
+}
+
 func checkUnattachedRecord(userName string, ignoreHost string) []string {
 	var unatttached []string
 	unatttached = make([]string, 0)
 
-	r := utmp.GetUtmpx()
+	r := fp()
 	for r != nil {
 		if r.GetType() == utmp.USER_PROCESS && r.GetUser() == userName {
+			// does line show unattached session
 			host := r.GetHost()
-			if len(host) >= 5 && strings.Index(host, "aprish") != -1 &&
+			if len(host) >= 5 && strings.HasPrefix(host, _PACKAGE_STRING) &&
 				strings.HasSuffix(host, "]") && host != ignoreHost && deviceExists(r.GetLine()) {
 				unatttached = append(unatttached, host)
 			}
 		}
-		r = utmp.GetUtmpx()
+		r = fp()
+	}
+
+	if len(unatttached) > 0 {
+		return unatttached
 	}
 	return nil
 }

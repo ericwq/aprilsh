@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/creack/pty"
+	utmp "github.com/ericwq/goutmp"
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )
@@ -1865,6 +1866,76 @@ func TestDeviceExists(t *testing.T) {
 			if got != v.expect {
 				t.Errorf("#test %s expect %t, got %t\n", v.label, v.expect, got)
 			}
+		})
+	}
+}
+
+var idx = 0
+
+func mockGetUtmpx() *utmp.Utmpx {
+	rs := []struct {
+		Type int16
+		User string
+		Host string
+		Line string
+	}{
+		{utmp.USER_PROCESS, "root", "192.168.0.2", "pts/1"},
+		{utmp.USER_PROCESS, "ide", "192.168.0.8", "pts/2"},
+		{utmp.USER_PROCESS, "root", "192.168.0.1", "pts/3"},
+	}
+
+	// if idx out of range, rewind it.
+	if idx >= len(rs) {
+		idx = 0
+		return nil
+	}
+
+	u := utmp.Utmpx{}
+	u.Type = rs[idx].Type
+
+	b := []byte(rs[idx].User)
+	for i := range u.User {
+		u.User[i] = int8(b[i])
+	}
+
+	b = []byte(rs[idx].Host)
+	for i := range u.Host {
+		u.Host[i] = int8(b[i])
+	}
+
+	b = []byte(rs[idx].Line)
+	for i := range u.Line {
+		u.Line[i] = int8(b[i])
+	}
+
+	// increase to the next one
+	idx++
+
+	// return current one
+	return &u
+}
+
+func TestWarnUnattached(t *testing.T) {
+	fp = mockGetUtmpx
+	defer func() {
+		fp = utmp.GetUtmpx
+		idx = 0
+	}()
+
+	tc := []struct {
+		label      string
+		ignoreHost string
+		expect     string
+		count      int
+	}{
+		{"ide on pts/1", "pts/1", "detached session on this server", 1},
+	}
+	var out strings.Builder
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			warnUnattached(&out, v.ignoreHost)
+			got := out.String()
 		})
 	}
 }
