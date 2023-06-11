@@ -496,15 +496,15 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		whChan <- &workhorse{shell, ptmx}
 		logI.Printf("#runWorker start listening on :%s\n", conf.desiredPort)
 
-		// clear utmp entry
-		clearUtmpEntry(entry)
-
 		// wait for the shell to finish.
 		// fmt.Printf("#runWorker shell.Wait() %p %v\n", shell, shell)
 		if state, err := shell.Wait(); err != nil || state.Exited() {
 			logW.Printf("#runWorker shell.Wait fail: %s, state: %s\n", err, state)
 		}
 		logI.Printf("#runWorker stop listening on :%s\n", conf.desiredPort)
+
+		// clear utmp entry
+		clearUtmpEntry(entry)
 	}
 
 	// fmt.Printf("#runWorker [%s is exiting.]\n\n", COMMAND_NAME)
