@@ -25,6 +25,7 @@ func TestGetShellFail(t *testing.T) {
 	}()
 
 	execCmdTest = true
+	userCurrentTest = false
 	r, _ = getShell()
 	if r != "" {
 		t.Errorf("#test getShell() expect empty string, got %s.", r)
