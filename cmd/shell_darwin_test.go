@@ -18,7 +18,7 @@ import (
 //
 // % dscl localhost -read Local/Default/Users/doesnotexist
 // <dscl_cmd> DS Error: -14136 (eDSRecordNotFound)
-func TestGetShell(t *testing.T) {
+func TestGetShellDarwin(t *testing.T) {
 	user := os.Getenv("USER")
 
 	// lack of user

@@ -487,6 +487,29 @@ func TestParseFlagsCorrect(t *testing.T) {
 	}
 }
 
+func TestGetShell(t *testing.T) {
+	tc := []struct {
+		label  string
+		expect string
+	}{
+		{"get unix shell from cmd", "fill later"},
+	}
+	switch runtime.GOOS {
+	case "darwin":
+		tc[0].expect = "/bin/zsh"
+	case "linux":
+		tc[0].expect = "/bin/ash"
+	}
+
+	for _, v := range tc {
+		if got, _ := getShell(); got != v.expect {
+			if got != v.expect {
+				t.Errorf("#test getShell() %s expect %q, got %q\n", v.label, v.expect, got)
+			}
+		}
+	}
+}
+
 func TestBuildConfig(t *testing.T) {
 	tc := []struct {
 		label string
@@ -518,7 +541,7 @@ func TestBuildConfig(t *testing.T) {
 			Config{
 				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8"}, color: 0,
-				commandPath: "/bin/ash", commandArgv: []string{"-ash"}, withMotd: true,
+				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
 			// macOS: /bin/zsh
 			// alpine: /bin/ash
@@ -554,16 +577,6 @@ func TestBuildConfig(t *testing.T) {
 		},
 	}
 
-	// change the tc[1].conf2 value according to runtime.GOOS
-	switch runtime.GOOS {
-	case "darwin":
-		tc[1].conf2.commandArgv = []string{"-zsh"}
-		tc[1].conf2.commandPath = "/bin/zsh"
-	case "linux":
-		tc[1].conf2.commandArgv = []string{"-ash"}
-		tc[1].conf2.commandPath = "/bin/ash"
-	}
-
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			// intercept log output
@@ -575,6 +588,17 @@ func TestBuildConfig(t *testing.T) {
 				shell := os.Getenv("SHELL")
 				defer os.Setenv("SHELL", shell)
 				os.Unsetenv("SHELL")
+
+				if runtime.GOOS == "linux" {
+					// getShell() will fail
+					defer func() {
+						userCurrentTest = false
+						execCmdTest = false
+					}()
+
+					execCmdTest = true
+					userCurrentTest = false
+				}
 			}
 
 			// validate buildConfig

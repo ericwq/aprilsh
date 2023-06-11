@@ -25,12 +25,12 @@ const (
 
 func getShell() (string, error) {
 	user, err := user.Current()
-	if err != nil {
+	if err != nil || userCurrentTest {
 		return "", err
 	}
 
 	out, err := exec.Command("getent", "passwd", user.Uid).Output()
-	if err != nil {
+	if err != nil || execCmdTest {
 		return "", err
 	}
 

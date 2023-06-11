@@ -35,6 +35,7 @@ import (
 var (
 	BuildVersion    = "0.1.0" // ready for ldflags
 	userCurrentTest = false
+	execCmdTest     = false
 	buildConfigTest = false
 )
 
