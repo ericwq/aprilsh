@@ -524,34 +524,61 @@ func getCurrentUser() string {
 	return user.Username
 }
 
-func serve(ptmx *os.File, terminal *statesync.Complete,
-	network *network.Transport[*statesync.Complete, *statesync.UserStream],
+func serve(ptmx *os.File, terminal *statesync.Complete, network *network.Transport[*statesync.Complete, *statesync.UserStream],
 	networkTimeout int64, networkSignaledTimeout int64,
 ) error {
 	// scale timeouts
 	// networkTimeoutMs := uint64(networkTimeout) * 1000
 	// networkSignaledTimeoutMs := uint64(networkSignaledTimeout) * 1000
 
-	// input from the host needs to be fed to the terminal
-	var buf [16384]byte
-	// set read time out: 10ms
-	masterTimeout := 10
-	ptmx.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(masterTimeout)))
+	var terminalToHost strings.Builder
+	// var now int64
+	// var timeSinceRemoteState int64
 
-	// fill buffer if possible
-	bytesRead, err := ptmx.Read(buf[:])
+	for !network.ShutdownInProgress() {
 
-	if err != nil {
-		// If the pty slave is closed, reading from the master can fail with
-		// EIO (see #264).  So we treat errors on read() like EOF.
-		network.ShartShutdown()
-	} else {
-		terminal.Act(string(buf[:bytesRead]))
+		// now = time.Now().UnixMilli()
+		// p := network.GetLatestRemoteState()
+		// timeSinceRemoteState = now - p.GetTimestamp()
+		terminalToHost.Reset()
 
-		// update client with new state of terminal
-		network.SetCurrentState(terminal)
+
+		// input from the host needs to be fed to the terminal
+		var buf [16384]byte
+		// set read time out: 10ms
+		masterTimeout := 10
+		ptmx.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(masterTimeout)))
+
+		// fill buffer if possible
+		bytesRead, err := ptmx.Read(buf[:])
+		if err != nil {
+			if errors.Is(err, os.ErrDeadlineExceeded) {
+				continue
+			} else {
+				// If the pty slave is closed, reading from the master can fail with
+				// EIO (see #264).  So we treat errors on read() like EOF.
+				network.ShartShutdown()
+				// fmt.Println("#run read error: ", err)
+				continue
+			}
+		} else {
+			r := terminal.Act(string(buf[:bytesRead]))
+			terminalToHost.WriteString(r)
+
+			// update client with new state of terminal
+			network.SetCurrentState(terminal)
+		}
+
+		// write user input and terminal writeback to the host
+		if terminalToHost.Len() > 0 {
+			_, err := ptmx.WriteString(terminalToHost.String())
+			if err != nil {
+				network.ShartShutdown()
+			}
+		}
+
+		network.Tick()
 	}
-
 	return nil
 }
 

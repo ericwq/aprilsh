@@ -69,7 +69,7 @@ func (t *Transport[S, R]) processThrowawayUntil(throwawayNum int64) {
 }
 
 // Send data or an ack if necessary.
-func (t *Transport[S, R]) tick() error {
+func (t *Transport[S, R]) Tick() error {
 	return t.sender.tick()
 }
 
@@ -208,6 +208,10 @@ func (t *Transport[S, R]) ShartShutdown() {
 	t.sender.StartShutdown()
 }
 
+func (t *Transport[S, R]) ShutdownInProgress() bool {
+	return t.sender.shutdownInProgress
+}
+
 func (t *Transport[S, R]) getCurrentState() S {
 	return t.sender.getCurrentState()
 }
@@ -216,7 +220,7 @@ func (t *Transport[S, R]) SetCurrentState(x S) {
 	t.sender.setCurrentState(x)
 }
 
-func (t *Transport[S, R]) getLatestRemoteState() TimestampedState[R] {
+func (t *Transport[S, R]) GetLatestRemoteState() TimestampedState[R] {
 	last := len(t.receivedState) - 1
 	return t.receivedState[last]
 }

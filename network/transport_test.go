@@ -39,7 +39,7 @@ func TestTransportClientSend(t *testing.T) {
 	server.connection.logW.SetOutput(io.Discard)
 
 	// send user stream to server
-	client.tick()
+	client.Tick()
 	time.Sleep(time.Millisecond * 20)
 	server.recv()
 	time.Sleep(time.Millisecond * 20)
@@ -52,15 +52,15 @@ func TestTransportClientSend(t *testing.T) {
 	}
 
 	// send complete to client
-	server.tick()
+	server.Tick()
 	time.Sleep(time.Millisecond * 20)
 	client.recv()
 	time.Sleep(time.Millisecond * 20)
 
 	// validate client sent and server received contents
-	if !server.getLatestRemoteState().state.Equal(client.getCurrentState()) {
+	if !server.GetLatestRemoteState().state.Equal(client.getCurrentState()) {
 		t.Errorf("#test client send %q to server, server receive %q from client\n",
-			client.getCurrentState(), server.getLatestRemoteState().state)
+			client.getCurrentState(), server.GetLatestRemoteState().state)
 	}
 
 	// validate sentStates shrink after a server response
@@ -97,7 +97,7 @@ func TestTransportServerSend(t *testing.T) {
 	server.SetVerbose(1)
 
 	// send user stream to server
-	client.tick()
+	client.Tick()
 	time.Sleep(time.Millisecond * 20)
 	server.recv()
 	time.Sleep(time.Millisecond * 20)
@@ -131,15 +131,15 @@ func TestTransportServerSend(t *testing.T) {
 	// fmt.Printf("#test currentState=%p, terminalInSrv=%p\n", server.getCurrentState(), completeTerminal)
 
 	// send complete to client
-	server.tick()
+	server.Tick()
 	time.Sleep(time.Millisecond * 20)
 	client.recv()
 	time.Sleep(time.Millisecond * 20)
 
 	// validate the result
 	// fmt.Printf("#test server currentState=%p, client last remoteState=%p\n", server.getCurrentState(), client.getLatestRemoteState().state)
-	if !server.getCurrentState().Equal(client.getLatestRemoteState().state) {
-		t.Errorf("#test server send %v to client, client got %v\n ", server.getCurrentState(), client.getLatestRemoteState().state)
+	if !server.getCurrentState().Equal(client.GetLatestRemoteState().state) {
+		t.Errorf("#test server send %v to client, client got %v\n ", server.getCurrentState(), client.GetLatestRemoteState().state)
 	}
 	server.connection.sock().Close()
 	client.connection.sock().Close()
@@ -221,7 +221,7 @@ func TestTransportRecvRepeat(t *testing.T) {
 
 	// first round
 	pushUserBytesTo(client.getCurrentState(), "first regular send")
-	client.tick()
+	client.Tick()
 	time.Sleep(time.Millisecond * 20)
 	server.recv()
 	time.Sleep(time.Millisecond * 20)

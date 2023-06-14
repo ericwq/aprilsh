@@ -441,7 +441,7 @@ func TestSenderSendEmptyAckFail(t *testing.T) {
 	// }
 
 	// validate the tick result
-	err := client.tick()
+	err := client.Tick()
 	// fmt.Printf("#test sender sendEmptyAck expect %q\n", err)
 	if err == nil {
 		t.Errorf("#test sender sendEmptyAck expect %q\n", err)
@@ -560,7 +560,7 @@ func TestSenderTickSendToReceiverFail(t *testing.T) {
 	client.connection.socks = append(client.connection.socks, &mock)
 
 	// validate the result
-	err := client.tick()
+	err := client.Tick()
 	// fmt.Printf("#test sender sendEmptyAck expect %s\n", err)
 	if err == nil {
 		t.Errorf("#test sender sendToReceiver expect %q\n", err)
@@ -592,7 +592,7 @@ func TestSenderTickVerify(t *testing.T) {
 	server.connection.logW.SetOutput(io.Discard)
 
 	// send user stream to server
-	client.tick()
+	client.Tick()
 	time.Sleep(time.Millisecond * 20)
 	server.recv()
 	time.Sleep(time.Millisecond * 20)
@@ -611,7 +611,7 @@ func TestSenderTickVerify(t *testing.T) {
 	}
 
 	// send complete to client
-	server.tick()
+	server.Tick()
 	time.Sleep(time.Millisecond * 20)
 	client.recv()
 	time.Sleep(time.Millisecond * 20)
@@ -619,9 +619,9 @@ func TestSenderTickVerify(t *testing.T) {
 	// check the stderr output to validate the result.
 
 	// validate client sent and server received contents
-	if !server.getLatestRemoteState().state.Equal(client.getCurrentState()) {
+	if !server.GetLatestRemoteState().state.Equal(client.getCurrentState()) {
 		t.Errorf("#test client send %q to server, server receive %q from client\n",
-			client.getCurrentState(), server.getLatestRemoteState().state)
+			client.getCurrentState(), server.GetLatestRemoteState().state)
 	}
 
 	server.connection.sock().Close()
