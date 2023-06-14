@@ -683,6 +683,10 @@ func (mc *mockUdpConn) WriteTo(b []byte, addr net.Addr) (len int, err error) {
 	return
 }
 
+func (mc *mockUdpConn) SetDeadline(t time.Time) error {
+	return nil
+}
+
 func TestSendBranch(t *testing.T) {
 	// prepare the client and server connection for the test
 	title := "detect server detached from client"
@@ -1069,7 +1073,7 @@ func TestRecvSRTT(t *testing.T) {
 		}
 		// fmt.Printf("%q %d RTTHit=%t SRTT=%f, RTTVAR=%f\n", title, i, client.RTTHit, client.SRTT, client.RTTVAR)
 	}
-	if  client.SRTT < 20 || client.SRTT > 25 {
+	if client.SRTT < 20 || client.SRTT > 25 {
 		t.Errorf("%q RTTHit=%t SRTT=%f, RTTVAR=%f\n", title, client.RTTHit, client.SRTT, client.RTTVAR)
 	}
 

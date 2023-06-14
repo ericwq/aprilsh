@@ -41,7 +41,7 @@ func TestTransportClientSend(t *testing.T) {
 	// send user stream to server
 	client.Tick()
 	time.Sleep(time.Millisecond * 20)
-	server.recv()
+	server.Recv()
 	time.Sleep(time.Millisecond * 20)
 
 	// validate sentStates status
@@ -54,7 +54,7 @@ func TestTransportClientSend(t *testing.T) {
 	// send complete to client
 	server.Tick()
 	time.Sleep(time.Millisecond * 20)
-	client.recv()
+	client.Recv()
 	time.Sleep(time.Millisecond * 20)
 
 	// validate client sent and server received contents
@@ -99,7 +99,7 @@ func TestTransportServerSend(t *testing.T) {
 	// send user stream to server
 	client.Tick()
 	time.Sleep(time.Millisecond * 20)
-	server.recv()
+	server.Recv()
 	time.Sleep(time.Millisecond * 20)
 
 	// check remote address
@@ -133,7 +133,7 @@ func TestTransportServerSend(t *testing.T) {
 	// send complete to client
 	server.Tick()
 	time.Sleep(time.Millisecond * 20)
-	client.recv()
+	client.Recv()
 	time.Sleep(time.Millisecond * 20)
 
 	// validate the result
@@ -158,7 +158,7 @@ func TestTransportRecvError(t *testing.T) {
 	server.connection.socks = server.connection.socks[len(server.connection.socks)-1:]
 
 	// validate
-	if err := server.recv(); err != nil {
+	if err := server.Recv(); err != nil {
 		if !errors.Is(err, unix.EWOULDBLOCK) {
 			t.Errorf("#test recv error expect err=%q, got %q\n", unix.EWOULDBLOCK, err)
 		}
@@ -193,7 +193,7 @@ func TestTransportRecvVersionError(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 20)
 
-	err := server.recv()
+	err := server.Recv()
 	if err != nil {
 		expect := errors.New("aprilsh protocol version mismatch.")
 		if err.Error() != expect.Error() {
@@ -223,7 +223,7 @@ func TestTransportRecvRepeat(t *testing.T) {
 	pushUserBytesTo(client.getCurrentState(), "first regular send")
 	client.Tick()
 	time.Sleep(time.Millisecond * 20)
-	server.recv()
+	server.Recv()
 	time.Sleep(time.Millisecond * 20)
 
 	// second round, send repeat state
@@ -231,7 +231,7 @@ func TestTransportRecvRepeat(t *testing.T) {
 	client.sender.sendInFragments("", newNum)
 	time.Sleep(time.Millisecond * 20)
 
-	server.recv()
+	server.Recv()
 	got := server.receivedState[1].num
 	if got != newNum {
 		t.Errorf("#test recv repeat expect %q, got %q\n", newNum, got)
@@ -273,7 +273,7 @@ func TestTransportRecvNotFoundOld(t *testing.T) {
 
 	time.Sleep(time.Millisecond * 20)
 
-	err := server.recv()
+	err := server.Recv()
 	expect := "Ignoring out-of-order packet. Reference state"
 	if !strings.Contains(err.Error(), expect) {
 		t.Errorf("#test recv expect %q, got %q\n", expect, err)
@@ -312,7 +312,7 @@ func TestTransportRecvOverLimit(t *testing.T) {
 	client.sender.sendInFragments("", newNum)
 	time.Sleep(time.Millisecond * 20)
 
-	server.recv()
+	server.Recv()
 	if server.receiverQuenchTimer-time.Now().UnixMilli() > 1000 {
 		// that is the expected result
 		// t.Logf("#test recv over limit, receivedQuenchTimer=%d, now=%d\n", server.receiverQuenchTimer, time.Now().UnixMilli())
@@ -357,7 +357,7 @@ func TestTransportRecvOverLimit2(t *testing.T) {
 	server.receiverQuenchTimer = time.Now().UnixMilli() + 100
 
 	// validate the result
-	err := server.recv()
+	err := server.Recv()
 	if err != nil {
 		t.Errorf("#test recv over limit, receivedQuenchTimer=%d, now=%d\n", server.receiverQuenchTimer, time.Now().UnixMilli())
 	}
@@ -397,7 +397,7 @@ func TestTransportRecvOutOfOrder(t *testing.T) {
 	time.Sleep(time.Millisecond * 20)
 
 	// validate the order of state
-	server.recv()
+	server.Recv()
 	if server.receivedState[2].num != newNum {
 		t.Errorf("#test recv expect %d, got %q\n", newNum, server.receivedState[2].num)
 	}

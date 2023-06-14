@@ -79,7 +79,7 @@ func (t *Transport[S, R]) waitTime() int {
 }
 
 // Blocks waiting for a packet.
-func (t *Transport[S, R]) recv() error {
+func (t *Transport[S, R]) Recv() error {
 	s, err := t.connection.recv()
 	if err != nil {
 		return err
@@ -206,6 +206,10 @@ func (t *Transport[S, R]) getRemoteDiff() string {
 
 func (t *Transport[S, R]) ShartShutdown() {
 	t.sender.StartShutdown()
+}
+
+func (t *Transport[S, R]) SetDeadline(ti time.Time) error {
+	return t.connection.SetDeadline(ti)
 }
 
 func (t *Transport[S, R]) ShutdownInProgress() bool {

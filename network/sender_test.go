@@ -394,7 +394,7 @@ func TestSenderSendEmptyAckShutdown(t *testing.T) {
 	// for i := range server.receivedState {
 	// 	fmt.Printf("#test shutdown %d\n", server.receivedState[i].num)
 	// }
-	server.recv()
+	server.Recv()
 	expect := client.sender.getSentStateLast()
 	// got := server.getRemoteStateNum()
 	// TODO shutdown send newNum (-1) to peer, with the sorted receivedState, the shutdown logic need to be checked
@@ -507,7 +507,7 @@ func TestSenderSendToReceiverShutdown(t *testing.T) {
 	// for i := range server.receivedState {
 	// 	fmt.Printf("#test shutdown %d\n", server.receivedState[i].num)
 	// }
-	server.recv()
+	server.Recv()
 	expect := client.sender.getSentStateLast()
 	// got := server.getRemoteStateNum()
 	// TODO shutdown send newNum (-1) to peer, with the sorted receivedState, the shutdown logic need to be checked
@@ -594,7 +594,7 @@ func TestSenderTickVerify(t *testing.T) {
 	// send user stream to server
 	client.Tick()
 	time.Sleep(time.Millisecond * 20)
-	server.recv()
+	server.Recv()
 	time.Sleep(time.Millisecond * 20)
 
 	// prepare hook func to change assumedReceiverState
@@ -613,7 +613,7 @@ func TestSenderTickVerify(t *testing.T) {
 	// send complete to client
 	server.Tick()
 	time.Sleep(time.Millisecond * 20)
-	client.recv()
+	client.Recv()
 	time.Sleep(time.Millisecond * 20)
 
 	// check the stderr output to validate the result.
@@ -650,7 +650,7 @@ func TestSenderSendInterval(t *testing.T) {
 
 		client.connection.send(toServer)
 		time.Sleep(time.Millisecond * 5)
-		server.recv()
+		server.Recv()
 
 		server.connection.send(toClient)
 		time.Sleep(time.Millisecond * 5)

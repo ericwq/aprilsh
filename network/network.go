@@ -199,6 +199,7 @@ type udpConn interface {
 	Write(b []byte) (int, error)
 	WriteTo(b []byte, addr net.Addr) (int, error)
 	ReadMsgUDP(b, oob []byte) (n, oobn, flags int, addr *net.UDPAddr, err error)
+	SetDeadline(t time.Time) error
 	Close() error
 }
 
@@ -719,12 +720,25 @@ func (c *Connection) send(s string) (sendError error) {
 	return
 }
 
+func (c *Connection) SetDeadline(t time.Time) (err error) {
+	for i := range c.socks {
+		err = c.socks[i].SetDeadline(t)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 // receive packet from remote
 func (c *Connection) recv() (payload string, err error) {
 	for i := range c.socks {
 		payload, err = c.recvOne(c.socks[i].(udpConn))
 		if err != nil {
-			if errors.Is(err, unix.EWOULDBLOCK) {
+			if errors.Is(err, os.ErrDeadlineExceeded) {
+				return "", err // TODO how to process tiemout for client?
+			} else if errors.Is(err, unix.EWOULDBLOCK) {
 				// EAGAIN is processed by go netpoll
 				continue
 			} else {

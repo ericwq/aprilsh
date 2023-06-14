@@ -536,12 +536,18 @@ func serve(ptmx *os.File, terminal *statesync.Complete, network *network.Transpo
 	// var timeSinceRemoteState int64
 
 	for !network.ShutdownInProgress() {
+		timeout := 0
+		network.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
+		netErr:= network.Recv()
+		if netErr != nil {
+			if errors.Is(netErr, os.ErrDeadlineExceeded) {
+			}
+		}
 
 		// now = time.Now().UnixMilli()
 		// p := network.GetLatestRemoteState()
 		// timeSinceRemoteState = now - p.GetTimestamp()
 		terminalToHost.Reset()
-
 
 		// input from the host needs to be fed to the terminal
 		var buf [16384]byte
@@ -550,10 +556,10 @@ func serve(ptmx *os.File, terminal *statesync.Complete, network *network.Transpo
 		ptmx.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(masterTimeout)))
 
 		// fill buffer if possible
-		bytesRead, err := ptmx.Read(buf[:])
-		if err != nil {
-			if errors.Is(err, os.ErrDeadlineExceeded) {
-				continue
+		bytesRead, masterErr := ptmx.Read(buf[:])
+		if masterErr != nil {
+			if errors.Is(masterErr, os.ErrDeadlineExceeded) {
+				// continue
 			} else {
 				// If the pty slave is closed, reading from the master can fail with
 				// EIO (see #264).  So we treat errors on read() like EOF.
