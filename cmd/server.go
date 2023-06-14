@@ -27,6 +27,7 @@ import (
 	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/network"
 	"github.com/ericwq/aprilsh/statesync"
+	term "github.com/ericwq/aprilsh/terminal"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
 	// "golang.org/x/term"
@@ -530,6 +531,7 @@ func serve(ptmx *os.File, terminal *statesync.Complete, network *network.Transpo
 	// scale timeouts
 	// networkTimeoutMs := uint64(networkTimeout) * 1000
 	// networkSignaledTimeoutMs := uint64(networkSignaledTimeout) * 1000
+	lastRemoteNum := network.GetRemoteStateNum()
 
 	var terminalToHost strings.Builder
 	// var now int64
@@ -538,12 +540,37 @@ func serve(ptmx *os.File, terminal *statesync.Complete, network *network.Transpo
 	for !network.ShutdownInProgress() {
 		timeout := 0
 		network.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
-		netErr:= network.Recv()
+
+		// packet received from the network
+		netErr := network.Recv()
 		if netErr != nil {
 			if errors.Is(netErr, os.ErrDeadlineExceeded) {
+			} else {
+				logW.Printf("#serve network.Recv error:%s\n", netErr)
 			}
 		}
 
+		// is new user input available for the terminal?
+		if network.GetRemoteStateNum() != lastRemoteNum {
+			lastRemoteNum = network.GetRemoteStateNum()
+
+			us := &statesync.UserStream{}
+			us.ApplyString(network.GetRemoteDiff())
+			for i := 0; i < us.Size(); i++ {
+				action := us.GetAction(i)
+				//  apply only the last consecutive Resize action
+				if f, ok := action.(term.Resize); ok {
+					for i < us.Size()-1 {
+						action2 := us.GetAction(i + 1)
+						if k, ok := action2.(term.Resize); ok {
+							i++
+						}
+					}
+				}
+			}
+
+			// apply userstream to terminal
+		}
 		// now = time.Now().UnixMilli()
 		// p := network.GetLatestRemoteState()
 		// timeSinceRemoteState = now - p.GetTimestamp()

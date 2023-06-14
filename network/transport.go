@@ -190,7 +190,7 @@ func (t *Transport[S, R]) Recv() error {
 	return nil
 }
 
-func (t *Transport[S, R]) getRemoteDiff() string {
+func (t *Transport[S, R]) GetRemoteDiff() string {
 	// find diff between last receiver state and current remote state, then rationalize states
 	back := len(t.receivedState) - 1
 	ret := t.receivedState[back].state.DiffFrom(t.lastReceiverState)
@@ -229,7 +229,7 @@ func (t *Transport[S, R]) GetLatestRemoteState() TimestampedState[R] {
 	return t.receivedState[last]
 }
 
-func (t *Transport[S, R]) getRemoteStateNum() int64 {
+func (t *Transport[S, R]) GetRemoteStateNum() int64 {
 	last := len(t.receivedState) - 1
 	return t.receivedState[last].num
 }

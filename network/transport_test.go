@@ -109,7 +109,7 @@ func TestTransportServerSend(t *testing.T) {
 
 	// apply remote diff to server current state
 	us := &statesync.UserStream{}
-	diff := server.getRemoteDiff()
+	diff := server.GetRemoteDiff()
 	us.ApplyString(diff)
 	terminalToHost := ""
 	for i := 0; i < us.Size(); i++ {
@@ -126,7 +126,7 @@ func TestTransportServerSend(t *testing.T) {
 
 	// fmt.Printf("#test server send: got diff %q, terminalToHost=%q\n", diff, terminalToHost)
 	completeTerminal.Act(terminalToHost)
-	completeTerminal.RegisterInputFrame(server.getRemoteStateNum(), time.Now().UnixMilli())
+	completeTerminal.RegisterInputFrame(server.GetRemoteStateNum(), time.Now().UnixMilli())
 	server.SetCurrentState(completeTerminal)
 	// fmt.Printf("#test currentState=%p, terminalInSrv=%p\n", server.getCurrentState(), completeTerminal)
 
