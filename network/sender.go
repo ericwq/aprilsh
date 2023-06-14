@@ -427,7 +427,7 @@ func (ts *TransportSender[T]) remoteHeard(x int64) {
 }
 
 // Starts shutdown sequence
-func (ts *TransportSender[T]) startShutdown() {
+func (ts *TransportSender[T]) StartShutdown() {
 	if !ts.shutdownInProgress {
 		ts.shutdownStart = time.Now().UnixMilli()
 		ts.shutdownInProgress = true

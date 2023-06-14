@@ -127,7 +127,7 @@ func TestTransportServerSend(t *testing.T) {
 	// fmt.Printf("#test server send: got diff %q, terminalToHost=%q\n", diff, terminalToHost)
 	completeTerminal.Act(terminalToHost)
 	completeTerminal.RegisterInputFrame(server.getRemoteStateNum(), time.Now().UnixMilli())
-	server.setCurrentState(completeTerminal)
+	server.SetCurrentState(completeTerminal)
 	// fmt.Printf("#test currentState=%p, terminalInSrv=%p\n", server.getCurrentState(), completeTerminal)
 
 	// send complete to client

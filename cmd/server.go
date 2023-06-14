@@ -528,6 +528,30 @@ func serve(ptmx *os.File, terminal *statesync.Complete,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
 	networkTimeout int64, networkSignaledTimeout int64,
 ) error {
+	// scale timeouts
+	// networkTimeoutMs := uint64(networkTimeout) * 1000
+	// networkSignaledTimeoutMs := uint64(networkSignaledTimeout) * 1000
+
+	// input from the host needs to be fed to the terminal
+	var buf [16384]byte
+	// set read time out: 10ms
+	masterTimeout := 10
+	ptmx.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(masterTimeout)))
+
+	// fill buffer if possible
+	bytesRead, err := ptmx.Read(buf[:])
+
+	if err != nil {
+		// If the pty slave is closed, reading from the master can fail with
+		// EIO (see #264).  So we treat errors on read() like EOF.
+		network.ShartShutdown()
+	} else {
+		terminal.Act(string(buf[:bytesRead]))
+
+		// update client with new state of terminal
+		network.SetCurrentState(terminal)
+	}
+
 	return nil
 }
 

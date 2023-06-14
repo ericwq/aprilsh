@@ -499,7 +499,7 @@ func TestSenderSendToReceiverShutdown(t *testing.T) {
 	server.connection.logW.SetOutput(io.Discard)
 
 	// prepare for shutdown
-	client.sender.startShutdown()
+	client.sender.StartShutdown()
 	client.sender.sendToReceiver("prepare for shutdown")
 	time.Sleep(time.Millisecond * 20)
 

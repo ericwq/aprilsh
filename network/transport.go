@@ -204,11 +204,15 @@ func (t *Transport[S, R]) getRemoteDiff() string {
 	return ret
 }
 
+func (t *Transport[S, R]) ShartShutdown() {
+	t.sender.StartShutdown()
+}
+
 func (t *Transport[S, R]) getCurrentState() S {
 	return t.sender.getCurrentState()
 }
 
-func (t *Transport[S, R]) setCurrentState(x S) {
+func (t *Transport[S, R]) SetCurrentState(x S) {
 	t.sender.setCurrentState(x)
 }
 
