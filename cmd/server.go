@@ -550,31 +550,52 @@ func serve(ptmx *os.File, terminal *statesync.Complete, network *network.Transpo
 			}
 		}
 
+		now := time.Now().UnixMilli()
+		// p := network.GetLatestRemoteState()
+		// timeSinceRemoteState = now - p.GetTimestamp()
+		terminalToHost.Reset()
+
 		// is new user input available for the terminal?
 		if network.GetRemoteStateNum() != lastRemoteNum {
 			lastRemoteNum = network.GetRemoteStateNum()
 
 			us := &statesync.UserStream{}
 			us.ApplyString(network.GetRemoteDiff())
+			// apply userstream to terminal
 			for i := 0; i < us.Size(); i++ {
 				action := us.GetAction(i)
 				//  apply only the last consecutive Resize action
-				if f, ok := action.(term.Resize); ok {
+				if res, ok := action.(term.Resize); ok {
 					for i < us.Size()-1 {
 						action2 := us.GetAction(i + 1)
-						if k, ok := action2.(term.Resize); ok {
+						if res, ok = action2.(term.Resize); ok {
 							i++
 						}
 					}
+					winSize, err := unix.IoctlGetWinsize(int(ptmx.Fd()), unix.TIOCGWINSZ)
+					if err != nil {
+						logW.Printf("#serve ioctl TIOCGWINSZ %s", err)
+						network.ShartShutdown()
+					}
+					winSize.Col = uint16(res.Width)
+					winSize.Row = uint16(res.Height)
+					if err = unix.IoctlSetWinsize(int(ptmx.Fd()), unix.TIOCSWINSZ, winSize); err != nil {
+						logW.Printf("#serve ioctl TIOCSWINSZ %s", err)
+						network.ShartShutdown()
+					}
 				}
+				terminalToHost.WriteString(terminal.ActOne(action))
 			}
 
-			// apply userstream to terminal
+			if !us.Empty() {
+				// register input frame number for future echo ack
+				terminal.RegisterInputFrame(lastRemoteNum, now)
+			}
+
+			if !network.ShutdownInProgress() {
+				network.SetCurrentState(terminal)
+			}
 		}
-		// now = time.Now().UnixMilli()
-		// p := network.GetLatestRemoteState()
-		// timeSinceRemoteState = now - p.GetTimestamp()
-		terminalToHost.Reset()
 
 		// input from the host needs to be fed to the terminal
 		var buf [16384]byte

@@ -81,6 +81,10 @@ func (u *UserStream) PushBackResize(width, height int) {
 	u.actions = append(u.actions, NewUserEventResize(resize))
 }
 
+func (u *UserStream) Empty() bool {
+	return len(u.actions) == 0
+}
+
 func (u *UserStream) Size() int {
 	return len(u.actions)
 }
