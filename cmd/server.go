@@ -551,6 +551,7 @@ func serve(ptmx *os.File, terminal *statesync.Complete, network *network.Transpo
 		netErr := network.Recv()
 		if netErr != nil {
 			if errors.Is(netErr, os.ErrDeadlineExceeded) {
+				// receive timeout
 			} else {
 				logW.Printf("#serve network.Recv error:%s\n", netErr)
 			}
