@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/signal"
 	"os/user"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -535,7 +536,8 @@ func serve(ptmx *os.File, terminal *statesync.Complete, network *network.Transpo
 	// networkTimeoutMs := uint64(networkTimeout) * 1000
 	// networkSignaledTimeoutMs := uint64(networkSignaledTimeout) * 1000
 	lastRemoteNum := network.GetRemoteStateNum()
-	// var connectedUtmp bool
+	var connectedUtmp bool
+	var savedAddr net.Addr
 
 	var terminalToHost strings.Builder
 	// var now int64
@@ -602,7 +604,17 @@ func serve(ptmx *os.File, terminal *statesync.Complete, network *network.Transpo
 			}
 
 			// update utmp entry if we have become "connected"
-			// if !connectedUtmp ||
+			if utempter && (!connectedUtmp || !reflect.DeepEqual(savedAddr, network.GetRemoteAddr())) {
+				savedAddr = network.GetRemoteAddr()
+
+				// convert savedAddr to host name
+				host := ""
+
+				tmp := fmt.Sprintf("%s via %s [%d]", host, _PACKAGE_STRING, os.Getpid())
+				addUtmpEntry(ptmx.Name(), tmp)
+
+				connectedUtmp = true
+			}
 		}
 
 		// input from the host needs to be fed to the terminal
