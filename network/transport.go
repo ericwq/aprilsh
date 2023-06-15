@@ -74,7 +74,7 @@ func (t *Transport[S, R]) Tick() error {
 }
 
 // Returns the number of ms to wait until next possible event.
-func (t *Transport[S, R]) waitTime() int {
+func (t *Transport[S, R]) WaitTime() int {
 	return t.sender.waitTime()
 }
 
@@ -216,7 +216,7 @@ func (t *Transport[S, R]) ShutdownInProgress() bool {
 	return t.sender.shutdownInProgress
 }
 
-func (t *Transport[S, R]) getCurrentState() S {
+func (t *Transport[S, R]) GetCurrentState() S {
 	return t.sender.getCurrentState()
 }
 
@@ -239,7 +239,7 @@ func (t *Transport[S, R]) SetVerbose(verbose uint) {
 	t.verbose = verbose
 }
 
-func (t *Transport[S, R]) getRemoteAddr() net.Addr {
+func (t *Transport[S, R]) GetRemoteAddr() net.Addr {
 	return t.connection.getRemoteAddr()
 }
 

@@ -25,3 +25,8 @@ func checkUnattachedRecord(userName string, ignore string) []string {
 	logW.Printf("unimplement %s\n", "checkUnattachedRecord()")
 	return nil
 }
+
+func hasUtempter() bool {
+	logW.Printf("unimplement %s\n", "isUtmpSupport()")
+	return nil
+}

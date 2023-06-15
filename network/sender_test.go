@@ -550,7 +550,7 @@ func TestSenderTickSendToReceiverFail(t *testing.T) {
 	keyStr := server.connection.getKey()
 	client := NewTransportClient(initialState, initialRemote, keyStr, desiredIp, desiredPort)
 
-	pushUserBytesTo(client.getCurrentState(), "sendToReceiver failed.")
+	pushUserBytesTo(client.GetCurrentState(), "sendToReceiver failed.")
 
 	// disable log
 	server.connection.logW.SetOutput(io.Discard)
@@ -583,7 +583,7 @@ func TestSenderTickVerify(t *testing.T) {
 	keyStr := server.connection.getKey() // get the key from server
 	client := NewTransportClient(initialState, initialRemote, keyStr, desiredIp, desiredPort)
 
-	pushUserBytesTo(client.getCurrentState(), "first mock input.")
+	pushUserBytesTo(client.GetCurrentState(), "first mock input.")
 
 	// set verbose
 	server.SetVerbose(1)
@@ -619,9 +619,9 @@ func TestSenderTickVerify(t *testing.T) {
 	// check the stderr output to validate the result.
 
 	// validate client sent and server received contents
-	if !server.GetLatestRemoteState().state.Equal(client.getCurrentState()) {
+	if !server.GetLatestRemoteState().state.Equal(client.GetCurrentState()) {
 		t.Errorf("#test client send %q to server, server receive %q from client\n",
-			client.getCurrentState(), server.GetLatestRemoteState().state)
+			client.GetCurrentState(), server.GetLatestRemoteState().state)
 	}
 
 	server.connection.sock().Close()

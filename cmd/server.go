@@ -40,6 +40,8 @@ var (
 	buildConfigTest = false
 )
 
+var utempter bool
+
 var (
 	logW *log.Logger
 	logI *log.Logger
@@ -59,6 +61,7 @@ const (
 
 func init() {
 	initLog()
+	utempter = hasUtempter()
 }
 
 func initLog() {
@@ -532,6 +535,7 @@ func serve(ptmx *os.File, terminal *statesync.Complete, network *network.Transpo
 	// networkTimeoutMs := uint64(networkTimeout) * 1000
 	// networkSignaledTimeoutMs := uint64(networkSignaledTimeout) * 1000
 	lastRemoteNum := network.GetRemoteStateNum()
+	// var connectedUtmp bool
 
 	var terminalToHost strings.Builder
 	// var now int64
@@ -567,11 +571,11 @@ func serve(ptmx *os.File, terminal *statesync.Complete, network *network.Transpo
 				//  apply only the last consecutive Resize action
 				if res, ok := action.(term.Resize); ok {
 					for i < us.Size()-1 {
-						action2 := us.GetAction(i + 1)
-						if res, ok = action2.(term.Resize); ok {
+						if res, ok = us.GetAction(i + 1).(term.Resize); ok {
 							i++
 						}
 					}
+					// resize master
 					winSize, err := unix.IoctlGetWinsize(int(ptmx.Fd()), unix.TIOCGWINSZ)
 					if err != nil {
 						logW.Printf("#serve ioctl TIOCGWINSZ %s", err)
@@ -592,9 +596,13 @@ func serve(ptmx *os.File, terminal *statesync.Complete, network *network.Transpo
 				terminal.RegisterInputFrame(lastRemoteNum, now)
 			}
 
+			// update client with new state of terminal
 			if !network.ShutdownInProgress() {
 				network.SetCurrentState(terminal)
 			}
+
+			// update utmp entry if we have become "connected"
+			// if !connectedUtmp ||
 		}
 
 		// input from the host needs to be fed to the terminal

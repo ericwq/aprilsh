@@ -66,3 +66,11 @@ func checkUnattachedRecord(userName string, ignoreHost string) []string {
 	}
 	return nil
 }
+
+func hasUtempter() bool {
+	r := fp()
+	if r != nil {
+		return true
+	}
+	return false
+}

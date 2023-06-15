@@ -31,7 +31,7 @@ func TestTransportClientSend(t *testing.T) {
 	port := "6000"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
-	pushUserBytesTo(client.getCurrentState(), "Test client send and server empty ack.")
+	pushUserBytesTo(client.GetCurrentState(), "Test client send and server empty ack.")
 	// fmt.Printf("#test tickAndRecv currentState=%q pointer=%v, assumed=%d\n",
 	// 	client.getCurrentState(), client.getCurrentState(), client.sender.getAssumedReceiverStateIdx())
 
@@ -58,9 +58,9 @@ func TestTransportClientSend(t *testing.T) {
 	time.Sleep(time.Millisecond * 20)
 
 	// validate client sent and server received contents
-	if !server.GetLatestRemoteState().state.Equal(client.getCurrentState()) {
+	if !server.GetLatestRemoteState().state.Equal(client.GetCurrentState()) {
 		t.Errorf("#test client send %q to server, server receive %q from client\n",
-			client.getCurrentState(), server.GetLatestRemoteState().state)
+			client.GetCurrentState(), server.GetLatestRemoteState().state)
 	}
 
 	// validate sentStates shrink after a server response
@@ -88,7 +88,7 @@ func TestTransportServerSend(t *testing.T) {
 	port := "6010"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
-	pushUserBytesTo(client.getCurrentState(), "Test server response with terminal state.")
+	pushUserBytesTo(client.GetCurrentState(), "Test server response with terminal state.")
 	// fmt.Printf("#test tickAndRecv currentState=%q pointer=%v, assumed=%d\n",
 	// 	client.getCurrentState(), client.getCurrentState(), client.sender.getAssumedReceiverStateIdx())
 
@@ -103,8 +103,8 @@ func TestTransportServerSend(t *testing.T) {
 	time.Sleep(time.Millisecond * 20)
 
 	// check remote address
-	if server.getRemoteAddr() == nil {
-		t.Errorf("#test server send expect remote address %v, got nil\n", server.getRemoteAddr())
+	if server.GetRemoteAddr() == nil {
+		t.Errorf("#test server send expect remote address %v, got nil\n", server.GetRemoteAddr())
 	}
 
 	// apply remote diff to server current state
@@ -138,8 +138,8 @@ func TestTransportServerSend(t *testing.T) {
 
 	// validate the result
 	// fmt.Printf("#test server currentState=%p, client last remoteState=%p\n", server.getCurrentState(), client.getLatestRemoteState().state)
-	if !server.getCurrentState().Equal(client.GetLatestRemoteState().state) {
-		t.Errorf("#test server send %v to client, client got %v\n ", server.getCurrentState(), client.GetLatestRemoteState().state)
+	if !server.GetCurrentState().Equal(client.GetLatestRemoteState().state) {
+		t.Errorf("#test server send %v to client, client got %v\n ", server.GetCurrentState(), client.GetLatestRemoteState().state)
 	}
 	server.connection.sock().Close()
 	client.connection.sock().Close()
@@ -220,7 +220,7 @@ func TestTransportRecvRepeat(t *testing.T) {
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
 	// first round
-	pushUserBytesTo(client.getCurrentState(), "first regular send")
+	pushUserBytesTo(client.GetCurrentState(), "first regular send")
 	client.Tick()
 	time.Sleep(time.Millisecond * 20)
 	server.Recv()
@@ -238,7 +238,7 @@ func TestTransportRecvRepeat(t *testing.T) {
 	}
 
 	// coverage for waitTime
-	server.waitTime()
+	server.WaitTime()
 
 	// clean the socket
 	server.connection.sock().Close()
