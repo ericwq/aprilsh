@@ -14,31 +14,33 @@ import (
 	utmp "github.com/ericwq/goutmp"
 )
 
-type utmpEntry struct {
-	ent *utmp.UtmpEntry
-}
-
-func addUtmpEntry(ptmxName string, host string) *utmpEntry {
-	usr := getCurrentUser()
-
-	entry := utmp.Put_utmp(usr, ptmxName, host)
-	return &utmpEntry{&entry}
+func addUtmpEntry(pts *os.File, host string) bool {
+	// usr := getCurrentUser()
+	//
+	// entry := utmp.Put_utmp(usr, ptmxName, host)
+	// return &utmpEntry{&entry}
+	return utmp.UtmpxAddRecord(pts, host)
 }
 
 func updateLastLog(ptmxName string) {
 	host := fmt.Sprintf("%s [%d]", _PACKAGE_STRING, os.Getpid())
 	usr := getCurrentUser()
-	utmp.Put_lastlog_entry(_COMMAND_NAME, usr, ptmxName, host)
+	utmp.PutLastlogEntry(_COMMAND_NAME, usr, ptmxName, host)
 }
 
-func clearUtmpEntry(entry *utmpEntry) {
-	utmp.Unput_utmp(*(entry.ent))
+// func clearUtmpEntry(entry *utmpEntry) {
+// 	utmp.Unput_utmp(*(entry.ent))
+// }
+
+func clearUtmpEntry(pts *os.File) bool {
+	return utmp.UtmpxRemoveRecord(pts)
 }
 
 var fp func() *utmp.Utmpx // easy for testing
 
 func init() {
 	fp = utmp.GetUtmpx
+	utmpSupport = hasUtmpSupport()
 }
 
 func checkUnattachedRecord(userName string, ignoreHost string) []string {
@@ -67,7 +69,7 @@ func checkUnattachedRecord(userName string, ignoreHost string) []string {
 	return nil
 }
 
-func hasUtempter() bool {
+func hasUtmpSupport() bool {
 	r := fp()
 	if r != nil {
 		return true

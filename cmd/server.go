@@ -41,7 +41,7 @@ var (
 	buildConfigTest = false
 )
 
-var utempter bool
+var utmpSupport bool
 
 var (
 	logW *log.Logger
@@ -62,7 +62,6 @@ const (
 
 func init() {
 	initLog()
-	utempter = hasUtempter()
 }
 
 func initLog() {
@@ -205,8 +204,8 @@ type Config struct {
 	withMotd    bool
 
 	// the serve func
-	serve func(*os.File, *statesync.Complete, *network.Transport[*statesync.Complete,
-		*statesync.UserStream], int64, int64) error
+	serve func(*os.File, *os.File, *statesync.Complete,
+		*network.Transport[*statesync.Complete, *statesync.UserStream], int64, int64) error
 }
 
 // parseFlags parses the command-line arguments provided to the program.
@@ -491,13 +490,17 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	} else {
 		// add utmp entry
 		ptmxName := ptmx.Name()
-		entry := addUtmpEntry(ptmxName, utmpHost) // TODO validate fix utmp
+		if utmpSupport {
+			if !addUtmpEntry(pts, utmpHost) {
+				logW.Printf("#runWorker add utmp entry failed\n")
+			}
+		}
 
 		// update last log
 		updateLastLog(ptmxName)
 
 		// start the udp server, serve the udp request
-		go conf.serve(ptmx, terminal, network, networkTimeout, networkSignaledTimeout)
+		go conf.serve(ptmx, pts, terminal, network, networkTimeout, networkSignaledTimeout)
 		whChan <- &workhorse{shell, ptmx}
 		logI.Printf("#runWorker start listening on :%s\n", conf.desiredPort)
 
@@ -509,7 +512,11 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		logI.Printf("#runWorker stop listening on :%s\n", conf.desiredPort)
 
 		// clear utmp entry
-		clearUtmpEntry(entry)
+		if utmpSupport {
+			if !clearUtmpEntry(pts) {
+				logW.Printf("#runWorker clear utmp entry failed\n")
+			}
+		}
 	}
 
 	// fmt.Printf("#runWorker [%s is exiting.]\n\n", COMMAND_NAME)
@@ -529,7 +536,8 @@ func getCurrentUser() string {
 	return user.Username
 }
 
-func serve(ptmx *os.File, terminal *statesync.Complete, network *network.Transport[*statesync.Complete, *statesync.UserStream],
+func serve(ptmx *os.File, pts *os.File, terminal *statesync.Complete,
+	network *network.Transport[*statesync.Complete, *statesync.UserStream],
 	networkTimeout int64, networkSignaledTimeout int64,
 ) error {
 	// scale timeouts
@@ -605,14 +613,14 @@ func serve(ptmx *os.File, terminal *statesync.Complete, network *network.Transpo
 			}
 
 			// update utmp entry if we have become "connected"
-			if utempter && (!connectedUtmp || !reflect.DeepEqual(savedAddr, network.GetRemoteAddr())) {
+			if utmpSupport && (!connectedUtmp || !reflect.DeepEqual(savedAddr, network.GetRemoteAddr())) {
 				savedAddr = network.GetRemoteAddr()
 
 				// convert savedAddr to host name
 				host := ""
 
 				tmp := fmt.Sprintf("%s via %s [%d]", host, _PACKAGE_STRING, os.Getpid())
-				addUtmpEntry(ptmx.Name(), tmp)
+				addUtmpEntry(pts, tmp)
 
 				connectedUtmp = true
 			}

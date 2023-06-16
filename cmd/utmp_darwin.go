@@ -6,19 +6,22 @@
 
 package main
 
+import "os"
+
 type utmpEntry struct{}
 
-func addUtmpEntry(ptmxName string, host string) *utmpEntry {
+func addUtmpEntry(pts *os.File, host string) bool {
 	logW.Printf("unimplement %s\n", "addUtmpEntry()")
-	return nil
+	return false
 }
 
 func updateLastLog(ptmxName string) {
 	logW.Printf("unimplement %s\n", "updateLastLog()")
 }
 
-func clearUtmpEntry(entry *utmpEntry) {
+func clearUtmpEntry(pts *os.File) bool {
 	logW.Printf("unimplement %s\n", "clearUtmpEntry()")
+	return false
 }
 
 func checkUnattachedRecord(userName string, ignore string) []string {
@@ -28,5 +31,5 @@ func checkUnattachedRecord(userName string, ignore string) []string {
 
 func hasUtempter() bool {
 	logW.Printf("unimplement %s\n", "isUtmpSupport()")
-	return nil
+	return false
 }
