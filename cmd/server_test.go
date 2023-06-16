@@ -27,6 +27,8 @@ import (
 	"time"
 
 	"github.com/creack/pty"
+	"github.com/ericwq/aprilsh/network"
+	"github.com/ericwq/aprilsh/statesync"
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )
@@ -1448,6 +1450,13 @@ func TestWaitError(t *testing.T) {
 	}
 }
 
+func mockServe(ptmx *os.File, pts *os.File, terminal *statesync.Complete,
+	network *network.Transport[*statesync.Complete, *statesync.UserStream],
+	networkTimeout int64, networkSignaledTimeout int64,
+) error {
+	return nil
+}
+
 // the mock runWorker send empty key, pause some time and close the worker
 func failRunWorker(conf *Config, exChan chan string, whChan chan *workhorse) error {
 	// send the empty key
@@ -1493,7 +1502,7 @@ func TestRunWorkerKill(t *testing.T) {
 			initLog()
 
 			// set serve func and runWorker func
-			v.conf.serve = serve
+			v.conf.serve = mockServe
 			srv := newMainSrv(&v.conf, runWorker)
 
 			/// set commandPath and commandArgv based on environment
@@ -1594,7 +1603,7 @@ func TestRunWorkerStop(t *testing.T) {
 			initLog()
 
 			// set serve func and runWorker func
-			v.conf.serve = serve
+			v.conf.serve = mockServe
 			srv := newMainSrv(&v.conf, runWorker)
 
 			/// set commandPath and commandArgv based on environment
@@ -1773,7 +1782,7 @@ func TestShellWaitFail(t *testing.T) {
 				// find executable path
 				v.conf.commandPath, _ = exec.LookPath(v.conf.commandPath)
 				// set serve func
-				v.conf.serve = serve
+				v.conf.serve = mockServe
 			}
 
 			var wg sync.WaitGroup
