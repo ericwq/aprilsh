@@ -490,10 +490,8 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	} else {
 		// add utmp entry
 		ptmxName := ptmx.Name()
-		if utmpSupport {
-			if !addUtmpEntry(pts, utmpHost) {
-				logW.Printf("#runWorker add utmp entry failed\n")
-			}
+		if utmpSupport && !addUtmpEntry(pts, utmpHost) {
+			logW.Printf("#runWorker add utmp entry failed\n")
 		}
 
 		// update last log
@@ -512,10 +510,8 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		logI.Printf("#runWorker stop listening on :%s\n", conf.desiredPort)
 
 		// clear utmp entry
-		if utmpSupport {
-			if !clearUtmpEntry(pts) {
-				logW.Printf("#runWorker clear utmp entry failed\n")
-			}
+		if utmpSupport && !clearUtmpEntry(pts) {
+			logW.Printf("#runWorker clear utmp entry failed\n")
 		}
 	}
 
@@ -614,13 +610,22 @@ func serve(ptmx *os.File, pts *os.File, terminal *statesync.Complete,
 
 			// update utmp entry if we have become "connected"
 			if utmpSupport && (!connectedUtmp || !reflect.DeepEqual(savedAddr, network.GetRemoteAddr())) {
+				if !clearUtmpEntry(pts) {
+					logW.Printf("#serve clear utmp entry failed\n")
+				}
 				savedAddr = network.GetRemoteAddr()
 
 				// convert savedAddr to host name
-				host := ""
+				host := savedAddr.String() // default host name is ip string
+				hostList, e := net.LookupAddr(host)
+				if e == nil {
+					host = hostList[0] // got the host name, use the first one
+				}
 
-				tmp := fmt.Sprintf("%s via %s [%d]", host, _PACKAGE_STRING, os.Getpid())
-				addUtmpEntry(pts, tmp)
+				newHost := fmt.Sprintf("%s via %s [%d]", host, _PACKAGE_STRING, os.Getpid())
+				if !addUtmpEntry(pts, newHost) {
+					logW.Printf("#runWorker add utmp entry failed\n")
+				}
 
 				connectedUtmp = true
 			}
