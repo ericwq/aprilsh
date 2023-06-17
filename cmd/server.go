@@ -631,30 +631,32 @@ func serve(ptmx *os.File, pts *os.File, terminal *statesync.Complete,
 			}
 		}
 
-		// input from the host needs to be fed to the terminal
-		var buf [16384]byte
-		// set read time out: 10ms
-		masterTimeout := 10
-		ptmx.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(masterTimeout)))
+		if !network.ShutdownInProgress() {
+			// input from the host needs to be fed to the terminal
+			var buf [16384]byte
+			// set read time out: 10ms
+			masterTimeout := 10
+			ptmx.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(masterTimeout)))
 
-		// fill buffer if possible
-		bytesRead, masterErr := ptmx.Read(buf[:])
-		if masterErr != nil {
-			if errors.Is(masterErr, os.ErrDeadlineExceeded) {
-				// continue
+			// fill buffer if possible
+			bytesRead, masterErr := ptmx.Read(buf[:])
+			if masterErr != nil {
+				if errors.Is(masterErr, os.ErrDeadlineExceeded) {
+					// continue
+				} else {
+					// If the pty slave is closed, reading from the master can fail with
+					// EIO (see #264).  So we treat errors on read() like EOF.
+					network.ShartShutdown()
+					// fmt.Println("#run read error: ", err)
+					continue
+				}
 			} else {
-				// If the pty slave is closed, reading from the master can fail with
-				// EIO (see #264).  So we treat errors on read() like EOF.
-				network.ShartShutdown()
-				// fmt.Println("#run read error: ", err)
-				continue
-			}
-		} else {
-			r := terminal.Act(string(buf[:bytesRead]))
-			terminalToHost.WriteString(r)
+				r := terminal.Act(string(buf[:bytesRead]))
+				terminalToHost.WriteString(r)
 
-			// update client with new state of terminal
-			network.SetCurrentState(terminal)
+				// update client with new state of terminal
+				network.SetCurrentState(terminal)
+			}
 		}
 
 		// write user input and terminal writeback to the host
