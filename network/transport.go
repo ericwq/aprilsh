@@ -205,7 +205,7 @@ func (t *Transport[S, R]) GetRemoteDiff() string {
 }
 
 func (t *Transport[S, R]) ShartShutdown() {
-	t.sender.StartShutdown()
+	t.sender.startShutdown()
 }
 
 func (t *Transport[S, R]) SetDeadline(ti time.Time) error {
@@ -213,7 +213,15 @@ func (t *Transport[S, R]) SetDeadline(ti time.Time) error {
 }
 
 func (t *Transport[S, R]) ShutdownInProgress() bool {
-	return t.sender.shutdownInProgress
+	return t.sender.getShutdownInProgress()
+}
+
+func (t *Transport[S, R]) ShutdownAcknowledged() bool {
+	return t.sender.getShutdownAcknowledged()
+}
+
+func (t *Transport[S, R]) HasRemoteAddr() bool {
+	return t.connection.getHasRemoteAddr()
 }
 
 func (t *Transport[S, R]) GetCurrentState() S {

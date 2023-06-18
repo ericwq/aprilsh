@@ -537,17 +537,16 @@ func serve(ptmx *os.File, pts *os.File, terminal *statesync.Complete,
 	networkTimeout int64, networkSignaledTimeout int64,
 ) error {
 	// scale timeouts
-	// networkTimeoutMs := uint64(networkTimeout) * 1000
+	networkTimeoutMs := networkTimeout * 1000
 	// networkSignaledTimeoutMs := uint64(networkSignaledTimeout) * 1000
 	lastRemoteNum := network.GetRemoteStateNum()
 	var connectedUtmp bool
 	var savedAddr net.Addr
 
 	var terminalToHost strings.Builder
-	// var now int64
-	// var timeSinceRemoteState int64
+	var timeSinceRemoteState int64
 
-	for !network.ShutdownInProgress() {
+	for {
 		timeout := 0
 		network.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
 
@@ -562,8 +561,8 @@ func serve(ptmx *os.File, pts *os.File, terminal *statesync.Complete,
 		}
 
 		now := time.Now().UnixMilli()
-		// p := network.GetLatestRemoteState()
-		// timeSinceRemoteState = now - p.GetTimestamp()
+		p := network.GetLatestRemoteState()
+		timeSinceRemoteState = now - p.GetTimestamp()
 		terminalToHost.Reset()
 
 		// is new user input available for the terminal?
@@ -667,6 +666,25 @@ func serve(ptmx *os.File, pts *os.File, terminal *statesync.Complete,
 			}
 		}
 
+		idelShutdown := false
+		if networkTimeoutMs > 0 && networkTimeoutMs <= timeSinceRemoteState {
+			idelShutdown = true
+			logW.Printf("Network idle for %d seconds.\n", timeSinceRemoteState/1000)
+		}
+
+		if idelShutdown { // TODO how to process sel.any_signal()?
+			// shutdown signal
+			if network.HasRemoteAddr() && !network.ShutdownInProgress() {
+				network.ShartShutdown()
+			} else {
+				break
+			}
+		}
+
+		// quit if our shutdown has been acknowledged
+		if network.ShutdownInProgress() && network.ShutdownAcknowledged() {
+			break
+		}
 		network.Tick()
 	}
 	return nil

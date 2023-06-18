@@ -427,11 +427,19 @@ func (ts *TransportSender[T]) remoteHeard(x int64) {
 }
 
 // Starts shutdown sequence
-func (ts *TransportSender[T]) StartShutdown() {
+func (ts *TransportSender[T]) startShutdown() {
 	if !ts.shutdownInProgress {
 		ts.shutdownStart = time.Now().UnixMilli()
 		ts.shutdownInProgress = true
 	}
+}
+
+func (ts *TransportSender[T]) getShutdownInProgress() bool {
+	return ts.shutdownInProgress
+}
+
+func (ts *TransportSender[T]) getShutdownAcknowledged() bool {
+	return ts.sentStates[0].num == -1
 }
 
 // Cannot modify current_state while shutdown in progress
