@@ -6,7 +6,7 @@ Reborn [mosh](https://mosh.org/) with go.
 
 [openSSH](https://www.openssh.com/) is excellent. While `mosh` provides better keystroke prediction/latency and is capable of handle WiFi/cellular mobile network roaming problem. But `mosh` is not active anymore and no release [sine 2017](https://github.com/mobile-shell/mosh/issues/1115). Such a good project like `mosh` should keeps developing.
 
-After read through `mosh` source code, I decide to use go to rewrite it. Go is my first choice because the C++ syntax is too complex for me. Go also has excellent support for UTF-8 and goroutine. And remote shell is my daily tools, if it's broken I need a quick fix. The last reason is go compiler is faster than c++.
+After read through `mosh` source code, I decide to use go to rewrite it. Go is my first choice because the C++ syntax is too complex. Go also has excellent support for UTF-8 and multithreaded programming. The last reason: go compiler is faster than c++ compiler.
 
 There are several rules for this project:
 
@@ -16,12 +16,12 @@ There are several rules for this project:
 There are also some goals for this project:
 
 - Full UTF-8 support, including [emoji and flag](https://unicode.org/emoji/charts/emoji-list.html) support.
-- Solve the terminal 24bit color problem.
+- Support the terminal 24bit color.
 - Upgrade to [proto3](https://developers.google.com/protocol-buffers/docs/proto3)
 - Use terminfo database for better compatibility.
-- Prove that go is capable of programming terminal application.
+- Prove go is a good choice for terminal tool.
 
-The project name `Aprilsh` is derived from `April+sh`. I started this project in April shanghai, it's a remote shell.
+The project name `Aprilsh` is derived from `April+sh`. This project started in April shanghai 2022, and it's a remote shell.
 
 ## Status
 
