@@ -685,6 +685,17 @@ func serve(ptmx *os.File, pts *os.File, terminal *statesync.Complete,
 		if network.ShutdownInProgress() && network.ShutdownAcknowledged() {
 			break
 		}
+
+		// quit after shutdown acknowledgement timeout
+		if network.ShutdownInProgress() && network.ShutdownAckTimedout() {
+			break
+		}
+
+		// quit if we received and acknowledged a shutdown request
+		if network.CounterpartyShutdownAckSent() {
+			break
+		}
+
 		network.Tick()
 	}
 	return nil

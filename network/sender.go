@@ -442,6 +442,10 @@ func (ts *TransportSender[T]) getShutdownAcknowledged() bool {
 	return ts.sentStates[0].num == -1
 }
 
+func (ts *TransportSender[T]) getCounterpartyShutdownAcknowledged() bool {
+	return ts.fragmenter.lastAckSentMax()
+}
+
 // Cannot modify current_state while shutdown in progress
 func (ts *TransportSender[T]) getCurrentState() T {
 	return ts.currentState
@@ -469,6 +473,17 @@ func (ts *TransportSender[T]) getSentStateAcked() int64 {
 // get the last sent state num
 func (ts *TransportSender[T]) getSentStateLast() int64 {
 	return ts.sentStates[len(ts.sentStates)-1].num
+}
+
+func (ts *TransportSender[T]) shutdonwAckTimedout() bool {
+	if ts.shutdownInProgress {
+		if ts.shutdownTries > SHUTDOWN_RETRIES {
+			return true
+		} else if time.Now().UnixMilli()-ts.shutdownStart >= ACTIVE_RETRY_TIMEOUT {
+			return true
+		}
+	}
+	return false
 }
 
 // Try to send roughly two frames per RTT, bounded by limits on frame rate

@@ -204,12 +204,15 @@ func (t *Transport[S, R]) GetRemoteDiff() string {
 	return ret
 }
 
-func (t *Transport[S, R]) ShartShutdown() {
-	t.sender.startShutdown()
-}
-
 func (t *Transport[S, R]) SetDeadline(ti time.Time) error {
 	return t.connection.SetDeadline(ti)
+}
+
+// Other side has requested shutdown and we have sent one ACK
+//
+//	Illegal to change current_state after this.
+func (t *Transport[S, R]) ShartShutdown() {
+	t.sender.startShutdown()
 }
 
 func (t *Transport[S, R]) ShutdownInProgress() bool {
@@ -220,8 +223,17 @@ func (t *Transport[S, R]) ShutdownAcknowledged() bool {
 	return t.sender.getShutdownAcknowledged()
 }
 
+func (t *Transport[S, R]) ShutdownAckTimedout() bool {
+	return t.sender.shutdonwAckTimedout()
+}
+
 func (t *Transport[S, R]) HasRemoteAddr() bool {
 	return t.connection.getHasRemoteAddr()
+}
+
+// Other side has requested shutdown and we have sent one ACK
+func (t *Transport[S, R]) CounterpartyShutdownAckSent() bool {
+	return t.sender.getCounterpartyShutdownAcknowledged()
 }
 
 func (t *Transport[S, R]) GetCurrentState() S {

@@ -219,6 +219,10 @@ func (f *Fragmenter) lastAckSent() uint64 {
 	// return f.lastInstruction.AckNum
 }
 
+func (f *Fragmenter) lastAckSentMax() bool {
+	return f.lastInstruction.AckNum == -1
+}
+
 // convert Instruction into Fragments slice.
 func (f *Fragmenter) makeFragments(inst *pb.Instruction, mtu int) (ret []*Fragment) {
 	// each fragment needs to consider the actually: mtu - header
