@@ -545,88 +545,94 @@ func serve(ptmx *os.File, pts *os.File, terminal *statesync.Complete,
 
 	var terminalToHost strings.Builder
 	var timeSinceRemoteState int64
+	var msgFromNetwork bool
 
 	for {
 		timeout := 0
 		network.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
 
 		// packet received from the network
+		msgFromNetwork = true
 		netErr := network.Recv()
 		if netErr != nil {
 			if errors.Is(netErr, os.ErrDeadlineExceeded) {
-				// receive timeout
+				// network read timeout
+				msgFromNetwork = false
 			} else {
 				logW.Printf("#serve network.Recv error:%s\n", netErr)
 			}
 		}
 
-		now := time.Now().UnixMilli()
-		p := network.GetLatestRemoteState()
-		timeSinceRemoteState = now - p.GetTimestamp()
-		terminalToHost.Reset()
+		if msgFromNetwork {
 
-		// is new user input available for the terminal?
-		if network.GetRemoteStateNum() != lastRemoteNum {
-			lastRemoteNum = network.GetRemoteStateNum()
+			now := time.Now().UnixMilli()
+			p := network.GetLatestRemoteState()
+			timeSinceRemoteState = now - p.GetTimestamp()
+			terminalToHost.Reset()
 
-			us := &statesync.UserStream{}
-			us.ApplyString(network.GetRemoteDiff())
-			// apply userstream to terminal
-			for i := 0; i < us.Size(); i++ {
-				action := us.GetAction(i)
-				//  apply only the last consecutive Resize action
-				if res, ok := action.(term.Resize); ok {
-					for i < us.Size()-1 {
-						if res, ok = us.GetAction(i + 1).(term.Resize); ok {
-							i++
+			// is new user input available for the terminal?
+			if network.GetRemoteStateNum() != lastRemoteNum {
+				lastRemoteNum = network.GetRemoteStateNum()
+
+				us := &statesync.UserStream{}
+				us.ApplyString(network.GetRemoteDiff())
+				// apply userstream to terminal
+				for i := 0; i < us.Size(); i++ {
+					action := us.GetAction(i)
+					//  apply only the last consecutive Resize action
+					if res, ok := action.(term.Resize); ok {
+						for i < us.Size()-1 {
+							if res, ok = us.GetAction(i + 1).(term.Resize); ok {
+								i++
+							}
+						}
+						// resize master
+						winSize, err := unix.IoctlGetWinsize(int(ptmx.Fd()), unix.TIOCGWINSZ)
+						if err != nil {
+							logW.Printf("#serve ioctl TIOCGWINSZ %s", err)
+							network.ShartShutdown()
+						}
+						winSize.Col = uint16(res.Width)
+						winSize.Row = uint16(res.Height)
+						if err = unix.IoctlSetWinsize(int(ptmx.Fd()), unix.TIOCSWINSZ, winSize); err != nil {
+							logW.Printf("#serve ioctl TIOCSWINSZ %s", err)
+							network.ShartShutdown()
 						}
 					}
-					// resize master
-					winSize, err := unix.IoctlGetWinsize(int(ptmx.Fd()), unix.TIOCGWINSZ)
-					if err != nil {
-						logW.Printf("#serve ioctl TIOCGWINSZ %s", err)
-						network.ShartShutdown()
+					terminalToHost.WriteString(terminal.ActOne(action))
+				}
+
+				if !us.Empty() {
+					// register input frame number for future echo ack
+					terminal.RegisterInputFrame(lastRemoteNum, now)
+				}
+
+				// update client with new state of terminal
+				if !network.ShutdownInProgress() {
+					network.SetCurrentState(terminal)
+				}
+
+				// update utmp entry if we have become "connected"
+				if utmpSupport && (!connectedUtmp || !reflect.DeepEqual(savedAddr, network.GetRemoteAddr())) {
+					if !clearUtmpEntry(pts) {
+						logW.Printf("#serve clear utmp entry failed\n")
 					}
-					winSize.Col = uint16(res.Width)
-					winSize.Row = uint16(res.Height)
-					if err = unix.IoctlSetWinsize(int(ptmx.Fd()), unix.TIOCSWINSZ, winSize); err != nil {
-						logW.Printf("#serve ioctl TIOCSWINSZ %s", err)
-						network.ShartShutdown()
+					savedAddr = network.GetRemoteAddr()
+
+					// convert savedAddr to host name
+					host := savedAddr.String() // default host name is ip string
+					hostList, e := net.LookupAddr(host)
+					if e == nil {
+						host = hostList[0] // got the host name, use the first one
 					}
+
+					newHost := fmt.Sprintf("%s via %s [%d]", host, _PACKAGE_STRING, os.Getpid())
+					if !addUtmpEntry(pts, newHost) {
+						logW.Printf("#runWorker add utmp entry failed\n")
+					}
+
+					connectedUtmp = true
 				}
-				terminalToHost.WriteString(terminal.ActOne(action))
-			}
-
-			if !us.Empty() {
-				// register input frame number for future echo ack
-				terminal.RegisterInputFrame(lastRemoteNum, now)
-			}
-
-			// update client with new state of terminal
-			if !network.ShutdownInProgress() {
-				network.SetCurrentState(terminal)
-			}
-
-			// update utmp entry if we have become "connected"
-			if utmpSupport && (!connectedUtmp || !reflect.DeepEqual(savedAddr, network.GetRemoteAddr())) {
-				if !clearUtmpEntry(pts) {
-					logW.Printf("#serve clear utmp entry failed\n")
-				}
-				savedAddr = network.GetRemoteAddr()
-
-				// convert savedAddr to host name
-				host := savedAddr.String() // default host name is ip string
-				hostList, e := net.LookupAddr(host)
-				if e == nil {
-					host = hostList[0] // got the host name, use the first one
-				}
-
-				newHost := fmt.Sprintf("%s via %s [%d]", host, _PACKAGE_STRING, os.Getpid())
-				if !addUtmpEntry(pts, newHost) {
-					logW.Printf("#runWorker add utmp entry failed\n")
-				}
-
-				connectedUtmp = true
 			}
 		}
 
