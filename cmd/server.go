@@ -600,7 +600,7 @@ func serve(ptmx *os.File, pts *os.File, terminal *statesync.Complete,
 	masterChan = make(chan msg, 1)
 
 	go readFromSocket(10, socketChan, network)
-	go readFromMaster(20, masterChan, ptmx)
+	go readFromMaster(10, masterChan, ptmx)
 
 mainLoop:
 	for {
@@ -610,8 +610,8 @@ mainLoop:
 		terminalToHost.Reset()
 
 		select {
-		case socketMsg := <-socketChan: // some worker is done
-			if socketMsg.err != nil {
+		case socketMsg := <-socketChan: // got data from socket
+			if socketMsg.err != nil { // error handling
 				logW.Printf("#readFromSocket receive error:%s\n", socketMsg.err)
 				continue mainLoop
 			}
