@@ -31,7 +31,6 @@ import (
 	term "github.com/ericwq/aprilsh/terminal"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
-	// "golang.org/x/term"
 )
 
 var (
@@ -711,6 +710,8 @@ mainLoop:
 			logW.Printf("Network idle for %d seconds.\n", timeSinceRemoteState/1000)
 		}
 
+		// TODO how to handle signal on master file
+
 		if idelShutdown { // TODO how to process sel.any_signal()?
 			// shutdown signal
 			if network.HasRemoteAddr() && !network.ShutdownInProgress() {
@@ -735,6 +736,21 @@ mainLoop:
 			break mainLoop
 		}
 
+		// update utmp if has been more than 30 seconds since heard from client
+		if utmpSupport && connectedUtmp {
+			if timeSinceRemoteState > 30000 {
+				if !clearUtmpEntry(pts) {
+					logW.Printf("#serve clear utmp entry failed\n")
+				}
+
+				newHost := fmt.Sprintf("%s [%d]", _PACKAGE_STRING, os.Getpid())
+				if !addUtmpEntry(pts, newHost) {
+					logW.Printf("#runWorker add utmp entry failed\n")
+				}
+
+				connectedUtmp = false
+			}
+		}
 		network.Tick()
 	}
 	return nil
