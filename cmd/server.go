@@ -532,6 +532,54 @@ func getCurrentUser() string {
 	return user.Username
 }
 
+// read data from udp socket and send the result to socketChan
+func readFromSocket(timeout int, socketChan chan msg,
+	network *network.Transport[*statesync.Complete, *statesync.UserStream],
+) {
+	network.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
+	for {
+		// packet received from the network
+		err := network.Recv()
+		if err != nil {
+			if errors.Is(err, os.ErrDeadlineExceeded) {
+				// network read timeout
+			} else {
+				socketChan <- msg{err, ""}
+			}
+		}
+		socketChan <- msg{nil, ""}
+	}
+}
+
+// read data from pts master and send the result to masterChan
+func readFromMaster(timeout int, masterChan chan msg, ptmx *os.File) {
+	var buf [16384]byte
+
+	// set read time out
+	ptmx.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
+
+	for {
+		// fill buffer if possible
+		bytesRead, err := ptmx.Read(buf[:])
+		if err != nil {
+			if errors.Is(err, os.ErrDeadlineExceeded) {
+				// file read timeout
+			} else {
+				masterChan <- msg{err, ""}
+				// If the pty slave is closed, reading from the master can fail with
+				// EIO (see #264).  So we treat errors on read() like EOF.
+				break
+			}
+		}
+		masterChan <- msg{err: nil, data: string(buf[:bytesRead])}
+	}
+}
+
+type msg struct {
+	err  error
+	data string
+}
+
 func serve(ptmx *os.File, pts *os.File, terminal *statesync.Complete,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
 	networkTimeout int64, networkSignaledTimeout int64,
@@ -545,30 +593,28 @@ func serve(ptmx *os.File, pts *os.File, terminal *statesync.Complete,
 
 	var terminalToHost strings.Builder
 	var timeSinceRemoteState int64
-	var msgFromNetwork bool
+	var socketChan chan msg
+	var masterChan chan msg
 
+	socketChan = make(chan msg, 1)
+	masterChan = make(chan msg, 1)
+
+	go readFromSocket(10, socketChan, network)
+	go readFromMaster(20, masterChan, ptmx)
+
+mainLoop:
 	for {
-		timeout := 0
-		network.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
+		now := time.Now().UnixMilli()
+		p := network.GetLatestRemoteState()
+		timeSinceRemoteState = now - p.GetTimestamp()
+		terminalToHost.Reset()
 
-		// packet received from the network
-		msgFromNetwork = true
-		netErr := network.Recv()
-		if netErr != nil {
-			if errors.Is(netErr, os.ErrDeadlineExceeded) {
-				// network read timeout
-				msgFromNetwork = false
-			} else {
-				logW.Printf("#serve network.Recv error:%s\n", netErr)
+		select {
+		case socketMsg := <-socketChan: // some worker is done
+			if socketMsg.err != nil {
+				logW.Printf("#readFromSocket receive error:%s\n", socketMsg.err)
+				continue mainLoop
 			}
-		}
-
-		if msgFromNetwork {
-
-			now := time.Now().UnixMilli()
-			p := network.GetLatestRemoteState()
-			timeSinceRemoteState = now - p.GetTimestamp()
-			terminalToHost.Reset()
 
 			// is new user input available for the terminal?
 			if network.GetRemoteStateNum() != lastRemoteNum {
@@ -634,34 +680,21 @@ func serve(ptmx *os.File, pts *os.File, terminal *statesync.Complete,
 					connectedUtmp = true
 				}
 			}
-		}
-
-		if !network.ShutdownInProgress() {
+		case masterMsg := <-masterChan:
 			// input from the host needs to be fed to the terminal
-			var buf [16384]byte
-			// set read time out: 10ms
-			masterTimeout := 10
-			ptmx.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(masterTimeout)))
-
-			// fill buffer if possible
-			bytesRead, masterErr := ptmx.Read(buf[:])
-			if masterErr != nil {
-				if errors.Is(masterErr, os.ErrDeadlineExceeded) {
-					// continue
-				} else {
-					// If the pty slave is closed, reading from the master can fail with
-					// EIO (see #264).  So we treat errors on read() like EOF.
+			if !network.ShutdownInProgress() {
+				if masterMsg.err != nil {
+					logW.Println("#readFromMaster read error: ", masterMsg.err)
 					network.ShartShutdown()
-					// fmt.Println("#run read error: ", err)
-					continue
-				}
-			} else {
-				r := terminal.Act(string(buf[:bytesRead]))
-				terminalToHost.WriteString(r)
+				} else {
+					r := terminal.Act(masterMsg.data)
+					terminalToHost.WriteString(r)
 
-				// update client with new state of terminal
-				network.SetCurrentState(terminal)
+					// update client with new state of terminal
+					network.SetCurrentState(terminal)
+				}
 			}
+		default:
 		}
 
 		// write user input and terminal writeback to the host
@@ -683,23 +716,23 @@ func serve(ptmx *os.File, pts *os.File, terminal *statesync.Complete,
 			if network.HasRemoteAddr() && !network.ShutdownInProgress() {
 				network.ShartShutdown()
 			} else {
-				break
+				break mainLoop
 			}
 		}
 
 		// quit if our shutdown has been acknowledged
 		if network.ShutdownInProgress() && network.ShutdownAcknowledged() {
-			break
+			break mainLoop
 		}
 
 		// quit after shutdown acknowledgement timeout
 		if network.ShutdownInProgress() && network.ShutdownAckTimedout() {
-			break
+			break mainLoop
 		}
 
 		// quit if we received and acknowledged a shutdown request
 		if network.CounterpartyShutdownAckSent() {
-			break
+			break mainLoop
 		}
 
 		network.Tick()
