@@ -545,9 +545,10 @@ func readFromSocket(timeout int, socketChan chan msg,
 			} else {
 				socketChan <- msg{err, ""}
 			}
+		} else {
+			socketChan <- msg{nil, ""}
 		}
-		socketChan <- msg{nil, ""}
-	}
+	} // TODO how to stop?
 }
 
 // read data from pts master and send the result to masterChan
@@ -565,13 +566,17 @@ func readFromMaster(timeout int, masterChan chan msg, ptmx *os.File) {
 				// file read timeout
 			} else {
 				masterChan <- msg{err, ""}
-				// If the pty slave is closed, reading from the master can fail with
-				// EIO (see #264).  So we treat errors on read() like EOF.
 				break
 			}
+		} else if bytesRead == 0 {
+			// If the pty slave is closed, reading from the master can fail with
+			// EIO (see #264).  So we treat errors on read() like EOF.
+			masterChan <- msg{err, ""}
+			break
+		} else {
+			masterChan <- msg{err: nil, data: string(buf[:bytesRead])}
 		}
-		masterChan <- msg{err: nil, data: string(buf[:bytesRead])}
-	}
+	} // TODO how to stop?
 }
 
 type msg struct {
