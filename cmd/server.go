@@ -606,6 +606,8 @@ func serve(ptmx *os.File, pts *os.File, terminal *statesync.Complete,
 	go readFromSocket(10, socketChan, network)
 	go readFromMaster(10, masterChan, ptmx)
 
+	var timeoutIfNoClient int64 = 60000
+
 mainLoop:
 	for {
 		now := time.Now().UnixMilli()
@@ -678,7 +680,7 @@ mainLoop:
 
 					newHost := fmt.Sprintf("%s via %s [%d]", host, _PACKAGE_STRING, os.Getpid())
 					if !addUtmpEntry(pts, newHost) {
-						logW.Printf("#runWorker add utmp entry failed\n")
+						logW.Printf("#serve add utmp entry failed\n")
 					}
 
 					connectedUtmp = true
@@ -722,23 +724,23 @@ mainLoop:
 			if network.HasRemoteAddr() && !network.ShutdownInProgress() {
 				network.ShartShutdown()
 			} else {
-				break mainLoop
+				break
 			}
 		}
 
 		// quit if our shutdown has been acknowledged
 		if network.ShutdownInProgress() && network.ShutdownAcknowledged() {
-			break mainLoop
+			break
 		}
 
 		// quit after shutdown acknowledgement timeout
 		if network.ShutdownInProgress() && network.ShutdownAckTimedout() {
-			break mainLoop
+			break
 		}
 
 		// quit if we received and acknowledged a shutdown request
 		if network.CounterpartyShutdownAckSent() {
-			break mainLoop
+			break
 		}
 
 		// update utmp if has been more than 30 seconds since heard from client
@@ -750,12 +752,26 @@ mainLoop:
 
 				newHost := fmt.Sprintf("%s [%d]", _PACKAGE_STRING, os.Getpid())
 				if !addUtmpEntry(pts, newHost) {
-					logW.Printf("#runWorker add utmp entry failed\n")
+					logW.Printf("#serve add utmp entry failed\n")
 				}
 
 				connectedUtmp = false
 			}
 		}
+
+		if terminal.SetEchoAck(now) {
+			// update client with new echo ack
+			if !network.ShutdownInProgress() {
+				network.SetCurrentState(terminal)
+			}
+		}
+
+		// TODO what does this means?
+		if network.GetRemoteStateNum() == 0 && timeSinceRemoteState >= timeoutIfNoClient {
+			logW.Printf("No connection within %d seconds\n", timeoutIfNoClient/1000)
+			break
+		}
+
 		network.Tick()
 	}
 	return nil

@@ -122,7 +122,7 @@ func TestCompleteSetEchoAck(t *testing.T) {
 
 		// fmt.Printf("#test setEchoAck inputHistory = %v\n", c.inputHistory)
 
-		got := c.setEchoAck(now + ts)
+		got := c.SetEchoAck(now + ts)
 		// fmt.Printf("#test setEchoAck inputHistory = %v\n", c.inputHistory)
 		if v.expect != got {
 			t.Errorf("%q expect %t, got %t\n", v.label, v.expect, got)
