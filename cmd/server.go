@@ -535,8 +535,16 @@ func getCurrentUser() string {
 func readFromSocket(timeout int, socketChan chan msg,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
 ) {
+	// set read time out
 	network.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
 	for {
+		select {
+		case m := <-socketChan:
+			if m.data == "shutdown" {
+				return
+			}
+		default:
+		}
 		// packet received from the network
 		err := network.Recv()
 		if err != nil {
@@ -548,7 +556,7 @@ func readFromSocket(timeout int, socketChan chan msg,
 		} else {
 			socketChan <- msg{nil, ""}
 		}
-	} // TODO how to stop?
+	}
 }
 
 // read data from pts master and send the result to masterChan
@@ -560,6 +568,13 @@ func readFromMaster(timeout int, masterChan chan msg, ptmx *os.File) {
 
 	for {
 		// fill buffer if possible
+		select {
+		case m := <-masterChan:
+			if m.data == "shutdown" {
+				return
+			}
+		default:
+		}
 		bytesRead, err := ptmx.Read(buf[:])
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
@@ -576,7 +591,7 @@ func readFromMaster(timeout int, masterChan chan msg, ptmx *os.File) {
 		} else {
 			masterChan <- msg{err: nil, data: string(buf[:bytesRead])}
 		}
-	} // TODO how to stop?
+	}
 }
 
 type msg struct {
@@ -603,8 +618,17 @@ func serve(ptmx *os.File, pts *os.File, terminal *statesync.Complete,
 	socketChan = make(chan msg, 1)
 	masterChan = make(chan msg, 1)
 
-	go readFromSocket(10, socketChan, network)
-	go readFromMaster(10, masterChan, ptmx)
+	eg := errgroup.Group{}
+	eg.Go(func() error {
+		readFromSocket(10, socketChan, network)
+		return nil
+	})
+	eg.Go(func() error {
+		readFromMaster(10, masterChan, ptmx)
+		return nil
+	})
+	// go readFromSocket(10, socketChan, network)
+	// go readFromMaster(10, masterChan, ptmx)
 
 	var timeoutIfNoClient int64 = 60000
 
@@ -685,6 +709,8 @@ mainLoop:
 
 					connectedUtmp = true
 				}
+
+				// TODO child release?
 			}
 		case masterMsg := <-masterChan:
 			// input from the host needs to be fed to the terminal
@@ -774,6 +800,12 @@ mainLoop:
 
 		network.Tick()
 	}
+
+	// shutdown the goroutine
+	masterChan <- msg{nil, "shutdown"}
+	socketChan <- msg{nil, "shutdown"}
+	eg.Wait()
+
 	return nil
 }
 
