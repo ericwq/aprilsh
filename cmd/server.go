@@ -420,7 +420,34 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		exChan <- conf.desiredPort
 	}()
 
+	/*
+		If this variable is set to a positive integer number, it specifies how
+		long (in seconds) aprilsh-server will wait to receive an update from the
+		client before exiting.  Since aprilsh is very useful for mobile
+		clients with intermittent operation and connectivity, we suggest
+		setting this variable to a high value, such as 604800 (one week) or
+		2592000 (30 days).  Otherwise, aprilsh-server will wait
+		indefinitely for a client to reappear.  This variable is somewhat
+		similar to the TMOUT variable found in many Bourne shells.
+		However, it is not a login-session inactivity timeout; it only applies
+		to network connectivity.
+
+	*/
 	networkTimeout := getTimeFrom("APRILSH_SERVER_NETWORK_TMOUT", 0)
+
+	/*
+		If this variable is set to a positive integer number, it specifies how
+		long (in seconds) aprilsh-server will ignore SIGUSR1 while waiting
+		to receive an update from the client.  Otherwise, SIGUSR1 will
+		always terminate aprilsh-server.  Users and administrators may
+		implement scripts to clean up disconnected aprilsh sessions.  With this
+		variable set, a user or administrator can issue
+
+		$ pkill -SIGUSR1 aprilsh-server
+
+		to kill disconnected sessions without killing connected login
+		sessions.
+	*/
 	networkSignaledTimeout := getTimeFrom("APRILSH_SERVER_SIGNAL_TMOUT", 0)
 
 	// fmt.Printf("#runWorker networkTimeout=%d, networkSignaledTimeout=%d\n", networkTimeout, networkSignaledTimeout)
@@ -589,7 +616,7 @@ func readFromMaster(timeout int, masterChan chan msg, ptmx *os.File) {
 			masterChan <- msg{err, ""}
 			break
 		} else {
-			masterChan <- msg{err: nil, data: string(buf[:bytesRead])}
+			masterChan <- msg{nil, string(buf[:bytesRead])}
 		}
 	}
 }
@@ -655,8 +682,8 @@ mainLoop:
 				// apply userstream to terminal
 				for i := 0; i < us.Size(); i++ {
 					action := us.GetAction(i)
-					//  apply only the last consecutive Resize action
 					if res, ok := action.(term.Resize); ok {
+						//  apply only the last consecutive Resize action
 						for i < us.Size()-1 {
 							if res, ok = us.GetAction(i + 1).(term.Resize); ok {
 								i++
