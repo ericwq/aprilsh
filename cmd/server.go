@@ -21,6 +21,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -626,6 +627,24 @@ type msg struct {
 	data string
 }
 
+var anySignal int32
+
+func multiSignalHandler(signal os.Signal) {
+	switch signal {
+	case syscall.SIGUSR1:
+		// fmt.Println("Signal:", signal.String())
+		atomic.StoreInt32(&anySignal, int32(syscall.SIGUSR1))
+		// anySignal = true
+	case syscall.SIGINT:
+		// fmt.Println("Signal:", signal.String())
+		atomic.StoreInt32(&anySignal, int32(syscall.SIGINT))
+	case syscall.SIGTERM:
+		// fmt.Println("Signal:", signal.String())
+		atomic.StoreInt32(&anySignal, int32(syscall.SIGTERM))
+	default:
+	}
+}
+
 func serve(ptmx *os.File, pts *os.File, terminal *statesync.Complete,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
 	networkTimeout int64, networkSignaledTimeout int64,
@@ -639,6 +658,11 @@ func serve(ptmx *os.File, pts *os.File, terminal *statesync.Complete,
 
 	var terminalToHost strings.Builder
 	var timeSinceRemoteState int64
+
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGUSR1, syscall.SIGINT, syscall.SIGTERM) // we can add more sycalls.SIGQUIT etc.
+	shutdownChan := make(chan bool)
+
 	var socketChan chan msg
 	var masterChan chan msg
 
@@ -653,6 +677,17 @@ func serve(ptmx *os.File, pts *os.File, terminal *statesync.Complete,
 	eg.Go(func() error {
 		readFromMaster(10, masterChan, ptmx)
 		return nil
+	})
+
+	eg.Go(func() error {
+		for {
+			select {
+			case s := <-sigChan:
+				multiSignalHandler(s)
+			case <-shutdownChan:
+				return nil
+			}
+		}
 	})
 	// go readFromSocket(10, socketChan, network)
 	// go readFromMaster(10, masterChan, ptmx)
@@ -765,6 +800,7 @@ mainLoop:
 		}
 
 		idelShutdown := false
+		// if network timeout is set and over networkTimeoutMs quit this session.
 		if networkTimeoutMs > 0 && networkTimeoutMs <= timeSinceRemoteState {
 			idelShutdown = true
 			logW.Printf("Network idle for %d seconds.\n", timeSinceRemoteState/1000)
@@ -772,7 +808,7 @@ mainLoop:
 
 		// TODO how to handle signal on master file
 
-		if idelShutdown { // TODO how to process sel.any_signal()?
+		if atomic.LoadInt32(&anySignal) > 0 || idelShutdown { // TODO how to process sel.any_signal()?
 			// shutdown signal
 			if network.HasRemoteAddr() && !network.ShutdownInProgress() {
 				network.ShartShutdown()
@@ -829,6 +865,7 @@ mainLoop:
 	}
 
 	// shutdown the goroutine
+	shutdownChan <- true
 	masterChan <- msg{nil, "shutdown"}
 	socketChan <- msg{nil, "shutdown"}
 	eg.Wait()
