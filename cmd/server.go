@@ -29,7 +29,7 @@ import (
 	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/network"
 	"github.com/ericwq/aprilsh/statesync"
-	term "github.com/ericwq/aprilsh/terminal"
+	"github.com/ericwq/aprilsh/terminal"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
 )
@@ -645,7 +645,7 @@ func multiSignalHandler(signal os.Signal) {
 	}
 }
 
-func serve(ptmx *os.File, pts *os.File, terminal *statesync.Complete,
+func serve(ptmx *os.File, pts *os.File, complete *statesync.Complete,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
 	networkTimeout int64, networkSignaledTimeout int64,
 ) error {
@@ -660,7 +660,7 @@ func serve(ptmx *os.File, pts *os.File, terminal *statesync.Complete,
 	var timeSinceRemoteState int64
 
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGUSR1, syscall.SIGINT, syscall.SIGTERM) // we can add more sycalls.SIGQUIT etc.
+	signal.Notify(sigChan, syscall.SIGUSR1, syscall.SIGINT, syscall.SIGTERM)
 	shutdownChan := make(chan bool)
 
 	var socketChan chan msg
@@ -717,10 +717,10 @@ mainLoop:
 				// apply userstream to terminal
 				for i := 0; i < us.Size(); i++ {
 					action := us.GetAction(i)
-					if res, ok := action.(term.Resize); ok {
+					if res, ok := action.(terminal.Resize); ok {
 						//  apply only the last consecutive Resize action
 						for i < us.Size()-1 {
-							if res, ok = us.GetAction(i + 1).(term.Resize); ok {
+							if res, ok = us.GetAction(i + 1).(terminal.Resize); ok {
 								i++
 							}
 						}
@@ -737,17 +737,17 @@ mainLoop:
 							network.ShartShutdown()
 						}
 					}
-					terminalToHost.WriteString(terminal.ActOne(action))
+					terminalToHost.WriteString(complete.ActOne(action))
 				}
 
 				if !us.Empty() {
 					// register input frame number for future echo ack
-					terminal.RegisterInputFrame(lastRemoteNum, now)
+					complete.RegisterInputFrame(lastRemoteNum, now)
 				}
 
 				// update client with new state of terminal
 				if !network.ShutdownInProgress() {
-					network.SetCurrentState(terminal)
+					network.SetCurrentState(complete)
 				}
 
 				// update utmp entry if we have become "connected"
@@ -781,11 +781,11 @@ mainLoop:
 					logW.Println("#readFromMaster read error: ", masterMsg.err)
 					network.ShartShutdown()
 				} else {
-					r := terminal.Act(masterMsg.data)
+					r := complete.Act(masterMsg.data)
 					terminalToHost.WriteString(r)
 
 					// update client with new state of terminal
-					network.SetCurrentState(terminal)
+					network.SetCurrentState(complete)
 				}
 			}
 		default:
@@ -848,10 +848,10 @@ mainLoop:
 			}
 		}
 
-		if terminal.SetEchoAck(now) {
+		if complete.SetEchoAck(now) {
 			// update client with new echo ack
 			if !network.ShutdownInProgress() {
-				network.SetCurrentState(terminal)
+				network.SetCurrentState(complete)
 			}
 		}
 
