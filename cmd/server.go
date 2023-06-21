@@ -627,20 +627,20 @@ type msg struct {
 	data string
 }
 
-var anySignal int32
+var someSignal atomic.Int32
 
 func multiSignalHandler(signal os.Signal) {
 	switch signal {
 	case syscall.SIGUSR1:
 		// fmt.Println("Signal:", signal.String())
-		atomic.StoreInt32(&anySignal, int32(syscall.SIGUSR1))
+		someSignal.Store(int32(syscall.SIGUSR1))
 		// anySignal = true
 	case syscall.SIGINT:
 		// fmt.Println("Signal:", signal.String())
-		atomic.StoreInt32(&anySignal, int32(syscall.SIGINT))
+		someSignal.Store(int32(syscall.SIGINT))
 	case syscall.SIGTERM:
 		// fmt.Println("Signal:", signal.String())
-		atomic.StoreInt32(&anySignal, int32(syscall.SIGTERM))
+		someSignal.Store(int32(syscall.SIGTERM))
 	default:
 	}
 }
@@ -651,7 +651,7 @@ func serve(ptmx *os.File, pts *os.File, complete *statesync.Complete,
 ) error {
 	// scale timeouts
 	networkTimeoutMs := networkTimeout * 1000
-	// networkSignaledTimeoutMs := uint64(networkSignaledTimeout) * 1000
+	networkSignaledTimeoutMs := networkSignaledTimeout * 1000
 	lastRemoteNum := network.GetRemoteStateNum()
 	var connectedUtmp bool
 	var savedAddr net.Addr
@@ -659,26 +659,27 @@ func serve(ptmx *os.File, pts *os.File, complete *statesync.Complete,
 	var terminalToHost strings.Builder
 	var timeSinceRemoteState int64
 
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGUSR1, syscall.SIGINT, syscall.SIGTERM)
-	shutdownChan := make(chan bool)
-
 	var socketChan chan msg
 	var masterChan chan msg
-
 	socketChan = make(chan msg, 1)
 	masterChan = make(chan msg, 1)
 
 	eg := errgroup.Group{}
+	// read from socket
 	eg.Go(func() error {
 		readFromSocket(10, socketChan, network)
 		return nil
 	})
+	// read from pty master file
 	eg.Go(func() error {
 		readFromMaster(10, masterChan, ptmx)
 		return nil
 	})
 
+	// intercept signal
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGUSR1, syscall.SIGINT, syscall.SIGTERM)
+	shutdownChan := make(chan bool)
 	eg.Go(func() error {
 		for {
 			select {
@@ -689,8 +690,6 @@ func serve(ptmx *os.File, pts *os.File, complete *statesync.Complete,
 			}
 		}
 	})
-	// go readFromSocket(10, socketChan, network)
-	// go readFromMaster(10, masterChan, ptmx)
 
 	var timeoutIfNoClient int64 = 60000
 
@@ -800,15 +799,21 @@ mainLoop:
 		}
 
 		idelShutdown := false
-		// if network timeout is set and over networkTimeoutMs quit this session.
 		if networkTimeoutMs > 0 && networkTimeoutMs <= timeSinceRemoteState {
+			// if network timeout is set and over networkTimeoutMs quit this session.
 			idelShutdown = true
 			logW.Printf("Network idle for %d seconds.\n", timeSinceRemoteState/1000)
 		}
 
-		// TODO how to handle signal on master file
+		if someSignal.Load() == int32(syscall.SIGUSR1) {
+			if networkSignaledTimeoutMs == 0 || networkSignaledTimeoutMs <= timeSinceRemoteState {
+				idelShutdown = true
+				logW.Printf("Network idle for %d seconds when SIGUSR1 received.\n", timeSinceRemoteState/1000)
+			}
+		}
 
-		if atomic.LoadInt32(&anySignal) > 0 || idelShutdown { // TODO how to process sel.any_signal()?
+		// one of SIGTERM, SIGINT will be true
+		if (someSignal.Load() != 0 && someSignal.Load() != int32(syscall.SIGUSR1)) || idelShutdown {
 			// shutdown signal
 			if network.HasRemoteAddr() && !network.ShutdownInProgress() {
 				network.ShartShutdown()
