@@ -517,8 +517,8 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	} else {
 		// add utmp entry
 		ptmxName := ptmx.Name()
-		if utmpSupport && !addUtmpEntry(pts, utmpHost) {
-			logW.Printf("#runWorker add utmp entry failed\n")
+		if utmpSupport {
+			addUtmpEntry(pts, utmpHost)
 		}
 
 		// update last log
@@ -537,8 +537,8 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		logI.Printf("#runWorker stop listening on :%s\n", conf.desiredPort)
 
 		// clear utmp entry
-		if utmpSupport && !clearUtmpEntry(pts) {
-			logW.Printf("#runWorker clear utmp entry failed\n")
+		if utmpSupport {
+			clearUtmpEntry(pts)
 		}
 	}
 
@@ -627,20 +627,20 @@ type msg struct {
 	data string
 }
 
-var someSignal atomic.Int32
+var gotSignal atomic.Int32
 
 func multiSignalHandler(signal os.Signal) {
 	switch signal {
 	case syscall.SIGUSR1:
 		// fmt.Println("Signal:", signal.String())
-		someSignal.Store(int32(syscall.SIGUSR1))
+		gotSignal.Store(int32(syscall.SIGUSR1))
 		// anySignal = true
 	case syscall.SIGINT:
 		// fmt.Println("Signal:", signal.String())
-		someSignal.Store(int32(syscall.SIGINT))
+		gotSignal.Store(int32(syscall.SIGINT))
 	case syscall.SIGTERM:
 		// fmt.Println("Signal:", signal.String())
-		someSignal.Store(int32(syscall.SIGTERM))
+		gotSignal.Store(int32(syscall.SIGTERM))
 	default:
 	}
 }
@@ -751,22 +751,18 @@ mainLoop:
 
 				// update utmp entry if we have become "connected"
 				if utmpSupport && (!connectedUtmp || !reflect.DeepEqual(savedAddr, network.GetRemoteAddr())) {
-					if !clearUtmpEntry(pts) {
-						logW.Printf("#serve clear utmp entry failed\n")
-					}
-					savedAddr = network.GetRemoteAddr()
+					clearUtmpEntry(pts)
 
 					// convert savedAddr to host name
+					savedAddr = network.GetRemoteAddr()
 					host := savedAddr.String() // default host name is ip string
 					hostList, e := net.LookupAddr(host)
 					if e == nil {
 						host = hostList[0] // got the host name, use the first one
 					}
-
 					newHost := fmt.Sprintf("%s via %s [%d]", host, _PACKAGE_STRING, os.Getpid())
-					if !addUtmpEntry(pts, newHost) {
-						logW.Printf("#serve add utmp entry failed\n")
-					}
+
+					addUtmpEntry(pts, newHost)
 
 					connectedUtmp = true
 				}
@@ -798,22 +794,22 @@ mainLoop:
 			}
 		}
 
-		idelShutdown := false
+		idleShutdown := false
 		if networkTimeoutMs > 0 && networkTimeoutMs <= timeSinceRemoteState {
 			// if network timeout is set and over networkTimeoutMs quit this session.
-			idelShutdown = true
+			idleShutdown = true
 			logW.Printf("Network idle for %d seconds.\n", timeSinceRemoteState/1000)
 		}
 
-		if someSignal.Load() == int32(syscall.SIGUSR1) {
+		if gotSignal.Load() == int32(syscall.SIGUSR1) {
 			if networkSignaledTimeoutMs == 0 || networkSignaledTimeoutMs <= timeSinceRemoteState {
-				idelShutdown = true
+				idleShutdown = true
 				logW.Printf("Network idle for %d seconds when SIGUSR1 received.\n", timeSinceRemoteState/1000)
 			}
 		}
 
 		// one of SIGTERM, SIGINT will be true
-		if (someSignal.Load() != 0 && someSignal.Load() != int32(syscall.SIGUSR1)) || idelShutdown {
+		if (gotSignal.Load() != 0 && gotSignal.Load() != int32(syscall.SIGUSR1)) || idleShutdown {
 			// shutdown signal
 			if network.HasRemoteAddr() && !network.ShutdownInProgress() {
 				network.ShartShutdown()
@@ -840,14 +836,10 @@ mainLoop:
 		// update utmp if has been more than 30 seconds since heard from client
 		if utmpSupport && connectedUtmp {
 			if timeSinceRemoteState > 30000 {
-				if !clearUtmpEntry(pts) {
-					logW.Printf("#serve clear utmp entry failed\n")
-				}
+				clearUtmpEntry(pts)
 
 				newHost := fmt.Sprintf("%s [%d]", _PACKAGE_STRING, os.Getpid())
-				if !addUtmpEntry(pts, newHost) {
-					logW.Printf("#serve add utmp entry failed\n")
-				}
+				addUtmpEntry(pts, newHost)
 
 				connectedUtmp = false
 			}
