@@ -4,32 +4,32 @@
 
 //go:build darwin
 
-package main
+package cmd
 
 import "os"
 
 type utmpEntry struct{}
 
-func addUtmpEntry(pts *os.File, host string) bool {
+func AddUtmpEntry(pts *os.File, host string) bool {
 	logW.Printf("unimplement %s\n", "addUtmpEntry()")
 	return false
 }
 
-func updateLastLog(ptmxName string) {
+func UpdateLastLog(line, userName, host string) {
 	logW.Printf("unimplement %s\n", "updateLastLog()")
 }
 
-func clearUtmpEntry(pts *os.File) bool {
+func ClearUtmpEntry(pts *os.File) bool {
 	logW.Printf("unimplement %s\n", "clearUtmpEntry()")
 	return false
 }
 
-func checkUnattachedRecord(userName string, ignore string) []string {
+func CheckUnattachedRecord(userName, ignoreHost, prefix string) []string {
 	logW.Printf("unimplement %s\n", "checkUnattachedRecord()")
 	return nil
 }
 
-func hasUtempter() bool {
-	logW.Printf("unimplement %s\n", "isUtmpSupport()")
-	return false
-}
+// func hasUtempter() bool {
+// 	logW.Printf("unimplement %s\n", "isUtmpSupport()")
+// 	return false
+// }

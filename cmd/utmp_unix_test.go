@@ -4,23 +4,23 @@
 
 //go:build linux
 
-package main
+package cmd
 
-import (
-	"testing"
-
-	utmp "github.com/ericwq/goutmp"
-)
-
-func TestHasUtmpSupport(t *testing.T) {
-	fp = mockGetUtmpx0
-	defer func() {
-		fp = utmp.GetUtmpx
-		idx = 0
-	}()
-
-	got := hasUtmpSupport()
-	if got {
-		t.Errorf("#test hasUtmpSupport() expect %t, got %t\n", false, got)
-	}
-}
+// import (
+// 	"testing"
+//
+// 	utmp "github.com/ericwq/goutmp"
+// )
+//
+// func TestHasUtmpSupport(t *testing.T) {
+// 	fp = mockGetUtmpx0
+// 	defer func() {
+// 		fp = utmp.GetUtmpx
+// 		idx = 0
+// 	}()
+//
+// 	got := hasUtmpSupport()
+// 	if got {
+// 		t.Errorf("#test hasUtmpSupport() expect %t, got %t\n", false, got)
+// 	}
+// }

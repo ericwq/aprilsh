@@ -4,7 +4,7 @@
 
 //go:build darwin
 
-package main
+package cmd
 
 import (
 	"log"

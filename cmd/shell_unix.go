@@ -4,7 +4,7 @@
 
 //go:build linux
 
-package main
+package cmd
 
 import (
 	"os/exec"
@@ -21,6 +21,11 @@ const (
 	LC_MONETARY = 4
 	LC_MESSAGES = 5
 	LC_ALL      = 6
+)
+
+var (
+	userCurrentTest bool
+	execCmdTest     bool
 )
 
 func getShell() (string, error) {

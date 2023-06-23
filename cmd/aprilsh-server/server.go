@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/creack/pty"
+	"github.com/ericwq/aprilsh/cmd"
 	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/network"
 	"github.com/ericwq/aprilsh/statesync"
@@ -516,13 +517,13 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		whChan <- &workhorse{}
 	} else {
 		// add utmp entry
-		ptmxName := ptmx.Name()
+		ptmxName := ptmx.Name() // TODO remove it?
 		if utmpSupport {
-			addUtmpEntry(pts, utmpHost)
+			cmd.AddUtmpEntry(pts, utmpHost)
 		}
 
 		// update last log
-		updateLastLog(ptmxName)
+		cmd.UpdateLastLog(ptmxName, getCurrentUser(), utmpHost) // TODO use pts.Name() or ptmx name?
 
 		// start the udp server, serve the udp request
 		go conf.serve(ptmx, pts, terminal, network, networkTimeout, networkSignaledTimeout)
@@ -538,7 +539,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 
 		// clear utmp entry
 		if utmpSupport {
-			clearUtmpEntry(pts)
+			cmd.ClearUtmpEntry(pts)
 		}
 	}
 
@@ -751,7 +752,7 @@ mainLoop:
 
 				// update utmp entry if we have become "connected"
 				if utmpSupport && (!connectedUtmp || !reflect.DeepEqual(savedAddr, network.GetRemoteAddr())) {
-					clearUtmpEntry(pts)
+					cmd.ClearUtmpEntry(pts)
 
 					// convert savedAddr to host name
 					savedAddr = network.GetRemoteAddr()
@@ -762,7 +763,7 @@ mainLoop:
 					}
 					newHost := fmt.Sprintf("%s via %s [%d]", host, _PACKAGE_STRING, os.Getpid())
 
-					addUtmpEntry(pts, newHost)
+					cmd.AddUtmpEntry(pts, newHost)
 
 					connectedUtmp = true
 				}
@@ -836,10 +837,10 @@ mainLoop:
 		// update utmp if has been more than 30 seconds since heard from client
 		if utmpSupport && connectedUtmp {
 			if timeSinceRemoteState > 30000 {
-				clearUtmpEntry(pts)
+				cmd.ClearUtmpEntry(pts)
 
 				newHost := fmt.Sprintf("%s [%d]", _PACKAGE_STRING, os.Getpid())
-				addUtmpEntry(pts, newHost)
+				cmd.AddUtmpEntry(pts, newHost)
 
 				connectedUtmp = false
 			}
@@ -910,7 +911,7 @@ func printWelcome(pid int, port int, tty *os.File) {
 }
 
 func checkIUTF8(fd int) (bool, error) {
-	termios, err := unix.IoctlGetTermios(fd, getTermios)
+	termios, err := unix.IoctlGetTermios(fd, cmd.GetTermios)
 	if err != nil {
 		return false, err
 	}
@@ -920,13 +921,13 @@ func checkIUTF8(fd int) (bool, error) {
 }
 
 func setIUTF8(fd int) error {
-	termios, err := unix.IoctlGetTermios(fd, getTermios)
+	termios, err := unix.IoctlGetTermios(fd, cmd.GetTermios)
 	if err != nil {
 		return err
 	}
 
 	termios.Iflag |= unix.IUTF8
-	unix.IoctlSetTermios(fd, setTermios, termios)
+	unix.IoctlSetTermios(fd, cmd.SetTermios, termios)
 
 	return nil
 }
@@ -1059,7 +1060,7 @@ func warnUnattached(w io.Writer, ignoreHost string) {
 	userName := getCurrentUser()
 
 	// check unattached sessions
-	unatttached := checkUnattachedRecord(userName, ignoreHost)
+	unatttached := cmd.CheckUnattachedRecord(userName, ignoreHost, _PACKAGE_STRING)
 
 	if unatttached == nil || len(unatttached) == 0 {
 		return

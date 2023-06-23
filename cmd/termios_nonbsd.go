@@ -3,15 +3,14 @@
 // license that can be found in the LICENSE file.
 
 //go:build !darwin && !freebsd && !netbsd && !openbsd && !windows
-// +build !darwin,!freebsd,!netbsd,!openbsd,!windows
 
-package main
+package cmd
 
 import (
 	"golang.org/x/sys/unix"
 )
 
 const (
-	getTermios = unix.TCGETS
-	setTermios = unix.TCSETS
+	GetTermios = unix.TCGETS
+	SetTermios = unix.TCSETS
 )

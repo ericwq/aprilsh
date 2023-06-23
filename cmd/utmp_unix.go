@@ -4,17 +4,16 @@
 
 //go:build linux || freebsd
 
-package main
+package cmd
 
 import (
-	"fmt"
 	"os"
 	"strings"
 
 	utmp "github.com/ericwq/goutmp"
 )
 
-func addUtmpEntry(pts *os.File, host string) bool {
+func AddUtmpEntry(pts *os.File, host string) bool {
 	// usr := getCurrentUser()
 	//
 	// entry := utmp.Put_utmp(usr, ptmxName, host)
@@ -22,17 +21,25 @@ func addUtmpEntry(pts *os.File, host string) bool {
 	return utmp.UtmpxAddRecord(pts, host)
 }
 
-func updateLastLog(ptmxName string) {
-	host := fmt.Sprintf("%s [%d]", _PACKAGE_STRING, os.Getpid())
-	usr := getCurrentUser()
-	utmp.PutLastlogEntry(_COMMAND_NAME, usr, ptmxName, host)
+/*
+	func updateLastLog(ptmxName string) {
+		host := fmt.Sprintf("%s [%d]", _PACKAGE_STRING, os.Getpid())
+		usr := getCurrentUser()
+		utmp.PutLastlogEntry(_COMMAND_NAME, usr, ptmxName, host)
+	}
+*/
+func UpdateLastLog(line, userName, host string) {
+	// host := fmt.Sprintf("%s [%d]", _PACKAGE_STRING, os.Getpid())
+	// usr := getCurrentUser()
+	// utmp.PutLastlogEntry(_COMMAND_NAME, usr, ptmxName, host)
+	utmp.PutLastlogEntry(line, userName, host)
 }
 
 // func clearUtmpEntry(entry *utmpEntry) {
 // 	utmp.Unput_utmp(*(entry.ent))
 // }
 
-func clearUtmpEntry(pts *os.File) bool {
+func ClearUtmpEntry(pts *os.File) bool {
 	return utmp.UtmpxRemoveRecord(pts)
 }
 
@@ -40,10 +47,10 @@ var fp func() *utmp.Utmpx // easy for testing
 
 func init() {
 	fp = utmp.GetUtmpx
-	utmpSupport = hasUtmpSupport()
+	// utmpSupport = hasUtmpSupport()
 }
 
-func checkUnattachedRecord(userName string, ignoreHost string) []string {
+func CheckUnattachedRecord(userName, ignoreHost, prefix string) []string {
 	var unatttached []string
 	unatttached = make([]string, 0)
 
@@ -54,8 +61,8 @@ func checkUnattachedRecord(userName string, ignoreHost string) []string {
 			host := r.GetHost()
 			// fmt.Printf("#checkUnattachedRecord() user=%q,%q; type=%d,%d", r.GetUser(), userName, r.GetType(), utmp.USER_PROCESS)
 			// fmt.Printf(" host=%s, line=%q, ignoreHost=%s\n", host, r.GetLine(), ignoreHost)
-			if len(host) >= 5 && strings.HasPrefix(host, _PACKAGE_STRING) &&
-				strings.HasSuffix(host, "]") && host != ignoreHost && deviceExists(r.GetLine()) {
+			if len(host) >= 5 && strings.HasPrefix(host, prefix) &&
+				strings.HasSuffix(host, "]") && host != ignoreHost && utmp.DeviceExists(r.GetLine()) {
 				// fmt.Printf("#checkUnattachedRecord() attached session %s\n", host)
 				unatttached = append(unatttached, host)
 			}
@@ -69,10 +76,10 @@ func checkUnattachedRecord(userName string, ignoreHost string) []string {
 	return nil
 }
 
-func hasUtmpSupport() bool {
-	r := fp()
-	if r != nil {
-		return true
-	}
-	return false
-}
+// func hasUtmpSupport() bool {
+// 	r := fp()
+// 	if r != nil {
+// 		return true
+// 	}
+// 	return false
+// }

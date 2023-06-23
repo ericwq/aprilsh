@@ -13,4 +13,4 @@ require (
 	google.golang.org/protobuf v1.28.1
 )
 
-require github.com/ericwq/goutmp v0.3.0
+require github.com/ericwq/goutmp v0.4.2

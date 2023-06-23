@@ -2,9 +2,10 @@
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
-package main
+package cmd
 
 import (
+	"fmt"
 	"os"
 	"strings"
 )
@@ -57,9 +58,9 @@ func setNativeLocale() (ret string) {
 	ret = setlocale(LC_ALL, "")
 	if ret == "" { // cognizant of the locale environment variable
 		ctype := getCtype()
-		logW.Printf("The locale requested by %s isn't available here.\n", ctype)
+		fmt.Printf("The locale requested by %s isn't available here.\n", ctype)
 		if ctype.name != "" {
-			logW.Printf("Running 'locale-gen %s' may be necessary.\n", ctype.value)
+			fmt.Printf("Running 'locale-gen %s' may be necessary.\n", ctype.value)
 		}
 		// } else {
 		// 	fmt.Fprintf(os.Stderr, "#setNativeLocale setlocale return %q\n", setlocale(LC_ALL, ""))
