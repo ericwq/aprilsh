@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ericwq/aprilsh/cmd"
 	utmp "github.com/ericwq/goutmp"
 )
 
@@ -70,9 +71,11 @@ func mockGetUtmpx() *utmp.Utmpx {
 }
 
 func TestWarnUnattached(t *testing.T) {
-	fp = mockGetUtmpx
+	// fp = mockGetUtmpx
+	cmd.SetFp(mockGetUtmpx)
 	defer func() {
-		fp = utmp.GetUtmpx
+		// fp = utmp.GetUtmpx
+		cmd.SetFp(utmp.GetUtmpx)
 		idx = 0
 	}()
 
@@ -112,9 +115,11 @@ func mockGetUtmpx0() *utmp.Utmpx {
 }
 
 func TestWarnUnattached0(t *testing.T) {
-	fp = mockGetUtmpx0
+	// fp = mockGetUtmpx0
+	cmd.SetFp(mockGetUtmpx0)
 	defer func() {
-		fp = utmp.GetUtmpx
+		cmd.SetFp(utmp.GetUtmpx)
+		// fp = utmp.GetUtmpx
 		idx = 0
 	}()
 	var out strings.Builder
@@ -123,28 +128,6 @@ func TestWarnUnattached0(t *testing.T) {
 	if len(got) != 0 {
 		t.Logf("%s\n", got)
 		t.Errorf("#test warnUnattached() zero match expect 0, got %d\n", len(got))
-	}
-}
-
-func TestDeviceExists(t *testing.T) {
-	tc := []struct {
-		label  string
-		line   string
-		expect bool
-	}{
-		{"pts/1", "pts/1", true},
-		{"tty", "tty", true},
-		// {"tty0", "tty0", true}, // this one doesn't work for some linux container,
-		{"tty/1", "tty/1", false},
-	}
-
-	for _, v := range tc {
-		t.Run(v.label, func(t *testing.T) {
-			got := deviceExists(v.line)
-			if got != v.expect {
-				t.Errorf("#test %s expect %t, got %t\n", v.label, v.expect, got)
-			}
-		})
 	}
 }
 

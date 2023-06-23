@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/creack/pty"
+	utmp "github.com/ericwq/goutmp"
 	"github.com/ericwq/aprilsh/cmd"
 	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/network"
@@ -63,6 +64,7 @@ const (
 
 func init() {
 	initLog()
+	utmpSupport = utmp.HasUtmpSupport()
 }
 
 func initLog() {
@@ -1044,15 +1046,15 @@ func startShell(pts *os.File, utmpHost string, conf *Config) (*os.Process, error
 	return proc, nil
 }
 
-func deviceExists(line string) bool {
-	deviceName := fmt.Sprintf("/dev/%s", line)
-	_, err := os.Lstat(deviceName)
-	if err != nil {
-		return false
-	}
-
-	return true
-}
+// func deviceExists(line string) bool {
+// 	deviceName := fmt.Sprintf("/dev/%s", line)
+// 	_, err := os.Lstat(deviceName)
+// 	if err != nil {
+// 		return false
+// 	}
+//
+// 	return true
+// }
 
 // check unattached session and print warning message if there is any
 // ignore current session

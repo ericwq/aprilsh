@@ -50,6 +50,10 @@ func init() {
 	// utmpSupport = hasUtmpSupport()
 }
 
+func SetFp(f func() *utmp.Utmpx) {
+	fp = f
+}
+
 func CheckUnattachedRecord(userName, ignoreHost, prefix string) []string {
 	var unatttached []string
 	unatttached = make([]string, 0)
