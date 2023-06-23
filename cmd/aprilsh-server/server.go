@@ -313,7 +313,7 @@ func buildConfig(conf *Config) error {
 	if len(conf.commandArgv) == 0 {
 		shell := os.Getenv("SHELL")
 		if len(shell) == 0 {
-			shell, _ = getShell() // another way to get shell path
+			shell, _ = cmd.GetShell() // another way to get shell path
 		}
 
 		shellPath := shell
@@ -342,23 +342,23 @@ func buildConfig(conf *Config) error {
 	}
 
 	// Adopt implementation locale
-	setNativeLocale()
-	if !isUtf8Locale() || buildConfigTest {
-		nativeType := getCtype()
-		nativeCharset := localeCharset()
+	cmd.SetNativeLocale()
+	if !cmd.IsUtf8Locale() || buildConfigTest {
+		nativeType := cmd.GetCtype()
+		nativeCharset := cmd.LocaleCharset()
 
 		// apply locale-related environment variables from client
-		clearLocaleVariables()
+		cmd.ClearLocaleVariables()
 		for k, v := range conf.locales {
 			// fmt.Printf("#buildConfig setenv %s=%s\n", k, v)
 			os.Setenv(k, v)
 		}
 
 		// check again
-		setNativeLocale()
-		if !isUtf8Locale() || buildConfigTest {
-			clientType := getCtype()
-			clientCharset := localeCharset()
+		cmd.SetNativeLocale()
+		if !cmd.IsUtf8Locale() || buildConfigTest {
+			clientType := cmd.GetCtype()
+			clientCharset := cmd.LocaleCharset()
 			logW.Printf("%s needs a UTF-8 native locale to run.\n", _COMMAND_NAME)
 			logW.Printf("Unfortunately, the local environment (%s) specifies "+
 				"the character set \"%s\",\n", nativeType, nativeCharset)

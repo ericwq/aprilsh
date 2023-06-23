@@ -7,9 +7,7 @@
 package cmd
 
 import (
-	"log"
 	"os"
-	"strings"
 	"testing"
 )
 
@@ -36,7 +34,7 @@ func TestSetlocaleDarwin(t *testing.T) {
 		}
 
 		// check the real locale
-		got = localeCharset()
+		got = LocaleCharset()
 		if got != v.real {
 			t.Errorf("#test %q localeCharset() expect %q got %q\n", v.label, v.real, got)
 		}
@@ -47,26 +45,26 @@ func TestSetNativeLocaleDarwin(t *testing.T) {
 	// validate the non utf-8 result
 	zhLocale := "zh_CN.GB2312"
 	os.Setenv("LC_ALL", zhLocale)
-	setNativeLocale()
-	if isUtf8Locale() {
-		t.Errorf("#test expect non-UTF-8 locale, got %s\n", localeCharset())
+	SetNativeLocale()
+	if IsUtf8Locale() {
+		t.Errorf("#test expect non-UTF-8 locale, got %s\n", LocaleCharset())
 	}
 
 	// intercept log output
-	var b strings.Builder
-	logW.SetOutput(&b)
+	// var b strings.Builder
+	// logW.SetOutput(&b)
 
 	badLocale := "un_KN.ow"
 	os.Setenv("LC_ALL", badLocale)
-	ret := setNativeLocale()
+	ret := SetNativeLocale()
 
 	// restore logW
-	logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 	// validate the error handling
 	if ret != "" {
 		t.Errorf("#test malformed locale expect %q got %q\n", badLocale, ret)
 	}
-	if isUtf8Locale() {
-		t.Errorf("#test expect UTF-8 locale, got %s\n", localeCharset())
+	if IsUtf8Locale() {
+		t.Errorf("#test expect UTF-8 locale, got %s\n", LocaleCharset())
 	}
 }

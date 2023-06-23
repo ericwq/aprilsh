@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/creack/pty"
+	"github.com/ericwq/aprilsh/cmd"
 	"github.com/ericwq/aprilsh/network"
 	"github.com/ericwq/aprilsh/statesync"
 	"golang.org/x/sys/unix"
@@ -503,7 +504,7 @@ func TestGetShell(t *testing.T) {
 	}
 
 	for _, v := range tc {
-		if got, _ := getShell(); got != v.expect {
+		if got, _ := cmd.GetShell(); got != v.expect {
 			if got != v.expect {
 				t.Errorf("#test getShell() %s expect %q, got %q\n", v.label, v.expect, got)
 			}
@@ -624,7 +625,7 @@ func TestBuildConfig(t *testing.T) {
 				t.Errorf("#test buildConfig got \n%+v, expect \n%+v\n", v.conf0, v.conf2)
 			}
 			// reset the environment
-			clearLocaleVariables()
+			cmd.ClearLocaleVariables()
 
 			// restore logW
 			logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)

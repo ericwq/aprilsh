@@ -16,11 +16,11 @@ func TestSetNativeLocale(t *testing.T) {
 	zhLocale := "zh_TW.ASCII"
 	os.Setenv("LC_ALL", zhLocale)
 
-	ret := setNativeLocale()
+	ret := SetNativeLocale()
 	if zhLocale != ret {
 		t.Errorf("#test expect %q, got %q\n", zhLocale, ret)
 	}
-	if !isUtf8Locale() {
-		t.Errorf("#test expect non-UTF-8 locale, got %s\n", localeCharset())
+	if !IsUtf8Locale() {
+		t.Errorf("#test expect non-UTF-8 locale, got %s\n", LocaleCharset())
 	}
 }

@@ -28,7 +28,7 @@ var (
 	execCmdTest     bool
 )
 
-func getShell() (string, error) {
+func GetShell() (string, error) {
 	user, err := user.Current()
 	if err != nil || userCurrentTest {
 		return "", err

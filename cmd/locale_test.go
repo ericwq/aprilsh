@@ -34,7 +34,7 @@ func TestSetlocale(t *testing.T) {
 		}
 
 		// check the real locale
-		got = localeCharset()
+		got = LocaleCharset()
 		if got != v.real {
 			t.Errorf("#test %q localeCharset() expect %q got %q\n", v.label, v.real, got)
 		}
@@ -45,9 +45,9 @@ func TestLocaleSetNativeLocale(t *testing.T) {
 	// validate the utf-8 result
 	utf8Locale := "en_US.UTF-8"
 	os.Setenv("LC_ALL", utf8Locale)
-	setNativeLocale()
-	if !isUtf8Locale() {
-		t.Errorf("#test expect UTF-8 locale, got %s\n", localeCharset())
+	SetNativeLocale()
+	if !IsUtf8Locale() {
+		t.Errorf("#test expect UTF-8 locale, got %s\n", LocaleCharset())
 	}
 }
 
@@ -60,7 +60,7 @@ func TestLocaleNlLangInfo2(t *testing.T) {
 
 func TestLocalseNl_langinfo(t *testing.T) {
 	os.Setenv("LC_ALL", "en_US.UTF-8")
-	setNativeLocale()
+	SetNativeLocale()
 	ret1, err := nl_langinfo2("locale", []string{"charmap"})
 	ret0 := nl_langinfo(CODESET)
 	if err != nil {
@@ -87,11 +87,11 @@ func TestLocaleGetCtype(t *testing.T) {
 
 	for _, v := range tc {
 		os.Setenv(v.key, v.value)
-		lv := getCtype()
+		lv := GetCtype()
 		if v.expect != lv.String() {
 			t.Errorf("%q expect %q, got %q\n", v.label, v.expect, lv.String())
 		}
 
-		clearLocaleVariables()
+		ClearLocaleVariables()
 	}
 }

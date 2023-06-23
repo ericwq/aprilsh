@@ -6,30 +6,33 @@
 
 package cmd
 
-import "os"
+import (
+	"os"
+	"fmt"
+)
 
 type utmpEntry struct{}
 
 func AddUtmpEntry(pts *os.File, host string) bool {
-	logW.Printf("unimplement %s\n", "addUtmpEntry()")
+	fmt.Printf("unimplement %s\n", "addUtmpEntry()")
 	return false
 }
 
 func UpdateLastLog(line, userName, host string) {
-	logW.Printf("unimplement %s\n", "updateLastLog()")
+	fmt.Printf("unimplement %s\n", "updateLastLog()")
 }
 
 func ClearUtmpEntry(pts *os.File) bool {
-	logW.Printf("unimplement %s\n", "clearUtmpEntry()")
+	fmt.Printf("unimplement %s\n", "clearUtmpEntry()")
 	return false
 }
 
 func CheckUnattachedRecord(userName, ignoreHost, prefix string) []string {
-	logW.Printf("unimplement %s\n", "checkUnattachedRecord()")
+	fmt.Printf("unimplement %s\n", "checkUnattachedRecord()")
 	return nil
 }
 
 // func hasUtempter() bool {
-// 	logW.Printf("unimplement %s\n", "isUtmpSupport()")
+// 	fmt.Printf("unimplement %s\n", "isUtmpSupport()")
 // 	return false
 // }

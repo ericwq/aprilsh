@@ -28,7 +28,7 @@ const (
 	LC_MESSAGES = 6
 )
 
-func getShell() (string, error) {
+func GetShell() (string, error) {
 	dir := "Local/Default/Users/" + os.Getenv("USER")
 	out, err := exec.Command("dscl", "localhost", "-read", dir, "UserShell").Output()
 	if err != nil {

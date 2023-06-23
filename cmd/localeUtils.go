@@ -22,7 +22,7 @@ func (lv *localeVar) String() string {
 	return lv.name + "=" + lv.value
 }
 
-func getCtype() localeVar {
+func GetCtype() localeVar {
 	if all := os.Getenv("LC_ALL"); all != "" {
 		return localeVar{"LC_ALL", all}
 	} else if ctype := os.Getenv("LC_CTYPE"); ctype != "" {
@@ -34,7 +34,7 @@ func getCtype() localeVar {
 	return localeVar{"", ""}
 }
 
-func localeCharset() (ret string) {
+func LocaleCharset() (ret string) {
 	// ret, err := nl_langinfo2("locale", []string{"charmap"})
 	// if err != nil {
 	// 	ret = ""
@@ -44,8 +44,8 @@ func localeCharset() (ret string) {
 	return nl_langinfo(CODESET)
 }
 
-func isUtf8Locale() bool {
-	cs := localeCharset()
+func IsUtf8Locale() bool {
+	cs := LocaleCharset()
 	// fmt.Printf("#isUtf8Locale cs=%s\n", cs)
 
 	if strings.Compare(strings.ToLower(cs), "utf-8") == 0 {
@@ -54,10 +54,10 @@ func isUtf8Locale() bool {
 	return false
 }
 
-func setNativeLocale() (ret string) {
+func SetNativeLocale() (ret string) {
 	ret = setlocale(LC_ALL, "")
 	if ret == "" { // cognizant of the locale environment variable
-		ctype := getCtype()
+		ctype := GetCtype()
 		fmt.Printf("The locale requested by %s isn't available here.\n", ctype)
 		if ctype.name != "" {
 			fmt.Printf("Running 'locale-gen %s' may be necessary.\n", ctype.value)
@@ -68,7 +68,7 @@ func setNativeLocale() (ret string) {
 	return
 }
 
-func clearLocaleVariables() {
+func ClearLocaleVariables() {
 	list := []string{
 		"LANG", "LANGUAGE", "LC_CTYPE", "LC_NUMERIC", "LC_TIME", "LC_COLLATE",
 		"LC_MONETARY", "LC_MESSAGES", "LC_PAPER", "LC_NAME", "LC_ADDRESS",
