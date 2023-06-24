@@ -51,14 +51,14 @@ func TestLocaleSetNativeLocale(t *testing.T) {
 	}
 }
 
-func TestLocaleNlLangInfo2(t *testing.T) {
+func TestLocale_nl_langinfo2(t *testing.T) {
 	_, err := nl_langinfo2("locale", []string{"-error -args"})
 	if err == nil {
 		t.Errorf("#test expect error from nlLangInfo(), got nil\n")
 	}
 }
 
-func TestLocalseNl_langinfo(t *testing.T) {
+func TestLocale_nl_langinfo(t *testing.T) {
 	os.Setenv("LC_ALL", "en_US.UTF-8")
 	SetNativeLocale()
 	ret1, err := nl_langinfo2("locale", []string{"charmap"})
