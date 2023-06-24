@@ -11,8 +11,6 @@ import (
 	"os"
 )
 
-// type utmpEntry struct{}
-
 func AddUtmpEntry(pts *os.File, host string) bool {
 	fmt.Printf("unimplement %s\n", "addUtmpEntry()")
 	return false
@@ -31,8 +29,3 @@ func CheckUnattachedRecord(userName, ignoreHost, prefix string) []string {
 	fmt.Printf("unimplement %s\n", "checkUnattachedRecord()")
 	return nil
 }
-
-// func hasUtempter() bool {
-// 	fmt.Printf("unimplement %s\n", "isUtmpSupport()")
-// 	return false
-// }
