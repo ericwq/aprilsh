@@ -39,7 +39,7 @@ import (
 var (
 	BuildVersion    = "0.1.0" // ready for ldflags
 	userCurrentTest = false
-	execCmdTest     = false
+	getShellTest    = false
 	buildConfigTest = false
 )
 
@@ -319,7 +319,7 @@ func buildConfig(conf *Config) error {
 		}
 
 		shellPath := shell
-		if len(shellPath) == 0 { // empty shell means Bourne shell
+		if len(shellPath) == 0 || getShellTest { // empty shell means Bourne shell
 			shellPath = _PATH_BSHELL
 		}
 

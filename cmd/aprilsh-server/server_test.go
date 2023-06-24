@@ -584,9 +584,9 @@ func TestBuildConfig(t *testing.T) {
 	case "darwin":
 		tc[1].conf2.commandArgv = []string{"-zsh"}
 		tc[1].conf2.commandPath = "/bin/zsh"
-		// case "linux":
-		// 	tc[1].conf2.commandArgv = []string{"-ash"}
-		// 	tc[1].conf2.commandPath = "/bin/ash"
+	// case "linux":
+	// 	tc[1].conf2.commandArgv = []string{"-ash"}
+	// 	tc[1].conf2.commandPath = "/bin/ash"
 	}
 
 	for _, v := range tc {
@@ -605,10 +605,10 @@ func TestBuildConfig(t *testing.T) {
 					// getShell() will fail
 					defer func() {
 						userCurrentTest = false
-						execCmdTest = false
+						getShellTest = false
 					}()
 
-					execCmdTest = true
+					getShellTest = true
 					userCurrentTest = false
 				}
 			}
