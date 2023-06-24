@@ -21,6 +21,10 @@ func AddUtmpEntry(pts *os.File, host string) bool {
 	return utmp.UtmpxAddRecord(pts, host)
 }
 
+func ClearUtmpEntry(pts *os.File) bool {
+	return utmp.UtmpxRemoveRecord(pts)
+}
+
 /*
 	func updateLastLog(ptmxName string) {
 		host := fmt.Sprintf("%s [%d]", _PACKAGE_STRING, os.Getpid())
@@ -38,21 +42,6 @@ func UpdateLastLog(line, userName, host string) {
 // func clearUtmpEntry(entry *utmpEntry) {
 // 	utmp.Unput_utmp(*(entry.ent))
 // }
-
-func ClearUtmpEntry(pts *os.File) bool {
-	return utmp.UtmpxRemoveRecord(pts)
-}
-
-var fp func() *utmp.Utmpx // easy for testing
-
-func init() {
-	fp = utmp.GetUtmpx
-	// utmpSupport = hasUtmpSupport()
-}
-
-func SetFp(f func() *utmp.Utmpx) {
-	fp = f
-}
 
 func CheckUnattachedRecord(userName, ignoreHost, prefix string) []string {
 	var unatttached []string
@@ -78,6 +67,18 @@ func CheckUnattachedRecord(userName, ignoreHost, prefix string) []string {
 		return unatttached
 	}
 	return nil
+}
+
+var fp func() *utmp.Utmpx // easy for testing
+
+func init() {
+	fp = utmp.GetUtmpx
+	// utmpSupport = hasUtmpSupport()
+}
+
+// easy for testing under linux
+func SetFp(f func() *utmp.Utmpx) {
+	fp = f
 }
 
 // func hasUtmpSupport() bool {
