@@ -31,3 +31,11 @@ func TestGetShellFail(t *testing.T) {
 		t.Errorf("#test getShell() expect empty string, got %s.", r)
 	}
 }
+
+func TestGetShell(t *testing.T) {
+	expect := "/bin/ash"
+	r, _ := GetShell()
+	if r == "" {
+		t.Errorf("#test expect %s got %s\n", expect, r)
+	}
+}

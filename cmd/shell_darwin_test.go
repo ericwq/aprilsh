@@ -35,5 +35,10 @@ func TestGetShellDarwin(t *testing.T) {
 		t.Errorf("#test getShell() darwin expect empty string, got %q, error %q\n", s, e)
 	}
 
+	// normal user
 	os.Setenv("USER", user)
+	s, e = GetShell()
+	if e != nil {
+		t.Errorf("#test getShell() darwin expect no error, got %s\n", e)
+	}
 }
