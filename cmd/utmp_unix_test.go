@@ -20,6 +20,17 @@ const (
 	PACKAGE_STRING = "aprilsh"
 )
 
+func TestUpdateLastLog(t *testing.T) {
+	line := "pts/9"
+	userName := "ide"
+	host := fmt.Sprintf("%s [%d]", PACKAGE_STRING, os.Getpid())
+
+	ret := UpdateLastLog(line, userName, host)
+	if !ret {
+		t.Errorf("#test UpdateLastLog() failed.")
+	}
+}
+
 func TestCheckUnattachedRecord(t *testing.T) {
 	// in the following test condition the CheckUnattachedRecord will return nil
 	user, _ := user.Current()
