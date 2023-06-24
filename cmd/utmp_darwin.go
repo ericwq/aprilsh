@@ -21,8 +21,9 @@ func ClearUtmpEntry(pts *os.File) bool {
 	return false
 }
 
-func UpdateLastLog(line, userName, host string) {
+func UpdateLastLog(line, userName, host string) bool {
 	fmt.Printf("unimplement %s\n", "updateLastLog()")
+	return false
 }
 
 func CheckUnattachedRecord(userName, ignoreHost, prefix string) []string {

@@ -26,12 +26,12 @@ import (
 	"time"
 
 	"github.com/creack/pty"
-	utmp "github.com/ericwq/goutmp"
 	"github.com/ericwq/aprilsh/cmd"
 	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/network"
 	"github.com/ericwq/aprilsh/statesync"
 	"github.com/ericwq/aprilsh/terminal"
+	utmp "github.com/ericwq/goutmp"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
 )
@@ -505,7 +505,10 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		whChan <- &workhorse{}
 		return err
 	}
-	defer func() { _ = ptmx.Close() }() // Best effort.
+	defer func() {
+		ptmx.Close()
+		pts.Close()
+	}() // Best effort.
 	// fmt.Printf("#runWorker openPTS successfully.\n")
 
 	// prepare host field for utmp record

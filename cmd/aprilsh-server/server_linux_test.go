@@ -72,10 +72,10 @@ func mockGetUtmpx() *utmp.Utmpx {
 
 func TestWarnUnattached(t *testing.T) {
 	// fp = mockGetUtmpx
-	cmd.SetFp(mockGetUtmpx)
+	cmd.SetFuncForGetUtmpx(mockGetUtmpx)
 	defer func() {
 		// fp = utmp.GetUtmpx
-		cmd.SetFp(utmp.GetUtmpx)
+		cmd.SetFuncForGetUtmpx(utmp.GetUtmpx)
 		idx = 0
 	}()
 
@@ -116,9 +116,9 @@ func mockGetUtmpx0() *utmp.Utmpx {
 
 func TestWarnUnattached0(t *testing.T) {
 	// fp = mockGetUtmpx0
-	cmd.SetFp(mockGetUtmpx0)
+	cmd.SetFuncForGetUtmpx(mockGetUtmpx0)
 	defer func() {
-		cmd.SetFp(utmp.GetUtmpx)
+		cmd.SetFuncForGetUtmpx(utmp.GetUtmpx)
 		// fp = utmp.GetUtmpx
 		idx = 0
 	}()
@@ -130,4 +130,3 @@ func TestWarnUnattached0(t *testing.T) {
 		t.Errorf("#test warnUnattached() zero match expect 0, got %d\n", len(got))
 	}
 }
-

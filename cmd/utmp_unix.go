@@ -21,8 +21,8 @@ func ClearUtmpEntry(pts *os.File) bool {
 	return utmp.UtmpxRemoveRecord(pts)
 }
 
-func UpdateLastLog(line, userName, host string) {
-	utmp.PutLastlogEntry(line, userName, host)
+func UpdateLastLog(line, userName, host string) bool {
+	return utmp.PutLastlogEntry(line, userName, host)
 }
 
 func CheckUnattachedRecord(userName, ignoreHost, prefix string) []string {
@@ -31,10 +31,12 @@ func CheckUnattachedRecord(userName, ignoreHost, prefix string) []string {
 
 	r := fp()
 	for r != nil {
+		// fmt.Printf("#checkUnattachedRecord() user=%q,%q; type=%d, line=%s, host=%s\n",
+		// 	r.GetUser(), userName, r.GetType(), r.GetLine(), r.GetHost())
 		if r.GetType() == utmp.USER_PROCESS && r.GetUser() == userName {
 			// does line show unattached session
 			host := r.GetHost()
-			// fmt.Printf("#checkUnattachedRecord() user=%q,%q; type=%d,%d", r.GetUser(), userName, r.GetType(), utmp.USER_PROCESS)
+			// fmt.Printf("#checkUnattachedRecord() MATCH user=%q,%q; type=%d,%d", r.GetUser(), userName, r.GetType(), utmp.USER_PROCESS)
 			// fmt.Printf(" host=%s, line=%q, ignoreHost=%s\n", host, r.GetLine(), ignoreHost)
 			if len(host) >= 5 && strings.HasPrefix(host, prefix) &&
 				strings.HasSuffix(host, "]") && host != ignoreHost && utmp.DeviceExists(r.GetLine()) {
@@ -58,6 +60,6 @@ func init() {
 }
 
 // easy for testing under linux
-func SetFp(f func() *utmp.Utmpx) {
+func SetFuncForGetUtmpx(f func() *utmp.Utmpx) {
 	fp = f
 }
