@@ -31,21 +31,21 @@ func TestUpdateLastLog(t *testing.T) {
 	}
 }
 
-func TestCheckUnattachedRecord(t *testing.T) {
-	// in the following test condition the CheckUnattachedRecord will return nil
+func TestCheckUnattachedUtmpx(t *testing.T) {
+	// in the following test condition the CheckUnattachedUtmpx will return nil
 	user, _ := user.Current()
 	ignoreHost := fmt.Sprintf("%s [%d]", PACKAGE_STRING, os.Getpid())
-	// t.Logf("#test CheckUnattachedRecord() user=%q, ignoreHost=%q\n", user.Username, ignoreHost)
+	// t.Logf("#test CheckUnattachedUtmpx() user=%q, ignoreHost=%q\n", user.Username, ignoreHost)
 
-	unatttached := CheckUnattachedRecord(user.Username, ignoreHost, PACKAGE_STRING)
+	unatttached := CheckUnattachedUtmpx(user.Username, ignoreHost, PACKAGE_STRING)
 	if unatttached != nil {
-		t.Errorf("#test CheckUnattachedRecord() expect nil return, got %v\n", unatttached)
+		t.Errorf("#test CheckUnattachedUtmpx() expect nil return, got %v\n", unatttached)
 	}
 
 	// open pts master and slave
 	ptmx, pts, err := pty.Open()
 	if err != nil {
-		t.Errorf("#test CheckUnattachedRecord() open pts failed, %s", err)
+		t.Errorf("#test CheckUnattachedUtmpx() open pts failed, %s", err)
 	}
 	defer func() {
 		ptmx.Close()
@@ -54,35 +54,35 @@ func TestCheckUnattachedRecord(t *testing.T) {
 
 	// add test data
 	fakeHost := fmt.Sprintf("%s [%d]", PACKAGE_STRING, os.Getpid()+1)
-	t.Logf("#test CheckUnattachedRecord() after add an record. fake host=%s, ignoreHost=%s\n",
+	t.Logf("#test CheckUnattachedUtmpx() after add an record. fake host=%s, ignoreHost=%s\n",
 		fakeHost, ignoreHost)
-	ret := AddUtmpEntry(pts, fakeHost)
-	t.Logf("#test CheckUnattachedRecord() AddUtmpEntry() return %t\n", ret)
+	ret := AddUtmpx(pts, fakeHost)
+	t.Logf("#test CheckUnattachedUtmpx() AddUtmpx() return %t\n", ret)
 
-	// CheckUnattachedRecord should return one record
-	unatttached = CheckUnattachedRecord(user.Username, ignoreHost, PACKAGE_STRING)
+	// CheckUnattachedUtmpx should return one record
+	unatttached = CheckUnattachedUtmpx(user.Username, ignoreHost, PACKAGE_STRING)
 	if unatttached == nil {
-		t.Errorf("#test CheckUnattachedRecord() should return one record, got %v\n", unatttached)
+		t.Errorf("#test CheckUnattachedUtmpx() should return one record, got %v\n", unatttached)
 	}
 
 	// clean the test data
-	ret = ClearUtmpEntry(pts)
-	t.Logf("#test CheckUnattachedRecord() ClearUtmpEntry() return %t\n", ret)
+	ret = ClearUtmpx(pts)
+	t.Logf("#test CheckUnattachedUtmpx() ClearUtmpx() return %t\n", ret)
 }
 
-func TestCheckUnattachedRecord_Mock(t *testing.T) {
-	SetFuncForGetUtmpx(mockGetUtmpx)
+func TestCheckUnattachedUtmpx_Mock(t *testing.T) {
+	SetFunc4GetUtmpx(mockGetUtmpx)
 	defer func() {
-		SetFuncForGetUtmpx(utmp.GetUtmpx)
+		SetFunc4GetUtmpx(utmp.GetUtmpx)
 	}()
 
 	user, _ := user.Current()
 	ignoreHost := fmt.Sprintf("%s [%d]", PACKAGE_STRING, os.Getpid())
 
-	unatttached := CheckUnattachedRecord(user.Username, ignoreHost, PACKAGE_STRING)
+	unatttached := CheckUnattachedUtmpx(user.Username, ignoreHost, PACKAGE_STRING)
 	expect := PACKAGE_STRING + " [1221]"
 	if unatttached == nil && unatttached[0] != expect {
-		t.Errorf("#test CheckUnattachedRecord() expect %s, got %v\n", expect, unatttached)
+		t.Errorf("#test CheckUnattachedUtmpx() expect %s, got %v\n", expect, unatttached)
 	}
 }
 

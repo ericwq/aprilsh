@@ -13,11 +13,11 @@ import (
 	utmp "github.com/ericwq/goutmp"
 )
 
-func AddUtmpEntry(pts *os.File, host string) bool {
+func AddUtmpx(pts *os.File, host string) bool {
 	return utmp.UtmpxAddRecord(pts, host)
 }
 
-func ClearUtmpEntry(pts *os.File) bool {
+func ClearUtmpx(pts *os.File) bool {
 	return utmp.UtmpxRemoveRecord(pts)
 }
 
@@ -25,7 +25,7 @@ func UpdateLastLog(line, userName, host string) bool {
 	return utmp.PutLastlogEntry(line, userName, host)
 }
 
-func CheckUnattachedRecord(userName, ignoreHost, prefix string) []string {
+func CheckUnattachedUtmpx(userName, ignoreHost, prefix string) []string {
 	var unatttached []string
 	unatttached = make([]string, 0)
 
@@ -60,6 +60,6 @@ func init() {
 }
 
 // easy for testing under linux
-func SetFuncForGetUtmpx(f func() *utmp.Utmpx) {
+func SetFunc4GetUtmpx(f func() *utmp.Utmpx) {
 	fp = f
 }

@@ -11,22 +11,22 @@ import (
 	"os"
 )
 
-func AddUtmpEntry(pts *os.File, host string) bool {
-	fmt.Printf("unimplement %s\n", "addUtmpEntry()")
+func AddUtmpx(pts *os.File, host string) bool {
+	fmt.Printf("unimplement %s\n", "AddUtmpx()")
 	return false
 }
 
-func ClearUtmpEntry(pts *os.File) bool {
-	fmt.Printf("unimplement %s\n", "clearUtmpEntry()")
+func ClearUtmpx(pts *os.File) bool {
+	fmt.Printf("unimplement %s\n", "ClearUtmpx()")
 	return false
 }
 
 func UpdateLastLog(line, userName, host string) bool {
-	fmt.Printf("unimplement %s\n", "updateLastLog()")
+	fmt.Printf("unimplement %s\n", "UpdateLastLog()")
 	return false
 }
 
-func CheckUnattachedRecord(userName, ignoreHost, prefix string) []string {
-	fmt.Printf("unimplement %s\n", "checkUnattachedRecord()")
+func CheckUnattachedUtmpx(userName, ignoreHost, prefix string) []string {
+	fmt.Printf("unimplement %s\n", "CheckUnattachedUtmpx()")
 	return nil
 }

@@ -524,7 +524,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		// add utmp entry
 		ptmxName := ptmx.Name() // TODO remove it?
 		if utmpSupport {
-			cmd.AddUtmpEntry(pts, utmpHost)
+			cmd.AddUtmpx(pts, utmpHost)
 		}
 
 		// update last log
@@ -544,7 +544,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 
 		// clear utmp entry
 		if utmpSupport {
-			cmd.ClearUtmpEntry(pts)
+			cmd.ClearUtmpx(pts)
 		}
 	}
 
@@ -757,7 +757,7 @@ mainLoop:
 
 				// update utmp entry if we have become "connected"
 				if utmpSupport && (!connectedUtmp || !reflect.DeepEqual(savedAddr, network.GetRemoteAddr())) {
-					cmd.ClearUtmpEntry(pts)
+					cmd.ClearUtmpx(pts)
 
 					// convert savedAddr to host name
 					savedAddr = network.GetRemoteAddr()
@@ -768,7 +768,7 @@ mainLoop:
 					}
 					newHost := fmt.Sprintf("%s via %s [%d]", host, _PACKAGE_STRING, os.Getpid())
 
-					cmd.AddUtmpEntry(pts, newHost)
+					cmd.AddUtmpx(pts, newHost)
 
 					connectedUtmp = true
 				}
@@ -842,10 +842,10 @@ mainLoop:
 		// update utmp if has been more than 30 seconds since heard from client
 		if utmpSupport && connectedUtmp {
 			if timeSinceRemoteState > 30000 {
-				cmd.ClearUtmpEntry(pts)
+				cmd.ClearUtmpx(pts)
 
 				newHost := fmt.Sprintf("%s [%d]", _PACKAGE_STRING, os.Getpid())
-				cmd.AddUtmpEntry(pts, newHost)
+				cmd.AddUtmpx(pts, newHost)
 
 				connectedUtmp = false
 			}
@@ -1065,7 +1065,7 @@ func warnUnattached(w io.Writer, ignoreHost string) {
 	userName := getCurrentUser()
 
 	// check unattached sessions
-	unatttached := cmd.CheckUnattachedRecord(userName, ignoreHost, _PACKAGE_STRING)
+	unatttached := cmd.CheckUnattachedUtmpx(userName, ignoreHost, _PACKAGE_STRING)
 
 	if unatttached == nil || len(unatttached) == 0 {
 		return
