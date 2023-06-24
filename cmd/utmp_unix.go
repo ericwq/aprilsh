@@ -31,8 +31,8 @@ func CheckUnattachedRecord(userName, ignoreHost, prefix string) []string {
 
 	r := fp()
 	for r != nil {
-		// fmt.Printf("#checkUnattachedRecord() user=%q,%q; type=%d, line=%s, host=%s\n",
-		// 	r.GetUser(), userName, r.GetType(), r.GetLine(), r.GetHost())
+		// fmt.Printf("#checkUnattachedRecord() user=%q,%q; type=%d, line=%s, host=%s, id=%s, pid=%d\n",
+		// 	r.GetUser(), userName, r.GetType(), r.GetLine(), r.GetHost(), r.GetId(), r.GetPid())
 		if r.GetType() == utmp.USER_PROCESS && r.GetUser() == userName {
 			// does line show unattached session
 			host := r.GetHost()
