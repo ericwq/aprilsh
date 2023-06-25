@@ -44,6 +44,7 @@ func LocaleCharset() (ret string) {
 	return nl_langinfo(CODESET)
 }
 
+// return true if current locale charset is utf-8, otherwise false.
 func IsUtf8Locale() bool {
 	cs := LocaleCharset()
 	// fmt.Printf("#isUtf8Locale cs=%s\n", cs)
@@ -56,6 +57,7 @@ func IsUtf8Locale() bool {
 
 func SetNativeLocale() (ret string) {
 	ret = setlocale(LC_ALL, "")
+	// fmt.Printf("#setNativeLocale setlocale return %q\n", ret)
 	if ret == "" { // cognizant of the locale environment variable
 		ctype := GetCtype()
 		fmt.Printf("The locale requested by %s isn't available here.\n", ctype)
