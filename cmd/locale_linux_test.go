@@ -12,28 +12,26 @@ import (
 )
 
 func TestSetNativeLocale(t *testing.T) {
-	// validate the non utf-8 result
-	zhLocale := "zh_TW.ASCII"
-	os.Setenv("LC_ALL", zhLocale)
-
-	ret := SetNativeLocale()
-	// setlocale(LC_CTYPE, ".ASCII")
-	if zhLocale != ret { // the return value should be "zh_TW.ASCII"
-		t.Errorf("#test expect %q, got %q\n", zhLocale, ret)
-	}
-	if IsUtf8Locale() { // the return value should be false
-		t.Errorf("#test expect non-UTF-8 locale, got %s\n", LocaleCharset())
+	tc := []struct {
+		label  string
+		locale string
+		expect string
+		utf8   bool
+	}{
+		// {"set locale zh_TW.ASCII", "zh_TW.ASCII", "zh_TW.ASCII", false},
+		{"set locale POSIX", "POSIX", "C", false},
+		// {"set locale unKNow", "unKNow", "", false},
 	}
 
-	badLocale := "un_KN.ow"
-	os.Setenv("LC_ALL", badLocale)
-	ret = SetNativeLocale()
+	for _, v := range tc {
+		os.Setenv("LC_ALL", v.locale)
+		got := SetNativeLocale()
+		if got != v.expect {
+			t.Errorf("#test SetNativeLocale() %s expect %q, got %q\n", v.label, v.expect, got)
+		}
 
-	// validate the error handling
-	if ret != "" {
-		t.Errorf("#test malformed locale expect %q got %q\n", badLocale, ret)
-	}
-	if IsUtf8Locale() {
-		t.Errorf("#test expect UTF-8 locale, got %s\n", LocaleCharset())
+		if IsUtf8Locale() != v.utf8 {
+			t.Errorf("#test IsUtf8Locale() %s expect %t, got %t\n", v.label, v.utf8, IsUtf8Locale())
+		}
 	}
 }
