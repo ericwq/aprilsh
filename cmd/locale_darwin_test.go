@@ -1,4 +1,4 @@
-// Copyright 2022 wangqi. All rights reserved.
+// Copyright 2022~2023 wangqi. All rights reserved.
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
@@ -7,7 +7,9 @@
 package cmd
 
 import (
+	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -50,21 +52,32 @@ func TestSetNativeLocaleDarwin(t *testing.T) {
 		t.Errorf("#test expect non-UTF-8 locale, got %s\n", LocaleCharset())
 	}
 
-	// intercept log output
-	// var b strings.Builder
-	// logW.SetOutput(&b)
+	// intercept stdout
+	saveStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
 
 	badLocale := "un_KN.ow"
 	os.Setenv("LC_ALL", badLocale)
-	ret := SetNativeLocale()
+	SetNativeLocale()
 
-	// restore logW
-	// logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-	// validate the error handling
-	if ret != "" {
-		t.Errorf("#test malformed locale expect %q got %q\n", badLocale, ret)
+	expect := []string{"The locale requested by", "isn't available here.", "Running", "may be necessary."}
+
+	// restore stdout
+	w.Close()
+	b, _ := ioutil.ReadAll(r)
+	os.Stdout = saveStdout
+	r.Close()
+
+	// validae the output from SetNativeLocale()
+	result := string(b)
+	found := 0
+	for i := range expect {
+		if strings.Contains(result, expect[i]) {
+			found++
+		}
 	}
-	if IsUtf8Locale() {
-		t.Errorf("#test expect UTF-8 locale, got %s\n", LocaleCharset())
+	if found != len(expect) {
+		t.Errorf("#test printVersion expect %q, got %q\n", expect, result)
 	}
 }
