@@ -29,8 +29,8 @@ var (
 Options:
   -h, --help     print this message
   -v, --version  print version information
-      --verbose  verbose output
-  -i, --ip       server ip
+      --verbose  verbose output mode
+  -i, --ip       server ip or host name
   -p, --port     server port
   -c, --color    xterm color
 `
@@ -55,8 +55,12 @@ reborn mosh with aprilsh
 `)
 }
 
-func printUsage(usage string) {
-	fmt.Printf("%s", usage)
+func printUsage(hint, usage string) {
+	if hint != "" {
+		fmt.Printf("%s\n%s", hint, usage)
+	} else {
+		fmt.Printf("%s", usage)
+	}
 }
 
 func parseFlags(progname string, args []string) (config *Config, output string, err error) {
@@ -67,16 +71,16 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 
 	var conf Config
 
-	flagSet.IntVar(&conf.verbose, "verbose", 0, "verbose output")
+	flagSet.IntVar(&conf.verbose, "verbose", 0, "verbose output mode")
 
 	flagSet.BoolVar(&conf.version, "version", false, "print version information")
 	flagSet.BoolVar(&conf.version, "v", false, "print version information")
 
-	flagSet.StringVar(&conf.desiredIP, "ip", "", "server ip")
-	flagSet.StringVar(&conf.desiredIP, "i", "", "server ip")
+	flagSet.StringVar(&conf.serverIP, "ip", "", "server ip or host name")
+	flagSet.StringVar(&conf.serverIP, "i", "", "server ip or host name")
 
-	flagSet.StringVar(&conf.desiredPort, "port", "6000", "server port")
-	flagSet.StringVar(&conf.desiredPort, "p", "6000", "server port")
+	flagSet.IntVar(&conf.serverPort, "port", 6000, "server port")
+	flagSet.IntVar(&conf.serverPort, "p", 6000, "server port")
 
 	flagSet.IntVar(&conf.color, "color", 0, "xterm color")
 	flagSet.IntVar(&conf.color, "c", 0, "xterm color")
@@ -90,34 +94,45 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 }
 
 type Config struct {
-	version     bool
-	desiredIP   string
-	desiredPort string
-	verbose     int
-	color       int
+	version    bool
+	serverIP   string
+	serverPort int
+	verbose    int
+	color      int
 }
 
-func (c *Config) isValid() bool {
+func (c *Config) isValid() (string, bool) {
 	// just need version info
 	if c.version {
-		return true
+		return "", true
 	}
 
-	// no required IP and Port info
-	if c.desiredIP == "" || c.desiredPort == "" {
-		return false
+	// serverIP is mandatory
+	if c.serverPort == 0 {
+		return "server port is mandatory.", false
 	}
 
-	return true
+	// serverPort is mandatory
+	if c.serverIP == "" {
+		return "server ip or host name is mandatory.", false
+	}
+
+	return "", true
 }
 
 func main() {
-	conf, output, err := parseFlags(os.Args[0], os.Args[1:])
-	if err == flag.ErrHelp || !conf.isValid() {
-		printUsage(usage)
+	conf, _, err := parseFlags(os.Args[0], os.Args[1:])
+	if err == flag.ErrHelp {
+		printUsage("", usage)
 		return
+	} else if conf != nil {
+		if hint, ok := conf.isValid(); !ok {
+			printUsage(hint, usage)
+			return
+		}
 	} else if err != nil {
-		logW.Printf("#main parseFlags failed: %s\n", output)
+		// logW.Printf("#main parseFlags failed: %s\n", output)
+		printUsage(err.Error(), usage)
 		return
 	}
 
