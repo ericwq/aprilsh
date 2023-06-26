@@ -25,8 +25,7 @@ var (
 
 	usage = `Usage:
   ` + _COMMAND_NAME + ` [--version] [--help]
-  ` + _COMMAND_NAME + ` [--verbose] [--port PORT] [--color COLORS] User@Server` +
-		`]
+  ` + _COMMAND_NAME + ` [--verbose] [--port PORT] [--color COLORS] User@Server
 Options:
   -h, --help     print this message
   -v, --version  print version information
@@ -108,9 +107,12 @@ func (c *Config) buildConfig() (string, bool) {
 		return "", true
 	}
 
-	// server is mandatory
+	if len(c.server) == 0 {
+		return "server parameter (User@Server) is mandatory.", false
+	}
+
 	if len(c.server) != 1 {
-		return "server parameter is mandatory.", false
+		return "only one server parameter (User@Server) is allowed.", false
 	}
 
 	// validate server parameter
@@ -122,7 +124,6 @@ func (c *Config) buildConfig() (string, bool) {
 	c.user = c.server[0][:idx]
 
 	// fmt.Printf("raw=%s, USER=%s,HOST=%s\n",c.server, c.user, c.host)
-
 	return "", true
 }
 
