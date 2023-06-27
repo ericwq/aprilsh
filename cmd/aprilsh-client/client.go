@@ -11,6 +11,9 @@ import (
 	"log"
 	"os"
 	"strings"
+
+	"github.com/ericwq/terminfo"
+	_ "github.com/ericwq/terminfo/base"
 )
 
 const (
@@ -24,14 +27,14 @@ var (
 	BuildVersion = "0.1.0" // ready for ldflags
 
 	usage = `Usage:
-  ` + _COMMAND_NAME + ` [--version] [--help]
-  ` + _COMMAND_NAME + ` [--verbose] [--port PORT] [--color COLORS] User@Server
+  ` + _COMMAND_NAME + ` [--version] [--help] [--colors]
+  ` + _COMMAND_NAME + ` [--verbose] [--port PORT]  User@Server
 Options:
   -h, --help     print this message
   -v, --version  print version information
-      --verbose  verbose output mode
+  -c, --colors   print the number of colors of terminal
   -p, --port     server port (default 6000)
-  -c, --color    xterm color
+      --verbose  verbose output mode
 `
 )
 
@@ -52,6 +55,24 @@ There is NO WARRANTY, to the extent permitted by law.
 
 reborn mosh with aprilsh
 `)
+}
+
+func printColors() {
+	value, ok := os.LookupEnv("TERM")
+	if ok {
+		if value != "" {
+			ti, err := terminfo.LookupTerminfo(value)
+			if err != nil && ti != nil {
+				fmt.Printf("%d\n", ti.Colors)
+			} else {
+				fmt.Printf("Can't find %s in the terminfo database: %s\n", value, err)
+			}
+		} else {
+			fmt.Println("The TERM environment variable is empty string.")
+		}
+	} else {
+		fmt.Println("The TERM doesn't exist.")
+	}
 }
 
 func printUsage(hint, usage string) {
@@ -78,8 +99,8 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.IntVar(&conf.port, "port", 6000, "server port")
 	flagSet.IntVar(&conf.port, "p", 6000, "server port")
 
-	flagSet.IntVar(&conf.color, "color", 0, "xterm color")
-	flagSet.IntVar(&conf.color, "c", 0, "xterm color")
+	flagSet.BoolVar(&conf.colors, "color", false, "terminal number of colors")
+	flagSet.BoolVar(&conf.colors, "c", false, "terminal number of colors")
 
 	err = flagSet.Parse(args)
 	if err != nil {
@@ -98,12 +119,17 @@ type Config struct {
 	user    string
 	port    int
 	verbose int
-	color   int
+	colors  bool
 }
 
 func (c *Config) buildConfig() (string, bool) {
 	// just need version info
 	if c.version {
+		return "", true
+	}
+
+	// just need terminal number of colors
+	if c.colors {
 		return "", true
 	}
 
@@ -144,6 +170,11 @@ func main() {
 
 	if conf.version {
 		printVersion()
+		return
+	}
+
+	if conf.colors {
+		printColors()
 		return
 	}
 }
