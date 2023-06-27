@@ -14,6 +14,7 @@ import (
 
 	"github.com/ericwq/terminfo"
 	_ "github.com/ericwq/terminfo/base"
+	"github.com/ericwq/terminfo/dynamic"
 )
 
 const (
@@ -62,13 +63,18 @@ func printColors() {
 	if ok {
 		if value != "" {
 			ti, err := terminfo.LookupTerminfo(value)
-			if err != nil && ti != nil {
-				fmt.Printf("%d\n", ti.Colors)
+			if err == nil {
+				fmt.Printf("%s %d\n", value, ti.Colors)
 			} else {
-				fmt.Printf("Can't find %s in the terminfo database: %s\n", value, err)
+				ti, _, err = dynamic.LoadTerminfo(value)
+				if err == nil {
+					fmt.Printf("%s %d (dynamic)\n", value, ti.Colors)
+				} else {
+					fmt.Printf("Dynamic load terminfo failed. %s\n", err)
+				}
 			}
 		} else {
-			fmt.Println("The TERM environment variable is empty string.")
+			fmt.Println("The TERM is empty string.")
 		}
 	} else {
 		fmt.Println("The TERM doesn't exist.")
