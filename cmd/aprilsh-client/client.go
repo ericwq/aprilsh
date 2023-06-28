@@ -12,14 +12,17 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ericwq/aprilsh/cmd"
 	"github.com/ericwq/terminfo"
 	_ "github.com/ericwq/terminfo/base"
 	"github.com/ericwq/terminfo/dynamic"
 )
 
 const (
-	_PACKAGE_STRING = "aprilsh"
-	_COMMAND_NAME   = "aprilsh-client"
+	_PACKAGE_STRING     = "aprilsh"
+	_COMMAND_NAME       = "aprilsh-client"
+	_APRILSH_KEY        = "APRISH_KEY"
+	_PREDICTION_DISPLAY = "APRISH_PREDICTION_DISPLAY"
 )
 
 var (
@@ -119,13 +122,15 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 }
 
 type Config struct {
-	version bool
-	target  []string // raw parameter
-	host    string
-	user    string
-	port    int
-	verbose int
-	colors  bool
+	version     bool
+	target      []string // raw parameter
+	host        string
+	user        string
+	port        int
+	verbose     int
+	colors      bool
+	key         string
+	predictMode string
 }
 
 func (c *Config) buildConfig() (string, bool) {
@@ -155,7 +160,16 @@ func (c *Config) buildConfig() (string, bool) {
 	c.host = c.target[0][idx+1:]
 	c.user = c.target[0][:idx]
 
-	// fmt.Printf("raw=%s, USER=%s,HOST=%s\n",c.server, c.user, c.host)
+	// Read key from environment
+	c.key = os.Getenv(_APRILSH_KEY)
+	if c.key == "" {
+		return _APRILSH_KEY + "environment variable not found.", false
+	}
+	os.Unsetenv(_APRILSH_KEY)
+
+	// Read prediction preference
+	c.predictMode = os.Getenv(_PREDICTION_DISPLAY)
+
 	return "", true
 }
 
@@ -167,11 +181,9 @@ func main() {
 	} else if err != nil {
 		printUsage(err.Error(), usage)
 		return
-	} else if conf != nil {
-		if hint, ok := conf.buildConfig(); !ok {
-			printUsage(hint, usage)
-			return
-		}
+	} else if hint, ok := conf.buildConfig(); !ok {
+		printUsage(hint, usage)
+		return
 	}
 
 	if conf.version {
@@ -183,4 +195,6 @@ func main() {
 		printColors()
 		return
 	}
+
+	cmd.SetNativeLocale()
 }

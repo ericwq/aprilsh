@@ -184,16 +184,50 @@ func TestMainRun_Parameters(t *testing.T) {
 }
 
 func TestBuildConfig(t *testing.T) {
-	var conf Config
-	conf.target = []string{"usr@localhost"}
-
-	_, ok := conf.buildConfig()
-	if !ok {
-		t.Errorf("#test buildConfig() should return true, got %t\n", ok)
+	tc := []struct {
+		label       string
+		target      string
+		aprilshKey  string
+		predictMode string
+		expect      string
+	}{
+		{"lack of key", "usr@localhost", "", "", _APRILSH_KEY + "environment variable not found."},
+		{"has key", "gig@factory", "secret key", "mode", ""},
 	}
 
-	if conf.user != "usr" || conf.host != "localhost" {
-		t.Errorf("#test buildConfig() usert expect %s, got %s\n", "usr", conf.user)
-		t.Errorf("#test buildConfig() host expect %s, got %s\n", "localhost", conf.host)
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			var conf Config
+			conf.target = []string{v.target}
+
+			// prepare parse result
+			idx := strings.Index(v.target, "@")
+			host := v.target[idx+1:]
+			user := v.target[:idx]
+
+			if v.aprilshKey == "" {
+				os.Setenv(_APRILSH_KEY, "")
+			} else {
+				os.Setenv(_APRILSH_KEY, v.aprilshKey)
+			}
+
+			if v.predictMode == "" {
+				os.Setenv(_PREDICTION_DISPLAY, "")
+			} else {
+				os.Setenv(_PREDICTION_DISPLAY, v.predictMode)
+			}
+
+			got, _ := conf.buildConfig()
+			if got != v.expect {
+				t.Errorf("#test buildConfig() %s expect %q, got %q\n", v.label, v.expect, got)
+			}
+			if conf.user != user || conf.host != host {
+				t.Errorf("#test buildConfig() config.user expect %s, got %s\n", user, conf.user)
+				t.Errorf("#test buildConfig() config.host expect %s, got %s\n", host, conf.host)
+			}
+			if conf.predictMode != v.predictMode {
+				t.Errorf("#test buildConfig() conf.predictMode expect %q, got %q\n", v.predictMode, conf.predictMode)
+			}
+		})
 	}
 }
