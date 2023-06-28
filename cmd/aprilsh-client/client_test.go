@@ -184,4 +184,16 @@ func TestMainRun_Parameters(t *testing.T) {
 }
 
 func TestBuildConfig(t *testing.T) {
+	var conf Config
+	conf.server = []string{"usr@localhost"}
+
+	_, ok := conf.buildConfig()
+	if !ok {
+		t.Errorf("#test buildConfig() should return true, got %t\n", ok)
+	}
+
+	if conf.user != "usr" || conf.host != "localhost" {
+		t.Errorf("#test buildConfig() usert expect %s, got %s\n", "usr", conf.user)
+		t.Errorf("#test buildConfig() host expect %s, got %s\n", "localhost", conf.host)
+	}
 }
