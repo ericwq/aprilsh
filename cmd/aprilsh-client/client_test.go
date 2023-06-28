@@ -16,7 +16,9 @@ func TestPrintColors(t *testing.T) {
 		{"lookup terminfo failed", "NotExist", []string{"Dynamic load terminfo failed."}},
 		{"TERM is empty", "", []string{"The TERM is empty string."}},
 		{"TERM doesn't exit", "-remove", []string{"The TERM doesn't exist."}},
-		{"normal result", "xterm-256color", []string{"xterm-256color","256"}},
+		{"normal found", "xterm-256color", []string{"xterm-256color","256"}},
+		{"dynamic found", "xfce", []string{"xfce 8 (dynamic)"}},
+		{"dynamic not found", "xxx", []string{"Dynamic load terminfo failed."}},
 	}
 
 	for _, v := range tc {
@@ -26,6 +28,8 @@ func TestPrintColors(t *testing.T) {
 		os.Stdout = w
 		// save original TERM
 		term := os.Getenv("TERM")
+
+		// set TERM according to test case
 		if v.term == "-remove" {
 			os.Unsetenv("TERM")
 		} else {
@@ -52,6 +56,7 @@ func TestPrintColors(t *testing.T) {
 			t.Errorf("#test %s expect %q, got %q\n", v.label, v.expect, result)
 		}
 
+		// restore original TERM
 		os.Setenv("TERM", term)
 	}
 }
