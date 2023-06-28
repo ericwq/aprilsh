@@ -81,7 +81,7 @@ func TestMainRun_Parameters(t *testing.T) {
 			[]string{_COMMAND_NAME},
 			"xterm-256color",
 			[]string{
-				"server parameter (User@Server) is mandatory.", "Usage:", _COMMAND_NAME, "Options:",
+				"target parameter (User@Server) is mandatory.", "Usage:", _COMMAND_NAME, "Options:",
 				"-c, --colors   print the number of colors of terminal",
 			},
 		},
@@ -110,29 +110,29 @@ func TestMainRun_Parameters(t *testing.T) {
 			[]string{"xterm-256color", "256"},
 		},
 		{
-			"invalid server parameter",
-			[]string{_COMMAND_NAME, "invalid", "server", "parameter"},
+			"invalid target parameter",
+			[]string{_COMMAND_NAME, "invalid", "target", "parameter"},
 			"xterm-256color",
 			[]string{
-				"only one server parameter (User@Server) is allowed.", "Usage:", _COMMAND_NAME, "Options:",
+				"only one target parameter (User@Server) is allowed.", "Usage:", _COMMAND_NAME, "Options:",
 				"-c, --colors   print the number of colors of terminal",
 			},
 		},
 		{
-			"malform server parameter no second part",
+			"malform target parameter no second part",
 			[]string{_COMMAND_NAME, "malform@"},
 			"xterm-256color",
 			[]string{
-				"server parameter should be in the form of User@Server", "Usage:", _COMMAND_NAME, "Options:",
+				"target parameter should be in the form of User@Server", "Usage:", _COMMAND_NAME, "Options:",
 				"-c, --colors   print the number of colors of terminal",
 			},
 		},
 		{
-			"malform server parameter no first part",
+			"malform target parameter no first part",
 			[]string{_COMMAND_NAME, "@malform"},
 			"xterm-256color",
 			[]string{
-				"server parameter should be in the form of User@Server", "Usage:", _COMMAND_NAME, "Options:",
+				"target parameter should be in the form of User@Server", "Usage:", _COMMAND_NAME, "Options:",
 				"-c, --colors   print the number of colors of terminal",
 			},
 		},
@@ -185,7 +185,7 @@ func TestMainRun_Parameters(t *testing.T) {
 
 func TestBuildConfig(t *testing.T) {
 	var conf Config
-	conf.server = []string{"usr@localhost"}
+	conf.target = []string{"usr@localhost"}
 
 	_, ok := conf.buildConfig()
 	if !ok {

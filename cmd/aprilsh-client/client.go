@@ -70,7 +70,7 @@ func printColors() {
 				if err == nil {
 					fmt.Printf("%s %d (dynamic)\n", value, ti.Colors)
 				} else {
-					fmt.Printf("Dynamic load terminfo failed. %s\n", err)
+					fmt.Printf("Dynamic load terminfo failed. %s Install infocmp (ncurses package) first.\n", err)
 				}
 			}
 		} else {
@@ -114,13 +114,13 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	}
 
 	// get the non-flag command-line arguments.
-	conf.server = flagSet.Args()
+	conf.target = flagSet.Args()
 	return &conf, buf.String(), nil
 }
 
 type Config struct {
 	version bool
-	server  []string // raw server parameter
+	target  []string // raw parameter
 	host    string
 	user    string
 	port    int
@@ -139,21 +139,21 @@ func (c *Config) buildConfig() (string, bool) {
 		return "", true
 	}
 
-	if len(c.server) == 0 {
-		return "server parameter (User@Server) is mandatory.", false
+	if len(c.target) == 0 {
+		return "target parameter (User@Server) is mandatory.", false
 	}
 
-	if len(c.server) != 1 {
-		return "only one server parameter (User@Server) is allowed.", false
+	if len(c.target) != 1 {
+		return "only one target parameter (User@Server) is allowed.", false
 	}
 
 	// validate server parameter
-	idx := strings.Index(c.server[0], "@")
-	if idx == -1 || idx < 1 || idx == len(c.server[0])-1 {
-		return "server parameter should be in the form of User@Server", false
+	idx := strings.Index(c.target[0], "@")
+	if idx == -1 || idx < 1 || idx == len(c.target[0])-1 {
+		return "target parameter should be in the form of User@Server", false
 	}
-	c.host = c.server[0][idx+1:]
-	c.user = c.server[0][:idx]
+	c.host = c.target[0][idx+1:]
+	c.user = c.target[0][:idx]
 
 	// fmt.Printf("raw=%s, USER=%s,HOST=%s\n",c.server, c.user, c.host)
 	return "", true
