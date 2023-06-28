@@ -164,14 +164,14 @@ func main() {
 	if err == flag.ErrHelp {
 		printUsage("", usage)
 		return
+	} else if err != nil {
+		printUsage(err.Error(), usage)
+		return
 	} else if conf != nil {
 		if hint, ok := conf.buildConfig(); !ok {
 			printUsage(hint, usage)
 			return
 		}
-	} else if err != nil {
-		printUsage(err.Error(), usage)
-		return
 	}
 
 	if conf.version {
