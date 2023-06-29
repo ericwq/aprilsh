@@ -14,6 +14,7 @@ import (
 
 	"github.com/ericwq/aprilsh/cmd"
 	"github.com/ericwq/aprilsh/frontend"
+	"github.com/ericwq/aprilsh/terminal"
 	"github.com/ericwq/terminfo"
 	_ "github.com/ericwq/terminfo/base"
 	"github.com/ericwq/terminfo/dynamic"
@@ -221,6 +222,8 @@ type STMClient struct {
 	escapePassKey2 int
 	savedTermios   *unix.Termios
 	rawTermios     *unix.Termios
+
+	display terminal.Display
 
 	verbose  int
 	overlays *frontend.OverlayManager
