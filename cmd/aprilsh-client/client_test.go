@@ -191,8 +191,9 @@ func TestBuildConfig(t *testing.T) {
 		predictMode string
 		expect      string
 	}{
-		{"lack of key", "usr@localhost", "", "", _APRILSH_KEY + "environment variable not found."},
-		{"has key", "gig@factory", "secret key", "mode", ""},
+		{"lack of key", "usr@localhost", "", "", _APRILSH_KEY + " environment variable not found."},
+		{"has key, lack of mode", "gig@factory", "secret key", "mode", _PREDICTION_DISPLAY + " unknown prediction mode."},
+		{"has key, has mode", "vfab@factory", "secret key", "aLwaYs", ""},
 	}
 
 	for _, v := range tc {
@@ -205,17 +206,8 @@ func TestBuildConfig(t *testing.T) {
 			host := v.target[idx+1:]
 			user := v.target[:idx]
 
-			if v.aprilshKey == "" {
-				os.Setenv(_APRILSH_KEY, "")
-			} else {
-				os.Setenv(_APRILSH_KEY, v.aprilshKey)
-			}
-
-			if v.predictMode == "" {
-				os.Setenv(_PREDICTION_DISPLAY, "")
-			} else {
-				os.Setenv(_PREDICTION_DISPLAY, v.predictMode)
-			}
+			os.Setenv(_APRILSH_KEY, v.aprilshKey)
+			os.Setenv(_PREDICTION_DISPLAY, v.predictMode)
 
 			got, _ := conf.buildConfig()
 			if got != v.expect {
@@ -225,7 +217,7 @@ func TestBuildConfig(t *testing.T) {
 				t.Errorf("#test buildConfig() config.user expect %s, got %s\n", user, conf.user)
 				t.Errorf("#test buildConfig() config.host expect %s, got %s\n", host, conf.host)
 			}
-			if conf.predictMode != v.predictMode {
+			if conf.predictMode != strings.ToLower(v.predictMode) {
 				t.Errorf("#test buildConfig() conf.predictMode expect %q, got %q\n", v.predictMode, conf.predictMode)
 			}
 		})

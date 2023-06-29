@@ -926,7 +926,7 @@ func TestOverlayManager_waitTime(t *testing.T) {
 func TestOverlayManager_apply(t *testing.T) {
 	om := NewOverlayManager()
 	emu := terminal.NewEmulator3(80, 40, 40)
-	om.getPredictionEngine()
+	om.GetPredictionEngine()
 
 	// all the components of OverlayManager has been tested by previouse test case
 	// add this for coverage 100%

@@ -13,9 +13,11 @@ import (
 	"strings"
 
 	"github.com/ericwq/aprilsh/cmd"
+	"github.com/ericwq/aprilsh/frontend"
 	"github.com/ericwq/terminfo"
 	_ "github.com/ericwq/terminfo/base"
 	"github.com/ericwq/terminfo/dynamic"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -40,6 +42,7 @@ Options:
   -p, --port     server port (default 6000)
       --verbose  verbose output mode
 `
+	predictionValues = []string{"always", "never", "adaptive", "experimental"}
 )
 
 func init() {
@@ -163,12 +166,21 @@ func (c *Config) buildConfig() (string, bool) {
 	// Read key from environment
 	c.key = os.Getenv(_APRILSH_KEY)
 	if c.key == "" {
-		return _APRILSH_KEY + "environment variable not found.", false
+		return _APRILSH_KEY + " environment variable not found.", false
 	}
 	os.Unsetenv(_APRILSH_KEY)
 
 	// Read prediction preference
-	c.predictMode = os.Getenv(_PREDICTION_DISPLAY)
+	foundInScope := false
+	c.predictMode = strings.ToLower(os.Getenv(_PREDICTION_DISPLAY))
+	for i := range predictionValues {
+		if predictionValues[i] == c.predictMode {
+			foundInScope = true
+		}
+	}
+	if !foundInScope {
+		return _PREDICTION_DISPLAY + " unknown prediction mode.", false
+	}
 
 	return "", true
 }
@@ -197,4 +209,44 @@ func main() {
 	}
 
 	cmd.SetNativeLocale()
+}
+
+type STMClient struct {
+	ip   string
+	port int
+	key  string
+
+	escapeKey      int
+	escapePassKey  int
+	escapePassKey2 int
+	savedTermios   *unix.Termios
+	rawTermios     *unix.Termios
+
+	verbose  int
+	overlays *frontend.OverlayManager
+}
+
+func newSTMClient(ip string, port int, key string, predictMode string, verbose int) *STMClient {
+	c := STMClient{}
+
+	c.ip = ip
+	c.port = port
+	c.key = key
+	c.overlays = frontend.NewOverlayManager()
+
+	switch predictMode {
+	case predictionValues[0]: // always
+		c.overlays.GetPredictionEngine().SetDisplayPreference(frontend.Always)
+	case predictionValues[1]: // never
+		c.overlays.GetPredictionEngine().SetDisplayPreference(frontend.Never)
+	case predictionValues[2]: // adaptive
+		c.overlays.GetPredictionEngine().SetDisplayPreference(frontend.Adaptive)
+	case predictionValues[3]: // experimental
+		c.overlays.GetPredictionEngine().SetDisplayPreference(frontend.Experimental)
+	default:
+		return nil
+	}
+
+	c.verbose = verbose
+	return &c
 }

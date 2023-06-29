@@ -1210,7 +1210,7 @@ func (om *OverlayManager) getNotificationEngine() *NotificationEngine {
 	return &om.notifications
 }
 
-func (om *OverlayManager) getPredictionEngine() *PredictionEngine {
+func (om *OverlayManager) GetPredictionEngine() *PredictionEngine {
 	return &om.predictions
 }
 
