@@ -223,7 +223,7 @@ type STMClient struct {
 	savedTermios   *unix.Termios
 	rawTermios     *unix.Termios
 
-	display terminal.Display
+	display *terminal.Display
 
 	verbose  int
 	overlays *frontend.OverlayManager
@@ -251,5 +251,11 @@ func newSTMClient(ip string, port int, key string, predictMode string, verbose i
 	}
 
 	c.verbose = verbose
+
+	var err error
+	c.display, err = terminal.NewDisplay(true) // TODO Display use LoadTerminfo
+	if err != nil {
+		return nil
+	}
 	return &c
 }
