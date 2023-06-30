@@ -14,6 +14,8 @@ import (
 
 	"github.com/ericwq/aprilsh/cmd"
 	"github.com/ericwq/aprilsh/frontend"
+	"github.com/ericwq/aprilsh/network"
+	"github.com/ericwq/aprilsh/statesync"
 	"github.com/ericwq/aprilsh/terminal"
 	_ "github.com/ericwq/terminfo/base"
 	"golang.org/x/sys/unix"
@@ -216,16 +218,28 @@ type STMClient struct {
 	port int
 	key  string
 
-	escapeKey      int
-	escapePassKey  int
-	escapePassKey2 int
-	savedTermios   *unix.Termios
-	rawTermios     *unix.Termios
+	escapeKey        int
+	escapePassKey    int
+	escapePassKey2   int
+	escapeRequiresIf bool
+	escapeKeyHelp    string
 
-	display *terminal.Display
+	savedTermios *unix.Termios
+	rawTermios   *unix.Termios
+	windowSize   *unix.Winsize
 
-	verbose  int
-	overlays *frontend.OverlayManager
+	localFramebuffer terminal.Framebuffer
+	newState         terminal.Framebuffer
+	overlays         *frontend.OverlayManager
+	network          *network.Transport[*statesync.UserStream, *statesync.Complete]
+	display          *terminal.Display
+
+	connectingNotification string
+	repaintRequested       bool
+	ifEntered              bool
+	quitSequenceStarted    bool
+	cleanShutdown          bool
+	verbose                int
 }
 
 func newSTMClient(ip string, port int, key string, predictMode string, verbose int) *STMClient {
@@ -234,7 +248,26 @@ func newSTMClient(ip string, port int, key string, predictMode string, verbose i
 	c.ip = ip
 	c.port = port
 	c.key = key
+	c.escapeKey = 0x1E
+	c.escapePassKey = '^'
+	c.escapePassKey2 = '^'
+	c.escapeRequiresIf = false
+	c.escapeKeyHelp = "?"
+	c.localFramebuffer = terminal.NewFramebuffer2(1, 1)
+	c.newState = terminal.NewFramebuffer2(1, 1)
 	c.overlays = frontend.NewOverlayManager()
+
+	var err error
+	c.display, err = terminal.NewDisplay(true)
+	if err != nil {
+		return nil
+	}
+
+	c.repaintRequested = false
+	c.ifEntered = false
+	c.quitSequenceStarted = false
+	c.cleanShutdown = false
+	c.verbose = verbose
 
 	switch predictMode {
 	case predictionValues[0]: // always
@@ -249,12 +282,5 @@ func newSTMClient(ip string, port int, key string, predictMode string, verbose i
 		return nil
 	}
 
-	c.verbose = verbose
-
-	var err error
-	c.display, err = terminal.NewDisplay(true)
-	if err != nil {
-		return nil
-	}
 	return &c
 }
