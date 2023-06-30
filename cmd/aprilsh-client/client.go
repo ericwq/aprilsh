@@ -292,9 +292,10 @@ func (sc *STMClient) mainInit() error {
 	}
 
 	// local state
-	savedLines := windowSize.Row * 5
-	sc.localFramebuffer = terminal.NewEmulator3(int(windowSize.Col), int(windowSize.Row), int(savedLines))
-	sc.newState = terminal.NewEmulator3(1, 1, int(savedLines))
+	var savedLines int
+	savedLines = int(windowSize.Row) * 5
+	sc.localFramebuffer = terminal.NewEmulator3(int(windowSize.Col), int(windowSize.Row), savedLines)
+	sc.newState = terminal.NewEmulator3(1, 1, savedLines)
 
 	// initialize screen
 	init := sc.display.NewFrame(false, sc.localFramebuffer, sc.localFramebuffer)
@@ -302,7 +303,7 @@ func (sc *STMClient) mainInit() error {
 
 	// open network
 	blank := &statesync.UserStream{}
-	terminal, err := statesync.NewComplete(int(windowSize.Col), int(windowSize.Row), 0)
+	terminal, err := statesync.NewComplete(int(windowSize.Col), int(windowSize.Row), savedLines)
 	sc.network = network.NewTransportClient(blank, terminal, sc.key, sc.ip, fmt.Sprintf("%d", sc.port))
 
 	// minimal delay on outgoing keystrokes
@@ -314,5 +315,9 @@ func (sc *STMClient) mainInit() error {
 	// be noisy as necessary
 	sc.network.SetVerbose(uint(sc.verbose))
 
+	return nil
+}
+
+func (sc *STMClient) init() error {
 	return nil
 }
