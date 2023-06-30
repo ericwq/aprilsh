@@ -67,7 +67,7 @@ func NewDisplay(useEnvironment bool) (d *Display, e error) {
 		term := os.Getenv("TERM")
 		var ti *terminfo.Terminfo
 
-		ti, e = lookupTerminfo(term)
+		ti, e = LookupTerminfo(term)
 		if e != nil {
 			return nil, e
 		}
@@ -106,12 +106,13 @@ func NewDisplay(useEnvironment bool) (d *Display, e error) {
 	return d, nil
 }
 
-// lookupTerminfo attempts to find a definition for the named $TERM falling
+// LookupTerminfo attempts to find a definition for the named $TERM falling
 // back to attempting to parse the output from infocmp.
-func lookupTerminfo(name string) (ti *terminfo.Terminfo, e error) {
+func LookupTerminfo(name string) (ti *terminfo.Terminfo, e error) {
 	ti, e = terminfo.LookupTerminfo(name)
 	if e != nil {
-		ti, e = loadDynamicTerminfo(name)
+		// ti, e = loadDynamicTerminfo(name)
+		ti, _, e := dynamic.LoadTerminfo(name)
 		if e != nil {
 			return nil, e
 		}
@@ -121,6 +122,7 @@ func lookupTerminfo(name string) (ti *terminfo.Terminfo, e error) {
 	return
 }
 
+/*
 func loadDynamicTerminfo(term string) (*terminfo.Terminfo, error) {
 	ti, _, e := dynamic.LoadTerminfo(term)
 	if e != nil {
@@ -128,6 +130,7 @@ func loadDynamicTerminfo(term string) (*terminfo.Terminfo, error) {
 	}
 	return ti, nil
 }
+*/
 
 // return the specified row from the new terminal.
 func getRow(newE *Emulator, posY int) (row []Cell) {

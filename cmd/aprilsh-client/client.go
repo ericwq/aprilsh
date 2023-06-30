@@ -15,9 +15,7 @@ import (
 	"github.com/ericwq/aprilsh/cmd"
 	"github.com/ericwq/aprilsh/frontend"
 	"github.com/ericwq/aprilsh/terminal"
-	"github.com/ericwq/terminfo"
 	_ "github.com/ericwq/terminfo/base"
-	"github.com/ericwq/terminfo/dynamic"
 	"golang.org/x/sys/unix"
 )
 
@@ -69,16 +67,17 @@ func printColors() {
 	value, ok := os.LookupEnv("TERM")
 	if ok {
 		if value != "" {
-			ti, err := terminfo.LookupTerminfo(value)
+			// ti, err := terminfo.LookupTerminfo(value)
+			ti, err := terminal.LookupTerminfo(value)
 			if err == nil {
 				fmt.Printf("%s %d\n", value, ti.Colors)
 			} else {
-				ti, _, err = dynamic.LoadTerminfo(value)
-				if err == nil {
-					fmt.Printf("%s %d (dynamic)\n", value, ti.Colors)
-				} else {
-					fmt.Printf("Dynamic load terminfo failed. %s Install infocmp (ncurses package) first.\n", err)
-				}
+				// ti, _, err = dynamic.LoadTerminfo(value)
+				// if err == nil {
+				// 	fmt.Printf("%s %d (dynamic)\n", value, ti.Colors)
+				// } else {
+				fmt.Printf("Dynamic load terminfo failed. %s Install infocmp (ncurses package) first.\n", err)
+				// }
 			}
 		} else {
 			fmt.Println("The TERM is empty string.")
@@ -253,7 +252,7 @@ func newSTMClient(ip string, port int, key string, predictMode string, verbose i
 	c.verbose = verbose
 
 	var err error
-	c.display, err = terminal.NewDisplay(true) // TODO Display use LoadTerminfo
+	c.display, err = terminal.NewDisplay(true)
 	if err != nil {
 		return nil
 	}

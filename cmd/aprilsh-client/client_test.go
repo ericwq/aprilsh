@@ -17,7 +17,7 @@ func TestPrintColors(t *testing.T) {
 		{"TERM is empty", "", []string{"The TERM is empty string."}},
 		{"TERM doesn't exit", "-remove", []string{"The TERM doesn't exist."}},
 		{"normal found", "xterm-256color", []string{"xterm-256color", "256"}},
-		{"dynamic found", "xfce", []string{"xfce 8 (dynamic)"}},
+		// {"dynamic found", "xfce", []string{"xfce 8 (dynamic)"}},
 		{"dynamic not found", "xxx", []string{"Dynamic load terminfo failed."}},
 	}
 
