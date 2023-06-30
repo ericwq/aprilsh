@@ -228,8 +228,8 @@ type STMClient struct {
 	rawTermios   *unix.Termios
 	windowSize   *unix.Winsize
 
-	localFramebuffer terminal.Framebuffer
-	newState         terminal.Framebuffer
+	localFramebuffer *terminal.Emulator
+	newState         *terminal.Emulator
 	overlays         *frontend.OverlayManager
 	network          *network.Transport[*statesync.UserStream, *statesync.Complete]
 	display          *terminal.Display
@@ -243,44 +243,76 @@ type STMClient struct {
 }
 
 func newSTMClient(ip string, port int, key string, predictMode string, verbose int) *STMClient {
-	c := STMClient{}
+	sc := STMClient{}
 
-	c.ip = ip
-	c.port = port
-	c.key = key
-	c.escapeKey = 0x1E
-	c.escapePassKey = '^'
-	c.escapePassKey2 = '^'
-	c.escapeRequiresIf = false
-	c.escapeKeyHelp = "?"
-	c.localFramebuffer = terminal.NewFramebuffer2(1, 1)
-	c.newState = terminal.NewFramebuffer2(1, 1)
-	c.overlays = frontend.NewOverlayManager()
+	sc.ip = ip
+	sc.port = port
+	sc.key = key
+	sc.escapeKey = 0x1E
+	sc.escapePassKey = '^'
+	sc.escapePassKey2 = '^'
+	sc.escapeRequiresIf = false
+	sc.escapeKeyHelp = "?"
+	sc.overlays = frontend.NewOverlayManager()
 
 	var err error
-	c.display, err = terminal.NewDisplay(true)
+	sc.display, err = terminal.NewDisplay(true)
 	if err != nil {
 		return nil
 	}
 
-	c.repaintRequested = false
-	c.ifEntered = false
-	c.quitSequenceStarted = false
-	c.cleanShutdown = false
-	c.verbose = verbose
+	sc.repaintRequested = false
+	sc.ifEntered = false
+	sc.quitSequenceStarted = false
+	sc.cleanShutdown = false
+	sc.verbose = verbose
 
 	switch predictMode {
 	case predictionValues[0]: // always
-		c.overlays.GetPredictionEngine().SetDisplayPreference(frontend.Always)
+		sc.overlays.GetPredictionEngine().SetDisplayPreference(frontend.Always)
 	case predictionValues[1]: // never
-		c.overlays.GetPredictionEngine().SetDisplayPreference(frontend.Never)
+		sc.overlays.GetPredictionEngine().SetDisplayPreference(frontend.Never)
 	case predictionValues[2]: // adaptive
-		c.overlays.GetPredictionEngine().SetDisplayPreference(frontend.Adaptive)
+		sc.overlays.GetPredictionEngine().SetDisplayPreference(frontend.Adaptive)
 	case predictionValues[3]: // experimental
-		c.overlays.GetPredictionEngine().SetDisplayPreference(frontend.Experimental)
+		sc.overlays.GetPredictionEngine().SetDisplayPreference(frontend.Experimental)
 	default:
 		return nil
 	}
 
-	return &c
+	return &sc
+}
+
+func (sc *STMClient) mainInit() error {
+	// get initial window size
+	var windowSize *unix.Winsize
+	windowSize, err := unix.IoctlGetWinsize(int(os.Stdin.Fd()), unix.TIOCGWINSZ)
+	if err != nil {
+		return err
+	}
+
+	// local state
+	savedLines := windowSize.Row * 5
+	sc.localFramebuffer = terminal.NewEmulator3(int(windowSize.Col), int(windowSize.Row), int(savedLines))
+	sc.newState = terminal.NewEmulator3(1, 1, int(savedLines))
+
+	// initialize screen
+	init := sc.display.NewFrame(false, sc.localFramebuffer, sc.localFramebuffer)
+	os.Stdout.WriteString(init)
+
+	// open network
+	blank := &statesync.UserStream{}
+	terminal, err := statesync.NewComplete(int(windowSize.Col), int(windowSize.Row), 0)
+	sc.network = network.NewTransportClient(blank, terminal, sc.key, sc.ip, fmt.Sprintf("%d", sc.port))
+
+	// minimal delay on outgoing keystrokes
+	sc.network.SetSendDelay(1)
+
+	// tell server the size of the terminal
+	sc.network.GetCurrentState().PushBackResize(int(windowSize.Col), int(windowSize.Row))
+
+	// be noisy as necessary
+	sc.network.SetVerbose(uint(sc.verbose))
+
+	return nil
 }

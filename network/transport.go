@@ -259,6 +259,10 @@ func (t *Transport[S, R]) SetVerbose(verbose uint) {
 	t.verbose = verbose
 }
 
+func (t *Transport[S, R]) SetSendDelay(delay int) {
+	t.sender.setSendDelay(delay)
+}
+
 func (t *Transport[S, R]) GetRemoteAddr() net.Addr {
 	return t.connection.getRemoteAddr()
 }

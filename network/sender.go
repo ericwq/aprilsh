@@ -52,7 +52,7 @@ type TransportSender[T State[T]] struct {
 	// information about receiver state
 	ackNum         int64
 	pendingDataAck bool
-	SEND_MINDELAY  int64 // ms to collect all input
+	SEND_MINDELAY  int   // ms to collect all input
 	lastHeard      int64 // last time received new state
 
 	mindelayClock int64 // time of first pending change to current state
@@ -266,13 +266,13 @@ func (ts *TransportSender[T]) calculateTimers() {
 			ts.mindelayClock = now
 		}
 
-		ts.nextSendTime = terminal.Max(ts.mindelayClock+ts.SEND_MINDELAY,
+		ts.nextSendTime = terminal.Max(ts.mindelayClock+int64(ts.SEND_MINDELAY),
 			ts.sentStates[back].timestamp+int64(ts.sendInterval()))
 	} else if !ts.currentState.Equal(ts.assumedReceiverState.state) && ts.lastHeard+ACTIVE_RETRY_TIMEOUT > now {
 		// currentState is newest sent state but not the assumed receiver state
 		ts.nextSendTime = ts.sentStates[back].timestamp + int64(ts.sendInterval())
 		if ts.mindelayClock != -1 {
-			ts.nextSendTime = terminal.Max(ts.nextSendTime, ts.mindelayClock+ts.SEND_MINDELAY)
+			ts.nextSendTime = terminal.Max(ts.nextSendTime, ts.mindelayClock+int64(ts.SEND_MINDELAY))
 		}
 	} else if !ts.currentState.Equal(ts.sentStates[0].state) && ts.lastHeard+ACTIVE_RETRY_TIMEOUT > now {
 		// currentState is the newest and assumed receiver state but not the oldest sent state
@@ -484,6 +484,10 @@ func (ts *TransportSender[T]) shutdonwAckTimedout() bool {
 		}
 	}
 	return false
+}
+
+func (ts *TransportSender[T]) setSendDelay(delay int) {
+	ts.SEND_MINDELAY = delay
 }
 
 // Try to send roughly two frames per RTT, bounded by limits on frame rate
