@@ -12,7 +12,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ericwq/aprilsh/cmd"
+	"github.com/ericwq/aprilsh/util"
 	"github.com/ericwq/aprilsh/frontend"
 	"github.com/ericwq/aprilsh/network"
 	"github.com/ericwq/aprilsh/statesync"
@@ -210,7 +210,7 @@ func main() {
 		return
 	}
 
-	cmd.SetNativeLocale()
+	util.SetNativeLocale()
 }
 
 type STMClient struct {

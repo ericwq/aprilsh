@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"github.com/creack/pty"
-	"github.com/ericwq/aprilsh/cmd"
+	"github.com/ericwq/aprilsh/util"
 	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/network"
 	"github.com/ericwq/aprilsh/statesync"
@@ -315,7 +315,7 @@ func buildConfig(conf *Config) error {
 	if len(conf.commandArgv) == 0 {
 		shell := os.Getenv("SHELL")
 		if len(shell) == 0 {
-			shell, _ = cmd.GetShell() // another way to get shell path
+			shell, _ = util.GetShell() // another way to get shell path
 		}
 
 		shellPath := shell
@@ -344,23 +344,23 @@ func buildConfig(conf *Config) error {
 	}
 
 	// Adopt implementation locale
-	cmd.SetNativeLocale()
-	if !cmd.IsUtf8Locale() || buildConfigTest {
-		nativeType := cmd.GetCtype()
-		nativeCharset := cmd.LocaleCharset()
+	util.SetNativeLocale()
+	if !util.IsUtf8Locale() || buildConfigTest {
+		nativeType := util.GetCtype()
+		nativeCharset := util.LocaleCharset()
 
 		// apply locale-related environment variables from client
-		cmd.ClearLocaleVariables()
+		util.ClearLocaleVariables()
 		for k, v := range conf.locales {
 			// fmt.Printf("#buildConfig setenv %s=%s\n", k, v)
 			os.Setenv(k, v)
 		}
 
 		// check again
-		cmd.SetNativeLocale()
-		if !cmd.IsUtf8Locale() || buildConfigTest {
-			clientType := cmd.GetCtype()
-			clientCharset := cmd.LocaleCharset()
+		util.SetNativeLocale()
+		if !util.IsUtf8Locale() || buildConfigTest {
+			clientType := util.GetCtype()
+			clientCharset := util.LocaleCharset()
 			logW.Printf("%s needs a UTF-8 native locale to run.\n", _COMMAND_NAME)
 			logW.Printf("Unfortunately, the local environment (%s) specifies "+
 				"the character set \"%s\",\n", nativeType, nativeCharset)
@@ -524,11 +524,11 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		// add utmp entry
 		ptmxName := ptmx.Name() // TODO remove it?
 		if utmpSupport {
-			cmd.AddUtmpx(pts, utmpHost)
+			util.AddUtmpx(pts, utmpHost)
 		}
 
 		// update last log
-		cmd.UpdateLastLog(ptmxName, getCurrentUser(), utmpHost) // TODO use pts.Name() or ptmx name?
+		util.UpdateLastLog(ptmxName, getCurrentUser(), utmpHost) // TODO use pts.Name() or ptmx name?
 
 		// start the udp server, serve the udp request
 		go conf.serve(ptmx, pts, terminal, network, networkTimeout, networkSignaledTimeout)
@@ -544,7 +544,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 
 		// clear utmp entry
 		if utmpSupport {
-			cmd.ClearUtmpx(pts)
+			util.ClearUtmpx(pts)
 		}
 	}
 
@@ -757,7 +757,7 @@ mainLoop:
 
 				// update utmp entry if we have become "connected"
 				if utmpSupport && (!connectedUtmp || !reflect.DeepEqual(savedAddr, network.GetRemoteAddr())) {
-					cmd.ClearUtmpx(pts)
+					util.ClearUtmpx(pts)
 
 					// convert savedAddr to host name
 					savedAddr = network.GetRemoteAddr()
@@ -768,7 +768,7 @@ mainLoop:
 					}
 					newHost := fmt.Sprintf("%s via %s [%d]", host, _PACKAGE_STRING, os.Getpid())
 
-					cmd.AddUtmpx(pts, newHost)
+					util.AddUtmpx(pts, newHost)
 
 					connectedUtmp = true
 				}
@@ -842,10 +842,10 @@ mainLoop:
 		// update utmp if has been more than 30 seconds since heard from client
 		if utmpSupport && connectedUtmp {
 			if timeSinceRemoteState > 30000 {
-				cmd.ClearUtmpx(pts)
+				util.ClearUtmpx(pts)
 
 				newHost := fmt.Sprintf("%s [%d]", _PACKAGE_STRING, os.Getpid())
-				cmd.AddUtmpx(pts, newHost)
+				util.AddUtmpx(pts, newHost)
 
 				connectedUtmp = false
 			}
@@ -916,7 +916,7 @@ func printWelcome(pid int, port int, tty *os.File) {
 }
 
 func checkIUTF8(fd int) (bool, error) {
-	termios, err := unix.IoctlGetTermios(fd, cmd.GetTermios)
+	termios, err := unix.IoctlGetTermios(fd, util.GetTermios)
 	if err != nil {
 		return false, err
 	}
@@ -926,13 +926,13 @@ func checkIUTF8(fd int) (bool, error) {
 }
 
 func setIUTF8(fd int) error {
-	termios, err := unix.IoctlGetTermios(fd, cmd.GetTermios)
+	termios, err := unix.IoctlGetTermios(fd, util.GetTermios)
 	if err != nil {
 		return err
 	}
 
 	termios.Iflag |= unix.IUTF8
-	unix.IoctlSetTermios(fd, cmd.SetTermios, termios)
+	unix.IoctlSetTermios(fd, util.SetTermios, termios)
 
 	return nil
 }
@@ -1065,7 +1065,7 @@ func warnUnattached(w io.Writer, ignoreHost string) {
 	userName := getCurrentUser()
 
 	// check unattached sessions
-	unatttached := cmd.CheckUnattachedUtmpx(userName, ignoreHost, _PACKAGE_STRING)
+	unatttached := util.CheckUnattachedUtmpx(userName, ignoreHost, _PACKAGE_STRING)
 
 	if unatttached == nil || len(unatttached) == 0 {
 		return

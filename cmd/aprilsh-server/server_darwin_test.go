@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ericwq/aprilsh/cmd"
+	"github.com/ericwq/aprilsh/util"
 )
 
 func TestDarwinBuildConfig(t *testing.T) {
@@ -51,7 +51,7 @@ func TestDarwinBuildConfig(t *testing.T) {
 		t.Errorf("#test buildConfig %q expect %q, got %q\n", label, err2, err)
 	}
 	// reset the environment
-	cmd.ClearLocaleVariables()
+	util.ClearLocaleVariables()
 
 	// read and restore the stderr
 	w.Close()
@@ -117,7 +117,7 @@ func TestBuildConfigDarwin(t *testing.T) {
 				t.Errorf("#test buildConfig got \n%+v, expect \n%+v\n", v.conf0, v.conf2)
 			}
 			// reset the environment
-			cmd.ClearLocaleVariables()
+			util.ClearLocaleVariables()
 
 			// restore logW
 			logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)

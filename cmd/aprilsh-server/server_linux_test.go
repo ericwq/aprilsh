@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ericwq/aprilsh/cmd"
+	"github.com/ericwq/aprilsh/util"
 	utmp "github.com/ericwq/goutmp"
 )
 
@@ -72,10 +72,10 @@ func mockGetUtmpx() *utmp.Utmpx {
 
 func TestWarnUnattached(t *testing.T) {
 	// fp = mockGetUtmpx
-	cmd.SetFunc4GetUtmpx(mockGetUtmpx)
+	util.SetFunc4GetUtmpx(mockGetUtmpx)
 	defer func() {
 		// fp = utmp.GetUtmpx
-		cmd.SetFunc4GetUtmpx(utmp.GetUtmpx)
+		util.SetFunc4GetUtmpx(utmp.GetUtmpx)
 		idx = 0
 	}()
 
@@ -116,9 +116,9 @@ func mockGetUtmpx0() *utmp.Utmpx {
 
 func TestWarnUnattached0(t *testing.T) {
 	// fp = mockGetUtmpx0
-	cmd.SetFunc4GetUtmpx(mockGetUtmpx0)
+	util.SetFunc4GetUtmpx(mockGetUtmpx0)
 	defer func() {
-		cmd.SetFunc4GetUtmpx(utmp.GetUtmpx)
+		util.SetFunc4GetUtmpx(utmp.GetUtmpx)
 		// fp = utmp.GetUtmpx
 		idx = 0
 	}()

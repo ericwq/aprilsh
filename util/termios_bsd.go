@@ -4,7 +4,7 @@
 
 //go:build darwin || freebsd || openbsd || netbsd
 
-package cmd
+package util
 
 import (
 	"golang.org/x/sys/unix"

@@ -4,7 +4,7 @@
 
 //go:build darwin
 
-package cmd
+package util
 
 import (
 	"fmt"

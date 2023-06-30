@@ -4,7 +4,7 @@
 
 //go:build linux || freebsd
 
-package cmd
+package util
 
 import (
 	"os"
