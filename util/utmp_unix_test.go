@@ -77,11 +77,15 @@ func TestCheckUnattachedUtmpx_Mock(t *testing.T) {
 	}()
 
 	user, _ := user.Current()
-	ignoreHost := fmt.Sprintf("%s [%d]", PACKAGE_STRING, os.Getpid())
+	ignoreHost := fmt.Sprintf("%s [%d]", PACKAGE_STRING, 1223)
 
 	unatttached := CheckUnattachedUtmpx(user.Username, ignoreHost, PACKAGE_STRING)
 	expect := PACKAGE_STRING + " [1221]"
-	if unatttached == nil && unatttached[0] != expect {
+	if unatttached == nil {
+		t.Errorf("#test CheckUnattachedUtmpx() expect 1 result, got nothing\n")
+	}
+
+	if unatttached != nil && unatttached[0] != expect {
 		t.Errorf("#test CheckUnattachedUtmpx() expect %s, got %v\n", expect, unatttached)
 	}
 }
@@ -101,7 +105,7 @@ func init() {
 		pid   int
 	}{
 		{utmp.USER_PROCESS, PACKAGE_STRING + " [1220]", "pts/0", "root", 1, 1},
-		{utmp.USER_PROCESS, PACKAGE_STRING + " [1221]", "pts/1", "ide", 51, 1221},
+		{utmp.USER_PROCESS, PACKAGE_STRING + " [1221]", "pts/2", "ide", 51, 1221},
 		{utmp.DEAD_PROCESS, PACKAGE_STRING + " [1228]", "pts/3", "ide", 751, 1228},
 	}
 
