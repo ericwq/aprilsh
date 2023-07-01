@@ -29,6 +29,9 @@ func mockGetUtmpx() *utmp.Utmpx {
 		{utmp.USER_PROCESS, userName, _PACKAGE_STRING + " [666]", "pts/1"},
 		{utmp.USER_PROCESS, userName, _PACKAGE_STRING + " [999]", "pts/0"},
 	}
+	// the test requires the following files in /dev/pts directory
+	// ls /dev/pts
+	// 0     1     2     ptmx
 
 	// if idx out of range, rewind it.
 	if idx >= len(rs) {
@@ -63,6 +66,7 @@ func mockGetUtmpx() *utmp.Utmpx {
 		u.Line[i] = int8(b[i])
 	}
 
+	// fmt.Printf("#mockGetUtmpx() rs[%d]=%v\n", idx, rs[idx])
 	// increase to the next one
 	idx++
 
@@ -84,8 +88,8 @@ func TestWarnUnattached(t *testing.T) {
 		ignoreHost string
 		count      int
 	}{
-		{"one match", _PACKAGE_STRING + " [999]", 1},
-		{"two matches", _PACKAGE_STRING + " [888]", 2},
+		{"one match", _PACKAGE_STRING + " [999]", 1},   // 666 pts/1 exist, 888 pts/7 does not exist, only 666 remains
+		{"two matches", _PACKAGE_STRING + " [888]", 2}, // 666 pts1 exist, 999 pts/0 exist, so 666 and 999 remains
 	}
 
 	for _, v := range tc {
@@ -93,7 +97,7 @@ func TestWarnUnattached(t *testing.T) {
 			var out strings.Builder
 			warnUnattached(&out, v.ignoreHost)
 			got := out.String()
-			// t.Logf("%s\n", got)
+			// t.Logf("%q\n", got)
 			count := strings.Count(got, "- ")
 			switch count {
 			case 0: // warnUnattached found one unattached session

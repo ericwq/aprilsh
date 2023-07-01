@@ -42,6 +42,9 @@ func CheckUnattachedUtmpx(userName, ignoreHost, prefix string) []string {
 				strings.HasSuffix(host, "]") && host != ignoreHost && utmp.DeviceExists(r.GetLine()) {
 				// fmt.Printf("#checkUnattachedRecord() attached session %s\n", host)
 				unatttached = append(unatttached, host)
+			// } else {
+			// 	fmt.Printf("#CheckUnattachedUtmpx() line:%s exist=%t ", r.GetLine(), utmp.DeviceExists(r.GetLine()))
+			// 	fmt.Printf("host:%s ignoreHost=%s \n", host, ignoreHost)
 			}
 		}
 		r = fp()
