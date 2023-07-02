@@ -226,8 +226,8 @@ type STMClient struct {
 	escapeRequiresIf bool
 	escapeKeyHelp    string
 
-	savedTermios *unix.Termios
-	rawTermios   *unix.Termios
+	savedTermios *term.State
+	rawTermios   *term.State
 	windowSize   *unix.Winsize
 
 	localFramebuffer *terminal.Emulator
@@ -332,20 +332,23 @@ func (sc *STMClient) init() error {
 	}
 
 	// Verify terminal configuration
-	var err error
-	sc.savedTermios, err = unix.IoctlGetTermios(int(os.Stdin.Fd()), util.GetTermios)
-	if err != nil {
+	// https://learnku.com/go/t/23460/bit-operation-of-go
+
+	// Put terminal driver in raw mode
+	sc.savedTermios, _ = term.GetState(int(os.Stdin.Fd()))
+	*sc.rawTermios = *sc.savedTermios
+
+	// set IUTF8 if available
+	if err := util.SetIUTF8(int(os.Stdin.Fd())); err != nil {
 		return err
 	}
 
-	// Put terminal driver in raw mode
-	*sc.rawTermios = *sc.savedTermios
-
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	var err error
+	sc.rawTermios, err = term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
 		panic(err)
 	}
-	defer term.Restore(int(os.Stdin.Fd()), oldState)
+	// defer term.Restore(int(os.Stdin.Fd()), oldState)
 
 	return nil
 }
