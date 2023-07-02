@@ -26,11 +26,11 @@ import (
 	"time"
 
 	"github.com/creack/pty"
-	"github.com/ericwq/aprilsh/util"
 	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/network"
 	"github.com/ericwq/aprilsh/statesync"
 	"github.com/ericwq/aprilsh/terminal"
+	"github.com/ericwq/aprilsh/util"
 	utmp "github.com/ericwq/goutmp"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
@@ -901,7 +901,7 @@ func printWelcome(pid int, port int, tty *os.File) {
 	// logI.Printf("[%s detached, pid=%d]\n", COMMAND_NAME, pid)
 
 	if tty != nil {
-		inputUTF8, err := checkIUTF8(int(tty.Fd()))
+		inputUTF8, err := util.CheckIUTF8(int(tty.Fd()))
 		if err != nil {
 			logW.Printf("Warning: %s\n", err)
 		}
@@ -915,41 +915,6 @@ func printWelcome(pid int, port int, tty *os.File) {
 	}
 }
 
-func checkIUTF8(fd int) (bool, error) {
-	termios, err := unix.IoctlGetTermios(fd, util.GetTermios)
-	if err != nil {
-		return false, err
-	}
-
-	// Input is UTF-8 (since Linux 2.6.4)
-	return (termios.Iflag & unix.IUTF8) != 0, nil
-}
-
-func setIUTF8(fd int) error {
-	termios, err := unix.IoctlGetTermios(fd, util.GetTermios)
-	if err != nil {
-		return err
-	}
-
-	termios.Iflag |= unix.IUTF8
-	unix.IoctlSetTermios(fd, util.SetTermios, termios)
-
-	return nil
-}
-
-func convertWinsize(windowSize *unix.Winsize) *pty.Winsize {
-	if windowSize == nil {
-		return nil
-	}
-	var sz pty.Winsize
-	sz.Cols = windowSize.Col
-	sz.Rows = windowSize.Row
-	sz.X = windowSize.Xpixel
-	sz.Y = windowSize.Ypixel
-
-	return &sz
-}
-
 // open pts master and slave, set terminal size according to window size.
 func openPTS(wsize *unix.Winsize) (ptmx *os.File, pts *os.File, err error) {
 	// open pts master and slave
@@ -958,7 +923,7 @@ func openPTS(wsize *unix.Winsize) (ptmx *os.File, pts *os.File, err error) {
 		err = errors.New("invalid parameter")
 	}
 	if err == nil {
-		sz := convertWinsize(wsize)
+		sz := util.ConvertWinsize(wsize)
 		// fmt.Printf("#openPTS sz=%v\n", sz)
 
 		err = pty.Setsize(ptmx, sz) // set terminal size
@@ -972,7 +937,7 @@ func startShell(pts *os.File, utmpHost string, conf *Config) (*os.Process, error
 		return nil, errors.New("fail to start shell")
 	}
 	// set IUTF8 if available
-	if err := setIUTF8(int(pts.Fd())); err != nil {
+	if err := util.SetIUTF8(int(pts.Fd())); err != nil {
 		return nil, err
 	}
 

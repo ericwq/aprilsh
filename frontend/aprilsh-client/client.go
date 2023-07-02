@@ -6,19 +6,21 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"strings"
 
-	"github.com/ericwq/aprilsh/util"
 	"github.com/ericwq/aprilsh/frontend"
 	"github.com/ericwq/aprilsh/network"
 	"github.com/ericwq/aprilsh/statesync"
 	"github.com/ericwq/aprilsh/terminal"
+	"github.com/ericwq/aprilsh/util"
 	_ "github.com/ericwq/terminfo/base"
 	"golang.org/x/sys/unix"
+	"golang.org/x/term"
 )
 
 const (
@@ -319,5 +321,31 @@ func (sc *STMClient) mainInit() error {
 }
 
 func (sc *STMClient) init() error {
+	if !util.IsUtf8Locale() {
+		nativeType := util.GetCtype()
+		nativeCharset := util.LocaleCharset()
+
+		fmt.Printf("%s needs a UTF-8 native locale to run.\n\n", _COMMAND_NAME)
+		fmt.Printf("Unfortunately, the client's environment (%s) specifies\nthe character set %q.\n\n",
+			nativeType, nativeCharset)
+		return errors.New(_COMMAND_NAME + " requires UTF-8 environment.")
+	}
+
+	// Verify terminal configuration
+	var err error
+	sc.savedTermios, err = unix.IoctlGetTermios(int(os.Stdin.Fd()), util.GetTermios)
+	if err != nil {
+		return err
+	}
+
+	// Put terminal driver in raw mode
+	*sc.rawTermios = *sc.savedTermios
+
+	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+	if err != nil {
+		panic(err)
+	}
+	defer term.Restore(int(os.Stdin.Fd()), oldState)
+
 	return nil
 }
