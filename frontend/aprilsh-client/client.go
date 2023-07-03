@@ -319,6 +319,57 @@ func (sc *STMClient) mainInit() error {
 	return nil
 }
 
+func (sc *STMClient) processNetworkInput() {
+	sc.network.Recv()
+
+	//  Now give hints to the overlays
+	rs := sc.network.GetLatestRemoteState()
+	sc.overlays.GetNotificationEngine().ServerHeard(rs.GetTimestamp())
+	sc.overlays.GetNotificationEngine().ServerAcked(sc.network.GetSentStateAckedTimestamp())
+
+	sc.overlays.GetPredictionEngine().SetLocalFrameAcked(sc.network.GetSentStateAcked())
+	sc.overlays.GetPredictionEngine().SetSendInterval(sc.network.SentInterval())
+	lateAcked := sc.network.GetLatestRemoteState().GetState().GetEchoAck()
+	sc.overlays.GetPredictionEngine().SetLocalFrameLateAcked(lateAcked)
+}
+
+func (sc *STMClient) processUserInput() bool {
+	// TODO wait for implementation
+	return false
+}
+
+func (sc *STMClient) processResize() bool {
+	// get new size
+	col, row, err := term.GetSize(int(os.Stdin.Fd()))
+	if err != nil {
+		return false
+	}
+
+	// newSize := terminal.Resize{Width: col, Height: row}
+	// tell remote emulator
+	if !sc.network.ShutdownInProgress() {
+		sc.network.GetCurrentState().PushBackResize(col, row)
+	}
+	// note remote emulator will probably reply with its own Resize to adjust our state
+
+	// tell prediction engine
+	sc.overlays.GetPredictionEngine().Reset()
+	return true
+}
+
+func (sc *STMClient) outputNewFrame() {
+	// TODO wait for implementation
+}
+
+func (sc *STMClient) stillConnecting() bool {
+	// Initially, network == nil
+	return sc.network != nil && sc.network.GetRemoteStateNum() == 0
+}
+
+func (sc *STMClient) resume() {
+	// TODO wait for implementation
+}
+
 func (sc *STMClient) init() error {
 	if !util.IsUtf8Locale() {
 		nativeType := util.GetCtype()
@@ -435,11 +486,6 @@ func (sc *STMClient) init() error {
 	return nil
 }
 
-func (sc *STMClient) stillConnecting() bool {
-	// Initially, network == nil
-	return sc.network != nil && sc.network.GetRemoteStateNum() == 0
-}
-
 func (sc *STMClient) shutdown() error {
 	// Restore screen state
 	sc.overlays.GetNotificationEngine().SetNotificationString("", false, true)
@@ -472,35 +518,7 @@ func (sc *STMClient) shutdown() error {
 	return nil
 }
 
-func (sc *STMClient) processResize() bool {
-	// get new size
-	col, row, err := term.GetSize(int(os.Stdin.Fd()))
-	if err != nil {
-		return false
-	}
-
-	// newSize := terminal.Resize{Width: col, Height: row}
-	// tell remote emulator
-	if !sc.network.ShutdownInProgress() {
-		sc.network.GetCurrentState().PushBackResize(col, row)
-	}
-	// note remote emulator will probably reply with its own Resize to adjust our state
-
-	// tell prediction engine
-	sc.overlays.GetPredictionEngine().Reset()
-	return true
-}
-
-func (sc *STMClient) processNetworkInput() {
-	sc.network.Recv()
-
-	//  Now give hints to the overlays
-	rs := sc.network.GetLatestRemoteState()
-	sc.overlays.GetNotificationEngine().ServerHeard(rs.GetTimestamp())
-	sc.overlays.GetNotificationEngine().ServerAcked(sc.network.GetSentStateAckedTimestamp())
-
-	sc.overlays.GetPredictionEngine().SetLocalFrameAcked(sc.network.GetSentStateAcked())
-	sc.overlays.GetPredictionEngine().SetSendInterval(sc.network.SentInterval())
-	lateAcked := sc.network.GetLatestRemoteState().GetState().GetEchoAck()
-	sc.overlays.GetPredictionEngine().SetLocalFrameLateAcked(lateAcked)
+func (sc *STMClient) main() error {
+	// TODO wait for implementation
+	return nil
 }
