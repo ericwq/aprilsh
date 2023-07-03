@@ -449,7 +449,7 @@ func TestParseFlagsCorrect(t *testing.T) {
 		{
 			[]string{"-locale", "ALL=en_US.UTF-8", "-l", "LANG=UTF-8"},
 			Config{
-				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "6000",
+				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "60000",
 				locales: localeFlag{"ALL": "en_US.UTF-8", "LANG": "UTF-8"}, color: 0,
 				commandPath: "", commandArgv: []string{}, withMotd: false,
 			},
@@ -457,7 +457,7 @@ func TestParseFlagsCorrect(t *testing.T) {
 		{
 			[]string{"--", "/bin/sh", "-sh"},
 			Config{
-				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "6000",
+				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "60000",
 				locales: localeFlag{}, color: 0,
 				commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
 			},
@@ -465,7 +465,7 @@ func TestParseFlagsCorrect(t *testing.T) {
 		{
 			[]string{"--", ""},
 			Config{
-				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "6000",
+				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "60000",
 				locales: localeFlag{}, color: 0,
 				commandPath: "", commandArgv: []string{""}, withMotd: false,
 			},
