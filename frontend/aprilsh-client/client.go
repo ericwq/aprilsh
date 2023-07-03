@@ -383,7 +383,16 @@ func (sc *STMClient) stillConnecting() bool {
 }
 
 func (sc *STMClient) resume() {
-	// TODO wait for implementation
+	// Restore termios state
+	if err := term.Restore(int(os.Stdin.Fd()), sc.rawTermios); err != nil {
+		os.Exit(1)
+	}
+
+	// Put terminal in application-cursor-key mode
+	os.Stdout.WriteString(sc.display.Open())
+
+	// Flag that outer terminal state is unknown
+	sc.repaintRequested = true
 }
 
 func (sc *STMClient) init() error {
@@ -508,7 +517,7 @@ func (sc *STMClient) shutdown() error {
 	sc.overlays.GetNotificationEngine().ServerHeard(time.Now().UnixMilli())
 	sc.overlays.SetTitlePrefix("")
 
-	// TODO outputNewFrame()
+	sc.outputNewFrame()
 
 	// Restore terminal and terminal-driver state
 	os.Stdout.WriteString(sc.display.Close())
