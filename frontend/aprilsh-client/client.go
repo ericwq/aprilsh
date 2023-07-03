@@ -446,10 +446,11 @@ func (sc *STMClient) shutdown() error {
 	sc.overlays.GetNotificationEngine().ServerHeard(time.Now().UnixMilli())
 	sc.overlays.SetTitlePrefix("")
 
-	// outputNewFrame()
+	// TODO outputNewFrame()
 
 	// Restore terminal and terminal-driver state
 	os.Stdout.WriteString(sc.display.Close())
+
 	err := term.Restore(int(os.Stdin.Fd()), sc.savedTermios)
 	if err != nil {
 		return err
