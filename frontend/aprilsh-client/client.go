@@ -226,8 +226,8 @@ type STMClient struct {
 	escapeRequiresIf bool
 	escapeKeyHelp    string
 
-	savedTermios *term.State
-	rawTermios   *term.State
+	savedTermios *term.State // store the original termios, used for shutdown.
+	rawTermios   *term.State // set IUTF8 flag, set raw terminal in raw mode, used for resume.
 	windowSize   *unix.Winsize
 
 	localFramebuffer *terminal.Emulator
@@ -331,24 +331,24 @@ func (sc *STMClient) init() error {
 		return errors.New(_COMMAND_NAME + " requires UTF-8 environment.")
 	}
 
-	// Verify terminal configuration
-	// https://learnku.com/go/t/23460/bit-operation-of-go
+	var err error
 
-	// Put terminal driver in raw mode
+	// Verify terminal configuration
 	sc.savedTermios, _ = term.GetState(int(os.Stdin.Fd()))
-	*sc.rawTermios = *sc.savedTermios
 
 	// set IUTF8 if available
-	if err := util.SetIUTF8(int(os.Stdin.Fd())); err != nil {
+	if err = util.SetIUTF8(int(os.Stdin.Fd())); err != nil {
 		return err
 	}
 
-	var err error
+	// Put terminal driver in raw mode
+	// https://learnku.com/go/t/23460/bit-operation-of-go
+	// &^ is used to clean the specified bit
 	sc.rawTermios, err = term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
 		panic(err)
 	}
-	// defer term.Restore(int(os.Stdin.Fd()), oldState)
+	// TODO use term.Restore(int(os.Stdin.Fd()), oldState) to restore the saved state
 
 	return nil
 }

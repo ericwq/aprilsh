@@ -25,6 +25,7 @@ func SetIUTF8(fd int) error {
 		return err
 	}
 
+	// when the bit is set to 1, enable IUTF8
 	termios.Iflag |= unix.IUTF8
 	unix.IoctlSetTermios(fd, SetTermios, termios)
 
