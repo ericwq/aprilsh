@@ -287,16 +287,14 @@ func newSTMClient(ip string, port int, key string, predictMode string, verbose i
 
 func (sc *STMClient) mainInit() error {
 	// get initial window size
-	var windowSize *unix.Winsize
-	windowSize, err := unix.IoctlGetWinsize(int(os.Stdin.Fd()), unix.TIOCGWINSZ)
+	col, row, err := term.GetSize(int(os.Stdin.Fd()))
 	if err != nil {
 		return err
 	}
 
 	// local state
-	var savedLines int
-	savedLines = int(windowSize.Row) * 5
-	sc.localFramebuffer = terminal.NewEmulator3(int(windowSize.Col), int(windowSize.Row), savedLines)
+	savedLines := row * 5
+	sc.localFramebuffer = terminal.NewEmulator3(col, row, savedLines)
 	sc.newState = terminal.NewEmulator3(1, 1, savedLines)
 
 	// initialize screen
@@ -305,14 +303,14 @@ func (sc *STMClient) mainInit() error {
 
 	// open network
 	blank := &statesync.UserStream{}
-	terminal, err := statesync.NewComplete(int(windowSize.Col), int(windowSize.Row), savedLines)
+	terminal, err := statesync.NewComplete(col, row, savedLines)
 	sc.network = network.NewTransportClient(blank, terminal, sc.key, sc.ip, fmt.Sprintf("%d", sc.port))
 
 	// minimal delay on outgoing keystrokes
 	sc.network.SetSendDelay(1)
 
 	// tell server the size of the terminal
-	sc.network.GetCurrentState().PushBackResize(int(windowSize.Col), int(windowSize.Row))
+	sc.network.GetCurrentState().PushBackResize(col, row)
 
 	// be noisy as necessary
 	sc.network.SetVerbose(uint(sc.verbose))
@@ -336,6 +334,7 @@ func (sc *STMClient) init() error {
 	sc.savedTermios, _ = term.GetState(int(os.Stdin.Fd()))
 
 	// set IUTF8 if available
+	// term package doesn't allow us to access termios, we use util package to do that.
 	if err = util.SetIUTF8(int(os.Stdin.Fd())); err != nil {
 		return err
 	}
@@ -406,7 +405,7 @@ func (sc *STMClient) init() error {
 		sc.escapePassKey2 = '^'
 	}
 
-	// djust escape help differently if escape is a control character.
+	// Adjust escape help differently if escape is a control character.
 	if sc.escapeKey > 0 {
 		var b strings.Builder
 		escapeKeyName := ""
