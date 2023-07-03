@@ -490,3 +490,17 @@ func (sc *STMClient) processResize() bool {
 	sc.overlays.GetPredictionEngine().Reset()
 	return true
 }
+
+func (sc *STMClient) processNetworkInput() {
+	sc.network.Recv()
+
+	//  Now give hints to the overlays
+	rs := sc.network.GetLatestRemoteState()
+	sc.overlays.GetNotificationEngine().ServerHeard(rs.GetTimestamp())
+	sc.overlays.GetNotificationEngine().ServerAcked(sc.network.GetSentStateAckedTimestamp())
+
+	sc.overlays.GetPredictionEngine().SetLocalFrameAcked(sc.network.GetSentStateAcked())
+	sc.overlays.GetPredictionEngine().SetSendInterval(sc.network.SentInterval())
+	lateAcked := sc.network.GetLatestRemoteState().GetState().GetEchoAck()
+	sc.overlays.GetPredictionEngine().SetLocalFrameLateAcked(lateAcked)
+}

@@ -51,3 +51,7 @@ func (t *TimestampedState[T]) clone() TimestampedState[T] {
 func (t *TimestampedState[T]) GetTimestamp() int64 {
 	return t.timestamp
 }
+
+func (t TimestampedState[T]) GetState() T {
+	return t.state
+}

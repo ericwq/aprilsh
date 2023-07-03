@@ -828,7 +828,7 @@ func TestNotificationEngine(t *testing.T) {
 		}
 		ne.SetEscapeKeyString(v.escapeKeyString)
 		ne.ServerHeard(time.Now().UnixMilli() - v.lastWordFromServer)
-		ne.serverAcked(time.Now().UnixMilli() - v.lastAckedState)
+		ne.ServerAcked(time.Now().UnixMilli() - v.lastAckedState)
 
 		if v.messageIsNetworkError {
 			ne.setNetworkError(v.name)
@@ -912,7 +912,7 @@ func TestOverlayManager_waitTime(t *testing.T) {
 	for _, v := range tc {
 		ne := om.GetNotificationEngine()
 		ne.ServerHeard(time.Now().UnixMilli() - v.lastWordFromServer)
-		ne.serverAcked(time.Now().UnixMilli() - v.lastAckedState)
+		ne.ServerAcked(time.Now().UnixMilli() - v.lastAckedState)
 
 		ne.messageExpiration = time.Now().UnixMilli() + v.messageExpiration
 

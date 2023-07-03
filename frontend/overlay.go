@@ -340,6 +340,10 @@ func (pe *PredictionEngine) SetLocalFrameSent(v int64) {
 	pe.localFrameSent = v
 }
 
+func (pe *PredictionEngine) SetLocalFrameAcked(v int64) {
+	pe.localFrameAcked = v
+}
+
 func (pe *PredictionEngine) SetLocalFrameLateAcked(v int64) {
 	pe.localFrameLateAcked = v
 }
@@ -1132,7 +1136,7 @@ func (ne *NotificationEngine) ServerHeard(ts int64) {
 	ne.lastWordFromServer = ts
 }
 
-func (ne *NotificationEngine) serverAcked(ts int64) {
+func (ne *NotificationEngine) ServerAcked(ts int64) {
 	ne.lastAckedState = ts
 }
 

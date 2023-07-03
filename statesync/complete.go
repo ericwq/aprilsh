@@ -59,7 +59,7 @@ func (c *Complete) getFramebuffer() *terminal.Framebuffer {
 	return c.terminal.GetFramebuffer()
 }
 
-func (c *Complete) getEchoAck() int64 {
+func (c *Complete) GetEchoAck() int64 {
 	return c.echoAck
 }
 
@@ -132,8 +132,8 @@ func (c *Complete) Subtract(prefix *Complete) {
 func (c *Complete) DiffFrom(existing *Complete) string {
 	hm := pb.HostMessage{}
 
-	if existing.getEchoAck() != c.getEchoAck() {
-		echoack := c.getEchoAck()
+	if existing.GetEchoAck() != c.GetEchoAck() {
+		echoack := c.GetEchoAck()
 		instEcho := pb.Instruction{Echoack: &pb.EchoAck{EchoAckNum: &echoack}}
 		hm.Instruction = append(hm.Instruction, &instEcho)
 	}

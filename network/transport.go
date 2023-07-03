@@ -263,6 +263,22 @@ func (t *Transport[S, R]) SetSendDelay(delay int) {
 	t.sender.setSendDelay(delay)
 }
 
+func (t *Transport[S, R]) GetSentStateAckedTimestamp() int64 {
+	return t.sender.getSentStateAckedTimestamp()
+}
+
+func (t *Transport[S, R]) GetSentStateAcked() int64 {
+	return t.sender.getSentStateAcked()
+}
+
+func (t *Transport[S, R]) GetSentStateLast() int64 {
+	return t.sender.getSentStateLast()
+}
+
+func (t *Transport[S, R]) SentInterval() int {
+	return t.sender.sendInterval()
+}
+
 func (t *Transport[S, R]) GetRemoteAddr() net.Addr {
 	return t.connection.getRemoteAddr()
 }
