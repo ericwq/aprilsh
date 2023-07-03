@@ -60,7 +60,7 @@ func TestOpenClose(t *testing.T) {
 	d, _ := NewDisplay(true)
 
 	expect := "\x1b[?1049h\x1b[22;0;0t\x1b[?1h"
-	got := d.open()
+	got := d.Open()
 	if got != expect {
 		t.Errorf("#test open() expect %q, got %q\n", expect, got)
 	}

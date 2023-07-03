@@ -876,7 +876,7 @@ func (d *Display) updateRendition(out io.Writer, r Renditions, force bool) {
 	}
 }
 
-func (d *Display) open() string {
+func (d *Display) Open() string {
 	var b strings.Builder
 	if d.smcup != "" {
 		b.WriteString(d.smcup)

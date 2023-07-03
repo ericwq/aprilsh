@@ -764,7 +764,7 @@ func TestTitleEngine(t *testing.T) {
 
 	omTitle := " [aprish]"
 	om := NewOverlayManager()
-	om.setTitlePrefix(omTitle)
+	om.SetTitlePrefix(omTitle)
 
 	if om.title.prefix != omTitle {
 		t.Errorf("jump the queue, expect %q, got %q\n", omTitle, om.title.prefix)
@@ -826,7 +826,7 @@ func TestNotificationEngine(t *testing.T) {
 		if !ne.messageIsNetworkError {
 			ne.setNotificationString(v.message, v.permanent, v.showQuitKeystroke)
 		}
-		ne.setEscapeKeyString(v.escapeKeyString)
+		ne.SetEscapeKeyString(v.escapeKeyString)
 		ne.serverHeard(time.Now().UnixMilli() - v.lastWordFromServer)
 		ne.serverAcked(time.Now().UnixMilli() - v.lastAckedState)
 
@@ -910,7 +910,7 @@ func TestOverlayManager_waitTime(t *testing.T) {
 
 	om := NewOverlayManager()
 	for _, v := range tc {
-		ne := om.getNotificationEngine()
+		ne := om.GetNotificationEngine()
 		ne.serverHeard(time.Now().UnixMilli() - v.lastWordFromServer)
 		ne.serverAcked(time.Now().UnixMilli() - v.lastAckedState)
 

@@ -332,7 +332,6 @@ func (sc *STMClient) init() error {
 	}
 
 	var err error
-
 	// Verify terminal configuration
 	sc.savedTermios, _ = term.GetState(int(os.Stdin.Fd()))
 
@@ -346,9 +345,85 @@ func (sc *STMClient) init() error {
 	// &^ is used to clean the specified bit
 	sc.rawTermios, err = term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
-		panic(err)
+		return err
 	}
 	// TODO use term.Restore(int(os.Stdin.Fd()), oldState) to restore the saved state
+
+	// Put terminal in application-cursor-key mode
+	os.Stdout.WriteString(sc.display.Open())
+
+	// Add our name to window title
+	prefix := os.Getenv("APRILSH_TITLE_PREFIX")
+	if prefix != "" {
+		sc.overlays.SetTitlePrefix(prefix)
+	}
+
+	// Set terminal escape key.
+	escapeKeyEnv := os.Getenv("APRILSH_ESCAPE_KEY")
+	if escapeKeyEnv != "" {
+		if len(escapeKeyEnv) == 1 {
+			sc.escapeKey = int(escapeKeyEnv[0])
+			if sc.escapeKey > 0 && sc.escapeKey < 128 {
+				if sc.escapeKey < 32 {
+					// If escape is ctrl-something, pass it with repeating the key without ctrl.
+					sc.escapePassKey = sc.escapeKey + '@'
+				} else {
+					// If escape is something else, pass it with repeating the key itself.
+					sc.escapePassKey = sc.escapeKey
+				}
+				if sc.escapePassKey >= 'A' && sc.escapePassKey <= 'Z' {
+					// If escape pass is an upper case character, define optional version as lower case of the same.
+					sc.escapePassKey2 = sc.escapePassKey + 'a' - 'A'
+				} else {
+					sc.escapePassKey2 = sc.escapePassKey
+				}
+			} else {
+				sc.escapeKey = 0x1E
+				sc.escapePassKey = '^'
+				sc.escapePassKey2 = '^'
+			}
+		} else if len(escapeKeyEnv) == 0 {
+			sc.escapeKey = -1
+		} else {
+			sc.escapeKey = 0x1E
+			sc.escapePassKey = '^'
+			sc.escapePassKey2 = '^'
+		}
+	} else {
+		sc.escapeKey = 0x1E
+		sc.escapePassKey = '^'
+		sc.escapePassKey2 = '^'
+	}
+
+	// There are so many better ways to shoot oneself into leg than
+	// setting escape key to Ctrl-C, Ctrl-D, NewLine, Ctrl-L or CarriageReturn
+	// that we just won't allow that.
+
+	if sc.escapeKey == 0x03 || sc.escapeKey == 0x04 || sc.escapeKey == 0x0A ||
+		sc.escapeKey == 0x0C || sc.escapeKey == 0x0D {
+		sc.escapeKey = 0x1E
+		sc.escapePassKey = '^'
+		sc.escapePassKey2 = '^'
+	}
+
+	// djust escape help differently if escape is a control character.
+	if sc.escapeKey > 0 {
+		var b strings.Builder
+		escapeKeyName := ""
+		escapePassName := fmt.Sprintf("\"%c\"", sc.escapePassKey)
+		if sc.escapeKey < 32 {
+			escapeKeyName = fmt.Sprintf("Ctrl-%c", sc.escapePassKey)
+			sc.escapeRequiresIf = false
+		} else {
+			escapeKeyName = fmt.Sprintf("\"%c\"", sc.escapePassKey)
+			sc.escapeRequiresIf = true
+		}
+
+		sc.escapeKeyHelp = fmt.Sprintf("Commands: Ctrl-Z suspends, \".\" quits, " + escapePassName +
+			" gives literal " + escapeKeyName)
+		sc.overlays.GetNotificationEngine().SetEscapeKeyString(b.String())
+	}
+	sc.connectingNotification = fmt.Sprintf("Nothing received from server on UDP port %d.", sc.port)
 
 	return nil
 }

@@ -1175,7 +1175,7 @@ func (ne *NotificationEngine) setNotificationString(message string, permanent bo
 	ne.showQuitKeystroke = showQuitKeystroke
 }
 
-func (ne *NotificationEngine) setEscapeKeyString(str string) {
+func (ne *NotificationEngine) SetEscapeKeyString(str string) {
 	ne.escapeKeyString = fmt.Sprintf(" [To quit: %s .]", str)
 }
 
@@ -1206,7 +1206,7 @@ func NewOverlayManager() *OverlayManager {
 	return om
 }
 
-func (om *OverlayManager) getNotificationEngine() *NotificationEngine {
+func (om *OverlayManager) GetNotificationEngine() *NotificationEngine {
 	return &om.notifications
 }
 
@@ -1214,7 +1214,7 @@ func (om *OverlayManager) GetPredictionEngine() *PredictionEngine {
 	return &om.predictions
 }
 
-func (om *OverlayManager) setTitlePrefix(v string) {
+func (om *OverlayManager) SetTitlePrefix(v string) {
 	om.title.setPrefix(v)
 }
 
