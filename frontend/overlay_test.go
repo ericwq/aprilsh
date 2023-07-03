@@ -930,5 +930,5 @@ func TestOverlayManager_apply(t *testing.T) {
 
 	// all the components of OverlayManager has been tested by previouse test case
 	// add this for coverage 100%
-	om.apply(emu)
+	om.Apply(emu)
 }

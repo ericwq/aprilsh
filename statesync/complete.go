@@ -59,6 +59,10 @@ func (c *Complete) getFramebuffer() *terminal.Framebuffer {
 	return c.terminal.GetFramebuffer()
 }
 
+func (c *Complete) GetEmulator() *terminal.Emulator {
+	return c.terminal
+}
+
 func (c *Complete) GetEchoAck() int64 {
 	return c.echoAck
 }

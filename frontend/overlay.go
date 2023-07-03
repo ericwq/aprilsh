@@ -1226,7 +1226,7 @@ func (om *OverlayManager) waitTime() int {
 	return terminal.Min(om.notifications.waitTime(), om.predictions.waitTime())
 }
 
-func (om *OverlayManager) apply(emu *terminal.Emulator) {
+func (om *OverlayManager) Apply(emu *terminal.Emulator) {
 	om.predictions.cull(emu)
 	om.predictions.apply(emu)
 

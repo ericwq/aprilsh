@@ -358,7 +358,23 @@ func (sc *STMClient) processResize() bool {
 }
 
 func (sc *STMClient) outputNewFrame() {
-	// TODO wait for implementation
+	// clean shutdown even when not initialized
+	if sc.network == nil {
+		return
+	}
+
+	// fetch target state
+	sc.newState = sc.network.GetLatestRemoteState().GetState().GetEmulator()
+
+	// apply local overlays
+	sc.overlays.Apply(sc.newState)
+
+	// calculate minimal difference from where we are
+	diff := sc.display.NewFrame(!sc.repaintRequested, sc.localFramebuffer, sc.newState)
+	os.Stdout.WriteString(diff)
+
+	sc.repaintRequested = false
+	sc.localFramebuffer = sc.newState
 }
 
 func (sc *STMClient) stillConnecting() bool {
