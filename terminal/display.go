@@ -886,7 +886,7 @@ func (d *Display) Open() string {
 	return b.String()
 }
 
-func (d *Display) close() string {
+func (d *Display) Close() string {
 	var b strings.Builder
 	// DECRST: set ANSI cursor key mode
 	fmt.Fprintf(&b, "\x1B[?1l")

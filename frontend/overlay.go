@@ -1128,7 +1128,7 @@ func (ne *NotificationEngine) getNotificationString() string {
 	return ne.message
 }
 
-func (ne *NotificationEngine) serverHeard(ts int64) {
+func (ne *NotificationEngine) ServerHeard(ts int64) {
 	ne.lastWordFromServer = ts
 }
 
@@ -1163,7 +1163,7 @@ func (ne *NotificationEngine) waitTime() int {
 }
 
 // default parameters: permanent = false, showQuitKeystroke = true
-func (ne *NotificationEngine) setNotificationString(message string, permanent bool, showQuitKeystroke bool) {
+func (ne *NotificationEngine) SetNotificationString(message string, permanent bool, showQuitKeystroke bool) {
 	ne.message = message
 	if permanent {
 		ne.messageExpiration = -1

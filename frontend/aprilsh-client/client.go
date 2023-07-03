@@ -12,6 +12,7 @@ import (
 	"log"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/ericwq/aprilsh/frontend"
 	"github.com/ericwq/aprilsh/network"
@@ -42,7 +43,7 @@ Options:
   -h, --help     print this message
   -v, --version  print version information
   -c, --colors   print the number of colors of terminal
-  -p, --port     server port (default 6000)
+  -p, --port     server port (default 60000)
       --verbose  verbose output mode
 `
 	predictionValues = []string{"always", "never", "adaptive", "experimental"}
@@ -112,8 +113,8 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.BoolVar(&conf.version, "version", false, "print version information")
 	flagSet.BoolVar(&conf.version, "v", false, "print version information")
 
-	flagSet.IntVar(&conf.port, "port", 6000, "server port")
-	flagSet.IntVar(&conf.port, "p", 6000, "server port")
+	flagSet.IntVar(&conf.port, "port", 60000, "server port")
+	flagSet.IntVar(&conf.port, "p", 60000, "server port")
 
 	flagSet.BoolVar(&conf.colors, "color", false, "terminal number of colors")
 	flagSet.BoolVar(&conf.colors, "c", false, "terminal number of colors")
@@ -332,6 +333,9 @@ func (sc *STMClient) init() error {
 	var err error
 	// Verify terminal configuration
 	sc.savedTermios, _ = term.GetState(int(os.Stdin.Fd()))
+	if err != nil {
+		return err
+	}
 
 	// set IUTF8 if available
 	// term package doesn't allow us to access termios, we use util package to do that.
@@ -342,11 +346,15 @@ func (sc *STMClient) init() error {
 	// Put terminal driver in raw mode
 	// https://learnku.com/go/t/23460/bit-operation-of-go
 	// &^ is used to clean the specified bit
-	sc.rawTermios, err = term.MakeRaw(int(os.Stdin.Fd()))
+	_, err = term.MakeRaw(int(os.Stdin.Fd()))
 	if err != nil {
 		return err
 	}
-	// TODO use term.Restore(int(os.Stdin.Fd()), oldState) to restore the saved state
+	// save raw + IUTF8 termios to rawTermios
+	sc.rawTermios, err = term.GetState(int(os.Stdin.Fd()))
+	if err != nil {
+		return err
+	}
 
 	// Put terminal in application-cursor-key mode
 	os.Stdout.WriteString(sc.display.Open())
@@ -424,5 +432,41 @@ func (sc *STMClient) init() error {
 	}
 	sc.connectingNotification = fmt.Sprintf("Nothing received from server on UDP port %d.", sc.port)
 
+	return nil
+}
+
+func (sc *STMClient) stillConnecting() bool {
+	// Initially, network == nil
+	return sc.network != nil && sc.network.GetRemoteStateNum() == 0
+}
+
+func (sc *STMClient) shutdown() error {
+	// Restore screen state
+	sc.overlays.GetNotificationEngine().SetNotificationString("", false, true)
+	sc.overlays.GetNotificationEngine().ServerHeard(time.Now().UnixMilli())
+	sc.overlays.SetTitlePrefix("")
+
+	// outputNewFrame()
+
+	// Restore terminal and terminal-driver state
+	os.Stdout.WriteString(sc.display.Close())
+	err := term.Restore(int(os.Stdin.Fd()), sc.savedTermios)
+	if err != nil {
+		return err
+	}
+
+	if sc.stillConnecting() {
+		fmt.Fprintf(os.Stderr, "%s did not make a successful connection to %s:%d.\n",
+			_PACKAGE_STRING, sc.ip, sc.port)
+		fmt.Fprintf(os.Stderr, "Please verify that UDP port %d is not firewalled and can reach the server.\n\n",
+			sc.port)
+		fmt.Fprintf(os.Stderr, "By default, %s uses a UDP port between 60000 and 61000. The -p option\n%s",
+			_PACKAGE_STRING, "selects a specific UDP port number.)")
+	} else if sc.network != nil {
+		if !sc.cleanShutdown {
+			fmt.Fprintf(os.Stderr, "\n\n%s did not shut down cleanly. Please note that the\n%s",
+				_PACKAGE_STRING, "aprilsh-server process may still be running on the server.\n")
+		}
+	}
 	return nil
 }

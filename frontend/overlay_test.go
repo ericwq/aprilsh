@@ -824,17 +824,17 @@ func TestNotificationEngine(t *testing.T) {
 	for _, v := range tc {
 		// fmt.Printf("%s start\n", v.name)
 		if !ne.messageIsNetworkError {
-			ne.setNotificationString(v.message, v.permanent, v.showQuitKeystroke)
+			ne.SetNotificationString(v.message, v.permanent, v.showQuitKeystroke)
 		}
 		ne.SetEscapeKeyString(v.escapeKeyString)
-		ne.serverHeard(time.Now().UnixMilli() - v.lastWordFromServer)
+		ne.ServerHeard(time.Now().UnixMilli() - v.lastWordFromServer)
 		ne.serverAcked(time.Now().UnixMilli() - v.lastAckedState)
 
 		if v.messageIsNetworkError {
 			ne.setNetworkError(v.name)
 		} else {
 			ne.clearNetworkError()
-			ne.setNotificationString(v.message, v.permanent, v.showQuitKeystroke)
+			ne.SetNotificationString(v.message, v.permanent, v.showQuitKeystroke)
 		}
 
 		ne.apply(emu)
@@ -874,7 +874,7 @@ func TestNotificationEngine_adjustMessage(t *testing.T) {
 
 	ne := NewNotificationEngien()
 	for _, v := range tc {
-		ne.setNotificationString(v.message, false, false)
+		ne.SetNotificationString(v.message, false, false)
 
 		// validate the message string
 		if ne.getNotificationString() != v.message {
@@ -911,7 +911,7 @@ func TestOverlayManager_waitTime(t *testing.T) {
 	om := NewOverlayManager()
 	for _, v := range tc {
 		ne := om.GetNotificationEngine()
-		ne.serverHeard(time.Now().UnixMilli() - v.lastWordFromServer)
+		ne.ServerHeard(time.Now().UnixMilli() - v.lastWordFromServer)
 		ne.serverAcked(time.Now().UnixMilli() - v.lastAckedState)
 
 		ne.messageExpiration = time.Now().UnixMilli() + v.messageExpiration

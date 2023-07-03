@@ -66,7 +66,7 @@ func TestOpenClose(t *testing.T) {
 	}
 
 	expect = "\x1b[?1l\x1b[0m\x1b[?25h\x1b[?1003l\x1b[?1002l\x1b[?1001l\x1b[?1000l\x1b[?1015l\x1b[?1006l\x1b[?1005l\x1b[?1049l\x1b[23;0;0t"
-	got = d.close()
+	got = d.Close()
 	if got != expect {
 		t.Errorf("#test close() expect %q, got %q\n", expect, got)
 	}
