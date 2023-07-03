@@ -170,7 +170,7 @@ func TestCellGetValidity(t *testing.T) {
 	pe := NewPredictionEngine()
 
 	for _, v := range tc {
-		pe.reset()
+		pe.Reset()
 
 		// set the base content
 		emu.MoveCursor(v.row, v.col)
@@ -230,7 +230,7 @@ func TestPredictionNewUserInput(t *testing.T) {
 	emu := terminal.NewEmulator3(80, 40, 40)
 
 	for k, v := range tc {
-		pe.reset()
+		pe.Reset()
 
 		// set the base content
 		emu.MoveCursor(v.row, v.col)
@@ -307,7 +307,7 @@ func TestPredictionApply(t *testing.T) {
 	emu := terminal.NewEmulator3(80, 40, 40)
 
 	for k, v := range tc {
-		pe.reset()
+		pe.Reset()
 
 		// set the base content
 		emu.MoveCursor(v.row, v.col)
@@ -410,7 +410,7 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 	emu := terminal.NewEmulator3(80, 40, 40)
 
 	for _, v := range tc {
-		pe.reset()
+		pe.Reset()
 		// t.Logf("%q predictionEpoch=%d\n", v.name, pe.predictionEpoch)
 		pe.predictionEpoch = 1 // TODO: when it's time to update predictionEpoch?
 
@@ -467,7 +467,7 @@ func TestPredictionActive(t *testing.T) {
 	emu := terminal.NewEmulator3(80, 40, 40)
 
 	for k, v := range tc {
-		pe.reset()
+		pe.Reset()
 
 		switch v.col {
 		case 0:
@@ -519,7 +519,7 @@ func TestPredictionNewlineCarriageReturn(t *testing.T) {
 	emu := terminal.NewEmulator3(80, 40, 40)
 
 	for _, v := range tc {
-		pe.reset()
+		pe.Reset()
 		pe.predictionEpoch = 1 // reset it
 
 		// mimic user input for prediction engine
@@ -651,7 +651,7 @@ func TestPredictionCull(t *testing.T) {
 			pe.SetSendInterval(v.sendInterval)
 			pe.newUserInput(emu, v.predict)
 		case 11:
-			pe.reset()                             // clear the previous rows
+			pe.Reset()                             // clear the previous rows
 			pe.getOrMakeRow(v.row, emu.GetWidth()) // add the illegal row
 		case 12:
 			now := time.Now().UnixMilli()

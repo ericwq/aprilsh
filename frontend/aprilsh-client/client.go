@@ -471,3 +471,22 @@ func (sc *STMClient) shutdown() error {
 	}
 	return nil
 }
+
+func (sc *STMClient) processResize() bool {
+	// get new size
+	col, row, err := term.GetSize(int(os.Stdin.Fd()))
+	if err != nil {
+		return false
+	}
+
+	// newSize := terminal.Resize{Width: col, Height: row}
+	// tell remote emulator
+	if !sc.network.ShutdownInProgress() {
+		sc.network.GetCurrentState().PushBackResize(col, row)
+	}
+	// note remote emulator will probably reply with its own Resize to adjust our state
+
+	// tell prediction engine
+	sc.overlays.GetPredictionEngine().Reset()
+	return true
+}

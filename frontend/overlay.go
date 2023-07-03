@@ -421,7 +421,7 @@ func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
 	}
 }
 
-func (pe *PredictionEngine) reset() {
+func (pe *PredictionEngine) Reset() {
 	pe.cursors = make([]ConditionalCursorMove, 0)
 	pe.overlays = make([]ConditionalOverlayRow, 0)
 	pe.becomeTentative()
@@ -831,7 +831,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 	if pe.lastHeight != emu.GetHeight() || pe.lastWidth != emu.GetWidth() {
 		pe.lastHeight = emu.GetHeight()
 		pe.lastWidth = emu.GetWidth()
-		pe.reset()
+		pe.Reset()
 	}
 
 	now := time.Now().UnixMilli()
@@ -902,7 +902,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 					if pe.displayPreference == Experimental {
 						cell.reset2() // only clear the current cell
 					} else {
-						pe.reset() // clear the whole prediction
+						pe.Reset() // clear the whole prediction
 						return
 					}
 				}
@@ -969,7 +969,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 			if pe.displayPreference == Experimental {
 				pe.cursors = make([]ConditionalCursorMove, 0) // only clear the cursor prediction
 			} else {
-				pe.reset() // clear the whole prediction
+				pe.Reset() // clear the whole prediction
 				return
 			}
 		}
