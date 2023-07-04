@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -650,13 +651,14 @@ func (sc *STMClient) main() error {
 
 	// intercept signal
 	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGUSR1, syscall.SIGINT, syscall.SIGTERM)
+	signal.Notify(sigChan, syscall.SIGWINCH, syscall.SIGTERM, syscall.SIGINT,
+		syscall.SIGHUP, syscall.SIGPIPE, syscall.SIGCONT)
 	shutdownChan := make(chan bool)
 	eg.Go(func() error {
 		for {
 			select {
 			case s := <-sigChan:
-				frontend.MultiSignalHandler(s)
+				clientSignalHandler(s)
 			case <-shutdownChan:
 				return nil
 			}
@@ -665,19 +667,67 @@ func (sc *STMClient) main() error {
 
 mainLoop:
 	for {
+		sc.outputNewFrame()
+
 		select {
 		case socketMsg := <-socketChan: // got data from socket
 			if socketMsg.Err != nil { // error handling
 				logW.Printf("#readFromSocket receive error:%s\n", socketMsg.Err)
 				continue mainLoop
 			}
-		case masterMsg := <-fileChan:
+			sc.processNetworkInput()
+		case masterMsg := <-fileChan: // got data from file
 			if masterMsg.Err != nil {
 				logW.Println("#readFromMaster read error: ", masterMsg.Err)
 				sc.network.StartShutdown()
 			}
+
+			// input from the user needs to be fed to the network
+			if !sc.processUserInput(masterMsg.Data) {
+				if !sc.network.HasRemoteAddr() {
+					break
+				} else if !sc.network.ShutdownInProgress() {
+					sc.overlays.GetNotificationEngine().SetNotificationString("Exiting...", true, true)
+					sc.network.StartShutdown()
+				}
+			}
 		default:
 		}
+
+		if gotSignal.Load() == int32(syscall.SIGWINCH) {
+			if !sc.processResize() {
+				gotSignal.Store(0)
+				return nil
+			}
+		}
+
+		break
 	}
+
+	// shutdown the goroutine
+	shutdownChan <- true
+	fileChan <- frontend.Message{Err: nil, Data: "shutdown"}
+	socketChan <- frontend.Message{Err: nil, Data: "shutdown"}
+	eg.Wait()
+
 	return nil
+}
+
+var gotSignal atomic.Int32
+
+func clientSignalHandler(signal os.Signal) {
+	switch signal {
+	case syscall.SIGWINCH:
+		// fmt.Println("Signal:", signal.String())
+		gotSignal.Store(int32(syscall.SIGWINCH))
+		// anySignal = true
+	case syscall.SIGINT:
+		// fmt.Println("Signal:", signal.String())
+		gotSignal.Store(int32(syscall.SIGINT))
+	case syscall.SIGTERM:
+		// fmt.Println("Signal:", signal.String())
+		gotSignal.Store(int32(syscall.SIGTERM))
+	default:
+
+	}
 }

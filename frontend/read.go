@@ -7,30 +7,10 @@ package frontend
 import (
 	"errors"
 	"os"
-	"sync/atomic"
-	"syscall"
 	"time"
 
 	"github.com/ericwq/aprilsh/network"
 )
-
-var GotSignal atomic.Int32
-
-func MultiSignalHandler(signal os.Signal) {
-	switch signal {
-	case syscall.SIGUSR1:
-		// fmt.Println("Signal:", signal.String())
-		GotSignal.Store(int32(syscall.SIGUSR1))
-		// anySignal = true
-	case syscall.SIGINT:
-		// fmt.Println("Signal:", signal.String())
-		GotSignal.Store(int32(syscall.SIGINT))
-	case syscall.SIGTERM:
-		// fmt.Println("Signal:", signal.String())
-		GotSignal.Store(int32(syscall.SIGTERM))
-	default:
-	}
-}
 
 type Message struct {
 	Err  error

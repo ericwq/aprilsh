@@ -720,17 +720,6 @@ func (c *Connection) send(s string) (sendError error) {
 	return
 }
 
-func (c *Connection) SetDeadline(t time.Time) (err error) {
-	for i := range c.socks {
-		err = c.socks[i].SetDeadline(t)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 // receive packet from remote
 func (c *Connection) recv() (payload string, err error) {
 	for i := range c.socks {
@@ -792,4 +781,15 @@ func (c *Connection) getRemoteAddr() net.Addr {
 
 func (c *Connection) setLastRoundtripSuccess(success int64) {
 	c.lastRoundtripSuccess = success
+}
+
+func (c *Connection) SetDeadline(t time.Time) (err error) {
+	for i := range c.socks {
+		err = c.socks[i].SetDeadline(t)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
