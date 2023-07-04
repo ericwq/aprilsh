@@ -20,6 +20,7 @@ import (
 	"github.com/ericwq/aprilsh/terminal"
 	"github.com/ericwq/aprilsh/util"
 	_ "github.com/ericwq/terminfo/base"
+	"github.com/rivo/uniseg"
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )
@@ -333,9 +334,116 @@ func (sc *STMClient) processNetworkInput() {
 	sc.overlays.GetPredictionEngine().SetLocalFrameLateAcked(lateAcked)
 }
 
-func (sc *STMClient) processUserInput() bool {
-	// TODO wait for implementation
-	return false
+type msg struct {
+	err  error
+	data string
+}
+
+func (sc *STMClient) readFrom(timeout int, msgChan chan msg, fd *os.File) {
+	var buf [16384]byte
+
+	// set read time out
+	fd.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
+	for {
+		select {
+		case m := <-msgChan:
+			if m.data == "shutdown" {
+				return
+			}
+		default:
+		}
+		// fill buffer if possible
+		bytesRead, err := fd.Read(buf[:])
+		if err != nil {
+			if errors.Is(err, os.ErrDeadlineExceeded) {
+				// file read timeout
+			} else {
+				msgChan <- msg{err, ""}
+				break
+			}
+		} else if bytesRead == 0 {
+			// EOF.
+			msgChan <- msg{err, ""}
+			break
+		} else {
+			msgChan <- msg{nil, string(buf[:bytesRead])}
+		}
+	}
+}
+
+func (sc *STMClient) processUserInput(buf string) bool {
+	if !sc.network.ShutdownInProgress() {
+		sc.overlays.GetPredictionEngine().SetLocalFrameSent(sc.network.GetSentStateLast())
+
+		var input []rune
+		graphemes := uniseg.NewGraphemes(buf)
+		for graphemes.Next() {
+			input = graphemes.Runes()
+			theByte := input[0]
+
+			sc.overlays.GetPredictionEngine().NewUserInput(sc.localFramebuffer, string(input))
+
+			if sc.quitSequenceStarted {
+				if theByte == '.' { // Quit sequence is Ctrl-^ .
+					if sc.network.HasRemoteAddr() && !sc.network.ShutdownInProgress() {
+						sc.overlays.GetNotificationEngine().SetNotificationString(
+							"Exiting on user request...", true, true)
+						sc.network.StartShutdown()
+						return true
+					} else {
+						return false
+					}
+				} else if theByte == 0x1A { // Suspend sequence is escape_key Ctrl-Z
+					// Restore terminal and terminal-driver state
+					os.Stdout.WriteString(sc.display.Close())
+
+					term.Restore(int(os.Stdin.Fd()), sc.savedTermios)
+
+					fmt.Printf("\n\033[37;44m[%sis suspended.]\033[m\n", _PACKAGE_STRING)
+
+					// fflush(NULL)
+					//
+					/* actually suspend */
+					// kill(0, SIGSTOP);
+
+					sc.resume()
+				} else if theByte == rune(sc.escapePassKey) || theByte == rune(sc.escapePassKey2) {
+					// Emulation sequence to type escape_key is escape_key +
+					// escape_pass_key (that is escape key without Ctrl)
+					sc.network.GetCurrentState().PushBack([]rune{rune(sc.escapeKey)})
+				} else {
+					// Escape key followed by anything other than . and ^ gets sent literally
+					sc.network.GetCurrentState().PushBack([]rune{rune(sc.escapeKey), theByte})
+				}
+
+				sc.quitSequenceStarted = false
+
+				if sc.overlays.GetNotificationEngine().GetNotificationString() == sc.escapeKeyHelp {
+					sc.overlays.GetNotificationEngine().SetNotificationString("", false, true)
+				}
+
+				continue
+			}
+
+			sc.quitSequenceStarted = sc.escapeKey > 0 && theByte == rune(sc.escapeKey) &&
+				(sc.ifEntered || !sc.escapeRequiresIf)
+
+			if sc.quitSequenceStarted {
+				sc.ifEntered = false
+				sc.overlays.GetNotificationEngine().SetNotificationString(sc.escapeKeyHelp, true, false)
+				continue
+			}
+
+			sc.ifEntered = theByte == 0x0A || theByte == 0x0D // LineFeed, Ctrl-J, '\n' or CarriageReturn, Ctrl-M, '\r'
+
+			if theByte == 0x0C { // Ctrl-L
+				sc.repaintRequested = true
+			}
+			sc.network.GetCurrentState().PushBack(input)
+		}
+
+	}
+	return true
 }
 
 func (sc *STMClient) processResize() bool {

@@ -462,7 +462,7 @@ func (pe *PredictionEngine) newlineCarriageReturn(emu *terminal.Emulator) {
 // process user input to prepare local prediction:cells and cursors.
 // before process the input, PredictionEngine calls cull() method to check the prediction validity.
 // a.k.a mosh new_user_byte() method
-func (pe *PredictionEngine) newUserInput(emu *terminal.Emulator, str string, delay ...int) {
+func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, str string, delay ...int) {
 	var input []rune
 	var hd *terminal.Handler
 
@@ -1128,7 +1128,7 @@ func humanReadableDuration(numSeconds int, secondsAbbr string) string {
 	return tmp.String()
 }
 
-func (ne *NotificationEngine) getNotificationString() string {
+func (ne *NotificationEngine) GetNotificationString() string {
 	return ne.message
 }
 

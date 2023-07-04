@@ -733,13 +733,13 @@ mainLoop:
 						winSize, err := unix.IoctlGetWinsize(int(ptmx.Fd()), unix.TIOCGWINSZ)
 						if err != nil {
 							logW.Printf("#serve ioctl TIOCGWINSZ %s", err)
-							network.ShartShutdown()
+							network.StartShutdown()
 						}
 						winSize.Col = uint16(res.Width)
 						winSize.Row = uint16(res.Height)
 						if err = unix.IoctlSetWinsize(int(ptmx.Fd()), unix.TIOCSWINSZ, winSize); err != nil {
 							logW.Printf("#serve ioctl TIOCSWINSZ %s", err)
-							network.ShartShutdown()
+							network.StartShutdown()
 						}
 					}
 					terminalToHost.WriteString(complete.ActOne(action))
@@ -780,7 +780,7 @@ mainLoop:
 			if !network.ShutdownInProgress() {
 				if masterMsg.err != nil {
 					logW.Println("#readFromMaster read error: ", masterMsg.err)
-					network.ShartShutdown()
+					network.StartShutdown()
 				} else {
 					r := complete.Act(masterMsg.data)
 					terminalToHost.WriteString(r)
@@ -796,7 +796,7 @@ mainLoop:
 		if terminalToHost.Len() > 0 {
 			_, err := ptmx.WriteString(terminalToHost.String())
 			if err != nil {
-				network.ShartShutdown()
+				network.StartShutdown()
 			}
 		}
 
@@ -818,7 +818,7 @@ mainLoop:
 		if (gotSignal.Load() != 0 && gotSignal.Load() != int32(syscall.SIGUSR1)) || idleShutdown {
 			// shutdown signal
 			if network.HasRemoteAddr() && !network.ShutdownInProgress() {
-				network.ShartShutdown()
+				network.StartShutdown()
 			} else {
 				break
 			}

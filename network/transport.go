@@ -211,7 +211,7 @@ func (t *Transport[S, R]) SetDeadline(ti time.Time) error {
 // Other side has requested shutdown and we have sent one ACK
 //
 //	Illegal to change current_state after this.
-func (t *Transport[S, R]) ShartShutdown() {
+func (t *Transport[S, R]) StartShutdown() {
 	t.sender.startShutdown()
 }
 

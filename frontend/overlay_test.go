@@ -242,7 +242,7 @@ func TestPredictionNewUserInput(t *testing.T) {
 		// mimic user input for prediction engine
 		emu.MoveCursor(v.row, v.col)
 		epoch := pe.predictionEpoch
-		pe.newUserInput(emu, v.predict)
+		pe.NewUserInput(emu, v.predict)
 
 		switch k {
 		case 0, 1, 2, 9:
@@ -315,7 +315,7 @@ func TestPredictionApply(t *testing.T) {
 
 		// mimic user input for prediction engine
 		emu.MoveCursor(v.row, v.col)
-		pe.newUserInput(emu, v.predict)
+		pe.NewUserInput(emu, v.predict)
 		// predictRow := pe.getOrMakeRow(v.row+1, emu.GetWidth())
 		// predict := predictRow.overlayCells[0].replacement
 		// t.Logf("%q overlay at (%d,%d) is %q\n", v.name, v.row+1, 0, predict.GetContents())
@@ -422,7 +422,7 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 		// mimic user input for prediction engine
 		emu.MoveCursor(v.row, v.col)
 		pe.localFrameLateAcked = v.lateAck
-		pe.newUserInput(emu, v.predict)
+		pe.NewUserInput(emu, v.predict)
 		// printPredictionCell(emu, pe, v.row, v.col, v.expect, "Predict")
 
 		// merge the last predict
@@ -524,7 +524,7 @@ func TestPredictionNewlineCarriageReturn(t *testing.T) {
 
 		// mimic user input for prediction engine
 		emu.MoveCursor(v.posY, v.posX)
-		pe.newUserInput(emu, v.predict)
+		pe.NewUserInput(emu, v.predict)
 		pe.cull(emu)
 
 		// validate the cursor position
@@ -567,7 +567,7 @@ func TestPredictionKillEpoch(t *testing.T) {
 	// fill the rows
 	for _, v := range rows {
 		emu.MoveCursor(v.posY, v.posX)
-		pe.newUserInput(emu, v.predict)
+		pe.NewUserInput(emu, v.predict)
 		// printPredictionCell(emu, pe, v.posY, v.posX, v.predict, "INPUT ")
 	}
 	pe.cull(emu)
@@ -640,16 +640,16 @@ func TestPredictionCull(t *testing.T) {
 		switch k {
 		case 5:
 			delay := []int{0, 0, 251, 0, 0, 0, 0, 0, 0}
-			pe.newUserInput(emu, v.predict, delay...)
+			pe.NewUserInput(emu, v.predict, delay...)
 		case 6:
 			delay := []int{0, 0, 5001, 0, 0, 0, 0, 0, 0}
-			pe.newUserInput(emu, v.predict, delay...)
+			pe.NewUserInput(emu, v.predict, delay...)
 		case 7:
 			pe.SetSendInterval(v.sendInterval)
-			pe.newUserInput(emu, v.predict)
+			pe.NewUserInput(emu, v.predict)
 		case 8:
 			pe.SetSendInterval(v.sendInterval)
-			pe.newUserInput(emu, v.predict)
+			pe.NewUserInput(emu, v.predict)
 		case 11:
 			pe.Reset()                             // clear the previous rows
 			pe.getOrMakeRow(v.row, emu.GetWidth()) // add the illegal row
@@ -659,7 +659,7 @@ func TestPredictionCull(t *testing.T) {
 				pe.handleUserGrapheme(emu, now, ch)
 			}
 		default:
-			pe.newUserInput(emu, v.predict)
+			pe.NewUserInput(emu, v.predict)
 		}
 		// fmt.Printf("%q #testing call cull B2. localFrameSend=%d, localFrameLateAcked=%d, predictionEpoch=%d, confirmedEpoch=%d\n",
 		// 	v.name, pe.localFrameSent, pe.localFrameLateAcked, pe.predictionEpoch, pe.confirmedEpoch)
@@ -877,16 +877,16 @@ func TestNotificationEngine_adjustMessage(t *testing.T) {
 		ne.SetNotificationString(v.message, false, false)
 
 		// validate the message string
-		if ne.getNotificationString() != v.message {
-			t.Errorf("%q expect %q, got %q\n", v.name, v.message, ne.getNotificationString())
+		if ne.GetNotificationString() != v.message {
+			t.Errorf("%q expect %q, got %q\n", v.name, v.message, ne.GetNotificationString())
 		}
 
 		ne.messageExpiration = time.Now().UnixMilli() + v.messageExpiration
 		ne.adjustMessage()
 
 		// validate the empty string
-		if ne.getNotificationString() != v.expect {
-			t.Errorf("%q expect %q, got %q\n", v.name, v.expect, ne.getNotificationString())
+		if ne.GetNotificationString() != v.expect {
+			t.Errorf("%q expect %q, got %q\n", v.name, v.expect, ne.GetNotificationString())
 		}
 	}
 
