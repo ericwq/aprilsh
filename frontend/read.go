@@ -50,14 +50,14 @@ func ReadFromFile(timeout int, msgChan chan Message, fd *os.File) {
 }
 
 // read data from udp socket and send the result to socketChan
-func ReadFromSocket[S network.State[S], R network.State[R]](timeout int, socketChan chan Message,
+func ReadFromNetwork[S network.State[S], R network.State[R]](timeout int, msgChan chan Message,
 	network *network.Transport[S, R],
 ) {
 	// set read time out
 	network.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
 	for {
 		select {
-		case m := <-socketChan:
+		case m := <-msgChan:
 			if m.Data == "shutdown" {
 				return
 			}
@@ -69,10 +69,10 @@ func ReadFromSocket[S network.State[S], R network.State[R]](timeout int, socketC
 			if errors.Is(err, os.ErrDeadlineExceeded) {
 				// network read timeout
 			} else {
-				socketChan <- Message{err, ""}
+				msgChan <- Message{err, ""}
 			}
 		} else {
-			socketChan <- Message{nil, ""}
+			msgChan <- Message{nil, ""}
 		}
 	}
 }

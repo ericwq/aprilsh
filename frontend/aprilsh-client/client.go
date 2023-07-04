@@ -632,15 +632,15 @@ func (sc *STMClient) main() error {
 	// 	}
 	// #endif
 
-	var socketChan chan frontend.Message
+	var networkChan chan frontend.Message
 	var fileChan chan frontend.Message
-	socketChan = make(chan frontend.Message, 1)
+	networkChan = make(chan frontend.Message, 1)
 	fileChan = make(chan frontend.Message, 1)
 
 	eg := errgroup.Group{}
-	// read from socket
+	// read from network
 	eg.Go(func() error {
-		frontend.ReadFromSocket(10, socketChan, sc.network)
+		frontend.ReadFromNetwork(10, networkChan, sc.network)
 		return nil
 	})
 	// read from pty master file
@@ -670,7 +670,7 @@ mainLoop:
 		sc.outputNewFrame()
 
 		select {
-		case socketMsg := <-socketChan: // got data from socket
+		case socketMsg := <-networkChan: // got data from socket
 			if socketMsg.Err != nil { // error handling
 				logW.Printf("#readFromSocket receive error:%s\n", socketMsg.Err)
 				continue mainLoop
@@ -694,20 +694,52 @@ mainLoop:
 		default:
 		}
 
-		if gotSignal.Load() == int32(syscall.SIGWINCH) {
+		switch gotSignal.Load() {
+		case int32(syscall.SIGWINCH):
+			gotSignal.Store(0)
+			// resize
 			if !sc.processResize() {
-				gotSignal.Store(0)
 				return nil
+			}
+		case int32(syscall.SIGCONT):
+			gotSignal.Store(0)
+			sc.resume()
+		case int32(syscall.SIGTERM), int32(syscall.SIGINT), int32(syscall.SIGHUP), int32(syscall.SIGPIPE):
+			gotSignal.Store(0)
+			// shutdown signal
+			if !sc.network.HasRemoteAddr() {
+				break
+			} else if !sc.network.ShutdownInProgress() {
+				sc.overlays.GetNotificationEngine().SetNotificationString(
+					"Signal received, shutting down...", true, true)
+				sc.network.StartShutdown()
 			}
 		}
 
-		break
+		// quit if our shutdown has been acknowledged
+		if sc.network.ShutdownInProgress() && sc.network.ShutdownAcknowledged() {
+			sc.cleanShutdown = true
+			break
+		}
+
+		// quit after shutdown acknowledgement timeout
+		if sc.network.ShutdownInProgress() && sc.network.ShutdownAckTimedout() {
+			break
+		}
+
+		// quit if we received and acknowledged a shutdown request
+		if sc.network.CounterpartyShutdownAckSent() {
+			sc.cleanShutdown = true
+			break
+		}
+
+		sc.network.Tick()
 	}
 
 	// shutdown the goroutine
 	shutdownChan <- true
 	fileChan <- frontend.Message{Err: nil, Data: "shutdown"}
-	socketChan <- frontend.Message{Err: nil, Data: "shutdown"}
+	networkChan <- frontend.Message{Err: nil, Data: "shutdown"}
 	eg.Wait()
 
 	return nil
@@ -716,18 +748,24 @@ mainLoop:
 var gotSignal atomic.Int32
 
 func clientSignalHandler(signal os.Signal) {
+	// TODO
+	// We assume writes to these ints are atomic, though we also try to mask out
+	// concurrent signal handlers.
+	// int got_signal[MAX_SIGNAL_NUMBER + 1];
+
 	switch signal {
 	case syscall.SIGWINCH:
-		// fmt.Println("Signal:", signal.String())
 		gotSignal.Store(int32(syscall.SIGWINCH))
-		// anySignal = true
-	case syscall.SIGINT:
-		// fmt.Println("Signal:", signal.String())
-		gotSignal.Store(int32(syscall.SIGINT))
 	case syscall.SIGTERM:
-		// fmt.Println("Signal:", signal.String())
 		gotSignal.Store(int32(syscall.SIGTERM))
+	case syscall.SIGINT:
+		gotSignal.Store(int32(syscall.SIGINT))
+	case syscall.SIGHUP:
+		gotSignal.Store(int32(syscall.SIGHUP))
+	case syscall.SIGPIPE:
+		gotSignal.Store(int32(syscall.SIGPIPE))
+	case syscall.SIGCONT:
+		gotSignal.Store(int32(syscall.SIGCONT))
 	default:
-
 	}
 }
