@@ -36,6 +36,10 @@ const (
 	_PREDICTION_DISPLAY = "APRISH_PREDICTION_DISPLAY"
 )
 
+const (
+	MAX_SIGNAL_NUMBER = 64
+)
+
 var (
 	logW         *log.Logger
 	logI         *log.Logger
@@ -694,25 +698,27 @@ mainLoop:
 		default:
 		}
 
-		switch gotSignal.Load() {
-		case int32(syscall.SIGWINCH):
-			gotSignal.Store(0)
-			// resize
-			if !sc.processResize() {
-				return nil
-			}
-		case int32(syscall.SIGCONT):
-			gotSignal.Store(0)
-			sc.resume()
-		case int32(syscall.SIGTERM), int32(syscall.SIGINT), int32(syscall.SIGHUP), int32(syscall.SIGPIPE):
-			gotSignal.Store(0)
-			// shutdown signal
-			if !sc.network.HasRemoteAddr() {
-				break
-			} else if !sc.network.ShutdownInProgress() {
-				sc.overlays.GetNotificationEngine().SetNotificationString(
-					"Signal received, shutting down...", true, true)
-				sc.network.StartShutdown()
+		for i := range gotSignal {
+			switch gotSignal[i].Load() {
+			case int32(syscall.SIGWINCH):
+				gotSignal[i].Store(0)
+				// resize
+				if !sc.processResize() {
+					return nil
+				}
+			case int32(syscall.SIGCONT):
+				gotSignal[i].Store(0)
+				sc.resume()
+			case int32(syscall.SIGTERM), int32(syscall.SIGINT), int32(syscall.SIGHUP), int32(syscall.SIGPIPE):
+				gotSignal[i].Store(0)
+				// shutdown signal
+				if !sc.network.HasRemoteAddr() {
+					break
+				} else if !sc.network.ShutdownInProgress() {
+					sc.overlays.GetNotificationEngine().SetNotificationString(
+						"Signal received, shutting down...", true, true)
+					sc.network.StartShutdown()
+				}
 			}
 		}
 
@@ -745,27 +751,25 @@ mainLoop:
 	return nil
 }
 
-var gotSignal atomic.Int32
+var gotSignal [MAX_SIGNAL_NUMBER]atomic.Int32
 
 func clientSignalHandler(signal os.Signal) {
-	// TODO
 	// We assume writes to these ints are atomic, though we also try to mask out
 	// concurrent signal handlers.
-	// int got_signal[MAX_SIGNAL_NUMBER + 1];
 
 	switch signal {
 	case syscall.SIGWINCH:
-		gotSignal.Store(int32(syscall.SIGWINCH))
+		gotSignal[syscall.SIGWINCH].Store(int32(syscall.SIGWINCH))
 	case syscall.SIGTERM:
-		gotSignal.Store(int32(syscall.SIGTERM))
+		gotSignal[syscall.SIGTERM].Store(int32(syscall.SIGTERM))
 	case syscall.SIGINT:
-		gotSignal.Store(int32(syscall.SIGINT))
+		gotSignal[syscall.SIGINT].Store(int32(syscall.SIGINT))
 	case syscall.SIGHUP:
-		gotSignal.Store(int32(syscall.SIGHUP))
+		gotSignal[syscall.SIGHUP].Store(int32(syscall.SIGHUP))
 	case syscall.SIGPIPE:
-		gotSignal.Store(int32(syscall.SIGPIPE))
+		gotSignal[syscall.SIGPIPE].Store(int32(syscall.SIGPIPE))
 	case syscall.SIGCONT:
-		gotSignal.Store(int32(syscall.SIGCONT))
+		gotSignal[syscall.SIGCONT].Store(int32(syscall.SIGCONT))
 	default:
 	}
 }
