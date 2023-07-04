@@ -11,7 +11,9 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/ericwq/aprilsh/frontend"
@@ -21,6 +23,7 @@ import (
 	"github.com/ericwq/aprilsh/util"
 	_ "github.com/ericwq/terminfo/base"
 	"github.com/rivo/uniseg"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )
@@ -225,7 +228,7 @@ type STMClient struct {
 	escapeKey        int
 	escapePassKey    int
 	escapePassKey2   int
-	escapeRequiresIf bool
+	escapeRequireslf bool
 	escapeKeyHelp    string
 
 	savedTermios *term.State // store the original termios, used for shutdown.
@@ -240,7 +243,7 @@ type STMClient struct {
 
 	connectingNotification string
 	repaintRequested       bool
-	ifEntered              bool
+	lfEntered              bool
 	quitSequenceStarted    bool
 	cleanShutdown          bool
 	verbose                int
@@ -255,7 +258,7 @@ func newSTMClient(ip string, port int, key string, predictMode string, verbose i
 	sc.escapeKey = 0x1E
 	sc.escapePassKey = '^'
 	sc.escapePassKey2 = '^'
-	sc.escapeRequiresIf = false
+	sc.escapeRequireslf = false
 	sc.escapeKeyHelp = "?"
 	sc.overlays = frontend.NewOverlayManager()
 
@@ -266,7 +269,7 @@ func newSTMClient(ip string, port int, key string, predictMode string, verbose i
 	}
 
 	sc.repaintRequested = false
-	sc.ifEntered = false
+	sc.lfEntered = false
 	sc.quitSequenceStarted = false
 	sc.cleanShutdown = false
 	sc.verbose = verbose
@@ -321,7 +324,7 @@ func (sc *STMClient) mainInit() error {
 }
 
 func (sc *STMClient) processNetworkInput() {
-	sc.network.Recv()
+	// sc.network.Recv()
 
 	//  Now give hints to the overlays
 	rs := sc.network.GetLatestRemoteState()
@@ -334,43 +337,6 @@ func (sc *STMClient) processNetworkInput() {
 	sc.overlays.GetPredictionEngine().SetLocalFrameLateAcked(lateAcked)
 }
 
-type msg struct {
-	err  error
-	data string
-}
-
-func (sc *STMClient) readFrom(timeout int, msgChan chan msg, fd *os.File) {
-	var buf [16384]byte
-
-	// set read time out
-	fd.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
-	for {
-		select {
-		case m := <-msgChan:
-			if m.data == "shutdown" {
-				return
-			}
-		default:
-		}
-		// fill buffer if possible
-		bytesRead, err := fd.Read(buf[:])
-		if err != nil {
-			if errors.Is(err, os.ErrDeadlineExceeded) {
-				// file read timeout
-			} else {
-				msgChan <- msg{err, ""}
-				break
-			}
-		} else if bytesRead == 0 {
-			// EOF.
-			msgChan <- msg{err, ""}
-			break
-		} else {
-			msgChan <- msg{nil, string(buf[:bytesRead])}
-		}
-	}
-}
-
 func (sc *STMClient) processUserInput(buf string) bool {
 	if !sc.network.ShutdownInProgress() {
 		sc.overlays.GetPredictionEngine().SetLocalFrameSent(sc.network.GetSentStateLast())
@@ -379,7 +345,7 @@ func (sc *STMClient) processUserInput(buf string) bool {
 		graphemes := uniseg.NewGraphemes(buf)
 		for graphemes.Next() {
 			input = graphemes.Runes()
-			theByte := input[0]
+			theByte := input[0] // the first byte
 
 			sc.overlays.GetPredictionEngine().NewUserInput(sc.localFramebuffer, string(input))
 
@@ -399,7 +365,7 @@ func (sc *STMClient) processUserInput(buf string) bool {
 
 					term.Restore(int(os.Stdin.Fd()), sc.savedTermios)
 
-					fmt.Printf("\n\033[37;44m[%sis suspended.]\033[m\n", _PACKAGE_STRING)
+					fmt.Printf("\n\033[37;44m[%s is suspended.]\033[m\n", _PACKAGE_STRING)
 
 					// fflush(NULL)
 					//
@@ -426,19 +392,20 @@ func (sc *STMClient) processUserInput(buf string) bool {
 			}
 
 			sc.quitSequenceStarted = sc.escapeKey > 0 && theByte == rune(sc.escapeKey) &&
-				(sc.ifEntered || !sc.escapeRequiresIf)
+				(sc.lfEntered || !sc.escapeRequireslf)
 
 			if sc.quitSequenceStarted {
-				sc.ifEntered = false
+				sc.lfEntered = false
 				sc.overlays.GetNotificationEngine().SetNotificationString(sc.escapeKeyHelp, true, false)
 				continue
 			}
 
-			sc.ifEntered = theByte == 0x0A || theByte == 0x0D // LineFeed, Ctrl-J, '\n' or CarriageReturn, Ctrl-M, '\r'
+			sc.lfEntered = theByte == 0x0A || theByte == 0x0D // LineFeed, Ctrl-J, '\n' or CarriageReturn, Ctrl-M, '\r'
 
 			if theByte == 0x0C { // Ctrl-L
 				sc.repaintRequested = true
 			}
+
 			sc.network.GetCurrentState().PushBack(input)
 		}
 
@@ -604,10 +571,10 @@ func (sc *STMClient) init() error {
 		escapePassName := fmt.Sprintf("\"%c\"", sc.escapePassKey)
 		if sc.escapeKey < 32 {
 			escapeKeyName = fmt.Sprintf("Ctrl-%c", sc.escapePassKey)
-			sc.escapeRequiresIf = false
+			sc.escapeRequireslf = false
 		} else {
 			escapeKeyName = fmt.Sprintf("\"%c\"", sc.escapePassKey)
-			sc.escapeRequiresIf = true
+			sc.escapeRequireslf = true
 		}
 
 		sc.escapeKeyHelp = fmt.Sprintf("Commands: Ctrl-Z suspends, \".\" quits, " + escapePassName +
@@ -652,6 +619,65 @@ func (sc *STMClient) shutdown() error {
 }
 
 func (sc *STMClient) main() error {
-	// TODO wait for implementation
+	// initialize signal handling and structures
+	sc.mainInit()
+
+	// 	/* Drop unnecessary privileges */
+	// #ifdef HAVE_PLEDGE
+	// 	/* OpenBSD pledge() syscall */
+	// 	if (pledge("stdio inet tty", NULL)) {
+	// 		perror("pledge() failed");
+	// 		exit(1);
+	// 	}
+	// #endif
+
+	var socketChan chan frontend.Message
+	var fileChan chan frontend.Message
+	socketChan = make(chan frontend.Message, 1)
+	fileChan = make(chan frontend.Message, 1)
+
+	eg := errgroup.Group{}
+	// read from socket
+	eg.Go(func() error {
+		frontend.ReadFromSocket(10, socketChan, sc.network)
+		return nil
+	})
+	// read from pty master file
+	eg.Go(func() error {
+		frontend.ReadFromFile(10, fileChan, os.Stdin)
+		return nil
+	})
+
+	// intercept signal
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGUSR1, syscall.SIGINT, syscall.SIGTERM)
+	shutdownChan := make(chan bool)
+	eg.Go(func() error {
+		for {
+			select {
+			case s := <-sigChan:
+				frontend.MultiSignalHandler(s)
+			case <-shutdownChan:
+				return nil
+			}
+		}
+	})
+
+mainLoop:
+	for {
+		select {
+		case socketMsg := <-socketChan: // got data from socket
+			if socketMsg.Err != nil { // error handling
+				logW.Printf("#readFromSocket receive error:%s\n", socketMsg.Err)
+				continue mainLoop
+			}
+		case masterMsg := <-fileChan:
+			if masterMsg.Err != nil {
+				logW.Println("#readFromMaster read error: ", masterMsg.Err)
+				sc.network.StartShutdown()
+			}
+		default:
+		}
+	}
 	return nil
 }
