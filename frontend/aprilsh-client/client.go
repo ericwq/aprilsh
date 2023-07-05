@@ -338,7 +338,8 @@ func (sc *STMClient) processNetworkInput() {
 
 	sc.overlays.GetPredictionEngine().SetLocalFrameAcked(sc.network.GetSentStateAcked())
 	sc.overlays.GetPredictionEngine().SetSendInterval(sc.network.SentInterval())
-	lateAcked := sc.network.GetLatestRemoteState().GetState().GetEchoAck()
+	state := sc.network.GetLatestRemoteState()
+	lateAcked := state.GetState().GetEchoAck()
 	sc.overlays.GetPredictionEngine().SetLocalFrameLateAcked(lateAcked)
 }
 
@@ -444,7 +445,8 @@ func (sc *STMClient) outputNewFrame() {
 	}
 
 	// fetch target state
-	sc.newState = sc.network.GetLatestRemoteState().GetState().GetEmulator()
+	state := sc.network.GetLatestRemoteState()
+	sc.newState = state.GetState().GetEmulator()
 
 	// apply local overlays
 	sc.overlays.Apply(sc.newState)
@@ -644,7 +646,8 @@ func (sc *STMClient) main() error {
 	eg := errgroup.Group{}
 	// read from network
 	eg.Go(func() error {
-		frontend.ReadFromNetwork(10, networkChan, sc.network)
+		// if we have 2 client ip, 5 ms for each client
+		frontend.ReadFromNetwork(5, networkChan, sc.network)
 		return nil
 	})
 	// read from pty master file
@@ -674,20 +677,20 @@ mainLoop:
 		sc.outputNewFrame()
 
 		select {
-		case socketMsg := <-networkChan: // got data from socket
-			if socketMsg.Err != nil { // error handling
-				logW.Printf("#readFromSocket receive error:%s\n", socketMsg.Err)
+		case networkMsg := <-networkChan: // got data from socket
+			if networkMsg.Err != nil { // error handling
+				logW.Printf("#readFromSocket receive error:%s\n", networkMsg.Err)
 				continue mainLoop
 			}
 			sc.processNetworkInput()
-		case masterMsg := <-fileChan: // got data from file
-			if masterMsg.Err != nil {
-				logW.Println("#readFromMaster read error: ", masterMsg.Err)
+		case fileMsg := <-fileChan: // got data from file
+			if fileMsg.Err != nil {
+				logW.Println("#readFromMaster read error: ", fileMsg.Err)
 				sc.network.StartShutdown()
 			}
 
 			// input from the user needs to be fed to the network
-			if !sc.processUserInput(masterMsg.Data) {
+			if !sc.processUserInput(fileMsg.Data) {
 				if !sc.network.HasRemoteAddr() {
 					break
 				} else if !sc.network.ShutdownInProgress() {
@@ -737,6 +740,25 @@ mainLoop:
 		if sc.network.CounterpartyShutdownAckSent() {
 			sc.cleanShutdown = true
 			break
+		}
+
+		// write diagnostic message if can't reach server
+		now := time.Now().UnixMilli()
+		remoteState := sc.network.GetLatestRemoteState()
+		if sc.stillConnecting() && !sc.network.ShutdownInProgress() && now-remoteState.GetTimestamp() > 250 {
+			if now-remoteState.GetTimestamp() > 15000 {
+				if !sc.network.ShutdownInProgress() {
+					sc.overlays.GetNotificationEngine().SetNotificationString(
+						"Timed out waiting for server...", true, true)
+					sc.network.StartShutdown()
+				}
+			} else {
+				sc.overlays.GetNotificationEngine().SetNotificationString(
+					sc.connectingNotification, false, true)
+			}
+		} else if sc.network.GetRemoteStateNum() != 0 &&
+			sc.overlays.GetNotificationEngine().GetNotificationString() == sc.connectingNotification {
+			sc.overlays.GetNotificationEngine().SetNotificationString("", false, true)
 		}
 
 		sc.network.Tick()
