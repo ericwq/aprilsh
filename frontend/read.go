@@ -6,6 +6,7 @@ package frontend
 
 import (
 	"errors"
+	"io"
 	"os"
 	"time"
 
@@ -15,6 +16,18 @@ import (
 type Message struct {
 	Err  error
 	Data string
+}
+
+// for easy test
+type DeadLineReader interface {
+	io.Reader
+	SetReadDeadline(t time.Time) error
+}
+
+// for easy test
+type DeadLineReceiver interface {
+	Recv() error
+	SetReadDeadline(t time.Time) error
 }
 
 func ReadFromFile(timeout int, msgChan chan Message, fd *os.File) {
