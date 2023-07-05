@@ -12,7 +12,6 @@ import (
 	"github.com/ericwq/aprilsh/network"
 )
 
-
 type Message struct {
 	Err  error
 	Data string
@@ -21,8 +20,6 @@ type Message struct {
 func ReadFromFile(timeout int, msgChan chan Message, fd *os.File) {
 	var buf [16384]byte
 
-	// set read time out
-	fd.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
 	for {
 		select {
 		case m := <-msgChan:
@@ -31,6 +28,8 @@ func ReadFromFile(timeout int, msgChan chan Message, fd *os.File) {
 			}
 		default:
 		}
+		// set read time out
+		fd.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
 		// fill buffer if possible
 		bytesRead, err := fd.Read(buf[:])
 		if err != nil {
@@ -54,8 +53,6 @@ func ReadFromFile(timeout int, msgChan chan Message, fd *os.File) {
 func ReadFromNetwork[S network.State[S], R network.State[R]](timeout int, msgChan chan Message,
 	network *network.Transport[S, R],
 ) {
-	// set read time out
-	network.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
 	for {
 		select {
 		case m := <-msgChan:
@@ -64,6 +61,8 @@ func ReadFromNetwork[S network.State[S], R network.State[R]](timeout int, msgCha
 			}
 		default:
 		}
+		// set read time out
+		network.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
 		// packet received from the network
 		err := network.Recv()
 		if err != nil {
@@ -73,7 +72,7 @@ func ReadFromNetwork[S network.State[S], R network.State[R]](timeout int, msgCha
 				msgChan <- Message{err, ""}
 			}
 		} else {
-			msgChan <- Message{nil, ""}
+			msgChan <- Message{nil, ""} // network.Recv() doesn't return the data
 		}
 	}
 }
