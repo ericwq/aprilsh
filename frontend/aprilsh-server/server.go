@@ -27,6 +27,7 @@ import (
 
 	"github.com/creack/pty"
 	"github.com/ericwq/aprilsh/encrypt"
+	"github.com/ericwq/aprilsh/frontend"
 	"github.com/ericwq/aprilsh/network"
 	"github.com/ericwq/aprilsh/statesync"
 	"github.com/ericwq/aprilsh/terminal"
@@ -565,88 +566,16 @@ func getCurrentUser() string {
 	return user.Username
 }
 
-// read data from udp socket and send the result to socketChan
-func readFromSocket(timeout int, socketChan chan msg,
-	network *network.Transport[*statesync.Complete, *statesync.UserStream],
-) {
-	// set read time out
-	network.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
-	for {
-		select {
-		case m := <-socketChan:
-			if m.data == "shutdown" {
-				return
-			}
-		default:
-		}
-		// packet received from the network
-		err := network.Recv()
-		if err != nil {
-			if errors.Is(err, os.ErrDeadlineExceeded) {
-				// network read timeout
-			} else {
-				socketChan <- msg{err, ""}
-			}
-		} else {
-			socketChan <- msg{nil, ""}
-		}
-	}
-}
-
-// read data from pts master and send the result to masterChan
-func readFromMaster(timeout int, masterChan chan msg, ptmx *os.File) {
-	var buf [16384]byte
-
-	// set read time out
-	ptmx.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
-
-	for {
-		// fill buffer if possible
-		select {
-		case m := <-masterChan:
-			if m.data == "shutdown" {
-				return
-			}
-		default:
-		}
-		bytesRead, err := ptmx.Read(buf[:])
-		if err != nil {
-			if errors.Is(err, os.ErrDeadlineExceeded) {
-				// file read timeout
-			} else {
-				masterChan <- msg{err, ""}
-				break
-			}
-		} else if bytesRead == 0 {
-			// If the pty slave is closed, reading from the master can fail with
-			// EIO (see #264).  So we treat errors on read() like EOF.
-			masterChan <- msg{err, ""}
-			break
-		} else {
-			masterChan <- msg{nil, string(buf[:bytesRead])}
-		}
-	}
-}
-
-type msg struct {
-	err  error
-	data string
-}
-
-var gotSignal atomic.Int32
+var gotSignal [frontend.MAX_SIGNAL_NUMBER]atomic.Int32
 
 func multiSignalHandler(signal os.Signal) {
 	switch signal {
 	case syscall.SIGUSR1:
-		// fmt.Println("Signal:", signal.String())
-		gotSignal.Store(int32(syscall.SIGUSR1))
-		// anySignal = true
+		gotSignal[syscall.SIGUSR1].Store(int32(syscall.SIGUSR1))
 	case syscall.SIGINT:
-		// fmt.Println("Signal:", signal.String())
-		gotSignal.Store(int32(syscall.SIGINT))
+		gotSignal[syscall.SIGINT].Store(int32(syscall.SIGINT))
 	case syscall.SIGTERM:
-		// fmt.Println("Signal:", signal.String())
-		gotSignal.Store(int32(syscall.SIGTERM))
+		gotSignal[syscall.SIGTERM].Store(int32(syscall.SIGTERM))
 	default:
 	}
 }
@@ -665,20 +594,22 @@ func serve(ptmx *os.File, pts *os.File, complete *statesync.Complete,
 	var terminalToHost strings.Builder
 	var timeSinceRemoteState int64
 
-	var socketChan chan msg
-	var masterChan chan msg
-	socketChan = make(chan msg, 1)
-	masterChan = make(chan msg, 1)
+	var networkChan chan frontend.Message
+	var fileChan chan frontend.Message
+	networkChan = make(chan frontend.Message, 1)
+	fileChan = make(chan frontend.Message, 1)
 
 	eg := errgroup.Group{}
 	// read from socket
 	eg.Go(func() error {
-		readFromSocket(10, socketChan, network)
+		frontend.ReadFromNetwork(5, networkChan, network)
+		// readFromSocket(10, networkChan, network)
 		return nil
 	})
 	// read from pty master file
 	eg.Go(func() error {
-		readFromMaster(10, masterChan, ptmx)
+		frontend.ReadFromFile(10, fileChan, ptmx)
+		// readFromMaster(10, fileChan, ptmx)
 		return nil
 	})
 
@@ -707,9 +638,9 @@ mainLoop:
 		terminalToHost.Reset()
 
 		select {
-		case socketMsg := <-socketChan: // got data from socket
-			if socketMsg.err != nil { // error handling
-				logW.Printf("#readFromSocket receive error:%s\n", socketMsg.err)
+		case socketMsg := <-networkChan: // got data from socket
+			if socketMsg.Err != nil { // error handling
+				logW.Printf("#readFromSocket receive error:%s\n", socketMsg.Err)
 				continue mainLoop
 			}
 
@@ -775,14 +706,14 @@ mainLoop:
 
 				// TODO child release?
 			}
-		case masterMsg := <-masterChan:
+		case masterMsg := <-fileChan:
 			// input from the host needs to be fed to the terminal
 			if !network.ShutdownInProgress() {
-				if masterMsg.err != nil {
-					logW.Println("#readFromMaster read error: ", masterMsg.err)
+				if masterMsg.Err != nil {
+					logW.Println("#readFromMaster read error: ", masterMsg.Err)
 					network.StartShutdown()
 				} else {
-					r := complete.Act(masterMsg.data)
+					r := complete.Act(masterMsg.Data)
 					terminalToHost.WriteString(r)
 
 					// update client with new state of terminal
@@ -807,15 +738,24 @@ mainLoop:
 			logW.Printf("Network idle for %d seconds.\n", timeSinceRemoteState/1000)
 		}
 
-		if gotSignal.Load() == int32(syscall.SIGUSR1) {
-			if networkSignaledTimeoutMs == 0 || networkSignaledTimeoutMs <= timeSinceRemoteState {
-				idleShutdown = true
-				logW.Printf("Network idle for %d seconds when SIGUSR1 received.\n", timeSinceRemoteState/1000)
+		anySignal := false
+		for i := range gotSignal {
+			switch gotSignal[i].Load() {
+			case int32(syscall.SIGUSR1):
+
+				gotSignal[i].Store(0)
+				if networkSignaledTimeoutMs == 0 || networkSignaledTimeoutMs <= timeSinceRemoteState {
+					idleShutdown = true
+					logW.Printf("Network idle for %d seconds when SIGUSR1 received.\n", timeSinceRemoteState/1000)
+				}
+			case int32(syscall.SIGTERM), int32(syscall.SIGINT):
+
+				gotSignal[i].Store(0)
+				anySignal = true
 			}
 		}
 
-		// one of SIGTERM, SIGINT will be true
-		if (gotSignal.Load() != 0 && gotSignal.Load() != int32(syscall.SIGUSR1)) || idleShutdown {
+		if anySignal || idleShutdown {
 			// shutdown signal
 			if network.HasRemoteAddr() && !network.ShutdownInProgress() {
 				network.StartShutdown()
@@ -869,8 +809,8 @@ mainLoop:
 
 	// shutdown the goroutine
 	shutdownChan <- true
-	masterChan <- msg{nil, "shutdown"}
-	socketChan <- msg{nil, "shutdown"}
+	fileChan <- frontend.Message{Err: nil, Data: "shutdown"}
+	networkChan <- frontend.Message{Err: nil, Data: "shutdown"}
 	eg.Wait()
 
 	return nil

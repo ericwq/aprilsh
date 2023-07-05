@@ -36,10 +36,6 @@ const (
 	_PREDICTION_DISPLAY = "APRISH_PREDICTION_DISPLAY"
 )
 
-const (
-	MAX_SIGNAL_NUMBER = 64
-)
-
 var (
 	logW         *log.Logger
 	logI         *log.Logger
@@ -773,7 +769,7 @@ mainLoop:
 	return nil
 }
 
-var gotSignal [MAX_SIGNAL_NUMBER]atomic.Int32
+var gotSignal [frontend.MAX_SIGNAL_NUMBER]atomic.Int32
 
 func clientSignalHandler(signal os.Signal) {
 	// We assume writes to these ints are atomic, though we also try to mask out
