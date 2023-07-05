@@ -13,7 +13,6 @@ import (
 	"os"
 	"os/signal"
 	"strings"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -52,6 +51,8 @@ Options:
       --verbose  verbose output mode
 `
 	predictionValues = []string{"always", "never", "adaptive", "experimental"}
+
+	signals frontend.Signals
 )
 
 func init() {
@@ -661,7 +662,7 @@ func (sc *STMClient) main() error {
 		for {
 			select {
 			case s := <-sigChan:
-				clientSignalHandler(s)
+				signals.Handler(s)
 			case <-shutdownChan:
 				return nil
 			}
@@ -697,27 +698,26 @@ mainLoop:
 		default:
 		}
 
-		for i := range gotSignal {
-			switch gotSignal[i].Load() {
-			case int32(syscall.SIGWINCH):
-				gotSignal[i].Store(0)
-				// resize
-				if !sc.processResize() {
-					return nil
-				}
-			case int32(syscall.SIGCONT):
-				gotSignal[i].Store(0)
-				sc.resume()
-			case int32(syscall.SIGTERM), int32(syscall.SIGINT), int32(syscall.SIGHUP), int32(syscall.SIGPIPE):
-				gotSignal[i].Store(0)
-				// shutdown signal
-				if !sc.network.HasRemoteAddr() {
-					break
-				} else if !sc.network.ShutdownInProgress() {
-					sc.overlays.GetNotificationEngine().SetNotificationString(
-						"Signal received, shutting down...", true, true)
-					sc.network.StartShutdown()
-				}
+		if signals.GotSignal(syscall.SIGWINCH) {
+			// resize
+			if !sc.processResize() {
+				return nil
+			}
+		}
+
+		if signals.GotSignal(syscall.SIGCONT) {
+			sc.resume()
+		}
+
+		if signals.GotSignal(syscall.SIGTERM) || signals.GotSignal(syscall.SIGINT) ||
+			signals.GotSignal(syscall.SIGHUP) || signals.GotSignal(syscall.SIGPIPE) {
+			// shutdown signal
+			if !sc.network.HasRemoteAddr() {
+				break
+			} else if !sc.network.ShutdownInProgress() {
+				sc.overlays.GetNotificationEngine().SetNotificationString(
+					"Signal received, shutting down...", true, true)
+				sc.network.StartShutdown()
 			}
 		}
 
@@ -767,27 +767,4 @@ mainLoop:
 	eg.Wait()
 
 	return nil
-}
-
-var gotSignal [frontend.MAX_SIGNAL_NUMBER]atomic.Int32
-
-func clientSignalHandler(signal os.Signal) {
-	// We assume writes to these ints are atomic, though we also try to mask out
-	// concurrent signal handlers.
-
-	switch signal {
-	case syscall.SIGWINCH:
-		gotSignal[syscall.SIGWINCH].Store(int32(syscall.SIGWINCH))
-	case syscall.SIGTERM:
-		gotSignal[syscall.SIGTERM].Store(int32(syscall.SIGTERM))
-	case syscall.SIGINT:
-		gotSignal[syscall.SIGINT].Store(int32(syscall.SIGINT))
-	case syscall.SIGHUP:
-		gotSignal[syscall.SIGHUP].Store(int32(syscall.SIGHUP))
-	case syscall.SIGPIPE:
-		gotSignal[syscall.SIGPIPE].Store(int32(syscall.SIGPIPE))
-	case syscall.SIGCONT:
-		gotSignal[syscall.SIGCONT].Store(int32(syscall.SIGCONT))
-	default:
-	}
 }

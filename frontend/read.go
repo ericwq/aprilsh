@@ -12,9 +12,6 @@ import (
 	"github.com/ericwq/aprilsh/network"
 )
 
-const (
-	MAX_SIGNAL_NUMBER = 64
-)
 
 type Message struct {
 	Err  error

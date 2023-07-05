@@ -21,7 +21,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -44,11 +43,11 @@ var (
 	buildConfigTest = false
 )
 
-var utmpSupport bool
-
 var (
-	logW *log.Logger
-	logI *log.Logger
+	utmpSupport bool
+	signals     frontend.Signals
+	logW        *log.Logger
+	logI        *log.Logger
 )
 
 const (
@@ -566,19 +565,19 @@ func getCurrentUser() string {
 	return user.Username
 }
 
-var gotSignal [frontend.MAX_SIGNAL_NUMBER]atomic.Int32
+// var gotSignal [frontend.MAX_SIGNAL_NUMBER]atomic.Int32
 
-func multiSignalHandler(signal os.Signal) {
-	switch signal {
-	case syscall.SIGUSR1:
-		gotSignal[syscall.SIGUSR1].Store(int32(syscall.SIGUSR1))
-	case syscall.SIGINT:
-		gotSignal[syscall.SIGINT].Store(int32(syscall.SIGINT))
-	case syscall.SIGTERM:
-		gotSignal[syscall.SIGTERM].Store(int32(syscall.SIGTERM))
-	default:
-	}
-}
+// func multiSignalHandler(signal os.Signal) {
+// 	switch signal {
+// 	case syscall.SIGUSR1:
+// 		gotSignal[syscall.SIGUSR1].Store(int32(syscall.SIGUSR1))
+// 	case syscall.SIGINT:
+// 		gotSignal[syscall.SIGINT].Store(int32(syscall.SIGINT))
+// 	case syscall.SIGTERM:
+// 		gotSignal[syscall.SIGTERM].Store(int32(syscall.SIGTERM))
+// 	default:
+// 	}
+// }
 
 func serve(ptmx *os.File, pts *os.File, complete *statesync.Complete,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
@@ -621,7 +620,7 @@ func serve(ptmx *os.File, pts *os.File, complete *statesync.Complete,
 		for {
 			select {
 			case s := <-sigChan:
-				multiSignalHandler(s)
+				signals.Handler(s)
 			case <-shutdownChan:
 				return nil
 			}
@@ -738,24 +737,14 @@ mainLoop:
 			logW.Printf("Network idle for %d seconds.\n", timeSinceRemoteState/1000)
 		}
 
-		anySignal := false
-		for i := range gotSignal {
-			switch gotSignal[i].Load() {
-			case int32(syscall.SIGUSR1):
-
-				gotSignal[i].Store(0)
-				if networkSignaledTimeoutMs == 0 || networkSignaledTimeoutMs <= timeSinceRemoteState {
-					idleShutdown = true
-					logW.Printf("Network idle for %d seconds when SIGUSR1 received.\n", timeSinceRemoteState/1000)
-				}
-			case int32(syscall.SIGTERM), int32(syscall.SIGINT):
-
-				gotSignal[i].Store(0)
-				anySignal = true
+		if signals.GotSignal(syscall.SIGUSR1) {
+			if networkSignaledTimeoutMs == 0 || networkSignaledTimeoutMs <= timeSinceRemoteState {
+				idleShutdown = true
+				logW.Printf("Network idle for %d seconds when SIGUSR1 received.\n", timeSinceRemoteState/1000)
 			}
 		}
 
-		if anySignal || idleShutdown {
+		if signals.AnySignal() || idleShutdown {
 			// shutdown signal
 			if network.HasRemoteAddr() && !network.ShutdownInProgress() {
 				network.StartShutdown()
