@@ -5,7 +5,6 @@
 package frontend
 
 import (
-	"fmt"
 	"os"
 	"sync/atomic"
 	"syscall"
@@ -22,8 +21,10 @@ func (s *Signals) GotSignal(x syscall.Signal) (ret bool) {
 	if x >= 0 && x < MAX_SIGNAL_NUMBER {
 		if s[x].Load() > 0 {
 			ret = true
+		} else {
+			// fmt.Printf("#GotSignal not found %d,%d\n", x, s[x].Load())
+			ret = false
 		}
-		ret = false
 		s[x].Store(0) // clear the signal
 	}
 	return
@@ -31,14 +32,9 @@ func (s *Signals) GotSignal(x syscall.Signal) (ret bool) {
 
 // TODO do we need to return error ?
 func (s *Signals) Handler(signal os.Signal) {
-	if sig, ok := signal.(syscall.Signal); ok {
-		if sig >= 0 && sig < MAX_SIGNAL_NUMBER { // TODO do we need this protection?
-			s[sig].Store(int32(sig))
-		} else {
-			fmt.Printf("signal out of range: %s\n", sig)
-		}
-	} else {
-		fmt.Printf("signal malform: %v\n", signal)
+	sig, ok := signal.(syscall.Signal)
+	if ok && sig >= 0 && sig < MAX_SIGNAL_NUMBER {
+		s[sig].Store(int32(sig))
 	}
 }
 
