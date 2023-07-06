@@ -6,7 +6,6 @@ package frontend
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"time"
@@ -35,27 +34,30 @@ type DeadLineReceiver interface {
 	DeadLiner
 }
 
-func ReadFromFile(timeout int, msgChan chan Message, fReader DeadLineReader) {
+func ReadFromFile(timeout int, msgChan chan Message, doneChan chan any, fReader DeadLineReader) {
 	var buf [16384]byte
+	var err error
+	var bytesRead int
 
 	for {
-		fmt.Println("#ReadFromFile wait for shutdown message.")
+		// fmt.Println("#ReadFromFile wait for shutdown message.")
 		select {
-		case m := <-msgChan:
-			if m.Data == "shutdown" {
-				fmt.Println("#ReadFromFile got shutdown message.")
-				return
-			}
+		case <-doneChan:
+			// fmt.Println("#ReadFromFile got shutdown message.")
+			return
 		default:
 		}
 		// set read time out
 		fReader.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
+
 		// fill buffer if possible
-		bytesRead, err := fReader.Read(buf[:])
+		bytesRead, err = fReader.Read(buf[:])
+
 		if bytesRead > 0 {
 			msgChan <- Message{nil, string(buf[:bytesRead])}
 		} else if errors.Is(err, os.ErrDeadlineExceeded) {
 			// timeout
+			msgChan <- Message{err, ""}
 			continue
 		} else {
 			// EOF goes here
@@ -63,7 +65,7 @@ func ReadFromFile(timeout int, msgChan chan Message, fReader DeadLineReader) {
 			break
 		}
 	}
-	fmt.Println("#ReadFromFile exit.")
+	// fmt.Println("#ReadFromFile exit.")
 }
 
 // read data from udp socket and send the result to socketChan

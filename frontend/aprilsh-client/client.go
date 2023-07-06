@@ -639,6 +639,7 @@ func (sc *STMClient) main() error {
 	var fileChan chan frontend.Message
 	networkChan = make(chan frontend.Message, 1)
 	fileChan = make(chan frontend.Message, 1)
+	fileDownChan := make(chan any, 1)
 
 	eg := errgroup.Group{}
 	// read from network
@@ -649,7 +650,7 @@ func (sc *STMClient) main() error {
 	})
 	// read from pty master file
 	eg.Go(func() error {
-		frontend.ReadFromFile(10, fileChan, os.Stdin)
+		frontend.ReadFromFile(10, fileChan, fileDownChan, os.Stdin)
 		return nil
 	})
 
@@ -759,6 +760,7 @@ mainLoop:
 
 		sc.network.Tick()
 	}
+	// TODO shudown message to fileDownChan
 
 	// shutdown the goroutine
 	shutdownChan <- true
