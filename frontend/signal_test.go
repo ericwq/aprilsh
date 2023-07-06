@@ -10,6 +10,14 @@ import (
 	"testing"
 )
 
+/*
+./signal_test.go:15:78: undefined: syscall.SIGCLD
+./signal_test.go:17:76: undefined: syscall.SIGPOLL
+./signal_test.go:18:28: undefined: syscall.SIGPWR
+./signal_test.go:18:78: undefined: syscall.SIGSTKFLT
+./signal_test.go:20:45: undefined: syscall.SIGUNUSED
+
+*/
 func TestGotSignal(t *testing.T) {
 	tc := []os.Signal{
 		syscall.SIGABRT, syscall.SIGALRM, syscall.SIGBUS, syscall.SIGCHLD, syscall.SIGCLD,

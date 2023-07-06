@@ -6,6 +6,7 @@ package frontend
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"time"
@@ -38,9 +39,11 @@ func ReadFromFile(timeout int, msgChan chan Message, fReader DeadLineReader) {
 	var buf [16384]byte
 
 	for {
+		fmt.Println("#ReadFromFile wait for shutdown message.")
 		select {
 		case m := <-msgChan:
 			if m.Data == "shutdown" {
+				fmt.Println("#ReadFromFile got shutdown message.")
 				return
 			}
 		default:
@@ -49,21 +52,18 @@ func ReadFromFile(timeout int, msgChan chan Message, fReader DeadLineReader) {
 		fReader.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
 		// fill buffer if possible
 		bytesRead, err := fReader.Read(buf[:])
-		if err != nil {
-			if errors.Is(err, os.ErrDeadlineExceeded) {
-				// file read timeout
-			} else {
-				msgChan <- Message{err, ""}
-				break
-			}
-		} else if bytesRead == 0 {
-			// EOF.
+		if bytesRead > 0 {
+			msgChan <- Message{nil, string(buf[:bytesRead])}
+		} else if errors.Is(err, os.ErrDeadlineExceeded) {
+			// timeout
+			continue
+		} else {
+			// EOF goes here
 			msgChan <- Message{err, ""}
 			break
-		} else {
-			msgChan <- Message{nil, string(buf[:bytesRead])}
 		}
 	}
+	fmt.Println("#ReadFromFile exit.")
 }
 
 // read data from udp socket and send the result to socketChan
