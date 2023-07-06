@@ -9,28 +9,32 @@ import (
 	"io"
 	"os"
 	"time"
-
-	"github.com/ericwq/aprilsh/network"
 )
 
+// communication the read result with the others
 type Message struct {
 	Err  error
 	Data string
 }
 
-// for easy test
+// for easy mock
+type DeadLiner interface {
+	SetReadDeadline(t time.Time) error
+}
+
+// for easy mock
 type DeadLineReader interface {
 	io.Reader
-	SetReadDeadline(t time.Time) error
+	DeadLiner
 }
 
-// for easy test
+// for easy mock
 type DeadLineReceiver interface {
 	Recv() error
-	SetReadDeadline(t time.Time) error
+	DeadLiner
 }
 
-func ReadFromFile(timeout int, msgChan chan Message, fd *os.File) {
+func ReadFromFile(timeout int, msgChan chan Message, fReader DeadLineReader) {
 	var buf [16384]byte
 
 	for {
@@ -42,9 +46,9 @@ func ReadFromFile(timeout int, msgChan chan Message, fd *os.File) {
 		default:
 		}
 		// set read time out
-		fd.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
+		fReader.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
 		// fill buffer if possible
-		bytesRead, err := fd.Read(buf[:])
+		bytesRead, err := fReader.Read(buf[:])
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
 				// file read timeout
@@ -63,8 +67,7 @@ func ReadFromFile(timeout int, msgChan chan Message, fd *os.File) {
 }
 
 // read data from udp socket and send the result to socketChan
-func ReadFromNetwork[S network.State[S], R network.State[R]](timeout int, msgChan chan Message,
-	network *network.Transport[S, R],
+func ReadFromNetwork(timeout int, msgChan chan Message, network DeadLineReceiver,
 ) {
 	for {
 		select {
@@ -75,7 +78,7 @@ func ReadFromNetwork[S network.State[S], R network.State[R]](timeout int, msgCha
 		default:
 		}
 		// set read time out
-		network.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
+		network.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
 		// packet received from the network
 		err := network.Recv()
 		if err != nil {

@@ -199,7 +199,7 @@ type udpConn interface {
 	Write(b []byte) (int, error)
 	WriteTo(b []byte, addr net.Addr) (int, error)
 	ReadMsgUDP(b, oob []byte) (n, oobn, flags int, addr *net.UDPAddr, err error)
-	SetDeadline(t time.Time) error
+	SetReadDeadline(t time.Time) error
 	Close() error
 }
 
@@ -783,9 +783,9 @@ func (c *Connection) setLastRoundtripSuccess(success int64) {
 	c.lastRoundtripSuccess = success
 }
 
-func (c *Connection) SetDeadline(t time.Time) (err error) {
+func (c *Connection) setReadDeadline(t time.Time) (err error) {
 	for i := range c.socks {
-		err = c.socks[i].SetDeadline(t)
+		err = c.socks[i].SetReadDeadline(t)
 		if err != nil {
 			return err
 		}

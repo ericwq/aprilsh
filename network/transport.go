@@ -204,8 +204,8 @@ func (t *Transport[S, R]) GetRemoteDiff() string {
 	return ret
 }
 
-func (t *Transport[S, R]) SetDeadline(ti time.Time) error {
-	return t.connection.SetDeadline(ti)
+func (t *Transport[S, R]) SetReadDeadline(ti time.Time) error {
+	return t.connection.setReadDeadline(ti)
 }
 
 // Other side has requested shutdown and we have sent one ACK

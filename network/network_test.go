@@ -683,7 +683,7 @@ func (mc *mockUdpConn) WriteTo(b []byte, addr net.Addr) (len int, err error) {
 	return
 }
 
-func (mc *mockUdpConn) SetDeadline(t time.Time) error {
+func (mc *mockUdpConn) SetReadDeadline(t time.Time) error {
 	return nil
 }
 
