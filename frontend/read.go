@@ -34,6 +34,12 @@ type DeadLineReceiver interface {
 	DeadLiner
 }
 
+// Read from the file reader, set read time out before every read. The read result will be sent
+// to caller via msgChan, including error info if available. doneChan channel is used to stop
+// the file reader.
+//
+// Note the caller must consume the last read message after it send the shutdown message. EOF
+// can also stop the file reader.
 func ReadFromFile(timeout int, msgChan chan Message, doneChan chan any, fReader DeadLineReader) {
 	var buf [16384]byte
 	var err error
@@ -68,7 +74,12 @@ func ReadFromFile(timeout int, msgChan chan Message, doneChan chan any, fReader 
 	// fmt.Println("#ReadFromFile exit.")
 }
 
-// read data from udp socket and send the result to socketChan
+// Read from the network, set read time out before every read. The read result will be sent
+// to caller via msgChan, including error info if available. doneChan channel is used to stop
+// the network receiver.
+//
+// Note the caller must consume the last read message after it send the shutdown message. 
+// network read error can also stop the receiver.
 func ReadFromNetwork(timeout int, msgChan chan Message, doneChan chan any, network DeadLineReceiver) {
 	var err error
 

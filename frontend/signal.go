@@ -16,6 +16,7 @@ const (
 
 type Signals [MAX_SIGNAL_NUMBER]atomic.Int32
 
+// Check whether we got the spcified signal. If so return true, otherwise false.
 // This method consumes a signal notification.
 func (s *Signals) GotSignal(x syscall.Signal) (ret bool) {
 	if x >= 0 && x < MAX_SIGNAL_NUMBER {
@@ -30,7 +31,7 @@ func (s *Signals) GotSignal(x syscall.Signal) (ret bool) {
 	return
 }
 
-// TODO do we need to return error ?
+// handle the signal by store it in Signals array.
 func (s *Signals) Handler(signal os.Signal) {
 	sig, ok := signal.(syscall.Signal)
 	if ok && sig >= 0 && sig < MAX_SIGNAL_NUMBER {
@@ -38,6 +39,7 @@ func (s *Signals) Handler(signal os.Signal) {
 	}
 }
 
+// Check whether we got any signal.
 // This method does not consume signal notifications.
 func (s *Signals) AnySignal() (rv bool) {
 	for i := range s {

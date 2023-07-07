@@ -167,7 +167,7 @@ func TestCellGetValidity(t *testing.T) {
 	}
 
 	emu := terminal.NewEmulator3(80, 40, 40)
-	pe := NewPredictionEngine()
+	pe := newPredictionEngine()
 
 	for _, v := range tc {
 		pe.Reset()
@@ -226,7 +226,7 @@ func TestPredictionNewUserInput(t *testing.T) {
 		{"insert graphemes <0x20", 9, 0, "", "\x11", "", Adaptive, 0, 0},
 	}
 
-	pe := NewPredictionEngine()
+	pe := newPredictionEngine()
 	emu := terminal.NewEmulator3(80, 40, 40)
 
 	for k, v := range tc {
@@ -303,7 +303,7 @@ func TestPredictionApply(t *testing.T) {
 		{"apply wrapped chinese input", 10, 75, "", "柠檬水", "柠檬水"},
 	}
 
-	pe := NewPredictionEngine()
+	pe := newPredictionEngine()
 	emu := terminal.NewEmulator3(80, 40, 40)
 
 	for k, v := range tc {
@@ -406,7 +406,7 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 		{"backspace, predict unknown case", 7, 60, "", "捉鹰打goto\x7f\x7f\x7f\x7f鸟", 0, 4, "捉鹰打鸟"},
 	}
 
-	pe := NewPredictionEngine()
+	pe := newPredictionEngine()
 	emu := terminal.NewEmulator3(80, 40, 40)
 
 	for _, v := range tc {
@@ -463,7 +463,7 @@ func TestPredictionActive(t *testing.T) {
 		{"no cursor, has cell", 2, 0, 'n', true},               // test cursor()
 	}
 
-	pe := NewPredictionEngine()
+	pe := newPredictionEngine()
 	emu := terminal.NewEmulator3(80, 40, 40)
 
 	for k, v := range tc {
@@ -515,7 +515,7 @@ func TestPredictionNewlineCarriageReturn(t *testing.T) {
 		{"normal CR", 2, 3, "CR\x0D", 3, 0},
 		{"bottom CR", 39, 0, "CR\x0D", 39, 0}, // TODO gap is too big, why?
 	}
-	pe := NewPredictionEngine()
+	pe := newPredictionEngine()
 	emu := terminal.NewEmulator3(80, 40, 40)
 
 	for _, v := range tc {
@@ -560,7 +560,7 @@ func TestPredictionKillEpoch(t *testing.T) {
 		{0, 0, "history\r\r\r\r\rchannel\r\r\r\rstarts\rworking"},
 	}
 
-	pe := NewPredictionEngine()
+	pe := newPredictionEngine()
 	emu := terminal.NewEmulator3(80, 40, 40)
 
 	// printCursors(pe, "BEFORE newUserInput.")
@@ -620,7 +620,7 @@ func TestPredictionCull(t *testing.T) {
 		{"IncorrectOrExpired + tentativeUntilEpoch>confirmedEpoch", 12, 0, "", "Epoch", "confi", Experimental, 13, 12, 0},
 	}
 	emu := terminal.NewEmulator3(80, 40, 40)
-	pe := NewPredictionEngine()
+	pe := newPredictionEngine()
 
 	for k, v := range tc {
 		// fmt.Printf("\n%q #testing call cull A.\n", v.name)
@@ -819,7 +819,7 @@ func TestNotificationEngine(t *testing.T) {
 		},
 	}
 
-	ne := NewNotificationEngien()
+	ne := newNotificationEngien()
 	emu := terminal.NewEmulator3(80, 40, 40)
 	for _, v := range tc {
 		// fmt.Printf("%s start\n", v.name)
@@ -872,7 +872,7 @@ func TestNotificationEngine_adjustMessage(t *testing.T) {
 		{"message ready", "message 准备好了", 20, "message 准备好了"},
 	}
 
-	ne := NewNotificationEngien()
+	ne := newNotificationEngien()
 	for _, v := range tc {
 		ne.SetNotificationString(v.message, false, false)
 

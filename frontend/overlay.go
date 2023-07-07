@@ -320,7 +320,7 @@ type PredictionEngine struct {
 	displayPreference     DisplayPreference
 }
 
-func NewPredictionEngine() *PredictionEngine {
+func newPredictionEngine() *PredictionEngine {
 	pe := PredictionEngine{}
 	pe.parser = *terminal.NewParser()
 	pe.cursors = make([]ConditionalCursorMove, 0)
@@ -1020,7 +1020,7 @@ type NotificationEngine struct {
 	showQuitKeystroke     bool
 }
 
-func NewNotificationEngien() *NotificationEngine {
+func newNotificationEngien() *NotificationEngine {
 	ne := &(NotificationEngine{})
 	ne.lastWordFromServer = time.Now().UnixMilli()
 	ne.lastAckedState = time.Now().UnixMilli()
@@ -1197,25 +1197,25 @@ func (ne *NotificationEngine) clearNetworkError() {
 }
 
 type OverlayManager struct {
-	notifications NotificationEngine
-	predictions   PredictionEngine
-	title         TitleEngine
+	notifications *NotificationEngine
+	predictions   *PredictionEngine
+	title         *TitleEngine
 }
 
 func NewOverlayManager() *OverlayManager {
-	om := new(OverlayManager)
-	om.predictions = *NewPredictionEngine()
-	om.notifications = *NewNotificationEngien()
-	om.title = TitleEngine{}
+	om := &OverlayManager{}
+	om.predictions = newPredictionEngine()
+	om.notifications = newNotificationEngien()
+	om.title = &TitleEngine{}
 	return om
 }
 
 func (om *OverlayManager) GetNotificationEngine() *NotificationEngine {
-	return &om.notifications
+	return om.notifications
 }
 
 func (om *OverlayManager) GetPredictionEngine() *PredictionEngine {
-	return &om.predictions
+	return om.predictions
 }
 
 func (om *OverlayManager) SetTitlePrefix(v string) {
