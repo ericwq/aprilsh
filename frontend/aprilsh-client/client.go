@@ -640,12 +640,13 @@ func (sc *STMClient) main() error {
 	networkChan = make(chan frontend.Message, 1)
 	fileChan = make(chan frontend.Message, 1)
 	fileDownChan := make(chan any, 1)
+	networkDownChan := make(chan any, 1)
 
 	eg := errgroup.Group{}
 	// read from network
 	eg.Go(func() error {
 		// if we have 2 client ip, 5 ms for each client
-		frontend.ReadFromNetwork(5, networkChan, sc.network)
+		frontend.ReadFromNetwork(5, networkChan, networkDownChan, sc.network)
 		return nil
 	})
 	// read from pty master file
@@ -765,7 +766,7 @@ mainLoop:
 	// shutdown the goroutine
 	shutdownChan <- true
 	fileDownChan <- "done"
-	networkChan <- frontend.Message{Err: nil, Data: "shutdown"}
+	networkDownChan <- "done"
 	eg.Wait()
 
 	return nil
