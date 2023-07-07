@@ -69,28 +69,32 @@ func ReadFromFile(timeout int, msgChan chan Message, doneChan chan any, fReader 
 }
 
 // read data from udp socket and send the result to socketChan
-func ReadFromNetwork(timeout int, msgChan chan Message, network DeadLineReceiver,
-) {
+func ReadFromNetwork(timeout int, msgChan chan Message, doneChan chan any, network DeadLineReceiver) {
+	var err error
+
 	for {
 		select {
-		case m := <-msgChan:
-			if m.Data == "shutdown" {
-				return
-			}
+		case <-doneChan:
+			return
 		default:
 		}
 		// set read time out
 		network.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
 		// packet received from the network
-		err := network.Recv()
+		err = network.Recv()
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
-				// network read timeout
-			} else {
+				// read timeout
 				msgChan <- Message{err, ""}
+				continue
+			} else {
+				// EOF goes here
+				msgChan <- Message{err, ""}
+				break
 			}
 		} else {
-			msgChan <- Message{nil, ""} // network.Recv() doesn't return the data
+			// normal read
+			msgChan <- Message{nil, ""}
 		}
 	}
 }

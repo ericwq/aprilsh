@@ -764,7 +764,7 @@ mainLoop:
 
 	// shutdown the goroutine
 	shutdownChan <- true
-	fileChan <- frontend.Message{Err: nil, Data: "shutdown"}
+	fileDownChan <- "done"
 	networkChan <- frontend.Message{Err: nil, Data: "shutdown"}
 	eg.Wait()
 

@@ -597,6 +597,7 @@ func serve(ptmx *os.File, pts *os.File, complete *statesync.Complete,
 	var fileChan chan frontend.Message
 	networkChan = make(chan frontend.Message, 1)
 	fileChan = make(chan frontend.Message, 1)
+	fileDownChan := make(chan any, 1)
 
 	eg := errgroup.Group{}
 	// read from socket
@@ -607,7 +608,7 @@ func serve(ptmx *os.File, pts *os.File, complete *statesync.Complete,
 	})
 	// read from pty master file
 	eg.Go(func() error {
-		frontend.ReadFromFile(10, fileChan, ptmx)
+		frontend.ReadFromFile(10, fileChan, fileDownChan, ptmx)
 		// readFromMaster(10, fileChan, ptmx)
 		return nil
 	})
@@ -798,7 +799,7 @@ mainLoop:
 
 	// shutdown the goroutine
 	shutdownChan <- true
-	fileChan <- frontend.Message{Err: nil, Data: "shutdown"}
+	fileDownChan <- "done"
 	networkChan <- frontend.Message{Err: nil, Data: "shutdown"}
 	eg.Wait()
 
