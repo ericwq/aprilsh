@@ -16,6 +16,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/frontend"
 	"github.com/ericwq/aprilsh/network"
 	"github.com/ericwq/aprilsh/statesync"
@@ -197,6 +198,9 @@ func (c *Config) buildConfig() (string, bool) {
 }
 
 func main() {
+	// For security, make sure we don't dump core
+	encrypt.DisableDumpingCore()
+
 	conf, _, err := parseFlags(os.Args[0], os.Args[1:])
 	if err == flag.ErrHelp {
 		printUsage("", usage)
@@ -220,6 +224,15 @@ func main() {
 	}
 
 	util.SetNativeLocale()
+
+	client := newSTMClient(conf.host, conf.port, conf.key, conf.predictMode, conf.verbose)
+	if err := client.init(); err != nil {
+		fmt.Printf("%s init error:%s\n", _COMMAND_NAME, err)
+		return
+	}
+
+	client.main()
+	fmt.Printf("[%s is exiting.]", _COMMAND_NAME)
 }
 
 type STMClient struct {
