@@ -15,7 +15,7 @@ import (
 )
 
 func TestOverlay(t *testing.T) {
-	co := NewConditionalOverlay(12, 2, 14)
+	co := newConditionalOverlay(12, 2, 14)
 
 	if co.tentative(15) {
 		t.Errorf("expect %t, got %t\n", true, co.tentative(15))
@@ -45,7 +45,7 @@ func TestMoveApply(t *testing.T) {
 		{"apply() active=T, tentative return T", true, 14, 0, 0},
 	}
 	emu := terminal.NewEmulator3(80, 40, 40)
-	ccm := NewConditionalCursorMove(12, 4, 10, 15)
+	ccm := newConditionalCursorMove(12, 4, 10, 15)
 
 	for _, v := range tc {
 		emu.MoveCursor(0, 0) // default cursor position for early return.
@@ -81,7 +81,7 @@ func TestMoveGetValidity(t *testing.T) {
 
 	for _, v := range tc {
 		emu.MoveCursor(v.rowEmu, v.colEmu)
-		ccm := NewConditionalCursorMove(v.expirationFrame, v.rowCcm, v.colCcm, 12)
+		ccm := newConditionalCursorMove(v.expirationFrame, v.rowCcm, v.colCcm, 12)
 		ccm.active = v.active
 		validity := ccm.getValidity(emu, v.lateAck)
 		if validity != v.validity {
@@ -118,7 +118,7 @@ func TestCellApply(t *testing.T) {
 
 	emu := terminal.NewEmulator3(80, 40, 40)
 	for _, v := range tc {
-		predict := NewConditionalOverlayCell(10, v.col, 10)
+		predict := newConditionalOverlayCell(10, v.col, 10)
 
 		predict.active = v.active
 		predict.unknown = v.unknown

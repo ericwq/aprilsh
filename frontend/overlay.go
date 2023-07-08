@@ -56,17 +56,18 @@ const (
 	GLITCH_FLAG_THRESHOLD     = 5000 // prediction outstanding this long => underline
 )
 
-type ConditionalOverlay struct {
-	expirationFrame     int64
-	col                 int
+// base of predition cell or cursor position
+type conditionalOverlay struct {
+	expirationFrame     int64 // frame number, Emulator number.
+	col                 int   // cursor column
 	active              bool  // represents a prediction at all, default value false
 	tentativeUntilEpoch int64 // when to show
 	predictionTime      int64 // used to find long-pending predictions, default value -1
 }
 
-func NewConditionalOverlay(expirationFrame int64, col int, tentativeUntilEpoch int64) ConditionalOverlay {
+func newConditionalOverlay(expirationFrame int64, col int, tentativeUntilEpoch int64) conditionalOverlay {
 	// default active is false, default predictionTime is -1
-	co := ConditionalOverlay{}
+	co := conditionalOverlay{}
 	co.expirationFrame = expirationFrame
 	co.col = col
 	co.active = false
@@ -77,37 +78,38 @@ func NewConditionalOverlay(expirationFrame int64, col int, tentativeUntilEpoch i
 }
 
 // if the overlay epoch is bigger than confirmedEpoch, return ture. otherwise false.
-func (co *ConditionalOverlay) tentative(confirmedEpoch int64) bool {
+func (co *conditionalOverlay) tentative(confirmedEpoch int64) bool {
 	return co.tentativeUntilEpoch > confirmedEpoch
 }
 
 // reset expirationFrame and tentativeUntilEpoch
-func (co *ConditionalOverlay) reset() {
+func (co *conditionalOverlay) reset() {
 	co.expirationFrame = -1
 	co.tentativeUntilEpoch = -1
 	co.active = false
 }
 
 // set expirationFrame and predictionTime
-func (co *ConditionalOverlay) expire(expirationFrame, now int64) {
+func (co *conditionalOverlay) expire(expirationFrame, now int64) {
 	co.expirationFrame = expirationFrame
 	co.predictionTime = now
 }
 
-type ConditionalCursorMove struct {
-	ConditionalOverlay
-	row int
+// represent the prediction cursor move.
+type conditionalCursorMove struct {
+	conditionalOverlay
+	row int // cursor row
 }
 
-func NewConditionalCursorMove(expirationFrame int64, row int, col int, tentativeUntilEpoch int64) ConditionalCursorMove {
-	ccm := ConditionalCursorMove{}
-	ccm.ConditionalOverlay = NewConditionalOverlay(expirationFrame, col, tentativeUntilEpoch)
+func newConditionalCursorMove(expirationFrame int64, row int, col int, tentativeUntilEpoch int64) conditionalCursorMove {
+	ccm := conditionalCursorMove{}
+	ccm.conditionalOverlay = newConditionalOverlay(expirationFrame, col, tentativeUntilEpoch)
 	ccm.row = row
 	return ccm
 }
 
-// set prediction cursor position in emulator if the confirmedEpoch is greater than tantative epoch.
-func (ccm *ConditionalCursorMove) apply(emu *terminal.Emulator, confirmedEpoch int64) {
+// set prediction cursor position in emulator if the confirmedEpoch is less than tantative epoch.
+func (ccm *conditionalCursorMove) apply(emu *terminal.Emulator, confirmedEpoch int64) {
 	if !ccm.active { // only apply to active prediction
 		return
 	}
@@ -120,9 +122,11 @@ func (ccm *ConditionalCursorMove) apply(emu *terminal.Emulator, confirmedEpoch i
 	emu.MoveCursor(ccm.row, ccm.col)
 }
 
-// check the validity of prediction cursor move.
-// return Correct only when lateAck is greater than expirationFrame and cursor position is at the same position.
-func (ccm *ConditionalCursorMove) getValidity(emu *terminal.Emulator, lateAck int64) Validity {
+// check the validity of prediction cursor position. Validate the prediction cursor position:
+// return Correct only when lateAck is greater than expirationFrame and cursor position is at
+// the same position as the specified emulator. otherwise IncorrectOrExpired. if the prediction
+// cursor position is not active, return Inactive.
+func (ccm *conditionalCursorMove) getValidity(emu *terminal.Emulator, lateAck int64) Validity {
 	if !ccm.active { // only validate active prediction
 		return Inactive
 	}
@@ -145,16 +149,18 @@ func (ccm *ConditionalCursorMove) getValidity(emu *terminal.Emulator, lateAck in
 	return Pending
 }
 
-type ConditionalOverlayCell struct {
-	ConditionalOverlay
+// represent the prediction cell in the specified column. including the original cell contents and
+// replacement contents.
+type conditionalOverlayCell struct {
+	conditionalOverlay
 	replacement      terminal.Cell   // the prediction, replace the original content
 	unknown          bool            // has replacement?
 	originalContents []terminal.Cell // we don't give credit for correct predictions that match the original contents
 }
 
-func NewConditionalOverlayCell(expirationFrame int64, col int, tentativeUntilEpoch int64) ConditionalOverlayCell {
-	coc := ConditionalOverlayCell{}
-	coc.ConditionalOverlay = NewConditionalOverlay(expirationFrame, col, tentativeUntilEpoch)
+func newConditionalOverlayCell(expirationFrame int64, col int, tentativeUntilEpoch int64) conditionalOverlayCell {
+	coc := conditionalOverlayCell{}
+	coc.conditionalOverlay = newConditionalOverlay(expirationFrame, col, tentativeUntilEpoch)
 	coc.replacement = terminal.Cell{}
 	coc.unknown = false
 	coc.originalContents = make([]terminal.Cell, 0)
@@ -162,14 +168,14 @@ func NewConditionalOverlayCell(expirationFrame int64, col int, tentativeUntilEpo
 }
 
 // reset everything except replacement
-func (coc *ConditionalOverlayCell) reset2() {
+func (coc *conditionalOverlayCell) reset2() {
 	coc.unknown = false
 	coc.originalContents = make([]terminal.Cell, 0)
 	coc.reset()
 }
 
 // Reset everything if active is F or unknown is T. Otherwise append replacement to the originalContents.
-func (coc *ConditionalOverlayCell) resetWithOrig() {
+func (coc *conditionalOverlayCell) resetWithOrig() {
 	if !coc.active || coc.unknown {
 		coc.reset2()
 		return
@@ -179,9 +185,11 @@ func (coc *ConditionalOverlayCell) resetWithOrig() {
 	coc.reset()
 }
 
-// apply cell prediction to the emulator, replace frame cell with prediction. (row,col) specify the cell.
-// confirmedEpoch specified the epoch. flag means underlining the cell.
-func (coc *ConditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch int64, row int, flag bool) {
+// Apply cell prediction to the emulator, replace frame cell with prediction if they doesn't match.
+// 
+// For unknown prediction just underline the cell.
+// (row,col) specify the cell. confirmedEpoch specified the epoch. flag means underline the cell.
+func (coc *conditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch int64, row int, flag bool) {
 	// if coc.replacement.GetContents() != "" {
 	// 	fmt.Printf("apply #cell (%d,%d) with prediction %q\n", row, coc.col, coc.replacement)
 	// 	fmt.Printf("apply #cell coc.active=%t, confirmedEpoch=%d, coc.tentativeUntilEpoch=%d\n",
@@ -197,12 +205,12 @@ func (coc *ConditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 		return
 	}
 
-	// both prediction and framebuffer cell are blank
+	// both prediction and emulator cell are blank
 	if coc.replacement.IsBlank() && emu.GetCell(row, coc.col).IsBlank() {
 		flag = false
 	}
 
-	// TOODO the meaning of unknown?
+	// TODO the meaning of unknown?
 	if coc.unknown {
 		// fmt.Printf("apply #cell (%d,%d) is unknown %q\n", row, coc.col, coc.replacement)
 		// underlining the cell except the last column.
@@ -223,13 +231,25 @@ func (coc *ConditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 	}
 }
 
-// check frame cell against prediction cell, if the ack frame is greater than the expiration frame.
-// - for unknown or blank cell, or history content match prediction, return CorrectNoCredit.
-// - for prediction cursor is out of range or prediction doesn't match frame cell, return IncorrectOrExpired.
-// - if the frame cell is the same as the prediction cell and no history match prediction, retrun Correct.
-// if the ack frame is smaller than the expiration frame, return Pending.
-// if the cell is inactive, return Inactive.
-func (coc *ConditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, lateAck int64) Validity {
+/*
+Validate emulator cell against prediction cell:
+if the cell is inactive, return Inactive.
+
+if the prediction position is out of range return IncorrectOrExpired.
+
+if the lateAck is smaller than the expiration frame, return Pending.
+
+if the lateAck is greater than or equal to the expiration frame, then:
+
+  - for unknown or blank prediction cell, return CorrectNoCredit.
+
+  - if the frame cell matches the prediction cell and no history match prediction, retrun Correct.
+
+  - if the frame cell matches the prediction cell and some istory match prediction, retrun CorrectNoCredit.
+
+  - if the frame celll doesn't match the prediction cell, return IncorrectOrExpired.
+*/
+func (coc *conditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, lateAck int64) Validity {
 	if !coc.active {
 		return Inactive
 	}
@@ -238,9 +258,10 @@ func (coc *ConditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, 
 	}
 	current := emu.GetCell(row, coc.col)
 
-	// see if it hasn't been updated yet
 	// fmt.Printf("getValidity() (%d,%d) lateAck=%d, expirationFrame=%d unknow=%t\n",
 	// 	row, coc.col, lateAck, coc.expirationFrame, coc.unknown)
+
+	// see if it hasn't been updated yet
 	if lateAck >= coc.expirationFrame {
 		if coc.unknown {
 			// fmt.Printf("getValidity() (%d,%d) return CorrectNoCredit\n", row, coc.col)
@@ -278,33 +299,38 @@ func (coc *ConditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, 
 	return Pending
 }
 
-type ConditionalOverlayRow struct {
+// represents the prediction row, each row contains a group of prediction cells
+// and a row number
+type conditionalOverlayRow struct {
 	rowNum       int
-	overlayCells []ConditionalOverlayCell
+	overlayCells []conditionalOverlayCell
 }
 
-func NewConditionalOverlayRow(rowNum int) *ConditionalOverlayRow {
-	row := ConditionalOverlayRow{rowNum: rowNum}
-	row.overlayCells = make([]ConditionalOverlayCell, 0)
+func newConditionalOverlayRow(rowNum int) *conditionalOverlayRow {
+	row := conditionalOverlayRow{rowNum: rowNum}
+	row.overlayCells = make([]conditionalOverlayCell, 0)
 	return &row
 }
 
-// TODO do we need this in golang?
-func (cor *ConditionalOverlayRow) rowNumEqual(rowNum int) bool {
-	return cor.rowNum == rowNum
+// check thr row number is the same as the specified rowNum
+func (c *conditionalOverlayRow) rowNumEqual(ruwNum int) bool {
+	return c.rowNum == ruwNum
 }
 
-func (cor *ConditionalOverlayRow) apply(emu *terminal.Emulator, confirmedEpoch int64, flag bool) {
-	for i := range cor.overlayCells {
-		cor.overlayCells[i].apply(emu, confirmedEpoch, cor.rowNum, flag)
+// For each prediction cell in the prediction row applies the prediction to the emulator
+// 
+// confirmedEpoch specified the epoch. flag means underline the cell.
+func (c *conditionalOverlayRow) apply(emu *terminal.Emulator, confirmedEpoch int64, flag bool) {
+	for i := range c.overlayCells {
+		c.overlayCells[i].apply(emu, confirmedEpoch, c.rowNum, flag)
 	}
 }
 
 type PredictionEngine struct {
 	lastByte              rune
 	parser                terminal.Parser
-	overlays              []ConditionalOverlayRow
-	cursors               []ConditionalCursorMove
+	overlays              []conditionalOverlayRow
+	cursors               []conditionalCursorMove
 	localFrameSent        int64
 	localFrameAcked       int64
 	localFrameLateAcked   int64
@@ -323,8 +349,8 @@ type PredictionEngine struct {
 func newPredictionEngine() *PredictionEngine {
 	pe := PredictionEngine{}
 	pe.parser = *terminal.NewParser()
-	pe.cursors = make([]ConditionalCursorMove, 0)
-	pe.overlays = make([]ConditionalOverlayRow, 0)
+	pe.cursors = make([]conditionalCursorMove, 0)
+	pe.overlays = make([]conditionalOverlayRow, 0)
 	pe.predictionEpoch = 1
 	pe.sendInterval = 250
 	pe.displayPreference = Adaptive
@@ -353,7 +379,7 @@ func (pe *PredictionEngine) SetDisplayPreference(v DisplayPreference) {
 }
 
 // return the last cursor move stored in the engine
-func (pe *PredictionEngine) cursor() *ConditionalCursorMove {
+func (pe *PredictionEngine) cursor() *conditionalCursorMove {
 	if len(pe.cursors) == 0 {
 		return nil
 	}
@@ -376,12 +402,12 @@ func (pe *PredictionEngine) waitTime() int {
 func (pe *PredictionEngine) initCursor(emu *terminal.Emulator) {
 	if len(pe.cursors) == 0 {
 		// initialize new cursor prediction with current cursor position
-		cursor := NewConditionalCursorMove(pe.localFrameSent+1, emu.GetCursorRow(), emu.GetCursorCol(), pe.predictionEpoch)
+		cursor := newConditionalCursorMove(pe.localFrameSent+1, emu.GetCursorRow(), emu.GetCursorCol(), pe.predictionEpoch)
 		pe.cursors = append(pe.cursors, cursor)
 		pe.cursor().active = true
 	} else if pe.cursor().tentativeUntilEpoch != pe.predictionEpoch {
 		// initialize new cursor prediction with last cursor position
-		cursor := NewConditionalCursorMove(pe.localFrameSent+1, pe.cursor().row, pe.cursor().col, pe.predictionEpoch)
+		cursor := newConditionalCursorMove(pe.localFrameSent+1, pe.cursor().row, pe.cursor().col, pe.predictionEpoch)
 		pe.cursors = append(pe.cursors, cursor)
 		pe.cursor().active = true
 	}
@@ -391,17 +417,17 @@ func (pe *PredictionEngine) initCursor(emu *terminal.Emulator) {
 }
 
 // get or make a row for the prediction engine.
-func (pe *PredictionEngine) getOrMakeRow(rowNum int, nCols int) (it *ConditionalOverlayRow) {
+func (pe *PredictionEngine) getOrMakeRow(rowNum int, nCols int) (it *conditionalOverlayRow) {
 	for i := range pe.overlays {
 		if pe.overlays[i].rowNumEqual(rowNum) {
 			it = &(pe.overlays[i])
 		}
 	}
 	if it == nil {
-		it = NewConditionalOverlayRow(rowNum)
-		it.overlayCells = make([]ConditionalOverlayCell, nCols)
+		it = newConditionalOverlayRow(rowNum)
+		it.overlayCells = make([]conditionalOverlayCell, nCols)
 		for i := 0; i < nCols; i++ {
-			it.overlayCells[i] = NewConditionalOverlayCell(0, i, pe.predictionEpoch)
+			it.overlayCells[i] = newConditionalOverlayCell(0, i, pe.predictionEpoch)
 		}
 		pe.overlays = append(pe.overlays, *it)
 	}
@@ -426,8 +452,8 @@ func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
 }
 
 func (pe *PredictionEngine) Reset() {
-	pe.cursors = make([]ConditionalCursorMove, 0)
-	pe.overlays = make([]ConditionalOverlayRow, 0)
+	pe.cursors = make([]conditionalCursorMove, 0)
+	pe.overlays = make([]conditionalOverlayRow, 0)
 	pe.becomeTentative()
 	// fmt.Println("reset #clear cursors and overlays")
 }
@@ -781,7 +807,7 @@ func (pe *PredictionEngine) active() bool {
 func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
 	// remove cursor movement if epoch expire
 	// fmt.Printf("killEpoch #1st cursors length=%d\n", len(pe.cursors))
-	cursors := make([]ConditionalCursorMove, 0)
+	cursors := make([]conditionalCursorMove, 0)
 	for i := range pe.cursors {
 		if pe.cursors[i].tentative(epoch - 1) {
 			// fmt.Printf("killEpoch #skip cursors (%2d,%2d), tentativeUntilEpoch=%d, epoch=%d\n",
@@ -794,7 +820,7 @@ func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
 
 	// add current cursor position to prediction cursor
 	cursors = append(cursors,
-		NewConditionalCursorMove(pe.localFrameSent+1, emu.GetCursorRow(), emu.GetCursorCol(), pe.predictionEpoch))
+		newConditionalCursorMove(pe.localFrameSent+1, emu.GetCursorRow(), emu.GetCursorCol(), pe.predictionEpoch))
 	pe.cursors = cursors
 	pe.cursor().active = true
 
@@ -866,7 +892,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 	}
 
 	// go through cell predictions
-	overlays := make([]ConditionalOverlayRow, 0, len(pe.overlays))
+	overlays := make([]conditionalOverlayRow, 0, len(pe.overlays))
 	for i := 0; i < len(pe.overlays); i++ {
 		if pe.overlays[i].rowNum < 0 || pe.overlays[i].rowNum >= emu.GetHeight() {
 			// skip/erase this row if it's out of scope.
@@ -971,7 +997,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 		if pe.cursor().getValidity(emu, pe.localFrameLateAcked) == IncorrectOrExpired {
 			// Sadly, we're predicting (%d,%d) vs. (%d,%d) [tau: %ld expiration_time=%ld, now=%ld]\n
 			if pe.displayPreference == Experimental {
-				pe.cursors = make([]ConditionalCursorMove, 0) // only clear the cursor prediction
+				pe.cursors = make([]conditionalCursorMove, 0) // only clear the cursor prediction
 			} else {
 				pe.Reset() // clear the whole prediction
 				return
@@ -980,7 +1006,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 	}
 
 	// fmt.Printf("cull # cursor prediction size=%d.\n", len(pe.cursors))
-	cursors := make([]ConditionalCursorMove, 0, len(pe.cursors))
+	cursors := make([]conditionalCursorMove, 0, len(pe.cursors))
 	for i := range pe.cursors {
 		// remove any cursor prediction except Pending validity.
 		it := &(pe.cursors[i])
