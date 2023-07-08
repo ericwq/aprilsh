@@ -186,7 +186,7 @@ func (coc *conditionalOverlayCell) resetWithOrig() {
 }
 
 // Apply cell prediction to the emulator, replace frame cell with prediction if they doesn't match.
-// 
+//
 // For unknown prediction just underline the cell.
 // (row,col) specify the cell. confirmedEpoch specified the epoch. flag means underline the cell.
 func (coc *conditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch int64, row int, flag bool) {
@@ -318,7 +318,7 @@ func (c *conditionalOverlayRow) rowNumEqual(ruwNum int) bool {
 }
 
 // For each prediction cell in the prediction row applies the prediction to the emulator
-// 
+//
 // confirmedEpoch specified the epoch. flag means underline the cell.
 func (c *conditionalOverlayRow) apply(emu *terminal.Emulator, confirmedEpoch int64, flag bool) {
 	for i := range c.overlayCells {
