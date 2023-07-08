@@ -28,6 +28,15 @@ const (
 	Inactive
 )
 
+const (
+	SEND_INTERVAL_MIN    = 20    /* ms between frames */
+	SEND_INTERVAL_MAX    = 250   /* ms between frames */
+	ACK_INTERVAL         = 3000  /* ms between empty acks */
+	ACK_DELAY            = 100   /* ms before delayed ack */
+	SHUTDOWN_RETRIES     = 16    /* number of shutdown packets to send before giving up */
+	ACTIVE_RETRY_TIMEOUT = 10000 /* attempt to resend at frame rate */
+)
+
 var strValidity = [...]string{
 	"Unused",
 	"Pending",
@@ -1056,6 +1065,18 @@ func newNotificationEngien() *NotificationEngine {
 	return ne
 }
 
+func humanReadableDuration(numSeconds int, secondsAbbr string) string {
+	var tmp strings.Builder
+	if numSeconds < 60 {
+		fmt.Fprintf(&tmp, "%d %s", numSeconds, secondsAbbr)
+	} else if numSeconds < 3600 {
+		fmt.Fprintf(&tmp, "%d:%02d", numSeconds/60, numSeconds%60)
+	} else {
+		fmt.Fprintf(&tmp, "%d:%02d:%02d", numSeconds/3600, (numSeconds/60)%60, numSeconds%60)
+	}
+	return tmp.String()
+}
+
 func (ne *NotificationEngine) serverLate(ts int64) bool {
 	return ts-ne.lastWordFromServer > 65000
 }
@@ -1142,18 +1163,6 @@ func (ne *NotificationEngine) apply(emu *terminal.Emulator) {
 	emu.HandleStream(stringToDraw.String())
 }
 
-func humanReadableDuration(numSeconds int, secondsAbbr string) string {
-	var tmp strings.Builder
-	if numSeconds < 60 {
-		fmt.Fprintf(&tmp, "%d %s", numSeconds, secondsAbbr)
-	} else if numSeconds < 3600 {
-		fmt.Fprintf(&tmp, "%d:%02d", numSeconds/60, numSeconds%60)
-	} else {
-		fmt.Fprintf(&tmp, "%d:%02d:%02d", numSeconds/3600, (numSeconds/60)%60, numSeconds%60)
-	}
-	return tmp.String()
-}
-
 func (ne *NotificationEngine) GetNotificationString() string {
 	return ne.message
 }
@@ -1165,15 +1174,6 @@ func (ne *NotificationEngine) ServerHeard(ts int64) {
 func (ne *NotificationEngine) ServerAcked(ts int64) {
 	ne.lastAckedState = ts
 }
-
-const (
-	SEND_INTERVAL_MIN    = 20    /* ms between frames */
-	SEND_INTERVAL_MAX    = 250   /* ms between frames */
-	ACK_INTERVAL         = 3000  /* ms between empty acks */
-	ACK_DELAY            = 100   /* ms before delayed ack */
-	SHUTDOWN_RETRIES     = 16    /* number of shutdown packets to send before giving up */
-	ACTIVE_RETRY_TIMEOUT = 10000 /* attempt to resend at frame rate */
-)
 
 func (ne *NotificationEngine) waitTime() int {
 	nextExpiry := math.MaxInt
