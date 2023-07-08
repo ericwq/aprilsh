@@ -29,29 +29,20 @@ const (
 )
 
 const (
+	DisplayPreferenceUnused DisplayPreference = iota
+	Always
+	Never
+	Adaptive
+	Experimental
+)
+
+const (
 	SEND_INTERVAL_MIN    = 20    /* ms between frames */
 	SEND_INTERVAL_MAX    = 250   /* ms between frames */
 	ACK_INTERVAL         = 3000  /* ms between empty acks */
 	ACK_DELAY            = 100   /* ms before delayed ack */
 	SHUTDOWN_RETRIES     = 16    /* number of shutdown packets to send before giving up */
 	ACTIVE_RETRY_TIMEOUT = 10000 /* attempt to resend at frame rate */
-)
-
-var strValidity = [...]string{
-	"Unused",
-	"Pending",
-	"Correct",
-	"CorrectNoCredit",
-	"IncorrectOrExpired",
-	"Inactive",
-}
-
-const (
-	DisplayPreferenceUnused DisplayPreference = iota
-	Always
-	Never
-	Adaptive
-	Experimental
 )
 
 const (
@@ -64,6 +55,15 @@ const (
 	GLITCH_REPAIR_MININTERVAL = 150  // required time in between non-glitches
 	GLITCH_FLAG_THRESHOLD     = 5000 // prediction outstanding this long => underline
 )
+
+var strValidity = [...]string{
+	"Unused",
+	"Pending",
+	"Correct",
+	"CorrectNoCredit",
+	"IncorrectOrExpired",
+	"Inactive",
+}
 
 // base of predition cell or cursor position
 type conditionalOverlay struct {
