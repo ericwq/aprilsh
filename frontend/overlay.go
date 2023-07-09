@@ -65,7 +65,7 @@ var strValidity = [...]string{
 	"Inactive",
 }
 
-// base of predition cell or cursor position
+// base of cell prediction cell or cursor prediction
 type conditionalOverlay struct {
 	expirationFrame     int64 // frame number, Emulator number.
 	col                 int   // cursor column
@@ -86,7 +86,7 @@ func newConditionalOverlay(expirationFrame int64, col int, tentativeUntilEpoch i
 	return co
 }
 
-// if the predition epoch is greater than confirmedEpoch, return ture. otherwise false.
+// if the prediction epoch is greater than confirmedEpoch, return ture. otherwise false.
 func (co *conditionalOverlay) tentative(confirmedEpoch int64) bool {
 	return co.tentativeUntilEpoch > confirmedEpoch
 }
@@ -104,7 +104,7 @@ func (co *conditionalOverlay) expire(expirationFrame, now int64) {
 	co.predictionTime = now
 }
 
-// represent the prediction cursor move.
+// represent the cursor	prediction.
 type conditionalCursorMove struct {
 	conditionalOverlay
 	row int // cursor row
@@ -117,7 +117,7 @@ func newConditionalCursorMove(expirationFrame int64, row int, col int, tentative
 	return ccm
 }
 
-// set cursor position in emulator base on cursor predition, only if the confirmedEpoch
+// set cursor position in emulator base on cursor prediction, only if the confirmedEpoch
 // is less than tantative epoch.
 func (ccm *conditionalCursorMove) apply(emu *terminal.Emulator, confirmedEpoch int64) {
 	if !ccm.active { // only apply to active prediction
@@ -132,10 +132,10 @@ func (ccm *conditionalCursorMove) apply(emu *terminal.Emulator, confirmedEpoch i
 	emu.MoveCursor(ccm.row, ccm.col)
 }
 
-// check the validity of prediction cursor position. Validate the prediction cursor position:
-// return Correct only when lateAck is greater than expirationFrame and cursor position is at
-// the same position as the specified emulator. otherwise IncorrectOrExpired. if the prediction
-// cursor position is not active, return Inactive.
+// Validate the position of cursor prediction. return Correct only when lateAck
+// is greater than expirationFrame and the cursor position of frame is the same as
+// cursor prediction, otherwise IncorrectOrExpired. if the cursor prediction
+// is not active, return Inactive.
 func (ccm *conditionalCursorMove) getValidity(emu *terminal.Emulator, lateAck int64) Validity {
 	if !ccm.active { // only validate active prediction
 		return Inactive
@@ -242,7 +242,7 @@ func (coc *conditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 }
 
 /*
-Validate emulator cell against prediction cell:
+Validate emulator against cell prediction:
 if the cell is inactive, return Inactive.
 
 if the prediction position is out of range return IncorrectOrExpired.
@@ -255,7 +255,7 @@ if the lateAck is greater than or equal to the expiration frame, then:
 
   - if the frame cell matches the prediction cell and no history match prediction, retrun Correct.
 
-  - if the frame cell matches the prediction cell and some istory match prediction, retrun CorrectNoCredit.
+  - if the frame cell matches the prediction cell and some history match prediction, retrun CorrectNoCredit.
 
   - if the frame celll doesn't match the prediction cell, return IncorrectOrExpired.
 */
@@ -397,7 +397,7 @@ func (pe *PredictionEngine) becomeTentative() {
 }
 
 // move the cursor prediction to the new line (col is 0). add the row number by one.
-// if the cursor predition is in the last row of active area, add a new row to engine.
+// if the cursor prediction is in the last row of active area, add a new row to engine.
 func (pe *PredictionEngine) newlineCarriageReturn(emu *terminal.Emulator) {
 	now := time.Now().UnixMilli()
 	pe.initCursor(emu)
@@ -464,10 +464,10 @@ func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
 	// fmt.Printf("killEpoch #last cursors=%d, overlays=%d\n", len(pe.cursors), len(pe.overlays))
 }
 
-// if there is not any cursor predition, add a cursor predition based on frame
+// if there is not any cursor prediction, add a cursor prediction based on frame
 // current cursor position. if the cursor's epoch is different from the engine
-// epoch, add a cursor predition based on engine's cursor position. otherwise
-// don't change the cursor predition
+// epoch, add a cursor prediction based on engine's cursor position. otherwise
+// don't change the cursor prediction
 func (pe *PredictionEngine) initCursor(emu *terminal.Emulator) {
 	if len(pe.cursors) == 0 {
 		// initialize a new cursor prediction based on emu's cursor position
@@ -511,7 +511,7 @@ func (pe *PredictionEngine) SetDisplayPreference(v DisplayPreference) {
 	pe.displayPreference = v
 }
 
-// checks the displayPreference to determine whether we should apply predition to frame.
+// checks the displayPreference to determine whether we should apply prediction to frame.
 // (apply overlay cells and cursors to Emulator)
 func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
 	show := pe.displayPreference != Never && (pe.srttTrigger || pe.glitchTrigger > 0 ||
@@ -636,11 +636,17 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, str string, del
 }
 
 // check the validity of cell prediction and perform action based on the validity.
+//
 // for IncorrectOrExpired: remove the cell prediction or clear the whole prediction.
+//
 // for Correct: update glitch_trigger if possible, update remaining renditions, remove the cell prediction.
+//
 // for CorrectNoCredit: remove the cell prediction. update prediction renditions.
+//
 // for Pending: update glitch_trigger if possible, keep the prediction
+//
 // check the validity of cursor prediction and perform action based on the validity.
+//
 // for IncorrectOrExpired: clear the whole prediction.
 func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 	if pe.displayPreference == Never {
@@ -654,6 +660,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 	// }
 	// fmt.Println(x.String())
 
+	// if the engine's width and height is different from frame, reset the engine.
 	if pe.lastHeight != emu.GetHeight() || pe.lastWidth != emu.GetWidth() {
 		pe.lastHeight = emu.GetHeight()
 		pe.lastWidth = emu.GetWidth()
@@ -667,8 +674,8 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 	if pe.sendInterval > SRTT_TRIGGER_HIGH {
 		pe.srttTrigger = true
 	} else if pe.srttTrigger && pe.sendInterval <= SRTT_TRIGGER_LOW && !pe.active() {
-		// second condition: 20 ms is current minimum value
-		// third condition: only turn off when no predictions being shown
+		// second condition: 20 ms is the minimum value
+		// third condition: there is no active predictions
 		pe.srttTrigger = false
 		// fmt.Printf("cull #srttTrigger=%t\n", pe.srttTrigger)
 	}
@@ -790,6 +797,8 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 	if len(pe.cursors) > 0 {
 		// fmt.Printf("cull #cursor (%d,%d) getValidity return %s: lateAck=%d, expirationFrame=%d\n", pe.cursor().row, pe.cursor().col,
 		// strValidity[pe.cursor().getValidity(emu, pe.localFrameLateAcked)], pe.localFrameLateAcked, pe.cursor().expirationFrame)
+
+		// reset the cursor prediction if the last cursor prediction is IncorrectOrExpired
 		if pe.cursor().getValidity(emu, pe.localFrameLateAcked) == IncorrectOrExpired {
 			// Sadly, we're predicting (%d,%d) vs. (%d,%d) [tau: %ld expiration_time=%ld, now=%ld]\n
 			if pe.displayPreference == Experimental {
@@ -819,7 +828,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 	// fmt.Printf("cull # cursor prediction size=%d.\n", len(pe.cursors))
 }
 
-// clean all the cursor preditions and all the cell preditions. increase the epoch.
+// clean all the cursor predictions and all the cell predictions. increase the epoch.
 func (pe *PredictionEngine) Reset() {
 	pe.cursors = make([]conditionalCursorMove, 0)
 	pe.overlays = make([]conditionalOverlayRow, 0)
