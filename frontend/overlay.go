@@ -86,7 +86,7 @@ func newConditionalOverlay(expirationFrame int64, col int, tentativeUntilEpoch i
 	return co
 }
 
-// if the overlay epoch is bigger than confirmedEpoch, return ture. otherwise false.
+// if the predition epoch is greater than confirmedEpoch, return ture. otherwise false.
 func (co *conditionalOverlay) tentative(confirmedEpoch int64) bool {
 	return co.tentativeUntilEpoch > confirmedEpoch
 }
@@ -117,7 +117,8 @@ func newConditionalCursorMove(expirationFrame int64, row int, col int, tentative
 	return ccm
 }
 
-// set prediction cursor position in emulator if the confirmedEpoch is less than tantative epoch.
+// set cursor position in emulator base on cursor predition, only if the confirmedEpoch
+// is less than tantative epoch.
 func (ccm *conditionalCursorMove) apply(emu *terminal.Emulator, confirmedEpoch int64) {
 	if !ccm.active { // only apply to active prediction
 		return
@@ -308,7 +309,7 @@ func (coc *conditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, 
 	return Pending
 }
 
-// represents the prediction row, each row contains a group of prediction cells
+// represents row prediction, each row contains a group of cell prediction
 // and a row number
 type conditionalOverlayRow struct {
 	rowNum       int
@@ -326,7 +327,7 @@ func (c *conditionalOverlayRow) rowNumEqual(ruwNum int) bool {
 	return c.rowNum == ruwNum
 }
 
-// For each prediction cell in the prediction row applies the prediction to the emulator
+// For each cell prediction in the row applies the prediction to the emulator
 //
 // confirmedEpoch specified the epoch. flag means underline the cell.
 func (c *conditionalOverlayRow) apply(emu *terminal.Emulator, confirmedEpoch int64, flag bool) {
@@ -336,7 +337,7 @@ func (c *conditionalOverlayRow) apply(emu *terminal.Emulator, confirmedEpoch int
 }
 
 // represent the prediction engine, which contains prediction cursor movement and
-// prediction row.
+// prediction rows and cells.
 type PredictionEngine struct {
 	lastByte              rune
 	parser                terminal.Parser
@@ -387,7 +388,7 @@ func (pe *PredictionEngine) getOrMakeRow(rowNum int, nCols int) (it *conditional
 	return
 }
 
-// delay the prediction epoch to next time
+// increase prediction epoch by one, become tentative.
 func (pe *PredictionEngine) becomeTentative() {
 	if pe.displayPreference != Experimental {
 		pe.predictionEpoch++
@@ -395,6 +396,8 @@ func (pe *PredictionEngine) becomeTentative() {
 	}
 }
 
+// move the cursor prediction to the new line (col is 0). add the row number by one.
+// if the cursor predition is in the last row of active area, add a new row to engine.
 func (pe *PredictionEngine) newlineCarriageReturn(emu *terminal.Emulator) {
 	now := time.Now().UnixMilli()
 	pe.initCursor(emu)
@@ -414,7 +417,7 @@ func (pe *PredictionEngine) newlineCarriageReturn(emu *terminal.Emulator) {
 	}
 }
 
-// return the last cursor move stored in the engine
+// get the last cursor prediction stored in engine
 func (pe *PredictionEngine) cursor() *conditionalCursorMove {
 	if len(pe.cursors) == 0 {
 		return nil
@@ -422,6 +425,7 @@ func (pe *PredictionEngine) cursor() *conditionalCursorMove {
 	return &(pe.cursors[len(pe.cursors)-1])
 }
 
+// TODO what epoch is? what's the meaning of expoch -1?
 // remove previous epoch cursor movement, append a new cursor movement,
 // remove previous epoch cell prediction.
 // delay the prediction to next epoch.
@@ -460,11 +464,13 @@ func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
 	// fmt.Printf("killEpoch #last cursors=%d, overlays=%d\n", len(pe.cursors), len(pe.overlays))
 }
 
-// predict cursor move based on current cursor or initialize new cursor prediction with last
-// cursor position. for the same epoch, just return the current prediction cursor position.
+// if there is not any cursor predition, add a cursor predition based on frame
+// current cursor position. if the cursor's epoch is different from the engine
+// epoch, add a cursor predition based on engine's cursor position. otherwise
+// don't change the cursor predition
 func (pe *PredictionEngine) initCursor(emu *terminal.Emulator) {
 	if len(pe.cursors) == 0 {
-		// initialize new cursor prediction with current cursor position
+		// initialize a new cursor prediction based on emu's cursor position
 		cursor := newConditionalCursorMove(pe.localFrameSent+1, emu.GetCursorRow(), emu.GetCursorCol(), pe.predictionEpoch)
 		pe.cursors = append(pe.cursors, cursor)
 		pe.cursor().active = true
@@ -479,7 +485,7 @@ func (pe *PredictionEngine) initCursor(emu *terminal.Emulator) {
 	// 	len(pe.cursors), pe.cursor().tentativeUntilEpoch, pe.predictionEpoch, pe.cursor())
 }
 
-// return true if there is any cursor move prediction or any input prediction, otherwise false.
+// return true if there is any cursor prediction or any active cell prediction, otherwise false.
 func (pe *PredictionEngine) active() bool {
 	if len(pe.cursors) != 0 {
 		return true
@@ -496,6 +502,7 @@ func (pe *PredictionEngine) active() bool {
 	return false
 }
 
+// Are there any timing-based triggers that haven't fired yet?
 func (pe *PredictionEngine) timingTestsNecessary() bool {
 	return !(pe.glitchTrigger > 0 && pe.flagging)
 }
@@ -504,7 +511,8 @@ func (pe *PredictionEngine) SetDisplayPreference(v DisplayPreference) {
 	pe.displayPreference = v
 }
 
-// apply overlay cells and cursors to Emulator.
+// checks the displayPreference to determine whether we should apply predition to frame.
+// (apply overlay cells and cursors to Emulator)
 func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
 	show := pe.displayPreference != Never && (pe.srttTrigger || pe.glitchTrigger > 0 ||
 		pe.displayPreference == Always || pe.displayPreference == Experimental)
@@ -811,6 +819,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 	// fmt.Printf("cull # cursor prediction size=%d.\n", len(pe.cursors))
 }
 
+// clean all the cursor preditions and all the cell preditions. increase the epoch.
 func (pe *PredictionEngine) Reset() {
 	pe.cursors = make([]conditionalCursorMove, 0)
 	pe.overlays = make([]conditionalOverlayRow, 0)
