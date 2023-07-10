@@ -366,6 +366,7 @@ func newPredictionEngine() *PredictionEngine {
 	pe.predictionEpoch = 1
 	pe.sendInterval = 250
 	pe.displayPreference = Adaptive
+	pe.lastByte = make([]rune, 1)
 
 	return &pe
 }
@@ -557,8 +558,10 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
 	if len(pe.lastByte) == 1 && pe.lastByte[0] == '\x1b' && len(input) == 1 && input[0] == 'O' {
 		input[0] = '['
 	}
-	pe.lastByte = make([]rune, 0, len(input))
+	pe.lastByte = make([]rune, len(input))
 	copy(pe.lastByte, input)
+
+	// fmt.Printf("#NewUserInput lastByte=%q, input=%q\n", pe.lastByte, input)
 
 	var hd *terminal.Handler
 	hd = pe.parser.ProcessInput(input...)
@@ -1049,7 +1052,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 func (pe *PredictionEngine) inputString(emu *terminal.Emulator, str string, delay ...int) {
 	var input []rune
 
-	index:=0
+	index := 0
 	graphemes := uniseg.NewGraphemes(str)
 	for graphemes.Next() {
 		input = graphemes.Runes()
