@@ -539,9 +539,6 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
 		return
 	}
 
-	// index := 0
-	// graphemes := uniseg.NewGraphemes(str)
-	// for graphemes.Next() {
 	if pe.displayPreference == Never {
 		// continue // option Never means disable the prediction
 		return
@@ -550,30 +547,18 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
 		// fmt.Printf("newUserInput #Experimental predictionEpoch = confirmedEpoch = %d\n", pe.confirmedEpoch)
 	}
 
-	// input = graphemes.Runes()
 	// fmt.Printf("newUserInput #epoch predictionEpoch=%d\n", pe.predictionEpoch)
 
-	/*
-		if len(delay) > index { // delay parameters is provided to simulate network delay
-			pause := time.Duration(delay[index])
-			// fmt.Printf("newUserInput #delay %dms.\n", pause)
-			time.Sleep(time.Millisecond * pause)
-			index++
-		}
-	*/
 	pe.cull(emu)
 	now := time.Now().UnixMilli()
 
 	// translate application-mode cursor control function to ANSI cursor control sequence
+	// TODO check the Emulator.cursorKeyMode, DECCKM
 	if len(pe.lastByte) == 1 && pe.lastByte[0] == '\x1b' && len(input) == 1 && input[0] == 'O' {
 		input[0] = '['
 	}
 	pe.lastByte = make([]rune, 0, len(input))
 	copy(pe.lastByte, input)
-
-	// if len(input) == 1 {
-	// 	pe.lastByte = input[0]
-	// }
 
 	var hd *terminal.Handler
 	hd = pe.parser.ProcessInput(input...)
@@ -637,7 +622,6 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
 		// 	fmt.Printf("newUserInput # (%d,%d) input=%q\n", pe.cursor().row, pe.cursor().col, hd.GetSequence())
 		// }
 	} // hd is not nil
-	// } // for loop
 	// fmt.Printf("newUserInput #epoch predictionEpoch=%d\n\n", pe.predictionEpoch)
 }
 

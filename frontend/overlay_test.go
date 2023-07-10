@@ -737,6 +737,14 @@ func TestPredictionCull(t *testing.T) {
 	}
 }
 
+func TestPredictionNewInput(t *testing.T) {
+	emu := terminal.NewEmulator3(80, 40, 40)
+	pe := newPredictionEngine()
+
+	pe.NewUserInput(emu, []rune{})
+	// the pe and emu doesn't change so we don't validate the result.
+}
+
 func TestTitleEngine(t *testing.T) {
 	tc := []struct {
 		name   string
