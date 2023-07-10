@@ -532,6 +532,7 @@ func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
 // process user input to prepare local prediction:cells and cursors.
 // before process the input, PredictionEngine calls cull() method to check the prediction validity.
 // a.k.a mosh new_user_byte() method
+// consider to change the parameters to []rune
 func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, str string, delay ...int) {
 	var input []rune
 	var hd *terminal.Handler
@@ -637,17 +638,19 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, str string, del
 
 // check the validity of cell prediction and perform action based on the validity.
 //
-// for IncorrectOrExpired: remove the cell prediction or clear the whole prediction.
+// - for IncorrectOrExpired: remove the cell prediction or clear the whole prediction.
 //
-// for Correct: update glitch_trigger if possible, update remaining renditions, remove the cell prediction.
+// - for Correct: update glitch_trigger if possible, update remaining renditions, remove the cell prediction.
 //
-// for CorrectNoCredit: remove the cell prediction. update prediction renditions.
+// - for CorrectNoCredit: remove the cell prediction. update prediction renditions.
 //
-// for Pending: update glitch_trigger if possible, keep the prediction
+// - for Pending: update glitch_trigger if possible, keep the prediction
 //
 // check the validity of cursor prediction and perform action based on the validity.
 //
-// for IncorrectOrExpired: clear the whole prediction.
+// - reset the cursor prediction if the last cursor prediction is IncorrectOrExpired
+//
+// - remove any cursor prediction except Pending validity.
 func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 	if pe.displayPreference == Never {
 		return
@@ -748,9 +751,10 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 					pe.confirmedEpoch = cell.tentativeUntilEpoch
 				}
 
-				// When predictions come in quickly, slowly take away the glitch trigger.
 				// fmt.Printf("cull #Correct glitchTrigger=%d, now=%d, predictionTime=%d, now-cell.predictionTime=%d\n",
 				// 	pe.glitchTrigger, now, cell.predictionTime, now-cell.predictionTime)
+
+				// When predictions come in quickly, slowly take away the glitch trigger.
 				if now-cell.predictionTime < GLITCH_THRESHOLD {
 					if pe.glitchTrigger > 0 && now-GLITCH_REPAIR_MININTERVAL >= pe.lastQuickConfirmation {
 						pe.glitchTrigger--
@@ -766,7 +770,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 					pe.overlays[i].overlayCells[k].replacement.SetRenditions(actualRenditions)
 				}
 
-				cell.reset2()
+				cell.reset2() // instead of fallthrough we call cell.reset2()
 			case CorrectNoCredit:
 				// fmt.Printf("cull() (%d,%d) return CorrectNoCredit, replacement=%s, original=%s, active=%t, ack=%d, expire=%d\n",
 				// fmt.Printf("cull #CorrectNoCredit tentativeUntilEpoch=%d, confirmedEpoch=%d\n", cell.tentativeUntilEpoch, pe.confirmedEpoch)
