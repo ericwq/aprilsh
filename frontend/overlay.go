@@ -339,7 +339,7 @@ func (c *conditionalOverlayRow) apply(emu *terminal.Emulator, confirmedEpoch int
 // represent the prediction engine, which contains prediction cursor movement and
 // prediction rows and cells.
 type PredictionEngine struct {
-	lastByte              rune
+	lastByte              []rune
 	parser                terminal.Parser
 	overlays              []conditionalOverlayRow
 	cursors               []conditionalCursorMove
@@ -532,107 +532,112 @@ func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
 // process user input to prepare local prediction:cells and cursors.
 // before process the input, PredictionEngine calls cull() method to check the prediction validity.
 // a.k.a mosh new_user_byte() method
-// consider to change the parameters to []rune
-func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, str string, delay ...int) {
-	var input []rune
-	var hd *terminal.Handler
-
-	if len(str) == 0 {
+// TODO consider to change the parameters to []rune
+func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
+	// var input []rune
+	if len(input) == 0 {
 		return
 	}
 
-	index := 0
-	graphemes := uniseg.NewGraphemes(str)
-	for graphemes.Next() {
-		if pe.displayPreference == Never {
-			continue // option Never means disable the prediction
-		} else if pe.displayPreference == Experimental {
-			pe.predictionEpoch = pe.confirmedEpoch
-			// fmt.Printf("newUserInput #Experimental predictionEpoch = confirmedEpoch = %d\n", pe.confirmedEpoch)
-		}
+	// index := 0
+	// graphemes := uniseg.NewGraphemes(str)
+	// for graphemes.Next() {
+	if pe.displayPreference == Never {
+		// continue // option Never means disable the prediction
+		return
+	} else if pe.displayPreference == Experimental {
+		pe.predictionEpoch = pe.confirmedEpoch
+		// fmt.Printf("newUserInput #Experimental predictionEpoch = confirmedEpoch = %d\n", pe.confirmedEpoch)
+	}
 
-		input = graphemes.Runes()
-		// fmt.Printf("newUserInput #epoch predictionEpoch=%d\n", pe.predictionEpoch)
+	// input = graphemes.Runes()
+	// fmt.Printf("newUserInput #epoch predictionEpoch=%d\n", pe.predictionEpoch)
 
-		now := time.Now().UnixMilli()
+	/*
 		if len(delay) > index { // delay parameters is provided to simulate network delay
 			pause := time.Duration(delay[index])
 			// fmt.Printf("newUserInput #delay %dms.\n", pause)
 			time.Sleep(time.Millisecond * pause)
 			index++
 		}
-		pe.cull(emu)
+	*/
+	pe.cull(emu)
+	now := time.Now().UnixMilli()
 
-		// translate application-mode cursor control function to ANSI cursor control sequence
-		if pe.lastByte == '\x1b' && len(input) == 1 && input[0] == 'O' {
-			input[0] = '['
-		}
-		if len(input) == 1 {
-			pe.lastByte = input[0]
-		}
-
-		hd = pe.parser.ProcessInput(input...)
-		if hd != nil {
-			switch hd.GetId() {
-			case terminal.Graphemes:
-				// if pe.cursor() != nil {
-				// 	fmt.Printf("newUserInput #cursors len=%d, tentativeUntilEpoch=%d, predictionEpoch=%d, last %p\n",
-				// 		len(pe.cursors), pe.cursor().tentativeUntilEpoch, pe.predictionEpoch, pe.cursor())
-				// }
-				pe.handleUserGrapheme(emu, now, hd.GetCh())
-			case terminal.C0_CR:
-				pe.becomeTentative()
-				pe.newlineCarriageReturn(emu)
-			case terminal.CSI_CUF:
-				pe.initCursor(emu)
-				if pe.cursor().col < emu.GetWidth()-1 {
-					// fmt.Printf("newUserInput #CUF before col=%d\n", pe.cursor().col)
-					row := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
-					predict := row.overlayCells[pe.cursor().col+1].replacement
-					cell := emu.GetCell(pe.cursor().row, pe.cursor().col+1)
-					// check the next cell width, both predict and emulator need to be checked
-					if cell.IsDoubleWidthCont() || predict.IsDoubleWidthCont() {
-						if pe.cursor().col+2 >= emu.GetWidth() {
-							// fmt.Printf("newUserInput #CUF abort col=%d\n", pe.cursor().col)
-							break
-						}
-						pe.cursor().col += 2
-					} else {
-						pe.cursor().col++
-					}
-					pe.cursor().expire(pe.localFrameSent+1, now)
-					// fmt.Printf("newUserInput #CUF after  col=%d\n", pe.cursor().col)
-				}
-			case terminal.CSI_CUB:
-				pe.initCursor(emu)
-				if pe.cursor().col > 0 { // TODO consider the left right margin.
-					// fmt.Printf("newUserInput #CUB before col=%d\n", pe.cursor().col)
-					row := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
-					predict := row.overlayCells[pe.cursor().col-1].replacement
-					cell := emu.GetCell(pe.cursor().row, pe.cursor().col-1)
-					// check the previous cell width, both predict and emulator need to be checked
-					if cell.IsDoubleWidthCont() || predict.IsDoubleWidthCont() {
-						if pe.cursor().col-2 <= 0 {
-							pe.cursor().col = 0
-							// fmt.Printf("newUserInput #CUB abort col=%d\n", pe.cursor().col)
-							break
-						}
-						pe.cursor().col -= 2
-					} else {
-						pe.cursor().col--
-					}
-					pe.cursor().expire(pe.localFrameSent+1, now)
-					// fmt.Printf("newUserInput #CUB after  col=%d\n", pe.cursor().col)
-				}
-			default:
-				// TODO we can add support for more control sequences to improve the usability of prediction engine.
-				pe.becomeTentative()
-			}
-			// if pe.cursor() != nil {
-			// 	fmt.Printf("newUserInput # (%d,%d) input=%q\n", pe.cursor().row, pe.cursor().col, hd.GetSequence())
-			// }
-		}
+	// translate application-mode cursor control function to ANSI cursor control sequence
+	if len(pe.lastByte) == 1 && pe.lastByte[0] == '\x1b' && len(input) == 1 && input[0] == 'O' {
+		input[0] = '['
 	}
+	pe.lastByte = make([]rune, 0, len(input))
+	copy(pe.lastByte, input)
+
+	// if len(input) == 1 {
+	// 	pe.lastByte = input[0]
+	// }
+
+	var hd *terminal.Handler
+	hd = pe.parser.ProcessInput(input...)
+	if hd != nil {
+		switch hd.GetId() {
+		case terminal.Graphemes:
+			// if pe.cursor() != nil {
+			// 	fmt.Printf("newUserInput #cursors len=%d, tentativeUntilEpoch=%d, predictionEpoch=%d, last %p\n",
+			// 		len(pe.cursors), pe.cursor().tentativeUntilEpoch, pe.predictionEpoch, pe.cursor())
+			// }
+			pe.handleUserGrapheme(emu, now, hd.GetCh())
+		case terminal.C0_CR:
+			pe.becomeTentative()
+			pe.newlineCarriageReturn(emu)
+		case terminal.CSI_CUF:
+			pe.initCursor(emu)
+			if pe.cursor().col < emu.GetWidth()-1 {
+				// fmt.Printf("newUserInput #CUF before col=%d\n", pe.cursor().col)
+				row := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
+				predict := row.overlayCells[pe.cursor().col+1].replacement
+				cell := emu.GetCell(pe.cursor().row, pe.cursor().col+1)
+				// check the next cell width, both predict and emulator need to be checked
+				if cell.IsDoubleWidthCont() || predict.IsDoubleWidthCont() {
+					if pe.cursor().col+2 >= emu.GetWidth() {
+						// fmt.Printf("newUserInput #CUF abort col=%d\n", pe.cursor().col)
+						break
+					}
+					pe.cursor().col += 2
+				} else {
+					pe.cursor().col++
+				}
+				pe.cursor().expire(pe.localFrameSent+1, now)
+				// fmt.Printf("newUserInput #CUF after  col=%d\n", pe.cursor().col)
+			}
+		case terminal.CSI_CUB:
+			pe.initCursor(emu)
+			if pe.cursor().col > 0 { // TODO consider the left right margin.
+				// fmt.Printf("newUserInput #CUB before col=%d\n", pe.cursor().col)
+				row := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
+				predict := row.overlayCells[pe.cursor().col-1].replacement
+				cell := emu.GetCell(pe.cursor().row, pe.cursor().col-1)
+				// check the previous cell width, both predict and emulator need to be checked
+				if cell.IsDoubleWidthCont() || predict.IsDoubleWidthCont() {
+					if pe.cursor().col-2 <= 0 {
+						pe.cursor().col = 0
+						// fmt.Printf("newUserInput #CUB abort col=%d\n", pe.cursor().col)
+						break
+					}
+					pe.cursor().col -= 2
+				} else {
+					pe.cursor().col--
+				}
+				pe.cursor().expire(pe.localFrameSent+1, now)
+				// fmt.Printf("newUserInput #CUB after  col=%d\n", pe.cursor().col)
+			}
+		default:
+			// TODO we can add support for more control sequences to improve the usability of prediction engine.
+			pe.becomeTentative()
+		}
+		// if pe.cursor() != nil {
+		// 	fmt.Printf("newUserInput # (%d,%d) input=%q\n", pe.cursor().row, pe.cursor().col, hd.GetSequence())
+		// }
+	} // hd is not nil
+	// } // for loop
 	// fmt.Printf("newUserInput #epoch predictionEpoch=%d\n\n", pe.predictionEpoch)
 }
 
@@ -1053,6 +1058,24 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 		}
 
 		// fmt.Printf("handleUserGrapheme #cursor at (%d,%d) %p size=%d\n\n", pe.cursor().row, pe.cursor().col, pe.cursor(), len(pe.cursors))
+	}
+}
+
+// add this method for test purpose
+func (pe *PredictionEngine) inputString(emu *terminal.Emulator, str string, delay ...int) {
+	var input []rune
+
+	index:=0
+	graphemes := uniseg.NewGraphemes(str)
+	for graphemes.Next() {
+		input = graphemes.Runes()
+		if len(delay) > index { // delay parameters is provided to simulate network delay
+			pause := time.Duration(delay[index])
+			// fmt.Printf("newUserInput #delay %dms.\n", pause)
+			time.Sleep(time.Millisecond * pause)
+			index++
+		}
+		pe.NewUserInput(emu, input)
 	}
 }
 

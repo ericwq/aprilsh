@@ -363,7 +363,7 @@ func (sc *STMClient) processUserInput(buf string) bool {
 			input = graphemes.Runes()
 			theByte := input[0] // the first byte
 
-			sc.overlays.GetPredictionEngine().NewUserInput(sc.localFramebuffer, string(input))
+			sc.overlays.GetPredictionEngine().NewUserInput(sc.localFramebuffer, input)
 
 			if sc.quitSequenceStarted {
 				if theByte == '.' { // Quit sequence is Ctrl-^ .
