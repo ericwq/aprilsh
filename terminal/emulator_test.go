@@ -5,10 +5,13 @@
 package terminal
 
 import (
+	"fmt"
 	"io"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/rivo/uniseg"
 )
 
 func TestEmulatorResize(t *testing.T) {
@@ -401,5 +404,56 @@ func TestEmulatorClone(t *testing.T) {
 				t.Errorf("%q parser is not equal\n", v.label)
 			}
 		}
+	}
+}
+
+func TestHandleStream_Edge(t *testing.T) {
+	tc := []struct {
+		label    string
+		row, col int    // the specified row and col
+		base     string // base content
+		expect   string // the expect content
+	}{
+		{"input backspace for simple cell", 0, 70, "abcde\x1B[D\x1B[D\x1B[D\x7f", "acde"},
+		// {"input backspace for wide cell", 1, 60, "abc太学生\x1B[D\x1B[D\x1B[D\x1B[C\x7f", "abc学生"},
+		// {"input backspace for wide cell with base", 2, 60, "东部战区\x1B[C\x1B[C\x7f", "东战区"},
+		// {"move cursor right, wide cell right edge", 3, 76, "平潭\x1B[C\x1B[C", "平潭"},
+		// {"move cursor left, wide cell left edge", 4, 0, "三号木\x1B[C\x1B[D\x1B[D", "三号木"},
+		// {"input backspace left edge", 5, 0, "小鸡腿\x1B[C\x7f\x7f", "鸡腿"},
+		// {"input backspace unknown case", 6, 74, "gocto\x1B[D\x1B[D\x7f\x7f", "gto"},
+		// {"backspace, predict unknown case", 7, 60, "捉鹰打goto\x7f\x7f\x7f\x7f鸟", "捉鹰打鸟"},
+	}
+	emu := NewEmulator3(80, 40, 40) // TODO why we can't init emulator outside of for loop
+
+	for _, v := range tc {
+		emu.MoveCursor(v.row, v.col)
+		emu.HandleStream(v.base)
+		fmt.Printf("%s base=%q expect=%q, pos=(%d,%d)\n", v.label, v.base, v.expect, v.row, v.col)
+		printEmulatorCell(emu, v.row, v.col, v.expect, "After Base")
+
+		graphemes := uniseg.NewGraphemes(v.expect)
+		i := 0
+		for graphemes.Next() {
+			chs := graphemes.Runes()
+
+			cell := emu.GetCellPtr(v.row, v.col+i)
+			if cell.String() != string(chs) {
+				t.Errorf("#test HandleStream() %q expect %s, got %s\n", v.label, string(chs), cell)
+			}
+			i += uniseg.StringWidth(string(chs))
+		}
+
+	}
+}
+
+func printEmulatorCell(emu *Emulator, row, col int, sample string, prefix string) {
+	graphemes := uniseg.NewGraphemes(sample)
+	i := 0
+	for graphemes.Next() {
+		chs := graphemes.Runes()
+
+		cell := emu.GetCellPtr(row, col+i)
+		fmt.Printf("%s # cell %p (%d,%d) is %q\n", prefix, cell, row, col+i, cell)
+		i += uniseg.StringWidth(string(chs))
 	}
 }

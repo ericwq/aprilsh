@@ -406,13 +406,15 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 		{"backspace, predict unknown case", 7, 60, "", "捉鹰打goto\x7f\x7f\x7f\x7f鸟", 0, 4, "捉鹰打鸟"},
 	}
 
+	emu := terminal.NewEmulator3(80, 40, 40) // TODO why we can't init emulator outside of for loop
 	pe := newPredictionEngine()
+
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			emu := terminal.NewEmulator3(80, 40, 40) //TODO why we can't init emulator outside of for loop
 			pe.Reset()
 			// t.Logf("%q predictionEpoch=%d\n", v.name, pe.predictionEpoch)
 			pe.predictionEpoch = 1 // TODO: when it's time to update predictionEpoch?
+			// fmt.Printf("%s base=%q expect=%q, pos=(%d,%d)\n", v.label, v.base, v.expect, v.row, v.col)
 			// printEmulatorCell(emu, v.row, v.col, v.expect, "Base")
 
 			// set the base content
@@ -598,7 +600,7 @@ func TestPredictionKillEpoch(t *testing.T) {
 
 func TestPredictionCull(t *testing.T) {
 	tc := []struct {
-		name                string
+		label               string
 		row, col            int               // cursor start position
 		base                string            // base content
 		predict             string            // prediction
@@ -626,117 +628,119 @@ func TestPredictionCull(t *testing.T) {
 	pe := newPredictionEngine()
 
 	for k, v := range tc {
-		// fmt.Printf("\n%q #testing call cull A.\n", v.name)
-		pe.SetDisplayPreference(v.displayPreference)
+		t.Run(v.label, func(t *testing.T) {
+			// fmt.Printf("\n%q #testing call cull A.\n", v.name)
+			pe.SetDisplayPreference(v.displayPreference)
 
-		// set the base content
-		emu.MoveCursor(v.row, v.col)
-		emu.HandleStream(v.base)
+			// set the base content
+			emu.MoveCursor(v.row, v.col)
+			emu.HandleStream(v.base)
 
-		// mimic user input for prediction engine
-		emu.MoveCursor(v.row, v.col)
-		pe.SetLocalFrameSent(v.localFrameSend)
+			// mimic user input for prediction engine
+			emu.MoveCursor(v.row, v.col)
+			pe.SetLocalFrameSent(v.localFrameSend)
 
-		// fmt.Printf("%q #testing call cull B1. localFrameSend=%d, localFrameLateAcked=%d, predictionEpoch=%d, confirmedEpoch=%d\n",
-		// 	v.name, pe.localFrameSent, pe.localFrameLateAcked, pe.predictionEpoch, pe.confirmedEpoch)
-		// cull will be called for each rune, except last rune
-		switch k {
-		case 5:
-			delay := []int{0, 0, 251, 0, 0, 0, 0, 0, 0}
-			pe.inputString(emu, v.predict, delay...)
-		case 6:
-			delay := []int{0, 0, 5001, 0, 0, 0, 0, 0, 0}
-			pe.inputString(emu, v.predict, delay...)
-		case 7:
-			pe.SetSendInterval(v.sendInterval)
-			pe.inputString(emu, v.predict)
-		case 8:
-			pe.SetSendInterval(v.sendInterval)
-			pe.inputString(emu, v.predict)
-		case 11:
-			pe.Reset()                             // clear the previous rows
-			pe.getOrMakeRow(v.row, emu.GetWidth()) // add the illegal row
-		case 12:
-			now := time.Now().UnixMilli()
-			for _, ch := range v.predict {
-				pe.handleUserGrapheme(emu, now, ch)
+			// fmt.Printf("%q #testing call cull B1. localFrameSend=%d, localFrameLateAcked=%d, predictionEpoch=%d, confirmedEpoch=%d\n",
+			// 	v.name, pe.localFrameSent, pe.localFrameLateAcked, pe.predictionEpoch, pe.confirmedEpoch)
+			// cull will be called for each rune, except last rune
+			switch k {
+			case 5:
+				delay := []int{0, 0, 251, 0, 0, 0, 0, 0, 0}
+				pe.inputString(emu, v.predict, delay...)
+			case 6:
+				delay := []int{0, 0, 5001, 0, 0, 0, 0, 0, 0}
+				pe.inputString(emu, v.predict, delay...)
+			case 7:
+				pe.SetSendInterval(v.sendInterval)
+				pe.inputString(emu, v.predict)
+			case 8:
+				pe.SetSendInterval(v.sendInterval)
+				pe.inputString(emu, v.predict)
+			case 11:
+				pe.Reset()                             // clear the previous rows
+				pe.getOrMakeRow(v.row, emu.GetWidth()) // add the illegal row
+			case 12:
+				now := time.Now().UnixMilli()
+				for _, ch := range v.predict {
+					pe.handleUserGrapheme(emu, now, ch)
+				}
+			default:
+				pe.inputString(emu, v.predict)
 			}
-		default:
-			pe.inputString(emu, v.predict)
-		}
-		// fmt.Printf("%q #testing call cull B2. localFrameSend=%d, localFrameLateAcked=%d, predictionEpoch=%d, confirmedEpoch=%d\n",
-		// 	v.name, pe.localFrameSent, pe.localFrameLateAcked, pe.predictionEpoch, pe.confirmedEpoch)
+			// fmt.Printf("%q #testing call cull B2. localFrameSend=%d, localFrameLateAcked=%d, predictionEpoch=%d, confirmedEpoch=%d\n",
+			// 	v.name, pe.localFrameSent, pe.localFrameLateAcked, pe.predictionEpoch, pe.confirmedEpoch)
 
-		// mimic the result from server
-		emu.MoveCursor(v.row, v.col)
-		emu.HandleStream(v.frame)
+			// mimic the result from server
+			emu.MoveCursor(v.row, v.col)
+			emu.HandleStream(v.frame)
 
-		switch k {
-		case 9, 10:
-			emu.MoveCursor(v.row, v.col+1)
-		}
-
-		pe.SetLocalFrameLateAcked(v.localFrameLateAcked)
-		pe.cull(emu)
-		// fmt.Printf("%q #testing call cull C. localFrameSend=%d, localFrameLateAcked=%d, predictionEpoch=%d, confirmedEpoch=%d\n",
-		// 	v.name, pe.localFrameSent, pe.localFrameLateAcked, pe.predictionEpoch, pe.confirmedEpoch)
-
-		switch k {
-		case 1:
-			// validate the result of killEpoch
-			if len(pe.overlays) == 1 && len(pe.cursors) == 0 {
-				// after killEpoch, cull() remove the last cursor because it's correct
-				break
-			} else {
-				t.Errorf("%q should call killEpoch. got overlays=%d, cursors=%d\n", v.name, len(pe.overlays), len(pe.cursors))
+			switch k {
+			case 9, 10:
+				emu.MoveCursor(v.row, v.col+1)
 			}
-		case 6:
-			if !pe.flagging {
-				t.Errorf("%q expect true for flagging, got %t\n", v.name, pe.flagging)
-			}
-			fallthrough
-		case 5:
-			if pe.glitchTrigger == 0 {
-				t.Errorf("%q glitchTrigger should >0, got %d\n", v.name, pe.glitchTrigger)
-			}
-			fallthrough
-		case 2, 4, 12:
-			// validate the result of cell reset2
-			predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
-			for i := range v.frame {
-				predict := &(predictRow.overlayCells[v.col+i])
-				if predict.active {
-					t.Errorf("%q should not be active, got active=%t\n", v.name, predict.active)
+
+			pe.SetLocalFrameLateAcked(v.localFrameLateAcked)
+			pe.cull(emu)
+			// fmt.Printf("%q #testing call cull C. localFrameSend=%d, localFrameLateAcked=%d, predictionEpoch=%d, confirmedEpoch=%d\n",
+			// 	v.name, pe.localFrameSent, pe.localFrameLateAcked, pe.predictionEpoch, pe.confirmedEpoch)
+
+			switch k {
+			case 1:
+				// validate the result of killEpoch
+				if len(pe.overlays) == 1 && len(pe.cursors) == 0 {
+					// after killEpoch, cull() remove the last cursor because it's correct
+					break
+				} else {
+					t.Errorf("%q should call killEpoch. got overlays=%d, cursors=%d\n", v.label, len(pe.overlays), len(pe.cursors))
+				}
+			case 6:
+				if !pe.flagging {
+					t.Errorf("%q expect true for flagging, got %t\n", v.label, pe.flagging)
+				}
+				fallthrough
+			case 5:
+				if pe.glitchTrigger == 0 {
+					t.Errorf("%q glitchTrigger should >0, got %d\n", v.label, pe.glitchTrigger)
+				}
+				fallthrough
+			case 2, 4, 12:
+				// validate the result of cell reset2
+				predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
+				for i := range v.frame {
+					predict := &(predictRow.overlayCells[v.col+i])
+					if predict.active {
+						t.Errorf("%q should not be active, got active=%t\n", v.label, predict.active)
+					}
+				}
+				if k == 12 {
+					if pe.confirmedEpoch != 1 {
+						t.Errorf("%q expect confirmedEpoch < tentativeUntilEpoch. got %d\n", v.label, pe.confirmedEpoch)
+					}
+				}
+
+			case 7:
+				if !pe.flagging {
+					t.Errorf("%q expect true for flagging, got %t\n", v.label, pe.flagging)
+				}
+			case 8:
+				if pe.srttTrigger {
+					t.Errorf("%q expect false for srttTrigger, got %t\n", v.label, pe.srttTrigger)
+				}
+			case 10:
+				if len(pe.cursors) != 0 {
+					t.Errorf("%q expect clean cursor prediction, got %d\n", v.label, len(pe.cursors))
+				}
+			case 11:
+				if len(pe.overlays) != 0 {
+					t.Errorf("%q expect zero rows, got %d\n", v.label, len(pe.overlays))
+				}
+			default:
+				// validate pe.reset()
+				if len(pe.overlays) != 0 || len(pe.cursors) != 0 {
+					t.Errorf("%s the engine should be reset. got overlays=%d, cursors=%d\n", v.label, len(pe.overlays), len(pe.cursors))
 				}
 			}
-			if k == 12 {
-				if pe.confirmedEpoch != 1 {
-					t.Errorf("%q expect confirmedEpoch < tentativeUntilEpoch. got %d\n", v.name, pe.confirmedEpoch)
-				}
-			}
-
-		case 7:
-			if !pe.flagging {
-				t.Errorf("%q expect true for flagging, got %t\n", v.name, pe.flagging)
-			}
-		case 8:
-			if pe.srttTrigger {
-				t.Errorf("%q expect false for srttTrigger, got %t\n", v.name, pe.srttTrigger)
-			}
-		case 10:
-			if len(pe.cursors) != 0 {
-				t.Errorf("%q expect clean cursor prediction, got %d\n", v.name, len(pe.cursors))
-			}
-		case 11:
-			if len(pe.overlays) != 0 {
-				t.Errorf("%q expect zero rows, got %d\n", v.name, len(pe.overlays))
-			}
-		default:
-			// validate pe.reset()
-			if len(pe.overlays) != 0 || len(pe.cursors) != 0 {
-				t.Errorf("%s the engine should be reset. got overlays=%d, cursors=%d\n", v.name, len(pe.overlays), len(pe.cursors))
-			}
-		}
+		})
 	}
 }
 
