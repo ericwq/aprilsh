@@ -27,31 +27,34 @@ func TestDisplay(t *testing.T) {
 	}{
 		{"useEnvironment, base TERM", true, "alacritty", nil, true, true, false},
 		{"useEnvironment, base TERM, title support", true, "xterm", nil, true, true, true},
-		{"useEnvironment, dynamic TERM", true, "sun", nil, true, true, false}, // we choose sun, because sun fade out from the market
+		{"useEnvironment, dynamic TERM", true, "sun", errors.New("terminal entry not found"), true, true, false}, // we choose sun, because sun fade out from the market
 		{"useEnvironment, wrong TERM", true, "stranger", errors.New("infocmp: couldn't open terminfo file"), false, false, false},
 		{"not useEnvironment ", false, "anything", nil, true, true, true},
 	}
 
 	for _, v := range tc {
-		os.Setenv("TERM", v.termEnv)
-		d, e := NewDisplay(v.useEnv)
+		t.Run(v.label, func(t *testing.T) {
+			os.Setenv("TERM", v.termEnv)
+			d, e := NewDisplay(v.useEnv)
 
-		if e == nil {
+			if e == nil {
 
-			if d.hasBCE != v.hasBCE {
-				t.Errorf("%q expect bce %t, got %t\n", v.label, v.hasBCE, d.hasBCE)
+				if d.hasBCE != v.hasBCE {
+					t.Errorf("%q expect bce %t, got %t\n", v.label, v.hasBCE, d.hasBCE)
+				}
+				if d.hasECH != v.hasECH {
+					t.Errorf("%q expect ech %t, got %t\n", v.label, v.hasECH, d.hasECH)
+				}
+				if d.hasTitle != v.hasTitle {
+					t.Errorf("%q expect title %t, got %t\n", v.label, v.hasTitle, d.hasTitle)
+				}
+			} else {
+				// fmt.Printf("#test NewDisplay() %q return %q ,expect %q\n", v.label, e, v.err)
+				if !strings.HasPrefix(e.Error(), v.err.Error()) {
+					t.Errorf("%q expect err %q, got %q\n", v.label, v.err, e)
+				}
 			}
-			if d.hasECH != v.hasECH {
-				t.Errorf("%q expect ech %t, got %t\n", v.label, v.hasECH, d.hasECH)
-			}
-			if d.hasTitle != v.hasTitle {
-				t.Errorf("%q expect title %t, got %t\n", v.label, v.hasTitle, d.hasTitle)
-			}
-		} else {
-			if !strings.HasPrefix(e.Error(), v.err.Error()) {
-				t.Errorf("%q expect err %q, got %q\n", v.label, v.err, e)
-			}
-		}
+		})
 	}
 }
 
