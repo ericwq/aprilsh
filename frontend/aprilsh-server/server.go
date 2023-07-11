@@ -826,7 +826,7 @@ func getTimeFrom(env string, def int64) (ret int64) {
 
 func printWelcome(pid int, port int, tty *os.File) {
 	logI.Printf("%s start listening on :%d. build version %s [pid=%d] \n", _COMMAND_NAME, port, BuildVersion, pid)
-	logI.Printf("Copyright 2022 wangqi.\n")
+	logI.Printf("Copyright 2022~2023 wangqi.\n")
 	logI.Printf("%s%s", "Use of this source code is governed by a MIT-style",
 		"license that can be found in the LICENSE file.\n")
 	// logI.Printf("[%s detached, pid=%d]\n", COMMAND_NAME, pid)
