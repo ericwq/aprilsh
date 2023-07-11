@@ -745,6 +745,17 @@ func TestPredictionNewInput(t *testing.T) {
 	// the pe and emu doesn't change so we don't validate the result.
 }
 
+func TestSetLocalFrameAcked(t *testing.T) {
+	pe := newPredictionEngine()
+
+	var expect int64 = 7
+	pe.SetLocalFrameAcked(int64(expect))
+
+	if pe.localFrameAcked != expect {
+		t.Errorf("#test SetLocalFrameAcked expect %d, got %d\n", expect, pe.localFrameAcked)
+	}
+}
+
 func TestTitleEngine(t *testing.T) {
 	tc := []struct {
 		name   string
