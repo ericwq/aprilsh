@@ -388,7 +388,7 @@ func printPredictionCell(emu *terminal.Emulator, pe *PredictionEngine, row, col 
 
 func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 	tc := []struct {
-		name           string
+		label          string
 		row, col       int    // the specified row and col
 		base           string // base content
 		predict        string // prediction
@@ -407,46 +407,49 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 	}
 
 	pe := newPredictionEngine()
-	emu := terminal.NewEmulator3(80, 40, 40)
-
 	for _, v := range tc {
-		pe.Reset()
-		// t.Logf("%q predictionEpoch=%d\n", v.name, pe.predictionEpoch)
-		pe.predictionEpoch = 1 // TODO: when it's time to update predictionEpoch?
+		t.Run(v.label, func(t *testing.T) {
+			emu := terminal.NewEmulator3(80, 40, 40) //TODO why we can't init emulator outside of for loop
+			pe.Reset()
+			// t.Logf("%q predictionEpoch=%d\n", v.name, pe.predictionEpoch)
+			pe.predictionEpoch = 1 // TODO: when it's time to update predictionEpoch?
+			// printEmulatorCell(emu, v.row, v.col, v.expect, "Base")
 
-		// set the base content
-		emu.MoveCursor(v.row, v.col)
-		emu.HandleStream(v.base)
-		// printEmulatorCell(emu, v.row, v.col, v.expect, "Base")
+			// set the base content
+			emu.MoveCursor(v.row, v.col)
+			emu.HandleStream(v.base)
+			// printEmulatorCell(emu, v.row, v.col, v.expect, "After Base")
 
-		// mimic user input for prediction engine
-		emu.MoveCursor(v.row, v.col)
-		pe.localFrameLateAcked = v.lateAck
-		pe.inputString(emu, v.predict)
-		// printPredictionCell(emu, pe, v.row, v.col, v.expect, "Predict")
+			// mimic user input for prediction engine
+			emu.MoveCursor(v.row, v.col)
+			pe.localFrameLateAcked = v.lateAck
+			pe.inputString(emu, v.predict)
+			// printPredictionCell(emu, pe, v.row, v.col, v.expect, "Predict")
 
-		// merge the last predict
-		pe.cull(emu)
-		// printPredictionCell(emu, pe, v.row, v.col, v.expect, "After Cull")
-		pe.confirmedEpoch = v.confirmedEpoch
-		pe.apply(emu)
-		// printEmulatorCell(emu, v.row, v.col, v.expect, "Merge")
+			// merge the last predict
+			pe.cull(emu)
+			// printPredictionCell(emu, pe, v.row, v.col, v.expect, "After Cull")
+			pe.confirmedEpoch = v.confirmedEpoch
+			pe.apply(emu)
+			// printEmulatorCell(emu, v.row, v.col, v.expect, "Merge")
 
-		// predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
-		i := 0
-		graphemes := uniseg.NewGraphemes(v.expect)
-		for graphemes.Next() {
-			chs := graphemes.Runes()
+			// predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
+			i := 0
+			graphemes := uniseg.NewGraphemes(v.expect)
+			for graphemes.Next() {
+				chs := graphemes.Runes()
 
-			cell := emu.GetCell(v.row, v.col+i)
-			// predict := predictRow.overlayCells[v.col+i].replacement
-			if cell.String() != string(chs) {
-				t.Errorf("%s expect %q at (%d,%d), got cell %q dw=%t, dwcont=%t\n",
-					v.name, string(chs), v.row, v.col+i, cell, cell.IsDoubleWidth(), cell.IsDoubleWidthCont())
+				cell := emu.GetCell(v.row, v.col+i)
+				// fmt.Printf("#test %s (%d,%d) is %s\n", v.label, v.row, v.col+i, cell)
+				// predict := predictRow.overlayCells[v.col+i].replacement
+				if cell.String() != string(chs) {
+					t.Errorf("%s expect %q at (%d,%d), got cell %q dw=%t, dwcont=%t\n",
+						v.label, string(chs), v.row, v.col+i, cell, cell.IsDoubleWidth(), cell.IsDoubleWidthCont())
+				}
+
+				i += uniseg.StringWidth(string(chs))
 			}
-
-			i += uniseg.StringWidth(string(chs))
-		}
+		})
 	}
 }
 
