@@ -575,7 +575,7 @@ func (emu *Emulator) MoveCursor(posY, posX int) {
 	//
 	// emu.normalizeCursorPos()
 	hdl_csi_cup(emu, posY+1, posX+1)
-	// emu.posY, emu.posX = emu.regulatePos(posY, posX)
+	emu.posY, emu.posX = emu.regulatePos(posY, posX)
 }
 
 // get current cursor column
