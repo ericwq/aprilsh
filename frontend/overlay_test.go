@@ -414,8 +414,7 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 			pe.Reset()
 			// t.Logf("%q predictionEpoch=%d\n", v.name, pe.predictionEpoch)
 			pe.predictionEpoch = 1 // TODO: when it's time to update predictionEpoch?
-			// fmt.Printf("%s base=%q expect=%q, pos=(%d,%d)\n", v.label, v.base, v.expect, v.row, v.col)
-			// printEmulatorCell(emu, v.row, v.col, v.expect, "Base")
+			// fmt.Printf("%s base=%q expect=%q, pos=(%d,%d)\n", v.label, v.base, v.expect, emu.GetCursorRow(), emu.GetCursorCol())
 
 			// set the base content
 			emu.MoveCursor(v.row, v.col)

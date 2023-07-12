@@ -928,7 +928,7 @@ func hdl_csi_cup(emu *Emulator, row int, col int) {
 	emu.posY = row
 	emu.lastCol = false
 
-	emu.logT.Printf("Cursor positioned to (%d,%d)\n", emu.posY, emu.posX)
+	// emu.logT.Printf("Cursor positioned to (%d,%d)\n", emu.posY, emu.posX)
 }
 
 // CSI Ps n  Device Status Report (DSR).
