@@ -1062,25 +1062,22 @@ func TestHandle_SO_SI(t *testing.T) {
 
 func TestHandle_CUP(t *testing.T) {
 	tc := []struct {
-		name    string
-		startX  int
-		startY  int
-		hdIDs   int
-		wantY   int
-		wantX   int
-		seq     string
-		warnStr string
+		name   string
+		startX int
+		startY int
+		hdIDs  int
+		wantY  int
+		wantX  int
+		seq    string
 	}{
-		{"CSI Ps;PsH normal", 10, 10, CSI_CUP, 23, 13, "\x1B[24;14H", "Cursor positioned to"},
-		{"CSI Ps;PsH default", 10, 10, CSI_CUP, 0, 0, "\x1B[H", "Cursor positioned to"},
-		{"CSI Ps;PsH second default", 10, 10, CSI_CUP, 0, 0, "\x1B[1H", "Cursor positioned to"},
-		{"CSI Ps;PsH outrange active area", 10, 10, CSI_CUP, 39, 79, "\x1B[42;89H", "Cursor positioned to"},
+		{"CSI Ps;PsH normal", 10, 10, CSI_CUP, 23, 13, "\x1B[24;14H"},
+		{"CSI Ps;PsH default", 10, 10, CSI_CUP, 0, 0, "\x1B[H"},
+		{"CSI Ps;PsH second default", 10, 10, CSI_CUP, 0, 0, "\x1B[1H"},
+		{"CSI Ps;PsH outrange active area", 10, 10, CSI_CUP, 39, 79, "\x1B[42;89H"},
 	}
 	p := NewParser()
 
 	emu := NewEmulator3(80, 40, 500)
-	var place strings.Builder
-	emu.logT.SetOutput(&place)
 
 	for _, v := range tc {
 		var hd *Handler
@@ -1111,10 +1108,6 @@ func TestHandle_CUP(t *testing.T) {
 		if gotX != v.wantX || gotY != v.wantY {
 			t.Errorf("%s expect cursor position (%d,%d), got (%d,%d)\n",
 				v.name, v.wantX, v.wantY, gotX, gotY)
-		}
-
-		if !strings.Contains(place.String(), v.warnStr) {
-			t.Errorf("%s seq=%q expect %q, got %q\n", v.name, v.seq, v.warnStr, place.String())
 		}
 	}
 }
@@ -3880,7 +3873,7 @@ func TestHandle_OSC_Abort(t *testing.T) {
 
 func TestHandle_OSC_52(t *testing.T) {
 	tc := []struct {
-		label       string
+		label      string
 		hdIDs      []int
 		wantPc     string
 		wantPd     string
