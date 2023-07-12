@@ -263,17 +263,21 @@ func TestEmulatorMoveCursor(t *testing.T) {
 	emu := NewEmulator3(80, 40, 40)
 
 	for _, v := range tc {
-		if strings.Contains(v.label, "origin mode") {
-			// set origin mode, top/bottom margin, horizontal margin
-			emu.HandleStream("\x1B[?6h\x1B[2;38r\x1B[?69h\x1B[2;68s")
-			// fmt.Printf("#test originMode=%d, top=%d, bottom=%d\n", emu.originMode, emu.marginTop, emu.marginBottom)
-			// fmt.Printf("#test horizMarginMode=%t, hMargin=%d, nColsEff=%d\n", emu.horizMarginMode, emu.hMargin, emu.nColsEff)
-		}
-		emu.MoveCursor(v.posY, v.posX)
+		t.Run(v.label, func(t *testing.T) {
+			if strings.Contains(v.label, "origin mode") {
+				// set OriginMode_ScrollingRegion \x1B[?6
+				// Set Scrolling Region [top;bottom] \x1B[2;38r
+				// Set left and right margins (DECSLRM) \x1B[2;68s
+				emu.HandleStream("\x1B[?6h\x1B[2;38r\x1B[?69h\x1B[2;68s")
+				// fmt.Printf("#test originMode=%d, top=%d, bottom=%d\n", emu.originMode, emu.marginTop, emu.marginBottom)
+				// fmt.Printf("#test horizMarginMode=%t, hMargin=%d, nColsEff=%d\n", emu.horizMarginMode, emu.hMargin, emu.nColsEff)
+			}
+			emu.MoveCursor(v.posY, v.posX)
 
-		if emu.posY != v.expectY || emu.posX != v.expectX {
-			t.Errorf("%q expect cursor position (%d,%d), got (%d,%d)\n", v.label, v.expectY, v.expectX, emu.posY, emu.posX)
-		}
+			if emu.posY != v.expectY || emu.posX != v.expectX {
+				t.Errorf("%q expect cursor position (%d,%d), got (%d,%d)\n", v.label, v.expectY, v.expectX, emu.posY, emu.posX)
+			}
+		})
 	}
 }
 
