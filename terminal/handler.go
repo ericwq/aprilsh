@@ -728,6 +728,7 @@ func hdl_csi_dch(emu *Emulator, arg int) {
 		arg = calculateCellNum(emu, arg)
 		length -= arg
 
+		// fmt.Printf("#hdl_csi_dch posX=%d, arg=%d\n", emu.posX, arg)
 		emu.cf.moveInRow(emu.posY, emu.posX, emu.posX+arg, length)
 		emu.cf.eraseInRow(emu.posY, emu.posX+length, arg, emu.attrs)
 	}
@@ -883,9 +884,10 @@ func calculateCellNum(emu *Emulator, count int) int {
 	var cell Cell
 
 	for i := 0; i < Abs(count); i++ {
+		// fmt.Printf("#calculateCellNum currentX=%d\n", currentX)
 		if count > 0 { // calculate to the right
 			if currentX >= emu.nColsEff-1 {
-				currentX = emu.nColsEff-1
+				currentX = emu.nColsEff
 				break
 			}
 			cell = emu.GetCell(emu.posY, currentX+1)

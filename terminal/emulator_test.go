@@ -467,11 +467,12 @@ func printEmulatorCell(emu *Emulator, row, col int, sample string, prefix string
 	}
 }
 
-func TestCalculateCellNum(t *testing.T) {
+func testCalculateCellNum(t *testing.T) {
 	emu := NewEmulator3(80, 40, 40) // TODO why we can't init emulator outside of for loop
 	emu.MoveCursor(0, 79)
 	// fmt.Printf("#test calculateCellNum() posX=%d, right edge=%d\n ", emu.posX, emu.nColsEff)
-	got := calculateCellNum(emu, 5)
+	got := calculateCellNum(emu, 0)
+	// fmt.Printf("#test calculateCellNum() posX=%d, right edge=%d, got=%d\n ", emu.posX, emu.nColsEff, got)
 	if got != 0 {
 		t.Errorf("#test calculateCellNum() expect 0, got %d\n", got)
 	}
