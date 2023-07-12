@@ -415,14 +415,14 @@ func TestHandleStream_MoveDelete(t *testing.T) {
 		expect           string // the expect content
 		expectY, expectX int    // new cursor position
 	}{
-		// {"input backspace for simple cell", 0, 70, "abcde\x1B[4D\x1b[P", "acde", 0,71}, //
-		{"input backspace for wide cell", 1, 60, "abc太学生\x1B[3D\x1b[P", "abc学生", 1, 63}, //\x1B[D\x1B[2D\x1B[C\x1b[P
-		// {"input backspace for wide cell with base", 2, 60, "东部战区\x1B[C\x1B[C\x7f", "东战区"},
-		// {"move cursor right, wide cell right edge", 3, 76, "平潭\x1B[C\x1B[C", "平潭"},
-		// {"move cursor left, wide cell left edge", 4, 0, "三号木\x1B[C\x1B[D\x1B[D", "三号木"},
-		// {"input backspace left edge", 5, 0, "小鸡腿\x1B[C\x7f\x7f", "鸡腿"},
-		// {"input backspace unknown case", 6, 74, "gocto\x1B[D\x1B[D\x7f\x7f", "gto"},
-		// {"backspace, predict unknown case", 7, 60, "捉鹰打goto\x7f\x7f\x7f\x7f鸟", "捉鹰打鸟"},
+		{"move cursor and delete one regular graphemes", 0, 70, "abcde\x1B[4D\x1B[P", "acde", 0, 71},
+		{"move cursor and delete one wide graphemes", 1, 60, "abc太学生\x1B[3D\x1B[P", "abc学生", 1, 63},
+		{"move cursor back and forth for wide graphemes", 2, 60, "东部战区\x1B[4D\x1B[C\x1B[P", "东战区", 2, 62},
+		{"move cursor to right edge", 3, 75, "平潭\x1B[5C", "平潭", 3, 79},
+		{"move cursor to left edge", 4, 0, "三号木\x1B[5D", "三号木", 4, 0},
+		{"move cursor to left edge, delete 2 graphemes", 5, 0, "小鸡腿\x1B[3D\x1B[2P", "腿", 5, 0},
+		{"move cursor and delete 2 graphemes", 6, 74, "gocto\x1B[8C\x1B[4D\x1B[2P", "gto", 6, 75},
+		{"move cursor back and delete 4 regular graphemes", 7, 60, "捉鹰打goto\x1B[4D\x1B[4P鸟", "捉鹰打鸟", 7, 68},
 	}
 	emu := NewEmulator3(80, 40, 40) // TODO why we can't init emulator outside of for loop
 
@@ -431,7 +431,7 @@ func TestHandleStream_MoveDelete(t *testing.T) {
 			emu.MoveCursor(v.row, v.col)
 			emu.HandleStream(v.base)
 			// fmt.Printf("%s base=%q expect=%q, pos=(%d,%d)\n", v.label, v.base, v.expect, v.row, v.col)
-			printEmulatorCell(emu, v.row, v.col, v.expect, "After Base")
+			// printEmulatorCell(emu, v.row, v.col, v.expect, "After Base")
 
 			graphemes := uniseg.NewGraphemes(v.expect)
 			i := 0
@@ -448,7 +448,7 @@ func TestHandleStream_MoveDelete(t *testing.T) {
 			gotY := emu.GetCursorRow()
 			gotX := emu.GetCursorCol()
 
-			if v.expectY!= gotY || v.expectX != gotX {
+			if v.expectY != gotY || v.expectX != gotX {
 				t.Errorf("#test HandleStream() expect cursor at (%d,%d), got (%d,%d)\n", v.expectY, v.expectX, gotY, gotX)
 			}
 		})
@@ -464,5 +464,15 @@ func printEmulatorCell(emu *Emulator, row, col int, sample string, prefix string
 		cell := emu.GetCellPtr(row, col+i)
 		fmt.Printf("%s # cell %p (%d,%d) is %q\n", prefix, cell, row, col+i, cell)
 		i += uniseg.StringWidth(string(chs))
+	}
+}
+
+func TestCalculateCellNum(t *testing.T) {
+	emu := NewEmulator3(80, 40, 40) // TODO why we can't init emulator outside of for loop
+	emu.MoveCursor(0, 79)
+	// fmt.Printf("#test calculateCellNum() posX=%d, right edge=%d\n ", emu.posX, emu.nColsEff)
+	got := calculateCellNum(emu, 5)
+	if got != 0 {
+		t.Errorf("#test calculateCellNum() expect 0, got %d\n", got)
 	}
 }

@@ -722,10 +722,10 @@ func hdl_csi_dl(emu *Emulator, lines int) {
 
 // CSI Ps P  Delete Ps Character(s) (default = 1) (DCH).
 func hdl_csi_dch(emu *Emulator, arg int) {
-	// fmt.Printf("hdl_csi_dch start from %d,%d delete %d characters\n",  emu.posY,emu.posX, arg )
 	if emu.isCursorInsideMargins() {
 		length := emu.nColsEff - emu.posX
 		arg = Min(arg, length)
+		arg = calculateCellNum(emu, arg)
 		length -= arg
 
 		emu.cf.moveInRow(emu.posY, emu.posX, emu.posX+arg, length)
@@ -852,7 +852,7 @@ func hdl_csi_cud(emu *Emulator, num int) {
 func hdl_csi_cuf(emu *Emulator, num int) {
 	num = Min(num, emu.nColsEff-emu.posX-1)
 	// emu.posX += num
-	emu.posX = calculateCellUnit(emu, num)
+	emu.posX += calculateCellNum(emu, num)
 	emu.lastCol = false
 }
 
@@ -867,42 +867,48 @@ func hdl_csi_cub(emu *Emulator, num int) {
 		num = Min(num+1, emu.posX)
 	}
 	// emu.posX -= num
-	emu.posX = calculateCellUnit(emu, -num)
+	emu.posX += calculateCellNum(emu, -num)
 	emu.lastCol = false
 }
 
-// calculate the cell position, consider double width cell as one unit
-// count >0 , move cell to right
-// count <0 , move cell to left
-func calculateCellUnit(emu *Emulator, count int) (posX int) {
-	posX = emu.posX // the start position
+// calculate raw cell number with the consideration of wide grapheme and
+// regular grapheme. one wide grapheme takes two raw cells. one regular
+// grapheme takes one cell, count is the number of graphemes.
+//
+// count >0 , count raw cell to right.
+// count <0 , count raw cell to left.
+func calculateCellNum(emu *Emulator, count int) int {
+	oldX := emu.posX
+	currentX := emu.posX // the start position
 	var cell Cell
 
 	for i := 0; i < Abs(count); i++ {
 		if count > 0 { // calculate to the right
-			if posX >= emu.nColsEff {
+			if currentX >= emu.nColsEff-1 {
+				currentX = emu.nColsEff-1
 				break
 			}
-			cell = emu.GetCell(emu.posY, posX+1)
-			if cell.dwidth {
-				posX += 2
+			cell = emu.GetCell(emu.posY, currentX+1)
+			if cell.dwidth || cell.dwidthCont {
+				currentX += 2
 			} else {
-				posX++
+				currentX++
 			}
 		} else { // calculate to the left
-			if posX <= emu.hMargin {
+			if currentX <= emu.hMargin {
+				currentX = emu.hMargin
 				break
 			}
-			cell = emu.GetCell(emu.posY, posX-1)
-			if cell.dwidthCont {
-				posX -= 2
+			cell = emu.GetCell(emu.posY, currentX-1)
+			if cell.dwidthCont || cell.dwidth {
+				currentX -= 2
 			} else {
-				posX--
+				currentX--
 			}
 		}
 	}
 
-	return posX
+	return currentX - oldX
 }
 
 // CSI Ps ; Ps H Cursor Position [row;column] (default = [1,1]) (CUP).
