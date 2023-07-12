@@ -722,6 +722,7 @@ func hdl_csi_dl(emu *Emulator, lines int) {
 
 // CSI Ps P  Delete Ps Character(s) (default = 1) (DCH).
 func hdl_csi_dch(emu *Emulator, arg int) {
+	// fmt.Printf("hdl_csi_dch start from %d,%d delete %d characters\n",  emu.posY,emu.posX, arg )
 	if emu.isCursorInsideMargins() {
 		length := emu.nColsEff - emu.posX
 		arg = Min(arg, length)
@@ -850,7 +851,8 @@ func hdl_csi_cud(emu *Emulator, num int) {
 // CSI Ps C  Cursor Forward Ps Times (default = 1) (CUF).
 func hdl_csi_cuf(emu *Emulator, num int) {
 	num = Min(num, emu.nColsEff-emu.posX-1)
-	emu.posX += num
+	// emu.posX += num
+	emu.posX = calculateCellUnit(emu, num)
 	emu.lastCol = false
 }
 
@@ -864,8 +866,43 @@ func hdl_csi_cub(emu *Emulator, num int) {
 	if emu.posX == emu.nColsEff {
 		num = Min(num+1, emu.posX)
 	}
-	emu.posX -= num
+	// emu.posX -= num
+	emu.posX = calculateCellUnit(emu, -num)
 	emu.lastCol = false
+}
+
+// calculate the cell position, consider double width cell as one unit
+// count >0 , move cell to right
+// count <0 , move cell to left
+func calculateCellUnit(emu *Emulator, count int) (posX int) {
+	posX = emu.posX // the start position
+	var cell Cell
+
+	for i := 0; i < Abs(count); i++ {
+		if count > 0 { // calculate to the right
+			if posX >= emu.nColsEff {
+				break
+			}
+			cell = emu.GetCell(emu.posY, posX+1)
+			if cell.dwidth {
+				posX += 2
+			} else {
+				posX++
+			}
+		} else { // calculate to the left
+			if posX <= emu.hMargin {
+				break
+			}
+			cell = emu.GetCell(emu.posY, posX-1)
+			if cell.dwidthCont {
+				posX -= 2
+			} else {
+				posX--
+			}
+		}
+	}
+
+	return posX
 }
 
 // CSI Ps ; Ps H Cursor Position [row;column] (default = [1,1]) (CUP).

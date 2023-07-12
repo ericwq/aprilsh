@@ -407,15 +407,16 @@ func TestEmulatorClone(t *testing.T) {
 	}
 }
 
-func TestHandleStream_Edge(t *testing.T) {
+func TestHandleStream_MoveDelete(t *testing.T) {
 	tc := []struct {
-		label    string
-		row, col int    // the specified row and col
-		base     string // base content
-		expect   string // the expect content
+		label            string
+		row, col         int    // the start cursor position
+		base             string // base content
+		expect           string // the expect content
+		expectY, expectX int    // new cursor position
 	}{
-		{"input backspace for simple cell", 0, 70, "abcde\x1B[D\x1B[D\x1B[D\x7f", "acde"},
-		// {"input backspace for wide cell", 1, 60, "abc太学生\x1B[D\x1B[D\x1B[D\x1B[C\x7f", "abc学生"},
+		// {"input backspace for simple cell", 0, 70, "abcde\x1B[4D\x1b[P", "acde", 0,71}, //
+		{"input backspace for wide cell", 1, 60, "abc太学生\x1B[3D\x1b[P", "abc学生", 1, 63}, //\x1B[D\x1B[2D\x1B[C\x1b[P
 		// {"input backspace for wide cell with base", 2, 60, "东部战区\x1B[C\x1B[C\x7f", "东战区"},
 		// {"move cursor right, wide cell right edge", 3, 76, "平潭\x1B[C\x1B[C", "平潭"},
 		// {"move cursor left, wide cell left edge", 4, 0, "三号木\x1B[C\x1B[D\x1B[D", "三号木"},
@@ -426,23 +427,31 @@ func TestHandleStream_Edge(t *testing.T) {
 	emu := NewEmulator3(80, 40, 40) // TODO why we can't init emulator outside of for loop
 
 	for _, v := range tc {
-		emu.MoveCursor(v.row, v.col)
-		emu.HandleStream(v.base)
-		fmt.Printf("%s base=%q expect=%q, pos=(%d,%d)\n", v.label, v.base, v.expect, v.row, v.col)
-		printEmulatorCell(emu, v.row, v.col, v.expect, "After Base")
+		t.Run(v.label, func(t *testing.T) {
+			emu.MoveCursor(v.row, v.col)
+			emu.HandleStream(v.base)
+			// fmt.Printf("%s base=%q expect=%q, pos=(%d,%d)\n", v.label, v.base, v.expect, v.row, v.col)
+			printEmulatorCell(emu, v.row, v.col, v.expect, "After Base")
 
-		graphemes := uniseg.NewGraphemes(v.expect)
-		i := 0
-		for graphemes.Next() {
-			chs := graphemes.Runes()
+			graphemes := uniseg.NewGraphemes(v.expect)
+			i := 0
+			for graphemes.Next() {
+				chs := graphemes.Runes()
 
-			cell := emu.GetCellPtr(v.row, v.col+i)
-			if cell.String() != string(chs) {
-				t.Errorf("#test HandleStream() %q expect %s, got %s\n", v.label, string(chs), cell)
+				cell := emu.GetCellPtr(v.row, v.col+i)
+				if cell.String() != string(chs) {
+					t.Errorf("#test HandleStream() %q expect %s, got %s\n", v.label, string(chs), cell)
+				}
+				i += uniseg.StringWidth(string(chs))
 			}
-			i += uniseg.StringWidth(string(chs))
-		}
 
+			gotY := emu.GetCursorRow()
+			gotX := emu.GetCursorCol()
+
+			if v.expectY!= gotY || v.expectX != gotX {
+				t.Errorf("#test HandleStream() expect cursor at (%d,%d), got (%d,%d)\n", v.expectY, v.expectX, gotY, gotX)
+			}
+		})
 	}
 }
 
