@@ -610,22 +610,22 @@ func TestPredictionCull(t *testing.T) {
 		frame               string            // the expect content
 		displayPreference   DisplayPreference // display preference
 		localFrameLateAcked int64             // control the result of cull.
-		localFrameSend      int64
+		localFrameSent      int64
 		sendInterval        int
 	}{
 		/* 0*/ {"displayPreference is never", 0, 0, "", "", "", Never, 0, 0, 0},
 		/* 1*/ {"IncorrectOrExpired validity", 1, 0, "", "right", "wrong", Adaptive, 2, 1, 0},
-		// /* 2*/ {"IncorrectOrExpired validity + Experimental -> cell.reset2()", 2, 0, "", "right", "wrong", Experimental, 3, 2, 0},
-		// /* 3*/ {"IncorrectOrExpired validity + pe.reset()", 3, 0, "", "right", "wrong", Adaptive, 4, 3, 0},
-		// /* 4*/ {"Correct validity", 4, 0, "", "correct正确", "correct正确", Adaptive, 5, 4, 0},
-		// /* 5*/ {"Correct validity, delay >250", 5, 0, "", "正确delay>250", "正确delay>250", Adaptive, 6, 5, 0},
-		// /* 6*/ {"Correct validity, delay >5000", 6, 0, "", "delay>5000", "delay>5000", Adaptive, 7, 6, 0},
-		// /* 7*/ {"Correct validity, sendInterval=40", 7, 0, "", "sendInterval=40", "sendInterval=40", Adaptive, 8, 7, 40},
-		// /* 8*/ {"Correct validity, sendInterval=20", 8, 0, "", "sendInterval=20", "sendInterval=20", Adaptive, 9, 8, 20},
-		// /* 9*/ {"Correct validity + wrong cursor", 9, 0, "", "wrong cursor", "wrong cursor", Adaptive, 10, 9, 0},
-		// /*10*/ {"Correct validity + wrong cursor + Experimental", 10, 0, "", "wrong cursor + Experimental", "wrong cursor + Experimental", Experimental, 11, 10, 0},
-		// /*11*/ {"wrong row", 40, 0, "", "wrong row", "wrong row", Adaptive, 12, 11, 0},
-		// /*12*/ {"IncorrectOrExpired + tentativeUntilEpoch>confirmedEpoch", 12, 0, "", "Epoch", "confi", Experimental, 13, 12, 0},
+		/* 2*/ {"IncorrectOrExpired validity + Experimental -> cell.reset2()", 2, 0, "", "right", "wrong", Experimental, 3, 2, 0},
+		/* 3*/ {"IncorrectOrExpired validity + pe.reset()", 3, 0, "", "right", "wrong", Adaptive, 4, 3, 0},
+		/* 4*/ {"Correct validity", 4, 0, "", "correct正确", "correct正确", Adaptive, 5, 4, 0},
+		/* 5*/ {"Correct validity, delay >250", 5, 0, "", "正确delay>250", "正确delay>250", Adaptive, 6, 5, 0},
+		/* 6*/ {"Correct validity, delay >5000", 6, 0, "", "delay>5000", "delay>5000", Adaptive, 7, 6, 0},
+		/* 7*/ {"Correct validity, sendInterval=40", 7, 0, "", "sendInterval=40", "sendInterval=40", Adaptive, 8, 7, 40},
+		/* 8*/ {"Correct validity, sendInterval=20", 8, 0, "", "sendInterval=20", "sendInterval=20", Adaptive, 9, 8, 20},
+		/* 9*/ {"Correct validity + wrong cursor", 9, 0, "", "wrong cursor", "wrong cursor", Adaptive, 10, 9, 0},
+		/*10*/ {"Correct validity + wrong cursor + Experimental", 10, 0, "", "wrong cursor + Experimental", "wrong cursor + Experimental", Experimental, 11, 10, 0},
+		/*11*/ {"wrong row", 40, 0, "", "wrong row", "wrong row", Adaptive, 12, 11, 0},
+		/*12*/ {"IncorrectOrExpired + >confirmedEpoch + Experimental", 12, 0, "", "Epoch", "confi", Experimental, 13, 12, 0},
 	}
 	emu := terminal.NewEmulator3(80, 40, 40)
 	pe := newPredictionEngine()
@@ -641,7 +641,7 @@ func TestPredictionCull(t *testing.T) {
 
 			// mimic user input for prediction engine
 			emu.MoveCursor(v.row, v.col)
-			pe.SetLocalFrameSent(v.localFrameSend)
+			pe.SetLocalFrameSent(v.localFrameSent)
 
 			// fmt.Printf("%q #testing call cull B1. localFrameSend=%d, localFrameLateAcked=%d, predictionEpoch=%d, confirmedEpoch=%d\n",
 			// 	v.name, pe.localFrameSent, pe.localFrameLateAcked, pe.predictionEpoch, pe.confirmedEpoch)
@@ -663,10 +663,12 @@ func TestPredictionCull(t *testing.T) {
 				pe.Reset()                             // clear the previous rows
 				pe.getOrMakeRow(v.row, emu.GetWidth()) // add the illegal row
 			case 12:
+				// fmt.Printf("#test before inputString() %q confirmedEpoch=%d\n", v.label, pe.confirmedEpoch)
 				now := time.Now().UnixMilli()
 				for _, ch := range v.predict {
 					pe.handleUserGrapheme(emu, now, ch)
 				}
+				// fmt.Printf("#test after inputString() %q confirmedEpoch=%d\n", v.label, pe.confirmedEpoch)
 			default:
 				pe.inputString(emu, v.predict)
 			}
@@ -716,7 +718,7 @@ func TestPredictionCull(t *testing.T) {
 					}
 				}
 				if k == 12 {
-					if pe.confirmedEpoch != 1 {
+					if pe.confirmedEpoch != 2 {
 						t.Errorf("%q expect confirmedEpoch < tentativeUntilEpoch. got %d\n", v.label, pe.confirmedEpoch)
 					}
 				}

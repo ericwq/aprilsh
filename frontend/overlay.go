@@ -717,6 +717,8 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 					// fmt.Printf("Bad tentative prediction in (%d,%d) (think %s, actually %s)\n",
 					// 	pe.overlays[i].rowNum, cell.col, cell.replacement, emu.GetCell(pe.overlays[i].rowNum, cell.col))
 					if pe.displayPreference == Experimental {
+						// fmt.Printf("cull #cell killEpoch is called. tentativeUntilEpoch=%d, confirmedEpoch=%d\n",
+						// 	cell.tentativeUntilEpoch, pe.confirmedEpoch)
 						cell.reset2()
 					} else {
 						// fmt.Printf("cull #cell killEpoch is called. tentativeUntilEpoch=%d, confirmedEpoch=%d\n",
@@ -1048,6 +1050,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 	}
 }
 
+// represent the prediction title prefix.
 type TitleEngine struct {
 	prefix string
 }
@@ -1056,11 +1059,12 @@ func (te *TitleEngine) setPrefix(v string) {
 	te.prefix = v
 }
 
-// apply the window title with the prefix
+// apply the frame title with the prefix
 func (te *TitleEngine) apply(emu *terminal.Emulator) {
 	emu.PrefixWindowTitle(te.prefix)
 }
 
+// represent the prediction notifications
 type NotificationEngine struct {
 	lastWordFromServer    int64
 	lastAckedState        int64
