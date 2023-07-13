@@ -1048,24 +1048,6 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 	}
 }
 
-// add this method for test purpose
-func (pe *PredictionEngine) inputString(emu *terminal.Emulator, str string, delay ...int) {
-	var input []rune
-
-	index := 0
-	graphemes := uniseg.NewGraphemes(str)
-	for graphemes.Next() {
-		input = graphemes.Runes()
-		if len(delay) > index { // delay parameters is provided to simulate network delay
-			pause := time.Duration(delay[index])
-			// fmt.Printf("newUserInput #delay %dms.\n", pause)
-			time.Sleep(time.Millisecond * pause)
-			index++
-		}
-		pe.NewUserInput(emu, input)
-	}
-}
-
 type TitleEngine struct {
 	prefix string
 }

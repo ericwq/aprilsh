@@ -544,11 +544,11 @@ func (emu *Emulator) SetLogTraceOutput(w io.Writer) {
 
 // parse and handle the stream together.
 func (emu *Emulator) HandleStream(seq string) (hds []*Handler) {
-	hds = make([]*Handler, 0, 16)
 	if len(seq) == 0 {
 		return
 	}
 
+	hds = make([]*Handler, 0, 16)
 	hds = emu.parser.processStream(seq, hds)
 	for _, hd := range hds {
 		// fmt.Printf("#HandleStream %s, %q\n", strHandlerID[hd.id], hd.sequence)

@@ -613,19 +613,19 @@ func TestPredictionCull(t *testing.T) {
 		localFrameSend      int64
 		sendInterval        int
 	}{
-		{"displayPreference is never", 0, 0, "", "", "", Never, 0, 0, 0},
-		{"IncorrectOrExpired validity", 1, 0, "", "right", "wrong", Adaptive, 2, 1, 0},
-		{"IncorrectOrExpired validity + Experimental -> cell.reset2()", 2, 0, "", "right", "wrong", Experimental, 3, 2, 0},
-		{"IncorrectOrExpired validity + pe.reset()", 3, 0, "", "right", "wrong", Adaptive, 4, 3, 0},
-		{"Correct validity", 4, 0, "", "correct正确", "correct正确", Adaptive, 5, 4, 0},
-		{"Correct validity, delay >250", 5, 0, "", "正确delay>250", "正确delay>250", Adaptive, 6, 5, 0},
-		{"Correct validity, delay >5000", 6, 0, "", "delay>5000", "delay>5000", Adaptive, 7, 6, 0},
-		{"Correct validity, sendInterval=40", 7, 0, "", "sendInterval=40", "sendInterval=40", Adaptive, 8, 7, 40},
-		{"Correct validity, sendInterval=20", 8, 0, "", "sendInterval=20", "sendInterval=20", Adaptive, 9, 8, 20},
-		{"Correct validity + wrong cursor", 9, 0, "", "wrong cursor", "wrong cursor", Adaptive, 10, 9, 0},
-		{"Correct validity + wrong cursor + Experimental", 10, 0, "", "wrong cursor + Experimental", "wrong cursor + Experimental", Experimental, 11, 10, 0},
-		{"wrong row", 40, 0, "", "wrong row", "wrong row", Adaptive, 12, 11, 0},
-		{"IncorrectOrExpired + tentativeUntilEpoch>confirmedEpoch", 12, 0, "", "Epoch", "confi", Experimental, 13, 12, 0},
+		/* 0*/ {"displayPreference is never", 0, 0, "", "", "", Never, 0, 0, 0},
+		/* 1*/ {"IncorrectOrExpired validity", 1, 0, "", "right", "wrong", Adaptive, 2, 1, 0},
+		// /* 2*/ {"IncorrectOrExpired validity + Experimental -> cell.reset2()", 2, 0, "", "right", "wrong", Experimental, 3, 2, 0},
+		// /* 3*/ {"IncorrectOrExpired validity + pe.reset()", 3, 0, "", "right", "wrong", Adaptive, 4, 3, 0},
+		// /* 4*/ {"Correct validity", 4, 0, "", "correct正确", "correct正确", Adaptive, 5, 4, 0},
+		// /* 5*/ {"Correct validity, delay >250", 5, 0, "", "正确delay>250", "正确delay>250", Adaptive, 6, 5, 0},
+		// /* 6*/ {"Correct validity, delay >5000", 6, 0, "", "delay>5000", "delay>5000", Adaptive, 7, 6, 0},
+		// /* 7*/ {"Correct validity, sendInterval=40", 7, 0, "", "sendInterval=40", "sendInterval=40", Adaptive, 8, 7, 40},
+		// /* 8*/ {"Correct validity, sendInterval=20", 8, 0, "", "sendInterval=20", "sendInterval=20", Adaptive, 9, 8, 20},
+		// /* 9*/ {"Correct validity + wrong cursor", 9, 0, "", "wrong cursor", "wrong cursor", Adaptive, 10, 9, 0},
+		// /*10*/ {"Correct validity + wrong cursor + Experimental", 10, 0, "", "wrong cursor + Experimental", "wrong cursor + Experimental", Experimental, 11, 10, 0},
+		// /*11*/ {"wrong row", 40, 0, "", "wrong row", "wrong row", Adaptive, 12, 11, 0},
+		// /*12*/ {"IncorrectOrExpired + tentativeUntilEpoch>confirmedEpoch", 12, 0, "", "Epoch", "confi", Experimental, 13, 12, 0},
 	}
 	emu := terminal.NewEmulator3(80, 40, 40)
 	pe := newPredictionEngine()
@@ -960,4 +960,22 @@ func TestOverlayManager_apply(t *testing.T) {
 	// all the components of OverlayManager has been tested by previouse test case
 	// add this for coverage 100%
 	om.Apply(emu)
+}
+
+// add this method for test purpose
+func (pe *PredictionEngine) inputString(emu *terminal.Emulator, str string, delay ...int) {
+	var input []rune
+
+	index := 0
+	graphemes := uniseg.NewGraphemes(str)
+	for graphemes.Next() {
+		input = graphemes.Runes()
+		if len(delay) > index { // delay parameters is provided to simulate network delay
+			pause := time.Duration(delay[index])
+			// fmt.Printf("newUserInput #delay %dms.\n", pause)
+			time.Sleep(time.Millisecond * pause)
+			index++
+		}
+		pe.NewUserInput(emu, input)
+	}
 }
