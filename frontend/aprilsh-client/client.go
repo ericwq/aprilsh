@@ -774,7 +774,10 @@ mainLoop:
 
 		sc.network.Tick()
 	}
-	// TODO shudown message to fileDownChan
+
+	// consume last message to release the reader
+	<-fileChan
+	<-networkChan
 
 	// shutdown the goroutine
 	shutdownChan <- true
