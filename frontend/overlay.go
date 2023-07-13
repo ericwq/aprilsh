@@ -358,6 +358,21 @@ type PredictionEngine struct {
 	displayPreference     DisplayPreference
 }
 
+/*
+
+The following mesage is from https://mosh.org/mosh-paper.pdf
+
+Our general strategy is for the Mosh client to make an echo prediction each time
+the user hits a key, but not necessarily to display this prediction immediately.
+
+The predictions are made in groups known as “epochs,” with the intention that
+either all of the predictions in an epoch will be correct, or none will. An epoch
+begins tentatively, making predictions only in the background. If any prediction
+from a certain epoch is confirmed by the server, the rest of the predictions in
+that epoch are immediately displayed to the use
+
+*/
+
 func newPredictionEngine() *PredictionEngine {
 	pe := PredictionEngine{}
 	pe.parser = *terminal.NewParser()
