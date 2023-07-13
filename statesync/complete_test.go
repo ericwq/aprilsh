@@ -16,6 +16,7 @@ import (
 func TestCompleteSubtract(t *testing.T) {
 	c, _ := NewComplete(8, 4, 4)
 	c.Subtract(c) // do nothing, just for coverage
+	c.GetEmulator()
 }
 
 func TestCompleteInitDiff(t *testing.T) {

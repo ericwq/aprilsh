@@ -336,3 +336,18 @@ func TestUserStreamClone(t *testing.T) {
 
 	clone.ResetInput() // just for coverage
 }
+
+func TestUserStreamEmpty(t *testing.T) {
+	us := &UserStream{}
+
+	// prepare user input data
+	keystrokeStr := "data for clone"
+	chs := []rune(keystrokeStr)
+	for i := range chs {
+		us.PushBack([]rune{chs[i]})
+	}
+
+	if us.Empty() {
+		t.Errorf("#test expect false, got %t\n", us.Empty())
+	}
+}
