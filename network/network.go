@@ -746,10 +746,10 @@ func (c *Connection) getMTU() int {
 	return c.mtu
 }
 
-func (c *Connection) port() string {
-	// TODO need implementation
-	return ""
-}
+// func (c *Connection) port() string {
+// 	// TODO need implementation
+// 	return ""
+// }
 
 func (c *Connection) getKey() string {
 	return c.key.String()
