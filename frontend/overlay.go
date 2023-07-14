@@ -163,9 +163,10 @@ func (ccm *conditionalCursorMove) getValidity(emu *terminal.Emulator, lateAck in
 // replacement contents.
 type conditionalOverlayCell struct {
 	conditionalOverlay
-	replacement      terminal.Cell   // the prediction, replace the original content
-	unknown          bool            // has replacement?
-	originalContents []terminal.Cell // we don't give credit for correct predictions that match the original contents
+	replacement      terminal.Cell   // the prediction, replace the cell content
+	unknown          bool            // last cell in row
+	originalContents []terminal.Cell // history cell content including the oritinal cell
+	// we don't give credit for correct predictions that match the original contents
 }
 
 func newConditionalOverlayCell(expirationFrame int64, col int, tentativeUntilEpoch int64) conditionalOverlayCell {
@@ -1003,20 +1004,19 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 			prevCell := &(theRow.overlayCells[i-w])
 			prevCellActual := emu.GetCell(pe.cursor().row, i-w)
 
-			if i == emu.GetWidth()-1 { // the last cell's unknown is always true
+			if i == emu.GetWidth()-1 { // the last column, unknown replacement
 				cell.unknown = true
-				// cell.replacement = prevCellActual // TODO should we remove this?
 			} else if prevCell.active { // the previous prediction cell exist
 				if prevCell.unknown {
-					// prevCell active=T unknown=T
+					// don't change the replacement
 					cell.unknown = true
 				} else {
-					// prevCell active=T unknown=F
+					// use the previous prediction cell as replacement
 					cell.unknown = false
 					cell.replacement = prevCell.replacement
 				}
 			} else {
-				// prevCell active=F
+				// use the previous actual cell as replacement
 				cell.unknown = false
 				cell.replacement = prevCellActual
 			}
