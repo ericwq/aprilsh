@@ -187,12 +187,17 @@ func (coc *conditionalOverlayCell) reset2() {
 // Reset everything if active is F or unknown is T. Otherwise append replacement to the originalContents.
 func (coc *conditionalOverlayCell) resetWithOrig() {
 	if !coc.active || coc.unknown {
+		// fmt.Println("reset2")
 		coc.reset2()
 		return
 	}
 
 	coc.originalContents = append(coc.originalContents, coc.replacement)
 	coc.reset()
+}
+
+func (coc *conditionalOverlayCell) String() string {
+	return fmt.Sprintf("{repl:%s; orig:%s, unknown:%t, active:%t}", coc.replacement, coc.originalContents, coc.unknown, coc.active)
 }
 
 // Apply cell prediction to the emulator, replace frame cell with prediction if they doesn't match.
@@ -386,14 +391,16 @@ func newPredictionEngine() *PredictionEngine {
 	return &pe
 }
 
-// get or make a row for the prediction engine.
+// get or make a prediction row for the prediction engine.
 func (pe *PredictionEngine) getOrMakeRow(rowNum int, nCols int) (it *conditionalOverlayRow) {
+	// try to find the existing prediction row
 	for i := range pe.overlays {
 		if pe.overlays[i].rowNumEqual(rowNum) {
 			it = &(pe.overlays[i])
 		}
 	}
 	if it == nil {
+		// make a new prediction row for the rowNum
 		it = newConditionalOverlayRow(rowNum)
 		it.overlayCells = make([]conditionalOverlayCell, nCols)
 		for i := 0; i < nCols; i++ {
@@ -977,6 +984,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 		// do the insert in reverse order
 		for i := emu.GetWidth() - 1; i > pe.cursor().col; i-- {
 			cell := &(theRow.overlayCells[i])
+			// for cell, unknown=false, active=true, will always add the replacement to originalContents
 			cell.resetWithOrig()
 			cell.active = true
 			cell.tentativeUntilEpoch = pe.predictionEpoch
@@ -986,7 +994,8 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 				cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, i))
 			}
 
-			if i-w < pe.cursor().col {
+			// fmt.Printf("#handleUserGrapheme i=%d, w=%d, col=%d\n", i, w, pe.cursor().col)
+			if i-w < pe.cursor().col { // reach the left edge
 				break
 			}
 
@@ -994,10 +1003,10 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 			prevCell := &(theRow.overlayCells[i-w])
 			prevCellActual := emu.GetCell(pe.cursor().row, i-w)
 
-			if i == emu.GetWidth()-1 {
+			if i == emu.GetWidth()-1 { // the last cell's unknown is always true
 				cell.unknown = true
 				// cell.replacement = prevCellActual // TODO should we remove this?
-			} else if prevCell.active {
+			} else if prevCell.active { // the previous prediction cell exist
 				if prevCell.unknown {
 					// prevCell active=T unknown=T
 					cell.unknown = true
@@ -1012,9 +1021,9 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 				cell.replacement = prevCellActual
 			}
 
-			// fmt.Printf("handleUserGrapheme() cell (%2d,%2d) active=%t\tunknown=%t\treplacement=%q\tdwidth=%t\toriginalContents=%q\n",
-			// 	pe.cursor().row, i, cell.active, cell.unknown, cell.replacement, cell.replacement.IsDoubleWidth(), cell.originalContents)
+			// fmt.Printf("position (%d,%d), prevCell=%s, cell=%s, prevCellActual=%s\n", pe.cursor().row, i, prevCell, cell, prevCellActual)
 		}
+
 		cell := &(theRow.overlayCells[pe.cursor().col])
 		cell.resetWithOrig()
 		cell.active = true
@@ -1047,9 +1056,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 			cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, pe.cursor().col))
 		}
 
-		// fmt.Printf("handleUserGrapheme #cell (%2d,%2d) active=%t, unknown=%t, replacement=%q, dwidth=%t, tentativeUntilEpoch=%d, originalContents=%q\n",
-		// 	pe.cursor().row, pe.cursor().col, cell.active, cell.unknown, cell.replacement,
-		// 	cell.replacement.IsDoubleWidth(), pe.predictionEpoch, cell.originalContents)
+		// fmt.Printf("position (%d,%d), cell=%s\n\n", pe.cursor().row, pe.cursor().col, cell)
 
 		pe.cursor().expire(pe.localFrameSent+1, now)
 

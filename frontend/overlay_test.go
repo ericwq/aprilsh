@@ -202,7 +202,7 @@ func TestCellGetValidity(t *testing.T) {
 	}
 }
 
-func TestPredictionNewUserInput(t *testing.T) {
+func TestPredictionNewUserInput_Normal(t *testing.T) {
 	tc := []struct {
 		label             string
 		row, col          int    // the specified row and col
@@ -212,18 +212,18 @@ func TestPredictionNewUserInput(t *testing.T) {
 		displayPreference DisplayPreference
 		posY, posX        int // new cursor position, 0 means doesn't matter
 	}{
-		{"insert english", 3, 75, "******", "abcdef", "abcdef", Adaptive, -1, -1},                // 0
-		{"insert chinese", 4, 70, "", "四姑娘山", "四姑娘山", Adaptive, -1, -1},                          // 1
-		{"Experimental", 4, 60, "", "Experimental", "Experimental", Experimental, -1, -1},        // 2
-		{"insert CUF", 4, 75, "", "\x1B[C", "", Adaptive, 4, 76},                                 // 3
-		{"insert CUB", 4, 75, "", "\x1B[D", "", Adaptive, 4, 74},                                 // 4
-		{"insert CR", 4, 75, "", "\r", "", Adaptive, 5, 0},                                       // 5
-		{"insert CUF", 4, 75, "", "\x1BOC", "", Adaptive, 4, 76},                                 // 6
-		{"BEL becomeTentative", 5, 70, "", "\x07", "", Adaptive, -1, -1},                         // 7
-		{"Never", 4, 75, "", "Never", "", Never, 0, 0},                                           // 8
-		{"insert chinese with base contents", 6, 71, "上海56789", "四姑娘", "四姑娘上", Adaptive, -1, -1}, // 9
-		{"insert chinese with wrap", 7, 79, "", "四", "四", Adaptive, 8, 0},                        // 10
-		{"insert control becomeTentative", 9, 0, "", "\x11", "", Adaptive, -1, -1},               // 11
+		/* 0*/ {"insert english", 3, 75, "12345", "abcde", "abcde", Adaptive, -1, -1},
+		/* 1*/ {"insert chinese", 4, 70, "", "四姑娘山", "四姑娘山", Adaptive, -1, -1},
+		/* 2*/ {"Experimental", 4, 60, "", "Experimental", "Experimental", Experimental, -1, -1},
+		/* 3*/ {"insert CUF", 4, 75, "", "\x1B[C", "", Adaptive, 4, 76},
+		/* 4*/ {"insert CUB", 4, 75, "", "\x1B[D", "", Adaptive, 4, 74},
+		/* 5*/ {"insert CR", 4, 75, "", "\r", "", Adaptive, 5, 0},
+		/* 6*/ {"insert CUF", 4, 75, "", "\x1BOC", "", Adaptive, 4, 76},
+		/* 7*/ {"BEL becomeTentative", 5, 70, "", "\x07", "", Adaptive, -1, -1},
+		/* 8*/ {"Never", 4, 75, "", "Never", "", Never, 0, 0},
+		/* 9*/ {"insert chinese with base contents", 6, 71, "上海56789", "四姑娘", "四姑娘上", Adaptive, -1, -1},
+		/*10*/ {"insert chinese with wrap", 7, 79, "", "四", "四", Adaptive, 8, 0},
+		/*11*/ {"insert control becomeTentative", 9, 0, "", "\x11", "", Adaptive, -1, -1},
 	}
 
 	pe := newPredictionEngine()
@@ -979,5 +979,66 @@ func (pe *PredictionEngine) inputString(emu *terminal.Emulator, str string, dela
 			index++
 		}
 		pe.NewUserInput(emu, input)
+	}
+}
+
+func TestOverlayCellResetWithOrig(t *testing.T) {
+	emu := terminal.NewEmulator3(80, 40, 40)
+	pe := newPredictionEngine()
+
+	emu.MoveCursor(1, 0)
+	pe.initCursor(emu)
+
+	theRow := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
+	cell := &(theRow.overlayCells[0])
+
+	/*
+		here is the sample output:
+
+		#test before resetWithOrig replacement=, active=false, originalContents=[], size=0, unknown=false
+		#test before resetWithOrig replacement=, active=false, originalContents=[], size=0, unknown=false
+		#test before resetWithOrig replacement=, active=false, originalContents=[], size=1, unknown=false
+	*/
+	got1 := fmt.Sprintf("#test before resetWithOrig replacement=%s, active=%t, originalContents=%s, size=%d, unknown=%t\n",
+		cell.replacement, cell.active, cell.originalContents, len(cell.originalContents), cell.unknown)
+
+	cell.active = false
+	cell.unknown = false
+	cell.resetWithOrig()
+	got2 := fmt.Sprintf("#test before resetWithOrig replacement=%s, active=%t, originalContents=%s, size=%d, unknown=%t\n",
+		cell.replacement, cell.active, cell.originalContents, len(cell.originalContents), cell.unknown)
+
+	// validate the reset2 is called
+	if got1 != got2 {
+		t.Errorf("#test resetWithOrig() expect %s, got %s\n", got1, got2)
+	}
+
+	cell.active = true
+	cell.unknown = false
+	cell.resetWithOrig()
+	got3 := fmt.Sprintf("#test before resetWithOrig replacement=%s, active=%t, originalContents=%s, size=%d, unknown=%t\n",
+		cell.replacement, cell.active, cell.originalContents, len(cell.originalContents), cell.unknown)
+
+	key := "size=1"
+	if !strings.Contains(got3, key) {
+		t.Errorf("#test resetWithOrig() expect %s, got %s\n", key, got3)
+	}
+}
+
+func TestOverlayCellString(t *testing.T) {
+	cell := newConditionalOverlayCell(12, 5, 1)
+
+	got := cell.String()
+	pieces := []string{"{repl:", "orig:", "unknown:", "active:", "}"}
+
+	found := 0
+	for i := range pieces {
+		if strings.Contains(got, pieces[i]) {
+			found++
+		}
+	}
+
+	if found != len(pieces) {
+		t.Errorf("#test conditionalOverlayCell String() method expect %s, got %s\n", pieces, &cell)
 	}
 }
