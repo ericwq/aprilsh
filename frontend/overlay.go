@@ -349,9 +349,9 @@ type PredictionEngine struct {
 	parser                terminal.Parser
 	overlays              []conditionalOverlayRow
 	cursors               []conditionalCursorMove
-	localFrameSent        int64
-	localFrameAcked       int64
-	localFrameLateAcked   int64
+	localFrameSent        int64 // the last sent state num
+	localFrameAcked       int64 // the first sent state num
+	localFrameLateAcked   int64 // the last received remote state ack
 	predictionEpoch       int64 // only in becomeTentative(), update predictionEpoch
 	confirmedEpoch        int64 // only in cull() Correct validity condition, update confirmedEpoch
 	flagging              bool  // whether we are underlining predictions
@@ -714,8 +714,6 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 
 			// fmt.Printf("cull #erase row=%d\n", pe.overlays[i].rowNum)
 			continue
-		} else {
-			overlays = append(overlays, pe.overlays[i])
 		}
 
 		// fmt.Printf("cull # go through row %d\n", pe.overlays[i].rowNum)
@@ -797,7 +795,8 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 					pe.glitchTrigger = GLITCH_REPAIR_COUNT * 2 // display and underline
 				} else if gap >= GLITCH_THRESHOLD && pe.glitchTrigger < GLITCH_REPAIR_COUNT {
 					// fmt.Printf("cull #Pending (%d,%d) gap=%d > 250, glitchTrigger=%d, tentativeUntilEpoch=%d, confirmedEpoch=%d\n",
-					// 	pe.overlays[i].rowNum, cell.col, gap, GLITCH_REPAIR_COUNT, cell.tentativeUntilEpoch, pe.confirmedEpoch)
+					// 	pe.overlays[i].rowNum, cell.col, gap, GLITCH_REPAIR_COUNT,
+					// 	cell.tentativeUntilEpoch, pe.confirmedEpoch)
 					pe.glitchTrigger = GLITCH_REPAIR_COUNT // just display
 				}
 			default:
@@ -805,14 +804,19 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 				break
 			}
 		}
+
+		// the overlay row may changed according to validity
+		overlays = append(overlays, pe.overlays[i])
 	}
 	// restore overlay cells
 	pe.overlays = overlays
 
 	// go through cursor predictions
 	if len(pe.cursors) > 0 {
-		// fmt.Printf("cull #cursor (%d,%d) getValidity return %s: lateAck=%d, expirationFrame=%d\n", pe.cursor().row, pe.cursor().col,
-		// strValidity[pe.cursor().getValidity(emu, pe.localFrameLateAcked)], pe.localFrameLateAcked, pe.cursor().expirationFrame)
+		// fmt.Printf("cull #cursor (%d,%d) getValidity return %s: lateAck=%d, expirationFrame=%d\n",
+		// 	pe.cursor().row, pe.cursor().col,
+		// 	strValidity[pe.cursor().getValidity(emu, pe.localFrameLateAcked)],
+		// 	pe.localFrameLateAcked, pe.cursor().expirationFrame)
 
 		// reset the cursor prediction if the last cursor prediction is IncorrectOrExpired
 		if pe.cursor().getValidity(emu, pe.localFrameLateAcked) == IncorrectOrExpired {
@@ -832,7 +836,8 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 		// remove cursor prediction except Pending validity.
 		if pe.cursors[i].getValidity(emu, pe.localFrameLateAcked) != Pending {
 			// fmt.Printf("cull #remove cursor at (%d,%d) for state %s\n",
-			// 	pe.cursors[i].row, pe.cursors[i].col, strValidity[it.getValidity(emu, pe.localFrameLateAcked)])
+			// 	pe.cursors[i].row, pe.cursors[i].col,
+			// 	strValidity[pe.cursors[i].getValidity(emu, pe.localFrameLateAcked)])
 			continue
 		} else {
 			cursors = append(cursors, pe.cursors[i])
