@@ -449,13 +449,13 @@ func (pe *PredictionEngine) cursor() *conditionalCursorMove {
 	return &(pe.cursors[len(pe.cursors)-1])
 }
 
-// TODO what epoch is? what's the meaning of expoch -1?
-// remove previous epoch cursor movement, append a new cursor movement,
-// remove previous epoch cell prediction.
-// delay the prediction to next epoch.
+// remove cursor prediction belong to previous epoch, append current cursor position to prediction
+// remove cell prediction belong to previous epoch.
+// increase the prediction to next epoch.
 func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
-	// remove cursor movement if epoch expire
 	// fmt.Printf("killEpoch #1st cursors length=%d\n", len(pe.cursors))
+
+	// remove cursor prediction belong to previouse epoch
 	cursors := make([]conditionalCursorMove, 0)
 	for i := range pe.cursors {
 		if pe.cursors[i].tentative(epoch - 1) {
@@ -467,13 +467,13 @@ func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
 		cursors = append(cursors, pe.cursors[i])
 	}
 
-	// add current cursor position to prediction cursor
+	// add current cursor position to cursor prediction
 	cursors = append(cursors,
 		newConditionalCursorMove(pe.localFrameSent+1, emu.GetCursorRow(), emu.GetCursorCol(), pe.predictionEpoch))
 	pe.cursors = cursors
 	pe.cursor().active = true
 
-	// remove cell prediction if epoch expire
+	// remove cell prediction belong to previous epoch
 	for i := range pe.overlays {
 		for j := range pe.overlays[i].overlayCells {
 			cell := &(pe.overlays[i].overlayCells[j])
@@ -1021,7 +1021,8 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 				cell.replacement = prevCellActual
 			}
 
-			// fmt.Printf("position (%d,%d), prevCell=%s, cell=%s, prevCellActual=%s\n", pe.cursor().row, i, prevCell, cell, prevCellActual)
+			// fmt.Printf("position (%d,%d), prevCell=%s, cell=%s, prevCellActual=%s\n",
+			// 	pe.cursor().row, i, prevCell, cell, prevCellActual)
 		}
 
 		cell := &(theRow.overlayCells[pe.cursor().col])
@@ -1068,7 +1069,8 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 			pe.newlineCarriageReturn(emu)
 		}
 
-		// fmt.Printf("handleUserGrapheme #cursor at (%d,%d) %p size=%d\n\n", pe.cursor().row, pe.cursor().col, pe.cursor(), len(pe.cursors))
+		// fmt.Printf("handleUserGrapheme #cursor at (%d,%d) %p size=%d\n\n",
+		// 	pe.cursor().row, pe.cursor().col, pe.cursor(), len(pe.cursors))
 	}
 }
 
