@@ -352,8 +352,8 @@ type PredictionEngine struct {
 	localFrameSent        int64
 	localFrameAcked       int64
 	localFrameLateAcked   int64
-	predictionEpoch       int64 // becomeTentative update predictionEpoch
-	confirmedEpoch        int64 // only Correct validity update confirmedEpoch
+	predictionEpoch       int64 // only in becomeTentative(), update predictionEpoch
+	confirmedEpoch        int64 // only in cull() Correct validity condition, update confirmedEpoch
 	flagging              bool  // whether we are underlining predictions
 	srttTrigger           bool  // show predictions because of slow round trip time
 	glitchTrigger         int   // show predictions temporarily because of long-pending prediction
@@ -385,6 +385,7 @@ func newPredictionEngine() *PredictionEngine {
 	pe.cursors = make([]conditionalCursorMove, 0)
 	pe.overlays = make([]conditionalOverlayRow, 0)
 	pe.predictionEpoch = 1
+	pe.confirmedEpoch = 0
 	pe.sendInterval = 250
 	pe.displayPreference = Adaptive
 	pe.lastByte = make([]rune, 1)
@@ -671,13 +672,6 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 		return
 	}
 
-	// var x strings.Builder
-	// fmt.Fprintf(&x, "cull # cell prediction overlays=%d ", len(pe.overlays))
-	// for i := range pe.overlays {
-	// 	fmt.Fprintf(&x, "row=%d ", pe.overlays[i].rowNum)
-	// }
-	// fmt.Println(x.String())
-
 	// if the engine's width and height is different from frame, reset the engine.
 	if pe.lastHeight != emu.GetHeight() || pe.lastWidth != emu.GetWidth() {
 		pe.lastHeight = emu.GetHeight()
@@ -717,6 +711,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 	for i := 0; i < len(pe.overlays); i++ {
 		if pe.overlays[i].rowNum < 0 || pe.overlays[i].rowNum >= emu.GetHeight() {
 			// skip/erase this row if it's out of scope.
+
 			// fmt.Printf("cull #erase row=%d\n", pe.overlays[i].rowNum)
 			continue
 		} else {
@@ -823,7 +818,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 		if pe.cursor().getValidity(emu, pe.localFrameLateAcked) == IncorrectOrExpired {
 			// Sadly, we're predicting (%d,%d) vs. (%d,%d) [tau: %ld expiration_time=%ld, now=%ld]\n
 			if pe.displayPreference == Experimental {
-				pe.cursors = make([]conditionalCursorMove, 0) // only clear the cursor prediction
+				pe.cursors = make([]conditionalCursorMove, 0) // only clear the cursor predictions
 			} else {
 				pe.Reset() // clear the whole prediction
 				return
@@ -834,14 +829,13 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 	// fmt.Printf("cull # cursor prediction size=%d.\n", len(pe.cursors))
 	cursors := make([]conditionalCursorMove, 0, len(pe.cursors))
 	for i := range pe.cursors {
-		// remove any cursor prediction except Pending validity.
-		it := &(pe.cursors[i])
-		if it.getValidity(emu, pe.localFrameLateAcked) != Pending {
+		// remove cursor prediction except Pending validity.
+		if pe.cursors[i].getValidity(emu, pe.localFrameLateAcked) != Pending {
 			// fmt.Printf("cull #remove cursor at (%d,%d) for state %s\n",
 			// 	pe.cursors[i].row, pe.cursors[i].col, strValidity[it.getValidity(emu, pe.localFrameLateAcked)])
 			continue
 		} else {
-			cursors = append(cursors, *it)
+			cursors = append(cursors, pe.cursors[i])
 		}
 	}
 	pe.cursors = cursors
