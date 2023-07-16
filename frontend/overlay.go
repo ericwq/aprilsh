@@ -65,7 +65,7 @@ var strValidity = [...]string{
 	"Inactive",
 }
 
-// base of cell prediction cell or cursor prediction
+// base of cell prediction or cursor prediction
 type conditionalOverlay struct {
 	expirationFrame     int64 // frame number, Emulator number.
 	col                 int   // cursor column
@@ -118,7 +118,7 @@ func newConditionalCursorMove(expirationFrame int64, row int, col int, tentative
 }
 
 // set cursor position in emulator base on cursor prediction, only if the confirmedEpoch
-// is less than tantative epoch.
+// is greater than or equal to cursor epoch.
 func (ccm *conditionalCursorMove) apply(emu *terminal.Emulator, confirmedEpoch int64) {
 	if !ccm.active { // only apply to active prediction
 		return
