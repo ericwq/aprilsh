@@ -178,7 +178,7 @@ func TestCellGetValidity(t *testing.T) {
 
 		// mimic user input for prediction engine
 		emu.MoveCursor(v.row, v.col)
-		now := time.Now().UnixNano()
+		now := time.Now().UnixMilli()
 		for i := range v.predict {
 			pe.handleUserGrapheme(emu, now, rune(v.predict[i]))
 		}
