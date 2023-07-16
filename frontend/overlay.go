@@ -69,8 +69,8 @@ var strValidity = [...]string{
 type conditionalOverlay struct {
 	expirationFrame     int64 // frame number, Emulator number.
 	col                 int   // cursor column
-	active              bool  // represents a prediction at all, default value false
-	tentativeUntilEpoch int64 // when to show
+	active              bool  // represents a prediction
+	tentativeUntilEpoch int64 // the epoch of overlay
 	predictionTime      int64 // used to find long-pending predictions, default value -1
 }
 
@@ -165,7 +165,7 @@ type conditionalOverlayCell struct {
 	conditionalOverlay
 	replacement      terminal.Cell   // the prediction, replace the cell content
 	unknown          bool            // last cell in row
-	originalContents []terminal.Cell // history cell content including the oritinal cell
+	originalContents []terminal.Cell // history cell content including original cell
 	// we don't give credit for correct predictions that match the original contents
 }
 
@@ -450,7 +450,7 @@ func (pe *PredictionEngine) cursor() *conditionalCursorMove {
 	return &(pe.cursors[len(pe.cursors)-1])
 }
 
-// remove cursor prediction belong to previous epoch, append current cursor position to prediction
+// remove cursor prediction belong to previous epoch, append current cursor position to prediction.
 // remove cell prediction belong to previous epoch.
 // increase the prediction to next epoch.
 func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
@@ -536,8 +536,8 @@ func (pe *PredictionEngine) SetDisplayPreference(v DisplayPreference) {
 	pe.displayPreference = v
 }
 
-// checks the displayPreference to determine whether we should apply prediction to frame.
-// (apply overlay cells and cursors to Emulator)
+// checks the displayPreference to determine whether we should show the prediction.
+// if yes, move the cursor in emulator, show the cell prediction in emulator.
 func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
 	show := pe.displayPreference != Never && (pe.srttTrigger || pe.glitchTrigger > 0 ||
 		pe.displayPreference == Always || pe.displayPreference == Experimental)
@@ -1032,6 +1032,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 		cell.replacement.SetRenditions(emu.GetRenditions())
 
 		// heuristic: match renditions of character to the left
+		// set current cell renditions with previous (prediction / actual) cell
 		if pe.cursor().col > 0 {
 			prevCell := &(theRow.overlayCells[pe.cursor().col-1])
 			prevCellActual := emu.GetCell(pe.cursor().row, pe.cursor().col-1)
@@ -1050,6 +1051,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 			nextCell.replacement.SetDoubleWidthCont(true)
 		}
 
+		// set current prediction cell's replacement
 		cell.replacement.SetContents(chs)
 		if len(cell.originalContents) == 0 {
 			// avoid adding original cell content several times
