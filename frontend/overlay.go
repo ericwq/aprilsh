@@ -460,11 +460,11 @@ func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
 	cursors := make([]conditionalCursorMove, 0)
 	for i := range pe.cursors {
 		if pe.cursors[i].tentative(epoch - 1) {
-			// fmt.Printf("killEpoch #skip cursors (%2d,%2d), tentativeUntilEpoch=%d, epoch=%d\n",
-			// pe.cursors[i].row, pe.cursors[i].col, pe.cursors[i].tentativeUntilEpoch, epoch-1)
+			// fmt.Printf("#killEpoch skip cursors (%2d,%2d), tentativeUntilEpoch=%d, epoch=%d\n",
+			// pe.cursors[i].row, pe.cursors[i].col, pe.cursors[i].tentativeUntilEpoch, epoch)
 			continue
 		}
-		// fmt.Printf("killEpoch #keep cursors (%2d,%2d)\n", pe.cursors[i].row, pe.cursors[i].col)
+		// fmt.Printf("#killEpoch keep cursors (%2d,%2d)\n", pe.cursors[i].row, pe.cursors[i].col)
 		cursors = append(cursors, pe.cursors[i])
 	}
 
@@ -480,7 +480,7 @@ func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
 			cell := &(pe.overlays[i].overlayCells[j])
 			if cell.tentative(epoch - 1) {
 				cell.reset2()
-				// fmt.Printf("killEpoch #cell (%2d,%2d) reset2\n", pe.overlays[i].rowNum, cell.col)
+				// fmt.Printf("#killEpoch cell (%2d,%2d) reset2\n", pe.overlays[i].rowNum, cell.col)
 			}
 		}
 	}
@@ -506,8 +506,8 @@ func (pe *PredictionEngine) initCursor(emu *terminal.Emulator) {
 		pe.cursor().active = true
 	}
 
-	// fmt.Printf("initCursor #called len=%d, tentativeUntilEpoch=%d, predictionEpoch=%d, last %p\n",
-	// 	len(pe.cursors), pe.cursor().tentativeUntilEpoch, pe.predictionEpoch, pe.cursor())
+	// fmt.Printf("initCursor #called len=%d, tentativeUntilEpoch=%d, predictionEpoch=%d, last=(%d,%d)\n",
+	// 	len(pe.cursors), pe.cursor().tentativeUntilEpoch, pe.predictionEpoch, pe.cursor().row, pe.cursor().col)
 }
 
 // return true if there is any cursor prediction or any active cell prediction, otherwise false.
@@ -712,19 +712,19 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 		if pe.overlays[i].rowNum < 0 || pe.overlays[i].rowNum >= emu.GetHeight() {
 			// skip/erase this row if it's out of scope.
 
-			fmt.Printf("cull #erase row=%d\n", pe.overlays[i].rowNum)
+			// fmt.Printf("#cull erase row=%d\n", pe.overlays[i].rowNum)
 			continue
 		}
 
-		fmt.Printf("cull # go through row %d\n", pe.overlays[i].rowNum)
+		fmt.Printf("#cull go through row %d\n", pe.overlays[i].rowNum)
 		for j := range pe.overlays[i].overlayCells {
 			cell := &(pe.overlays[i].overlayCells[j])
 			v := cell.getValidity(emu, pe.overlays[i].rowNum, pe.localFrameLateAcked)
-			if v != Inactive {
-				fmt.Printf("cull #cell %p (%2d,%2d) active=%t,unknown=%t, %q, expirationFrame=%d, lateAck=%d, validity=%s\n",
+			// if v != Inactive {
+				fmt.Printf("#cell %p (%2d,%2d) active=%t,unknown=%t,replacement=%q, expirationFrame=%d, lateAck=%d, validity=%s\n",
 					cell, pe.overlays[i].rowNum, j, cell.active, cell.unknown, cell.replacement, cell.expirationFrame,
 					pe.localFrameLateAcked, strValidity[v])
-			}
+			// }
 			switch v {
 			case IncorrectOrExpired:
 				// fmt.Printf("cull #IncorrectOrExpired cell (%d,%d) tentativeUntilEpoch=%d, confirmedEpoch=%d\n",
@@ -737,8 +737,8 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 						// 	cell.tentativeUntilEpoch, pe.confirmedEpoch)
 						cell.reset2()
 					} else {
-						// fmt.Printf("cull #cell killEpoch is called. tentativeUntilEpoch=%d, confirmedEpoch=%d\n",
-						// 	cell.tentativeUntilEpoch, pe.confirmedEpoch)
+						fmt.Printf("#cull killEpoch is called. tentativeUntilEpoch=%d, confirmedEpoch=%d\n",
+							cell.tentativeUntilEpoch, pe.confirmedEpoch)
 						pe.killEpoch(cell.tentativeUntilEpoch, emu)
 					}
 				} else {

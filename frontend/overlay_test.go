@@ -617,7 +617,7 @@ func TestPredictionCull(t *testing.T) {
 		sendInterval        int
 	}{
 		/* 0*/ {"displayPreference is never", 0, 0, "", "", "", Never, 0, 0, 0},
-		/* 1*/ {"IncorrectOrExpired >confirmedEpoch, killEpoch()", 1, 0, "", "right", "wrong", Adaptive, 2, 1, 0},
+		/* 1*/ {"IncorrectOrExpired >confirmedEpoch, killEpoch()", 1, 70, "", "right", "wrong", Adaptive, 2, 1, 0},
 		// /* 2*/ {"IncorrectOrExpired <confirmedEpoch, Experimental, cell.reset2()", 2, 0, "", "right", "wrong", Experimental, 3, 2, 0},
 		// /* 3*/ {"IncorrectOrExpired <confirmedEpoch, Reset()", 3, 0, "", "right", "wrong", Adaptive, 4, 3, 0},
 		// /* 4*/ {"Correct", 4, 0, "", "correct正确", "correct正确", Adaptive, 5, 4, 0},
@@ -640,14 +640,16 @@ func TestPredictionCull(t *testing.T) {
 
 			// set the base content
 			emu.MoveCursor(v.row, v.col)
+			fmt.Printf("\n#test cull %q HandleStream()!\n",v.label)
 			emu.HandleStream(v.base)
 
 			// mimic user input for prediction engine
 			emu.MoveCursor(v.row, v.col)
 			pe.SetLocalFrameSent(v.localFrameSent)
 
-			// fmt.Printf("%q #testing call cull B1. localFrameSend=%d, localFrameLateAcked=%d, predictionEpoch=%d, confirmedEpoch=%d\n",
-			// 	v.name, pe.localFrameSent, pe.localFrameLateAcked, pe.predictionEpoch, pe.confirmedEpoch)
+			fmt.Printf("#test %q cull B1. localFrameSend=%d, localFrameLateAcked=%d, predictionEpoch=%d, confirmedEpoch=%d\n",
+				v.label, pe.localFrameSent, pe.localFrameLateAcked, pe.predictionEpoch, pe.confirmedEpoch)
+
 			// cull will be called for each rune, except last rune
 			switch k {
 			case 5:
@@ -673,14 +675,10 @@ func TestPredictionCull(t *testing.T) {
 				}
 				// fmt.Printf("#test after inputString() %q confirmedEpoch=%d\n", v.label, pe.confirmedEpoch)
 			default:
-				// pe.inputString(emu, v.predict)
-				now := time.Now().UnixMilli()
-				for _, ch := range v.predict {
-					pe.handleUserGrapheme(emu, now, ch)
-				}
+				pe.inputString(emu, v.predict)
 			}
-			// fmt.Printf("%q #testing call cull B2. localFrameSend=%d, localFrameLateAcked=%d, predictionEpoch=%d, confirmedEpoch=%d\n",
-			// 	v.name, pe.localFrameSent, pe.localFrameLateAcked, pe.predictionEpoch, pe.confirmedEpoch)
+			fmt.Printf("#test %q cull B2. localFrameSend=%d, localFrameLateAcked=%d, predictionEpoch=%d, confirmedEpoch=%d\n",
+				v.label, pe.localFrameSent, pe.localFrameLateAcked, pe.predictionEpoch, pe.confirmedEpoch)
 
 			// mimic the result from server
 			emu.MoveCursor(v.row, v.col)
@@ -692,10 +690,9 @@ func TestPredictionCull(t *testing.T) {
 			}
 
 			pe.SetLocalFrameLateAcked(v.localFrameLateAcked)
-			fmt.Printf("\ncull goes here!\n")
 			pe.cull(emu)
-			// fmt.Printf("%q #testing call cull C. localFrameSend=%d, localFrameLateAcked=%d, predictionEpoch=%d, confirmedEpoch=%d\n",
-			// 	v.name, pe.localFrameSent, pe.localFrameLateAcked, pe.predictionEpoch, pe.confirmedEpoch)
+			fmt.Printf("#test %q cull C. localFrameSend=%d, localFrameLateAcked=%d, predictionEpoch=%d, confirmedEpoch=%d\n",
+				v.label, pe.localFrameSent, pe.localFrameLateAcked, pe.predictionEpoch, pe.confirmedEpoch)
 
 			switch k {
 			case 1:
@@ -986,6 +983,7 @@ func (pe *PredictionEngine) inputString(emu *terminal.Emulator, str string, dela
 			time.Sleep(time.Millisecond * pause)
 			index++
 		}
+		// fmt.Printf("#test inputString() user input %s\n", string(input))
 		pe.NewUserInput(emu, input)
 	}
 }
