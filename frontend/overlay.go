@@ -274,7 +274,7 @@ func (coc *conditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, 
 	}
 	current := emu.GetCell(row, coc.col)
 
-	// fmt.Printf("getValidity() (%d,%d) lateAck=%d, expirationFrame=%d unknow=%t\n",
+	// fmt.Printf("#getValidity() (%d,%d) lateAck=%d, expirationFrame=%d unknow=%t\n",
 	// 	row, coc.col, lateAck, coc.expirationFrame, coc.unknown)
 
 	// see if it hasn't been updated yet
@@ -289,8 +289,6 @@ func (coc *conditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, 
 			return CorrectNoCredit
 		}
 
-		// fmt.Printf("getValidity() current cell=%s, replacement=%s, result=%t\n",
-		// 	current, coc.replacement, current.ContentsMatch(coc.replacement))
 		// if the frame cell is the same as the prediction
 		if current.ContentsMatch(coc.replacement) {
 			// it's Correct if any history content doesn't match prediction

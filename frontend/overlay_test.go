@@ -156,13 +156,14 @@ func TestCellGetValidity(t *testing.T) {
 		frame    string // frame content
 		validity Validity
 	}{
-		{"active=F, unknown=F", false, 13, 70, 20, false, "", "active", "false", Inactive},                      // active=F
-		{"active=T, cursor out of range", true, 41, 70, 0, false, "", "smaller", "lateAck", IncorrectOrExpired}, // cursor out of range
-		{"active=T, smaller lateAck", true, 13, 70, 0, false, "", "smaller", "lateAck", Pending},                // smaller lateAck
-		{"active=T, unknown=T", true, 13, 70, 20, true, "", "unknow", "true", CorrectNoCredit},                  // unknown=T
-		{"active=T, unknown=F, blank predict", true, 13, 70, 20, false, "----", "    ", "some", CorrectNoCredit},
-		{"active=T, unknown=F, content match", true, 12, 70, 20, false, "Else", "Easy", "Easy", CorrectNoCredit},
-		{"active=T, unknown=T, isBlank=F correct", true, 14, 70, 5, false, "     ", "right", "right", Correct},
+		// the test case only check the first cell in babse, prediction and frame
+		{"active=F, unknown=F", false, 13, 70, 20, false, "", "active", "false", Inactive},                        // active is false
+		{"active=T, cursor out of range", true, 41, 70, 0, false, "", "smaller", "lateAck", IncorrectOrExpired},   // row out of range
+		{"active=T, smaller lateAck", true, 13, 70, 0, false, "", "smaller", "lateAck", Pending},                  // smaller lateAck
+		{"active=T, unknown=T", true, 13, 70, 20, true, "", "unknow", "true", CorrectNoCredit},                    // unknown=T
+		{"active=T, unknown=F, blank predict", true, 13, 70, 20, false, "----", "    ", "some", CorrectNoCredit},  // blank prediction
+		{"active=T, unknown=F, found original", true, 12, 70, 20, false, "Else", "Else", "Else", CorrectNoCredit}, // found original
+		{"active=T, unknown=T, isBlank=F correct", true, 14, 70, 5, false, "     ", "right", "right", Correct},    // not found original
 		{"active=T, unknown=F, content not match", true, 11, 70, 20, false, "-----", "Alpha", "Beta", IncorrectOrExpired},
 	}
 
@@ -170,35 +171,37 @@ func TestCellGetValidity(t *testing.T) {
 	pe := newPredictionEngine()
 
 	for _, v := range tc {
-		pe.Reset()
+		t.Run(v.name, func(t *testing.T) {
+			pe.Reset()
 
-		// set the base content
-		emu.MoveCursor(v.row, v.col)
-		emu.HandleStream(v.base)
+			// set the base content
+			emu.MoveCursor(v.row, v.col)
+			emu.HandleStream(v.base)
 
-		// mimic user input for prediction engine
-		emu.MoveCursor(v.row, v.col)
-		now := time.Now().UnixMilli()
-		for i := range v.predict {
-			pe.handleUserGrapheme(emu, now, rune(v.predict[i]))
-		}
+			// mimic user input for prediction engine
+			emu.MoveCursor(v.row, v.col)
+			now := time.Now().UnixMilli()
+			for i := range v.predict {
+				pe.handleUserGrapheme(emu, now, rune(v.predict[i]))
+			}
 
-		// mimic the result from server
-		emu.MoveCursor(v.row, v.col)
-		emu.HandleStream(v.frame)
+			// mimic the result from server
+			emu.MoveCursor(v.row, v.col)
+			emu.HandleStream(v.frame)
 
-		// get the predict row
-		predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
-		predict := &(predictRow.overlayCells[v.col])
+			// get the predict row
+			predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
+			predict := &(predictRow.overlayCells[v.col])
 
-		predict.active = v.active
-		predict.unknown = v.unknown
+			predict.active = v.active
+			predict.unknown = v.unknown
 
-		validity := predict.getValidity(emu, v.row, v.lateAck)
-		if validity != v.validity {
-			t.Errorf("%q expect %d, got %d\n", v.name, v.validity, validity)
-			t.Errorf("cell (%d,%d) replacement=%s, originalContents=%s\n", v.row, v.col, predict.replacement, predict.originalContents)
-		}
+			validity := predict.getValidity(emu, v.row, v.lateAck)
+			if validity != v.validity {
+				t.Errorf("%q expect %d, got %d\n", v.name, v.validity, validity)
+				t.Errorf("cell (%d,%d) replacement=%s, originalContents=%s\n", v.row, v.col, predict.replacement, predict.originalContents)
+			}
+		})
 	}
 }
 
