@@ -248,7 +248,9 @@ func (coc *conditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 }
 
 /*
-Validate emulator against cell prediction:
+Validate emulator against cell prediction. Return Correct if frame cell match
+prediction cell and prediction cell doesn't match any history contents.
+
 if the cell is inactive, return Inactive.
 
 if the prediction position is out of range return IncorrectOrExpired.
@@ -710,19 +712,19 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 		if pe.overlays[i].rowNum < 0 || pe.overlays[i].rowNum >= emu.GetHeight() {
 			// skip/erase this row if it's out of scope.
 
-			// fmt.Printf("cull #erase row=%d\n", pe.overlays[i].rowNum)
+			fmt.Printf("cull #erase row=%d\n", pe.overlays[i].rowNum)
 			continue
 		}
 
-		// fmt.Printf("cull # go through row %d\n", pe.overlays[i].rowNum)
+		fmt.Printf("cull # go through row %d\n", pe.overlays[i].rowNum)
 		for j := range pe.overlays[i].overlayCells {
 			cell := &(pe.overlays[i].overlayCells[j])
 			v := cell.getValidity(emu, pe.overlays[i].rowNum, pe.localFrameLateAcked)
-			// if v != Inactive {
-			// 	fmt.Printf("cull #cell %p (%2d,%2d) active=%t,unknown=%t, %q, expirationFrame=%d, lateAck=%d, validity=%s\n",
-			// 		cell, pe.overlays[i].rowNum, j, cell.active, cell.unknown, cell.replacement, cell.expirationFrame,
-			// 		pe.localFrameLateAcked, strValidity[v])
-			// }
+			if v != Inactive {
+				fmt.Printf("cull #cell %p (%2d,%2d) active=%t,unknown=%t, %q, expirationFrame=%d, lateAck=%d, validity=%s\n",
+					cell, pe.overlays[i].rowNum, j, cell.active, cell.unknown, cell.replacement, cell.expirationFrame,
+					pe.localFrameLateAcked, strValidity[v])
+			}
 			switch v {
 			case IncorrectOrExpired:
 				// fmt.Printf("cull #IncorrectOrExpired cell (%d,%d) tentativeUntilEpoch=%d, confirmedEpoch=%d\n",
