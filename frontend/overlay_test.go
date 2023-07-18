@@ -612,23 +612,23 @@ func TestPredictionCull(t *testing.T) {
 		predict             string            // prediction
 		frame               string            // the expect content
 		displayPreference   DisplayPreference // display preference
-		localFrameLateAcked int64             // control the result of cull.
-		localFrameSent      int64
+		localFrameLateAcked int64             // getValidity use localFrameLateAcked to validity cell or cursor prediction
+		localFrameSent      int64             // the cell prediction expirationFrame is set by localFrameSent+1
 		sendInterval        int
 	}{
 		/* 0*/ {"displayPreference is never", 0, 0, "", "", "", Never, 0, 0, 0},
 		/* 1*/ {"IncorrectOrExpired >confirmedEpoch, killEpoch()", 1, 70, "", "right", "wrong", Adaptive, 2, 1, 0},
-		// /* 2*/ {"IncorrectOrExpired <confirmedEpoch, Experimental, cell.reset2()", 2, 0, "", "right", "wrong", Experimental, 3, 2, 0},
-		// /* 3*/ {"IncorrectOrExpired <confirmedEpoch, Reset()", 3, 0, "", "right", "wrong", Adaptive, 4, 3, 0},
-		// /* 4*/ {"Correct", 4, 0, "", "correct正确", "correct正确", Adaptive, 5, 4, 0},
-		// /* 5*/ {"Correct validity, delay >250", 5, 0, "", "正确delay>250", "正确delay>250", Adaptive, 6, 5, 0},
-		// /* 6*/ {"Correct validity, delay >5000", 6, 0, "", "delay>5000", "delay>5000", Adaptive, 7, 6, 0},
-		// /* 7*/ {"Correct validity, sendInterval=40", 7, 0, "", "sendInterval=40", "sendInterval=40", Adaptive, 8, 7, 40},
-		// /* 8*/ {"Correct validity, sendInterval=20", 8, 0, "", "sendInterval=20", "sendInterval=20", Adaptive, 9, 8, 20},
-		// /* 9*/ {"Correct validity + wrong cursor", 9, 0, "", "wrong cursor", "wrong cursor", Adaptive, 10, 9, 0},
-		// /*10*/ {"Correct validity + wrong cursor + Experimental", 10, 0, "", "wrong cursor + Experimental", "wrong cursor + Experimental", Experimental, 11, 10, 0},
-		// /*11*/ {"wrong row", 40, 0, "", "wrong row", "wrong row", Adaptive, 12, 11, 0},
-		// /*12*/ {"IncorrectOrExpired + >confirmedEpoch + Experimental", 12, 0, "", "Epoch", "confi", Experimental, 13, 12, 0},
+		/* 2*/ {"IncorrectOrExpired <confirmedEpoch, Experimental, reset2()", 2, 72, "", "rig", "won", Experimental, 3, 2, 0},
+		/* 3*/ {"IncorrectOrExpired <confirmedEpoch, Reset()", 3, 0, "", "right", "wrong", Adaptive, 4, 3, 0},
+		/* 4*/ {"Correct", 4, 0, "", "correct正确", "correct正确", Adaptive, 5, 4, 0},
+		/* 5*/ {"Correct validity, delay >250", 5, 0, "", "正确delay>250", "正确delay>250", Adaptive, 6, 5, 0},
+		/* 6*/ {"Correct validity, delay >5000", 6, 0, "", "delay>5000", "delay>5000", Adaptive, 7, 6, 0},
+		/* 7*/ {"Correct validity, sendInterval=40", 7, 0, "", "sendInterval=40", "sendInterval=40", Adaptive, 8, 7, 40},
+		/* 8*/ {"Correct validity, sendInterval=20", 8, 0, "", "sendInterval=20", "sendInterval=20", Adaptive, 9, 8, 20},
+		/* 9*/ {"Correct validity + wrong cursor", 9, 0, "", "wrong cursor", "wrong cursor", Adaptive, 10, 9, 0},
+		/*10*/ {"Correct validity + wrong cursor + Experimental", 10, 0, "", "wrong cursor + Experimental", "wrong cursor + Experimental", Experimental, 11, 10, 0},
+		/*11*/ {"wrong row", 40, 0, "", "wrong row", "wrong row", Adaptive, 12, 11, 0},
+		/*12*/ {"IncorrectOrExpired + >confirmedEpoch + Experimental", 12, 0, "", "Epoch", "confi", Experimental, 13, 12, 0},
 	}
 	emu := terminal.NewEmulator3(80, 40, 40)
 	pe := newPredictionEngine()
@@ -640,15 +640,15 @@ func TestPredictionCull(t *testing.T) {
 
 			// set the base content
 			emu.MoveCursor(v.row, v.col)
-			fmt.Printf("\n#test cull %q HandleStream()!\n",v.label)
+			// fmt.Printf("#test cull %q HandleStream()\n", v.label)
 			emu.HandleStream(v.base)
 
 			// mimic user input for prediction engine
 			emu.MoveCursor(v.row, v.col)
 			pe.SetLocalFrameSent(v.localFrameSent)
 
-			fmt.Printf("#test %q cull B1. localFrameSend=%d, localFrameLateAcked=%d, predictionEpoch=%d, confirmedEpoch=%d\n",
-				v.label, pe.localFrameSent, pe.localFrameLateAcked, pe.predictionEpoch, pe.confirmedEpoch)
+			// fmt.Printf("#test %q cull B1. localFrameSend=%d, localFrameLateAcked=%d, predictionEpoch=%d, confirmedEpoch=%d\n",
+			// 	v.label, pe.localFrameSent, pe.localFrameLateAcked, pe.predictionEpoch, pe.confirmedEpoch)
 
 			// cull will be called for each rune, except last rune
 			switch k {
@@ -677,8 +677,8 @@ func TestPredictionCull(t *testing.T) {
 			default:
 				pe.inputString(emu, v.predict)
 			}
-			fmt.Printf("#test %q cull B2. localFrameSend=%d, localFrameLateAcked=%d, predictionEpoch=%d, confirmedEpoch=%d\n",
-				v.label, pe.localFrameSent, pe.localFrameLateAcked, pe.predictionEpoch, pe.confirmedEpoch)
+			// fmt.Printf("#test %q cull B2. localFrameSend=%d, localFrameLateAcked=%d, predictionEpoch=%d, confirmedEpoch=%d\n",
+			// 	v.label, pe.localFrameSent, pe.localFrameLateAcked, pe.predictionEpoch, pe.confirmedEpoch)
 
 			// mimic the result from server
 			emu.MoveCursor(v.row, v.col)
@@ -691,8 +691,8 @@ func TestPredictionCull(t *testing.T) {
 
 			pe.SetLocalFrameLateAcked(v.localFrameLateAcked)
 			pe.cull(emu)
-			fmt.Printf("#test %q cull C. localFrameSend=%d, localFrameLateAcked=%d, predictionEpoch=%d, confirmedEpoch=%d\n",
-				v.label, pe.localFrameSent, pe.localFrameLateAcked, pe.predictionEpoch, pe.confirmedEpoch)
+			// fmt.Printf("#test %q cull B3. localFrameSend=%d, localFrameLateAcked=%d, predictionEpoch=%d, confirmedEpoch=%d\n",
+			// 	v.label, pe.localFrameSent, pe.localFrameLateAcked, pe.predictionEpoch, pe.confirmedEpoch)
 
 			switch k {
 			case 1:
@@ -745,7 +745,7 @@ func TestPredictionCull(t *testing.T) {
 					t.Errorf("%q expect zero rows, got %d\n", v.label, len(pe.overlays))
 				}
 			default:
-				// validate pe.reset()
+				// validate pe.Reset()
 				if len(pe.overlays) != 0 || len(pe.cursors) != 0 {
 					t.Errorf("%s the engine should be reset. got overlays=%d, cursors=%d\n", v.label, len(pe.overlays), len(pe.cursors))
 				}
@@ -979,7 +979,7 @@ func (pe *PredictionEngine) inputString(emu *terminal.Emulator, str string, dela
 		input = graphemes.Runes()
 		if len(delay) > index { // delay parameters is provided to simulate network delay
 			pause := time.Duration(delay[index])
-			// fmt.Printf("newUserInput #delay %dms.\n", pause)
+			// fmt.Printf("#test inputString delay %dms.\n", pause)
 			time.Sleep(time.Millisecond * pause)
 			index++
 		}

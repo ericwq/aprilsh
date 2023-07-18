@@ -454,25 +454,29 @@ func (pe *PredictionEngine) cursor() *conditionalCursorMove {
 // remove cell prediction belong to previous epoch.
 // increase the prediction to next epoch.
 func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
-	// fmt.Printf("killEpoch #1st cursors length=%d\n", len(pe.cursors))
+	// fmt.Printf("#killEpoch A cursors size=%d\n", len(pe.cursors))
 
 	// remove cursor prediction belong to previouse epoch
 	cursors := make([]conditionalCursorMove, 0)
 	for i := range pe.cursors {
 		if pe.cursors[i].tentative(epoch - 1) {
-			// fmt.Printf("#killEpoch skip cursors (%2d,%2d), tentativeUntilEpoch=%d, epoch=%d\n",
-			// pe.cursors[i].row, pe.cursors[i].col, pe.cursors[i].tentativeUntilEpoch, epoch)
+			// fmt.Printf("#killEpoch erase cursors (%2d,%2d), tentativeUntilEpoch=%d, epoch=%d\n",
+			// 	pe.cursors[i].row, pe.cursors[i].col, pe.cursors[i].tentativeUntilEpoch, epoch)
 			continue
 		}
 		// fmt.Printf("#killEpoch keep cursors (%2d,%2d)\n", pe.cursors[i].row, pe.cursors[i].col)
 		cursors = append(cursors, pe.cursors[i])
 	}
 
+	// fmt.Printf("#killEpoch B cursors size=%d\n", len(cursors))
+
 	// add current cursor position to cursor prediction
 	cursors = append(cursors,
 		newConditionalCursorMove(pe.localFrameSent+1, emu.GetCursorRow(), emu.GetCursorCol(), pe.predictionEpoch))
 	pe.cursors = cursors
 	pe.cursor().active = true
+
+	// fmt.Printf("#killEpoch C cursors size=%d\n", len(cursors))
 
 	// remove cell prediction belong to previous epoch
 	for i := range pe.overlays {
@@ -486,7 +490,7 @@ func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
 	}
 
 	pe.becomeTentative()
-	// fmt.Printf("killEpoch #last cursors=%d, overlays=%d\n", len(pe.cursors), len(pe.overlays))
+	// fmt.Printf("#killEpoch cursors size=%d, overlays size=%d\n", len(pe.cursors), len(pe.overlays))
 }
 
 // if there is not any cursor prediction, add a cursor prediction based on frame
@@ -572,7 +576,7 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
 		// fmt.Printf("newUserInput #Experimental predictionEpoch = confirmedEpoch = %d\n", pe.confirmedEpoch)
 	}
 
-	// fmt.Printf("newUserInput #epoch predictionEpoch=%d\n", pe.predictionEpoch)
+	// fmt.Printf("#newUserInput predictionEpoch=%d, input=%s\n", pe.predictionEpoch, string(input))
 
 	pe.cull(emu)
 	now := time.Now().UnixMilli()
@@ -716,14 +720,14 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 			continue
 		}
 
-		fmt.Printf("#cull go through row %d\n", pe.overlays[i].rowNum)
+		// fmt.Printf("#cull go through row %d\n", pe.overlays[i].rowNum)
 		for j := range pe.overlays[i].overlayCells {
 			cell := &(pe.overlays[i].overlayCells[j])
 			v := cell.getValidity(emu, pe.overlays[i].rowNum, pe.localFrameLateAcked)
 			// if v != Inactive {
-				fmt.Printf("#cell %p (%2d,%2d) active=%t,unknown=%t,replacement=%q, expirationFrame=%d, lateAck=%d, validity=%s\n",
-					cell, pe.overlays[i].rowNum, j, cell.active, cell.unknown, cell.replacement, cell.expirationFrame,
-					pe.localFrameLateAcked, strValidity[v])
+			// 	fmt.Printf("#cull cell %p (%2d,%2d) active=%t,unknown=%t,replacement=%q, expirationFrame=%d, lateAck=%d, validity=%s\n",
+			// 		cell, pe.overlays[i].rowNum, j, cell.active, cell.unknown, cell.replacement, cell.expirationFrame,
+			// 		pe.localFrameLateAcked, strValidity[v])
 			// }
 			switch v {
 			case IncorrectOrExpired:
@@ -737,8 +741,8 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 						// 	cell.tentativeUntilEpoch, pe.confirmedEpoch)
 						cell.reset2()
 					} else {
-						fmt.Printf("#cull killEpoch is called. tentativeUntilEpoch=%d, confirmedEpoch=%d\n",
-							cell.tentativeUntilEpoch, pe.confirmedEpoch)
+						// fmt.Printf("#cull killEpoch is called. tentativeUntilEpoch=%d, confirmedEpoch=%d\n",
+						// 	cell.tentativeUntilEpoch, pe.confirmedEpoch)
 						pe.killEpoch(cell.tentativeUntilEpoch, emu)
 					}
 				} else {
@@ -761,16 +765,16 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 					pe.confirmedEpoch = cell.tentativeUntilEpoch
 				}
 
-				// fmt.Printf("cull #Correct glitchTrigger=%d, now=%d, predictionTime=%d, now-cell.predictionTime=%d\n",
+				// fmt.Printf("#cull Correct glitchTrigger=%d, now=%d, predictionTime=%d, now-cell.predictionTime=%d\n",
 				// 	pe.glitchTrigger, now, cell.predictionTime, now-cell.predictionTime)
 
 				// When predictions come in quickly, slowly take away the glitch trigger.
-				if now-cell.predictionTime < GLITCH_THRESHOLD {
-					if pe.glitchTrigger > 0 && now-GLITCH_REPAIR_MININTERVAL >= pe.lastQuickConfirmation {
+				if (now - cell.predictionTime) < GLITCH_THRESHOLD {
+					if pe.glitchTrigger > 0 && (now-GLITCH_REPAIR_MININTERVAL) >= pe.lastQuickConfirmation {
 						pe.glitchTrigger--
 						pe.lastQuickConfirmation = now
 					}
-					// fmt.Printf("cull #Correct glitchTrigger=%d, now-GLITCH_REPAIR_MININTERVAL=%d, pe.lastQuickConfirmation=%d, cond=%t \n",
+					// fmt.Printf("#cull Correct glitchTrigger=%d, now-GLITCH_REPAIR_MININTERVAL=%d, pe.lastQuickConfirmation=%d, cond=%t \n",
 					// 	pe.glitchTrigger, now-GLITCH_REPAIR_MININTERVAL, pe.lastQuickConfirmation, now-GLITCH_REPAIR_MININTERVAL >= pe.lastQuickConfirmation)
 				}
 
@@ -1058,7 +1062,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 			cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, pe.cursor().col))
 		}
 
-		// fmt.Printf("position (%d,%d), cell=%s\n\n", pe.cursor().row, pe.cursor().col, cell)
+		// fmt.Printf("#handleUserGrapheme (%d,%d) cell=%s\n\n", pe.cursor().row, pe.cursor().col, cell)
 
 		pe.cursor().expire(pe.localFrameSent+1, now)
 
