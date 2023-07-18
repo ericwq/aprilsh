@@ -96,6 +96,27 @@ func TestFragmenter(t *testing.T) {
 	}
 }
 
+func TestLastAckSentMax(t *testing.T) {
+	fe := NewFragmenter()
+
+	in0 := new(pb.Instruction)
+	in0.ProtocolVersion = APRILSH_PROTOCOL_VERSION
+	in0.OldNum = 9
+	in0.NewNum = 10
+	in0.AckNum = -1
+	in0.ThrowawayNum = 6
+	in0.Diff = []byte("simple message")
+	in0.Chaff = []byte("chaff")
+
+	mtu := 120
+
+	fe.makeFragments(in0, mtu)
+	got := fe.lastAckSentMax()
+	if !got {
+		t.Errorf("#test lastAckSentMax expect true, got %t\n", got)
+	}
+}
+
 func TestAddFragmentSkip(t *testing.T) {
 	tc := []struct {
 		id       uint64
