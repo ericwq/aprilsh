@@ -90,7 +90,7 @@ func TestTransportServerSend(t *testing.T) {
 
 	pushUserBytesTo(client.GetCurrentState(), "Test server response with terminal state.")
 	// fmt.Printf("#test tickAndRecv currentState=%q pointer=%v, assumed=%d\n",
-	// 	client.getCurrentState(), client.getCurrentState(), client.sender.getAssumedReceiverStateIdx())
+	// 	client.GetCurrentState(), client.GetCurrentState(), client.sender.getAssumedReceiverStateIdx())
 
 	// set verbose
 	client.SetVerbose(1)

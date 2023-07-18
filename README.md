@@ -53,6 +53,7 @@ The project name `Aprilsh` is derived from `April+sh`. This project started in A
 - 2023/Jun/21: finish serve() function.
 - 2023/Jun/25: re-structure cmd directory.
 - 2023/Jul/12: prepare client and server. fix bug in overlay.
+- 2023/Jul/19: refine frontend, terminal, util package for test coverage.
 
 ## build dependency
 
