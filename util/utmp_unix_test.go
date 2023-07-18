@@ -26,8 +26,9 @@ func TestUpdateLastLog(t *testing.T) {
 	host := fmt.Sprintf("%s [%d]", PACKAGE_STRING, os.Getpid())
 
 	ret := UpdateLastLog(line, userName, host)
+	msg := "This test require lastlog access privilege."
 	if !ret {
-		t.Errorf("#test UpdateLastLog() failed.")
+		t.Errorf("#test UpdateLastLog() failed. %s\n", msg)
 	}
 }
 
@@ -52,12 +53,17 @@ func TestCheckUnattachedUtmpx(t *testing.T) {
 		pts.Close()
 	}() // Best effort.
 
+	// fmt.Printf("\n")
+
 	// add test data
+	msg := "This test require utmps privilege."
 	fakeHost := fmt.Sprintf("%s [%d]", PACKAGE_STRING, os.Getpid()+1)
-	t.Logf("#test CheckUnattachedUtmpx() after add an record. fake host=%s, ignoreHost=%s\n",
-		fakeHost, ignoreHost)
-	ret := AddUtmpx(pts, fakeHost)
-	t.Logf("#test CheckUnattachedUtmpx() AddUtmpx() return %t\n", ret)
+	// fmt.Printf("#test CheckUnattachedUtmpx() after add an record. fake host=%s, ignoreHost=%s\n",
+	// 	fakeHost, ignoreHost)
+	ret := AddUtmpx(pts, fakeHost) // the go test can't give the required utmps privilege
+	if !ret {
+		t.Errorf("#test CheckUnattachedUtmpx() AddUtmpx() return %t, %s\n", ret, msg)
+	}
 
 	// CheckUnattachedUtmpx should return one record
 	unatttached = CheckUnattachedUtmpx(user.Username, ignoreHost, PACKAGE_STRING)
@@ -67,7 +73,9 @@ func TestCheckUnattachedUtmpx(t *testing.T) {
 
 	// clean the test data
 	ret = ClearUtmpx(pts)
-	t.Logf("#test CheckUnattachedUtmpx() ClearUtmpx() return %t\n", ret)
+	if !ret {
+		t.Errorf("#test CheckUnattachedUtmpx() ClearUtmpx() return %t, %s\n", ret, msg)
+	}
 }
 
 func TestCheckUnattachedUtmpx_Mock(t *testing.T) {
