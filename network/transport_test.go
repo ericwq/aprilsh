@@ -7,6 +7,8 @@ package network
 import (
 	"errors"
 	"io"
+	"io/ioutil"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -96,6 +98,15 @@ func TestTransportServerSend(t *testing.T) {
 	client.SetVerbose(1)
 	server.SetVerbose(1)
 
+	// intercept stderr
+	// swallow the tick() output to stderr
+	saveStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+	// disable log
+	server.connection.logW.SetOutput(io.Discard)
+	client.connection.logW.SetOutput(io.Discard)
+
 	// send user stream to server
 	client.Tick()
 	time.Sleep(time.Millisecond * 20)
@@ -135,6 +146,13 @@ func TestTransportServerSend(t *testing.T) {
 	time.Sleep(time.Millisecond * 20)
 	client.Recv()
 	time.Sleep(time.Millisecond * 20)
+
+	// restore stderr
+	w.Close()
+	ioutil.ReadAll(r) // discard the output of stderr
+	// b, _ := ioutil.ReadAll(r)
+	os.Stderr = saveStderr
+	r.Close()
 
 	// validate the result
 	// fmt.Printf("#test server currentState=%p, client last remoteState=%p\n", server.getCurrentState(), client.getLatestRemoteState().state)
@@ -300,6 +318,15 @@ func TestTransportRecvOverLimit(t *testing.T) {
 	// set verbose
 	server.SetVerbose(1)
 
+	// intercept stderr
+	// swallow the tick() output to stderr
+	saveStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+
+	// disable log
+	server.connection.logW.SetOutput(io.Discard)
+
 	// prepare the receivedState list
 	for i := 0; i < 1024; i++ {
 		server.receivedState = append(server.receivedState,
@@ -319,6 +346,13 @@ func TestTransportRecvOverLimit(t *testing.T) {
 	} else {
 		t.Errorf("#test recv over limit, receivedQuenchTimer=%d, now=%d\n", server.receiverQuenchTimer, time.Now().UnixMilli())
 	}
+
+	// restore stderr
+	w.Close()
+	ioutil.ReadAll(r) // discard the output of stderr
+	// b, _ := ioutil.ReadAll(r)
+	os.Stderr = saveStderr
+	r.Close()
 
 	server.connection.sock().Close()
 	client.connection.sock().Close()
@@ -341,6 +375,15 @@ func TestTransportRecvOverLimit2(t *testing.T) {
 	// set verbose
 	server.SetVerbose(1)
 
+	// intercept stderr
+	// swallow the tick() output to stderr
+	saveStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+
+	// disable log
+	server.connection.logW.SetOutput(io.Discard)
+
 	// prepare the receivedState list
 	for i := 0; i < 1024; i++ {
 		server.receivedState = append(server.receivedState,
@@ -361,6 +404,14 @@ func TestTransportRecvOverLimit2(t *testing.T) {
 	if err != nil {
 		t.Errorf("#test recv over limit, receivedQuenchTimer=%d, now=%d\n", server.receiverQuenchTimer, time.Now().UnixMilli())
 	}
+
+	// restore stderr
+	w.Close()
+	ioutil.ReadAll(r) // discard the output of stderr
+	// b, _ := ioutil.ReadAll(r)
+	os.Stderr = saveStderr
+	r.Close()
+
 	server.connection.sock().Close()
 	client.connection.sock().Close()
 }
@@ -383,6 +434,15 @@ func TestTransportRecvOutOfOrder(t *testing.T) {
 	// client.setVerbose(1)
 	server.SetVerbose(1)
 
+	// intercept stderr
+	// swallow the tick() output to stderr
+	saveStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+
+	// disable log
+	server.connection.logW.SetOutput(io.Discard)
+
 	// prepare the receivedState list
 	server.receivedState = append(server.receivedState,
 		TimestampedState[*statesync.UserStream]{time.Now().UnixMilli(), 1, initialState.Clone()})
@@ -401,6 +461,13 @@ func TestTransportRecvOutOfOrder(t *testing.T) {
 	if server.receivedState[2].num != newNum {
 		t.Errorf("#test recv expect %d, got %q\n", newNum, server.receivedState[2].num)
 	}
+
+	// restore stderr
+	w.Close()
+	ioutil.ReadAll(r) // discard the output of stderr
+	// b, _ := ioutil.ReadAll(r)
+	os.Stderr = saveStderr
+	r.Close()
 
 	server.connection.sock().Close()
 	client.connection.sock().Close()

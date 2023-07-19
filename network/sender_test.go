@@ -7,7 +7,9 @@ package network
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -591,6 +593,12 @@ func TestSenderTickVerify(t *testing.T) {
 	// disable log
 	server.connection.logW.SetOutput(io.Discard)
 
+	// intercept stderr
+	// swallow the tick() output to stderr
+	saveStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
+
 	// send user stream to server
 	client.Tick()
 	time.Sleep(time.Millisecond * 20)
@@ -615,6 +623,16 @@ func TestSenderTickVerify(t *testing.T) {
 	time.Sleep(time.Millisecond * 20)
 	client.Recv()
 	time.Sleep(time.Millisecond * 20)
+
+	// restore stderr
+	w.Close()
+	ioutil.ReadAll(r) // discard the output of stderr
+	// b, _ := ioutil.ReadAll(r)
+	os.Stderr = saveStderr
+	r.Close()
+
+	// validate the result
+	// result := string(b)
 
 	// check the stderr output to validate the result.
 
