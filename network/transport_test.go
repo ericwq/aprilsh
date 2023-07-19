@@ -472,3 +472,17 @@ func TestTransportRecvOutOfOrder(t *testing.T) {
 	server.connection.sock().Close()
 	client.connection.sock().Close()
 }
+
+func TestServerShutdown(t *testing.T) {
+	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
+	initialRemoteSrv := &statesync.UserStream{}
+	desiredIp := "localhost"
+	desiredPort := "6026"
+	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
+
+	server.StartShutdown()
+	if !server.ShutdownInProgress() {
+		t.Errorf("#test ShutdownInProgress() expect true, got false\n")
+	}
+	server.connection.sock().Close()
+}

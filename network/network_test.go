@@ -1,4 +1,4 @@
-// Copyright 2022 wangqi. All rights reserved.
+// Copyright 2022~2023 wangqi. All rights reserved.
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
@@ -1114,6 +1114,7 @@ func TestServerRecvTimeout(t *testing.T) {
 		t.Errorf("#test setReadDeadline() expect nil, got %s\n", e1)
 	}
 
+	// prepare mock conditions
 	mock.round = 5
 	mock.data = ""
 

@@ -1,4 +1,4 @@
-// Copyright 2022 wangqi. All rights reserved.
+// Copyright 2022~2023 wangqi. All rights reserved.
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
@@ -434,18 +434,6 @@ func (ts *TransportSender[T]) startShutdown() {
 	}
 }
 
-func (ts *TransportSender[T]) getShutdownInProgress() bool {
-	return ts.shutdownInProgress
-}
-
-func (ts *TransportSender[T]) getShutdownAcknowledged() bool {
-	return ts.sentStates[0].num == -1
-}
-
-func (ts *TransportSender[T]) getCounterpartyShutdownAcknowledged() bool {
-	return ts.fragmenter.lastAckSentMax()
-}
-
 // Cannot modify current_state while shutdown in progress
 func (ts *TransportSender[T]) getCurrentState() T {
 	return ts.currentState
@@ -458,6 +446,18 @@ func (ts *TransportSender[T]) setCurrentState(x T) {
 
 func (ts *TransportSender[T]) setVerbose(verbose uint) {
 	ts.verbose = verbose
+}
+
+func (ts *TransportSender[T]) getShutdownInProgress() bool {
+	return ts.shutdownInProgress
+}
+
+func (ts *TransportSender[T]) getShutdownAcknowledged() bool {
+	return ts.sentStates[0].num == -1
+}
+
+func (ts *TransportSender[T]) getCounterpartyShutdownAcknowledged() bool {
+	return ts.fragmenter.lastAckSentMax()
 }
 
 // get the first sent state timestamp
