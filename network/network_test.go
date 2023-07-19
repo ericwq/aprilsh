@@ -668,6 +668,8 @@ func (mc *mockUdpConn) ReadMsgUDP(b, oob []byte) (n, oobn, flags int, addr *net.
 		}
 		copy(b, []byte(dataStr))
 		n = len(dataStr)
+	case 5:
+		err = os.ErrDeadlineExceeded
 		// fmt.Printf("#mockUdpConn ReadMsgUDP() dataStr=%q, data=%q, round=%d\n", dataStr, mc.data, mc.round)
 	}
 
@@ -684,6 +686,9 @@ func (mc *mockUdpConn) WriteTo(b []byte, addr net.Addr) (len int, err error) {
 }
 
 func (mc *mockUdpConn) SetReadDeadline(t time.Time) error {
+	if mc.round == 5 {
+		return errors.New("set read dead line error")
+	}
 	return nil
 }
 
@@ -1084,4 +1089,41 @@ func TestRecvSRTT(t *testing.T) {
 
 	// restor the logFunc
 	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+}
+
+func TestServerRecvTimeout(t *testing.T) {
+	// prepare the client and server connection
+	title := "receive packet to calculate SRTT/RTTVAR"
+	ip := "localhost"
+	port := "8080"
+
+	server := NewConnection(ip, port)
+	defer server.sock().Close()
+	if server == nil {
+		t.Errorf("%q server should not return nil.\n", title)
+		return
+	}
+
+	// let the mock connection as the only connection
+	var mock mockUdpConn
+	server.socks = append(server.socks, &mock)
+	server.socks = server.socks[len(server.socks)-1:]
+
+	// validate the no error case
+	if e1 := server.setReadDeadline(time.Now().Add(time.Millisecond * time.Duration(5))); e1 != nil {
+		t.Errorf("#test setReadDeadline() expect nil, got %s\n", e1)
+	}
+
+	mock.round = 5
+	mock.data = ""
+
+	// validate the error case
+	if e1 := server.setReadDeadline(time.Now().Add(time.Millisecond * time.Duration(5))); e1 == nil {
+		t.Errorf("#test setReadDeadline() expect err, got nil\n") // see mockUdpConn.SetReadDeadline
+	}
+	// validate the read time out case
+	_, e2 := server.recv()
+	if !errors.Is(e2, os.ErrDeadlineExceeded) {
+		t.Errorf("#test recv() expect err, got %s\n", e2) // see mockUdpConn.SetReadDeadline
+	}
 }
