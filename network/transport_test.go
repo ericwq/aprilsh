@@ -6,6 +6,7 @@ package network
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -473,16 +474,102 @@ func TestTransportRecvOutOfOrder(t *testing.T) {
 	client.connection.sock().Close()
 }
 
-func TestServerShutdown(t *testing.T) {
-	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
-	initialRemoteSrv := &statesync.UserStream{}
+func TestClientShutdown(t *testing.T) {
+	completeTerminal, _ := statesync.NewComplete(80, 5, 0)
+	blank := &statesync.UserStream{}
 	desiredIp := "localhost"
-	desiredPort := "6026"
-	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
+	desiredPort := "60100"
+	server := NewTransportServer(completeTerminal, blank, desiredIp, desiredPort)
 
-	server.StartShutdown()
-	if !server.ShutdownInProgress() {
-		t.Errorf("#test ShutdownInProgress() expect true, got false\n")
+	initialState := &statesync.UserStream{}
+	initialRemote, _ := statesync.NewComplete(80, 5, 0)
+	keyStr := server.connection.getKey() // get the key from server
+	ip := "localhost"
+	port := "60100"
+	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
+
+	pushUserBytesTo(client.GetCurrentState(), "Test client shutdown.")
+
+	// set verbose
+	client.SetVerbose(1)
+	server.SetVerbose(1)
+
+	// intercept stderr
+	// swallow the tick() output to stderr
+	// saveStderr := os.Stderr
+	// r, w, _ := os.Pipe()
+	// os.Stderr = w
+
+	// disable log
+	// server.connection.logW.SetOutput(io.Discard)
+	// client.connection.logW.SetOutput(io.Discard)
+
+	// send user stream to server
+	fmt.Println("A")
+	client.StartShutdown()
+	client.Tick()
+	time.Sleep(time.Millisecond * 20)
+	fmt.Println("B")
+	server.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(5)))
+	server.Recv()
+	fmt.Println("C")
+	time.Sleep(time.Millisecond * 20)
+
+	// check remote address
+	if server.GetRemoteAddr() == nil {
+		t.Errorf("#test client shutdown expect remote address %v, got nil\n", server.GetRemoteAddr())
 	}
+
+	if !client.ShutdownInProgress() {
+		t.Errorf("#test client shutdown ShutdownInProgress() expect true, got false\n")
+	}
+
+	us := &statesync.UserStream{}
+	diff := server.GetRemoteDiff()
+	us.ApplyString(diff)
+	terminalToHost := ""
+	for i := 0; i < us.Size(); i++ {
+		action := us.GetAction(i)
+		switch action.(type) {
+		case terminal.UserByte:
+			// fmt.Printf("#test process %#v\n", action)
+		case terminal.Resize:
+			// fmt.Printf("#test process %#v\n", action)
+			// resize the terminal
+		}
+		terminalToHost += completeTerminal.ActOne(action)
+	}
+
+	// fmt.Printf("#test server send: got diff %q, terminalToHost=%q\n", diff, terminalToHost)
+	completeTerminal.Act(terminalToHost)
+	completeTerminal.RegisterInputFrame(server.GetRemoteStateNum(), time.Now().UnixMilli())
+	server.SetCurrentState(completeTerminal)
+	// fmt.Printf("#test currentState=%p, terminalInSrv=%p\n", server.getCurrentState(), completeTerminal)
+
+	// send complete to client
+	server.Tick()
+	time.Sleep(time.Millisecond * 20)
+	client.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(5)))
+	client.Recv()
+	time.Sleep(time.Millisecond * 20)
+
+	if client.CounterpartyShutdownAckSent() {
+		t.Errorf("#test client shutdown CounterpartyShutdownAckSent() expect %t, got %t\n", true, client.CounterpartyShutdownAckSent())
+	}
+
+	// restore stderr
+	// w.Close()
+	// ioutil.ReadAll(r) // discard the output of stderr
+	// // b, _ := ioutil.ReadAll(r)
+	// os.Stderr = saveStderr
+	// r.Close()
+
+	// validate the result
+	// fmt.Printf("#test server currentState=%p, client last remoteState=%p\n", server.getCurrentState(), client.getLatestRemoteState().state)
+	if !server.GetCurrentState().Equal(client.GetLatestRemoteState().state) {
+		t.Errorf("#test client shutdown %v to client, client got %v\n ", server.GetCurrentState(), client.GetLatestRemoteState().state)
+	}
+
 	server.connection.sock().Close()
+	client.connection.sock().Close()
 }

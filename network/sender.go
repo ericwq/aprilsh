@@ -283,7 +283,10 @@ func (ts *TransportSender[T]) calculateTimers() {
 
 	// speed up shutdown sequence
 	if ts.shutdownInProgress || ts.ackNum == -1 {
+		fmt.Printf("#calculateTimers before nextAckTime=%d, last sentStates time=%d, sendInterval=%d\n",
+			ts.nextAckTime, ts.sentStates[back].timestamp, ts.sendInterval())
 		ts.nextAckTime = ts.sentStates[back].timestamp + int64(ts.sendInterval())
+		fmt.Printf("#calculateTimers after nextAckTime=%d\n", ts.nextAckTime)
 	}
 }
 
@@ -301,6 +304,7 @@ func (ts *TransportSender[T]) makeChaff() string {
 func (ts *TransportSender[T]) tick() error {
 	ts.calculateTimers() // updates assumed receiver state and rationalizes
 
+	// fmt.Printf("#tick send to receiver %s.\n", ts.connection.getRemoteAddr())
 	if !ts.connection.getHasRemoteAddr() {
 		return nil
 	}
@@ -308,6 +312,7 @@ func (ts *TransportSender[T]) tick() error {
 	now := time.Now().UnixMilli()
 	// fmt.Printf("#tick now=%d, nextAckTime=%d, nextSendTime=%d\n", now, ts.nextAckTime, ts.nextSendTime)
 	if now < ts.nextAckTime && now < ts.nextSendTime {
+		fmt.Printf("nextAckTime+%d, nextSendTime=%d, now=%d\n", ts.nextAckTime, ts.nextSendTime, now)
 		return nil
 	}
 
