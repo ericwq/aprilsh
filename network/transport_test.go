@@ -481,6 +481,8 @@ func TestClientShutdown(t *testing.T) {
 	desiredPort := "60100"
 	server := NewTransportServer(completeTerminal, blank, desiredIp, desiredPort)
 
+	// fmt.Printf("#test server initialize sentStates=%d\n",len(server.sender.sentStates))
+
 	initialState := &statesync.UserStream{}
 	initialRemote, _ := statesync.NewComplete(80, 5, 0)
 	keyStr := server.connection.getKey() // get the key from server
@@ -488,11 +490,14 @@ func TestClientShutdown(t *testing.T) {
 	port := "60100"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
+	// fmt.Printf("#test client initialize sentStates=%d\n",len(client.sender.sentStates))
+
+	// mimic user input
 	pushUserBytesTo(client.GetCurrentState(), "Test client shutdown.")
 
 	// set verbose
-	client.SetVerbose(1)
-	server.SetVerbose(1)
+	// client.SetVerbose(1)
+	// server.SetVerbose(1)
 
 	// intercept stderr
 	// swallow the tick() output to stderr
@@ -505,15 +510,15 @@ func TestClientShutdown(t *testing.T) {
 	// client.connection.logW.SetOutput(io.Discard)
 
 	// send user stream to server
-	fmt.Println("A")
-	client.StartShutdown()
+	fmt.Printf("#test client send.\n")
 	client.Tick()
-	time.Sleep(time.Millisecond * 20)
-	fmt.Println("B")
+	client.StartShutdown()
+	time.Sleep(time.Millisecond * 10)
+
+	fmt.Printf("#test server receive.\n")
 	server.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(5)))
 	server.Recv()
-	fmt.Println("C")
-	time.Sleep(time.Millisecond * 20)
+	time.Sleep(time.Millisecond * 10)
 
 	// check remote address
 	if server.GetRemoteAddr() == nil {
@@ -547,14 +552,20 @@ func TestClientShutdown(t *testing.T) {
 	// fmt.Printf("#test currentState=%p, terminalInSrv=%p\n", server.getCurrentState(), completeTerminal)
 
 	// send complete to client
+	fmt.Printf("#test server send.\n")
+	server.StartShutdown()
 	server.Tick()
-	time.Sleep(time.Millisecond * 20)
+	time.Sleep(time.Millisecond * 10)
+
+	fmt.Printf("#test client receive.\n")
 	client.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(5)))
-	client.Recv()
-	time.Sleep(time.Millisecond * 20)
+	e23:=client.Recv()
+	time.Sleep(time.Millisecond * 10)
+	fmt.Printf("#test client receive %q.\n",e23)
 
 	if client.CounterpartyShutdownAckSent() {
-		t.Errorf("#test client shutdown CounterpartyShutdownAckSent() expect %t, got %t\n", true, client.CounterpartyShutdownAckSent())
+		t.Errorf("#test client shutdown CounterpartyShutdownAckSent() expect %t, got %t\n",
+			true, client.CounterpartyShutdownAckSent())
 	}
 
 	// restore stderr

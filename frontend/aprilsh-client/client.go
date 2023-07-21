@@ -231,6 +231,7 @@ func main() {
 		return
 	}
 
+	// the Stdin, Stderr, Stdout are all set to pts/N
 	client.main()
 	fmt.Printf("[%s is exiting.]", _COMMAND_NAME)
 }
