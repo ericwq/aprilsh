@@ -4,9 +4,9 @@ Reborn [mosh](https://mosh.org/) with go.
 
 ## Motivation
 
-[openSSH](https://www.openssh.com/) is excellent. While `mosh` provides better keystroke prediction/latency and is capable of handle WiFi/cellular mobile network roaming problem. But `mosh` is not active anymore and no release [sine 2017](https://github.com/mobile-shell/mosh/issues/1115). Such a good project like `mosh` should keeps developing.
+[openSSH](https://www.openssh.com/) is excellent. While `mosh` provides better keystroke prediction/latency and is capable of handle WiFi/cellular mobile network roaming. But `mosh` project is not active anymore and no release [sine 2017](https://github.com/mobile-shell/mosh/issues/1115). Such a good project like `mosh` should keeps developing.
 
-After read through `mosh` source code, I decide to use go to rewrite it. Go is my first choice because the C++ syntax is too complex. Go also has excellent support for UTF-8 and multithreaded programming. The last reason: go compiler is faster than c++ compiler.
+After read through `mosh` source code, I decide to rewrite it with golang. Go is my first choice because the C++ syntax is too complex. Go also has excellent support for UTF-8 and multithreaded programming. The last reason: go compiler is faster than c++ compiler.
 
 There are several rules for this project:
 
@@ -19,9 +19,9 @@ There are also some goals for this project:
 - Support the terminal 24bit color.
 - Upgrade to [proto3](https://developers.google.com/protocol-buffers/docs/proto3)
 - Use terminfo database for better compatibility.
-- Prove go is a good choice for terminal tool.
+- Prove golang is a good choice for terminal developing.
 
-The project name `Aprilsh` is derived from `April+sh`. This project started in April shanghai 2022, and it's a remote shell.
+The project name `Aprilsh` is derived from `April+sh`. This project started in shanghai April 2022, and it's a remote shell.
 
 ## Status
 
@@ -54,6 +54,7 @@ The project name `Aprilsh` is derived from `April+sh`. This project started in A
 - 2023/Jun/25: re-structure cmd directory.
 - 2023/Jul/12: prepare client and server. fix bug in overlay.
 - 2023/Jul/19: refine frontend, terminal, util package for test coverage.
+- 2023/July24: refine network package for test coverage.
 
 ## build dependency
 
