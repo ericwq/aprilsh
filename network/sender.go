@@ -308,7 +308,7 @@ func (ts *TransportSender[T]) tick() error {
 
 	// fmt.Printf("#tick send to receiver %s.\n", ts.connection.getRemoteAddr())
 	if !ts.connection.getHasRemoteAddr() {
-		fmt.Printf("#tick skip tick() no remote addr=%s\n",ts.connection.getRemoteAddr())
+		fmt.Printf("#tick skip tick() no remote addr=%s\n", ts.connection.getRemoteAddr())
 		return nil
 	}
 
@@ -351,7 +351,7 @@ func (ts *TransportSender[T]) tick() error {
 		fmt.Printf("#tick sendEmptyAck(): now=%d, nextAckTime=%d\n", now, ts.nextAckTime)
 		if now >= ts.nextAckTime {
 			if err := ts.sendEmptyAck(); err != nil {
-				return err 
+				return err
 			}
 			ts.mindelayClock = -1
 		}
@@ -361,11 +361,11 @@ func (ts *TransportSender[T]) tick() error {
 			ts.mindelayClock = -1
 		}
 	} else if now >= ts.nextSendTime || now >= ts.nextAckTime {
-		fmt.Printf("#tick sendToReceiver(): %d, nextAckTime=%d, nextSendTime=%d\n", 
-		now, ts.nextSendTime, ts.nextAckTime)
+		fmt.Printf("#tick sendToReceiver(): %d, nextAckTime=%d, nextSendTime=%d, diff=%q\n",
+			now, ts.nextSendTime, ts.nextAckTime, diff)
 		// send diff or ack
 		if err := ts.sendToReceiver(diff); err != nil {
-			return err 
+			return err
 		}
 		ts.mindelayClock = -1
 	}

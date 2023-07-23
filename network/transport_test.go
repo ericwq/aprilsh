@@ -493,11 +493,12 @@ func TestClientShutdown(t *testing.T) {
 	// fmt.Printf("#test client initialize sentStates=%d\n",len(client.sender.sentStates))
 
 	// mimic user input
-	pushUserBytesTo(client.GetCurrentState(), "Test client shutdown.")
+	label := "client shutdown"
+	pushUserBytesTo(client.GetCurrentState(), label)
 
 	// set verbose
-	// client.SetVerbose(1)
-	// server.SetVerbose(1)
+	client.SetVerbose(1)
+	server.SetVerbose(1)
 
 	// intercept stderr
 	// swallow the tick() output to stderr
@@ -509,24 +510,38 @@ func TestClientShutdown(t *testing.T) {
 	// server.connection.logW.SetOutput(io.Discard)
 	// client.connection.logW.SetOutput(io.Discard)
 
-	// send user stream to server
-	fmt.Printf("#test client send.\n")
-	client.Tick()
-	client.StartShutdown()
-	time.Sleep(time.Millisecond * 10)
+	// printClientStates(client, label)
+	// printServerStates(server, label)
 
-	fmt.Printf("#test server receive.\n")
+	// send user stream to server
+	fmt.Printf("#test --- client send.\n")
+	client.StartShutdown()
+	time.Sleep(time.Millisecond * 250)
+	client.Tick()
+	printClientStates(client, label)
+
+	// validate
+	if !client.ShutdownInProgress() {
+		t.Errorf("#test %s: ShutdownInProgress() expect true, got false\n", label)
+	}
+
+	if !client.ShutdownAcknowledged() {
+		t.Errorf("#test %s: ShutdownAcknowledged() expect true, got %t\n",label, client.ShutdownAcknowledged())
+	}
+	// validate
+	if client.ShutdownAckTimedout() {
+		t.Errorf("#test %s: ShutdownAckTimedout expect false, got %t\n", label, client.ShutdownAckTimedout())
+	}
+
+	fmt.Printf("#test --- server receive.\n")
 	server.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(5)))
 	server.Recv()
 	time.Sleep(time.Millisecond * 10)
+	printServerStates(server, label)
 
 	// check remote address
 	if server.GetRemoteAddr() == nil {
-		t.Errorf("#test client shutdown expect remote address %v, got nil\n", server.GetRemoteAddr())
-	}
-
-	if !client.ShutdownInProgress() {
-		t.Errorf("#test client shutdown ShutdownInProgress() expect true, got false\n")
+		t.Errorf("#test %s: GetRemoteAddr() expect remote address %v, got nil\n", label, server.GetRemoteAddr())
 	}
 
 	us := &statesync.UserStream{}
@@ -540,7 +555,7 @@ func TestClientShutdown(t *testing.T) {
 			// fmt.Printf("#test process %#v\n", action)
 		case terminal.Resize:
 			// fmt.Printf("#test process %#v\n", action)
-			// resize the terminal
+		// resize the terminal
 		}
 		terminalToHost += completeTerminal.ActOne(action)
 	}
@@ -552,20 +567,24 @@ func TestClientShutdown(t *testing.T) {
 	// fmt.Printf("#test currentState=%p, terminalInSrv=%p\n", server.getCurrentState(), completeTerminal)
 
 	// send complete to client
-	fmt.Printf("#test server send.\n")
+	fmt.Printf("#test --- server send.\n")
 	server.StartShutdown()
 	server.Tick()
 	time.Sleep(time.Millisecond * 10)
+	printServerStates(server, label)
 
-	fmt.Printf("#test client receive.\n")
+	fmt.Printf("#test --- client receive.\n")
 	client.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(5)))
-	e23:=client.Recv()
+	e23 := client.Recv()
 	time.Sleep(time.Millisecond * 10)
-	fmt.Printf("#test client receive %q.\n",e23)
+	if e23 != nil {
+		fmt.Printf("#test client receive %q.\n", e23)
+	}
+	printClientStates(client, label)
 
 	if client.CounterpartyShutdownAckSent() {
-		t.Errorf("#test client shutdown CounterpartyShutdownAckSent() expect %t, got %t\n",
-			true, client.CounterpartyShutdownAckSent())
+		t.Errorf("#test %s: CounterpartyShutdownAckSent() expect %t, got %t\n",
+			label, true, client.CounterpartyShutdownAckSent())
 	}
 
 	// restore stderr
@@ -575,12 +594,39 @@ func TestClientShutdown(t *testing.T) {
 	// os.Stderr = saveStderr
 	// r.Close()
 
-	// validate the result
-	// fmt.Printf("#test server currentState=%p, client last remoteState=%p\n", server.getCurrentState(), client.getLatestRemoteState().state)
+	// validate the server state is the same as the client received state
 	if !server.GetCurrentState().Equal(client.GetLatestRemoteState().state) {
-		t.Errorf("#test client shutdown %v to client, client got %v\n ", server.GetCurrentState(), client.GetLatestRemoteState().state)
+		t.Errorf("#test %s: %v to client, client got %v\n ", label, server.GetCurrentState(), client.GetLatestRemoteState().state)
 	}
+
+	// fmt.Printf("#test --- client send again.\n")
+	// client.Tick()
+	// printClientStates(client, label)
+	//
+	// if !client.ShutdownAcknowledged() {
+	// 	t.Errorf("#test %s: ShutdownAcknowledged() expect true, got %t\n", label, client.ShutdownAcknowledged())
+	// }
 
 	server.connection.sock().Close()
 	client.connection.sock().Close()
+}
+
+func printClientStates(client *Transport[*statesync.UserStream, *statesync.Complete], label string) {
+	for i := range client.receivedState {
+		fmt.Printf("#test %s: client receivedState[%d] num=%d\n", label, i, client.receivedState[i].num)
+	}
+	for i := range client.sender.sentStates {
+		fmt.Printf("#test %s: client sentStates[%d] num=%d\n", label, i, client.sender.sentStates[i].num)
+	}
+	// fmt.Printf("#test %s: client AckNum=%d\n", label, client.sender.ackNum)
+}
+
+func printServerStates(server *Transport[*statesync.Complete, *statesync.UserStream], label string) {
+	for i := range server.receivedState {
+		fmt.Printf("#test %s: server receivedState[%d] num=%d\n", label, i, server.receivedState[i].num)
+	}
+	for i := range server.sender.sentStates {
+		fmt.Printf("#test %s: server sentStates[%d] num=%d\n", label, i, server.sender.sentStates[i].num)
+	}
+	// fmt.Printf("#test %s: server AckNum=%d\n", label, server.sender.ackNum)
 }
