@@ -111,7 +111,7 @@ func TestLastAckSentMax(t *testing.T) {
 	mtu := 120
 
 	fe.makeFragments(in0, mtu)
-	got := fe.lastAckSentMax()
+	got := fe.lastAckSentShutdown()
 	if !got {
 		t.Errorf("#test lastAckSentMax expect true, got %t\n", got)
 	}

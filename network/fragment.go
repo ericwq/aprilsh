@@ -219,7 +219,8 @@ func (f *Fragmenter) lastAckSent() uint64 {
 	// return f.lastInstruction.AckNum
 }
 
-func (f *Fragmenter) lastAckSentMax() bool {
+// last instruction contains AckNum equals -1, which means shutdown.
+func (f *Fragmenter) lastAckSentShutdown() bool {
 	return f.lastInstruction.AckNum == -1
 }
 

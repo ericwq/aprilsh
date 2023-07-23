@@ -502,42 +502,43 @@ func TestClientShutdown(t *testing.T) {
 
 	// intercept stderr
 	// swallow the tick() output to stderr
-	// saveStderr := os.Stderr
-	// r, w, _ := os.Pipe()
-	// os.Stderr = w
+	saveStderr := os.Stderr
+	r, w, _ := os.Pipe()
+	os.Stderr = w
 
 	// disable log
-	// server.connection.logW.SetOutput(io.Discard)
-	// client.connection.logW.SetOutput(io.Discard)
+	server.connection.logW.SetOutput(io.Discard)
+	client.connection.logW.SetOutput(io.Discard)
 
 	// printClientStates(client, label)
 	// printServerStates(server, label)
 
 	// send user stream to server
-	fmt.Printf("#test --- client send.\n")
+	// fmt.Printf("#test --- client send.\n")
 	client.StartShutdown()
 	time.Sleep(time.Millisecond * 250)
 	client.Tick()
-	printClientStates(client, label)
+	// printClientStates(client, label)
 
 	// validate
 	if !client.ShutdownInProgress() {
 		t.Errorf("#test %s: ShutdownInProgress() expect true, got false\n", label)
 	}
 
-	if !client.ShutdownAcknowledged() {
-		t.Errorf("#test %s: ShutdownAcknowledged() expect true, got %t\n",label, client.ShutdownAcknowledged())
+	// validate
+	if client.ShutdownAcknowledged() {
+		t.Errorf("#test %s: ShutdownAcknowledged() expect true, got %t\n", label, client.ShutdownAcknowledged())
 	}
 	// validate
 	if client.ShutdownAckTimedout() {
 		t.Errorf("#test %s: ShutdownAckTimedout expect false, got %t\n", label, client.ShutdownAckTimedout())
 	}
 
-	fmt.Printf("#test --- server receive.\n")
+	// fmt.Printf("#test --- server receive.\n")
 	server.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(5)))
 	server.Recv()
 	time.Sleep(time.Millisecond * 10)
-	printServerStates(server, label)
+	// printServerStates(server, label)
 
 	// check remote address
 	if server.GetRemoteAddr() == nil {
@@ -555,57 +556,53 @@ func TestClientShutdown(t *testing.T) {
 			// fmt.Printf("#test process %#v\n", action)
 		case terminal.Resize:
 			// fmt.Printf("#test process %#v\n", action)
-		// resize the terminal
+			// resize the terminal
 		}
 		terminalToHost += completeTerminal.ActOne(action)
 	}
 
-	// fmt.Printf("#test server send: got diff %q, terminalToHost=%q\n", diff, terminalToHost)
 	completeTerminal.Act(terminalToHost)
 	completeTerminal.RegisterInputFrame(server.GetRemoteStateNum(), time.Now().UnixMilli())
 	server.SetCurrentState(completeTerminal)
-	// fmt.Printf("#test currentState=%p, terminalInSrv=%p\n", server.getCurrentState(), completeTerminal)
 
 	// send complete to client
-	fmt.Printf("#test --- server send.\n")
+	// fmt.Printf("#test --- server send.\n")
 	server.StartShutdown()
 	server.Tick()
 	time.Sleep(time.Millisecond * 10)
-	printServerStates(server, label)
+	// printServerStates(server, label)
 
-	fmt.Printf("#test --- client receive.\n")
+	// fmt.Printf("#test --- client receive.\n")
 	client.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(5)))
 	e23 := client.Recv()
 	time.Sleep(time.Millisecond * 10)
 	if e23 != nil {
 		fmt.Printf("#test client receive %q.\n", e23)
 	}
-	printClientStates(client, label)
+	// printClientStates(client, label)
 
+	// validate
 	if client.CounterpartyShutdownAckSent() {
 		t.Errorf("#test %s: CounterpartyShutdownAckSent() expect %t, got %t\n",
 			label, true, client.CounterpartyShutdownAckSent())
 	}
-
-	// restore stderr
-	// w.Close()
-	// ioutil.ReadAll(r) // discard the output of stderr
-	// // b, _ := ioutil.ReadAll(r)
-	// os.Stderr = saveStderr
-	// r.Close()
 
 	// validate the server state is the same as the client received state
 	if !server.GetCurrentState().Equal(client.GetLatestRemoteState().state) {
 		t.Errorf("#test %s: %v to client, client got %v\n ", label, server.GetCurrentState(), client.GetLatestRemoteState().state)
 	}
 
-	// fmt.Printf("#test --- client send again.\n")
-	// client.Tick()
-	// printClientStates(client, label)
-	//
-	// if !client.ShutdownAcknowledged() {
-	// 	t.Errorf("#test %s: ShutdownAcknowledged() expect true, got %t\n", label, client.ShutdownAcknowledged())
-	// }
+	// validate
+	if client.ShutdownAcknowledged() {
+		t.Errorf("#test %s: ShutdownAcknowledged() expect false, got %t\n", label, client.ShutdownAcknowledged())
+	}
+
+	// restore stderr
+	w.Close()
+	ioutil.ReadAll(r) // discard the output of stderr
+	// b, _ := ioutil.ReadAll(r)
+	os.Stderr = saveStderr
+	r.Close()
 
 	server.connection.sock().Close()
 	client.connection.sock().Close()

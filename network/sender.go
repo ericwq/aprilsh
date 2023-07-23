@@ -308,14 +308,14 @@ func (ts *TransportSender[T]) tick() error {
 
 	// fmt.Printf("#tick send to receiver %s.\n", ts.connection.getRemoteAddr())
 	if !ts.connection.getHasRemoteAddr() {
-		fmt.Printf("#tick skip tick() no remote addr=%s\n", ts.connection.getRemoteAddr())
+		// fmt.Printf("#tick skip tick() no remote addr=%s\n", ts.connection.getRemoteAddr())
 		return nil
 	}
 
 	now := time.Now().UnixMilli()
 	// fmt.Printf("#tick now=%d, nextAckTime=%d, nextSendTime=%d\n", now, ts.nextAckTime, ts.nextSendTime)
 	if now < ts.nextAckTime && now < ts.nextSendTime {
-		fmt.Printf("#tick skip tick() nextAckTime+%d, nextSendTime=%d, now=%d\n", ts.nextAckTime, ts.nextSendTime, now)
+		// fmt.Printf("#tick skip tick() nextAckTime+%d, nextSendTime=%d, now=%d\n", ts.nextAckTime, ts.nextSendTime, now)
 		return nil
 	}
 
@@ -348,7 +348,7 @@ func (ts *TransportSender[T]) tick() error {
 	// fmt.Printf("#tick send %q to receiver %s.\n", diff, ts.connection.getRemoteAddr())
 
 	if len(diff) == 0 {
-		fmt.Printf("#tick sendEmptyAck(): now=%d, nextAckTime=%d\n", now, ts.nextAckTime)
+		// fmt.Printf("#tick sendEmptyAck(): now=%d, nextAckTime=%d\n", now, ts.nextAckTime)
 		if now >= ts.nextAckTime {
 			if err := ts.sendEmptyAck(); err != nil {
 				return err
@@ -361,8 +361,8 @@ func (ts *TransportSender[T]) tick() error {
 			ts.mindelayClock = -1
 		}
 	} else if now >= ts.nextSendTime || now >= ts.nextAckTime {
-		fmt.Printf("#tick sendToReceiver(): %d, nextAckTime=%d, nextSendTime=%d, diff=%q\n",
-			now, ts.nextSendTime, ts.nextAckTime, diff)
+		// fmt.Printf("#tick sendToReceiver(): %d, nextAckTime=%d, nextSendTime=%d, diff=%q\n",
+		// 	now, ts.nextSendTime, ts.nextAckTime, diff)
 		// send diff or ack
 		if err := ts.sendToReceiver(diff); err != nil {
 			return err
@@ -468,7 +468,7 @@ func (ts *TransportSender[T]) getShutdownAcknowledged() bool {
 }
 
 func (ts *TransportSender[T]) getCounterpartyShutdownAcknowledged() bool {
-	return ts.fragmenter.lastAckSentMax()
+	return ts.fragmenter.lastAckSentShutdown()
 }
 
 // get the first sent state timestamp

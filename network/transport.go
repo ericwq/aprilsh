@@ -215,10 +215,12 @@ func (t *Transport[S, R]) StartShutdown() {
 	t.sender.startShutdown()
 }
 
+// return true if shutdown is started, otherwise false.
 func (t *Transport[S, R]) ShutdownInProgress() bool {
 	return t.sender.getShutdownInProgress()
 }
 
+// return true if the firt sent state num is -1, otherwise false.
 func (t *Transport[S, R]) ShutdownAcknowledged() bool {
 	return t.sender.getShutdownAcknowledged()
 }
