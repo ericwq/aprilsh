@@ -689,3 +689,39 @@ func TestSenderSendInterval(t *testing.T) {
 	server.connection.sock().Close()
 	client.connection.sock().Close()
 }
+
+func TestSenderShutdonwAckTimedout(t *testing.T) {
+	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
+	initialRemoteSrv := &statesync.UserStream{}
+	desiredIp := "localhost"
+	desiredPort := "6105"
+	ts := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
+
+	// validate
+	if ts.ShutdownAckTimedout() {
+		t.Errorf("#test ShutdownAckTimedout() expect false, got %t\n", ts.ShutdownAckTimedout())
+	}
+
+	// shutdownTries > SHUTDOWN_RETRIES
+	ts.sender.shutdownTries = SHUTDOWN_RETRIES + 1
+	ts.StartShutdown()
+	if !ts.sender.shutdonwAckTimedout() {
+		t.Errorf("#test ShutdownAckTimedout() expect true, got false, shutdownTries=%d\n",
+			ts.sender.shutdownTries)
+	}
+
+	// shutdownStart >= ACTIVE_RETRY_TIMEOUT
+	ts.sender.shutdownStart = time.Now().UnixMilli() - ACTIVE_RETRY_TIMEOUT - 1
+	ts.sender.shutdownTries = 1
+	if !ts.sender.shutdonwAckTimedout() {
+		t.Errorf("#test ShutdownAckTimedout() expect true, got false, shutdownStart=%d\n",
+			ts.sender.shutdownStart)
+	}
+
+	ts.sender.SEND_MINDELAY = 0
+	expect := 12
+	ts.sender.setSendDelay(expect)
+	if ts.sender.SEND_MINDELAY != expect {
+		t.Errorf("#test setSendDelay() expect %d, got %d\n", expect, ts.sender.SEND_MINDELAY)
+	}
+}
