@@ -718,10 +718,16 @@ func TestSenderShutdonwAckTimedout(t *testing.T) {
 			ts.sender.shutdownStart)
 	}
 
+	// test SetSendDelay
 	ts.sender.SEND_MINDELAY = 0
 	expect := 12
-	ts.sender.setSendDelay(expect)
+	ts.SetSendDelay(expect)
 	if ts.sender.SEND_MINDELAY != expect {
 		t.Errorf("#test setSendDelay() expect %d, got %d\n", expect, ts.sender.SEND_MINDELAY)
+	}
+
+	// test hasRemoteAddr
+	if ts.HasRemoteAddr() {
+		t.Errorf("test HasRemoteAddr() expect false, got %t\n", ts.HasRemoteAddr())
 	}
 }

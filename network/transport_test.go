@@ -627,3 +627,41 @@ func printServerStates(server *Transport[*statesync.Complete, *statesync.UserStr
 	}
 	// fmt.Printf("#test %s: server AckNum=%d\n", label, server.sender.ackNum)
 }
+
+func TestTransportGetXXX(t *testing.T) {
+	completeTerminal, _ := statesync.NewComplete(80, 5, 0)
+	blank := &statesync.UserStream{}
+	desiredIp := "localhost"
+	desiredPort := "60101"
+	s := NewTransportServer(completeTerminal, blank, desiredIp, desiredPort)
+
+	// test GetKey
+	if len(s.GetKey()) <= 0 {
+		t.Errorf("#test GetKey() expect a key string, got %q\n", s.GetKey())
+	}
+
+	// test GetSentStateLast
+	got := s.GetSentStateLast()
+	if got != 0 {
+		t.Errorf("#test GetSentStateLast() expect 0, got %d\n", got)
+	}
+
+	// test GetSentStateAcked
+	if got := s.GetSentStateAcked(); got != 0 {
+		t.Errorf("#test GetSentStateAcked() expect 0, got %d\n", got)
+	}
+
+	// test GetSentStateAckedTimestamp
+	now := time.Now().UnixMilli()
+	if got := s.GetSentStateAckedTimestamp(); got != now {
+		t.Errorf("#test GetSentStateAckedTimestamp() expect %d, got %d\n", now, got)
+	}
+
+	// test SentInterval
+	if got := s.SentInterval(); got != SEND_INTERVAL_MAX {
+		t.Errorf("#test SentInterval() expect %d, got %d\n", SEND_INTERVAL_MAX, got)
+	}
+
+	// test Close
+	s.Close()
+}
