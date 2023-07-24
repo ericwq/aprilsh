@@ -225,6 +225,7 @@ func main() {
 
 	util.SetNativeLocale()
 
+	// TODO prediction insertion preference.
 	client := newSTMClient(conf.host, conf.port, conf.key, conf.predictMode, conf.verbose)
 	if err := client.init(); err != nil {
 		fmt.Printf("%s init error:%s\n", _COMMAND_NAME, err)

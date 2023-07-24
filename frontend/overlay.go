@@ -68,9 +68,9 @@ var strValidity = [...]string{
 // base of cell prediction or cursor prediction
 type conditionalOverlay struct {
 	expirationFrame     int64 // frame number, Emulator number.
-	col                 int   // cursor column
-	active              bool  // represents a prediction
-	tentativeUntilEpoch int64 // the epoch of overlay
+	col                 int   // cursor/cell column
+	active              bool  // represents a prediction at all
+	tentativeUntilEpoch int64 // the epoch of overlay, when to show
 	predictionTime      int64 // used to find long-pending predictions, default value -1
 }
 
@@ -280,39 +280,38 @@ func (coc *conditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, 
 	// 	row, coc.col, lateAck, coc.expirationFrame, coc.unknown)
 
 	// see if it hasn't been updated yet
-	if lateAck >= coc.expirationFrame {
-		if coc.unknown {
-			// fmt.Printf("getValidity() (%d,%d) return CorrectNoCredit\n", row, coc.col)
-			return CorrectNoCredit
-		}
+	if lateAck < coc.expirationFrame {
+		return Pending
+	}
 
-		// too easy for this to trigger falsely
-		if coc.replacement.IsBlank() {
-			return CorrectNoCredit
-		}
+	if coc.unknown {
+		// fmt.Printf("getValidity() (%d,%d) return CorrectNoCredit\n", row, coc.col)
+		return CorrectNoCredit
+	}
 
-		// if the frame cell is the same as the prediction
-		if current.ContentsMatch(coc.replacement) {
-			// it's Correct if any history content doesn't match prediction
-			found := false
-			for i := range coc.originalContents {
-				if coc.originalContents[i].ContentsMatch(coc.replacement) {
-					found = true
-					break
-				}
+	// too easy for this to trigger falsely
+	if coc.replacement.IsBlank() {
+		return CorrectNoCredit
+	}
+
+	// if the frame cell is the same as the prediction
+	if current.ContentsMatch(coc.replacement) {
+		// it's Correct if any history content doesn't match prediction
+		found := false
+		for i := range coc.originalContents {
+			if coc.originalContents[i].ContentsMatch(coc.replacement) {
+				found = true
+				break
 			}
-			if !found {
-				return Correct
-			} else {
-				return CorrectNoCredit
-			}
-		} else {
-			return IncorrectOrExpired
 		}
+		if !found {
+			return Correct
+		}
+		return CorrectNoCredit
 	}
 
 	// fmt.Printf("getValidity() (%d,%d) return Pending\n", row, coc.col)
-	return Pending
+	return IncorrectOrExpired
 }
 
 // represents row prediction, each row contains a group of cell prediction
@@ -326,11 +325,6 @@ func newConditionalOverlayRow(rowNum int) *conditionalOverlayRow {
 	row := conditionalOverlayRow{rowNum: rowNum}
 	row.overlayCells = make([]conditionalOverlayCell, 0)
 	return &row
-}
-
-// check the row number is the same as the specified rowNum
-func (c *conditionalOverlayRow) rowNumEqual(ruwNum int) bool {
-	return c.rowNum == ruwNum
 }
 
 // For each cell prediction in the row applies the prediction to the emulator
@@ -362,6 +356,7 @@ type PredictionEngine struct {
 	lastWidth             int
 	lastHeight            int
 	displayPreference     DisplayPreference
+	predictOverwrite      bool
 }
 
 /*
@@ -397,8 +392,9 @@ func newPredictionEngine() *PredictionEngine {
 func (pe *PredictionEngine) getOrMakeRow(rowNum int, nCols int) (it *conditionalOverlayRow) {
 	// try to find the existing prediction row
 	for i := range pe.overlays {
-		if pe.overlays[i].rowNumEqual(rowNum) {
+		if pe.overlays[i].rowNum == rowNum {
 			it = &(pe.overlays[i])
+			break
 		}
 	}
 	if it == nil {
@@ -538,6 +534,10 @@ func (pe *PredictionEngine) timingTestsNecessary() bool {
 
 func (pe *PredictionEngine) SetDisplayPreference(v DisplayPreference) {
 	pe.displayPreference = v
+}
+
+func (pe *PredictionEngine) setPredictOverwrite(overwrite bool) {
+	pe.predictOverwrite = overwrite
 }
 
 // checks the displayPreference to determine whether we should show the prediction.
@@ -1194,9 +1194,11 @@ func (ne *NotificationEngine) apply(emu *terminal.Emulator) {
 	}
 
 	var stringToDraw strings.Builder
-	// if len(ne.message) == 0 && !timeExpired {
-	// 	return
-	// } else
+
+	if len(ne.message) == 0 && !timeExpired {
+		return
+	}
+
 	if len(ne.message) == 0 && timeExpired {
 		fmt.Fprintf(&stringToDraw, "aprish: Last %s %s ago.%s", explanation,
 			humanReadableDuration(int(timeElapsed), "seconds"), keystrokeStr)
