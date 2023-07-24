@@ -30,10 +30,11 @@ import (
 )
 
 const (
-	_PACKAGE_STRING     = "aprilsh"
-	_COMMAND_NAME       = "aprilsh-client"
-	_APRILSH_KEY        = "APRISH_KEY"
-	_PREDICTION_DISPLAY = "APRISH_PREDICTION_DISPLAY"
+	_PACKAGE_STRING       = "aprilsh"
+	_COMMAND_NAME         = "aprilsh-client"
+	_APRILSH_KEY          = "APRISH_KEY"
+	_PREDICTION_DISPLAY   = "APRISH_PREDICTION_DISPLAY"
+	_PREDICTION_OVERWRITE = "APRISH_PREDICTION_OVERWRITE"
 )
 
 var (
@@ -137,15 +138,16 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 }
 
 type Config struct {
-	version     bool
-	target      []string // raw parameter
-	host        string
-	user        string
-	port        int
-	verbose     int
-	colors      bool
-	key         string
-	predictMode string
+	version          bool
+	target           []string // raw parameter
+	host             string
+	user             string
+	port             int
+	verbose          int
+	colors           bool
+	key              string
+	predictMode      string
+	predictOverwrite string
 }
 
 func (c *Config) buildConfig() (string, bool) {
@@ -194,6 +196,9 @@ func (c *Config) buildConfig() (string, bool) {
 		return _PREDICTION_DISPLAY + " unknown prediction mode.", false
 	}
 
+	// Read prediction insertion preference. can be ""
+	c.predictOverwrite = strings.ToLower(os.Getenv(_PREDICTION_OVERWRITE))
+
 	return "", true
 }
 
@@ -226,7 +231,7 @@ func main() {
 	util.SetNativeLocale()
 
 	// TODO prediction insertion preference.
-	client := newSTMClient(conf.host, conf.port, conf.key, conf.predictMode, conf.verbose)
+	client := newSTMClient(conf)
 	if err := client.init(); err != nil {
 		fmt.Printf("%s init error:%s\n", _COMMAND_NAME, err)
 		return
@@ -266,12 +271,13 @@ type STMClient struct {
 	verbose                int
 }
 
-func newSTMClient(ip string, port int, key string, predictMode string, verbose int) *STMClient {
+// func newSTMClient(ip string, port int, key string, predictMode string, verbose int, overwrite string) *STMClient {
+func newSTMClient(config *Config) *STMClient {
 	sc := STMClient{}
 
-	sc.ip = ip
-	sc.port = port
-	sc.key = key
+	sc.ip = config.host
+	sc.port = config.port
+	sc.key = config.key
 	sc.escapeKey = 0x1E
 	sc.escapePassKey = '^'
 	sc.escapePassKey2 = '^'
@@ -289,9 +295,9 @@ func newSTMClient(ip string, port int, key string, predictMode string, verbose i
 	sc.lfEntered = false
 	sc.quitSequenceStarted = false
 	sc.cleanShutdown = false
-	sc.verbose = verbose
+	sc.verbose = config.verbose
 
-	switch predictMode {
+	switch config.predictMode {
 	case predictionValues[0]: // always
 		sc.overlays.GetPredictionEngine().SetDisplayPreference(frontend.Always)
 	case predictionValues[1]: // never
@@ -304,6 +310,9 @@ func newSTMClient(ip string, port int, key string, predictMode string, verbose i
 		return nil
 	}
 
+	if config.predictOverwrite == "yes" {
+		sc.overlays.GetPredictionEngine().SetPredictOverwrite(true)
+	}
 	return &sc
 }
 

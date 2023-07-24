@@ -536,7 +536,7 @@ func (pe *PredictionEngine) SetDisplayPreference(v DisplayPreference) {
 	pe.displayPreference = v
 }
 
-func (pe *PredictionEngine) setPredictOverwrite(overwrite bool) {
+func (pe *PredictionEngine) SetPredictOverwrite(overwrite bool) {
 	pe.predictOverwrite = overwrite
 }
 
