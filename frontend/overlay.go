@@ -336,6 +336,186 @@ func (c *conditionalOverlayRow) apply(emu *terminal.Emulator, confirmedEpoch int
 	}
 }
 
+// represent the prediction notifications
+type NotificationEngine struct {
+	lastWordFromServer    int64
+	lastAckedState        int64
+	escapeKeyString       string
+	message               string
+	messageIsNetworkError bool
+	messageExpiration     int64
+	showQuitKeystroke     bool
+}
+
+func newNotificationEngien() *NotificationEngine {
+	ne := &(NotificationEngine{})
+	ne.lastWordFromServer = time.Now().UnixMilli()
+	ne.lastAckedState = time.Now().UnixMilli()
+	ne.messageIsNetworkError = false
+	ne.messageExpiration = -1
+	ne.showQuitKeystroke = true
+	return ne
+}
+
+func humanReadableDuration(numSeconds int, secondsAbbr string) string {
+	var tmp strings.Builder
+	if numSeconds < 60 {
+		fmt.Fprintf(&tmp, "%d %s", numSeconds, secondsAbbr)
+	} else if numSeconds < 3600 {
+		fmt.Fprintf(&tmp, "%d:%02d", numSeconds/60, numSeconds%60)
+	} else {
+		fmt.Fprintf(&tmp, "%d:%02d:%02d", numSeconds/3600, (numSeconds/60)%60, numSeconds%60)
+	}
+	return tmp.String()
+}
+
+func (ne *NotificationEngine) serverLate(ts int64) bool {
+	return ts-ne.lastWordFromServer > 65000
+}
+
+func (ne *NotificationEngine) replyLate(ts int64) bool {
+	return ts-ne.lastAckedState > 10000
+}
+
+func (ne *NotificationEngine) needCountup(ts int64) bool {
+	return ne.serverLate(ts) || ne.replyLate(ts)
+}
+
+func (ne *NotificationEngine) adjustMessage() {
+	if time.Now().UnixMilli() >= ne.messageExpiration {
+		ne.message = ""
+	}
+}
+
+func (ne *NotificationEngine) apply(emu *terminal.Emulator) {
+	now := time.Now().UnixMilli()
+	timeExpired := ne.needCountup(now)
+	// fmt.Printf("notifications\t  #apply timeExpired=%t, replyLate=%t, serverLate=%t, message=%d\n",
+	// 	timeExpired, ne.replyLate(now), ne.serverLate(now), len(ne.message))
+
+	if len(ne.message) == 0 && !timeExpired {
+		return
+	}
+
+	// hide cursor if necessary
+	if emu.GetCursorRow() == 0 {
+		emu.SetCursorVisible(false)
+	}
+
+	// draw bar across top of screen
+	notificationBar := &(terminal.Cell{})
+	rend := &(terminal.Renditions{})
+	rend.SetForegroundColor(7) // 37
+	rend.SetBackgroundColor(4) // 44
+	notificationBar.SetRenditions(emu.GetRenditions())
+	notificationBar.SetContents([]rune{' '})
+
+	for i := 0; i < emu.GetWidth(); i++ {
+		emu.GetCellPtr(0, i).Reset2(*notificationBar)
+	}
+
+	/* We want to prefer the "last contact" message if we simply haven't
+	   heard from the server in a while, but print the "last reply" message
+	   if the problem is uplink-only. */
+
+	sinceHeard := float64((now - ne.lastWordFromServer) / 1000.0) // convert millisecond to seconds
+	sinceAck := float64((now - ne.lastAckedState) / 1000.0)       // convert millisecond to seconds
+	serverMessage := "contact"
+	replyMessage := "reply"
+
+	timeElapsed := sinceHeard
+	explanation := serverMessage
+
+	if ne.replyLate(now) && !ne.serverLate(now) {
+		timeElapsed = sinceAck
+		explanation = replyMessage
+	}
+
+	keystrokeStr := ""
+	if ne.showQuitKeystroke {
+		keystrokeStr = ne.escapeKeyString
+	}
+
+	var stringToDraw strings.Builder
+
+	if len(ne.message) == 0 && !timeExpired {
+		return
+	}
+
+	if len(ne.message) == 0 && timeExpired {
+		fmt.Fprintf(&stringToDraw, "aprish: Last %s %s ago.%s", explanation,
+			humanReadableDuration(int(timeElapsed), "seconds"), keystrokeStr)
+	} else if len(ne.message) != 0 && !timeExpired {
+		fmt.Fprintf(&stringToDraw, "aprish: %s%s", ne.message, keystrokeStr)
+	} else {
+		fmt.Fprintf(&stringToDraw, "aprish: %s (%s without %s.)%s", ne.message,
+			humanReadableDuration(int(timeElapsed), "s"), explanation, keystrokeStr)
+	}
+
+	// write message to screen buffer
+	emu.MoveCursor(0, 0)
+	emu.HandleStream(stringToDraw.String())
+}
+
+func (ne *NotificationEngine) GetNotificationString() string {
+	return ne.message
+}
+
+func (ne *NotificationEngine) ServerHeard(ts int64) {
+	ne.lastWordFromServer = ts
+}
+
+func (ne *NotificationEngine) ServerAcked(ts int64) {
+	ne.lastAckedState = ts
+}
+
+func (ne *NotificationEngine) waitTime() int {
+	nextExpiry := math.MaxInt
+	now := time.Now().UnixMilli()
+	nextExpiry = terminal.Min(nextExpiry, int(ne.messageExpiration-now))
+
+	if ne.needCountup(now) {
+		countupInterval := 1000
+		if now-ne.lastWordFromServer > 60000 {
+			// If we've been disconnected for 60 seconds, save power by updating the display less often.
+			countupInterval = ACK_INTERVAL
+		}
+		nextExpiry = terminal.Min(nextExpiry, countupInterval)
+	}
+
+	return nextExpiry
+}
+
+// default parameters: permanent = false, showQuitKeystroke = true
+func (ne *NotificationEngine) SetNotificationString(message string, permanent bool, showQuitKeystroke bool) {
+	ne.message = message
+	if permanent {
+		ne.messageExpiration = -1
+	} else {
+		ne.messageExpiration = time.Now().UnixMilli() + 1000
+	}
+
+	ne.messageIsNetworkError = false
+	ne.showQuitKeystroke = showQuitKeystroke
+}
+
+func (ne *NotificationEngine) SetEscapeKeyString(str string) {
+	ne.escapeKeyString = fmt.Sprintf(" [To quit: %s .]", str)
+}
+
+func (ne *NotificationEngine) setNetworkError(str string) {
+	ne.message = str
+	ne.messageIsNetworkError = true
+	ne.messageExpiration = time.Now().UnixMilli() + ACK_INTERVAL + 100
+}
+
+func (ne *NotificationEngine) clearNetworkError() {
+	// fmt.Printf("clearNetworkError #debug messageIsNetworkError=%t\n", ne.messageIsNetworkError)
+	if ne.messageIsNetworkError {
+		ne.messageExpiration = terminal.Min(ne.messageExpiration, time.Now().UnixMilli()+1000)
+	}
+}
+
 // represent the prediction engine, which contains prediction cursor movement and
 // prediction rows and cells.
 type PredictionEngine struct {
@@ -543,33 +723,34 @@ func (pe *PredictionEngine) SetPredictOverwrite(overwrite bool) {
 // checks the displayPreference to determine whether we should show the prediction.
 // if yes, move the cursor in emulator, show the cell prediction in emulator.
 func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
-	show := pe.displayPreference != Never && (pe.srttTrigger || pe.glitchTrigger > 0 ||
-		pe.displayPreference == Always || pe.displayPreference == Experimental)
+	// show := pe.displayPreference != Never && (pe.srttTrigger || pe.glitchTrigger > 0 ||
+	// 	pe.displayPreference == Always || pe.displayPreference == Experimental)
+
+	if pe.displayPreference == Never || !(pe.srttTrigger || pe.glitchTrigger > 0 ||
+		pe.displayPreference == Always || pe.displayPreference == Experimental) {
+		return
+	}
 
 	// fmt.Printf("apply #engine show=%t\n", show)
-	if show {
-		for i := range pe.cursors {
-			pe.cursors[i].apply(emu, pe.confirmedEpoch)
-		}
+	for i := range pe.cursors {
+		pe.cursors[i].apply(emu, pe.confirmedEpoch)
+	}
 
-		for i := range pe.overlays {
-			pe.overlays[i].apply(emu, pe.confirmedEpoch, pe.flagging)
-		}
+	for i := range pe.overlays {
+		pe.overlays[i].apply(emu, pe.confirmedEpoch, pe.flagging)
 	}
 }
 
 // process user input to prepare local prediction:cells and cursors.
 // before process the input, PredictionEngine calls cull() method to check the prediction validity.
 // a.k.a mosh new_user_byte() method
-// TODO consider to change the parameters to []rune
 func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
-	// var input []rune
 	if len(input) == 0 {
 		return
 	}
 
 	if pe.displayPreference == Never {
-		// continue // option Never means disable the prediction
+		// option Never means disable the prediction
 		return
 	} else if pe.displayPreference == Experimental {
 		pe.predictionEpoch = pe.confirmedEpoch
@@ -592,7 +773,7 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
 	// fmt.Printf("#NewUserInput lastByte=%q, input=%q\n", pe.lastByte, input)
 
 	var hd *terminal.Handler
-	hd = pe.parser.ProcessInput(input...)
+	hd = pe.parser.ProcessInput(input...) // TODO validate we can handle flag grapheme
 	if hd != nil {
 		switch hd.GetId() {
 		case terminal.Graphemes:
@@ -604,7 +785,7 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
 		case terminal.C0_CR:
 			pe.becomeTentative()
 			pe.newlineCarriageReturn(emu)
-		case terminal.CSI_CUF:
+		case terminal.CSI_CUF: // right arrow
 			pe.initCursor(emu)
 			if pe.cursor().col < emu.GetWidth()-1 {
 				// fmt.Printf("newUserInput #CUF before col=%d\n", pe.cursor().col)
@@ -624,7 +805,7 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
 				pe.cursor().expire(pe.localFrameSent+1, now)
 				// fmt.Printf("newUserInput #CUF after  col=%d\n", pe.cursor().col)
 			}
-		case terminal.CSI_CUB:
+		case terminal.CSI_CUB: // left arrow
 			pe.initCursor(emu)
 			if pe.cursor().col > 0 { // TODO consider the left right margin.
 				// fmt.Printf("newUserInput #CUB before col=%d\n", pe.cursor().col)
@@ -910,59 +1091,74 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 			}
 			pe.cursor().expire(pe.localFrameSent+1, now)
 			// fmt.Printf("handleUserGrapheme #backspace col to %d\n", pe.cursor().col)
-
-			// iterate to replace the current cell with next cell.
-			for i := pe.cursor().col; i < emu.GetWidth(); i++ {
-				cell := &(theRow.overlayCells[i])
-				wideCell := false
-
+			if pe.predictOverwrite {
+				cell := &(theRow.overlayCells[pe.cursor().col])
 				cell.resetWithOrig()
 				cell.active = true
 				cell.tentativeUntilEpoch = pe.predictionEpoch
 				cell.expire(pe.localFrameSent+1, now)
+
+				origCell := emu.GetCell(emu.GetCursorRow(), emu.GetCursorCol())
 				if len(cell.originalContents) == 0 {
 					// avoid adding original cell content several times
-					cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, i))
+					cell.originalContents = append(cell.originalContents, origCell)
 				}
+				cell.replacement = origCell
+				cell.replacement.Clear()
+				cell.replacement.Append(' ')
+			} else {
+				// iterate to replace the current cell with next cell.
+				for i := pe.cursor().col; i < emu.GetWidth(); i++ {
+					cell := &(theRow.overlayCells[i])
+					wideCell := false
 
-				if i+2 < emu.GetWidth() {
-					nextCell := &(theRow.overlayCells[i+1])
-					if nextCell.replacement.IsDoubleWidthCont() {
-						nextCell = &(theRow.overlayCells[i+2])
-						wideCell = true
-					}
-					nextCellActual := emu.GetCell(pe.cursor().row, i+1)
-					if nextCellActual.IsDoubleWidthCont() {
-						nextCellActual = emu.GetCell(pe.cursor().row, i+2)
-						wideCell = true
+					cell.resetWithOrig()
+					cell.active = true
+					cell.tentativeUntilEpoch = pe.predictionEpoch
+					cell.expire(pe.localFrameSent+1, now)
+					if len(cell.originalContents) == 0 {
+						// avoid adding original cell content several times
+						cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, i))
 					}
 
-					// fmt.Printf("handleUserGrapheme #backspace (%d,%d) iterate cell replacement. nextCell active=%t, unknown=%t\n",
-					// 	pe.cursor().row, i, nextCell.active, nextCell.unknown)
-					if nextCell.active {
-						if nextCell.unknown {
-							cell.unknown = true
+					if i+2 < emu.GetWidth() {
+						nextCell := &(theRow.overlayCells[i+1])
+						if nextCell.replacement.IsDoubleWidthCont() {
+							nextCell = &(theRow.overlayCells[i+2])
+							wideCell = true
+						}
+						nextCellActual := emu.GetCell(pe.cursor().row, i+1)
+						if nextCellActual.IsDoubleWidthCont() {
+							nextCellActual = emu.GetCell(pe.cursor().row, i+2)
+							wideCell = true
+						}
+
+						// fmt.Printf("handleUserGrapheme #backspace (%d,%d) iterate cell replacement. nextCell active=%t, unknown=%t\n",
+						// 	pe.cursor().row, i, nextCell.active, nextCell.unknown)
+						if nextCell.active {
+							if nextCell.unknown {
+								cell.unknown = true
+							} else {
+								cell.unknown = false
+								cell.replacement = nextCell.replacement
+							}
 						} else {
 							cell.unknown = false
-							cell.replacement = nextCell.replacement
+							cell.replacement = nextCellActual
 						}
 					} else {
-						cell.unknown = false
-						cell.replacement = nextCellActual
+						cell.unknown = true
 					}
-				} else {
-					cell.unknown = true
-				}
 
-				// fmt.Printf("handleUserGrapheme #backspace %p (%2d,%2d),active=%t,unknown=%t,dwidth=%t,%q,originalContents=%q\n",
-				// 	cell, pe.cursor().row, i, cell.active, cell.unknown, cell.replacement.IsDoubleWidth(),
-				// 	cell.replacement, cell.originalContents)
+					// fmt.Printf("handleUserGrapheme #backspace %p (%2d,%2d),active=%t,unknown=%t,dwidth=%t,%q,originalContents=%q\n",
+					// 	cell, pe.cursor().row, i, cell.active, cell.unknown, cell.replacement.IsDoubleWidth(),
+					// 	cell.replacement, cell.originalContents)
 
-				if wideCell {
-					i++
+					if wideCell {
+						i++
+					}
 				}
 			}
-
 			// fmt.Printf("handleUserGrapheme #backspace row %d end.\n\n", pe.cursor().row)
 		}
 	} else if len(chs) == 1 && chs[0] < 0x20 {
@@ -975,7 +1171,8 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 		if w == 2 && pe.cursor().col == emu.GetWidth()-1 {
 			pe.becomeTentative()
 			pe.newlineCarriageReturn(emu)
-			// fmt.Printf("handleUserGrapheme() wrap %q to (%d,%d)\n", string(chs), pe.cursor().row, pe.cursor().col)
+			// fmt.Printf("handleUserGrapheme() wrap %q to (%d,%d)\n",
+			// 	string(chs), pe.cursor().row, pe.cursor().col)
 		}
 
 		theRow := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
@@ -986,7 +1183,11 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 		}
 
 		// do the insert in reverse order
-		for i := emu.GetWidth() - 1; i > pe.cursor().col; i-- {
+		rightMostColumn := emu.GetWidth() - 1
+		if pe.predictOverwrite {
+			rightMostColumn = pe.cursor().col
+		}
+		for i := rightMostColumn; i > pe.cursor().col; i-- {
 			cell := &(theRow.overlayCells[i])
 			// for cell, unknown=false, active=true, will always add the replacement to originalContents
 			cell.resetWithOrig()
@@ -1091,186 +1292,6 @@ func (te *TitleEngine) setPrefix(v string) {
 // apply the frame title with the prefix
 func (te *TitleEngine) apply(emu *terminal.Emulator) {
 	emu.PrefixWindowTitle(te.prefix)
-}
-
-// represent the prediction notifications
-type NotificationEngine struct {
-	lastWordFromServer    int64
-	lastAckedState        int64
-	escapeKeyString       string
-	message               string
-	messageIsNetworkError bool
-	messageExpiration     int64
-	showQuitKeystroke     bool
-}
-
-func newNotificationEngien() *NotificationEngine {
-	ne := &(NotificationEngine{})
-	ne.lastWordFromServer = time.Now().UnixMilli()
-	ne.lastAckedState = time.Now().UnixMilli()
-	ne.messageIsNetworkError = false
-	ne.messageExpiration = -1
-	ne.showQuitKeystroke = true
-	return ne
-}
-
-func humanReadableDuration(numSeconds int, secondsAbbr string) string {
-	var tmp strings.Builder
-	if numSeconds < 60 {
-		fmt.Fprintf(&tmp, "%d %s", numSeconds, secondsAbbr)
-	} else if numSeconds < 3600 {
-		fmt.Fprintf(&tmp, "%d:%02d", numSeconds/60, numSeconds%60)
-	} else {
-		fmt.Fprintf(&tmp, "%d:%02d:%02d", numSeconds/3600, (numSeconds/60)%60, numSeconds%60)
-	}
-	return tmp.String()
-}
-
-func (ne *NotificationEngine) serverLate(ts int64) bool {
-	return ts-ne.lastWordFromServer > 65000
-}
-
-func (ne *NotificationEngine) replyLate(ts int64) bool {
-	return ts-ne.lastAckedState > 10000
-}
-
-func (ne *NotificationEngine) needCountup(ts int64) bool {
-	return ne.serverLate(ts) || ne.replyLate(ts)
-}
-
-func (ne *NotificationEngine) adjustMessage() {
-	if time.Now().UnixMilli() >= ne.messageExpiration {
-		ne.message = ""
-	}
-}
-
-func (ne *NotificationEngine) apply(emu *terminal.Emulator) {
-	now := time.Now().UnixMilli()
-	timeExpired := ne.needCountup(now)
-	// fmt.Printf("notifications\t  #apply timeExpired=%t, replyLate=%t, serverLate=%t, message=%d\n",
-	// 	timeExpired, ne.replyLate(now), ne.serverLate(now), len(ne.message))
-
-	if len(ne.message) == 0 && !timeExpired {
-		return
-	}
-
-	// hide cursor if necessary
-	if emu.GetCursorRow() == 0 {
-		emu.SetCursorVisible(false)
-	}
-
-	// draw bar across top of screen
-	notificationBar := &(terminal.Cell{})
-	rend := &(terminal.Renditions{})
-	rend.SetForegroundColor(7) // 37
-	rend.SetBackgroundColor(4) // 44
-	notificationBar.SetRenditions(emu.GetRenditions())
-	notificationBar.SetContents([]rune{' '})
-
-	for i := 0; i < emu.GetWidth(); i++ {
-		emu.GetCellPtr(0, i).Reset2(*notificationBar)
-	}
-
-	/* We want to prefer the "last contact" message if we simply haven't
-	   heard from the server in a while, but print the "last reply" message
-	   if the problem is uplink-only. */
-
-	sinceHeard := float64((now - ne.lastWordFromServer) / 1000.0) // convert millisecond to seconds
-	sinceAck := float64((now - ne.lastAckedState) / 1000.0)       // convert millisecond to seconds
-	serverMessage := "contact"
-	replyMessage := "reply"
-
-	timeElapsed := sinceHeard
-	explanation := serverMessage
-
-	if ne.replyLate(now) && !ne.serverLate(now) {
-		timeElapsed = sinceAck
-		explanation = replyMessage
-	}
-
-	keystrokeStr := ""
-	if ne.showQuitKeystroke {
-		keystrokeStr = ne.escapeKeyString
-	}
-
-	var stringToDraw strings.Builder
-
-	if len(ne.message) == 0 && !timeExpired {
-		return
-	}
-
-	if len(ne.message) == 0 && timeExpired {
-		fmt.Fprintf(&stringToDraw, "aprish: Last %s %s ago.%s", explanation,
-			humanReadableDuration(int(timeElapsed), "seconds"), keystrokeStr)
-	} else if len(ne.message) != 0 && !timeExpired {
-		fmt.Fprintf(&stringToDraw, "aprish: %s%s", ne.message, keystrokeStr)
-	} else {
-		fmt.Fprintf(&stringToDraw, "aprish: %s (%s without %s.)%s", ne.message,
-			humanReadableDuration(int(timeElapsed), "s"), explanation, keystrokeStr)
-	}
-
-	// write message to screen buffer
-	emu.MoveCursor(0, 0)
-	emu.HandleStream(stringToDraw.String())
-}
-
-func (ne *NotificationEngine) GetNotificationString() string {
-	return ne.message
-}
-
-func (ne *NotificationEngine) ServerHeard(ts int64) {
-	ne.lastWordFromServer = ts
-}
-
-func (ne *NotificationEngine) ServerAcked(ts int64) {
-	ne.lastAckedState = ts
-}
-
-func (ne *NotificationEngine) waitTime() int {
-	nextExpiry := math.MaxInt
-	now := time.Now().UnixMilli()
-	nextExpiry = terminal.Min(nextExpiry, int(ne.messageExpiration-now))
-
-	if ne.needCountup(now) {
-		countupInterval := 1000
-		if now-ne.lastWordFromServer > 60000 {
-			// If we've been disconnected for 60 seconds, save power by updating the display less often.
-			countupInterval = ACK_INTERVAL
-		}
-		nextExpiry = terminal.Min(nextExpiry, countupInterval)
-	}
-
-	return nextExpiry
-}
-
-// default parameters: permanent = false, showQuitKeystroke = true
-func (ne *NotificationEngine) SetNotificationString(message string, permanent bool, showQuitKeystroke bool) {
-	ne.message = message
-	if permanent {
-		ne.messageExpiration = -1
-	} else {
-		ne.messageExpiration = time.Now().UnixMilli() + 1000
-	}
-
-	ne.messageIsNetworkError = false
-	ne.showQuitKeystroke = showQuitKeystroke
-}
-
-func (ne *NotificationEngine) SetEscapeKeyString(str string) {
-	ne.escapeKeyString = fmt.Sprintf(" [To quit: %s .]", str)
-}
-
-func (ne *NotificationEngine) setNetworkError(str string) {
-	ne.message = str
-	ne.messageIsNetworkError = true
-	ne.messageExpiration = time.Now().UnixMilli() + ACK_INTERVAL + 100
-}
-
-func (ne *NotificationEngine) clearNetworkError() {
-	// fmt.Printf("clearNetworkError #debug messageIsNetworkError=%t\n", ne.messageIsNetworkError)
-	if ne.messageIsNetworkError {
-		ne.messageExpiration = terminal.Min(ne.messageExpiration, time.Now().UnixMilli()+1000)
-	}
 }
 
 type OverlayManager struct {
