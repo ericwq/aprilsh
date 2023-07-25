@@ -1075,11 +1075,11 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 		if pe.cursor().col > 0 {
 			// fmt.Printf("handleUserGrapheme #backspace start at col=%d\n", pe.cursor().col)
 
-			// move cursor to the previous graphemes
-			predict := theRow.overlayCells[pe.cursor().col-1].replacement
-			cell := emu.GetCell(pe.cursor().row, pe.cursor().col-1)
+			// move predict cursor to the previous position
+			prevPredictCell := theRow.overlayCells[pe.cursor().col-1].replacement
+			prevActualCell := emu.GetCell(pe.cursor().row, pe.cursor().col-1)
 			// check the previous cell width, both predict and emulator need to check
-			if cell.IsDoubleWidthCont() || predict.IsDoubleWidthCont() {
+			if prevActualCell.IsDoubleWidthCont() || prevPredictCell.IsDoubleWidthCont() {
 				if pe.cursor().col-2 <= 0 {
 					pe.cursor().col = 0
 					// fmt.Printf("handleUserGrapheme() backspace edge %d\n", pe.cursor().col)
@@ -1090,15 +1090,16 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 				pe.cursor().col--
 			}
 			pe.cursor().expire(pe.localFrameSent+1, now)
+
 			// fmt.Printf("handleUserGrapheme #backspace col to %d\n", pe.cursor().col)
 			if pe.predictOverwrite {
-				cell := &(theRow.overlayCells[pe.cursor().col])
+				cell := &(theRow.overlayCells[pe.cursor().col]) // previous predict cell
 				cell.resetWithOrig()
 				cell.active = true
 				cell.tentativeUntilEpoch = pe.predictionEpoch
 				cell.expire(pe.localFrameSent+1, now)
 
-				origCell := emu.GetCell(emu.GetCursorRow(), emu.GetCursorCol())
+				origCell := emu.GetCell(emu.GetCursorRow(), emu.GetCursorCol()) // oritinal cursor cell
 				if len(cell.originalContents) == 0 {
 					// avoid adding original cell content several times
 					cell.originalContents = append(cell.originalContents, origCell)
