@@ -213,20 +213,25 @@ func TestPredictionNewUserInput_Normal(t *testing.T) {
 		predict           string // prediction
 		result            string // frame content
 		displayPreference DisplayPreference
-		posY, posX        int // new cursor position, 0 means doesn't matter
+		predictOverwrite  bool // predictOverwrite
+		posY, posX        int  // new cursor position, 0 means doesn't matter
 	}{
-		/* 0*/ {"insert english", 3, 75, "12345", "abcde", "abcde", Adaptive, -1, -1},
-		/* 1*/ {"insert chinese", 4, 70, "", "四姑娘山", "四姑娘山", Adaptive, -1, -1},
-		/* 2*/ {"Experimental", 4, 60, "", "Experimental", "Experimental", Experimental, -1, -1},
-		/* 3*/ {"insert CUF", 4, 75, "", "\x1B[C", "", Adaptive, 4, 76},
-		/* 4*/ {"insert CUB", 4, 75, "", "\x1B[D", "", Adaptive, 4, 74},
-		/* 5*/ {"insert CR", 4, 75, "", "\r", "", Adaptive, 5, 0},
-		/* 6*/ {"insert CUF", 4, 75, "", "\x1BOC", "", Adaptive, 4, 76},
-		/* 7*/ {"BEL becomeTentative", 5, 70, "", "\x07", "", Adaptive, -1, -1},
-		/* 8*/ {"Never", 4, 75, "", "Never", "", Never, 0, 0},
-		/* 9*/ {"insert chinese with base contents", 6, 71, "上海56789", "四姑娘", "四姑娘上", Adaptive, -1, -1},
-		/*10*/ {"insert chinese with wrap", 7, 79, "", "四", "四", Adaptive, 8, 0},
-		/*11*/ {"insert control becomeTentative", 9, 0, "", "\x11", "", Adaptive, -1, -1},
+		/* 0*/ {"insert english", 3, 75, "12345", "abcde", "abcde", Adaptive, false, -1, -1},
+		/* 1*/ {"insert chinese", 4, 70, "", "四姑娘山", "四姑娘山", Adaptive, false, -1, -1},
+		/* 2*/ {"Experimental", 4, 60, "", "Experimental", "Experimental", Experimental, false, -1, -1},
+		/* 3*/ {"insert CUF", 4, 75, "", "\x1B[C", "", Adaptive, false, 4, 76},
+		/* 4*/ {"insert CUB", 4, 75, "", "\x1B[D", "", Adaptive, false, 4, 74},
+		/* 5*/ {"insert CR", 4, 75, "", "\r", "", Adaptive, false, 5, 0},
+		/* 6*/ {"insert CUF", 4, 75, "", "\x1BOC", "", Adaptive, false, 4, 76},
+		/* 7*/ {"BEL becomeTentative", 5, 70, "", "\x07", "", Adaptive, false, -1, -1},
+		/* 8*/ {"Never", 4, 75, "", "Never", "", Never, false, 0, 0},
+		/* 9*/ {
+			"insert chinese with base contents", 6, 71, "上海56789", "四姑娘", "四姑娘上",
+			Adaptive, false, -1, -1,
+		},
+		/*10*/ {"insert chinese with wrap", 7, 79, "", "四", "四", Adaptive, false, 8, 0},
+		/*11*/ {"insert control becomeTentative", 9, 0, "", "\x11", "", Adaptive, false, -1, -1},
+		/*12*/ {"insert overwrite", 10, 75, "12345", "abcde", "abcde", Adaptive, true, -1, -1},
 	}
 
 	pe := newPredictionEngine()
@@ -242,6 +247,7 @@ func TestPredictionNewUserInput_Normal(t *testing.T) {
 
 			// set the displayPreference field
 			pe.displayPreference = v.displayPreference
+			pe.predictOverwrite = v.predictOverwrite
 
 			// mimic user input for prediction engine
 			emu.MoveCursor(v.row, v.col)
@@ -249,7 +255,7 @@ func TestPredictionNewUserInput_Normal(t *testing.T) {
 			pe.inputString(emu, v.predict)
 
 			switch k {
-			case 0, 1, 2, 9:
+			case 0, 1, 2, 9, 12:
 				// validate the result against predict cell
 				predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
 				i := 0
@@ -300,14 +306,16 @@ func TestPredictionNewUserInput_Normal(t *testing.T) {
 
 func TestPredictionApply(t *testing.T) {
 	tc := []struct {
-		name     string
-		row, col int    // the specified row and col
-		base     string // base content
-		predict  string // prediction
-		result   string // frame content
+		name        string
+		row, col    int    // the specified row and col
+		base        string // base content
+		predict     string // prediction
+		result      string // frame content
+		earlyReturn bool   // apply early return
 	}{
-		{"apply wrapped english input", 9, 75, "", "abcdef", "abcdef"},
-		{"apply wrapped chinese input", 10, 75, "", "柠檬水", "柠檬水"},
+		/*01*/ {"apply wrapped english input", 9, 75, "", "abcdef", "abcdef", false},
+		/*02*/ {"apply wrapped chinese input", 10, 75, "", "柠檬水", "柠檬水", false},
+		/*03*/ {"apply early return", 11, 70, "", "early return", "early return", true},
 	}
 
 	pe := newPredictionEngine()
@@ -319,6 +327,10 @@ func TestPredictionApply(t *testing.T) {
 		// set the base content
 		emu.MoveCursor(v.row, v.col)
 		emu.HandleStream(v.base)
+
+		if v.earlyReturn {
+			pe.SetDisplayPreference(Never)
+		}
 
 		// mimic user input for prediction engine
 		emu.MoveCursor(v.row, v.col)
@@ -364,6 +376,7 @@ func TestPredictionApply(t *testing.T) {
 			if "水" != cell.GetContents() {
 				t.Errorf("%q expect %q at (%d,%d), got %q\n", v.name, "水", v.row+1, 0, cell.GetContents())
 			}
+		case 2: // early return does nothing.
 		}
 	}
 }
