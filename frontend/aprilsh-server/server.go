@@ -74,12 +74,20 @@ func initLog() {
 
 func printVersion() {
 	logI.Printf("%s (%s) [build %s]\n", _COMMAND_NAME, _PACKAGE_STRING, BuildVersion)
-	logI.Printf("Copyright (c) 2022~2023 wangqi ericwq057[AT]qq[dot]com\n")
+	logI.Printf("Copyright (c) 2022~2023 wangqi ericwq057@qq.com\n")
 	logI.Printf("reborn mosh with aprilsh\n")
 }
 
-func printUsage(usage string) {
-	logI.Printf("%s", usage)
+// func printUsage(usage string) {
+// 	logI.Printf("%s", usage)
+// }
+
+func printUsage(hint, usage string) {
+	if hint != "" {
+		fmt.Printf("Hints: %s\n%s", hint, usage)
+	} else {
+		fmt.Printf("%s", usage)
+	}
 }
 
 // Print the motd from a given file, if available
@@ -148,7 +156,7 @@ func motdHushed() bool {
 func getSSHip() string {
 	env := os.Getenv("SSH_CONNECTION")
 	if len(env) == 0 { // Older sshds don't set this
-		logW.Printf("Warning: SSH_CONNECTION not found; binding to any interface.\n")
+		fmt.Printf("Warning: SSH_CONNECTION not found; binding to any interface.\n")
 		return ""
 	}
 
@@ -159,7 +167,7 @@ func getSSHip() string {
 	// ipv4 sample: SSH_CONNECTION=172.17.0.1 58774 172.17.0.2 22
 	sshConn := strings.Split(env, " ")
 	if len(sshConn) != 4 {
-		logW.Printf("Warning: Could not parse SSH_CONNECTION; binding to any interface.\n")
+		fmt.Printf("Warning: Could not parse SSH_CONNECTION; binding to any interface.\n")
 		// fmt.Printf("#getSSHip env=%q, size=%d\n", sshConn, len(sshConn))
 		return ""
 	}
@@ -191,25 +199,6 @@ Options:
   -c, --color    xterm color
   -t, --term     client TERM
 `
-
-type Config struct {
-	version     bool // verbose : don't close stdin/stdout/stderr
-	server      bool
-	verbose     int
-	desiredIP   string
-	desiredPort string
-	locales     localeFlag
-	color       int
-	term        string // client TERM
-
-	commandPath string
-	commandArgv []string // the positional (non-flag) command-line arguments.
-	withMotd    bool
-
-	// the serve func
-	serve func(*os.File, *os.File, *statesync.Complete,
-		*network.Transport[*statesync.Complete, *statesync.UserStream], int64, int64) error
-}
 
 // parseFlags parses the command-line arguments provided to the program.
 // Typically os.Args[0] is provided as 'progname' and os.args[1:] as 'args'.
@@ -260,22 +249,33 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	return &conf, buf.String(), nil
 }
 
-// parse the flag first, print help or version based on flag
-// then run the main listening server
-func main() {
-	conf, output, err := parseFlags(os.Args[0], os.Args[1:])
-	if err == flag.ErrHelp {
-		printUsage(usage)
-		return
-	} else if err != nil {
-		logW.Printf("#main parseFlags failed: %s\n", output)
-		return
+type Config struct {
+	version     bool // verbose : don't close stdin/stdout/stderr
+	server      bool
+	verbose     int
+	desiredIP   string
+	desiredPort string
+	locales     localeFlag
+	color       int
+	term        string // client TERM
+
+	commandPath string
+	commandArgv []string // the positional (non-flag) command-line arguments.
+	withMotd    bool
+
+	// the serve func
+	serve func(*os.File, *os.File, *statesync.Complete,
+		*network.Transport[*statesync.Complete, *statesync.UserStream], int64, int64) error
+}
+
+// build the config instance and check the utf-8 locale. return error if the terminal
+// can't support utf-8 locale.
+func (conf *Config) buildConfig() (string, bool) {
+	// just need version info
+	if conf.version {
+		return "", true
 	}
 
-	if conf.version {
-		printVersion()
-		return
-	}
 	if conf.server {
 		if sshIP := getSSHip(); len(sshIP) != 0 {
 			conf.desiredIP = sshIP
@@ -289,24 +289,13 @@ func main() {
 		// fmt.Printf("#main desiredPort=%s\n", conf.desiredPort)
 		_, _, ok := network.ParsePortRange(conf.desiredPort, logW)
 		if !ok {
-			logW.Printf("#main ParsePortRange failed: Bad UDP port range (%s)", conf.desiredPort)
-			return
+			return fmt.Sprintf("Bad UDP port range (%s)", conf.desiredPort), false
 		}
+	} else if !conf.server {
+
+		return fmt.Sprintf("Either server option or ip option need to be provided"), false
 	}
 
-	if err := buildConfig(conf); err != nil {
-		logW.Printf("#main buildConfig faileds: %s\n", err.Error())
-		return
-	}
-
-	srv := newMainSrv(conf, runWorker)
-	srv.start(conf)
-	srv.wait()
-}
-
-// build the config instance and check the utf-8 locale. return error if the terminal
-// can't support utf-8 locale.
-func buildConfig(conf *Config) error {
 	conf.commandPath = ""
 	conf.withMotd = false
 	conf.serve = serve
@@ -361,10 +350,10 @@ func buildConfig(conf *Config) error {
 		if !util.IsUtf8Locale() || buildConfigTest {
 			clientType := util.GetCtype()
 			clientCharset := util.LocaleCharset()
-			logW.Printf("%s needs a UTF-8 native locale to run.\n", _COMMAND_NAME)
-			logW.Printf("Unfortunately, the local environment (%s) specifies "+
+			fmt.Printf("%s needs a UTF-8 native locale to run.\n", _COMMAND_NAME)
+			fmt.Printf("Unfortunately, the local environment (%s) specifies "+
 				"the character set \"%s\",\n", nativeType, nativeCharset)
-			logW.Printf("The client-supplied environment (%s) specifies "+
+			fmt.Printf("The client-supplied environment (%s) specifies "+
 				"the character set \"%s\".\n", clientType, clientCharset)
 
 			// fmt.Fprintf(os.Stdout, "%s needs a UTF-8 native locale to run.\n\n", COMMAND_NAME)
@@ -372,11 +361,41 @@ func buildConfig(conf *Config) error {
 			// 	"the character set \"%s\",\n\n", nativeType, nativeCharset)
 			// fmt.Fprintf(os.Stdout, "The client-supplied environment (%s) specifies\n"+
 			// 	"the character set \"%s\".\n\n", clientType, clientCharset)
-			return errors.New("UTF-8 locale fail.")
+			return "UTF-8 locale fail.", false
 		}
 	}
+	return "", true
+}
 
-	return nil
+// parse the flag first, print help or version based on flag
+// then run the main listening server
+func main() {
+	conf, _, err := parseFlags(os.Args[0], os.Args[1:])
+	if err == flag.ErrHelp {
+		printUsage("", usage)
+		return
+	} else if err != nil {
+		printUsage(err.Error(), usage)
+		// logW.Printf("#main parseFlags failed: %s\n", output)
+		return
+	} else if hint, ok := conf.buildConfig(); !ok {
+		printUsage(hint, usage)
+		return
+	}
+
+	if conf.version {
+		printVersion()
+		return
+	}
+
+	// if err := buildConfig(conf); err != nil {
+	// 	logW.Printf("#main buildConfig faileds: %s\n", err.Error())
+	// 	return
+	// }
+
+	srv := newMainSrv(conf, runWorker)
+	srv.start(conf)
+	srv.wait()
 }
 
 // extract shell name from shellPath and prepend '-' to the returned shell name
