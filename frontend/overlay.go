@@ -632,7 +632,7 @@ func (pe *PredictionEngine) cursor() *conditionalCursorMove {
 func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
 	// fmt.Printf("#killEpoch A cursors size=%d\n", len(pe.cursors))
 
-	// remove cursor prediction belong to previouse epoch
+	// remove cursor prediction belong to previous epoch
 	cursors := make([]conditionalCursorMove, 0)
 	for i := range pe.cursors {
 		if pe.cursors[i].tentative(epoch - 1) {
@@ -1069,8 +1069,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 	pe.initCursor(emu)
 
 	// fmt.Printf("handleUserGrapheme # got %q\n", chs)
-	if len(chs) == 1 && chs[0] == '\x7f' {
-		// backspace
+	if len(chs) == 1 && chs[0] == '\x7f' { // handle backspace
 		theRow := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
 		if pe.cursor().col > 0 {
 			// fmt.Printf("handleUserGrapheme #backspace start at col=%d\n", pe.cursor().col)
@@ -1078,8 +1077,10 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 			// move predict cursor to the previous position
 			prevPredictCell := theRow.overlayCells[pe.cursor().col-1].replacement
 			prevActualCell := emu.GetCell(pe.cursor().row, pe.cursor().col-1)
-			// check the previous cell width, both predict and emulator need to check
+			wideCell := false
 			if prevActualCell.IsDoubleWidthCont() || prevPredictCell.IsDoubleWidthCont() {
+				// check the previous cell width, both predict and emulator need to check
+				wideCell = true
 				if pe.cursor().col-2 <= 0 {
 					pe.cursor().col = 0
 					// fmt.Printf("handleUserGrapheme() backspace edge %d\n", pe.cursor().col)
@@ -1093,6 +1094,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 
 			// fmt.Printf("handleUserGrapheme #backspace col to %d\n", pe.cursor().col)
 			if pe.predictOverwrite {
+				// clear the previous cell
 				cell := &(theRow.overlayCells[pe.cursor().col]) // previous predict cell
 				cell.resetWithOrig()
 				cell.active = true
@@ -1107,8 +1109,19 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 				cell.replacement = origCell
 				cell.replacement.Clear()
 				cell.replacement.Append(' ')
+
+				if wideCell { // handle wide cell
+					cell2 := &(theRow.overlayCells[pe.cursor().col+1])
+					cell2.resetWithOrig()
+					cell2.active = true
+					cell2.tentativeUntilEpoch = pe.predictionEpoch
+					cell2.expire(pe.localFrameSent+1, now)
+					cell2.replacement.Clear()
+					cell2.replacement.Append(' ')
+				}
 			} else {
-				// iterate to replace the current cell with next cell.
+				// iterate from current col to the right end, for each cell,
+				// replace the current cell with next cell.
 				for i := pe.cursor().col; i < emu.GetWidth(); i++ {
 					cell := &(theRow.overlayCells[i])
 					wideCell := false
@@ -1162,11 +1175,10 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 			}
 			// fmt.Printf("handleUserGrapheme #backspace row %d end.\n\n", pe.cursor().row)
 		}
-	} else if len(chs) == 1 && chs[0] < 0x20 {
+	} else if len(chs) == 1 && chs[0] < 0x20 { // handle non printable control sequence
 		// unknown print
 		pe.becomeTentative()
-	} else {
-		// normal rune, wide rune, combining grapheme
+	} else { // normal rune, wide rune, combining grapheme
 
 		// for wide rune, only one cell space is not enough, wrap to next row
 		if w == 2 && pe.cursor().col == emu.GetWidth()-1 {
