@@ -438,9 +438,10 @@ func (ne *NotificationEngine) apply(emu *terminal.Emulator) {
 
 	var stringToDraw strings.Builder
 
-	if len(ne.message) == 0 && !timeExpired {
-		return
-	}
+	// duplicate code in mosh
+	// if len(ne.message) == 0 && !timeExpired {
+	// 	return
+	// }
 
 	if len(ne.message) == 0 && timeExpired {
 		fmt.Fprintf(&stringToDraw, "aprish: Last %s %s ago.%s", explanation,
@@ -723,9 +724,6 @@ func (pe *PredictionEngine) SetPredictOverwrite(overwrite bool) {
 // checks the displayPreference to determine whether we should show the prediction.
 // if yes, move the cursor in emulator, show the cell prediction in emulator.
 func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
-	// show := pe.displayPreference != Never && (pe.srttTrigger || pe.glitchTrigger > 0 ||
-	// 	pe.displayPreference == Always || pe.displayPreference == Experimental)
-
 	if pe.displayPreference == Never || !(pe.srttTrigger || pe.glitchTrigger > 0 ||
 		pe.displayPreference == Always || pe.displayPreference == Experimental) {
 		return
