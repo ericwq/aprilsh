@@ -73,14 +73,28 @@ func initLog() {
 }
 
 func printVersion() {
-	logI.Printf("%s (%s) [build %s]\n", _COMMAND_NAME, _PACKAGE_STRING, BuildVersion)
-	logI.Printf("Copyright (c) 2022~2023 wangqi ericwq057@qq.com\n")
-	logI.Printf("reborn mosh with aprilsh\n")
+	fmt.Printf("%s (%s) [build %s]\n\n", _COMMAND_NAME, _PACKAGE_STRING, BuildVersion)
+	fmt.Println("Copyright (c) 2022~2023 wangqi ericwq057@qq.com")
+	fmt.Println("This is free software: you are free to change and redistribute it.")
+	fmt.Printf("There is NO WARRANTY, to the extent permitted by law.\n\n")
+	fmt.Println("reborn mosh with aprilsh")
 }
 
-// func printUsage(usage string) {
-// 	logI.Printf("%s", usage)
-// }
+// [-s] [-v] [-i LOCALADDR] [-p PORT[:PORT2]] [-c COLORS] [-l NAME=VALUE] [-- COMMAND...]
+var usage = `Usage:
+  ` + _COMMAND_NAME + ` [-v] [-h]
+  ` + _COMMAND_NAME + ` [-s] [--verbose] [-i LOCALADDR] [-p PORT[:PORT2]] [-c COLORS] [-l NAME=VALUE] [-- command...]
+Options:
+  -h, --help     print this message
+  -v, --version  print version information
+  -s, --server   listen with SSH ip
+  -i, --ip       listen ip
+  -p, --port     listen port range (default port 60000)
+  -l, --locale   key-value pairs
+  -c, --color    xterm color
+  -t, --term     client TERM
+      --verbose  verbose output
+`
 
 func printUsage(hint, usage string) {
 	if hint != "" {
@@ -153,11 +167,10 @@ func motdHushed() bool {
 }
 
 // extract server ip addresss from SSH_CONNECTION
-func getSSHip() string {
+func getSSHip() (string, bool) {
 	env := os.Getenv("SSH_CONNECTION")
 	if len(env) == 0 { // Older sshds don't set this
-		fmt.Printf("Warning: SSH_CONNECTION not found; binding to any interface.\n")
-		return ""
+		return fmt.Sprintf("Warning: SSH_CONNECTION not found; binding to any interface."), false
 	}
 
 	// SSH_CONNECTION' Identifies the client and server ends of the connection.
@@ -167,9 +180,7 @@ func getSSHip() string {
 	// ipv4 sample: SSH_CONNECTION=172.17.0.1 58774 172.17.0.2 22
 	sshConn := strings.Split(env, " ")
 	if len(sshConn) != 4 {
-		fmt.Printf("Warning: Could not parse SSH_CONNECTION; binding to any interface.\n")
-		// fmt.Printf("#getSSHip env=%q, size=%d\n", sshConn, len(sshConn))
-		return ""
+		return fmt.Sprintf("Warning: Could not parse SSH_CONNECTION; binding to any interface."), false
 	}
 
 	localInterfaceIP := strings.ToLower(sshConn[2])
@@ -177,28 +188,32 @@ func getSSHip() string {
 
 	// fmt.Printf("#getSSHip localInterfaceIP=%q, prefixIPv6=%q\n", localInterfaceIP, prefixIPv6)
 	if len(localInterfaceIP) > len(prefixIPv6) && strings.HasPrefix(localInterfaceIP, prefixIPv6) {
-		return localInterfaceIP[len(prefixIPv6):]
+		return localInterfaceIP[len(prefixIPv6):], true
 	}
 
-	return localInterfaceIP
+	return localInterfaceIP, true
 }
 
-// [-s] [-v] [-i LOCALADDR] [-p PORT[:PORT2]] [-c COLORS] [-l NAME=VALUE] [-- COMMAND...]
-var usage = `Usage:
-  ` + _COMMAND_NAME + ` [--version] [--help]
-  ` + _COMMAND_NAME + ` [--server] [--verbose] [--ip ADDR] [--port PORT[:PORT2]] [--color COLORS]` +
-	` [--locale NAME=VALUE] [-- command...]
-Options:
-  -h, --help     print this message
-      --version  print version information
-  -v, --verbose  verbose output
-  -s, --server   listen with SSH ip
-  -i, --ip       listen ip
-  -p, --port     listen port range
-  -l, --locale   key-value pairs
-  -c, --color    xterm color
-  -t, --term     client TERM
-`
+// https://www.antoniojgutierrez.com/posts/2021-05-14-short-and-long-options-in-go-flags-pkg/
+type localeFlag map[string]string
+
+func (lv *localeFlag) String() string {
+	return fmt.Sprint(*lv)
+}
+
+func (lv *localeFlag) Set(value string) error {
+	kv := strings.Split(value, "=")
+	if len(kv) != 2 {
+		return errors.New("malform locale parameter: " + value)
+	}
+
+	(*lv)[kv[0]] = kv[1]
+	return nil
+}
+
+func (lv *localeFlag) IsBoolFlag() bool {
+	return false
+}
 
 // parseFlags parses the command-line arguments provided to the program.
 // Typically os.Args[0] is provided as 'progname' and os.args[1:] as 'args'.
@@ -217,9 +232,9 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	conf.commandArgv = []string{}
 
 	flagSet.IntVar(&conf.verbose, "verbose", 0, "verbose output")
-	flagSet.IntVar(&conf.verbose, "v", 0, "verbose output")
 
 	flagSet.BoolVar(&conf.version, "version", false, "print version information")
+	flagSet.BoolVar(&conf.version, "v", false, "print version information")
 
 	flagSet.BoolVar(&conf.server, "server", false, "listen with SSH ip")
 	flagSet.BoolVar(&conf.server, "s", false, "listen with SSH ip")
@@ -250,11 +265,11 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 }
 
 type Config struct {
-	version     bool // verbose : don't close stdin/stdout/stderr
-	server      bool
-	verbose     int
-	desiredIP   string
-	desiredPort string
+	version     bool   // print version information
+	server      bool   // use SSH ip
+	verbose     int    // verbose output
+	desiredIP   string // server ip/host
+	desiredPort string // server port
 	locales     localeFlag
 	color       int
 	term        string // client TERM
@@ -277,9 +292,11 @@ func (conf *Config) buildConfig() (string, bool) {
 	}
 
 	if conf.server {
-		if sshIP := getSSHip(); len(sshIP) != 0 {
+		if sshIP, ok := getSSHip(); ok {
 			conf.desiredIP = sshIP
-			// fmt.Printf("#main sshIP=%s\n", desiredIP)
+		} else {
+			msg := sshIP
+			return msg, false
 		}
 	}
 
@@ -291,9 +308,6 @@ func (conf *Config) buildConfig() (string, bool) {
 		if !ok {
 			return fmt.Sprintf("Bad UDP port range (%s)", conf.desiredPort), false
 		}
-	} else if !conf.server {
-
-		return fmt.Sprintf("Either server option or ip option need to be provided"), false
 	}
 
 	conf.commandPath = ""
@@ -351,9 +365,9 @@ func (conf *Config) buildConfig() (string, bool) {
 			clientType := util.GetCtype()
 			clientCharset := util.LocaleCharset()
 			fmt.Printf("%s needs a UTF-8 native locale to run.\n", _COMMAND_NAME)
-			fmt.Printf("Unfortunately, the local environment (%s) specifies "+
+			fmt.Printf("Unfortunately, the local environment %s specifies "+
 				"the character set \"%s\",\n", nativeType, nativeCharset)
-			fmt.Printf("The client-supplied environment (%s) specifies "+
+			fmt.Printf("The client-supplied environment %s specifies "+
 				"the character set \"%s\".\n", clientType, clientCharset)
 
 			// fmt.Fprintf(os.Stdout, "%s needs a UTF-8 native locale to run.\n\n", COMMAND_NAME)
@@ -376,7 +390,6 @@ func main() {
 		return
 	} else if err != nil {
 		printUsage(err.Error(), usage)
-		// logW.Printf("#main parseFlags failed: %s\n", output)
 		return
 	} else if hint, ok := conf.buildConfig(); !ok {
 		printUsage(hint, usage)
@@ -411,27 +424,6 @@ func getShellNameFrom(shellPath string) (shellName string) {
 	shellName = "-" + shellName
 
 	return
-}
-
-// https://www.antoniojgutierrez.com/posts/2021-05-14-short-and-long-options-in-go-flags-pkg/
-type localeFlag map[string]string
-
-func (lv *localeFlag) String() string {
-	return fmt.Sprint(*lv)
-}
-
-func (lv *localeFlag) Set(value string) error {
-	kv := strings.Split(value, "=")
-	if len(kv) != 2 {
-		return errors.New("malform locale parameter: " + value)
-	}
-
-	(*lv)[kv[0]] = kv[1]
-	return nil
-}
-
-func (lv *localeFlag) IsBoolFlag() bool {
-	return false
 }
 
 // worker started by mainSrv.run(). worker will listen on specified port and
@@ -848,10 +840,10 @@ func getTimeFrom(env string, def int64) (ret int64) {
 }
 
 func printWelcome(pid int, port int, tty *os.File) {
-	logI.Printf("%s start listening on :%d. build version %s [pid=%d] \n", _COMMAND_NAME, port, BuildVersion, pid)
-	logI.Printf("Copyright 2022~2023 wangqi.\n")
-	logI.Printf("%s%s", "Use of this source code is governed by a MIT-style",
-		"license that can be found in the LICENSE file.\n")
+	fmt.Printf("%s start listening on :%d. build version %s [pid=%d] \n", _COMMAND_NAME, port, BuildVersion, pid)
+	// fmt.Printf("Copyright 2022~2023 wangqi.\n")
+	// fmt.Printf("%s%s", "Use of this source code is governed by a MIT-style",
+	// 	"license that can be found in the LICENSE file.\n")
 	// logI.Printf("[%s detached, pid=%d]\n", COMMAND_NAME, pid)
 
 	if tty != nil {
@@ -862,7 +854,7 @@ func printWelcome(pid int, port int, tty *os.File) {
 
 		if !inputUTF8 {
 			// Input is UTF-8 (since Linux 2.6.4)
-			logW.Printf("%s %s %s", "Warning: termios IUTF8 flag not defined.",
+			fmt.Printf("%s %s %s", "Warning: termios IUTF8 flag not defined.",
 				"Character-erase of multibyte character sequence",
 				"probably does not work properly on this platform.\n")
 		}

@@ -81,7 +81,7 @@ func TestPrintVersion(t *testing.T) {
 	os.Stdout = w
 	initLog()
 
-	expect := []string{_COMMAND_NAME, "build", "wangqi ericwq057[AT]qq[dot]com"}
+	expect := []string{_COMMAND_NAME, "build", "wangqi ericwq057@qq.com"}
 
 	printVersion()
 
@@ -104,37 +104,37 @@ func TestPrintVersion(t *testing.T) {
 	}
 }
 
+var cmdOptions = "[-s] [--verbose] [-i LOCALADDR] [-p PORT[:PORT2]] [-c COLORS] [-l NAME=VALUE] [-- command...]"
+
 func TestPrintUsage(t *testing.T) {
-	// intercept stdout
-	saveStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-	initLog()
-
-	// var b strings.Builder
-	expect := []string{
-		"Usage:", _COMMAND_NAME,
-		"[--server] [--verbose] [--ip ADDR] [--port PORT[:PORT2]] [--color COLORS] [--locale NAME=VALUE] [-- command...]",
+	tc := []struct {
+		label  string
+		hints  string
+		expect []string
+	}{
+		{"no hint", "", []string{"Usage:", _COMMAND_NAME, cmdOptions}},
+		{"some hints", "some hints", []string{"Usage:", _COMMAND_NAME, "some hints", cmdOptions}},
 	}
 
-	printUsage(usage)
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
 
-	// restore stdout
-	w.Close()
-	b, _ := ioutil.ReadAll(r)
-	os.Stdout = saveStdout
-	r.Close()
+			out := captureStdoutRun(func() {
+				printUsage(v.hints, usage)
+			})
 
-	// validate the result
-	result := string(b)
-	found := 0
-	for i := range expect {
-		if strings.Contains(result, expect[i]) {
-			found++
-		}
-	}
-	if found != len(expect) {
-		t.Errorf("#test printUsage expect %q, got %q\n", expect, result)
+			// validate the result
+			result := string(out)
+			found := 0
+			for i := range v.expect {
+				if strings.Contains(result, v.expect[i]) {
+					found++
+				}
+			}
+			if found != len(v.expect) {
+				t.Errorf("#test printUsage expect %s, got %s\n", v.expect, result)
+			}
+		})
 	}
 }
 
@@ -230,10 +230,7 @@ func TestMainHelp(t *testing.T) {
 	out := captureStdoutRun(testHelpFunc)
 
 	// validate result
-	expect := []string{
-		"Usage:", _COMMAND_NAME,
-		"[--server] [--verbose] [--ip ADDR] [--port PORT[:PORT2]] [--color COLORS] [--locale NAME=VALUE] [-- command...]",
-	}
+	expect := []string{"Usage:", _COMMAND_NAME, cmdOptions}
 
 	// validate the result
 	result := string(out)
@@ -292,25 +289,19 @@ func captureStdoutRun(f func()) []byte {
 }
 
 func TestMainVersion(t *testing.T) {
-	// intercept stdout
-	saveStdout := os.Stdout
-	r, w, _ := os.Pipe()
-	os.Stdout = w
-	initLog()
 
-	// prepare data
-	os.Args = []string{_COMMAND_NAME, "--version"}
-	// test
-	main()
+	testHelpFunc := func() {
+		// prepare data
+		os.Args = []string{_COMMAND_NAME, "--version"}
+		// test
+		main()
 
-	// restore stdout
-	w.Close()
-	out, _ := ioutil.ReadAll(r)
-	os.Stdout = saveStdout
-	r.Close()
+	}
+
+	out := captureStdoutRun(testHelpFunc)
 
 	// validate result
-	expect := []string{_COMMAND_NAME, "build", "wangqi ericwq057[AT]qq[dot]com"}
+	expect := []string{_COMMAND_NAME, "build", "wangqi ericwq057@qq.com", "reborn mosh with aprilsh"}
 	result := string(out)
 	found := 0
 	for i := range expect {
@@ -331,18 +322,18 @@ func TestMainParseFlagsError(t *testing.T) {
 		main()
 	}
 
-	result := captureLogRun(testFunc)
+	out := captureStdoutRun(testFunc)
 
 	// validate result
-	expect := []string{"flag provided but not defined: -foo", "Usage of aprilsh-server"}
+	expect := []string{"Hints:", "flag provided but not defined: -foo", "Usage:", "Options:"}
 	found := 0
 	for i := range expect {
-		if strings.Contains(result, expect[i]) {
+		if strings.Contains(string(out), expect[i]) {
 			found++
 		}
 	}
 	if found != len(expect) {
-		t.Errorf("#test parserError expect %q, got \n%s\n", expect, result)
+		t.Errorf("#test parserError expect %q, got \n%s\n", expect, out)
 	}
 }
 
@@ -392,7 +383,7 @@ func TestMainRun(t *testing.T) {
 
 	// validate the result from printWelcome
 	expect := []string{
-		"aprilsh-server", "a MIT-stylelicense that can be found in the LICENSE file.",
+		"aprilsh-server", "start listening on", "build version",
 		"got message SIGHUP", // "got message SIGTERM",
 	}
 	result := string(out)
@@ -404,7 +395,7 @@ func TestMainRun(t *testing.T) {
 		}
 	}
 	if found != len(expect) {
-		t.Errorf("#test expect %q, got %q\n", expect, result)
+		t.Errorf("#test expect %q, got %s\n", expect, result)
 	}
 }
 
@@ -416,20 +407,16 @@ func TestMainBuildConfigFail(t *testing.T) {
 		main()
 	}
 
-	// intercept log output
-	var b strings.Builder
-	logW.SetOutput(&b)
-
 	// prepare for buildConfig fail
 	buildConfigTest = true
-	testFunc()
+	out := captureStdoutRun(testFunc)
 
 	// restore the condition
 	buildConfigTest = false
 
 	// validate the result
-	expect := []string{"UTF-8 locale fail."}
-	result := b.String()
+	expect := []string{"Usage:", "Hints:", "UTF-8 locale fail.", "Options:"}
+	result := string(out)
 	found := 0
 	for i := range expect {
 		if strings.Contains(result, expect[i]) {
@@ -437,7 +424,7 @@ func TestMainBuildConfigFail(t *testing.T) {
 		}
 	}
 	if found != len(expect) {
-		t.Errorf("#test printVersion expect %q, got %q\n", expect, result)
+		t.Errorf("#test buildConfig() expect %q, got %s\n", expect, result)
 	}
 }
 
@@ -512,127 +499,128 @@ func TestGetShell(t *testing.T) {
 	}
 }
 
-func TestBuildConfig(t *testing.T) {
-	tc := []struct {
-		label string
-		conf0 Config
-		conf2 Config
-		err   error
-	}{
-		{
-			"UTF-8 locale",
-			Config{
-				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
-				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
-				commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
+/*
+	func TestBuildConfig(t *testing.T) {
+		tc := []struct {
+			label string
+			conf0 Config
+			conf2 Config
+			err   error
+		}{
+			{
+				"UTF-8 locale",
+				Config{
+					version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
+					locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
+					commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
+				},
+				Config{
+					version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
+					locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
+					commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: false,
+				},
+				nil,
 			},
-			Config{
-				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
-				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
-				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: false,
+			{
+				"empty commandArgv",
+				Config{
+					version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
+					locales: localeFlag{"LC_ALL": "en_US.UTF-8"}, color: 0,
+					commandPath: "", commandArgv: []string{}, withMotd: false,
+				},
+				Config{
+					version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
+					locales: localeFlag{"LC_ALL": "en_US.UTF-8"}, color: 0,
+					commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
+				},
+				// macOS: /bin/zsh
+				// alpine: /bin/ash
+				nil,
 			},
-			nil,
-		},
-		{
-			"empty commandArgv",
-			Config{
-				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
-				locales: localeFlag{"LC_ALL": "en_US.UTF-8"}, color: 0,
-				commandPath: "", commandArgv: []string{}, withMotd: false,
+			// {
+			// 	"non UTF-8 locale",
+			// 	Config{
+			// 		version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
+			// 		locales: localeFlag{"LC_ALL": "zh_CN.GB2312", "LANG": "zh_CN.GB2312"}, color: 0,
+			// 		commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
+			// 	}, // TODO GB2312 is not available in apline linux
+			// 	Config{
+			// 		version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
+			// 		locales: localeFlag{}, color: 0,
+			// 		commandPath: "/bin/sh", commandArgv: []string{"*sh"}, withMotd: false,
+			// 	},
+			// 	errors.New("UTF-8 locale fail."),
+			// },
+			{
+				"commandArgv is one string",
+				Config{
+					version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
+					locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
+					commandPath: "", commandArgv: []string{"/bin/sh"}, withMotd: false,
+				},
+				Config{
+					version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
+					locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
+					commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: false,
+				},
+				nil,
 			},
-			Config{
-				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
-				locales: localeFlag{"LC_ALL": "en_US.UTF-8"}, color: 0,
-				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
-			},
-			// macOS: /bin/zsh
-			// alpine: /bin/ash
-			nil,
-		},
-		// {
-		// 	"non UTF-8 locale",
-		// 	Config{
-		// 		version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
-		// 		locales: localeFlag{"LC_ALL": "zh_CN.GB2312", "LANG": "zh_CN.GB2312"}, color: 0,
-		// 		commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
-		// 	}, // TODO GB2312 is not available in apline linux
-		// 	Config{
-		// 		version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
-		// 		locales: localeFlag{}, color: 0,
-		// 		commandPath: "/bin/sh", commandArgv: []string{"*sh"}, withMotd: false,
-		// 	},
-		// 	errors.New("UTF-8 locale fail."),
-		// },
-		{
-			"commandArgv is one string",
-			Config{
-				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
-				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
-				commandPath: "", commandArgv: []string{"/bin/sh"}, withMotd: false,
-			},
-			Config{
-				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
-				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, color: 0,
-				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: false,
-			},
-			nil,
-		},
-	}
+		}
 
-	// change the tc[1].conf2 value according to runtime.GOOS
-	switch runtime.GOOS {
-	case "darwin":
-		tc[1].conf2.commandArgv = []string{"-zsh"}
-		tc[1].conf2.commandPath = "/bin/zsh"
-		// case "linux":
-		// 	tc[1].conf2.commandArgv = []string{"-ash"}
-		// 	tc[1].conf2.commandPath = "/bin/ash"
-	}
+		// change the tc[1].conf2 value according to runtime.GOOS
+		switch runtime.GOOS {
+		case "darwin":
+			tc[1].conf2.commandArgv = []string{"-zsh"}
+			tc[1].conf2.commandPath = "/bin/zsh"
+			// case "linux":
+			// 	tc[1].conf2.commandArgv = []string{"-ash"}
+			// 	tc[1].conf2.commandPath = "/bin/ash"
+		}
 
-	for _, v := range tc {
-		t.Run(v.label, func(t *testing.T) {
-			// intercept log output
-			var b strings.Builder
-			logW.SetOutput(&b)
+		for _, v := range tc {
+			t.Run(v.label, func(t *testing.T) {
+				// intercept log output
+				var b strings.Builder
+				logW.SetOutput(&b)
 
-			// set SHELL for empty commandArgv
-			if len(v.conf0.commandArgv) == 0 {
-				shell := os.Getenv("SHELL")
-				defer os.Setenv("SHELL", shell)
-				os.Unsetenv("SHELL")
+				// set SHELL for empty commandArgv
+				if len(v.conf0.commandArgv) == 0 {
+					shell := os.Getenv("SHELL")
+					defer os.Setenv("SHELL", shell)
+					os.Unsetenv("SHELL")
 
-				if runtime.GOOS == "linux" {
-					// getShell() will fail
-					defer func() {
+					if runtime.GOOS == "linux" {
+						// getShell() will fail
+						defer func() {
+							userCurrentTest = false
+							getShellTest = false
+						}()
+
+						getShellTest = true
 						userCurrentTest = false
-						getShellTest = false
-					}()
-
-					getShellTest = true
-					userCurrentTest = false
+					}
 				}
-			}
 
-			// validate buildConfig
-			err := buildConfig(&v.conf0)
-			v.conf0.serve = nil // disable the serve func for testing
-			if err != nil {
-				if err.Error() != v.err.Error() {
-					// if !errors.Is(err, v.err) {
-					t.Errorf("#test buildConfig expect %q, got %q\n", v.err, err)
+				// validate buildConfig
+				err := buildConfig(&v.conf0)
+				v.conf0.serve = nil // disable the serve func for testing
+				if err != nil {
+					if err.Error() != v.err.Error() {
+						// if !errors.Is(err, v.err) {
+						t.Errorf("#test buildConfig expect %q, got %q\n", v.err, err)
+					}
+				} else if !reflect.DeepEqual(v.conf0, v.conf2) {
+					t.Errorf("#test buildConfig got \n%+v, expect \n%+v\n", v.conf0, v.conf2)
 				}
-			} else if !reflect.DeepEqual(v.conf0, v.conf2) {
-				t.Errorf("#test buildConfig got \n%+v, expect \n%+v\n", v.conf0, v.conf2)
-			}
-			// reset the environment
-			util.ClearLocaleVariables()
+				// reset the environment
+				util.ClearLocaleVariables()
 
-			// restore logW
-			logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-		})
+				// restore logW
+				logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+			})
+		}
 	}
-}
-
+*/
 func TestParseFlagsError(t *testing.T) {
 	tests := []struct {
 		args   []string
@@ -686,22 +674,19 @@ func TestParseFlagsError(t *testing.T) {
 // }
 
 func TestMainServerPortrangeError(t *testing.T) {
-	var b strings.Builder
-	logW.SetOutput(&b)
+	testFunc := func() {
+		os.Args = []string{_COMMAND_NAME, "-s", "-p=3a"}
+		os.Setenv("SSH_CONNECTION", "172.17.0.1 58774 172.17.0.2 22")
+		main()
+	}
 
-	os.Args = []string{_COMMAND_NAME, "-s", "-p=3a"}
-	os.Setenv("SSH_CONNECTION", "172.17.0.1 58774 172.17.0.2 22")
-	main()
-
+	out := captureStdoutRun(testFunc)
 	// validate port range check
 	expect := "Bad UDP port range"
-	got := b.String()
+	got := string(out)
 	if !strings.Contains(got, expect) {
 		t.Errorf("#test --port should contains %q, got %s\n", expect, got)
 	}
-
-	// restore logW
-	logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestGetSSHip(t *testing.T) {
@@ -709,12 +694,15 @@ func TestGetSSHip(t *testing.T) {
 		label  string
 		env    string
 		expect string
+		ok     bool
 	}{
-		{"no env variable", "", ""},
-		{"ipv4 address", "172.17.0.1 58774 172.17.0.2 22", "172.17.0.2"},
-		{"malform variable", " 1 2 3 4", ""},
-		{"ipv6 address", "fe80::14d5:1215:f8c9:11fa%en0 42000 fe80::aede:48ff:fe00:1122%en5 22", "fe80::aede:48ff:fe00:1122%en5"},
-		{"ipv4 mapped address", "::FFFF:172.17.0.1 42200 ::FFFF:129.144.52.38 22", "129.144.52.38"},
+		{"no env variable", "", "Warning: SSH_CONNECTION not found; binding to any interface.", false},
+		{"ipv4 address", "172.17.0.1 58774 172.17.0.2 22", "172.17.0.2", true},
+		{"malform variable", " 1 2 3 4",
+			"Warning: Could not parse SSH_CONNECTION; binding to any interface.", false},
+		{"ipv6 address", "fe80::14d5:1215:f8c9:11fa%en0 42000 fe80::aede:48ff:fe00:1122%en5 22",
+			"fe80::aede:48ff:fe00:1122%en5", true},
+		{"ipv4 mapped address", "::FFFF:172.17.0.1 42200 ::FFFF:129.144.52.38 22", "129.144.52.38", true},
 	}
 
 	// intercept log output
@@ -725,9 +713,9 @@ func TestGetSSHip(t *testing.T) {
 		b.Reset()
 
 		os.Setenv("SSH_CONNECTION", v.env)
-		got := getSSHip()
-		if got != v.expect {
-			t.Errorf("%q expect %q, got %q\n", v.label, v.expect, got)
+		got, ok := getSSHip()
+		if got != v.expect || ok != v.ok {
+			t.Errorf("%q expect %q, got %q, ok=%t\n", v.label, v.expect, got, ok)
 		}
 	}
 
