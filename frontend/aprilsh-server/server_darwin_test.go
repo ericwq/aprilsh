@@ -7,26 +7,20 @@
 package main
 
 import (
-	"errors"
-	"io/ioutil"
-	"log"
 	"os"
-	"reflect"
 	"strings"
 	"testing"
 
 	"github.com/ericwq/aprilsh/util"
 )
 
-func TestDarwinBuildConfig(t *testing.T) {
+func TestBuildConfig_Darwin_DefaultShell(t *testing.T) {
 	label := "no SHELL, getShell() return empty string."
 	conf0 := &Config{
 		version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
 		locales: localeFlag{"LC_ALL": "en_US.UTF-8"}, color: 0,
 		commandPath: "", commandArgv: []string{}, withMotd: false,
 	}
-	var err2 error
-	err2 = nil
 
 	// no SHELL
 	shell := os.Getenv("SHELL")
@@ -38,33 +32,20 @@ func TestDarwinBuildConfig(t *testing.T) {
 	defer os.Setenv("USER", user)
 	os.Unsetenv("USER")
 
-	// save the stderr and create replaced pipe
-	rescueStderr := os.Stderr
-	r, w, _ := os.Pipe()
-	os.Stderr = w
-	oldArgs := os.Args
-	defer func() { os.Args = oldArgs }()
-
 	// validate commandPath == _PATH_BSHELL
-	err := buildConfig(conf0)
-	if err != nil && conf0.commandPath != _PATH_BSHELL {
-		t.Errorf("#test buildConfig %q expect %q, got %q\n", label, err2, err)
+	conf0.buildConfig()
+	if conf0.commandPath != _PATH_BSHELL {
+		t.Errorf("#test buildConfig %q expect %q, got %q\n", label, _PATH_BSHELL, conf0.commandPath)
 	}
-	// reset the environment
-	util.ClearLocaleVariables()
-
-	// read and restore the stderr
-	w.Close()
-	ioutil.ReadAll(r)
-	os.Stderr = rescueStderr
 }
 
-func TestBuildConfigDarwin(t *testing.T) {
+func TestBuildConfig_Darwin_locale(t *testing.T) {
 	tc := []struct {
 		label string
 		conf0 Config
 		conf2 Config
-		err   error
+		hint  string
+		ok    bool
 	}{
 		{
 			"non UTF-8 locale",
@@ -72,56 +53,50 @@ func TestBuildConfigDarwin(t *testing.T) {
 				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
 				locales: localeFlag{"LC_ALL": "zh_CN.GB2312", "LANG": "zh_CN.GB2312"}, color: 0,
 				commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
-			}, // TODO GB2312 is not available in apline linux
+			}, // Note GB2312 is not available in apline linux
 			Config{
 				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
 				locales: localeFlag{}, color: 0,
 				commandPath: "/bin/sh", commandArgv: []string{"*sh"}, withMotd: false,
 			},
-			errors.New("UTF-8 locale fail."),
+			"UTF-8 locale fail.", false,
 		},
 	}
 
-	// change the tc[1].conf2 value according to runtime.GOOS
-	// switch runtime.GOOS {
-	// case "darwin":
-	// 	tc[1].conf2.commandArgv = []string{"-zsh"}
-	// 	tc[1].conf2.commandPath = "/bin/zsh"
-	// case "linux":
-	// 	tc[1].conf2.commandArgv = []string{"-ash"}
-	// 	tc[1].conf2.commandPath = "/bin/ash"
-	// }
+	// reset the environment
+	util.ClearLocaleVariables()
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			// intercept log output
-			var b strings.Builder
-			logW.SetOutput(&b)
 
-			// set SHELL for empty commandArgv
-			if len(v.conf0.commandArgv) == 0 {
-				shell := os.Getenv("SHELL")
-				defer os.Setenv("SHELL", shell)
-				os.Unsetenv("SHELL")
+			var hint string
+			var ok bool
+
+			testFunc := func() {
+				// validate buildConfig
+				hint, ok = v.conf0.buildConfig()
+				v.conf0.serve = nil // disable the serve func for testing
+
+			}
+			out := captureStdoutRun(testFunc)
+
+			if hint != v.hint || ok != v.ok {
+				t.Errorf("#test buildConfig got hint=%s, ok=%t, expect hint=%s, ok=%t\n", hint, ok, v.hint, v.ok)
 			}
 
-			// validate buildConfig
-			err := buildConfig(&v.conf0)
-			v.conf0.serve = nil // disable the serve func for testing
-			if err != nil {
-				if err.Error() != v.err.Error() {
-					// if !errors.Is(err, v.err) {
-					t.Errorf("#test buildConfig expect %q, got %q\n", v.err, err)
+			// validate the output
+			expect := []string{_COMMAND_NAME, "needs a UTF-8 native locale to run",
+				"Unfortunately, the local environment", "The client-supplied environment"}
+			result := string(out)
+			found := 0
+			for i := range expect {
+				if strings.Contains(result, expect[i]) {
+					found++
 				}
-			} else if !reflect.DeepEqual(v.conf0, v.conf2) {
-				t.Errorf("#test buildConfig got \n%+v, expect \n%+v\n", v.conf0, v.conf2)
 			}
-			// reset the environment
-			util.ClearLocaleVariables()
-
-			// restore logW
-			logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+			if found != len(expect) {
+				t.Errorf("#test buildConfig() expect %q, got %s\n", expect, result)
+			}
 		})
 	}
 }
-
