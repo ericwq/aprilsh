@@ -370,11 +370,6 @@ func (conf *Config) buildConfig() (string, bool) {
 			fmt.Printf("The client-supplied environment %s specifies "+
 				"the character set \"%s\".\n", clientType, clientCharset)
 
-			// fmt.Fprintf(os.Stdout, "%s needs a UTF-8 native locale to run.\n\n", COMMAND_NAME)
-			// fmt.Fprintf(os.Stdout, "Unfortunately, the local environment (%s) specifies\n"+
-			// 	"the character set \"%s\",\n\n", nativeType, nativeCharset)
-			// fmt.Fprintf(os.Stdout, "The client-supplied environment (%s) specifies\n"+
-			// 	"the character set \"%s\".\n\n", clientType, clientCharset)
 			return "UTF-8 locale fail.", false
 		}
 	}
@@ -400,11 +395,6 @@ func main() {
 		printVersion()
 		return
 	}
-
-	// if err := buildConfig(conf); err != nil {
-	// 	logW.Printf("#main buildConfig faileds: %s\n", err.Error())
-	// 	return
-	// }
 
 	srv := newMainSrv(conf, runWorker)
 	srv.start(conf)
@@ -575,20 +565,6 @@ func getCurrentUser() string {
 
 	return user.Username
 }
-
-// var gotSignal [frontend.MAX_SIGNAL_NUMBER]atomic.Int32
-
-// func multiSignalHandler(signal os.Signal) {
-// 	switch signal {
-// 	case syscall.SIGUSR1:
-// 		gotSignal[syscall.SIGUSR1].Store(int32(syscall.SIGUSR1))
-// 	case syscall.SIGINT:
-// 		gotSignal[syscall.SIGINT].Store(int32(syscall.SIGINT))
-// 	case syscall.SIGTERM:
-// 		gotSignal[syscall.SIGTERM].Store(int32(syscall.SIGTERM))
-// 	default:
-// 	}
-// }
 
 func serve(ptmx *os.File, pts *os.File, complete *statesync.Complete,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
@@ -959,16 +935,6 @@ func startShell(pts *os.File, utmpHost string, conf *Config) (*os.Process, error
 	// return cmd, nil
 	return proc, nil
 }
-
-// func deviceExists(line string) bool {
-// 	deviceName := fmt.Sprintf("/dev/%s", line)
-// 	_, err := os.Lstat(deviceName)
-// 	if err != nil {
-// 		return false
-// 	}
-//
-// 	return true
-// }
 
 // check unattached session and print warning message if there is any
 // ignore current session
