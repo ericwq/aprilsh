@@ -18,7 +18,7 @@ func TestBuildConfig_Darwin_DefaultShell(t *testing.T) {
 	label := "no SHELL, getShell() return empty string."
 	conf0 := &Config{
 		version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
-		locales: localeFlag{"LC_ALL": "en_US.UTF-8"}, color: 0,
+		locales:     localeFlag{"LC_ALL": "en_US.UTF-8"},
 		commandPath: "", commandArgv: []string{}, withMotd: false,
 	}
 
@@ -51,12 +51,12 @@ func TestBuildConfig_Darwin_locale(t *testing.T) {
 			"non UTF-8 locale",
 			Config{
 				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
-				locales: localeFlag{"LC_ALL": "zh_CN.GB2312", "LANG": "zh_CN.GB2312"}, color: 0,
+				locales:     localeFlag{"LC_ALL": "zh_CN.GB2312", "LANG": "zh_CN.GB2312"},
 				commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
 			}, // Note GB2312 is not available in apline linux
 			Config{
 				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
-				locales: localeFlag{}, color: 0,
+				locales:     localeFlag{},
 				commandPath: "/bin/sh", commandArgv: []string{"*sh"}, withMotd: false,
 			},
 			"UTF-8 locale fail.", false,
