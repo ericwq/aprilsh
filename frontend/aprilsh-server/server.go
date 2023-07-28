@@ -83,17 +83,16 @@ func printVersion() {
 // [-s] [-v] [-i LOCALADDR] [-p PORT[:PORT2]] [-c COLORS] [-l NAME=VALUE] [-- COMMAND...]
 var usage = `Usage:
   ` + _COMMAND_NAME + ` [-v] [-h]
-  ` + _COMMAND_NAME + ` [-s] [--verbose] [-i LOCALADDR] [-p PORT[:PORT2]] [-c COLORS] [-l NAME=VALUE] [-- command...]
+  ` + _COMMAND_NAME + ` [-s] [--verbose V] [-i LOCALADDR] [-p PORT[:PORT2]] [-l NAME=VALUE] [-t TERM] [-- command...]
 Options:
   -h, --help     print this message
   -v, --version  print version information
   -s, --server   listen with SSH ip
-  -i, --ip       listen ip
+  -i, --ip       listen with this ip/host
   -p, --port     listen port range (default port 60000)
-  -l, --locale   key-value pairs
-  -c, --color    xterm color
-  -t, --term     client TERM
-      --verbose  verbose output
+  -l, --locale   key-value pairs (such as LANG=UTF-8)
+  -t, --term     client TERM (such as xterm-256color, or alacritty or xterm-kitty)
+      --verbose  verbose output (such as 1)
 `
 
 func printUsage(hint, usage string) {
@@ -251,13 +250,16 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.Var(&conf.locales, "locale", "locale list, key=value pair")
 	flagSet.Var(&conf.locales, "l", "locale list, key=value pair")
 
-	flagSet.IntVar(&conf.color, "color", 0, "xterm color")
-	flagSet.IntVar(&conf.color, "c", 0, "xterm color")
-
 	err = flagSet.Parse(args)
 	if err != nil {
 		return nil, buf.String(), err
 	}
+
+	// check the format of desiredPort
+	// _, err = strconv.Atoi(conf.desiredPort)
+	// if err != nil {
+	// 	return nil, buf.String(), err
+	// }
 
 	// get the non-flag command-line arguments.
 	conf.commandArgv = flagSet.Args()
@@ -271,8 +273,8 @@ type Config struct {
 	desiredIP   string // server ip/host
 	desiredPort string // server port
 	locales     localeFlag
-	color       int
-	term        string // client TERM
+	// color       int
+	term string // client TERM
 
 	commandPath string
 	commandArgv []string // the positional (non-flag) command-line arguments.
@@ -306,7 +308,7 @@ func (conf *Config) buildConfig() (string, bool) {
 		// fmt.Printf("#main desiredPort=%s\n", conf.desiredPort)
 		_, _, ok := network.ParsePortRange(conf.desiredPort, logW)
 		if !ok {
-			return fmt.Sprintf("Bad UDP port range (%s)", conf.desiredPort), false
+			return fmt.Sprintf("Bad UDP port (%s)", conf.desiredPort), false
 		}
 	}
 
