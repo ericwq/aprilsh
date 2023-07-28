@@ -58,8 +58,8 @@ const (
 	_ASH_OPEN  = "open aprilsh:"
 	_ASH_CLOSE = "close aprilsh:"
 
-	_VERBOSE_OPEN_PTS    = 99
-	_VERBOSE_START_SHELL = 100
+	_VERBOSE_OPEN_PTS    = 99  // test purpose
+	_VERBOSE_START_SHELL = 100 // test purpose
 )
 
 func init() {
@@ -267,16 +267,15 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 }
 
 type Config struct {
-	version     bool   // print version information
-	server      bool   // use SSH ip
-	verbose     int    // verbose output
-	desiredIP   string // server ip/host
-	desiredPort string // server port
-	locales     localeFlag
-	// color       int
-	term string // client TERM
+	version     bool       // print version information
+	server      bool       // use SSH ip
+	verbose     int        // verbose output
+	desiredIP   string     // server ip/host
+	desiredPort string     // server port
+	locales     localeFlag // localse environment variables
+	term        string     // client TERM
 
-	commandPath string
+	commandPath string   // shell command path (absolute path)
 	commandArgv []string // the positional (non-flag) command-line arguments.
 	withMotd    bool
 
@@ -572,11 +571,14 @@ func serve(ptmx *os.File, pts *os.File, complete *statesync.Complete,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
 	networkTimeout int64, networkSignaledTimeout int64,
 ) error {
+	// TODO consider timeout according to mosh 1.4
+
 	// scale timeouts
 	networkTimeoutMs := networkTimeout * 1000
 	networkSignaledTimeoutMs := networkSignaledTimeout * 1000
 	lastRemoteNum := network.GetRemoteStateNum()
 	var connectedUtmp bool
+	var forceConnectionChangEvt bool
 	var savedAddr net.Addr
 
 	var terminalToHost strings.Builder
@@ -628,9 +630,9 @@ mainLoop:
 		terminalToHost.Reset()
 
 		select {
-		case socketMsg := <-networkChan: // got data from socket
-			if socketMsg.Err != nil { // error handling
-				logW.Printf("#readFromSocket receive error:%s\n", socketMsg.Err)
+		case socketMsg := <-networkChan: // packet received from the network
+			if socketMsg.Err != nil {
+				fmt.Printf("#readFromSocket receive error:%s\n", socketMsg.Err)
 				continue mainLoop
 			}
 
@@ -645,21 +647,21 @@ mainLoop:
 					action := us.GetAction(i)
 					if res, ok := action.(terminal.Resize); ok {
 						//  apply only the last consecutive Resize action
-						for i < us.Size()-1 {
-							if res, ok = us.GetAction(i + 1).(terminal.Resize); ok {
-								i++
+						if i < us.Size()-1 {
+							if _, ok = us.GetAction(i + 1).(terminal.Resize); ok {
+								continue
 							}
 						}
 						// resize master
 						winSize, err := unix.IoctlGetWinsize(int(ptmx.Fd()), unix.TIOCGWINSZ)
 						if err != nil {
-							logW.Printf("#serve ioctl TIOCGWINSZ %s", err)
+							fmt.Printf("#serve ioctl TIOCGWINSZ %s", err)
 							network.StartShutdown()
 						}
 						winSize.Col = uint16(res.Width)
 						winSize.Row = uint16(res.Height)
 						if err = unix.IoctlSetWinsize(int(ptmx.Fd()), unix.TIOCSWINSZ, winSize); err != nil {
-							logW.Printf("#serve ioctl TIOCSWINSZ %s", err)
+							fmt.Printf("#serve ioctl TIOCSWINSZ %s", err)
 							network.StartShutdown()
 						}
 					}
@@ -676,9 +678,23 @@ mainLoop:
 					network.SetCurrentState(complete)
 				}
 
+				if utmpSupport {
+					if !connectedUtmp {
+						forceConnectionChangEvt = true
+					} else {
+						forceConnectionChangEvt = false
+					}
+				} else {
+					forceConnectionChangEvt = false
+				}
+
+				// HAVE_UTEMPTER - update utmp entry if we have become "connected"
+				// HAVE_SYSLOG - log connection information to syslog
+				//
 				// update utmp entry if we have become "connected"
-				if utmpSupport && (!connectedUtmp || !reflect.DeepEqual(savedAddr, network.GetRemoteAddr())) {
-					util.ClearUtmpx(pts)
+				if forceConnectionChangEvt || !reflect.DeepEqual(savedAddr, network.GetRemoteAddr()) {
+
+					util.ClearUtmpx(ptmx)
 
 					// convert savedAddr to host name
 					savedAddr = network.GetRemoteAddr()
@@ -689,18 +705,23 @@ mainLoop:
 					}
 					newHost := fmt.Sprintf("%s via %s [%d]", host, _PACKAGE_STRING, os.Getpid())
 
-					util.AddUtmpx(pts, newHost)
+					util.AddUtmpx(ptmx, newHost)
 
 					connectedUtmp = true
 				}
+
+				// TODO syslog?
 
 				// TODO child release?
 			}
 		case masterMsg := <-fileChan:
 			// input from the host needs to be fed to the terminal
 			if !network.ShutdownInProgress() {
+
+				// If the pty slave is closed, reading from the master can fail with
+				// EIO (see #264).  So we treat errors on read() like EOF.
 				if masterMsg.Err != nil {
-					logW.Println("#readFromMaster read error: ", masterMsg.Err)
+					fmt.Println("#readFromMaster report error: ", masterMsg.Err)
 					network.StartShutdown()
 				} else {
 					r := complete.Act(masterMsg.Data)
@@ -725,13 +746,13 @@ mainLoop:
 		if networkTimeoutMs > 0 && networkTimeoutMs <= timeSinceRemoteState {
 			// if network timeout is set and over networkTimeoutMs quit this session.
 			idleShutdown = true
-			logW.Printf("Network idle for %d seconds.\n", timeSinceRemoteState/1000)
+			fmt.Printf("Network idle for %d seconds.\n", timeSinceRemoteState/1000)
 		}
 
 		if signals.GotSignal(syscall.SIGUSR1) {
 			if networkSignaledTimeoutMs == 0 || networkSignaledTimeoutMs <= timeSinceRemoteState {
 				idleShutdown = true
-				logW.Printf("Network idle for %d seconds when SIGUSR1 received.\n", timeSinceRemoteState/1000)
+				fmt.Printf("Network idle for %d seconds when SIGUSR1 received.\n", timeSinceRemoteState/1000)
 			}
 		}
 
@@ -760,27 +781,23 @@ mainLoop:
 		}
 
 		// update utmp if has been more than 30 seconds since heard from client
-		if utmpSupport && connectedUtmp {
-			if timeSinceRemoteState > 30000 {
-				util.ClearUtmpx(pts)
+		if utmpSupport && connectedUtmp && timeSinceRemoteState > 30000 {
+			util.ClearUtmpx(pts)
 
-				newHost := fmt.Sprintf("%s [%d]", _PACKAGE_STRING, os.Getpid())
-				util.AddUtmpx(pts, newHost)
+			newHost := fmt.Sprintf("%s [%d]", _PACKAGE_STRING, os.Getpid())
+			util.AddUtmpx(pts, newHost)
 
-				connectedUtmp = false
-			}
+			connectedUtmp = false
 		}
 
-		if complete.SetEchoAck(now) {
+		if complete.SetEchoAck(now) && !network.ShutdownInProgress() {
 			// update client with new echo ack
-			if !network.ShutdownInProgress() {
-				network.SetCurrentState(complete)
-			}
+			network.SetCurrentState(complete)
 		}
 
-		// TODO what does this means?
+		// abort if no connection over 60 seconds
 		if network.GetRemoteStateNum() == 0 && timeSinceRemoteState >= timeoutIfNoClient {
-			logW.Printf("No connection within %d seconds\n", timeoutIfNoClient/1000)
+			fmt.Printf("No connection within %d seconds\n", timeoutIfNoClient/1000)
 			break
 		}
 
@@ -827,7 +844,7 @@ func printWelcome(pid int, port int, tty *os.File) {
 	if tty != nil {
 		inputUTF8, err := util.CheckIUTF8(int(tty.Fd()))
 		if err != nil {
-			logW.Printf("Warning: %s\n", err)
+			fmt.Printf("Warning: %s\n", err)
 		}
 
 		if !inputUTF8 {
