@@ -90,9 +90,10 @@ Options:
   -s, --server   listen with SSH ip
   -i, --ip       listen with this ip/host
   -p, --port     listen port range (default port 60000)
-  -l, --locale   key-value pairs (such as LANG=UTF-8)
+  -l, --locale   key-value pairs (such as LANG=UTF-8, you can have multiple -l options)
   -t, --term     client TERM (such as xterm-256color, or alacritty or xterm-kitty)
       --verbose  verbose output (such as 1)
+     -- command  shell command and options
 `
 
 func printUsage(hint, usage string) {
