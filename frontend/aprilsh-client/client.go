@@ -9,13 +9,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log"
-	"os"
-	"os/signal"
-	"strings"
-	"syscall"
-	"time"
-
 	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/frontend"
 	"github.com/ericwq/aprilsh/network"
@@ -24,9 +17,17 @@ import (
 	"github.com/ericwq/aprilsh/util"
 	_ "github.com/ericwq/terminfo/base"
 	"github.com/rivo/uniseg"
+	"golang.org/x/crypto/ssh"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
+	"log"
+	"os"
+	"os/signal"
+	"strconv"
+	"strings"
+	"syscall"
+	"time"
 )
 
 const (
@@ -35,6 +36,11 @@ const (
 	_APRILSH_KEY          = "APRISH_KEY"
 	_PREDICTION_DISPLAY   = "APRISH_PREDICTION_DISPLAY"
 	_PREDICTION_OVERWRITE = "APRISH_PREDICTION_OVERWRITE"
+)
+
+const (
+	_ASH_OPEN  = "open aprilsh:"
+	_ASH_CLOSE = "close aprilsh:"
 )
 
 var (
@@ -140,14 +146,95 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 type Config struct {
 	version          bool
 	target           []string // raw parameter
-	host             string
-	user             string
-	port             int
+	host             string   // target host/server
+	user             string   // target user
+	port             int      // target port
 	verbose          int
 	colors           bool
 	key              string
 	predictMode      string
 	predictOverwrite string
+}
+
+// utilize ssh to fetch the key from remote server and start a server.
+// return empty string if success, otherwise return error info.
+//
+// For alpine, ssh is provided by openssh package, nc and echo is provided by busybox.
+// % ssh ide@localhost  "echo 'open aprilsh:' | nc localhost 6000 -u -w 1"
+func (c *Config) fetchKey(password string) string {
+
+	cc := &ssh.ClientConfig{
+		User: c.user,
+		Auth: []ssh.AuthMethod{
+			ssh.Password(password),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		Timeout:         time.Duration(1) * time.Second,
+	}
+	client, err := ssh.Dial("tcp", c.host+":22", cc)
+	if err != nil {
+		fmt.Printf("Failed to dial: %s\n", err)
+	}
+	defer client.Close()
+
+	// Each ClientConn can support multiple interactive sessions,
+	// represented by a Session.
+	session, err := client.NewSession()
+	if err != nil {
+		fmt.Printf("Failed to create session: %s\n", err)
+		return err.Error()
+	}
+	defer session.Close()
+
+	// Once a Session is created, you can execute a single command on
+	// the remote side using the Run method.
+	var b []byte
+	cmd := fmt.Sprintf("echo '%s' | nc localhost %d -u -w 1", _ASH_OPEN, c.port)
+	// fmt.Printf("execute cmd %s\n", cmd)
+	if b, err = session.Output(cmd); err != nil {
+		fmt.Printf("Failed to run: %s\n", err)
+		return err.Error()
+	}
+	out := strings.TrimSpace(string(b))
+
+	/*
+		args := []string{
+			fmt.Sprintf("%s@%s", c.user, c.host),
+			fmt.Sprintf("\"echo 'open aprilsh:' | nc localhost %d -u -w 1\"", c.port),
+		}
+
+		out, err := exec.Command("ssh", args...).Output()
+		if err != nil {
+			return err.Error()
+		}
+	*/
+
+	// open aprilsh:60001,31kR3xgfmNxhDESXQ8VIQw==
+	body := strings.Split(strings.TrimSuffix(string(out), "\n"), ":")
+	if len(body) != 2 {
+		return "malform response."
+	}
+
+	// parse port and key
+	idx := strings.Index(body[1], ",")
+	if idx > 0 && idx+1 < len(body[1]) {
+		p, e := strconv.Atoi(body[1][:idx])
+		if e != nil {
+			return "can't get port"
+		}
+		c.port = p
+
+		idx++
+		if encrypt.NewBase64Key2(body[1][idx:]) != nil {
+			c.key = body[1][idx:]
+		} else {
+			return "can't get key"
+		}
+
+		// fmt.Printf("fetchKey port=%d, key=%s\n", c.port, c.key)
+	}
+
+	return ""
 }
 
 func (c *Config) buildConfig() (string, bool) {

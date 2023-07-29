@@ -536,7 +536,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		// start the udp server, serve the udp request
 		go conf.serve(ptmx, pts, terminal, network, networkTimeout, networkSignaledTimeout)
 		whChan <- &workhorse{shell, ptmx}
-		logI.Printf("#runWorker start listening on :%s\n", conf.desiredPort)
+		fmt.Printf("#runWorker start listening on :%s\n", conf.desiredPort)
 
 		// wait for the shell to finish.
 		// fmt.Printf("#runWorker shell.Wait() %p %v\n", shell, shell)
