@@ -173,7 +173,7 @@ func (c *Config) fetchKey(password string) string {
 	}
 	client, err := ssh.Dial("tcp", c.host+":22", cc)
 	if err != nil {
-		fmt.Printf("Failed to dial: %s\n", err)
+		fmt.Printf("#fetchKey Failed to dial: %s\n", err)
 	}
 	defer client.Close()
 
@@ -181,7 +181,7 @@ func (c *Config) fetchKey(password string) string {
 	// represented by a Session.
 	session, err := client.NewSession()
 	if err != nil {
-		fmt.Printf("Failed to create session: %s\n", err)
+		fmt.Printf("#fetchKey Failed to create session: %s\n", err)
 		return err.Error()
 	}
 	defer session.Close()
@@ -192,7 +192,7 @@ func (c *Config) fetchKey(password string) string {
 	cmd := fmt.Sprintf("echo '%s' | nc localhost %d -u -w 1", _ASH_OPEN, c.port)
 	// fmt.Printf("execute cmd %s\n", cmd)
 	if b, err = session.Output(cmd); err != nil {
-		fmt.Printf("Failed to run: %s\n", err)
+		fmt.Printf("#fetchKey Failed to run: %s\n", err)
 		return err.Error()
 	}
 	out := strings.TrimSpace(string(b))
@@ -212,6 +212,7 @@ func (c *Config) fetchKey(password string) string {
 	// open aprilsh:60001,31kR3xgfmNxhDESXQ8VIQw==
 	body := strings.Split(strings.TrimSuffix(string(out), "\n"), ":")
 	if len(body) != 2 {
+		fmt.Printf("#fetchKey body=%s\n", body)
 		return "malform response."
 	}
 
