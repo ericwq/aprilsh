@@ -1,10 +1,13 @@
 package main
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/creack/pty"
 )
 
 func TestPrintColors(t *testing.T) {
@@ -226,19 +229,91 @@ func TestBuildConfig(t *testing.T) {
 
 func TestFetchKey(t *testing.T) {
 	tc := []struct {
-		label  string
-		conf   *Config
-		pwd    string
-		expect string
+		label string
+		conf  *Config
+		pwd   string
+		msg   string
 	}{
-		{"normal response", &Config{user: "ide", host: "localhost", port: 60000}, "password", ""},
+		{"wrong host", &Config{user: "ide", host: "wrong", port: 60000}, "password", "can't dial host"},
 	}
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			got := v.conf.fetchKey(v.pwd)
-			if got != v.expect {
-				t.Errorf("#test %q expect %q, got %q\n", v.label, v.expect, got)
+			if !strings.Contains(got.Error(), v.msg) {
+				t.Errorf("#test %q expect %q contains %q.\n", v.label, got, v.msg)
 			}
 		})
+	}
+}
+
+func TestGetPassword(t *testing.T) {
+
+	tc := []struct {
+		label  string
+		conf   *Config
+		pwd    string //input
+		expect string
+	}{
+		{"normal get password", &Config{}, "password\n", "password"},
+		{"just CR", &Config{}, "\n", ""},
+	}
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			// intercept stdout
+			saveStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+
+			// get password require pts file.
+			ptmx, pts, err := pty.Open()
+			if err != nil {
+				err = errors.New("invalid parameter")
+			}
+
+			// prepare input data
+			ptmx.WriteString(v.pwd)
+
+			got, err := v.conf.getPassword(pts)
+
+			ptmx.Close()
+			pts.Close()
+
+			// restore stdout
+			w.Close()
+			out, _ := ioutil.ReadAll(r)
+			os.Stdout = saveStdout
+			r.Close()
+
+			// validate the result.
+			if err != nil {
+				t.Errorf("#test %q report %s\n", v.label, err)
+			}
+			if got != v.expect {
+				t.Errorf("#test %q expect %q, got %q. out=%s\n", v.label, v.expect, got, out)
+			}
+
+		})
+	}
+}
+
+func TestGetPasswordFail(t *testing.T) {
+	conf := &Config{}
+
+	// intercept stdout
+	saveStdout := os.Stdout
+	r, w, _ := os.Pipe()
+	os.Stdout = w
+
+	got, err := conf.getPassword(r)
+
+	// restore stdout
+	w.Close()
+	out, _ := ioutil.ReadAll(r)
+	os.Stdout = saveStdout
+	r.Close()
+
+	// validate, for non-tty input, getPassword return err: inappropriate ioctl for device
+	if err == nil {
+		t.Errorf("#test getPassword fail expt %q, got=%q, err=%s, out=%s\n", "", got, err, out)
 	}
 }

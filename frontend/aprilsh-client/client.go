@@ -156,12 +156,23 @@ type Config struct {
 	predictOverwrite string
 }
 
+// read password from specified input source
+func (c *Config) getPassword(in *os.File) (string, error) {
+	fmt.Print("Password: ")
+	bytepw, err := term.ReadPassword(int(in.Fd()))
+	if err != nil {
+		return "", err
+	}
+
+	return string(bytepw), nil
+}
+
 // utilize ssh to fetch the key from remote server and start a server.
 // return empty string if success, otherwise return error info.
 //
 // For alpine, ssh is provided by openssh package, nc and echo is provided by busybox.
 // % ssh ide@localhost  "echo 'open aprilsh:' | nc localhost 6000 -u -w 1"
-func (c *Config) fetchKey(password string) string {
+func (c *Config) fetchKey(password string) error {
 
 	cc := &ssh.ClientConfig{
 		User: c.user,
@@ -173,7 +184,7 @@ func (c *Config) fetchKey(password string) string {
 	}
 	client, err := ssh.Dial("tcp", c.host+":22", cc)
 	if err != nil {
-		fmt.Printf("#fetchKey Failed to dial: %s\n", err)
+		return errors.New(fmt.Sprintf("can't dial host (%s)", c.host))
 	}
 	defer client.Close()
 
@@ -181,8 +192,7 @@ func (c *Config) fetchKey(password string) string {
 	// represented by a Session.
 	session, err := client.NewSession()
 	if err != nil {
-		fmt.Printf("#fetchKey Failed to create session: %s\n", err)
-		return err.Error()
+		return err
 	}
 	defer session.Close()
 
@@ -192,8 +202,7 @@ func (c *Config) fetchKey(password string) string {
 	cmd := fmt.Sprintf("echo '%s' | nc localhost %d -u -w 1", _ASH_OPEN, c.port)
 	// fmt.Printf("execute cmd %s\n", cmd)
 	if b, err = session.Output(cmd); err != nil {
-		fmt.Printf("#fetchKey Failed to run: %s\n", err)
-		return err.Error()
+		return err
 	}
 	out := strings.TrimSpace(string(b))
 
@@ -212,8 +221,8 @@ func (c *Config) fetchKey(password string) string {
 	// open aprilsh:60001,31kR3xgfmNxhDESXQ8VIQw==
 	body := strings.Split(strings.TrimSuffix(string(out), "\n"), ":")
 	if len(body) != 2 {
-		fmt.Printf("#fetchKey body=%s\n", body)
-		return "malform response."
+		// fmt.Printf("#fetchKey out=%s\n", out)
+		return errors.New("malform response")
 	}
 
 	// parse port and key
@@ -221,7 +230,7 @@ func (c *Config) fetchKey(password string) string {
 	if idx > 0 && idx+1 < len(body[1]) {
 		p, e := strconv.Atoi(body[1][:idx])
 		if e != nil {
-			return "can't get port"
+			return errors.New("can't get port")
 		}
 		c.port = p
 
@@ -229,13 +238,13 @@ func (c *Config) fetchKey(password string) string {
 		if encrypt.NewBase64Key2(body[1][idx:]) != nil {
 			c.key = body[1][idx:]
 		} else {
-			return "can't get key"
+			return errors.New("can't get key")
 		}
 
 		// fmt.Printf("fetchKey port=%d, key=%s\n", c.port, c.key)
 	}
 
-	return ""
+	return nil
 }
 
 func (c *Config) buildConfig() (string, bool) {
