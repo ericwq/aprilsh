@@ -106,11 +106,16 @@ func printColors() {
 	}
 }
 
-func printUsage(hint, usage string) {
+func printUsage(hint string, usage ...string) {
 	if hint != "" {
-		fmt.Printf("Hints: %s\n%s", hint, usage)
-	} else {
-		fmt.Printf("%s", usage)
+		var header string
+		if len(usage) != 0 {
+			header = "Hints: "
+		}
+		fmt.Printf("%s%s\n", header, hint)
+	}
+	if len(usage) > 0 {
+		fmt.Printf("%s", usage[0])
 	}
 }
 
@@ -160,6 +165,8 @@ type Config struct {
 func (c *Config) getPassword(in *os.File) (string, error) {
 	fmt.Print("Password: ")
 	bytepw, err := term.ReadPassword(int(in.Fd()))
+	defer fmt.Printf("\n")
+
 	if err != nil {
 		return "", err
 	}
@@ -184,7 +191,7 @@ func (c *Config) fetchKey(password string) error {
 	}
 	client, err := ssh.Dial("tcp", c.host+":22", cc)
 	if err != nil {
-		return errors.New(fmt.Sprintf("can't dial host (%s)", c.host))
+		return err
 	}
 	defer client.Close()
 
@@ -276,22 +283,25 @@ func (c *Config) buildConfig() (string, bool) {
 	c.user = c.target[0][:idx]
 
 	// Read key from environment
-	c.key = os.Getenv(_APRILSH_KEY)
-	if c.key == "" {
-		return _APRILSH_KEY + " environment variable not found.", false
-	}
-	os.Unsetenv(_APRILSH_KEY)
+	// c.key = os.Getenv(_APRILSH_KEY)
+	// if c.key == "" {
+	// 	return _APRILSH_KEY + " environment variable not found.", false
+	// }
+	// os.Unsetenv(_APRILSH_KEY)
 
-	// Read prediction preference
+	// Read prediction preference, predictMode can be empty
 	foundInScope := false
 	c.predictMode = strings.ToLower(os.Getenv(_PREDICTION_DISPLAY))
-	for i := range predictionValues {
-		if predictionValues[i] == c.predictMode {
-			foundInScope = true
+	if c.predictMode != "" {
+		// if predictMode is not empty string, it's must be one of predictionValues
+		for i := range predictionValues {
+			if predictionValues[i] == c.predictMode {
+				foundInScope = true
+			}
 		}
-	}
-	if !foundInScope {
-		return _PREDICTION_DISPLAY + " unknown prediction mode.", false
+		if !foundInScope {
+			return _PREDICTION_DISPLAY + " unknown prediction mode.", false
+		}
 	}
 
 	// Read prediction insertion preference. can be ""
@@ -326,6 +336,17 @@ func main() {
 		return
 	}
 
+	// the Stdin, Stderr, Stdout are all set to pts/N
+	pwd, err := conf.getPassword(os.Stdin)
+	if err != nil {
+		printUsage(err.Error())
+		return
+	}
+	if err = conf.fetchKey(pwd); err != nil {
+		printUsage(err.Error())
+		return
+	}
+
 	util.SetNativeLocale()
 
 	client := newSTMClient(conf)
@@ -334,9 +355,8 @@ func main() {
 		return
 	}
 
-	// the Stdin, Stderr, Stdout are all set to pts/N
 	client.main()
-	fmt.Printf("[%s is exiting.]", _COMMAND_NAME)
+	fmt.Printf("\n%s is exiting.\n", _COMMAND_NAME)
 }
 
 type STMClient struct {
@@ -393,17 +413,17 @@ func newSTMClient(config *Config) *STMClient {
 	sc.cleanShutdown = false
 	sc.verbose = config.verbose
 
-	switch config.predictMode {
-	case predictionValues[0]: // always
-		sc.overlays.GetPredictionEngine().SetDisplayPreference(frontend.Always)
-	case predictionValues[1]: // never
-		sc.overlays.GetPredictionEngine().SetDisplayPreference(frontend.Never)
-	case predictionValues[2]: // adaptive
-		sc.overlays.GetPredictionEngine().SetDisplayPreference(frontend.Adaptive)
-	case predictionValues[3]: // experimental
-		sc.overlays.GetPredictionEngine().SetDisplayPreference(frontend.Experimental)
-	default:
-		return nil
+	if config.predictMode != "" {
+		switch config.predictMode {
+		case predictionValues[0]: // always
+			sc.overlays.GetPredictionEngine().SetDisplayPreference(frontend.Always)
+		case predictionValues[1]: // never
+			sc.overlays.GetPredictionEngine().SetDisplayPreference(frontend.Never)
+		case predictionValues[2]: // adaptive
+			sc.overlays.GetPredictionEngine().SetDisplayPreference(frontend.Adaptive)
+		case predictionValues[3]: // experimental
+			sc.overlays.GetPredictionEngine().SetDisplayPreference(frontend.Experimental)
+		}
 	}
 
 	if config.predictOverwrite == "yes" {
