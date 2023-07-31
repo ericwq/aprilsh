@@ -219,8 +219,8 @@ func (c *Config) fetchKey(password string) error {
 	*/
 
 	// open aprilsh:60001,31kR3xgfmNxhDESXQ8VIQw==
-	body := strings.Split(strings.TrimSuffix(string(out), "\n"), ":")
-	if len(body) != 2 {
+	body := strings.Split(strings.TrimSuffix(out, "\n"), ":")
+	if len(body) != 2 || strings.HasPrefix(_ASH_OPEN, body[0]) {
 		// fmt.Printf("#fetchKey out=%s\n", out)
 		return errors.New("malform response")
 	}
@@ -240,8 +240,9 @@ func (c *Config) fetchKey(password string) error {
 		} else {
 			return errors.New("can't get key")
 		}
-
 		// fmt.Printf("fetchKey port=%d, key=%s\n", c.port, c.key)
+	} else {
+		return errors.New("malform response")
 	}
 
 	return nil
