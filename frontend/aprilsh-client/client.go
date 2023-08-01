@@ -91,12 +91,7 @@ func printColors() {
 			if err == nil {
 				fmt.Printf("%s %d\n", value, ti.Colors)
 			} else {
-				// ti, _, err = dynamic.LoadTerminfo(value)
-				// if err == nil {
-				// 	fmt.Printf("%s %d (dynamic)\n", value, ti.Colors)
-				// } else {
 				fmt.Printf("Dynamic load terminfo failed. %s Install infocmp (ncurses package) first.\n", err)
-				// }
 			}
 		} else {
 			fmt.Println("The TERM is empty string.")
