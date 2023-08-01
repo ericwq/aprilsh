@@ -274,13 +274,15 @@ func (c *Config) buildConfig() (string, bool) {
 		return "only one target parameter (User@Server) is allowed.", false
 	}
 
-	// validate server parameter
+	// check target is in the form of usr@host parameter
 	idx := strings.Index(c.target[0], "@")
-	if idx == -1 || idx < 1 || idx == len(c.target[0])-1 {
+	if idx > 0 && idx < len(c.target[0])-1 {
+		c.host = c.target[0][idx+1:]
+		c.user = c.target[0][:idx]
+	} else {
 		return "target parameter should be in the form of User@Server", false
+
 	}
-	c.host = c.target[0][idx+1:]
-	c.user = c.target[0][:idx]
 
 	// Read key from environment
 	// c.key = os.Getenv(_APRILSH_KEY)
