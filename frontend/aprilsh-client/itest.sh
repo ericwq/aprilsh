@@ -6,6 +6,7 @@
 # https://dustinspecker.com/posts/go-combined-unit-integration-code-coverage/
 #
 BUILDARGS="$*"
+PKG="github.com/ericwq/aprilsh/frontend/aprilsh-client"
 #
 # Terminate the test if any command below does not complete successfully.
 #
@@ -13,42 +14,53 @@ set -e
 #
 # Build server binary for testing purposes.
 #
-cd ~/develop/aprilsh/frontend/aprilsh-server/ 
-go build -cover -o ~/develop/aprilsh/frontend/aprilsh-client/server .
+cd ../aprilsh-server/
+go build -cover -o ../aprilsh-client/server .
 #
 # Build client binary for testing purposes.
 #
 cd ../aprilsh-client/ 
-go build -cover -o client client.go
+go build -cover -o client .
 #
 # Setup
 #
-rm -rf covdata
-mkdir covdata
+rm -rf coverage
+mkdir -p coverage/unit -p coverage/int
+#
+# Run unit test to collect coverage
+#
+go test -cover . -args -test.gocoverdir=./coverage/unit
 #
 # start the server
 #
-GOCOVERDIR=covdata ./server &
-server_id =`ps -o pid,user,comm | grep ide | grep -v 'server' | grep server`
+GOCOVERDIR=./coverage/int ./server &
+server_id=$!
 
 # 
 # start client
 #
-GOCOVERDIR=covdata ./client 
-client_id =`ps -o pid,user,comm | grep ide | grep -v 'client' | grep server`
-
+GOCOVERDIR=./coverage/int ./client
+client_id=$!
+sleep 2
 # 
 # clean the server and client
 #
+echo "kill server[$server_id]"
+echo "kill client[$client_id]"
 kill -9 $server_id
-kill -9 $client_id
+# kill -9 $client_id
 
 # 
-# Reporting percent statements covered
+# Retrieve total coverage
 #
-go tool covdata percent -i=covdata
+go tool covdata percent -i=./coverage/unit,./coverage/int -pkg=$PKG
 
 # 
 # Converting to legacy text format
 #
-go tool covdata textfmt -i=covdata -o profile.txt
+go tool covdata textfmt -i=./coverage/unit,./coverage/int -o coverage/profile -pkg=$PKG
+
+#
+# View total coverage
+#
+go tool cover -func coverage/profile

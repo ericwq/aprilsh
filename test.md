@@ -39,3 +39,32 @@ go test -covermode=count -coverprofile=coverage.out
 % apk add libxmu-dev mesa-dev freetype-dev
 % apk add musl-locales-lang musl-locales utmps-dev
 ```
+## Combined Unit and Integration Code Coverage
+
+```sh
+rm -rf coverage
+mkdir -p coverage/unit -p coverage/int
+```
+### Run unit tests to collect coverage
+
+```sh
+go test -cover . -args -test.gocoverdir=./coverage/unit
+```
+### Retrieve total coverage
+
+```sh
+go tool covdata percent -i=./coverage/unit,./coverage/int
+```
+
+### Convert total coverage to cover profile
+
+```sh
+go tool covdata textfmt -i=./coverage/unit,./coverage/int -o coverage/profile
+```
+
+### View total coverage
+
+```sh
+go tool cover -func coverage/profile
+go tool cover -html coverage/profile
+```
