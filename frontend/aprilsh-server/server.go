@@ -1100,7 +1100,7 @@ func (m *mainSrv) run(conf *Config) {
 	defer func() {
 		m.conn.Close()
 		m.wg.Done()
-		fmt.Printf("%s stop listening on :%d.\n", _COMMAND_NAME, m.port)
+		fmt.Printf("%s  stop listening on :%d.\n", _COMMAND_NAME, m.port)
 	}()
 
 	buf := make([]byte, 128)
@@ -1130,6 +1130,7 @@ func (m *mainSrv) run(conf *Config) {
 			} else { // kill the workers
 				for i := range m.workers {
 					m.workers[i].shell.Kill()
+					fmt.Printf("kill %d\n", i)
 				}
 				return
 			}
