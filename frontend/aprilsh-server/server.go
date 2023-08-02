@@ -82,18 +82,19 @@ func printVersion() {
 
 // [-s] [-v] [-i LOCALADDR] [-p PORT[:PORT2]] [-c COLORS] [-l NAME=VALUE] [-- COMMAND...]
 var usage = `Usage:
-  ` + _COMMAND_NAME + ` [-v] [-h]
+  ` + _COMMAND_NAME + ` [-v] [-h] [--auto N]
   ` + _COMMAND_NAME + ` [-s] [--verbose V] [-i LOCALADDR] [-p PORT[:PORT2]] [-l NAME=VALUE] [-t TERM] [-- command...]
 Options:
   -h, --help     print this message
   -v, --version  print version information
+  -a, --auto     auto stop the server after N seconds
   -s, --server   listen with SSH ip
   -i, --ip       listen with this ip/host
   -p, --port     listen port range (default port 60000)
   -l, --locale   key-value pairs (such as LANG=UTF-8, you can have multiple -l options)
   -t, --term     client TERM (such as xterm-256color, or alacritty or xterm-kitty)
       --verbose  verbose output (such as 1)
-     -- command  shell command and options
+     -- command  shell command and options (note the space before command)
 `
 
 func printUsage(hint, usage string) {
@@ -233,6 +234,9 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 
 	flagSet.IntVar(&conf.verbose, "verbose", 0, "verbose output")
 
+	flagSet.IntVar(&conf.autoStop, "auto", 0, "auto stop after N seconds")
+	flagSet.IntVar(&conf.autoStop, "a", 0, "auto stop after N seconds")
+
 	flagSet.BoolVar(&conf.version, "version", false, "print version information")
 	flagSet.BoolVar(&conf.version, "v", false, "print version information")
 
@@ -275,6 +279,7 @@ type Config struct {
 	desiredPort string     // server port
 	locales     localeFlag // localse environment variables
 	term        string     // client TERM
+	autoStop    int        // auto stop after N seconds
 
 	commandPath string   // shell command path (absolute path)
 	commandArgv []string // the positional (non-flag) command-line arguments.
@@ -1034,6 +1039,12 @@ func (m *mainSrv) start(conf *Config) {
 	// fmt.Printf("#start listening on %s, next port is %d\n", conf.desiredPort, m.nextWorkerPort+1)
 	m.wg.Add(1)
 	go m.run(conf)
+
+	if conf.autoStop > 0 {
+		time.AfterFunc(time.Duration(5)*time.Second, func() {
+			m.downChan <- true
+		})
+	}
 }
 
 func (m *mainSrv) handler() {
@@ -1089,7 +1100,7 @@ func (m *mainSrv) run(conf *Config) {
 	defer func() {
 		m.conn.Close()
 		m.wg.Done()
-		logI.Printf("%s stop listening on :%d.", _COMMAND_NAME, m.port)
+		fmt.Printf("%s stop listening on :%d.\n", _COMMAND_NAME, m.port)
 	}()
 
 	buf := make([]byte, 128)
@@ -1113,8 +1124,15 @@ func (m *mainSrv) run(conf *Config) {
 		default:
 		}
 
-		if len(m.workers) == 0 && shutdown {
-			return
+		if shutdown {
+			if len(m.workers) == 0 {
+				return
+			} else { // kill the workers
+				for i := range m.workers {
+					m.workers[i].shell.Kill()
+				}
+				return
+			}
 		}
 
 		// set read time out: 200ms

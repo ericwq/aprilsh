@@ -55,7 +55,7 @@ echo "---start client"
 #
 echo "kill server[$server_id]"
 echo "kill client[$client_id]"
-kill -9 $server_id
+kill $server_id
 # kill -9 $client_id
 
 # 
