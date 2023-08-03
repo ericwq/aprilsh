@@ -46,7 +46,7 @@ echo "---start server"
 # 
 # start client
 #
-GOCOVERDIR=./coverage/int ./client
+GOCOVERDIR=./coverage/int ./client ide@localhost
 client_id=$!
 sleep 2
 echo "---start client"

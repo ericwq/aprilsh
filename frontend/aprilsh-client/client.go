@@ -57,6 +57,7 @@ Options:
   -c, --colors   print the number of colors of terminal
   -p, --port     server port (default 60000)
       --verbose  verbose output mode
+      --pwd      ssh password
 `
 	predictionValues = []string{"always", "never", "adaptive", "experimental"}
 
@@ -133,6 +134,8 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.BoolVar(&conf.colors, "color", false, "terminal number of colors")
 	flagSet.BoolVar(&conf.colors, "c", false, "terminal number of colors")
 
+	flagSet.StringVar(&conf.pwd, "pwd", "", "ssh password")
+
 	err = flagSet.Parse(args)
 	if err != nil {
 		return nil, buf.String(), err
@@ -154,6 +157,7 @@ type Config struct {
 	key              string
 	predictMode      string
 	predictOverwrite string
+	pwd              string // user password for ssh login
 }
 
 // read password from specified input source
@@ -334,12 +338,14 @@ func main() {
 	}
 
 	// the Stdin, Stderr, Stdout are all set to pts/N
-	pwd, err := conf.getPassword(os.Stdin)
-	if err != nil {
-		printUsage(err.Error())
-		return
+	if conf.pwd == "" {
+		conf.pwd, err = conf.getPassword(os.Stdin)
+		if err != nil {
+			printUsage(err.Error())
+			return
+		}
 	}
-	if err = conf.fetchKey(pwd); err != nil {
+	if err = conf.fetchKey(conf.pwd); err != nil {
 		printUsage(err.Error())
 		return
 	}
