@@ -63,7 +63,7 @@ func ReadFromFile(timeout int, msgChan chan Message, doneChan chan any, fReader 
 			msgChan <- Message{nil, string(buf[:bytesRead])}
 		} else if errors.Is(err, os.ErrDeadlineExceeded) {
 			// timeout
-			msgChan <- Message{err, ""}
+			// msgChan <- Message{err, ""}
 			continue
 		} else {
 			// EOF goes here
@@ -78,7 +78,7 @@ func ReadFromFile(timeout int, msgChan chan Message, doneChan chan any, fReader 
 // to caller via msgChan, including error info if available. doneChan channel is used to stop
 // the network receiver.
 //
-// Note the caller must consume the last read message after it send the shutdown message. 
+// Note the caller must consume the last read message after it send the shutdown message.
 // network read error can also stop the receiver.
 func ReadFromNetwork(timeout int, msgChan chan Message, doneChan chan any, network DeadLineReceiver) {
 	var err error
@@ -96,7 +96,7 @@ func ReadFromNetwork(timeout int, msgChan chan Message, doneChan chan any, netwo
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
 				// read timeout
-				msgChan <- Message{err, ""}
+				// msgChan <- Message{err, ""}
 				continue
 			} else {
 				// EOF goes here
