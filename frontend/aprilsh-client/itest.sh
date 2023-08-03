@@ -5,12 +5,13 @@
 # https://go.dev/blog/integration-test-coverage
 # https://dustinspecker.com/posts/go-combined-unit-integration-code-coverage/
 #
-BUILDARGS="$*"
+# BUILDARGS="$*"
 #
 # comma seperated package list
 #
-PKG="github.com/ericwq/aprilsh/frontend/aprilsh-client"
-PKGARGS="-coverpkg=$PKG"
+PKGC="github.com/ericwq/aprilsh/frontend/aprilsh-client"
+PKGS="github.com/ericwq/aprilsh/frontend/aprilsh-server"
+PKG="$PKGC,$PKGS"
 #
 # Terminate the test if any command below does not complete successfully.
 #
@@ -19,13 +20,13 @@ set -e
 # Build server binary for testing purposes.
 #
 cd ../aprilsh-server/
-go build -cover -o ../aprilsh-client/server .
+go build -cover -coverpkg=$PKGS -o ../aprilsh-client/server .
 echo "---build server"
 #
 # Build client binary for testing purposes.
 #
 cd ../aprilsh-client/ 
-go build -cover $PKGARGS -o client .
+go build -cover -coverpkg=$PKGC -o client .
 echo "---build client"
 #
 # Setup
@@ -40,13 +41,13 @@ echo "---perform unit test"
 #
 # start the server
 #
-GOCOVERDIR=./coverage/int ./server &
+GOCOVERDIR=./coverage/int ./server -a 2 &
 server_id=$!
 echo "---start server"
 # 
 # start client
 #
-GOCOVERDIR=./coverage/int ./client ide@localhost
+GOCOVERDIR=./coverage/int ./client -pwd password ide@localhost
 client_id=$!
 sleep 2
 echo "---start client"

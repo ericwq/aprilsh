@@ -206,7 +206,7 @@ func (m *mockDeadLineReceiver) Recv() (err error) {
 			return
 		} else if m.timeout[m.round] == m.limit {
 			err = os.ErrPermission
-			// fmt.Printf("#mockDeadLineReader Read round=%d, n=%d, err=%S\n", m.round, n, err)
+			// fmt.Printf("#mockDeadLineReceiver Read round=%d, n=%d, err=%S\n", m.round, n, err)
 			return
 		}
 		// normal read

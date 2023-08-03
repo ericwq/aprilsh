@@ -226,8 +226,7 @@ func (c *Config) fetchKey(password string) error {
 
 	// open aprilsh:60001,31kR3xgfmNxhDESXQ8VIQw==
 	body := strings.Split(strings.TrimSuffix(out, "\n"), ":")
-	if len(body) != 2 || strings.HasPrefix(_ASH_OPEN, body[0]) {
-		// fmt.Printf("#fetchKey out=%s\n", out)
+	if len(body) != 2 || !strings.HasPrefix(_ASH_OPEN, body[0]) {
 		return errors.New("malform response")
 	}
 
@@ -906,9 +905,14 @@ mainLoop:
 	}
 
 	// consume last message to release the reader
-	<-fileChan
-	<-networkChan
-
+	select {
+	case <-fileChan:
+	default:
+	}
+	select {
+	case <-networkChan:
+	default:
+	}
 	// shutdown the goroutine
 	shutdownChan <- true
 	fileDownChan <- "done"

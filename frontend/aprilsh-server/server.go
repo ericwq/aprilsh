@@ -811,8 +811,14 @@ mainLoop:
 	}
 
 	// consume last message to release the reader
-	<-fileChan
-	<-networkChan
+	select {
+	case <-fileChan:
+	default:
+	}
+	select {
+	case <-networkChan:
+	default:
+	}
 
 	// shutdown the goroutine
 	shutdownChan <- true
