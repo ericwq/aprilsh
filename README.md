@@ -83,3 +83,4 @@ Use the above command to add musl locales support and utmps support for alpine. 
 - [wezterm Escape Sequences](https://wezfurlong.org/wezterm/escape-sequences.html)
 - [Linux man pages](https://linux.die.net/man/)
 - [C++ Reference](http://www.cplusplus.com/reference/)
+- [Linux logging guide: Understanding syslog, rsyslog, syslog-ng, journald](https://ikshitij.com/linux-logging-guide)
