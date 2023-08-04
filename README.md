@@ -54,7 +54,8 @@ The project name `Aprilsh` is derived from `April+sh`. This project started in s
 - 2023/Jun/25: re-structure cmd directory.
 - 2023/Jul/12: prepare client and server. fix bug in overlay.
 - 2023/Jul/19: refine frontend, terminal, util package for test coverage.
-- 2023/July24: refine network package for test coverage.
+- 2023/Jul/24: refine network package for test coverage.
+- 2023/Aug/01: start integration test for client.
 
 ## build dependency
 

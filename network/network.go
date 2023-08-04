@@ -730,8 +730,8 @@ func (c *Connection) recv() (payload string, err error) {
 	for i := range c.socks {
 		payload, err = c.recvOne(c.socks[i].(udpConn))
 		if err != nil {
-			if errors.Is(err, os.ErrDeadlineExceeded) && c.server {
-				return "", err // only server connection return read timeout.
+			if errors.Is(err, os.ErrDeadlineExceeded) {
+				return "", err
 			} else if errors.Is(err, unix.EWOULDBLOCK) {
 				// EAGAIN is processed by go netpoll
 				continue
