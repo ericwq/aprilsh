@@ -156,7 +156,6 @@ func TestMainRun_Parameters(t *testing.T) {
 			saveStdout := os.Stdout
 			r, w, _ := os.Pipe()
 			os.Stdout = w
-			initLog()
 
 			// prepare data
 			os.Args = v.args

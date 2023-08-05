@@ -9,6 +9,13 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"os"
+	"os/signal"
+	"strconv"
+	"strings"
+	"syscall"
+	"time"
+
 	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/frontend"
 	"github.com/ericwq/aprilsh/network"
@@ -18,16 +25,10 @@ import (
 	_ "github.com/ericwq/terminfo/base"
 	"github.com/rivo/uniseg"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/exp/slog"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
-	"log"
-	"os"
-	"os/signal"
-	"strconv"
-	"strings"
-	"syscall"
-	"time"
 )
 
 const (
@@ -44,8 +45,7 @@ const (
 )
 
 var (
-	logW         *log.Logger
-	logI         *log.Logger
+	// logW         *slog.Logger
 	BuildVersion = "0.1.0" // ready for ldflags
 
 	usage = `Usage:
@@ -63,15 +63,6 @@ Options:
 
 	signals frontend.Signals
 )
-
-func init() {
-	initLog()
-}
-
-func initLog() {
-	logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-	logI = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
-}
 
 func printVersion() {
 	fmt.Printf("%s (%s) [build %s]\n\n", _COMMAND_NAME, _PACKAGE_STRING, BuildVersion)
@@ -820,13 +811,15 @@ mainLoop:
 		select {
 		case networkMsg := <-networkChan: // got data from socket
 			if networkMsg.Err != nil { // error handling
-				logW.Printf("#readFromSocket receive error:%s\n", networkMsg.Err)
+				// logW.Printf("#readFromSocket receive error:%s\n", networkMsg.Err)
+				util.Log.With(slog.Group("readFromSocket")).With("error", networkMsg.Err).Warn("receive from network")
 				continue mainLoop
 			}
 			sc.processNetworkInput()
 		case fileMsg := <-fileChan: // got data from file
 			if fileMsg.Err != nil {
-				logW.Println("#readFromMaster read error: ", fileMsg.Err)
+				// logW.Println("#readFromMaster read error: ", fileMsg.Err)
+				util.Log.With(slog.Group("readFromSocket")).With("error", fileMsg.Err).Warn("receive from network")
 				sc.network.StartShutdown()
 			}
 
