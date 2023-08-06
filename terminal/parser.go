@@ -1185,7 +1185,9 @@ func (p *Parser) handle_DCS() (hd *Handler) {
 			hdl_dcs_decrqss(emu, arg)
 		}
 	} else {
-		p.logU.Printf("DCS: %q", arg)
+		// p.logU.Printf("DCS: %q", arg)
+		util.Log.With(slog.Group("terminal")).With("method", "Parser.handle_DCS").With("unimplement", "DCS").
+			With("arg", arg).Debug("DCS")
 	}
 
 	return hd
@@ -1693,24 +1695,24 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 				Debug("S7C1T: Send 7-bit controls")
 			p.setState(InputState_Normal)
 		case 'G':
-			p.logU.Println("S8C1T: Send 8-bit controls")
-			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").
-				Debug("")
+			// p.logU.Println("S8C1T: Send 8-bit controls")
+			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").With("unimplement", "ESC space").
+				Debug("S8C1T: Send 8-bit controls")
 			p.setState(InputState_Normal)
 		case 'L':
-			p.logU.Println("Set ANSI conformance level 1")
-			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").
-				Debug("")
+			// p.logU.Println("Set ANSI conformance level 1")
+			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").With("unimplement", "ESC space").
+				Debug("Set ANSI conformance level 1")
 			p.setState(InputState_Normal)
 		case 'M':
-			p.logU.Println("Set ANSI conformance level 2")
-			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").
-				Debug("")
+			// p.logU.Println("Set ANSI conformance level 2")
+			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").With("unimplement", "ESC space").
+				Debug("Set ANSI conformance level 2")
 			p.setState(InputState_Normal)
 		case 'N':
-			p.logU.Println("Set ANSI conformance level 3")
-			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").
-				Debug("")
+			// p.logU.Println("Set ANSI conformance level 3")
+			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").With("unimplement", "ESC space").
+				Debug("Set ANSI conformance level 3")
 			p.setState(InputState_Normal)
 		default:
 			p.unhandledInput()
@@ -1719,22 +1721,22 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 		switch ch {
 		case '3':
 			// p.logU.Println("DECDHL: Double-height, top half.")
-			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").
+			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").With("unimplement", "ESC hash").
 				Debug("DECDHL: Double-height, top half")
 			p.setState(InputState_Normal)
 		case '4':
 			// p.logU.Println("DECDHL: Double-height, bottom half.")
-			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").
+			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").With("unimplement", "ESC hash").
 				Debug("DECDHL: Double-height, bottom half")
 			p.setState(InputState_Normal)
 		case '5':
 			// p.logU.Println("DECSWL: Single-width line.")
-			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").
+			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").With("unimplement", "ESC hash").
 				Debug("DECSWL: Single-width line")
 			p.setState(InputState_Normal)
 		case '6':
 			// p.logU.Println("DECDWL: Double-width line.")
-			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").
+			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").With("unimplement", "ESC hash").
 				Debug("DECDWL: Double-width line")
 			p.setState(InputState_Normal)
 		case '8':
