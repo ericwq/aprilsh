@@ -9,6 +9,8 @@ import (
 	"io"
 	"strings"
 	"testing"
+
+	"github.com/ericwq/aprilsh/util"
 )
 
 func TestNewFramebuffer3_Oversize(t *testing.T) {
@@ -520,7 +522,9 @@ func TestGetSnappedSelection(t *testing.T) {
 	}
 
 	emu := NewEmulator3(80, 40, 0)
-	emu.logT.SetOutput(io.Discard) // hide the log output
+	// emu.logT.SetOutput(io.Discard) // hide the log output
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	for _, v := range tc {
 		// print the stream to the screen
@@ -581,7 +585,9 @@ func TestGetSelectedUtf8(t *testing.T) {
 	}
 	emu := NewEmulator3(80, 40, 0)
 	// hide the log output
-	emu.logT.SetOutput(io.Discard)
+	// emu.logT.SetOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	for i, v := range tc {
 		// print the stream to the screen
@@ -663,7 +669,9 @@ func TestDamageDeltaCopy(t *testing.T) {
 
 	emu := NewEmulator3(80, 40, 0)
 	// hide the log output
-	emu.logT.SetOutput(io.Discard)
+	// emu.logT.SetOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	// for easy typing
 	fb := emu.cf

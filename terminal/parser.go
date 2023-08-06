@@ -6,12 +6,12 @@ package terminal
 
 import (
 	"container/list"
-	"log"
-	"os"
 	"strconv"
 	"strings"
 
+	"github.com/ericwq/aprilsh/util"
 	"github.com/rivo/uniseg"
+	"golang.org/x/exp/slog"
 )
 
 const (
@@ -86,10 +86,10 @@ type Parser struct {
 	vtMode bool
 
 	// logger
-	logE     *log.Logger
-	logT     *log.Logger
-	logU     *log.Logger
-	logTrace bool
+	// logE     *log.Logger
+	// logT     *log.Logger
+	// logU     *log.Logger
+	// logTrace bool
 }
 
 func NewParser() *Parser {
@@ -100,9 +100,9 @@ func NewParser() *Parser {
 	// if err != nil {
 	//     log.Fatal(err)
 	// }
-	p.logT = log.New(os.Stderr, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
-	p.logE = log.New(os.Stderr, "ERRO: ", log.Ldate|log.Ltime|log.Lshortfile)
-	p.logU = log.New(os.Stderr, "(Uimplemented): ", log.Ldate|log.Ltime|log.Lshortfile)
+	// p.logT = log.New(os.Stderr, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// p.logE = log.New(os.Stderr, "ERRO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// p.logU = log.New(os.Stderr, "(Uimplemented): ", log.Ldate|log.Ltime|log.Lshortfile)
 
 	p.reset()
 	return p
@@ -1688,19 +1688,29 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 	case InputState_Esc_Space:
 		switch ch {
 		case 'F':
-			p.logU.Println("S7C1T: Send 7-bit controls")
+			// p.logU.Println("S7C1T: Send 7-bit controls")
+			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").With("unimplement", "ESC space").
+				Debug("S7C1T: Send 7-bit controls")
 			p.setState(InputState_Normal)
 		case 'G':
 			p.logU.Println("S8C1T: Send 8-bit controls")
+			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").
+				Debug("")
 			p.setState(InputState_Normal)
 		case 'L':
 			p.logU.Println("Set ANSI conformance level 1")
+			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").
+				Debug("")
 			p.setState(InputState_Normal)
 		case 'M':
 			p.logU.Println("Set ANSI conformance level 2")
+			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").
+				Debug("")
 			p.setState(InputState_Normal)
 		case 'N':
 			p.logU.Println("Set ANSI conformance level 3")
+			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").
+				Debug("")
 			p.setState(InputState_Normal)
 		default:
 			p.unhandledInput()
@@ -1708,16 +1718,24 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 	case InputState_Esc_Hash:
 		switch ch {
 		case '3':
-			p.logU.Println("DECDHL: Double-height, top half.")
+			// p.logU.Println("DECDHL: Double-height, top half.")
+			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").
+				Debug("DECDHL: Double-height, top half")
 			p.setState(InputState_Normal)
 		case '4':
-			p.logU.Println("DECDHL: Double-height, bottom half.")
+			// p.logU.Println("DECDHL: Double-height, bottom half.")
+			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").
+				Debug("DECDHL: Double-height, bottom half")
 			p.setState(InputState_Normal)
 		case '5':
-			p.logU.Println("DECSWL: Single-width line.")
+			// p.logU.Println("DECSWL: Single-width line.")
+			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").
+				Debug("DECSWL: Single-width line")
 			p.setState(InputState_Normal)
 		case '6':
-			p.logU.Println("DECDWL: Double-width line.")
+			// p.logU.Println("DECDWL: Double-width line.")
+			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").
+				Debug("DECDWL: Double-width line")
 			p.setState(InputState_Normal)
 		case '8':
 			hd = p.handle_DECALN()
@@ -1727,10 +1745,14 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 	case InputState_Esc_Pct:
 		switch ch {
 		case '@':
-			p.logT.Println("Select charset: default (ISO-8859-1)")
+			// p.logT.Println("Select charset: default (ISO-8859-1)")
+			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").
+				Debug("Select charset: default (ISO-8859-1)")
 			hd = p.handle_DOCS_ISO8859_1()
 		case 'G':
-			p.logT.Println("Select charset: UTF-8")
+			// p.logT.Println("Select charset: UTF-8")
+			util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").
+				Debug("Select charset: UTF-8")
 			hd = p.handle_DOCS_UTF8()
 		default:
 			p.unhandledInput()
@@ -1916,7 +1938,9 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 			if p.argBuf.Len() < 4095 {
 				p.argBuf.WriteRune(ch)
 			} else {
-				p.logE.Printf("DCS argument string overflow (>4095). %q\n", p.argBuf.String())
+				// p.logE.Printf("DCS argument string overflow (>4095). %q\n", p.argBuf.String())
+				util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").
+					With("argBuf", p.argBuf.String()[:64]).Error("OSC argument string overflow (>4095)")
 				p.setState(InputState_Normal)
 			}
 		}
@@ -1939,7 +1963,9 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 			if p.argBuf.Len() < 4095 {
 				p.argBuf.WriteRune(ch)
 			} else {
-				p.logE.Printf("OSC argument string overflow (>4095). %q\n", p.argBuf.String())
+				// p.logE.Printf("OSC argument string overflow (>4095). %q\n", p.argBuf.String())
+				util.Log.With(slog.Group("terminal")).With("method", "Parser.ProcessInput").
+					With("argBuf", p.argBuf.String()[:64]).Error("OSC argument string overflow (>4095)")
 				p.setState(InputState_Normal)
 			}
 		}

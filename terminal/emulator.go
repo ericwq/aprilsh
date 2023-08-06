@@ -6,10 +6,10 @@ package terminal
 
 import (
 	"fmt"
-	"io"
-	"log"
-	"os"
 	"strings"
+
+	"github.com/ericwq/aprilsh/util"
+	"golang.org/x/exp/slog"
 )
 
 // type VtModifier uint8
@@ -77,11 +77,11 @@ type Emulator struct {
 	selectionData  string          // replicated by NewFrame(), store the selection data for OSC 52
 
 	// logger
-	logE *log.Logger
-	logT *log.Logger // trace
-	logU *log.Logger
-	logW *log.Logger
-	logI *log.Logger
+	// logE *log.Logger
+	// logT *log.Logger // trace
+	// logU *log.Logger
+	// logW *log.Logger
+	// logI *log.Logger
 
 	/*
 		CursorVisible             bool // true/false
@@ -135,7 +135,7 @@ func NewEmulator3(nCols, nRows, saveLines int) *Emulator {
 	emu.savedCursor_DEC_alt = newSavedCursor_DEC()
 	emu.savedCursor_DEC = &emu.savedCursor_DEC_pri
 	emu.initSelectionStore()
-	emu.initLog()
+	// emu.initLog()
 
 	emu.resetTerminal()
 
@@ -450,9 +450,13 @@ func (emu *Emulator) switchColMode(colMode ColMode) {
 	emu.clearScreen()
 
 	if colMode == ColMode_C80 {
-		emu.logT.Println("DECCOLM: Selected 80 columns per line")
+		// emu.logT.Println("DECCOLM: Selected 80 columns per line")
+		util.Log.With(slog.Group("terminal")).With("method", "Emulator.switchColMode").
+			Debug("DECCOLM: Selected 80 columns per line")
 	} else {
-		emu.logT.Println("DECCOLM: Selected 132 columns per line")
+		// emu.logT.Println("DECCOLM: Selected 132 columns per line")
+		util.Log.With(slog.Group("terminal")).With("method", "Emulator.switchColMode").
+			Debug("DECCOLM: Selected 132 columns per line")
 	}
 
 	emu.colMode = colMode
@@ -507,14 +511,14 @@ func (emu *Emulator) initSelectionStore() {
 	emu.selectionStore['7'] = "" // cut-buffer 7
 }
 
-func (emu *Emulator) initLog() {
-	// init logger
-	emu.logT = log.New(os.Stderr, "TRAC: ", log.Ldate|log.Ltime|log.Lshortfile)
-	emu.logI = log.New(os.Stderr, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
-	emu.logE = log.New(os.Stderr, "ERRO: ", log.Ldate|log.Ltime|log.Lshortfile)
-	emu.logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-	emu.logU = log.New(os.Stderr, "(Uimplemented): ", log.Ldate|log.Ltime|log.Lshortfile)
-}
+// func (emu *Emulator) initLog() {
+// 	// init logger
+// 	emu.logT = log.New(os.Stderr, "TRAC: ", log.Ldate|log.Ltime|log.Lshortfile)
+// 	emu.logI = log.New(os.Stderr, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+// 	emu.logE = log.New(os.Stderr, "ERRO: ", log.Ldate|log.Ltime|log.Lshortfile)
+// 	emu.logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+// 	emu.logU = log.New(os.Stderr, "(Uimplemented): ", log.Ldate|log.Ltime|log.Lshortfile)
+// }
 
 func (emu *Emulator) lookupCharset(p rune) (r rune) {
 	// choose the charset based on instructions before
@@ -538,9 +542,9 @@ func (emu *Emulator) GetParser() *Parser {
 	return emu.parser
 }
 
-func (emu *Emulator) SetLogTraceOutput(w io.Writer) {
-	emu.logT.SetOutput(w)
-}
+// func (emu *Emulator) SetLogTraceOutput(w io.Writer) {
+// 	emu.logT.SetOutput(w)
+// }
 
 // parse and handle the stream together.
 func (emu *Emulator) HandleStream(seq string) (hds []*Handler) {

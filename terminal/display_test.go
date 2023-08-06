@@ -13,6 +13,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/ericwq/aprilsh/util"
 )
 
 func TestDisplay(t *testing.T) {
@@ -132,8 +134,10 @@ func TestNewFrame_PutRow(t *testing.T) {
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
 
-	oldE.logT.SetOutput(io.Discard)
-	newE.logT.SetOutput(io.Discard)
+	// oldE.logT.SetOutput(io.Discard)
+	// newE.logT.SetOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
@@ -193,8 +197,10 @@ func TestNewFrame_ScrollUp(t *testing.T) {
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
 
-	oldE.logT.SetOutput(io.Discard)
-	newE.logT.SetOutput(io.Discard)
+	// oldE.logT.SetOutput(io.Discard)
+	// newE.logT.SetOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
@@ -251,8 +257,10 @@ func TestNewFrame_Bell(t *testing.T) {
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
 
-	oldE.logT.SetOutput(io.Discard)
-	newE.logT.SetOutput(io.Discard)
+	// oldE.logT.SetOutput(io.Discard)
+	// newE.logT.SetOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
@@ -293,8 +301,10 @@ func TestNewFrame_WindowTitleIconName(t *testing.T) {
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
 
-	oldE.logT.SetOutput(io.Discard)
-	newE.logT.SetOutput(io.Discard)
+	// oldE.logT.SetOutput(io.Discard)
+	// newE.logT.SetOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
@@ -854,8 +864,10 @@ func TestNewFrame_Modes(t *testing.T) {
 	oldE := NewEmulator3(8, 8, 4)
 	newE := NewEmulator3(8, 8, 4)
 
-	oldE.logT.SetOutput(io.Discard)
-	newE.logT.SetOutput(io.Discard)
+	// oldE.logT.SetOutput(io.Discard)
+	// newE.logT.SetOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
@@ -903,8 +915,10 @@ func TestNewFrame_TabStops(t *testing.T) {
 	oldE := NewEmulator3(80, 8, 4)
 	newE := NewEmulator3(80, 8, 4)
 
-	oldE.logT.SetOutput(io.Discard)
-	newE.logT.SetOutput(io.Discard)
+	// oldE.logT.SetOutput(io.Discard)
+	// newE.logT.SetOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
@@ -952,8 +966,10 @@ func TestNewFrame_SelectionData(t *testing.T) {
 	oldE := NewEmulator3(80, 8, 4)
 	newE := NewEmulator3(80, 8, 4)
 
-	oldE.logT.SetOutput(io.Discard)
-	newE.logT.SetOutput(io.Discard)
+	// oldE.logT.SetOutput(io.Discard)
+	// newE.logT.SetOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)

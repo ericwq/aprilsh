@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/ericwq/aprilsh/terminal"
+	"github.com/ericwq/aprilsh/util"
 )
 
 func TestCompleteSubtract(t *testing.T) {
@@ -41,13 +42,16 @@ func TestCompleteApplyString(t *testing.T) {
 		{"fill one row and set ack", "\x1B[7;7H左边\x1B[7;77H中文", 0, 0, 3},
 	}
 
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
+
 	for _, v := range tc {
 		c0, _ := NewComplete(80, 40, 40)
 		c1, _ := NewComplete(80, 40, 40)
 
 		// disable log trace
-		c0.terminal.SetLogTraceOutput(io.Discard)
-		c1.terminal.SetLogTraceOutput(io.Discard)
+		// c0.terminal.SetLogTraceOutput(io.Discard)
+		// c1.terminal.SetLogTraceOutput(io.Discard)
 
 		// resize new state if necessary
 		if v.height != 0 && v.width != 0 {

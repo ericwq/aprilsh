@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ericwq/aprilsh/util"
 	"github.com/rivo/uniseg"
 )
 
@@ -233,7 +234,10 @@ func TestEmulatorGetWidth(t *testing.T) {
 		t.Errorf("#test GetWidth() expect %d, got %d\n", 80, emu.GetWidth())
 	}
 
-	emu.SetLogTraceOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
+	// emu.SetLogTraceOutput(io.Discard)
+
 	// set horizontal margin
 	emu.HandleStream("\x1b[9;1Hset hMargin\x1B[?69h\x1B[2;78s")
 
@@ -327,7 +331,9 @@ func TestEmulatorGetCell(t *testing.T) {
 
 	emu := NewEmulator3(80, 40, 40)
 
-	emu.SetLogTraceOutput(io.Discard)
+	// emu.SetLogTraceOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	for _, v := range tc {
 		emu.HandleStream(v.seq)
@@ -354,9 +360,12 @@ func TestEmulatorClone(t *testing.T) {
 		{"alter screen buffer, no resize", 0, 0, "\x1B[?47h\x1B[11;74Houtput for normal wrap line."},
 	}
 
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
+
 	for _, v := range tc {
 		emu := NewEmulator3(80, 40, 40)
-		emu.SetLogTraceOutput(io.Discard)
+		// emu.SetLogTraceOutput(io.Discard)
 
 		emu.HandleStream(v.seq)
 		if v.nCols != 0 && v.nRows != 0 {
@@ -399,9 +408,9 @@ func TestEmulatorClone(t *testing.T) {
 			if !reflect.DeepEqual(emu.user, got.user) {
 				t.Errorf("%q user is not equal\n", v.label)
 			}
-			if !reflect.DeepEqual(emu.logE, got.logE) {
-				t.Errorf("%q logE is not equal\n", v.label)
-			}
+			// if !reflect.DeepEqual(emu.logE, got.logE) {
+			// 	t.Errorf("%q logE is not equal\n", v.label)
+			// }
 			if !reflect.DeepEqual(emu.parser, got.parser) {
 			} else {
 				t.Errorf("%q expect clone emulator is not equal with origin emulator\n", v.label)

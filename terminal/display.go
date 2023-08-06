@@ -7,7 +7,6 @@ package terminal
 import (
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"reflect"
 	"strings"
@@ -43,7 +42,7 @@ type Display struct {
 	currentRendition Renditions
 	showCursorMode   bool // mosh: cursorVisible
 
-	logW *log.Logger
+	// logW *log.Logger
 }
 
 // https://github.com/gdamore/tcell the successor of termbox-go
@@ -61,7 +60,7 @@ func NewDisplay(useEnvironment bool) (d *Display, e error) {
 	d.hasBCE = true
 	d.hasTitle = true
 
-	d.logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// d.logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 
 	if useEnvironment {
 		term := os.Getenv("TERM")
