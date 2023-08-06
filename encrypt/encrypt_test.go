@@ -7,11 +7,11 @@ package encrypt
 import (
 	"errors"
 	"io"
-	"log"
-	"os"
 	"reflect"
 	"syscall"
 	"testing"
+
+	"github.com/ericwq/aprilsh/util"
 )
 
 func TestPrng(t *testing.T) {
@@ -33,10 +33,12 @@ func TestPrng(t *testing.T) {
 }
 
 func TestBase64Key(t *testing.T) {
-	defer func() {
-		logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-	}()
-	logW.SetOutput(io.Discard)
+	// defer func() {
+	// 	logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// }()
+	// logW.SetOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	// normal key
 	normalKey := NewBase64Key()
@@ -104,10 +106,12 @@ func TestSession(t *testing.T) {
 }
 
 func TestSessionError(t *testing.T) {
-	defer func() {
-		logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-	}()
-	logW.SetOutput(io.Discard)
+	// defer func() {
+	// 	logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// }()
+	// logW.SetOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	b := Base64Key{}
 	b.key = PrngFill(9)
@@ -129,10 +133,12 @@ func fakeRand(io.Reader, []byte) (int, error) {
 }
 
 func TestRandomNonce(t *testing.T) {
-	defer func() {
-		logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-	}()
-	logW.SetOutput(io.Discard)
+	// defer func() {
+	// 	logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// }()
+	// logW.SetOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	nonce, err := _randomNonce(fakeRand)
 

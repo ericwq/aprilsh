@@ -6,6 +6,7 @@ package util
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"os"
 
@@ -17,31 +18,42 @@ import (
 
 type logger struct {
 	*slog.Logger
-	programLevel *slog.LevelVar
+	defaultLogger *slog.Logger
+	programLevel  *slog.LevelVar
 }
 
 var Log *logger
 
 func init() {
+	// default logger write to stderr
 	Log = new(logger)
 	Log.programLevel = new(slog.LevelVar)
-
-	// start with syslog UDP 514
-	writer, err := net.Dial("udp", "localhost:514")
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	if writer != nil {
-		Log.Logger = slog.New(slog.NewTextHandler(writer, &slog.HandlerOptions{Level: Log.programLevel}))
-	} else {
-		// fallback to stderr
-		Log.Logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: Log.programLevel}))
-	}
-
+	Log.Logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: Log.programLevel}))
 	slog.SetDefault(Log.Logger)
+	Log.defaultLogger = slog.Default()
 }
 
 func (l *logger) SetLevel(v slog.Level) {
 	l.programLevel.Set(v)
+}
+
+// network: udp, address: localhost:514. check net.Dial() for detail
+func (l *logger) SetupSyslog(network string, address string) {
+	writer, err := net.Dial(network, address)
+	if writer != nil {
+		l.Logger = slog.New(slog.NewTextHandler(writer, &slog.HandlerOptions{Level: Log.programLevel}))
+		slog.SetDefault(Log.Logger)
+		l.defaultLogger = slog.Default()
+	} else {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+}
+
+func (l *logger) SetOutput(w io.Writer) {
+	l.Logger = slog.New(slog.NewTextHandler(w, nil))
+}
+
+func (l *logger) Restore() {
+	l.Logger = l.defaultLogger
 }
