@@ -232,6 +232,28 @@ func TestConnectionClient(t *testing.T) {
 	}
 }
 
+func TestConnectionClientFail(t *testing.T) {
+	title := "connection create client fail"
+	ip := "localhost"
+	port := "8081"
+
+	// intercept log output
+	var output strings.Builder
+	defer util.Log.Restore()
+	util.Log.SetOutput(&output)
+
+	// create client
+	wrongKey := "invalid key."
+	NewConnectionClient(wrongKey, ip, port)
+
+	// validate the result
+	got := output.String()
+	expect := "#NeNewConnectionClient build key failed"
+	if !strings.Contains(got, expect) {
+		t.Errorf("%q firt recv() expect \n%q, got \n%q\n", title, expect, got)
+	}
+}
+
 func TestConnectionReadWrite(t *testing.T) {
 	title := "connection read/write"
 	ip := "localhost"

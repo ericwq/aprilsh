@@ -302,12 +302,20 @@ func NewConnectionClient(keyStr string, ip, port string) *Connection { // client
 	c.mtu = DEFAULT_SEND_MTU
 
 	c.key = encrypt.NewBase64Key2(keyStr)
-	var err error
-	c.session, err = encrypt.NewSession(*c.key) // TODO error handling
-	if err != nil {
-		// fmt.Printf("#NewConnectionClient :%s\n", err)
+	// var err error
+	if c.key == nil {
+		util.Log.With(slog.Group("network")).With("keyStr", keyStr).
+			With("error").Warn("#NeNewConnectionClient build key failed")
 		return nil
+
 	}
+	c.session, _ = encrypt.NewSession(*c.key) // TODO error handling
+	// if err != nil {
+	// 	// fmt.Printf("#NewConnectionClient :%s\n", err)
+	// 	util.Log.With(slog.Group("network")).With("keyStr", keyStr).
+	// 		With("error").Warn("#NeNewConnectionClient create session failed")
+	// 	return nil
+	// }
 
 	c.direction = TO_SERVER
 	c.savedTimestamp = -1
