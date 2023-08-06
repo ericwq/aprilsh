@@ -7,13 +7,13 @@ package network
 import (
 	"bytes"
 	"encoding/binary"
-	"log"
-	"os"
 	"sort"
 	"strings"
 	"unsafe"
 
 	pb "github.com/ericwq/aprilsh/protobufs"
+	"github.com/ericwq/aprilsh/util"
+	"golang.org/x/exp/slog"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -103,7 +103,6 @@ type FragmentAssembly struct {
 	currentId        uint64 // instruction id
 	fragmentsArrived int
 	fragmentsTotal   int
-	logW             *log.Logger
 }
 
 func NewFragmentAssembly() *FragmentAssembly {
@@ -112,7 +111,6 @@ func NewFragmentAssembly() *FragmentAssembly {
 	f.fragmentsArrived = 0
 	f.fragmentsTotal = -1
 	f.fragments = make([]*Fragment, 0)
-	f.logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 	return f
 }
 
@@ -180,13 +178,13 @@ func (f *FragmentAssembly) getAssembly() *pb.Instruction {
 	ret := pb.Instruction{}
 	b, err := GetCompressor().Uncompress([]byte(encoded.String()))
 	if err != nil {
-		f.logW.Printf("#getAssembly uncompress %s\n", err)
+		util.Log.With(slog.Group("network")).With("error", err).Warn("#getAssembly uncompress")
 		return nil
 	}
 
 	err = proto.Unmarshal(b, &ret)
 	if err != nil {
-		f.logW.Printf("#getAssembly unmarshal %s\n", err)
+		util.Log.With(slog.Group("network")).With("error", err).Warn("#getAssembly unmarshal")
 		return nil
 	}
 

@@ -10,7 +10,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"log"
 	"math"
 	"net"
 	"net/netip"
@@ -22,7 +21,9 @@ import (
 	"time"
 
 	"github.com/ericwq/aprilsh/encrypt"
+	"github.com/ericwq/aprilsh/util"
 	// "golang.org/x/net/ipv4"
+	"golang.org/x/exp/slog"
 	"golang.org/x/sys/unix"
 )
 
@@ -177,7 +178,7 @@ const (
 )
 
 var (
-	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 
 	// set socket options
 	controlFunc = func(network, address string, raw syscall.RawConn) (err error) {
@@ -235,7 +236,7 @@ type Connection struct {
 	RTTVAR float64 // round-trip time variation
 
 	// sendError string
-	logW *log.Logger
+	// logW *log.Logger
 }
 
 func NewConnection(desiredIp string, desiredPort string) *Connection { // server
@@ -260,7 +261,7 @@ func NewConnection(desiredIp string, desiredPort string) *Connection { // server
 	c.SRTT = 1000
 	c.RTTVAR = 500
 
-	c.logW = logFunc
+	// c.logW = logFunc
 	c.socks = make([]udpConn, 0)
 
 	c.setup()
@@ -276,7 +277,7 @@ func NewConnection(desiredIp string, desiredPort string) *Connection { // server
 	ok := false
 
 	if len(desiredPort) > 0 {
-		if desiredPortLow, desiredPortHigh, ok = ParsePortRange(desiredPort, c.logW); !ok {
+		if desiredPortLow, desiredPortHigh, ok = ParsePortRange(desiredPort); !ok {
 			// c.logW.Printf("Invalid port value. %q\n", desiredPort)
 			return nil
 		}
@@ -319,7 +320,7 @@ func NewConnectionClient(keyStr string, ip, port string) *Connection { // client
 	c.SRTT = 1000
 	c.RTTVAR = 500
 
-	c.logW = logFunc
+	// c.logW = logFunc
 
 	c.setup()
 	if !c.dialUDP(ip, port) {
@@ -330,15 +331,19 @@ func NewConnectionClient(keyStr string, ip, port string) *Connection { // client
 	return c
 }
 
-func parsePort(portStr string, hint string, logW *log.Logger) (port int, ok bool) {
+func parsePort(portStr string, hint string) (port int, ok bool) {
 	value, err := strconv.Atoi(portStr)
 	if err != nil {
-		logW.Printf("#parsePort invalid (%s) port number (%s)\n", hint, portStr)
+		// logW.Printf("#parsePort invalid (%s) port number (%s)\n", hint, portStr)
+		util.Log.With(slog.Group("network")).With("error", err).With("hint", hint).
+			With("port", portStr).Warn("#parsePort invalid port number")
 		return
 	}
 
 	if value < 0 || value > 65535 {
-		logW.Printf("#parsePort (%s) port number %d outside valid range [0..65535]\n", hint, value)
+		// logW.Printf("#parsePort (%s) port number %d outside valid range [0..65535]\n", hint, value)
+		util.Log.With(slog.Group("network")).With("error", err).With("hint", hint).
+			With("port number", value).Warn("#parsePort port number is outside of valid range [0..65535]")
 		return
 	}
 
@@ -348,32 +353,34 @@ func parsePort(portStr string, hint string, logW *log.Logger) (port int, ok bool
 }
 
 // parse "port" or "portlow:porthigh"
-func ParsePortRange(desiredPort string, logW *log.Logger) (desiredPortLow, desiredPortHigh int, ok bool) {
+func ParsePortRange(desiredPort string) (desiredPortLow, desiredPortHigh int, ok bool) {
 	var value int
 
 	all := strings.Split(desiredPort, ":")
 	if len(all) == 2 {
 		// parse "portlow:porthigh"
-		if value, ok = parsePort(all[0], "low", logW); !ok {
+		if value, ok = parsePort(all[0], "low"); !ok {
 			return
 		} else {
 			desiredPortLow = value
 		}
 
-		if value, ok = parsePort(all[1], "high", logW); !ok {
+		if value, ok = parsePort(all[1], "high"); !ok {
 			return
 		} else {
 			desiredPortHigh = value
 		}
 
 		if desiredPortLow > desiredPortHigh {
-			logW.Printf("#ParsePortRange low port %d greater than high port %d\n", desiredPortLow, desiredPortHigh)
+			// logW.Printf("#ParsePortRange low port %d greater than high port %d\n", desiredPortLow, desiredPortHigh)
+			util.Log.With(slog.Group("network")).With("low port", desiredPortLow).
+				With("high port", desiredPortHigh).Warn("#ParsePortRange low port is greater than high port")
 			ok = false
 			return
 		}
 	} else {
 		// parse solo port
-		if value, ok = parsePort(all[0], "solo", logW); !ok {
+		if value, ok = parsePort(all[0], "solo"); !ok {
 			return
 		} else {
 			desiredPortLow = value
@@ -439,7 +446,8 @@ func (c *Connection) dialUDP(ip, port string) bool {
 
 	conn, err := d.Dial(NETWORK, net.JoinHostPort(ip, port))
 	if err != nil {
-		c.logW.Printf("#dialUDP %s\n", err)
+		// c.logW.Printf("#dialUDP %s\n", err)
+		util.Log.With(slog.Group("network")).With("error", err).Warn("#dialUDP dial fail")
 		return false
 	}
 
@@ -471,7 +479,8 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 
 		localAddr, err := net.ResolveUDPAddr(NETWORK, address)
 		if err != nil {
-			c.logW.Printf("#tryBind %s\n", err)
+			// c.logW.Printf("#tryBind %s\n", err)
+			util.Log.With(slog.Group("network")).With("error", err).With("address", address).Warn("#tryBind resolve")
 			return false
 		}
 
@@ -479,7 +488,8 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 		conn, err := lc.ListenPacket(context.Background(), NETWORK, localAddr.String())
 		if err != nil {
 			if i == searchHigh { // last port to search
-				c.logW.Printf("#tryBind error=%s address=%s\n", err, address)
+				// c.logW.Printf("#tryBind error=%s address=%s\n", err, address)
+				util.Log.With(slog.Group("network")).With("address", c.remoteAddr).With("error", err).Warn("#tryBind listen")
 			}
 		} else {
 			c.socks = append(c.socks, conn.(udpConn))
@@ -516,7 +526,8 @@ func (c *Connection) hopPort() {
 
 	host, port, _ := net.SplitHostPort(c.remoteAddr.String())
 	if !c.dialUDP(host, port) {
-		c.logW.Printf("#hopPort failed to dial %s\n", c.remoteAddr)
+		// c.logW.Printf("#hopPort failed to dial %s\n", c.remoteAddr)
+		util.Log.With(slog.Group("network")).With("remote addr", c.remoteAddr).Warn("#hopPort failed to dial")
 		return
 	}
 
@@ -623,7 +634,8 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 				// this will gradually slow the counterparty down to the minimum frame rate
 				c.savedTimestamp -= CONGESTION_TIMESTAMP_PENALTY
 				if c.server {
-					c.logW.Println("#recvOne received explicit congestion notification.")
+					// c.logW.Println("#recvOne received explicit congestion notification.")
+					util.Log.With(slog.Group("network")).Warn("#recvOne received explicit congestion notification")
 				}
 			}
 		}
@@ -655,7 +667,9 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 		if c.server { // only client can roam
 			if !reflect.DeepEqual(raddr, c.remoteAddr) {
 				c.remoteAddr = raddr
-				c.logW.Printf("#recvOne server now attached to client at %s\n", c.remoteAddr)
+				// c.logW.Printf("#recvOne server now attached to client at %s\n", c.remoteAddr)
+				util.Log.With(slog.Group("network")).With("remote addr",
+					c.remoteAddr).Warn("#recvOne server now attached to client at")
 			}
 		}
 	}
@@ -714,7 +728,8 @@ func (c *Connection) send(s string) (sendError error) {
 	if c.server {
 		if now-c.lastHeard > SERVER_ASSOCIATION_TIMEOUT {
 			c.hasRemoteAddr = false
-			c.logW.Printf("#send server now detached from client: [%s]\n", c.remoteAddr)
+			// c.logW.Printf("#send server now detached from client: [%s]\n", c.remoteAddr)
+			util.Log.With(slog.Group("network")).With("remote addr", c.remoteAddr).Warn("#send server now detached from client")
 		}
 	} else {
 		if now-c.lastPortChoice > PORT_HOP_INTERVAL && now-c.lastRoundtripSuccess > PORT_HOP_INTERVAL {
@@ -736,7 +751,8 @@ func (c *Connection) recv() (payload string, err error) {
 				// EAGAIN is processed by go netpoll
 				continue
 			} else {
-				c.logW.Printf("#recv %s\n", err)
+				// c.logW.Printf("#recv %s\n", err)
+				util.Log.With(slog.Group("network")).With("error", err).Warn("#recv")
 				break
 			}
 		}

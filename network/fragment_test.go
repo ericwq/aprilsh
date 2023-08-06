@@ -5,11 +5,13 @@
 package network
 
 import (
+	"io"
 	"reflect"
 	"strings"
 	"testing"
 
 	pb "github.com/ericwq/aprilsh/protobufs"
+	"github.com/ericwq/aprilsh/util"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -192,8 +194,8 @@ func TestGetAssemblyFail(t *testing.T) {
 	}
 
 	// intercept the log
-	var place strings.Builder
-	fa.logW.SetOutput(&place)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	// validate uncompress error
 	// # this can also test zlib.NewReader(b)

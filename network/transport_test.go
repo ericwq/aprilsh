@@ -17,6 +17,7 @@ import (
 	pb "github.com/ericwq/aprilsh/protobufs"
 	"github.com/ericwq/aprilsh/statesync"
 	"github.com/ericwq/aprilsh/terminal"
+	"github.com/ericwq/aprilsh/util"
 	"golang.org/x/sys/unix"
 )
 
@@ -39,7 +40,9 @@ func TestTransportClientSend(t *testing.T) {
 	// 	client.getCurrentState(), client.getCurrentState(), client.sender.getAssumedReceiverStateIdx())
 
 	// disable log
-	server.connection.logW.SetOutput(io.Discard)
+	// server.connection.logW.SetOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	// send user stream to server
 	client.Tick()
@@ -105,8 +108,10 @@ func TestTransportServerSend(t *testing.T) {
 	r, w, _ := os.Pipe()
 	os.Stderr = w
 	// disable log
-	server.connection.logW.SetOutput(io.Discard)
-	client.connection.logW.SetOutput(io.Discard)
+	// server.connection.logW.SetOutput(io.Discard)
+	// client.connection.logW.SetOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	// send user stream to server
 	client.Tick()
@@ -198,6 +203,9 @@ func TestTransportRecvVersionError(t *testing.T) {
 	port := "6002"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
+
 	// send customized instruction to server
 	var newNum int64 = 1
 	inst := pb.Instruction{}
@@ -238,6 +246,9 @@ func TestTransportRecvRepeat(t *testing.T) {
 	port := "6003"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
+
 	// first round
 	pushUserBytesTo(client.GetCurrentState(), "first regular send")
 	client.Tick()
@@ -277,6 +288,9 @@ func TestTransportRecvNotFoundOld(t *testing.T) {
 	ip := "localhost"
 	port := "6004"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
+
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	// send customized instruction to server
 	var newNum int64 = 1
@@ -326,7 +340,9 @@ func TestTransportRecvOverLimit(t *testing.T) {
 	os.Stderr = w
 
 	// disable log
-	server.connection.logW.SetOutput(io.Discard)
+	// server.connection.logW.SetOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	// prepare the receivedState list
 	for i := 0; i < 1024; i++ {
@@ -383,7 +399,9 @@ func TestTransportRecvOverLimit2(t *testing.T) {
 	os.Stderr = w
 
 	// disable log
-	server.connection.logW.SetOutput(io.Discard)
+	// server.connection.logW.SetOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	// prepare the receivedState list
 	for i := 0; i < 1024; i++ {
@@ -442,7 +460,9 @@ func TestTransportRecvOutOfOrder(t *testing.T) {
 	os.Stderr = w
 
 	// disable log
-	server.connection.logW.SetOutput(io.Discard)
+	// server.connection.logW.SetOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	// prepare the receivedState list
 	server.receivedState = append(server.receivedState,
@@ -507,8 +527,10 @@ func TestClientShutdown(t *testing.T) {
 	os.Stderr = w
 
 	// disable log
-	server.connection.logW.SetOutput(io.Discard)
-	client.connection.logW.SetOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
+	// server.connection.logW.SetOutput(io.Discard)
+	// client.connection.logW.SetOutput(io.Discard)
 
 	// printClientStates(client, label)
 	// printServerStates(server, label)

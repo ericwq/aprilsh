@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/ericwq/aprilsh/statesync"
+	"github.com/ericwq/aprilsh/util"
 )
 
 func TestSenderMakeChaff(t *testing.T) {
@@ -385,7 +386,9 @@ func TestSenderSendEmptyAckShutdown(t *testing.T) {
 	client := NewTransportClient(initialState, initialRemote, keyStr, desiredIp, desiredPort)
 
 	// disable log
-	server.connection.logW.SetOutput(io.Discard)
+	// server.connection.logW.SetOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	// prepare for shutdown
 	client.sender.shutdownInProgress = true
@@ -429,7 +432,9 @@ func TestSenderSendEmptyAckFail(t *testing.T) {
 	client := NewTransportClient(initialState, initialRemote, keyStr, desiredIp, desiredPort)
 
 	// disable log
-	server.connection.logW.SetOutput(io.Discard)
+	// server.connection.logW.SetOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	// mockUdpConn will send with an error: send size doesn't match
 	var mock mockUdpConn
@@ -467,7 +472,9 @@ func TestSenderSendToReceiverFail(t *testing.T) {
 	client := NewTransportClient(initialState, initialRemote, keyStr, desiredIp, desiredPort)
 
 	// disable log
-	server.connection.logW.SetOutput(io.Discard)
+	// server.connection.logW.SetOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	// mockUdpConn will send with an error: send size doesn't match
 	var mock mockUdpConn
@@ -498,7 +505,9 @@ func TestSenderSendToReceiverShutdown(t *testing.T) {
 	client := NewTransportClient(initialState, initialRemote, keyStr, desiredIp, desiredPort)
 
 	// disable log
-	server.connection.logW.SetOutput(io.Discard)
+	// server.connection.logW.SetOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	// prepare for shutdown
 	client.sender.startShutdown()
@@ -555,7 +564,9 @@ func TestSenderTickSendToReceiverFail(t *testing.T) {
 	pushUserBytesTo(client.GetCurrentState(), "sendToReceiver failed.")
 
 	// disable log
-	server.connection.logW.SetOutput(io.Discard)
+	// server.connection.logW.SetOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	// mockUdpConn will send with an error: send size doesn't match
 	var mock mockUdpConn
@@ -591,7 +602,9 @@ func TestSenderTickVerify(t *testing.T) {
 	server.SetVerbose(1)
 
 	// disable log
-	server.connection.logW.SetOutput(io.Discard)
+	// server.connection.logW.SetOutput(io.Discard)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	// intercept stderr
 	// swallow the tick() output to stderr
@@ -657,6 +670,9 @@ func TestSenderSendInterval(t *testing.T) {
 	initialRemote, _ := statesync.NewComplete(80, 40, 40)
 	keyStr := server.connection.getKey() // get the key from server
 	client := NewTransportClient(initialState, initialRemote, keyStr, desiredIp, desiredPort)
+
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 
 	// round-trip several times to build a reasonable SRTT
 	var got string

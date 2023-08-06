@@ -7,7 +7,6 @@ package network
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"reflect"
@@ -17,6 +16,7 @@ import (
 	"time"
 
 	"github.com/ericwq/aprilsh/encrypt"
+	"github.com/ericwq/aprilsh/util"
 	"golang.org/x/sys/unix"
 )
 
@@ -84,19 +84,21 @@ func TestParsePortRange(t *testing.T) {
 		msg      string
 	}{
 		{"normal port range", "3:65534", 3, 65534, ""},
-		{"outof scope number low", "-1:536", -1, -1, "-1 outside valid range [0..65535]"},
-		{"outof scope number high", "0:65536", -1, -1, "65536 outside valid range [0..65535]"},
-		{"invalid number", "3a", -1, -1, "invalid (solo) port number"},
-		{"port order reverse", "3:1", -1, -1, "greater than high port"},
+		{"outof scope number low", "-1:536", -1, -1, "#parsePort port number is outside of valid range [0..65535]"},
+		{"outof scope number high", "0:65536", -1, -1, "#parsePort port number is outside of valid range [0..65535]"},
+		{"invalid number", "3a", -1, -1, "#parsePort invalid port number"},
+		{"port order reverse", "3:1", -1, -1, "#ParsePortRange low port is greater than high port"},
 		{"solo port", "5", 5, 5, ""},
 	}
 
 	var place strings.Builder
-	output := log.New(&place, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// output := log.New(&place, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	defer util.Log.Restore()
+	util.Log.SetOutput(&place)
 
 	for _, v := range tc {
 		place.Reset()
-		if portLow, portHigh, ok := ParsePortRange(v.portStr, output); ok {
+		if portLow, portHigh, ok := ParsePortRange(v.portStr); ok {
 			// parse ok, check the low and high value
 			if v.portLow != -1 {
 				if portLow != v.portLow {
@@ -115,7 +117,7 @@ func TestParsePortRange(t *testing.T) {
 	}
 
 	// restor the logFunc
-	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestConnection(t *testing.T) {
@@ -128,7 +130,7 @@ func TestConnection(t *testing.T) {
 	}{
 		{"localhost 8080", "localhost", "8080", true, ""},
 		{"default range", "", "9081:9090", true, ""}, // error on macOS for ipv6
-		{"invalid port", "", "4;3", false, "#parsePort invalid (solo) port"},
+		{"invalid port", "", "4;3", false, "#parsePort invalid port number"},
 		{"reverse port order", "", "4:3", false, "#ParsePortRange low port"},
 		{"invalid host ", "dev.net", "403", false, "no such host"},
 		{"invalid host literal", "192.158.", "403:405", false, "no such host"}, //"#tryBind error"},
@@ -136,7 +138,9 @@ func TestConnection(t *testing.T) {
 
 	// replace the logFunc
 	var output strings.Builder
-	logFunc = log.New(&output, "#test", log.Ldate|log.Ltime|log.Lshortfile)
+	// logFunc = log.New(&output, "#test", log.Ldate|log.Ltime|log.Lshortfile)
+	defer util.Log.Restore()
+	util.Log.SetOutput(&output)
 
 	// test server connection creation
 	for _, v := range tc {
@@ -165,7 +169,7 @@ func TestConnection(t *testing.T) {
 	}
 
 	// restor the logFunc
-	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestConnectionClient(t *testing.T) {
@@ -183,6 +187,9 @@ func TestConnectionClient(t *testing.T) {
 		{"wrong connect port", "localhost", "8080", "", "8001", true, ""},         // UDP does not connect, so different port still work.
 	}
 
+	var output strings.Builder
+	defer util.Log.Restore()
+	util.Log.SetOutput(&output)
 	// test client connection
 	for _, v := range tc {
 		server := NewConnection(v.sIP, v.sPort)
@@ -192,15 +199,15 @@ func TestConnectionClient(t *testing.T) {
 		}
 
 		// replace the logFunc
-		var output strings.Builder
-		logFunc = log.New(&output, "#test", log.Ldate|log.Ltime|log.Lshortfile)
+		// logFunc = log.New(&output, "#test", log.Ldate|log.Ltime|log.Lshortfile)
+		output.Reset()
 
 		// open the client connection
 		key := server.key
 		client := NewConnectionClient(key.String(), v.cIP, v.cPort)
 
 		// restor the logFunc
-		logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+		// logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 		if v.result {
 			if client == nil {
 				t.Errorf("%q got nil connection, for %q:%q", v.name, v.cIP, v.cPort)
@@ -236,7 +243,9 @@ func TestConnectionReadWrite(t *testing.T) {
 	server := NewConnection(ip, port)
 
 	var output strings.Builder
-	server.logW.SetOutput(&output)
+	// server.logW.SetOutput(&output)
+	defer util.Log.Restore()
+	util.Log.SetOutput(&output)
 
 	if server == nil {
 		t.Errorf("%q server should not return nil.\n", title)
@@ -281,7 +290,7 @@ func TestConnectionReadWrite(t *testing.T) {
 
 	wg.Wait()
 	// restor the logFunc
-	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestUDPReadWrite(t *testing.T) {
@@ -415,7 +424,9 @@ func TestHopPort(t *testing.T) {
 
 	// intercept client log
 	var output strings.Builder
-	client.logW.SetOutput(&output)
+	// client.logW.SetOutput(&output)
+	defer util.Log.Restore()
+	util.Log.SetOutput(&output)
 
 	// fake wrong remote address
 	client.remoteAddr = &net.UDPAddr{Port: -80}
@@ -430,7 +441,7 @@ func TestHopPort(t *testing.T) {
 	}
 
 	// restor the logFunc
-	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestTryBindFail(t *testing.T) {
@@ -442,18 +453,20 @@ func TestTryBindFail(t *testing.T) {
 	}
 
 	var output strings.Builder
-	logFunc = log.New(&output, "#test", log.Ldate|log.Ltime|log.Lshortfile)
+	defer util.Log.Restore()
+	util.Log.SetOutput(&output)
+	// logFunc = log.New(&output, "#test", log.Ldate|log.Ltime|log.Lshortfile)
 
 	s := NewConnection("", "8000:8003")
 
-	expect := "#tryBind error"
+	expect := "#tryBind listen"
 	got := output.String()
 	if s != nil || !strings.Contains(got, expect) {
 		t.Errorf("#test tryBind() expect \n%q got \n%s\n", expect, got)
 	}
 
 	// restor the logFunc
-	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestMarkECNFail(t *testing.T) {
@@ -721,7 +734,9 @@ func TestSendBranch(t *testing.T) {
 
 	// intercept server log
 	var output strings.Builder
-	server.logW.SetOutput(&output)
+	// server.logW.SetOutput(&output)
+	defer util.Log.Restore()
+	util.Log.SetOutput(&output)
 
 	msg, _ := server.recv()
 	if msg != title {
@@ -762,7 +777,7 @@ func TestSendBranch(t *testing.T) {
 	}
 
 	// restor the logFunc
-	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestRecvFail(t *testing.T) {
@@ -800,7 +815,9 @@ func TestRecvFail(t *testing.T) {
 
 	// intercept server log
 	var output strings.Builder
-	client.logW.SetOutput(&output)
+	// client.logW.SetOutput(&output)
+	defer util.Log.Restore()
+	util.Log.SetOutput(&output)
 
 	// let the mock connection as the only connection
 	var mock mockUdpConn
@@ -825,7 +842,7 @@ func TestRecvFail(t *testing.T) {
 		}
 	}
 	// restor the logFunc
-	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestRecvBranchServer(t *testing.T) {
@@ -868,7 +885,9 @@ func TestRecvBranchServer(t *testing.T) {
 
 	// intercept server log
 	var output strings.Builder
-	server.logW.SetOutput(&output)
+	// server.logW.SetOutput(&output)
+	defer util.Log.Restore()
+	util.Log.SetOutput(&output)
 
 	// perform the receive
 	_, err := server.recv()
@@ -878,7 +897,7 @@ func TestRecvBranchServer(t *testing.T) {
 	}
 
 	// restor the logFunc
-	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestRecvBranchClient(t *testing.T) {
@@ -903,7 +922,9 @@ func TestRecvBranchClient(t *testing.T) {
 
 	// intercept server log
 	var output strings.Builder
-	server.logW.SetOutput(&output)
+	// server.logW.SetOutput(&output)
+	defer util.Log.Restore()
+	util.Log.SetOutput(&output)
 
 	msg0 := "from client to server"
 	// client send a message to server, server receive it.
@@ -928,7 +949,7 @@ func TestRecvBranchClient(t *testing.T) {
 	client.session = &mockSession{direction: TO_SERVER, seq: 7}
 
 	// intercept client log
-	client.logW.SetOutput(&output)
+	// client.logW.SetOutput(&output)
 
 	// perform the receive
 	_, err := client.recv()
@@ -938,7 +959,7 @@ func TestRecvBranchClient(t *testing.T) {
 	}
 
 	// restor the logFunc
-	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 type mockSession struct {
@@ -994,7 +1015,9 @@ func TestRecvCongestionPacket(t *testing.T) {
 
 	// intercept server log
 	var output strings.Builder
-	server.logW.SetOutput(&output)
+	// server.logW.SetOutput(&output)
+	defer util.Log.Restore()
+	util.Log.SetOutput(&output)
 
 	// save old congestionFunc
 	oldCF := congestionFunc
@@ -1005,7 +1028,7 @@ func TestRecvCongestionPacket(t *testing.T) {
 	server.recv()
 
 	// validate the result
-	expect := "#recvOne received explicit congestion notification."
+	expect := "#recvOne received explicit congestion notification"
 	got := output.String()
 	if !strings.Contains(got, expect) {
 		t.Errorf("%q expect \n%q, got \n%q\n", title, expect, got)
@@ -1016,7 +1039,7 @@ func TestRecvCongestionPacket(t *testing.T) {
 	// }
 
 	// restor the logFunc
-	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 	congestionFunc = oldCF
 }
 
@@ -1055,7 +1078,9 @@ func TestRecvSRTT(t *testing.T) {
 
 	// intercept server log
 	var output strings.Builder
-	server.logW.SetOutput(&output)
+	// server.logW.SetOutput(&output)
+	defer util.Log.Restore()
+	util.Log.SetOutput(&output)
 
 	var got string
 	maxMsg := 10
@@ -1088,7 +1113,7 @@ func TestRecvSRTT(t *testing.T) {
 	}
 
 	// restor the logFunc
-	logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestServerRecvTimeout(t *testing.T) {
