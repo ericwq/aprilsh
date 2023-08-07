@@ -874,7 +874,9 @@ func getTimeFrom(env string, def int64) (ret int64) {
 }
 
 func printWelcome(pid int, port int, tty *os.File) {
-	fmt.Printf("%s start listening on :%d. build version %s [pid=%d] \n", _COMMAND_NAME, port, BuildVersion, pid)
+	// fmt.Printf("%s start listening on :%d. build version %s [pid=%d] \n", _COMMAND_NAME, port, BuildVersion, pid)
+	util.Log.With("port", port).With("buildVersion", BuildVersion).With("pid", pid).
+		Info("start listening")
 	// fmt.Printf("Copyright 2022~2023 wangqi.\n")
 	// fmt.Printf("%s%s", "Use of this source code is governed by a MIT-style",
 	// 	"license that can be found in the LICENSE file.\n")
@@ -1137,7 +1139,8 @@ func (m *mainSrv) run(conf *Config) {
 	defer func() {
 		m.conn.Close()
 		m.wg.Done()
-		fmt.Printf("%s  stop listening on :%d.\n", _COMMAND_NAME, m.port)
+		// fmt.Printf("%s  stop listening on :%d.\n", _COMMAND_NAME, m.port)
+		util.Log.With("port", m.port).Info("stop listening")
 	}()
 
 	buf := make([]byte, 128)

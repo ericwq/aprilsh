@@ -40,6 +40,7 @@ func (l *logger) SetLevel(v slog.Level) {
 // network: udp, address: localhost:514. check net.Dial() for detail
 func (l *logger) SetupSyslog(network string, address string) error {
 	writer, err := net.Dial(network, address)
+	// writer, err := syslog.New(syslog.LOG_DAEMON|syslog.LOG_LOCAL7, "aprilsh")
 	if err != nil {
 		return err
 	}
