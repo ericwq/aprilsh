@@ -30,6 +30,7 @@ import (
 	"github.com/ericwq/aprilsh/network"
 	"github.com/ericwq/aprilsh/statesync"
 	"github.com/ericwq/aprilsh/util"
+	"golang.org/x/exp/slog"
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
 )
@@ -79,7 +80,7 @@ func TestPrintVersion(t *testing.T) {
 	saveStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
-	initLog()
+	// initLog()
 
 	expect := []string{_COMMAND_NAME, "build", "wangqi ericwq057@qq.com"}
 
@@ -249,15 +250,18 @@ func TestMainHelp(t *testing.T) {
 func captureLogRun(f func()) string {
 	// intercept log output
 	var b strings.Builder
-	logW.SetOutput(&b)
-	logI.SetOutput(&b)
+	// logW.SetOutput(&b)
+	// logI.SetOutput(&b)
+	defer util.Log.Restore()
+	util.Log.SetOutput(&b)
+	util.Log.SetLevel(slog.LevelDebug)
 
 	// call the test func
 	f()
 
 	// restore logW
-	logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-	logI = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// logI = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
 
 	return b.String()
 }
@@ -270,7 +274,10 @@ func captureStdoutRun(f func()) []byte {
 	// replace stdout with pipe writer
 	// alll the output to stdout is captured
 	os.Stdout = w
-	initLog()
+	// initLog()
+	defer util.Log.Restore()
+	util.Log.SetOutput(w)
+	util.Log.SetLevel(slog.LevelDebug)
 
 	// os.Args is a "global variable", so keep the state from before the test, and restore it after.
 	oldArgs := os.Args
@@ -365,8 +372,8 @@ func TestMainRun(t *testing.T) {
 	})
 
 	testFunc := func() {
-		// prepare data
-		os.Args = []string{_COMMAND_NAME, "-locale", "LC_ALL=en_US.UTF-8", "-p", "6100", "--", "/bin/sh", "-sh"}
+		// prepare data: verbose == 57 means log to the stderr
+		os.Args = []string{_COMMAND_NAME, "-verbose", "57", "-locale", "LC_ALL=en_US.UTF-8", "-p", "6100", "--", "/bin/sh", "-sh"}
 		// test
 		main()
 	}
@@ -757,7 +764,7 @@ func TestGetTimeFrom(t *testing.T) {
 	rescueStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
-	initLog()
+	// initLog()
 
 	oldArgs := os.Args
 	defer func() { os.Args = oldArgs }()
@@ -841,7 +848,7 @@ func TestStart(t *testing.T) {
 			saveStdout := os.Stdout
 			r, w, _ := os.Pipe()
 			os.Stdout = w
-			initLog()
+			// initLog()
 
 			srv := newMainSrv(&v.conf, mockRunWorker)
 
@@ -889,7 +896,7 @@ func TestStartFail(t *testing.T) {
 		{
 			"illegal port", 20, "", 50,
 			Config{
-				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7000a",
+				version: false, server: true, verbose: _VERBOSE_LOG_STDERR, desiredIP: "", desiredPort: "7000a",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 			},
@@ -898,21 +905,25 @@ func TestStartFail(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			m := newMainSrv(&v.conf, mockRunWorker)
-
 			// intercept logW
 			var b strings.Builder
-			logW.SetOutput(&b)
-			defer func() {
-				logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-			}()
+			// logW.SetOutput(&b)
+			defer util.Log.Restore()
+			util.Log.SetOutput(&b)
+			util.Log.SetLevel(slog.LevelDebug)
+
+			m := newMainSrv(&v.conf, mockRunWorker)
+
+			// defer func() {
+			// 	logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+			// }()
 
 			// start mainserver
 			m.start(&v.conf)
 			// fmt.Println("#test start fail!")
 
 			// validate result: result contains WARN and COMMAND_NAME
-			expect := []string{_COMMAND_NAME, "WARN"}
+			expect := []string{"WARN", "listen failed"}
 			result := b.String()
 			found := 0
 			for i := range expect {
@@ -1029,7 +1040,7 @@ func TestPrintWelcome(t *testing.T) {
 		saveStdout := os.Stdout
 		r, w, _ := os.Pipe()
 		os.Stdout = w
-		initLog()
+		// initLog()
 
 		printWelcome(os.Getpid(), 6000, v.tty)
 
@@ -1110,7 +1121,7 @@ func TestRunFail(t *testing.T) {
 			saveStdout := os.Stdout
 			r, w, _ := os.Pipe()
 			os.Stdout = w
-			initLog()
+			// initLog()
 
 			srv := newMainSrv(&v.conf, mockRunWorker2)
 
@@ -1195,7 +1206,7 @@ func TestRunFail2(t *testing.T) {
 			saveStdout := os.Stdout
 			r, w, _ := os.Pipe()
 			os.Stdout = w
-			initLog()
+			// initLog()
 
 			srv := newMainSrv(&v.conf, mockRunWorker)
 
@@ -1248,7 +1259,10 @@ func TestWaitError(t *testing.T) {
 			saveStdout := os.Stdout
 			r, w, _ := os.Pipe()
 			os.Stdout = w
-			initLog()
+			// initLog()
+			defer util.Log.Restore()
+			util.Log.SetOutput(w)
+			util.Log.SetLevel(slog.LevelDebug)
 
 			m := newMainSrv(&v.conf, failRunWorker)
 
@@ -1274,7 +1288,7 @@ func TestWaitError(t *testing.T) {
 			r.Close()
 
 			// validate result
-			expect := []string{"#mainSrv wait() reports"}
+			expect := []string{"mainSrv.wait", "wait failed"}
 			result := string(out)
 			found := 0
 			for i := range expect {
@@ -1282,7 +1296,7 @@ func TestWaitError(t *testing.T) {
 					found++
 				}
 			}
-			if found != 1 {
+			if found != len(expect) {
 				t.Errorf("#test start() expect %q, got %q\n", expect, result)
 			}
 		})
@@ -1338,7 +1352,7 @@ func TestRunWorkerKill(t *testing.T) {
 			saveStdout := os.Stdout
 			r, w, _ := os.Pipe()
 			os.Stdout = w
-			initLog()
+			// initLog()
 
 			// set serve func and runWorker func
 			v.conf.serve = mockServe
@@ -1439,7 +1453,7 @@ func TestRunWorkerStop(t *testing.T) {
 			saveStdout := os.Stdout
 			r, w, _ := os.Pipe()
 			os.Stdout = w
-			initLog()
+			// initLog()
 
 			// set serve func and runWorker func
 			v.conf.serve = mockServe
@@ -1569,7 +1583,10 @@ func TestRunWorkerFail(t *testing.T) {
 
 			// intercept log output
 			var b strings.Builder
-			logW.SetOutput(&b)
+			// logW.SetOutput(&b)
+			defer util.Log.Restore()
+			util.Log.SetOutput(&b)
+			util.Log.SetLevel(slog.LevelDebug)
 
 			wg.Add(1)
 			go func() {
@@ -1593,7 +1610,7 @@ func TestRunWorkerFail(t *testing.T) {
 			wg.Wait()
 
 			// restore logW
-			logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+			// logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 		})
 	}
 }
@@ -1628,7 +1645,10 @@ func TestShellWaitFail(t *testing.T) {
 
 			// intercept log output
 			var b strings.Builder
-			logW.SetOutput(&b)
+			// logW.SetOutput(&b)
+			defer util.Log.Restore()
+			util.Log.SetOutput(&b)
+			util.Log.SetLevel(slog.LevelDebug)
 
 			wg.Add(1)
 			go func() {
@@ -1652,7 +1672,7 @@ func TestShellWaitFail(t *testing.T) {
 			wg.Wait()
 
 			// restore logW
-			logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+			// logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 		})
 	}
 }
@@ -1676,7 +1696,10 @@ func TestGetCurrentUser(t *testing.T) {
 
 	// intercept log output
 	var b strings.Builder
-	logW.SetOutput(&b)
+	// logW.SetOutput(&b)
+	defer util.Log.Restore()
+	util.Log.SetOutput(&b)
+	util.Log.SetLevel(slog.LevelDebug)
 
 	userCurrentTest = true
 	got = getCurrentUser()
@@ -1684,7 +1707,7 @@ func TestGetCurrentUser(t *testing.T) {
 		t.Errorf("#test getCurrentUser expect empty string, got %s\n", got)
 	}
 	// restore logW
-	logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+	// logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestGetAvailablePort(t *testing.T) {

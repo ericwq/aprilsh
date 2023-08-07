@@ -11,7 +11,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
+	// "log"
 	"net"
 	"os"
 	"os/signal"
@@ -32,6 +32,7 @@ import (
 	"github.com/ericwq/aprilsh/terminal"
 	"github.com/ericwq/aprilsh/util"
 	utmp "github.com/ericwq/goutmp"
+	"golang.org/x/exp/slog"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
 )
@@ -44,10 +45,11 @@ var (
 )
 
 var (
-	utmpSupport bool
-	signals     frontend.Signals
-	logW        *log.Logger
-	logI        *log.Logger
+	utmpSupport   bool
+	syslogSupport bool
+	signals       frontend.Signals
+	// logW        *log.Logger
+	// logI        *log.Logger
 )
 
 const (
@@ -60,17 +62,18 @@ const (
 
 	_VERBOSE_OPEN_PTS    = 99  // test purpose
 	_VERBOSE_START_SHELL = 100 // test purpose
+	_VERBOSE_LOG_STDERR  = 57  // log to stderr
 )
 
 func init() {
-	initLog()
+	// initLog()
 	utmpSupport = utmp.HasUtmpSupport()
 }
 
-func initLog() {
-	logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-	logI = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
-}
+// func initLog() {
+// 	logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+// 	logI = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+// }
 
 func printVersion() {
 	fmt.Printf("%s (%s) [build %s]\n\n", _COMMAND_NAME, _PACKAGE_STRING, BuildVersion)
@@ -311,7 +314,7 @@ func (conf *Config) buildConfig() (string, bool) {
 		// Sanity-check arguments
 
 		// fmt.Printf("#main desiredPort=%s\n", conf.desiredPort)
-		_, _, ok := network.ParsePortRange(conf.desiredPort, logW)
+		_, _, ok := network.ParsePortRange(conf.desiredPort)
 		if !ok {
 			return fmt.Sprintf("Bad UDP port (%s)", conf.desiredPort), false
 		}
@@ -401,6 +404,19 @@ func main() {
 	if conf.version {
 		printVersion()
 		return
+	}
+
+	syslogSupport = false
+	if conf.verbose != _VERBOSE_LOG_STDERR && util.Log.SetupSyslog("udp", "localhost:514") == nil {
+		syslogSupport = true
+	}
+
+	if conf.verbose > 0 {
+		util.Log.SetLevel(slog.LevelDebug)
+		fmt.Println("debug level")
+	} else {
+		util.Log.SetLevel(slog.LevelInfo)
+		fmt.Println("info level")
 	}
 
 	srv := newMainSrv(conf, runWorker)
@@ -509,7 +525,9 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 
 	ptmx, pts, err := openPTS(windowSize)
 	if err != nil {
-		logW.Printf("#runWorker openPTS fail: %s\n", err)
+		// logW.Printf("#runWorker openPTS fail: %s\n", err)
+		util.Log.With(slog.Group("server")).With("error", err).With("function", "runWorker").
+			Warn("openPTS fail")
 		whChan <- &workhorse{}
 		return err
 	}
@@ -526,7 +544,9 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	shell, err := startShell(pts, utmpHost, conf)
 	pts.Close() // it's copied by shell process, it's safe to close it here.
 	if err != nil {
-		logW.Printf("#runWorker startShell fail: %s\n", err)
+		// logW.Printf("#runWorker startShell fail: %s\n", err)
+		util.Log.With(slog.Group("server")).With("error", err).With("function", "runWorker").
+			Warn("startShell fail")
 		whChan <- &workhorse{}
 	} else {
 		// add utmp entry
@@ -541,14 +561,20 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		// start the udp server, serve the udp request
 		go conf.serve(ptmx, pts, terminal, network, networkTimeout, networkSignaledTimeout)
 		whChan <- &workhorse{shell, ptmx}
-		fmt.Printf("#runWorker start listening on :%s\n", conf.desiredPort)
+		// fmt.Printf("#runWorker start listening on :%s\n", conf.desiredPort)
+		util.Log.With(slog.Group("server")).With("desiredPort", conf.desiredPort).With("function", "runWorker").
+			Info("start listening on")
 
 		// wait for the shell to finish.
 		// fmt.Printf("#runWorker shell.Wait() %p %v\n", shell, shell)
 		if state, err := shell.Wait(); err != nil || state.Exited() {
-			logW.Printf("#runWorker shell.Wait fail: %s, state: %s\n", err, state)
+			// logW.Printf("#runWorker shell.Wait fail: %s, state: %s\n", err, state)
+			util.Log.With(slog.Group("server")).With("function", "runWorker").With("error", err).
+				With("state", state).Warn("shell.Wait fail")
 		}
-		logI.Printf("#runWorker stop listening on :%s\n", conf.desiredPort)
+		// logI.Printf("#runWorker stop listening on :%s\n", conf.desiredPort)
+		util.Log.With(slog.Group("server")).With("desiredPort", conf.desiredPort).With("function", "runWorker").
+			Info("stop listening on")
 
 		// clear utmp entry
 		if utmpSupport {
@@ -566,7 +592,9 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 func getCurrentUser() string {
 	user, err := user.Current()
 	if err != nil || userCurrentTest {
-		logW.Printf("#getCurrentUser report: %s\n", err)
+		// logW.Printf("#getCurrentUser report: %s\n", err)
+		util.Log.With(slog.Group("server")).With("function", "getCurrentUser").With("error", err).
+			Warn("Get current user")
 		return ""
 	}
 
@@ -1038,7 +1066,9 @@ func (m *mainSrv) start(conf *Config) {
 
 	// start udp server upon receive the shake hands message.
 	if err := m.listen(conf); err != nil {
-		logW.Printf("%s: %s\n", _COMMAND_NAME, err.Error())
+		// logW.Printf("%s: %s\n", _COMMAND_NAME, err.Error())
+		util.Log.With(slog.Group("server")).With("method", "mainSrv.start").With("error", err).
+			Warn("listen failed")
 		return
 	}
 
@@ -1061,7 +1091,9 @@ func (m *mainSrv) handler() {
 	for s := range sig {
 		switch s {
 		case syscall.SIGHUP: // TODO:reload the config?
-			logI.Println("got message SIGHUP.")
+			// logI.Println("got message SIGHUP.")
+			util.Log.With(slog.Group("server")).With("method", "mainSrv.handler").
+				Info("got message SIGHUP")
 		case syscall.SIGTERM:
 			// logI.Println("got message SIGTERM.")
 			m.downChan <- true
@@ -1206,15 +1238,21 @@ func (m *mainSrv) run(conf *Config) {
 					// fmt.Printf("#mainSrv run() send %q to client\n", resp)
 				} else {
 					resp := m.writeRespTo(addr, _ASH_CLOSE, "port does not exist")
-					logW.Printf("#mainSrv run() request %q got %q\n", req, resp)
+					// logW.Printf("#mainSrv run() request %q got %q\n", req, resp)
+					util.Log.With(slog.Group("server")).With("method", "mainSrv.run").
+						With("request", req).With("response", resp).Warn("port does not exit")
 				}
 			} else {
 				resp := m.writeRespTo(addr, _ASH_CLOSE, "wrong port number")
-				logW.Printf("#mainSrv run() request %q got %q\n", req, resp)
+				// logW.Printf("#mainSrv run() request %q got %q\n", req, resp)
+				util.Log.With(slog.Group("server")).With("method", "mainSrv.run").
+					With("request", req).With("response", resp).Warn("wrong port number")
 			}
 		} else {
 			resp := m.writeRespTo(addr, _ASH_CLOSE, "unknow request")
-			logW.Printf("#mainSrv run() request %q got %q\n", req, resp)
+			// logW.Printf("#mainSrv run() request %q got %q\n", req, resp)
+			util.Log.With(slog.Group("server")).With("method", "mainSrv.run").
+				With("request", req).With("response", resp).Warn("unknow request")
 		}
 	}
 }
@@ -1262,6 +1300,8 @@ func (m *mainSrv) writeRespTo(addr *net.UDPAddr, header, msg string) (resp strin
 func (m *mainSrv) wait() {
 	m.wg.Wait()
 	if err := m.eg.Wait(); err != nil {
-		logW.Printf("#mainSrv wait() reports %s\n", err.Error())
+		// logW.Printf("#mainSrv wait() reports %s\n", err.Error())
+		util.Log.With(slog.Group("server")).With("method", "mainSrv.wait").
+			With("error", err).Warn("wait failed")
 	}
 }

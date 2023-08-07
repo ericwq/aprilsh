@@ -5,7 +5,6 @@
 package util
 
 import (
-	"fmt"
 	"io"
 	"net"
 	"os"
@@ -38,16 +37,16 @@ func (l *logger) SetLevel(v slog.Level) {
 }
 
 // network: udp, address: localhost:514. check net.Dial() for detail
-func (l *logger) SetupSyslog(network string, address string) {
+func (l *logger) SetupSyslog(network string, address string) error {
 	writer, err := net.Dial(network, address)
-	if writer != nil {
-		l.Logger = slog.New(slog.NewTextHandler(writer, &slog.HandlerOptions{Level: Log.programLevel}))
-		slog.SetDefault(Log.Logger)
-		l.defaultLogger = slog.Default()
-	} else {
-		fmt.Println(err)
-		os.Exit(1)
+	if err != nil {
+		return err
 	}
+
+	l.Logger = slog.New(slog.NewTextHandler(writer, &slog.HandlerOptions{Level: Log.programLevel}))
+	slog.SetDefault(Log.Logger)
+	l.defaultLogger = slog.Default()
+	return nil
 }
 
 func (l *logger) SetOutput(w io.Writer) {
