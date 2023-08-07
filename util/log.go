@@ -51,7 +51,7 @@ func (l *logger) SetupSyslog(network string, address string) {
 }
 
 func (l *logger) SetOutput(w io.Writer) {
-	l.Logger = slog.New(slog.NewTextHandler(w, nil))
+	l.Logger = slog.New(slog.NewTextHandler(w, &slog.HandlerOptions{Level: Log.programLevel}))
 }
 
 func (l *logger) Restore() {

@@ -11,7 +11,9 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ericwq/aprilsh/util"
 	"github.com/rivo/uniseg"
+	"golang.org/x/exp/slog"
 )
 
 /*
@@ -496,7 +498,9 @@ func hdl_esc_decsc(emu *Emulator) {
 // ESC 8     Restore Cursor (DECRC), VT100.
 func hdl_esc_decrc(emu *Emulator) {
 	if !emu.savedCursor_DEC.isSet {
-		emu.logI.Println("Asked to restore cursor (DECRC) but it has not been saved.")
+		// emu.logI.Println("Asked to restore cursor (DECRC) but it has not been saved.")
+		util.Log.With(slog.Group("terminal")).With("function", "hdl_esc_decrc").
+			Info("Asked to restore cursor (DECRC) but it has not been saved")
 	} else {
 		emu.posX = emu.savedCursor_DEC.posX
 		emu.posY = emu.savedCursor_DEC.posY
@@ -678,7 +682,9 @@ func hdl_csi_ed(emu *Emulator, cmd int) {
 			emu.eraseRow(pY)
 		}
 	default:
-		emu.logI.Printf("Erase in Display with illegal param: %d\n", cmd)
+		// emu.logI.Printf("Erase in Display with illegal param: %d\n", cmd)
+		util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_ed").
+			With("cmd", cmd).Info("Erase in Display with illegal param")
 	}
 }
 
@@ -696,7 +702,9 @@ func hdl_csi_el(emu *Emulator, cmd int) {
 	case 2: // clear entire line
 		emu.cf.eraseInRow(emu.posY, 0, emu.nCols, emu.attrs)
 	default:
-		emu.logI.Printf("Erase in Line with illegal param: %d\n", cmd)
+		// emu.logI.Printf("Erase in Line with illegal param: %d\n", cmd)
+		util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_el").
+			With("cmd", cmd).Info("Erase in Line with illegal param")
 	}
 }
 
@@ -1017,7 +1025,9 @@ func hdl_csi_sgr(emu *Emulator, params []int) {
 				k += len(params) - 1 - k
 			}
 		default:
-			emu.logU.Printf("attribute not supported. %d \n", attr)
+			// emu.logU.Printf("attribute not supported. %d \n", attr)
+			util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_sgr").With("unimplement", "CSI SGR").
+				With("attr", attr).Debug("attribute not supported")
 		}
 	}
 }
@@ -1078,7 +1088,9 @@ func hdl_osc_10x(emu *Emulator, cmd int, arg string) {
 			if action == "?" {
 				colorIdx, err := strconv.Atoi(color)
 				if err != nil {
-					emu.logW.Printf("OSC 10x: can't parse color index. %q\n", arg)
+					// emu.logW.Printf("OSC 10x: can't parse color index. %q\n", arg)
+					util.Log.With(slog.Group("terminal")).With("function", "hdl_osc_10x").
+						With("arg", arg).Warn("OSC 10x: can't parse color index")
 					return
 				}
 
@@ -1096,7 +1108,9 @@ func hdl_osc_10x(emu *Emulator, cmd int, arg string) {
 			}
 		}
 	} else {
-		emu.logW.Printf("OSC 10x: malformed argument, missing ';'. %q\n", arg)
+		// emu.logW.Printf("OSC 10x: malformed argument, missing ';'. %q\n", arg)
+		util.Log.With(slog.Group("terminal")).With("function", "hdl_osc_10x").
+			With("arg", arg).Warn("OSC 10x: malformed argument, missing ';'")
 		return
 	}
 }
@@ -1141,7 +1155,9 @@ func hdl_osc_52(emu *Emulator, cmd int, arg string) {
 	// parse Pc:Pd
 	pos := strings.Index(arg, ";")
 	if pos == -1 {
-		emu.logW.Printf("OSC 52: can't find Pc parameter. %q\n", arg)
+		// emu.logW.Printf("OSC 52: can't find Pc parameter. %q\n", arg)
+		util.Log.With(slog.Group("terminal")).With("function", "hdl_osc_52").
+			With("arg", arg).Warn("OSC 52: can't find Pc parameter")
 		return
 	}
 	Pc := arg[:pos]
@@ -1157,7 +1173,9 @@ func hdl_osc_52(emu *Emulator, cmd int, arg string) {
 
 	// validate Pc
 	if !osc52InRange(Pc) {
-		emu.logW.Printf("OSC 52: invalid Pc parameters. %q\n", Pc)
+		// emu.logW.Printf("OSC 52: invalid Pc parameters. %q\n", Pc)
+		util.Log.With(slog.Group("terminal")).With("function", "hdl_osc_52").
+			With("Pc", Pc).Warn("OSC 52: invalid Pc parameters")
 		return
 	}
 
@@ -1270,7 +1288,9 @@ func hdl_osc_4(emu *Emulator, cmd int, arg string) {
 			if spec == "?" {
 				colorIdx, err := strconv.Atoi(c)
 				if err != nil {
-					emu.logW.Printf("OSC 4: can't parse c parameter. %q\n", arg)
+					// emu.logW.Printf("OSC 4: can't parse c parameter. %q\n", arg)
+					util.Log.With(slog.Group("terminal")).With("function", "hdl_osc_4").
+						With("arg", arg).Warn("OSC 4: can't parse c parameter")
 					return
 				}
 				color := PaletteColor(colorIdx)
@@ -1279,7 +1299,9 @@ func hdl_osc_4(emu *Emulator, cmd int, arg string) {
 			} // TODO set the screen colors palette values to any RGB value.
 		}
 	} else {
-		emu.logW.Printf("OSC 4: malformed argument, missing ';'. %q\n", arg)
+		// emu.logW.Printf("OSC 4: malformed argument, missing ';'. %q\n", arg)
+		util.Log.With(slog.Group("terminal")).With("function", "hdl_osc_4").
+			With("arg", arg).Warn("OSC 4: malformed argument, missing ';'")
 		return
 	}
 }
@@ -1322,7 +1344,9 @@ func hdl_csi_sm(emu *Emulator, params []int) {
 		case 20:
 			emu.autoNewlineMode = true
 		default:
-			emu.logW.Printf("Ignored bogus set mode %d.\n", param)
+			// emu.logW.Printf("Ignored bogus set mode %d.\n", param)
+			util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_sm").
+				With("param", param).Warn("Ignored bogus set mode")
 		}
 	}
 }
@@ -1344,7 +1368,9 @@ func hdl_csi_rm(emu *Emulator, params []int) {
 		case 20:
 			emu.autoNewlineMode = false
 		default:
-			emu.logW.Printf("Ignored bogus reset mode %d.\n", param)
+			// emu.logW.Printf("Ignored bogus reset mode %d.\n", param)
+			util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_rm").
+				With("param", param).Warn("Ignored bogus reset mode")
 		}
 	}
 }
@@ -1364,7 +1390,9 @@ func hdl_csi_privSM(emu *Emulator, params []int) {
 		case 3:
 			emu.switchColMode(ColMode_C132)
 		case 4:
-			emu.logT.Println("DECSCLM: Set smooth scroll")
+			// emu.logT.Println("DECSCLM: Set smooth scroll")
+			util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_privSM").
+				Debug("DECSCLM: Set smooth scroll")
 		case 5:
 			// emu.framebuffer.DS.ReverseVideo = true // DECSCNM Reverse
 			emu.reverseVideo = true
@@ -1375,12 +1403,16 @@ func hdl_csi_privSM(emu *Emulator, params []int) {
 			// emu.framebuffer.DS.AutoWrapMode = true // DECAWM zutty:autoWrapMode
 			emu.autoWrapMode = true
 		case 8:
-			emu.logU.Println("DECARM: Set auto-repeat mode")
+			// emu.logU.Println("DECARM: Set auto-repeat mode")
+			util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_privSM").With("unimplement", "DECSET").
+				Debug("DECARM: Set auto-repeat mode")
 		case 9:
 			// emu.framebuffer.DS.mouseTrk.mode = MouseModeX10
 			emu.mouseTrk.mode = MouseTrackingMode_X10_Compat
 		case 12:
-			emu.logU.Println("Start blinking cursor") // TODO support blinking
+			// emu.logU.Println("Start blinking cursor") // TODO support blinking
+			util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_privSM").With("unimplement", "DECSET").
+				Debug("Start blinking cursor")
 		case 25:
 			// emu.framebuffer.DS.CursorVisible = true // DECTCEM zutty:showCursorMode
 			emu.showCursorMode = true
@@ -1439,7 +1471,9 @@ func hdl_csi_privSM(emu *Emulator, params []int) {
 			// emu.framebuffer.DS.BracketedPaste = true // xterm zutty:bracketedPasteMode
 			emu.bracketedPasteMode = true
 		default:
-			emu.logU.Printf("set priv mode %d\n", param)
+			// emu.logU.Printf("set priv mode %d\n", param)
+			util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_privSM").With("unimplement", "DECSET").
+				With("param", param).Debug("set priv mode")
 		}
 	}
 }
@@ -1459,7 +1493,9 @@ func hdl_csi_privRM(emu *Emulator, params []int) {
 		case 3:
 			emu.switchColMode(ColMode_C80)
 		case 4:
-			emu.logT.Println("DECSCLM: Set jump scroll")
+			// emu.logT.Println("DECSCLM: Set jump scroll")
+			util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_privSM").
+				Debug("DECSCLM: Set jump scroll")
 		case 5:
 			// emu.framebuffer.DS.ReverseVideo = false // Normal
 			emu.reverseVideo = false
@@ -1470,12 +1506,16 @@ func hdl_csi_privRM(emu *Emulator, params []int) {
 			// emu.framebuffer.DS.AutoWrapMode = false
 			emu.autoWrapMode = false
 		case 8:
-			emu.logU.Println("DECARM: Reset auto-repeat mode")
+			// emu.logU.Println("DECARM: Reset auto-repeat mode")
+			util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_privSM").With("unimplement", "DECRST").
+				Debug("DECARM: Reset auto-repeat mode")
 		case 9, 1000, 1001, 1002, 1003:
 			// emu.framebuffer.DS.mouseTrk.mode = MouseModeNone
 			emu.mouseTrk.mode = MouseTrackingMode_Disable
 		case 12:
-			emu.logU.Println("Stop blinking cursor")
+			// emu.logU.Println("Stop blinking cursor")
+			util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_privSM").With("unimplement", "DECRST").
+				Debug("Stop blinking cursor")
 		case 25:
 			// emu.framebuffer.DS.CursorVisible = false
 			emu.showCursorMode = false
@@ -1518,7 +1558,9 @@ func hdl_csi_privRM(emu *Emulator, params []int) {
 			// emu.framebuffer.DS.BracketedPaste = false
 			emu.bracketedPasteMode = false
 		default:
-			emu.logU.Printf("reset priv mode %d\n", param)
+			// emu.logU.Printf("reset priv mode %d\n", param)
+			util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_privSM").With("unimplement", "DECRST").
+				With("param", param).Debug("reset priv mode")
 		}
 	}
 }
@@ -1540,7 +1582,9 @@ func hdl_csi_decstbm(emu *Emulator, params []int) {
 		}
 
 		if newMarginBottom < newMarginTop+2 || emu.nRows < newMarginBottom {
-			emu.logT.Printf("Illegal arguments to SetTopBottomMargins: top=%d, bottom=%d\n", params[0], params[1])
+			// emu.logT.Printf("Illegal arguments to SetTopBottomMargins: top=%d, bottom=%d\n", params[0], params[1])
+			util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_decstbm").
+				With("top", params[0]).With("bottom", params[1]).Debug("Illegal arguments to SetTopBottomMargins")
 		} else if newMarginTop != emu.marginTop || newMarginBottom != emu.marginBottom {
 			emu.marginTop = newMarginTop
 			emu.marginBottom = newMarginBottom
@@ -1617,7 +1661,9 @@ func hdl_csi_decslrm(emu *Emulator, params []int) {
 		}
 
 		if newMarginRight < newMarginLeft+2 || emu.nCols < newMarginRight {
-			emu.logT.Printf("Illegal arguments to SetLeftRightMargins: left=%d, right=%d\n", params[0], params[1])
+			// emu.logT.Printf("Illegal arguments to SetLeftRightMargins: left=%d, right=%d\n", params[0], params[1])
+			util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_decslrm").
+				With("left", params[0]).With("right", params[1]).Debug("Illegal arguments to SetLeftRightMargins")
 		} else if newMarginLeft != emu.hMargin || newMarginRight != emu.nColsEff {
 			emu.hMargin = newMarginLeft
 			emu.nColsEff = newMarginRight
@@ -1653,7 +1699,9 @@ func hdl_csi_slrm_scosc(emu *Emulator, params []int) {
 // CSI u     Restore cursor (SCORC, also ANSI.SYS).
 func hdl_csi_scorc(emu *Emulator) {
 	if !emu.savedCursor_SCO.isSet {
-		emu.logI.Println("Asked to restore cursor (SCORC) but it has not been saved.")
+		// emu.logI.Println("Asked to restore cursor (SCORC) but it has not been saved.")
+		util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_scorc").
+			Info("Asked to restore cursor (SCORC) but it has not been saved")
 	} else {
 		emu.posX = emu.savedCursor_SCO.posX
 		emu.posY = emu.savedCursor_SCO.posY
@@ -1693,17 +1741,25 @@ func hdl_csi_decscl(emu *Emulator, params []int) {
 			// emu.setCompatLevel(CompatLevel_VT400)
 			emu.setCompatLevel(sclCompatLevel(params[0]))
 		default:
-			emu.logU.Printf("compatibility mode: %d", params[0])
+			// emu.logU.Printf("compatibility mode: %d", params[0])
+			util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_decscl").With("unimplement", "DECSCL").
+				With("param", params[0]).Debug("compatibility mode")
 		}
 	}
 	if len(params) > 1 {
 		switch params[1] {
 		case 0, 2:
-			emu.logT.Println("DECSCL: 8-bit controls")
+			// emu.logT.Println("DECSCL: 8-bit controls")
+			util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_decscl").
+				Debug("DECSCL: 8-bit controls")
 		case 1:
-			emu.logT.Println("DECSCL: 7-bit controls")
+			// emu.logT.Println("DECSCL: 7-bit controls")
+			util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_decscl").
+				Debug("DECSCL: 7-bit controls")
 		default:
-			emu.logU.Printf("DECSCL: C1 control transmission mode: %d", params[1])
+			// emu.logU.Printf("DECSCL: C1 control transmission mode: %d", params[1])
+			util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_decscl").With("unimplement", "DECSCL").
+				With("param", params[1]).Debug("DECSCL: C1 control transmission mode")
 		}
 	}
 }
@@ -1805,22 +1861,35 @@ func hdl_csi_xtmodkeys(emu *Emulator, params []int) {
 		switch params[0] { // TODO the meaning of second parameters.
 		case 0:
 			if params[1] != 0 {
-				emu.logU.Printf("XTMODKEYS: modifyKeyboard = %d\n", params[1])
+				// emu.logU.Printf("XTMODKEYS: modifyKeyboard = %d\n", params[1])
+				util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_xtmodkeys").
+					With("unimplement", "XTMODKEYS").
+					With("params", params[1]).Debug("XTMODKEYS: modifyKeyboard")
 			}
 		case 1:
 			if params[1] != 2 {
-				emu.logU.Printf("XTMODKEYS: modifyCursorKeys = %d\n", params[1])
+				// emu.logU.Printf("XTMODKEYS: modifyCursorKeys = %d\n", params[1])
+				util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_xtmodkeys").
+					With("unimplement", "XTMODKEYS").
+					With("params", params[1]).Debug("XTMODKEYS: modifyCursorKeys")
 			}
 		case 2:
 			if params[1] != 2 {
-				emu.logU.Printf("XTMODKEYS: modifyFunctionKeys = %d\n", params[1])
+				// emu.logU.Printf("XTMODKEYS: modifyFunctionKeys = %d\n", params[1])
+				util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_xtmodkeys").
+					With("unimplement", "XTMODKEYS").
+					With("params", params[1]).Debug("XTMODKEYS: modifyFunctionKeys")
 			}
 		case 4:
 			if params[1] <= 2 {
 				emu.modifyOtherKeys = uint(params[1])
-				emu.logT.Printf("XTMODKEYS: modifyOtherKeys set to %d\n", emu.modifyOtherKeys)
+				// emu.logT.Printf("XTMODKEYS: modifyOtherKeys set to %d\n", emu.modifyOtherKeys)
+				util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_xtmodkeys").
+					With("modifyOtherKeys", emu.modifyOtherKeys).Debug("XTMODKEYS: modifyOtherKeys set to")
 			} else {
-				emu.logI.Printf("XTMODKEYS: illegal argument for modifyOtherKeys: %d\n", params[1])
+				// emu.logI.Printf("XTMODKEYS: illegal argument for modifyOtherKeys: %d\n", params[1])
+				util.Log.With(slog.Group("terminal")).With("function", "hdl_csi_xtmodkeys").
+					With("params", params[1]).Info("XTMODKEYS: illegal argument for modifyOtherKeys")
 			}
 		}
 	}

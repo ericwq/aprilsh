@@ -89,7 +89,7 @@ type Parser struct {
 	// logE     *log.Logger
 	// logT     *log.Logger
 	// logU     *log.Logger
-	// logTrace bool
+	logTrace bool
 }
 
 func NewParser() *Parser {
@@ -119,7 +119,10 @@ func (p *Parser) appendToHistory(r rune) {
 	if p.history.Len() < 4097 {
 		p.history.PushBack(r)
 	} else {
-		p.logE.Printf("Parser histroy string overflow (>4097). %q[%c]\n", p.historyString(), r)
+		// p.logE.Printf("Parser histroy string overflow (>4097). %q[%c]\n", p.historyString(), r)
+		util.Log.With(slog.Group("terminal")).With("method", "Parser.appendToHistory").
+			With("historyString", p.historyString()).With("rune", r).
+			Error("Parser histroy string overflow (>4097)")
 	}
 }
 
@@ -192,16 +195,24 @@ func (p *Parser) reset() {
 // trace the input if logTrace is true
 func (p *Parser) traceNormalInput() {
 	if p.logTrace {
-		p.logT.Printf("Input:%q inputOps=%d, nInputOps=%d, argBuf=%q\n",
-			p.chs, p.inputOps, p.nInputOps, p.argBuf.String())
+		// p.logT.Printf("Input:%q inputOps=%d, nInputOps=%d, argBuf=%q\n",
+		// 	p.chs, p.inputOps, p.nInputOps, p.argBuf.String())
+		util.Log.With(slog.Group("terminal")).With("method", "Parser.traceNormalInput").
+			With("input", p.chs).With("inputOps", p.inputOps).
+			With("nInputOps", p.nInputOps).With("argBuf", p.argBuf.String()).Debug("Input:")
 	}
+
 }
 
 // log the unhandled input and reset the state to normal
 func (p *Parser) unhandledInput() {
-	p.logU.Printf("Unhandled input:%q state=%s, inputOps=%d, nInputOps=%d, argBuf=%q\n",
-		p.historyString(), strInputState[p.inputState], p.inputOps, p.nInputOps, p.argBuf.String())
+	// p.logU.Printf("Unhandled input:%q state=%s, inputOps=%d, nInputOps=%d, argBuf=%q\n",
+	// 	p.historyString(), strInputState[p.inputState], p.inputOps, p.nInputOps, p.argBuf.String())
 
+	util.Log.With(slog.Group("terminal")).With("method", "Parser.unhandledInput").
+		With("input", p.historyString()).With("state", strInputState[p.inputState]).
+		With("inputOps", p.inputOps).With("nInputOps", p.nInputOps).With("argBuf", p.argBuf.String()).
+		With("unimplement", "Any").Debug("Unhandled input:")
 	p.setState(InputState_Normal)
 }
 
@@ -233,7 +244,9 @@ func (p *Parser) collectNumericParameters(ch rune) (isNumeric bool) {
 		p.inputOps[p.nInputOps-1] *= 10
 		p.inputOps[p.nInputOps-1] += int(ch - '0')
 		if p.inputOps[p.nInputOps-1] >= 65535 {
-			p.logE.Printf("the number is too big: > 65535, %d", p.inputOps[p.nInputOps-1])
+			// p.logE.Printf("the number is too big: > 65535, %d", p.inputOps[p.nInputOps-1])
+			util.Log.With(slog.Group("terminal")).With("method", "Parser.collectNumericParameters").
+				With("last number in inputOps", p.inputOps[p.nInputOps-1]).Error("the number is too big: > 65535")
 			p.setState(InputState_Normal)
 		}
 	} else if ch == ';' || ch == ':' {
@@ -242,7 +255,9 @@ func (p *Parser) collectNumericParameters(ch rune) (isNumeric bool) {
 			p.inputOps[p.nInputOps] = 0
 			p.nInputOps += 1
 		} else {
-			p.logE.Printf("inputOps full, increase maxEscOps. %d", p.inputOps)
+			// p.logE.Printf("inputOps full, increase maxEscOps. %d", p.inputOps)
+			util.Log.With(slog.Group("terminal")).With("method", "Parser.collectNumericParameters").
+				With("inputOps", p.inputOps).Error("inputOps full, increase maxEscOps")
 			p.setState(InputState_Normal)
 		}
 	}
@@ -417,19 +432,25 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 	// get the Ps
 	pos := strings.Index(arg, ";")
 	if pos == -1 {
-		p.logT.Printf("OSC: no ';' exist. %q\n", arg)
+		// p.logT.Printf("OSC: no ';' exist. %q\n", arg)
+		util.Log.With(slog.Group("terminal")).With("method", "Parser.handle_OSC").
+			With("arg", arg).Debug("OSC: no ';' exist")
 		return
 	}
 	var err error
 	if cmd, err = strconv.Atoi(arg[:pos]); err != nil {
-		p.logT.Printf("OSC: illegal Ps parameter. %q\n", arg[:pos])
+		// p.logT.Printf("OSC: illegal Ps parameter. %q\n", arg[:pos])
+		util.Log.With(slog.Group("terminal")).With("method", "Parser.handle_OSC").
+			With("arg", arg[:pos]).Debug("OSC: illegal Ps parameter")
 		return
 	}
 
 	// get the Pt
 	arg = arg[pos+1:]
 	if cmd < 0 || cmd > 120 {
-		p.logT.Printf("OSC: malformed command string %d %q\n", cmd, arg)
+		// p.logT.Printf("OSC: malformed command string %d %q\n", cmd, arg)
+		util.Log.With(slog.Group("terminal")).With("method", "Parser.handle_OSC").
+			With("cmd", cmd).With("arg", arg).Debug("OSC: malformed command string")
 	} else {
 		switch cmd {
 		// create the ActOn
@@ -454,7 +475,9 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 				hdl_osc_10x(emu, cmd, arg)
 			}
 		default:
-			p.logU.Printf("unhandled OSC: %d %q\n", cmd, arg)
+			// p.logU.Printf("unhandled OSC: %d %q\n", cmd, arg)
+			util.Log.With(slog.Group("terminal")).With("method", "Parser.handle_OSC").
+				With("cmd", cmd).With("arg", arg).Debug("unhandled OSC")
 		}
 	}
 
@@ -1024,7 +1047,10 @@ func (p *Parser) handle_DECALN() (hd *Handler) {
 // ESC / C   Designate G3 Character Set, VT300.
 // https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Controls-beginning-with-ESC
 func (p *Parser) handle_ESC_DCS() (hd *Handler) {
-	p.logT.Printf("Designate Character Set: destination %q ,%q, %q\n", p.scsDst, p.scsMod, p.ch)
+	// p.logT.Printf("Designate Character Set: destination %q ,%q, %q\n", p.scsDst, p.scsMod, p.ch)
+	util.Log.With(slog.Group("terminal")).With("method", "Parser.handle_ESC_DCS").
+		With("scsDst", p.scsDst).With("scsMod", p.scsMod).With("ch", p.ch).
+		Debug("Designate Character Set")
 
 	index := 0
 	charset96 := false
