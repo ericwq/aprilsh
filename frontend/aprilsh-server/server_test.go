@@ -1352,7 +1352,10 @@ func TestRunWorkerKill(t *testing.T) {
 			saveStdout := os.Stdout
 			r, w, _ := os.Pipe()
 			os.Stdout = w
-			// initLog()
+
+			defer util.Log.Restore()
+			util.Log.SetOutput(w)
+			util.Log.SetLevel(slog.LevelDebug)
 
 			// set serve func and runWorker func
 			v.conf.serve = mockServe
@@ -1416,7 +1419,7 @@ func TestRunWorkerStop(t *testing.T) {
 			},
 		},
 		{
-			"runWorker stop port not exist", 20, _ASH_OPEN + "7121,", _ASH_CLOSE + "port does not exist",
+			"runWorker stop port not exist", 5, _ASH_OPEN + "7121,", _ASH_CLOSE + "port does not exist",
 			[]string{"7100"},
 			50,
 			Config{
@@ -1426,7 +1429,7 @@ func TestRunWorkerStop(t *testing.T) {
 			},
 		},
 		{
-			"runWorker stop wrong port number", 20, _ASH_OPEN + "7131,", _ASH_CLOSE + "wrong port number",
+			"runWorker stop wrong port number", 5, _ASH_OPEN + "7131,", _ASH_CLOSE + "wrong port number",
 			[]string{"7121x"},
 			50,
 			Config{
@@ -1436,7 +1439,7 @@ func TestRunWorkerStop(t *testing.T) {
 			},
 		},
 		{
-			"runWorker stop unknow request", 20, _ASH_OPEN + "7141,", _ASH_CLOSE + "unknow request",
+			"runWorker stop unknow request", 5, _ASH_OPEN + "7141,", _ASH_CLOSE + "unknow request",
 			[]string{"two", "params"},
 			50,
 			Config{
@@ -1453,7 +1456,9 @@ func TestRunWorkerStop(t *testing.T) {
 			saveStdout := os.Stdout
 			r, w, _ := os.Pipe()
 			os.Stdout = w
-			// initLog()
+			defer util.Log.Restore()
+			util.Log.SetOutput(w)
+			util.Log.SetLevel(slog.LevelDebug)
 
 			// set serve func and runWorker func
 			v.conf.serve = mockServe
@@ -1487,6 +1492,7 @@ func TestRunWorkerStop(t *testing.T) {
 				t.Errorf("#test run expect %q got %q\n", v.resp1, resp2)
 			}
 
+			// fmt.Printf("#test got start response %s\n", resp2)
 			// stop the connection
 			if len(v.exp) > 0 {
 				expect := _ASH_CLOSE + "done"

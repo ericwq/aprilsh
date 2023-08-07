@@ -1168,7 +1168,7 @@ func (m *mainSrv) run(conf *Config) {
 			} else { // kill the workers
 				for i := range m.workers {
 					m.workers[i].shell.Kill()
-					fmt.Printf("kill %d\n", i)
+					// fmt.Printf("kill %d\n", i)
 				}
 				return
 			}
