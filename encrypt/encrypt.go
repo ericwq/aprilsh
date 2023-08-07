@@ -16,7 +16,6 @@ import (
 	"syscall"
 
 	"github.com/ericwq/aprilsh/util"
-	"golang.org/x/exp/slog"
 )
 
 const (
@@ -72,7 +71,7 @@ func _randomNonce(r ..._randFunc) ([]byte, error) {
 	nonce := make([]byte, NONCE_LEN)
 	if _, err := f(rand.Reader, nonce); err != nil {
 		// logW.Printf("#randomNonce. %s\n", err)
-		util.Log.With(slog.Group("encrypt")).With("error", err).Warn("#randomNonce")
+		util.Log.With("error", err).Warn("#randomNonce")
 		return nil, err
 	}
 
@@ -94,13 +93,13 @@ func NewBase64Key2(printableKey string) *Base64Key {
 	key, err := base64.StdEncoding.DecodeString(printableKey)
 	if err != nil {
 		// logW.Printf("#Base64Key Key must be well-formed base64. %s\n", err)
-		util.Log.With(slog.Group("encrypt")).With("error", err).Warn("key must be well-formed base64")
+		util.Log.With("error", err).Warn("key must be well-formed base64")
 		return nil
 	}
 
 	if len(key) != 16 {
 		// logW.Println("#Base64Key Key must represent 16 octets.")
-		util.Log.With(slog.Group("encrypt")).With("key", key).Warn("key must represent 16 octets.")
+		util.Log.With("key", key).Warn("key must represent 16 octets.")
 		return nil
 	}
 
@@ -201,7 +200,7 @@ func NewSession(key Base64Key) (*Session, error) {
 	block, err := aes.NewCipher([]byte(s.base64Key.key))
 	if err != nil {
 		// logW.Printf("#session %s\n", err)
-		util.Log.With(slog.Group("encrypt")).With("error", err).Warn("create session from key")
+		util.Log.With("error", err).Warn("create session from key")
 		return nil, err
 	}
 

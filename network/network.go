@@ -23,7 +23,6 @@ import (
 	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/util"
 	// "golang.org/x/net/ipv4"
-	"golang.org/x/exp/slog"
 	"golang.org/x/sys/unix"
 )
 
@@ -304,7 +303,7 @@ func NewConnectionClient(keyStr string, ip, port string) *Connection { // client
 	c.key = encrypt.NewBase64Key2(keyStr)
 	// var err error
 	if c.key == nil {
-		util.Log.With(slog.Group("network")).With("keyStr", keyStr).
+		util.Log.With("keyStr", keyStr).
 			With("error").Warn("#NeNewConnectionClient build key failed")
 		return nil
 
@@ -312,7 +311,7 @@ func NewConnectionClient(keyStr string, ip, port string) *Connection { // client
 	c.session, _ = encrypt.NewSession(*c.key) // TODO error handling
 	// if err != nil {
 	// 	// fmt.Printf("#NewConnectionClient :%s\n", err)
-	// 	util.Log.With(slog.Group("network")).With("keyStr", keyStr).
+	// 	util.Log.With("keyStr", keyStr).
 	// 		With("error").Warn("#NeNewConnectionClient create session failed")
 	// 	return nil
 	// }
@@ -343,14 +342,14 @@ func parsePort(portStr string, hint string) (port int, ok bool) {
 	value, err := strconv.Atoi(portStr)
 	if err != nil {
 		// logW.Printf("#parsePort invalid (%s) port number (%s)\n", hint, portStr)
-		util.Log.With(slog.Group("network")).With("error", err).With("hint", hint).
+		util.Log.With("error", err).With("hint", hint).
 			With("port", portStr).Warn("#parsePort invalid port number")
 		return
 	}
 
 	if value < 0 || value > 65535 {
 		// logW.Printf("#parsePort (%s) port number %d outside valid range [0..65535]\n", hint, value)
-		util.Log.With(slog.Group("network")).With("error", err).With("hint", hint).
+		util.Log.With("error", err).With("hint", hint).
 			With("port number", value).Warn("#parsePort port number is outside of valid range [0..65535]")
 		return
 	}
@@ -381,7 +380,7 @@ func ParsePortRange(desiredPort string) (desiredPortLow, desiredPortHigh int, ok
 
 		if desiredPortLow > desiredPortHigh {
 			// logW.Printf("#ParsePortRange low port %d greater than high port %d\n", desiredPortLow, desiredPortHigh)
-			util.Log.With(slog.Group("network")).With("low port", desiredPortLow).
+			util.Log.With("low port", desiredPortLow).
 				With("high port", desiredPortHigh).Warn("#ParsePortRange low port is greater than high port")
 			ok = false
 			return
@@ -455,7 +454,7 @@ func (c *Connection) dialUDP(ip, port string) bool {
 	conn, err := d.Dial(NETWORK, net.JoinHostPort(ip, port))
 	if err != nil {
 		// c.logW.Printf("#dialUDP %s\n", err)
-		util.Log.With(slog.Group("network")).With("error", err).Warn("#dialUDP dial fail")
+		util.Log.With("error", err).Warn("#dialUDP dial fail")
 		return false
 	}
 
@@ -488,7 +487,7 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 		localAddr, err := net.ResolveUDPAddr(NETWORK, address)
 		if err != nil {
 			// c.logW.Printf("#tryBind %s\n", err)
-			util.Log.With(slog.Group("network")).With("error", err).With("address", address).Warn("#tryBind resolve")
+			util.Log.With("error", err).With("address", address).Warn("#tryBind resolve")
 			return false
 		}
 
@@ -497,7 +496,7 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 		if err != nil {
 			if i == searchHigh { // last port to search
 				// c.logW.Printf("#tryBind error=%s address=%s\n", err, address)
-				util.Log.With(slog.Group("network")).With("address", c.remoteAddr).With("error", err).Warn("#tryBind listen")
+				util.Log.With("address", c.remoteAddr).With("error", err).Warn("#tryBind listen")
 			}
 		} else {
 			c.socks = append(c.socks, conn.(udpConn))
@@ -535,7 +534,7 @@ func (c *Connection) hopPort() {
 	host, port, _ := net.SplitHostPort(c.remoteAddr.String())
 	if !c.dialUDP(host, port) {
 		// c.logW.Printf("#hopPort failed to dial %s\n", c.remoteAddr)
-		util.Log.With(slog.Group("network")).With("remote addr", c.remoteAddr).Warn("#hopPort failed to dial")
+		util.Log.With("remote addr", c.remoteAddr).Warn("#hopPort failed to dial")
 		return
 	}
 
@@ -643,7 +642,7 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 				c.savedTimestamp -= CONGESTION_TIMESTAMP_PENALTY
 				if c.server {
 					// c.logW.Println("#recvOne received explicit congestion notification.")
-					util.Log.With(slog.Group("network")).Warn("#recvOne received explicit congestion notification")
+					util.Log.With("#recvOne received explicit congestion notification")
 				}
 			}
 		}
@@ -676,8 +675,7 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 			if !reflect.DeepEqual(raddr, c.remoteAddr) {
 				c.remoteAddr = raddr
 				// c.logW.Printf("#recvOne server now attached to client at %s\n", c.remoteAddr)
-				util.Log.With(slog.Group("network")).With("remote addr",
-					c.remoteAddr).Warn("#recvOne server now attached to client at")
+				util.Log.With("remote addr", c.remoteAddr).Warn("#recvOne server now attached to client at")
 			}
 		}
 	}
@@ -737,7 +735,7 @@ func (c *Connection) send(s string) (sendError error) {
 		if now-c.lastHeard > SERVER_ASSOCIATION_TIMEOUT {
 			c.hasRemoteAddr = false
 			// c.logW.Printf("#send server now detached from client: [%s]\n", c.remoteAddr)
-			util.Log.With(slog.Group("network")).With("remote addr", c.remoteAddr).Warn("#send server now detached from client")
+			util.Log.With("remote addr", c.remoteAddr).Warn("#send server now detached from client")
 		}
 	} else {
 		if now-c.lastPortChoice > PORT_HOP_INTERVAL && now-c.lastRoundtripSuccess > PORT_HOP_INTERVAL {
@@ -760,7 +758,7 @@ func (c *Connection) recv() (payload string, err error) {
 				continue
 			} else {
 				// c.logW.Printf("#recv %s\n", err)
-				util.Log.With(slog.Group("network")).With("error", err).Warn("#recv")
+				util.Log.With("error", err).Warn("#recv")
 				break
 			}
 		}

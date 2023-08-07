@@ -13,7 +13,6 @@ import (
 
 	pb "github.com/ericwq/aprilsh/protobufs"
 	"github.com/ericwq/aprilsh/util"
-	"golang.org/x/exp/slog"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -178,13 +177,13 @@ func (f *FragmentAssembly) getAssembly() *pb.Instruction {
 	ret := pb.Instruction{}
 	b, err := GetCompressor().Uncompress([]byte(encoded.String()))
 	if err != nil {
-		util.Log.With(slog.Group("network")).With("error", err).Warn("#getAssembly uncompress")
+		util.Log.With("error", err).Warn("#getAssembly uncompress")
 		return nil
 	}
 
 	err = proto.Unmarshal(b, &ret)
 	if err != nil {
-		util.Log.With(slog.Group("network")).With("error", err).Warn("#getAssembly unmarshal")
+		util.Log.With("error", err).Warn("#getAssembly unmarshal")
 		return nil
 	}
 

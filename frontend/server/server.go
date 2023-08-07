@@ -525,7 +525,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	ptmx, pts, err := openPTS(windowSize)
 	if err != nil {
 		// logW.Printf("#runWorker openPTS fail: %s\n", err)
-		util.Log.With(slog.Group("server")).With("error", err).With("function", "runWorker").
+		util.Log.With("error", err).With("function", "runWorker").
 			Warn("openPTS fail")
 		whChan <- &workhorse{}
 		return err
@@ -544,7 +544,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	pts.Close() // it's copied by shell process, it's safe to close it here.
 	if err != nil {
 		// logW.Printf("#runWorker startShell fail: %s\n", err)
-		util.Log.With(slog.Group("server")).With("error", err).With("function", "runWorker").
+		util.Log.With("error", err).With("function", "runWorker").
 			Warn("startShell fail")
 		whChan <- &workhorse{}
 	} else {
@@ -561,18 +561,18 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		go conf.serve(ptmx, pts, terminal, network, networkTimeout, networkSignaledTimeout)
 		whChan <- &workhorse{shell, ptmx}
 		// fmt.Printf("#runWorker start listening on :%s\n", conf.desiredPort)
-		util.Log.With(slog.Group("server")).With("desiredPort", conf.desiredPort).With("function", "runWorker").
+		util.Log.With("desiredPort", conf.desiredPort).With("function", "runWorker").
 			Info("start listening on")
 
 		// wait for the shell to finish.
 		// fmt.Printf("#runWorker shell.Wait() %p %v\n", shell, shell)
 		if state, err := shell.Wait(); err != nil || state.Exited() {
 			// logW.Printf("#runWorker shell.Wait fail: %s, state: %s\n", err, state)
-			util.Log.With(slog.Group("server")).With("function", "runWorker").With("error", err).
+			util.Log.With("function", "runWorker").With("error", err).
 				With("state", state).Warn("shell.Wait fail")
 		}
 		// logI.Printf("#runWorker stop listening on :%s\n", conf.desiredPort)
-		util.Log.With(slog.Group("server")).With("desiredPort", conf.desiredPort).With("function", "runWorker").
+		util.Log.With("desiredPort", conf.desiredPort).With("function", "runWorker").
 			Info("stop listening on")
 
 		// clear utmp entry
@@ -592,7 +592,7 @@ func getCurrentUser() string {
 	user, err := user.Current()
 	if err != nil || userCurrentTest {
 		// logW.Printf("#getCurrentUser report: %s\n", err)
-		util.Log.With(slog.Group("server")).With("function", "getCurrentUser").With("error", err).
+		util.Log.With("function", "getCurrentUser").With("error", err).
 			Warn("Get current user")
 		return ""
 	}
@@ -1068,7 +1068,7 @@ func (m *mainSrv) start(conf *Config) {
 	// start udp server upon receive the shake hands message.
 	if err := m.listen(conf); err != nil {
 		// logW.Printf("%s: %s\n", _COMMAND_NAME, err.Error())
-		util.Log.With(slog.Group("server")).With("method", "mainSrv.start").With("error", err).
+		util.Log.With("method", "mainSrv.start").With("error", err).
 			Warn("listen failed")
 		return
 	}
@@ -1093,8 +1093,7 @@ func (m *mainSrv) handler() {
 		switch s {
 		case syscall.SIGHUP: // TODO:reload the config?
 			// logI.Println("got message SIGHUP.")
-			util.Log.With(slog.Group("server")).With("method", "mainSrv.handler").
-				Info("got message SIGHUP")
+			util.Log.With("method", "mainSrv.handler").Info("got message SIGHUP")
 		case syscall.SIGTERM:
 			// logI.Println("got message SIGTERM.")
 			m.downChan <- true
@@ -1241,19 +1240,19 @@ func (m *mainSrv) run(conf *Config) {
 				} else {
 					resp := m.writeRespTo(addr, _ASH_CLOSE, "port does not exist")
 					// logW.Printf("#mainSrv run() request %q got %q\n", req, resp)
-					util.Log.With(slog.Group("server")).With("method", "mainSrv.run").
+					util.Log.With("method", "mainSrv.run").
 						With("request", req).With("response", resp).Warn("port does not exit")
 				}
 			} else {
 				resp := m.writeRespTo(addr, _ASH_CLOSE, "wrong port number")
 				// logW.Printf("#mainSrv run() request %q got %q\n", req, resp)
-				util.Log.With(slog.Group("server")).With("method", "mainSrv.run").
+				util.Log.With("method", "mainSrv.run").
 					With("request", req).With("response", resp).Warn("wrong port number")
 			}
 		} else {
 			resp := m.writeRespTo(addr, _ASH_CLOSE, "unknow request")
 			// logW.Printf("#mainSrv run() request %q got %q\n", req, resp)
-			util.Log.With(slog.Group("server")).With("method", "mainSrv.run").
+			util.Log.With("method", "mainSrv.run").
 				With("request", req).With("response", resp).Warn("unknow request")
 		}
 	}
@@ -1303,7 +1302,6 @@ func (m *mainSrv) wait() {
 	m.wg.Wait()
 	if err := m.eg.Wait(); err != nil {
 		// logW.Printf("#mainSrv wait() reports %s\n", err.Error())
-		util.Log.With(slog.Group("server")).With("method", "mainSrv.wait").
-			With("error", err).Warn("wait failed")
+		util.Log.With("method", "mainSrv.wait").With("error", err).Warn("wait failed")
 	}
 }

@@ -823,14 +823,14 @@ mainLoop:
 		case networkMsg := <-networkChan: // got data from socket
 			if networkMsg.Err != nil { // error handling
 				// logW.Printf("#readFromSocket receive error:%s\n", networkMsg.Err)
-				util.Log.With(slog.Group("client")).With("error", networkMsg.Err).Warn("receive from network")
+				util.Log.With("error", networkMsg.Err).Warn("receive from network")
 				continue mainLoop
 			}
 			sc.processNetworkInput()
 		case fileMsg := <-fileChan: // got data from file
 			if fileMsg.Err != nil {
 				// logW.Println("#readFromMaster read error: ", fileMsg.Err)
-				util.Log.With(slog.Group("client")).With("error", fileMsg.Err).Warn("read from file")
+				util.Log.With("error", fileMsg.Err).Warn("read from file")
 				sc.network.StartShutdown()
 			}
 
