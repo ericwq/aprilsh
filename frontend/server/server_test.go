@@ -896,7 +896,7 @@ func TestStartFail(t *testing.T) {
 		{
 			"illegal port", 20, "", 50,
 			Config{
-				version: false, server: true, verbose: _VERBOSE_LOG_STDERR, desiredIP: "", desiredPort: "7000a",
+				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7000a",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 			},

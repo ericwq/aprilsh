@@ -342,16 +342,24 @@ func main() {
 
 	util.SetNativeLocale()
 
-	util.Log.SetupSyslog("udp", "localhost:514")
+	// setup client log file
+	logf, err := util.Log.CreateLogFile(_COMMAND_NAME)
+	if err != nil {
+		fmt.Printf("can't create log file %s.\n", logf.Name())
+		return
+	}
+	fmt.Printf("check client log file %s\n\n", logf.Name())
+	util.Log.SetOutput(logf)
 	util.Log.SetLevel(slog.LevelInfo)
 
+	// start client
 	client := newSTMClient(conf)
 	if err := client.init(); err != nil {
 		fmt.Printf("%s init error:%s\n", _COMMAND_NAME, err)
 		return
 	}
-
 	client.main()
+
 	fmt.Printf("\n%s is exiting.\n", _COMMAND_NAME)
 }
 

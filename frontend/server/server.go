@@ -406,19 +406,18 @@ func main() {
 		return
 	}
 
+	// setup server log file
 	syslogSupport = false
 	if conf.verbose != _VERBOSE_LOG_STDERR && util.Log.SetupSyslog("udp", "localhost:514") == nil {
 		syslogSupport = true
 	}
-
 	if conf.verbose > 0 {
 		util.Log.SetLevel(slog.LevelDebug)
-		fmt.Println("debug level")
 	} else {
 		util.Log.SetLevel(slog.LevelInfo)
-		fmt.Println("info level")
 	}
 
+	// start server
 	srv := newMainSrv(conf, runWorker)
 	srv.start(conf)
 	srv.wait()
