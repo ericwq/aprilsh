@@ -8,8 +8,9 @@ import (
 	"errors"
 	"fmt"
 	"net"
-	"os"
 	"time"
+
+	"github.com/ericwq/aprilsh/util"
 )
 
 // type S or R that must implement the State[T] interface - that is, for itself.
@@ -63,6 +64,8 @@ func (t *Transport[S, R]) processThrowawayUntil(throwawayNum int64) {
 	for i := range t.receivedState {
 		if t.receivedState[i].num >= throwawayNum {
 			rs = append(rs, t.receivedState[i])
+			// } else {
+			// 	util.Log.With("num", t.receivedState[i].num).Debug("remove num")
 		} // else condition means erase this element
 	}
 	t.receivedState = rs
@@ -108,10 +111,11 @@ func (t *Transport[S, R]) Recv() error {
 
 		// now, make sure we do have the old state
 		found := false
-		refStateIdx := 0
-		for refStateIdx = range t.receivedState {
-			if inst.OldNum == t.receivedState[refStateIdx].num {
+		var refState *TimestampedState[R]
+		for i := range t.receivedState {
+			if inst.OldNum == t.receivedState[i].num {
 				found = true
+				refState = &t.receivedState[i]
 				break
 			}
 		}
@@ -133,8 +137,11 @@ func (t *Transport[S, R]) Recv() error {
 			now := time.Now().UnixMilli()
 			if now < t.receiverQuenchTimer { // deny letting state grow further
 				if t.verbose > 0 {
-					fmt.Fprintf(os.Stderr, "#recv [%d] Receiver queue full, discarding %d (malicious sender or "+
-						"long-unidirectional connectivity?)\n", now%100000, inst.NewNum)
+					// fmt.Fprintf(os.Stderr, "#recv [%d] Receiver queue full, discarding %d (malicious sender or "+
+					// 	"long-unidirectional connectivity?)\n", now%100000, inst.NewNum)
+					util.Log.With("time", now%100000).With("newNum", inst.NewNum).
+						Debug("#recv Receiver queue full, discarding " +
+							" (malicious sender or long-unidirectional connectivity?)")
 				}
 				return nil
 			} else {
@@ -144,7 +151,7 @@ func (t *Transport[S, R]) Recv() error {
 
 		// apply diff to reference state
 		// we clone the state to avoid pollute reference state
-		newState := t.receivedState[refStateIdx].clone()
+		newState := refState.clone()
 		newState.timestamp = time.Now().UnixMilli()
 		newState.num = inst.NewNum
 		if len(inst.Diff) > 0 {
@@ -165,16 +172,21 @@ func (t *Transport[S, R]) Recv() error {
 				// 	fmt.Printf("#test shutdown %d\n", t.receivedState[i].num)
 				// }
 				if t.verbose > 0 {
-					fmt.Fprintf(os.Stderr, "#recv [%d] Received OUT-OF-ORDER state %d [ack %d]\n",
-						time.Now().UnixMilli()%100000, newState.num, inst.AckNum)
+					// fmt.Fprintf(os.Stderr, "#recv [%d] Received OUT-OF-ORDER state %d [ack %d]\n",
+					// 	time.Now().UnixMilli()%100000, newState.num, inst.AckNum)
+					util.Log.With("time", time.Now().UnixMilli()%100000).With("ackNum", inst.AckNum).
+						With("newNum", newState.num).Debug("#recv Received OUT-OF-ORDER state")
 				}
 				return nil
 			}
 			rs = append(rs, t.receivedState[i])
 		}
 		if t.verbose > 0 {
-			fmt.Fprintf(os.Stderr, "#recv [%d] Received state %d [coming from %d, ack %d]\n",
-				time.Now().UnixMilli()%100000, newState.num, inst.OldNum, inst.AckNum)
+			// fmt.Fprintf(os.Stderr, "#recv [%d] Received state %d [coming from %d, ack %d]\n",
+			// 	time.Now().UnixMilli()%100000, newState.num, inst.OldNum, inst.AckNum)
+			util.Log.With("time", time.Now().UnixMilli()%100000).With("newNum", newState.num).
+				With("OldNum", inst.OldNum).With("AckNum", inst.AckNum).
+				Debug("#recv Received state coming from ack state")
 		}
 
 		// fmt.Printf("#recv receive state num %d from %q got diff=%q.\n", newState.num, t.connection.remoteAddr, inst.Diff)

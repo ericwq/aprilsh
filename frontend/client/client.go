@@ -177,7 +177,7 @@ func (c *Config) fetchKey(password string) error {
 			ssh.Password(password),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         time.Duration(1) * time.Second,
+		Timeout:         time.Duration(2) * time.Second,
 	}
 	client, err := ssh.Dial("tcp", c.host+":22", cc)
 	if err != nil {
@@ -218,7 +218,7 @@ func (c *Config) fetchKey(password string) error {
 	// open aprilsh:60001,31kR3xgfmNxhDESXQ8VIQw==
 	body := strings.Split(strings.TrimSuffix(out, "\n"), ":")
 	if len(body) != 2 || !strings.HasPrefix(_ASH_OPEN, body[0]) {
-		return errors.New("malform response")
+		return errors.New("no response, please make sure the server is running.")
 	}
 
 	// parse port and key
@@ -351,6 +351,8 @@ func main() {
 	fmt.Printf("check client log file %s\n\n", logf.Name())
 	util.Log.SetOutput(logf)
 	util.Log.SetLevel(slog.LevelInfo)
+
+	// time.Sleep(time.Duration(10) * time.Second)
 
 	// start client
 	client := newSTMClient(conf)
