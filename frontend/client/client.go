@@ -327,21 +327,6 @@ func main() {
 		return
 	}
 
-	// the Stdin, Stderr, Stdout are all set to pts/N
-	if conf.pwd == "" {
-		conf.pwd, err = conf.getPassword(os.Stdin)
-		if err != nil {
-			printUsage(err.Error())
-			return
-		}
-	}
-	if err = conf.fetchKey(conf.pwd); err != nil {
-		printUsage(err.Error())
-		return
-	}
-
-	util.SetNativeLocale()
-
 	// setup client log file
 	logf, err := util.Log.CreateLogFile(_COMMAND_NAME)
 	if err != nil {
@@ -349,12 +334,27 @@ func main() {
 		return
 	}
 	fmt.Printf("check client log file %s\n\n", logf.Name())
+	util.Log.SetLevel(slog.LevelDebug)
 	util.Log.SetOutput(logf)
-	util.Log.SetLevel(slog.LevelInfo)
 
-	// time.Sleep(time.Duration(10) * time.Second)
+	// get pwd
+	if conf.pwd == "" {
+		conf.pwd, err = conf.getPassword(os.Stdin)
+		if err != nil {
+			printUsage(err.Error())
+			return
+		}
+	}
+
+	// login to remote server and fetch the key
+	if err = conf.fetchKey(conf.pwd); err != nil {
+		printUsage(err.Error())
+		return
+	}
 
 	// start client
+	// the Stdin, Stderr, Stdout are all set to pts/N
+	util.SetNativeLocale()
 	client := newSTMClient(conf)
 	if err := client.init(); err != nil {
 		fmt.Printf("%s init error:%s\n", _COMMAND_NAME, err)
