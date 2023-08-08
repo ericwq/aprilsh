@@ -642,7 +642,7 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 				c.savedTimestamp -= CONGESTION_TIMESTAMP_PENALTY
 				if c.server {
 					// c.logW.Println("#recvOne received explicit congestion notification.")
-					util.Log.With("#recvOne received explicit congestion notification")
+					util.Log.Warn("#recvOne received explicit congestion notification")
 				}
 			}
 		}
