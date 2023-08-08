@@ -675,7 +675,7 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 			if !reflect.DeepEqual(raddr, c.remoteAddr) {
 				c.remoteAddr = raddr
 				// c.logW.Printf("#recvOne server now attached to client at %s\n", c.remoteAddr)
-				util.Log.With("remote addr", c.remoteAddr).Warn("#recvOne server now attached to client at")
+				util.Log.With("remoteAddr", c.remoteAddr).Info("server now attached to client")
 			}
 		}
 	}

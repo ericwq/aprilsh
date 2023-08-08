@@ -13,6 +13,7 @@ import (
 	"github.com/ericwq/aprilsh/encrypt"
 	pb "github.com/ericwq/aprilsh/protobufs"
 	"github.com/ericwq/aprilsh/terminal"
+	// "github.com/ericwq/aprilsh/util"
 )
 
 const (
@@ -243,7 +244,6 @@ func (ts *TransportSender[T]) addSentState(timestamp int64, num int64, state T) 
 // Housekeeping routine to calculate next send and ack times
 // update assumed receiver state, cut out common prefix of all states
 func (ts *TransportSender[T]) calculateTimers() {
-	back := len(ts.sentStates) - 1
 	now := time.Now().UnixMilli()
 	// fmt.Printf("#calculateTimers size of sendStates=%d, timestamp=%d, now=%d\n",
 	// 	len(ts.sentStates), ts.sentStates[back].timestamp, now)
@@ -257,6 +257,11 @@ func (ts *TransportSender[T]) calculateTimers() {
 
 	// Cut out common prefix of all states
 	ts.rationalizeStates()
+	back := 0
+	if len(ts.sentStates) > 0 {
+		back = len(ts.sentStates) - 1
+	}
+	// util.Log.With("size", len((ts.sentStates))).With("back", back).Debug("check")
 
 	if ts.pendingDataAck && ts.nextAckTime > now+ACK_DELAY {
 		ts.nextAckTime = now + ACK_DELAY

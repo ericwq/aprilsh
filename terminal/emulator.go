@@ -450,12 +450,10 @@ func (emu *Emulator) switchColMode(colMode ColMode) {
 
 	if colMode == ColMode_C80 {
 		// emu.logT.Println("DECCOLM: Selected 80 columns per line")
-		util.Log.With("method", "Emulator.switchColMode").
-			Debug("DECCOLM: Selected 80 columns per line")
+		util.Log.Debug("DECCOLM: Selected 80 columns per line")
 	} else {
 		// emu.logT.Println("DECCOLM: Selected 132 columns per line")
-		util.Log.With("method", "Emulator.switchColMode").
-			Debug("DECCOLM: Selected 132 columns per line")
+		util.Log.Debug("DECCOLM: Selected 132 columns per line")
 	}
 
 	emu.colMode = colMode

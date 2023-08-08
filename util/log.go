@@ -28,13 +28,22 @@ func init() {
 	// default logger write to stderr
 	Log = new(logger)
 	Log.programLevel = new(slog.LevelVar)
-	Log.Logger = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: Log.programLevel}))
+	Log.SetLevel(slog.LevelInfo)
+	ho := &slog.HandlerOptions{AddSource: Log.isDebugLevel(), Level: Log.programLevel}
+	Log.Logger = slog.New(slog.NewTextHandler(os.Stderr, ho))
 	slog.SetDefault(Log.Logger)
 	Log.defaultLogger = slog.Default()
 }
 
 func (l *logger) SetLevel(v slog.Level) {
 	l.programLevel.Set(v)
+}
+
+func (l *logger) isDebugLevel() bool {
+	if l.programLevel.Level() == slog.LevelDebug {
+		return true
+	}
+	return false
 }
 
 // network: udp, address: localhost:514. check net.Dial() for detail
@@ -45,14 +54,16 @@ func (l *logger) SetupSyslog(network string, address string) error {
 		return err
 	}
 
-	l.Logger = slog.New(slog.NewTextHandler(writer, &slog.HandlerOptions{Level: Log.programLevel}))
+	ho := &slog.HandlerOptions{AddSource: l.isDebugLevel(), Level: Log.programLevel}
+	l.Logger = slog.New(slog.NewTextHandler(writer, ho))
 	slog.SetDefault(Log.Logger)
 	l.defaultLogger = slog.Default()
 	return nil
 }
 
 func (l *logger) SetOutput(w io.Writer) {
-	l.Logger = slog.New(slog.NewTextHandler(w, &slog.HandlerOptions{Level: Log.programLevel}))
+	ho := &slog.HandlerOptions{AddSource: Log.isDebugLevel(), Level: Log.programLevel}
+	l.Logger = slog.New(slog.NewTextHandler(w, ho))
 }
 
 func (l *logger) Restore() {

@@ -300,7 +300,7 @@ func TestConnectionReadWrite(t *testing.T) {
 				// t.Logf("%q expect %q, got %q\n", title, message[i], payload)
 				if i == 0 {
 					got := output.String()
-					expect := "#recvOne server now attached to client at"
+					expect := "server now attached to client"
 					if !strings.Contains(got, expect) {
 						t.Errorf("%q firt recv() expect \n%q, got \n%q\n", title, expect, got)
 					}
