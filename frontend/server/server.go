@@ -621,7 +621,7 @@ func serve(ptmx *os.File, pts *os.File, complete *statesync.Complete,
 	eg := errgroup.Group{}
 	// read from socket
 	eg.Go(func() error {
-		frontend.ReadFromNetwork(5, networkChan, networkDownChan, network)
+		frontend.ReadFromNetwork(5, networkChan, networkDownChan, network.GetConnection())
 		// readFromSocket(10, networkChan, network)
 		return nil
 	})
@@ -662,6 +662,8 @@ mainLoop:
 				fmt.Printf("#readFromSocket receive error:%s\n", socketMsg.Err)
 				continue mainLoop
 			}
+
+			network.ProcessPayload(socketMsg.Data)
 
 			// is new user input available for the terminal?
 			if network.GetRemoteStateNum() != lastRemoteNum {

@@ -471,8 +471,9 @@ func (sc *STMClient) mainInit() error {
 	return nil
 }
 
-func (sc *STMClient) processNetworkInput() {
+func (sc *STMClient) processNetworkInput(s string) {
 	// sc.network.Recv()
+	sc.network.ProcessPayload(s)
 
 	//  Now give hints to the overlays
 	rs := sc.network.GetLatestRemoteState()
@@ -792,7 +793,7 @@ func (sc *STMClient) main() error {
 	// read from network
 	eg.Go(func() error {
 		// if we have 2 client ip, 5 ms for each client
-		frontend.ReadFromNetwork(5, networkChan, networkDownChan, sc.network)
+		frontend.ReadFromNetwork(5, networkChan, networkDownChan, sc.network.GetConnection())
 		return nil
 	})
 	// read from pty master file
@@ -828,7 +829,7 @@ mainLoop:
 				util.Log.With("error", networkMsg.Err).Warn("receive from network")
 				continue mainLoop
 			}
-			sc.processNetworkInput()
+			sc.processNetworkInput(networkMsg.Data)
 		case fileMsg := <-fileChan: // got data from file
 			if fileMsg.Err != nil {
 				// logW.Println("#readFromMaster read error: ", fileMsg.Err)

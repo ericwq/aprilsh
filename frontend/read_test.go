@@ -186,6 +186,7 @@ func TestReadFromFile_DoneChan(t *testing.T) {
 type mockDeadLineReceiver struct {
 	round   int
 	timeout []int
+	data    []string
 	err     []error
 	limit   int
 }
@@ -194,7 +195,8 @@ func (m *mockDeadLineReceiver) SetReadDeadline(t time.Time) error {
 	return nil
 }
 
-func (m *mockDeadLineReceiver) Recv() (err error) {
+func (m *mockDeadLineReceiver) Recv() (payload string, err error) {
+	// func (m *mockDeadLineReceiver) Recv() (err error) {
 	if m.round >= 0 && m.round < len(m.err) {
 		// make sure we increase round
 		defer func() { m.round++ }()
@@ -210,6 +212,7 @@ func (m *mockDeadLineReceiver) Recv() (err error) {
 			return
 		}
 		// normal read
+		payload = m.data[m.round]
 		err = nil
 		return
 	}
@@ -225,6 +228,7 @@ func TestReadFromNetwork(t *testing.T) {
 	mr.round = 0
 	mr.limit = 10
 	mr.timeout = []int{5, 15, 7, 3, 8, 10}
+	mr.data = []string{"zero>", "one>", "two>", "tree>", "four>", "five>"}
 	mr.err = []error{nil, os.ErrDeadlineExceeded, nil, nil, nil, os.ErrPermission}
 
 	var networkChan chan Message
@@ -252,19 +256,22 @@ func TestReadFromNetwork(t *testing.T) {
 			continue
 		}
 		// got message from reader channel
-		fileMsg := <-networkChan
-		if fileMsg.Err != nil {
+		netMsg := <-networkChan
+		if netMsg.Err != nil {
 			// validate the error case
-			if !errors.Is(fileMsg.Err, os.ErrPermission) {
-				t.Errorf("#test ReadFromNetwork expect %s, got %s\n", mr.err[i], fileMsg.Err)
+			if !errors.Is(netMsg.Err, os.ErrPermission) {
+				t.Errorf("#test ReadFromNetwork expect %s, got %s\n", mr.err[i], netMsg.Err)
 			}
 			// fmt.Printf("#test ReadFromNetwork round=%d read error:%s\n", i, fileMsg.Err)
 		} else {
 			// fmt.Printf("#test ReadFromNetwork round=%d read %q\n", i, fileMsg.Data)
 
 			// validate the data field of message
-			if mr.err[i] != fileMsg.Err {
-				t.Errorf("#test ReadFromNetwork expect %s, got %s\n", mr.err[i], fileMsg.Err)
+			if mr.err[i] != netMsg.Err {
+				t.Errorf("#test ReadFromNetwork expect %s, got %s\n", mr.err[i], netMsg.Err)
+			}
+			if mr.data[i] != netMsg.Data {
+				t.Errorf("#test ReadFromFile expect %s, got %s\n", mr.data[i], netMsg.Data)
 			}
 		}
 	}
@@ -283,6 +290,7 @@ func TestReadFromNetwork_DownChan(t *testing.T) {
 	mr.round = 0
 	mr.limit = 10
 	mr.timeout = []int{5, 15, 7, 3, 8, 10}
+	mr.data = []string{"zero*", "one*", "two*", "tree*", "four*", "five*"}
 	mr.err = []error{nil, os.ErrDeadlineExceeded, nil, nil, nil, os.ErrPermission}
 
 	var networkChan chan Message
@@ -310,19 +318,22 @@ func TestReadFromNetwork_DownChan(t *testing.T) {
 			continue
 		}
 		// got message from reader channel
-		fileMsg := <-networkChan
-		if fileMsg.Err != nil {
+		netMsg := <-networkChan
+		if netMsg.Err != nil {
 			// validate the error case
-			if !errors.Is(fileMsg.Err, os.ErrDeadlineExceeded) {
-				t.Errorf("#test ReadFromNetwork expect %s, got %s\n", mr.err[i], fileMsg.Err)
+			if !errors.Is(netMsg.Err, os.ErrDeadlineExceeded) {
+				t.Errorf("#test ReadFromNetwork expect %s, got %s\n", mr.err[i], netMsg.Err)
 			}
-			// fmt.Printf("#test ReadFromNetwork round=%d read error:%s\n", i, fileMsg.Err)
+			// fmt.Printf("#test ReadFromNetwork round=%d read error:%s\n", i, netMsg.Err)
 		} else {
-			// fmt.Printf("#test ReadFromNetwork round=%d read %q\n", i, fileMsg.Data)
+			// fmt.Printf("#test ReadFromNetwork round=%d read %q\n", i, netMsg.Data)
 
 			// validate the data field of message
-			if mr.err[i] != fileMsg.Err {
-				t.Errorf("#test ReadFromNetwork expect %s, got %s\n", mr.err[i], fileMsg.Err)
+			if mr.err[i] != netMsg.Err {
+				t.Errorf("#test ReadFromNetwork expect %s, got %s\n", mr.err[i], netMsg.Err)
+			}
+			if mr.data[i] != netMsg.Data {
+				t.Errorf("#test ReadFromFile expect %s, got %s\n", mr.data[i], netMsg.Data)
 			}
 		}
 
