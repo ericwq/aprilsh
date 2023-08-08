@@ -292,7 +292,7 @@ func TestConnectionReadWrite(t *testing.T) {
 		defer server.sock().Close()
 		for i := range message {
 			output.Reset()
-			payload, _ := server.recv()
+			payload, _ := server.Recv()
 			// fmt.Printf("#test recv payload=%q\n", payload)
 			if len(payload) == 0 || message[i] != payload {
 				t.Errorf("%q expect %q, got %q\n", title, message[i], payload)
@@ -760,7 +760,7 @@ func TestSendBranch(t *testing.T) {
 	defer util.Log.Restore()
 	util.Log.SetOutput(&output)
 
-	msg, _ := server.recv()
+	msg, _ := server.Recv()
 	if msg != title {
 		t.Errorf("%q client send\n%q to server, server got \n%q\n", title, title, msg)
 	}
@@ -782,7 +782,7 @@ func TestSendBranch(t *testing.T) {
 	}
 
 	time.Sleep(time.Millisecond * 20)
-	msg, _ = client.recv() // the msg is still the old title
+	msg, _ = client.Recv() // the msg is still the old title
 	if msg != title {
 		t.Errorf("%q client receive\n%q from server, client got \n%q\n", title, title, msg)
 	}
@@ -848,7 +848,7 @@ func TestRecvFail(t *testing.T) {
 
 	// validate the failure case with mockUdpConn
 	for i, v := range tc {
-		_, err := client.recv()
+		_, err := client.Recv()
 		if v.err != nil {
 			switch i {
 			case 0:
@@ -912,7 +912,7 @@ func TestRecvBranchServer(t *testing.T) {
 	util.Log.SetOutput(&output)
 
 	// perform the receive
-	_, err := server.recv()
+	_, err := server.Recv()
 	got := "#recvOne server direction is wrong."
 	if err.Error() != got {
 		t.Errorf("%q client send\n%q to server, server got \n%q\n", title, msg0, got)
@@ -953,7 +953,7 @@ func TestRecvBranchClient(t *testing.T) {
 	// this will initialize server remote address.
 	client.send(msg0)
 	time.Sleep(time.Millisecond * 20)
-	server.recv()
+	server.Recv()
 
 	// server send message to client
 	msg1 := "from server to client"
@@ -974,7 +974,7 @@ func TestRecvBranchClient(t *testing.T) {
 	// client.logW.SetOutput(&output)
 
 	// perform the receive
-	_, err := client.recv()
+	_, err := client.Recv()
 	expect := "#recvOne client direction is wrong."
 	if err.Error() != expect {
 		t.Errorf("%q client send\n%q to server, server got \n%q\n", title, msg1, expect)
@@ -1047,7 +1047,7 @@ func TestRecvCongestionPacket(t *testing.T) {
 	congestionFunc = func(in byte) bool {
 		return true
 	}
-	server.recv()
+	server.Recv()
 
 	// validate the result
 	expect := "#recvOne received explicit congestion notification"
@@ -1114,11 +1114,11 @@ func TestRecvSRTT(t *testing.T) {
 
 		client.send(toServer)
 		time.Sleep(time.Millisecond * 10)
-		server.recv()
+		server.Recv()
 
 		server.send(toClient)
 		time.Sleep(time.Millisecond * 10)
-		got, _ = client.recv()
+		got, _ = client.Recv()
 
 		if got != toClient {
 			t.Errorf("%q expect %q, got %q\n", title, toClient, got)
@@ -1157,7 +1157,7 @@ func TestServerRecvTimeout(t *testing.T) {
 	server.socks = server.socks[len(server.socks)-1:]
 
 	// validate the no error case
-	if e1 := server.setReadDeadline(time.Now().Add(time.Millisecond * time.Duration(5))); e1 != nil {
+	if e1 := server.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(5))); e1 != nil {
 		t.Errorf("#test setReadDeadline() expect nil, got %s\n", e1)
 	}
 
@@ -1166,11 +1166,11 @@ func TestServerRecvTimeout(t *testing.T) {
 	mock.data = ""
 
 	// validate the error case
-	if e1 := server.setReadDeadline(time.Now().Add(time.Millisecond * time.Duration(5))); e1 == nil {
+	if e1 := server.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(5))); e1 == nil {
 		t.Errorf("#test setReadDeadline() expect err, got nil\n") // see mockUdpConn.SetReadDeadline
 	}
 	// validate the read time out case
-	_, e2 := server.recv()
+	_, e2 := server.Recv()
 	if !errors.Is(e2, os.ErrDeadlineExceeded) {
 		t.Errorf("#test recv() expect err, got %s\n", e2) // see mockUdpConn.SetReadDeadline
 	}

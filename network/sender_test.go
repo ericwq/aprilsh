@@ -688,7 +688,7 @@ func TestSenderSendInterval(t *testing.T) {
 
 		server.connection.send(toClient)
 		time.Sleep(time.Millisecond * 5)
-		got, _ = client.connection.recv()
+		got, _ = client.connection.Recv()
 
 		if got != toClient {
 			t.Errorf("#test sendInterval expect %q, got %q\n", toClient, got)

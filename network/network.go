@@ -747,7 +747,7 @@ func (c *Connection) send(s string) (sendError error) {
 }
 
 // receive packet from remote
-func (c *Connection) recv() (payload string, err error) {
+func (c *Connection) Recv() (payload string, err error) {
 	for i := range c.socks {
 		payload, err = c.recvOne(c.socks[i].(udpConn))
 		if err != nil {
@@ -810,7 +810,7 @@ func (c *Connection) setLastRoundtripSuccess(success int64) {
 	c.lastRoundtripSuccess = success
 }
 
-func (c *Connection) setReadDeadline(t time.Time) (err error) {
+func (c *Connection) SetReadDeadline(t time.Time) (err error) {
 	for i := range c.socks {
 		err = c.socks[i].SetReadDeadline(t)
 		if err != nil {

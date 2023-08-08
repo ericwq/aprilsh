@@ -83,10 +83,126 @@ func (t *Transport[S, R]) WaitTime() int {
 
 // Blocks waiting for a packet.
 func (t *Transport[S, R]) Recv() error {
-	s, err := t.connection.recv()
+	s, err := t.connection.Recv()
 	if err != nil {
 		return err
 	}
+
+	return t.ProcessPayload(s)
+}
+
+func (t *Transport[S, R]) GetRemoteDiff() string {
+	// find diff between last receiver state and current remote state, then rationalize states
+	back := len(t.receivedState) - 1
+	ret := t.receivedState[back].state.DiffFrom(t.lastReceiverState)
+
+	oldestReceivedState := t.receivedState[0].state
+	for i := back; i >= 0; i-- {
+		t.receivedState[i].state.Subtract(oldestReceivedState)
+	}
+
+	t.lastReceiverState = t.receivedState[back].state
+	return ret
+}
+
+func (t *Transport[S, R]) SetReadDeadline(ti time.Time) error {
+	return t.connection.SetReadDeadline(ti)
+}
+
+// Other side has requested shutdown and we have sent one ACK
+//
+//	Illegal to change current_state after this.
+func (t *Transport[S, R]) StartShutdown() {
+	t.sender.startShutdown()
+}
+
+// return true if shutdown is started, otherwise false.
+func (t *Transport[S, R]) ShutdownInProgress() bool {
+	return t.sender.getShutdownInProgress()
+}
+
+// return true if the firt sent state num is -1, otherwise false.
+func (t *Transport[S, R]) ShutdownAcknowledged() bool {
+	return t.sender.getShutdownAcknowledged()
+}
+
+func (t *Transport[S, R]) ShutdownAckTimedout() bool {
+	return t.sender.shutdonwAckTimedout()
+}
+
+func (t *Transport[S, R]) HasRemoteAddr() bool {
+	return t.connection.getHasRemoteAddr()
+}
+
+// Other side has requested shutdown and we have sent one ACK
+func (t *Transport[S, R]) CounterpartyShutdownAckSent() bool {
+	return t.sender.getCounterpartyShutdownAcknowledged()
+}
+
+func (t *Transport[S, R]) GetCurrentState() S {
+	return t.sender.getCurrentState()
+}
+
+func (t *Transport[S, R]) SetCurrentState(x S) {
+	t.sender.setCurrentState(x)
+}
+
+func (t *Transport[S, R]) GetLatestRemoteState() TimestampedState[R] {
+	last := len(t.receivedState) - 1
+	return t.receivedState[last]
+}
+
+func (t *Transport[S, R]) GetRemoteStateNum() int64 {
+	last := len(t.receivedState) - 1
+	return t.receivedState[last].num
+}
+
+func (t *Transport[S, R]) SetVerbose(verbose uint) {
+	t.sender.setVerbose(verbose)
+	t.verbose = verbose
+}
+
+func (t *Transport[S, R]) SetSendDelay(delay int) {
+	t.sender.setSendDelay(delay)
+}
+
+func (t *Transport[S, R]) GetSentStateAckedTimestamp() int64 {
+	return t.sender.getSentStateAckedTimestamp()
+}
+
+func (t *Transport[S, R]) GetSentStateAcked() int64 {
+	return t.sender.getSentStateAcked()
+}
+
+func (t *Transport[S, R]) GetSentStateLast() int64 {
+	return t.sender.getSentStateLast()
+}
+
+func (t *Transport[S, R]) SentInterval() int {
+	return t.sender.sendInterval()
+}
+
+func (t *Transport[S, R]) GetRemoteAddr() net.Addr {
+	return t.connection.getRemoteAddr()
+}
+
+// func (t *Transport[S, R]) Port() string {
+// 	return t.connection.port()
+// }
+
+func (t *Transport[S, R]) GetKey() string {
+	return t.connection.getKey()
+}
+
+func (t *Transport[S, R]) Close() {
+	t.connection.sock().Close()
+}
+
+func (t *Transport[S, R]) GetConnection() *Connection {
+	return t.connection
+}
+
+func (t *Transport[S, R]) ProcessPayload(s string) error {
 	frag := NewFragmentFrom(s)
 
 	if t.fragments.addFragment(frag) { // complete packet
@@ -200,111 +316,4 @@ func (t *Transport[S, R]) Recv() error {
 		}
 	}
 	return nil
-}
-
-func (t *Transport[S, R]) GetRemoteDiff() string {
-	// find diff between last receiver state and current remote state, then rationalize states
-	back := len(t.receivedState) - 1
-	ret := t.receivedState[back].state.DiffFrom(t.lastReceiverState)
-
-	oldestReceivedState := t.receivedState[0].state
-	for i := back; i >= 0; i-- {
-		t.receivedState[i].state.Subtract(oldestReceivedState)
-	}
-
-	t.lastReceiverState = t.receivedState[back].state
-	return ret
-}
-
-func (t *Transport[S, R]) SetReadDeadline(ti time.Time) error {
-	return t.connection.setReadDeadline(ti)
-}
-
-// Other side has requested shutdown and we have sent one ACK
-//
-//	Illegal to change current_state after this.
-func (t *Transport[S, R]) StartShutdown() {
-	t.sender.startShutdown()
-}
-
-// return true if shutdown is started, otherwise false.
-func (t *Transport[S, R]) ShutdownInProgress() bool {
-	return t.sender.getShutdownInProgress()
-}
-
-// return true if the firt sent state num is -1, otherwise false.
-func (t *Transport[S, R]) ShutdownAcknowledged() bool {
-	return t.sender.getShutdownAcknowledged()
-}
-
-func (t *Transport[S, R]) ShutdownAckTimedout() bool {
-	return t.sender.shutdonwAckTimedout()
-}
-
-func (t *Transport[S, R]) HasRemoteAddr() bool {
-	return t.connection.getHasRemoteAddr()
-}
-
-// Other side has requested shutdown and we have sent one ACK
-func (t *Transport[S, R]) CounterpartyShutdownAckSent() bool {
-	return t.sender.getCounterpartyShutdownAcknowledged()
-}
-
-func (t *Transport[S, R]) GetCurrentState() S {
-	return t.sender.getCurrentState()
-}
-
-func (t *Transport[S, R]) SetCurrentState(x S) {
-	t.sender.setCurrentState(x)
-}
-
-func (t *Transport[S, R]) GetLatestRemoteState() TimestampedState[R] {
-	last := len(t.receivedState) - 1
-	return t.receivedState[last]
-}
-
-func (t *Transport[S, R]) GetRemoteStateNum() int64 {
-	last := len(t.receivedState) - 1
-	return t.receivedState[last].num
-}
-
-func (t *Transport[S, R]) SetVerbose(verbose uint) {
-	t.sender.setVerbose(verbose)
-	t.verbose = verbose
-}
-
-func (t *Transport[S, R]) SetSendDelay(delay int) {
-	t.sender.setSendDelay(delay)
-}
-
-func (t *Transport[S, R]) GetSentStateAckedTimestamp() int64 {
-	return t.sender.getSentStateAckedTimestamp()
-}
-
-func (t *Transport[S, R]) GetSentStateAcked() int64 {
-	return t.sender.getSentStateAcked()
-}
-
-func (t *Transport[S, R]) GetSentStateLast() int64 {
-	return t.sender.getSentStateLast()
-}
-
-func (t *Transport[S, R]) SentInterval() int {
-	return t.sender.sendInterval()
-}
-
-func (t *Transport[S, R]) GetRemoteAddr() net.Addr {
-	return t.connection.getRemoteAddr()
-}
-
-// func (t *Transport[S, R]) Port() string {
-// 	return t.connection.port()
-// }
-
-func (t *Transport[S, R]) GetKey() string {
-	return t.connection.getKey()
-}
-
-func (t *Transport[S, R]) Close() {
-	t.connection.sock().Close()
 }
