@@ -272,6 +272,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		newState.num = inst.NewNum
 		if len(inst.Diff) > 0 {
 			newState.state.ApplyString(string(inst.Diff))
+			// util.Log.With("diff", inst.Diff).Debug("get remote instruction")
 		}
 
 		// Insert new state in sorted place

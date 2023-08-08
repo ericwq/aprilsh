@@ -659,7 +659,8 @@ mainLoop:
 		select {
 		case socketMsg := <-networkChan: // packet received from the network
 			if socketMsg.Err != nil {
-				fmt.Printf("#readFromSocket receive error:%s\n", socketMsg.Err)
+				// fmt.Printf("#readFromSocket receive error:%s\n", socketMsg.Err)
+				util.Log.With("error", socketMsg.Err).Warn("read from network")
 				continue mainLoop
 			}
 
@@ -750,7 +751,8 @@ mainLoop:
 				// If the pty slave is closed, reading from the master can fail with
 				// EIO (see #264).  So we treat errors on read() like EOF.
 				if masterMsg.Err != nil {
-					fmt.Println("#readFromMaster report error: ", masterMsg.Err)
+					// fmt.Println("#readFromMaster report error: ", masterMsg.Err)
+					util.Log.With("error", masterMsg.Err).Warn("read from master")
 					network.StartShutdown()
 				} else {
 					r := complete.Act(masterMsg.Data)

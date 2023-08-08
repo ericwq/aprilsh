@@ -598,6 +598,7 @@ func (sc *STMClient) outputNewFrame() {
 	// calculate minimal difference from where we are
 	diff := sc.display.NewFrame(!sc.repaintRequested, sc.localFramebuffer, sc.newState)
 	os.Stdout.WriteString(diff)
+	util.Log.With("diff", diff).Debug("apply diff to local")
 
 	sc.repaintRequested = false
 	sc.localFramebuffer = sc.newState
