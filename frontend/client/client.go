@@ -599,9 +599,6 @@ func (sc *STMClient) outputNewFrame() {
 	// calculate minimal difference from where we are
 	diff := sc.display.NewFrame(!sc.repaintRequested, sc.localFramebuffer, sc.newState)
 	os.Stdout.WriteString(diff)
-	if diff != "" {
-		util.Log.With("diff", diff).Debug("write diff to stdout")
-	}
 
 	sc.repaintRequested = false
 	sc.localFramebuffer = sc.newState
@@ -828,7 +825,7 @@ mainLoop:
 		sc.outputNewFrame()
 
 		gapT := time.Now().UnixMilli() - now
-		if gapT > 500 {
+		if gapT > 5000 {
 			util.Log.Info("running.")
 			now = time.Now().UnixMilli()
 		}
@@ -839,6 +836,7 @@ mainLoop:
 				util.Log.With("error", networkMsg.Err).Warn("receive from network")
 				continue mainLoop
 			}
+			util.Log.Info("got from network")
 			sc.processNetworkInput(networkMsg.Data)
 		case fileMsg := <-fileChan: // got data from file
 			if fileMsg.Err != nil {

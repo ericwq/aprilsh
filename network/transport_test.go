@@ -511,10 +511,13 @@ func TestClientShutdown(t *testing.T) {
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
 	// fmt.Printf("#test client initialize sentStates=%d\n",len(client.sender.sentStates))
-
 	// mimic user input
 	label := "client shutdown"
 	pushUserBytesTo(client.GetCurrentState(), label)
+
+	if client.GetConnection() == nil {
+		t.Errorf("%s expect not nil connection\n", label)
+	}
 
 	// set verbose
 	client.SetVerbose(1)

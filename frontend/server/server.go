@@ -569,6 +569,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 				util.Log.With("error", err).With("state", state).Warn("shell.Wait fail")
 			}
 		}
+
 		// logI.Printf("#runWorker stop listening on :%s\n", conf.desiredPort)
 		util.Log.With("desiredPort", conf.desiredPort).Info("stop listening on")
 
@@ -1262,7 +1263,7 @@ func (m *mainSrv) run(conf *Config) {
 // return the minimal available port and increase the maxWorkerPort if necessary.
 func (m *mainSrv) getAvailabePort() (port int) {
 	port = m.port
-	if m.maxPort-m.port > 1 && len(m.workers) > 0 { //
+	if len(m.workers) > 0 {
 		// sort the current ports
 		ports := make([]int, 0, len(m.workers))
 		for k := range m.workers {
@@ -1272,24 +1273,24 @@ func (m *mainSrv) getAvailabePort() (port int) {
 		// fmt.Printf("#getAvailabePort got ports=%v\n", ports)
 
 		// check minimal available port
-		k := 0
 		for i := 0; i < m.maxPort-m.port-1; i++ {
-			k = i + 1
 			// fmt.Printf("#getAvailabePort check port+k=%d, ports[i]=%d\n", port+i+1, ports[i])
-			if (port+k > m.port) && (port+k < ports[i]) {
-				port = port + k
+			if port+i+1 < ports[i] {
+				port = port + i + 1
 				break
 			}
+		}
+
+		// right most case
+		if port == m.port {
+			port = m.maxPort
+			m.maxPort++
 		}
 		// fmt.Printf("#getAvailabePort search port=%d\n", port)
 	} else if len(m.workers) == 0 {
 		port = m.port + 1
 	}
 
-	if port == m.port {
-		port = m.maxPort
-		m.maxPort++
-	}
 	// fmt.Printf("#getAvailabePort got port=%d\n", port)
 	// util.Log.With("port", port).With("maxPort", m.maxPort).
 	// 	With("workers", len(m.workers)).Debug("getAvailabePort")

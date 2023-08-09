@@ -13,6 +13,7 @@ import (
 	"github.com/ericwq/aprilsh/encrypt"
 	pb "github.com/ericwq/aprilsh/protobufs"
 	"github.com/ericwq/aprilsh/terminal"
+	"github.com/ericwq/aprilsh/util"
 	// "github.com/ericwq/aprilsh/util"
 )
 
@@ -201,6 +202,9 @@ func (ts *TransportSender[T]) sendInFragments(diff string, newNum int64) error {
 	inst.Diff = []byte(diff)
 	inst.Chaff = []byte(ts.makeChaff())
 
+	if newNum == -1 {
+		util.Log.With("diff", len(diff) == 0).With("remoteAddr", ts.connection.remoteAddr).Debug("send shutdown to")
+	}
 	return ts.sendFragments(&inst, newNum)
 }
 

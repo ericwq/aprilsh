@@ -1739,7 +1739,7 @@ func TestGetAvailablePort(t *testing.T) {
 			map[int]*workhorse{},
 		},
 		{
-			"empty worker list", 6001, 6004,
+			"lart gap empty worker", 6001, 6008,
 			map[int]*workhorse{},
 		},
 		{
@@ -1753,6 +1753,10 @@ func TestGetAvailablePort(t *testing.T) {
 		{
 			"middle hole", 6004, 6009,
 			map[int]*workhorse{6001: nil, 6002: nil, 6003: nil, 6008: nil},
+		},
+		{
+			"border shape hole", 6002, 6019,
+			map[int]*workhorse{6001: nil, 6018: nil},
 		},
 	}
 
