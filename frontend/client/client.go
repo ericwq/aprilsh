@@ -592,13 +592,15 @@ func (sc *STMClient) outputNewFrame() {
 	// fetch target state
 	state := sc.network.GetLatestRemoteState()
 	sc.newState = state.GetState().GetEmulator()
-
 	// apply local overlays
 	sc.overlays.Apply(sc.newState)
 
 	// calculate minimal difference from where we are
 	diff := sc.display.NewFrame(!sc.repaintRequested, sc.localFramebuffer, sc.newState)
 	os.Stdout.WriteString(diff)
+	if diff != "" {
+		util.Log.With("diff", diff).Debug("write diff to stdout")
+	}
 
 	sc.repaintRequested = false
 	sc.localFramebuffer = sc.newState
