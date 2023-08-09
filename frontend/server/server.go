@@ -598,8 +598,7 @@ func getCurrentUser() string {
 
 func serve(ptmx *os.File, complete *statesync.Complete,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
-	networkTimeout int64, networkSignaledTimeout int64,
-) error {
+	networkTimeout int64, networkSignaledTimeout int64) error {
 	// TODO consider timeout according to mosh 1.4
 
 	// scale timeouts
