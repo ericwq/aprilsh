@@ -383,7 +383,7 @@ func TestMainRun(t *testing.T) {
 
 	// validate the result from printWelcome
 	expect := []string{
-		"aprilsh-server", "start listening on", "build version",
+		"aprilsh-server", "start listening on", "buildVersion",
 		"got message SIGHUP", // "got message SIGTERM",
 	}
 	result := string(out)
@@ -849,6 +849,9 @@ func TestStart(t *testing.T) {
 			r, w, _ := os.Pipe()
 			os.Stdout = w
 			// initLog()
+			defer util.Log.Restore()
+			util.Log.SetLevel(slog.LevelDebug)
+			util.Log.SetOutput(w)
 
 			srv := newMainSrv(&v.conf, mockRunWorker)
 
@@ -1024,7 +1027,7 @@ func TestPrintWelcome(t *testing.T) {
 	}
 
 	expect := []string{_COMMAND_NAME, "start listening on",
-		"build version", "Warning: termios IUTF8 flag not defined.",
+		"buildVersion", "Warning: termios IUTF8 flag not defined.",
 	}
 
 	tc := []struct {
@@ -1041,6 +1044,9 @@ func TestPrintWelcome(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 		// initLog()
+		defer util.Log.Restore()
+		util.Log.SetLevel(slog.LevelDebug)
+		util.Log.SetOutput(w)
 
 		printWelcome(os.Getpid(), 6000, v.tty)
 
@@ -1122,6 +1128,9 @@ func TestRunFail(t *testing.T) {
 			r, w, _ := os.Pipe()
 			os.Stdout = w
 			// initLog()
+			defer util.Log.Restore()
+			util.Log.SetLevel(slog.LevelDebug)
+			util.Log.SetOutput(w)
 
 			srv := newMainSrv(&v.conf, mockRunWorker2)
 
@@ -1207,6 +1216,9 @@ func TestRunFail2(t *testing.T) {
 			r, w, _ := os.Pipe()
 			os.Stdout = w
 			// initLog()
+			defer util.Log.Restore()
+			util.Log.SetLevel(slog.LevelDebug)
+			util.Log.SetOutput(w)
 
 			srv := newMainSrv(&v.conf, mockRunWorker)
 
@@ -1288,7 +1300,7 @@ func TestWaitError(t *testing.T) {
 			r.Close()
 
 			// validate result
-			expect := []string{"mainSrv.wait", "wait failed"}
+			expect := []string{"wait failed"}
 			result := string(out)
 			found := 0
 			for i := range expect {
@@ -1354,8 +1366,8 @@ func TestRunWorkerKill(t *testing.T) {
 			os.Stdout = w
 
 			defer util.Log.Restore()
-			util.Log.SetOutput(w)
 			util.Log.SetLevel(slog.LevelDebug)
+			util.Log.SetOutput(w)
 
 			// set serve func and runWorker func
 			v.conf.serve = mockServe
@@ -1728,6 +1740,10 @@ func TestGetAvailablePort(t *testing.T) {
 			map[int]*workhorse{},
 		},
 		{
+			"empty worker list", 6001, 6004,
+			map[int]*workhorse{},
+		},
+		{
 			"right most", 6004, 6004,
 			map[int]*workhorse{6001: nil, 6002: nil, 6003: nil},
 		},
@@ -1745,6 +1761,10 @@ func TestGetAvailablePort(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
+			// intercept log output
+			defer util.Log.Restore()
+			util.Log.SetOutput(io.Discard)
+
 			srv := newMainSrv(conf, mockRunWorker)
 			srv.workers = v.workers
 			srv.maxPort = v.max

@@ -565,7 +565,9 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		// fmt.Printf("#runWorker shell.Wait() %p %v\n", shell, shell)
 		if state, err := shell.Wait(); err != nil || state.Exited() {
 			// logW.Printf("#runWorker shell.Wait fail: %s, state: %s\n", err, state)
-			util.Log.With("error", err).With("state", state).Warn("shell.Wait fail")
+			if err != nil {
+				util.Log.With("error", err).With("state", state).Warn("shell.Wait fail")
+			}
 		}
 		// logI.Printf("#runWorker stop listening on :%s\n", conf.desiredPort)
 		util.Log.With("desiredPort", conf.desiredPort).Info("stop listening on")
@@ -874,7 +876,7 @@ func getTimeFrom(env string, def int64) (ret int64) {
 func printWelcome(pid int, port int, tty *os.File) {
 	// fmt.Printf("%s start listening on :%d. build version %s [pid=%d] \n", _COMMAND_NAME, port, BuildVersion, pid)
 	util.Log.With("port", port).With("buildVersion", BuildVersion).With("pid", pid).
-		Info("start listening")
+		Info(_COMMAND_NAME + " start listening on")
 	// fmt.Printf("Copyright 2022~2023 wangqi.\n")
 	// fmt.Printf("%s%s", "Use of this source code is governed by a MIT-style",
 	// 	"license that can be found in the LICENSE file.\n")
@@ -888,9 +890,14 @@ func printWelcome(pid int, port int, tty *os.File) {
 
 		if !inputUTF8 {
 			// Input is UTF-8 (since Linux 2.6.4)
-			fmt.Printf("%s %s %s", "Warning: termios IUTF8 flag not defined.",
+			// fmt.Printf("%s %s %s", "Warning: termios IUTF8 flag not defined.",
+			// 	"Character-erase of multibyte character sequence",
+			// 	"probably does not work properly on this platform.\n")
+
+			msg := fmt.Sprintf("%s %s %s", "Warning: termios IUTF8 flag not defined.",
 				"Character-erase of multibyte character sequence",
-				"probably does not work properly on this platform.\n")
+				"probably does not work properly on this platform.")
+			util.Log.Warn(msg)
 		}
 	}
 }
@@ -1136,7 +1143,7 @@ func (m *mainSrv) run(conf *Config) {
 		m.conn.Close()
 		m.wg.Done()
 		// fmt.Printf("%s  stop listening on :%d.\n", _COMMAND_NAME, m.port)
-		util.Log.With("port", m.port).Info("stop listening")
+		util.Log.With("port", m.port).Info(_COMMAND_NAME + " stop listening")
 	}()
 
 	buf := make([]byte, 128)
@@ -1152,6 +1159,7 @@ func (m *mainSrv) run(conf *Config) {
 				break
 			}
 			// fmt.Printf("#run got workDone message from %s\n", portStr)
+			util.Log.With("port", p).With("maxPort", m.maxPort).Debug("worker is done")
 			// clear worker list
 			delete(m.workers, p)
 		case sd := <-m.downChan: // ready to shutdown mainSrv
@@ -1255,7 +1263,7 @@ func (m *mainSrv) run(conf *Config) {
 // return the minimal available port and increase the maxWorkerPort if necessary.
 func (m *mainSrv) getAvailabePort() (port int) {
 	port = m.port
-	if m.maxPort-m.port > 1 {
+	if m.maxPort-m.port > 1 && len(m.workers) > 0 { //
 		// sort the current ports
 		ports := make([]int, 0, len(m.workers))
 		for k := range m.workers {
@@ -1275,12 +1283,17 @@ func (m *mainSrv) getAvailabePort() (port int) {
 			}
 		}
 		// fmt.Printf("#getAvailabePort search port=%d\n", port)
+	} else if len(m.workers) == 0 {
+		port = m.port + 1
 	}
+
 	if port == m.port {
 		port = m.maxPort
 		m.maxPort++
 	}
 	// fmt.Printf("#getAvailabePort got port=%d\n", port)
+	util.Log.With("port", port).With("maxPort", m.maxPort).
+		With("workers", len(m.workers)).Debug("getAvailabePort")
 	return port
 }
 
