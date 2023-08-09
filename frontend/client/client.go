@@ -361,6 +361,7 @@ func main() {
 		return
 	}
 	client.main()
+	client.shutdown()
 
 	fmt.Printf("\n%s is exiting.\n", _COMMAND_NAME)
 }
@@ -821,10 +822,16 @@ func (sc *STMClient) main() error {
 		}
 	})
 
+	now := time.Now().UnixMilli()
 mainLoop:
 	for {
 		sc.outputNewFrame()
 
+		gapT := time.Now().UnixMilli() - now
+		if gapT > 500 {
+			util.Log.Info("running.")
+			now = time.Now().UnixMilli()
+		}
 		select {
 		case networkMsg := <-networkChan: // got data from socket
 			if networkMsg.Err != nil { // error handling
@@ -929,5 +936,6 @@ mainLoop:
 	networkDownChan <- "done"
 	eg.Wait()
 
+	fmt.Printf("%s is exiting.\n", _COMMAND_NAME)
 	return nil
 }

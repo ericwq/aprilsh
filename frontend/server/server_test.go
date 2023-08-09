@@ -1315,7 +1315,7 @@ func TestWaitError(t *testing.T) {
 	}
 }
 
-func mockServe(ptmx *os.File, pts *os.File, terminal *statesync.Complete,
+func mockServe(ptmx *os.File, terminal *statesync.Complete,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
 	networkTimeout int64, networkSignaledTimeout int64,
 ) error {

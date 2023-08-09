@@ -289,7 +289,7 @@ type Config struct {
 	withMotd    bool
 
 	// the serve func
-	serve func(*os.File, *os.File, *statesync.Complete,
+	serve func(*os.File, *statesync.Complete,
 		*network.Transport[*statesync.Complete, *statesync.UserStream], int64, int64) error
 }
 
@@ -556,7 +556,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		util.UpdateLastLog(ptmxName, getCurrentUser(), utmpHost) // TODO use pts.Name() or ptmx name?
 
 		// start the udp server, serve the udp request
-		go conf.serve(ptmx, pts, terminal, network, networkTimeout, networkSignaledTimeout)
+		go conf.serve(ptmx, terminal, network, networkTimeout, networkSignaledTimeout)
 		whChan <- &workhorse{shell, ptmx}
 		// fmt.Printf("#runWorker start listening on :%s\n", conf.desiredPort)
 		util.Log.With("desiredPort", conf.desiredPort).Info("start listening on")
@@ -578,7 +578,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		}
 	}
 
-	// fmt.Printf("#runWorker [%s is exiting.]\n\n", COMMAND_NAME)
+	// fmt.Printf("[%s is exiting.]\n\n", _COMMAND_NAME)
 	// https://www.dolthub.com/blog/2022-11-28-go-os-exec-patterns/
 	// https://www.prakharsrivastav.com/posts/golang-context-and-cancellation/
 
@@ -596,7 +596,7 @@ func getCurrentUser() string {
 	return user.Username
 }
 
-func serve(ptmx *os.File, pts *os.File, complete *statesync.Complete,
+func serve(ptmx *os.File, complete *statesync.Complete,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
 	networkTimeout int64, networkSignaledTimeout int64,
 ) error {
@@ -815,10 +815,10 @@ mainLoop:
 
 		// update utmp if has been more than 30 seconds since heard from client
 		if utmpSupport && connectedUtmp && timeSinceRemoteState > 30000 {
-			util.ClearUtmpx(pts)
+			util.ClearUtmpx(ptmx)
 
 			newHost := fmt.Sprintf("%s [%d]", _PACKAGE_STRING, os.Getpid())
-			util.AddUtmpx(pts, newHost)
+			util.AddUtmpx(ptmx, newHost)
 
 			connectedUtmp = false
 		}
@@ -1292,8 +1292,8 @@ func (m *mainSrv) getAvailabePort() (port int) {
 		m.maxPort++
 	}
 	// fmt.Printf("#getAvailabePort got port=%d\n", port)
-	util.Log.With("port", port).With("maxPort", m.maxPort).
-		With("workers", len(m.workers)).Debug("getAvailabePort")
+	// util.Log.With("port", port).With("maxPort", m.maxPort).
+	// 	With("workers", len(m.workers)).Debug("getAvailabePort")
 	return port
 }
 
