@@ -289,7 +289,7 @@ type Config struct {
 	withMotd    bool
 
 	// the serve func
-	serve func(*os.File, *statesync.Complete,
+	serve func(*os.File, *statesync.Complete, chan bool,
 		*network.Transport[*statesync.Complete, *statesync.UserStream], int64, int64) error
 }
 
@@ -531,7 +531,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	}
 	defer func() {
 		ptmx.Close()
-		pts.Close()
+		// pts.Close()
 	}() // Best effort.
 	// fmt.Printf("#runWorker openPTS successfully.\n")
 
@@ -549,14 +549,15 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		// add utmp entry
 		ptmxName := ptmx.Name() // TODO remove it?
 		if utmpSupport {
-			util.AddUtmpx(pts, utmpHost)
+			util.AddUtmpx(ptmx, utmpHost)
 		}
 
 		// update last log
 		util.UpdateLastLog(ptmxName, getCurrentUser(), utmpHost) // TODO use pts.Name() or ptmx name?
 
 		// start the udp server, serve the udp request
-		go conf.serve(ptmx, terminal, network, networkTimeout, networkSignaledTimeout)
+		waitChan := make(chan bool)
+		go conf.serve(ptmx, terminal, waitChan, network, networkTimeout, networkSignaledTimeout)
 		whChan <- &workhorse{shell, ptmx}
 		// fmt.Printf("#runWorker start listening on :%s\n", conf.desiredPort)
 		util.Log.With("desiredPort", conf.desiredPort).Info("start listening on")
@@ -570,12 +571,15 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 			}
 		}
 
+		// wait serve to finish
+		util.Log.With("ptmx", ptmx).Debug("wait serve to finish")
+		<-waitChan
 		// logI.Printf("#runWorker stop listening on :%s\n", conf.desiredPort)
 		util.Log.With("desiredPort", conf.desiredPort).Info("stop listening on")
 
 		// clear utmp entry
 		if utmpSupport {
-			util.ClearUtmpx(pts)
+			util.ClearUtmpx(ptmx)
 		}
 	}
 
@@ -597,7 +601,7 @@ func getCurrentUser() string {
 	return user.Username
 }
 
-func serve(ptmx *os.File, complete *statesync.Complete,
+func serve(ptmx *os.File, complete *statesync.Complete, waitChan chan bool,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
 	networkTimeout int64, networkSignaledTimeout int64) error {
 	// TODO consider timeout according to mosh 1.4
@@ -638,7 +642,7 @@ func serve(ptmx *os.File, complete *statesync.Complete,
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGUSR1, syscall.SIGINT, syscall.SIGTERM)
 	shutdownChan := make(chan bool)
-	eg.Go(func() error {
+	eg.Go(func() error { // TODO how to handle signal for goroutine?
 		for {
 			select {
 			case s := <-sigChan:
@@ -834,7 +838,10 @@ mainLoop:
 			break
 		}
 
-		network.Tick()
+		err := network.Tick()
+		if err != nil {
+			util.Log.With("error", err).Warn("tick send failed")
+		}
 	}
 
 	// consume last message to release the reader
@@ -849,9 +856,18 @@ mainLoop:
 
 	// shutdown the goroutine
 	shutdownChan <- true
-	fileDownChan <- "done"
-	fileDownChan <- "done"
+	select {
+	case fileDownChan <- "done":
+	default:
+	}
+	select {
+	case networkDownChan <- "done":
+	default:
+	}
 	eg.Wait()
+
+	// notify the runWorker
+	waitChan <- true
 
 	return nil
 }

@@ -202,10 +202,14 @@ func (ts *TransportSender[T]) sendInFragments(diff string, newNum int64) error {
 	inst.Diff = []byte(diff)
 	inst.Chaff = []byte(ts.makeChaff())
 
-	if newNum == -1 {
-		util.Log.With("diff", len(diff) == 0).With("remoteAddr", ts.connection.remoteAddr).Debug("send shutdown to")
+	var err error
+	err = ts.sendFragments(&inst, newNum)
+
+	if newNum == -1 && err == nil {
+		util.Log.With("diff", diff).With("remoteAddr", ts.connection.remoteAddr).Debug("send shutdown to")
 	}
-	return ts.sendFragments(&inst, newNum)
+	// return ts.sendFragments(&inst, newNum)
+	return err
 }
 
 func (ts *TransportSender[T]) sendFragments(inst *pb.Instruction, newNum int64) error {

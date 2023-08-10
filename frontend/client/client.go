@@ -821,16 +821,16 @@ func (sc *STMClient) main() error {
 		}
 	})
 
-	now := time.Now().UnixMilli()
+	// now := time.Now().UnixMilli()
 mainLoop:
 	for {
 		sc.outputNewFrame()
 
-		gapT := time.Now().UnixMilli() - now
-		if gapT > 5000 {
-			util.Log.Info("running.")
-			now = time.Now().UnixMilli()
-		}
+		// gapT := time.Now().UnixMilli() - now
+		// if gapT > 5000 {
+		// 	util.Log.Info("running.")
+		// 	now = time.Now().UnixMilli()
+		// }
 		select {
 		case networkMsg := <-networkChan: // got data from socket
 			if networkMsg.Err != nil { // error handling
@@ -838,7 +838,7 @@ mainLoop:
 				util.Log.With("error", networkMsg.Err).Warn("receive from network")
 				continue mainLoop
 			}
-			util.Log.Info("got from network")
+			// util.Log.With("data", networkMsg.Data).Info("got from network")
 			sc.processNetworkInput(networkMsg.Data)
 		case fileMsg := <-fileChan: // got data from file
 			if fileMsg.Err != nil {
@@ -918,7 +918,10 @@ mainLoop:
 			sc.overlays.GetNotificationEngine().SetNotificationString("", false, true)
 		}
 
-		sc.network.Tick()
+		err := sc.network.Tick()
+		if err != nil {
+			util.Log.With("error", err).Warn("tick send failed")
+		}
 	}
 
 	// consume last message to release the reader
