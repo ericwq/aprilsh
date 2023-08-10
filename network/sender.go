@@ -205,9 +205,9 @@ func (ts *TransportSender[T]) sendInFragments(diff string, newNum int64) error {
 	var err error
 	err = ts.sendFragments(&inst, newNum)
 
-	if newNum == -1 && err == nil {
-		util.Log.With("diff", diff).With("remoteAddr", ts.connection.remoteAddr).Debug("send shutdown to")
-	}
+	// if newNum == -1 && err == nil {
+	util.Log.With("newNum", inst.NewNum).With("AckNum", inst.AckNum).Debug("send fragments")
+	// }
 	// return ts.sendFragments(&inst, newNum)
 	// TODO remove the debug statements
 	return err
@@ -323,6 +323,7 @@ func (ts *TransportSender[T]) tick() error {
 	// fmt.Printf("#tick send to receiver %s.\n", ts.connection.getRemoteAddr())
 	if !ts.connection.getHasRemoteAddr() {
 		// fmt.Printf("#tick skip tick() no remote addr=%s\n", ts.connection.getRemoteAddr())
+		// util.Log.Debug("tick skip tick: no remote addr")
 		return nil
 	}
 
@@ -330,6 +331,8 @@ func (ts *TransportSender[T]) tick() error {
 	// fmt.Printf("#tick now=%d, nextAckTime=%d, nextSendTime=%d\n", now, ts.nextAckTime, ts.nextSendTime)
 	if now < ts.nextAckTime && now < ts.nextSendTime {
 		// fmt.Printf("#tick skip tick() nextAckTime+%d, nextSendTime=%d, now=%d\n", ts.nextAckTime, ts.nextSendTime, now)
+		// util.Log.With("now", now).With("now<nextAckTime", now < ts.nextAckTime).
+		// 	With("now<nextSendTime", now < ts.nextSendTime).Debug("tick skip tick: time")
 		return nil
 	}
 
@@ -347,14 +350,14 @@ func (ts *TransportSender[T]) tick() error {
 		newState := ts.assumedReceiverState.state.Clone()
 		newState.ApplyString(diff)
 		if !ts.currentState.Equal(newState) {
-			fmt.Fprintf(os.Stderr, "#tick Warning, round-trip Instruction verification failed!\n")
+			util.Log.Warn("#tick Warning, round-trip Instruction verification failed!")
 		}
 
 		// Also verify that both the original frame and generated frame have the same initial diff.
 		currentDiff := ts.currentState.InitDiff()
 		newDiff := newState.InitDiff()
 		if currentDiff != newDiff {
-			fmt.Fprintf(os.Stderr, "#tick Warning, target state Instruction verification failed!\n")
+			util.Log.Warn("#tick Warning, target state Instruction verification failed!")
 		}
 		// fmt.Printf("#tick newDiff=%q, currentDiff=%q, diff=%q\n", newDiff, currentDiff, diff)
 	}

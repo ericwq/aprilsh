@@ -292,10 +292,9 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 				rs = append(rs, t.receivedState[i:]...)
 				t.receivedState = rs
 
-				// fmt.Println("#recv shutdown mark2.")
-				// for i := range t.receivedState {
-				// 	fmt.Printf("#test shutdown %d\n", t.receivedState[i].num)
-				// }
+				for i := range t.receivedState {
+					util.Log.With("i", i).With("num", t.receivedState[i].num).Debug("receivedState")
+				}
 				if t.verbose > 0 {
 					// fmt.Fprintf(os.Stderr, "#recv [%d] Received OUT-OF-ORDER state %d [ack %d]\n",
 					// 	time.Now().UnixMilli()%100000, newState.num, inst.AckNum)

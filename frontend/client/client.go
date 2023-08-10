@@ -827,7 +827,7 @@ mainLoop:
 		sc.outputNewFrame()
 
 		// gapT := time.Now().UnixMilli() - now
-		// if gapT > 5000 {
+		// if gapT > 1000 {
 		// 	util.Log.Info("running.")
 		// 	now = time.Now().UnixMilli()
 		// }
@@ -933,10 +933,17 @@ mainLoop:
 	case <-networkChan:
 	default:
 	}
+
 	// shutdown the goroutine
 	shutdownChan <- true
-	fileDownChan <- "done"
-	networkDownChan <- "done"
+	select {
+	case fileDownChan <- "done":
+	default:
+	}
+	select {
+	case networkDownChan <- "done":
+	default:
+	}
 	eg.Wait()
 
 	fmt.Printf("%s is exiting.\n", _COMMAND_NAME)
