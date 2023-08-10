@@ -225,6 +225,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		// first, make sure we don't already have the new state
 		for i := range t.receivedState {
 			if inst.NewNum == t.receivedState[i].num {
+				// util.Log.Debug("abandon same shutdown message")
 				return nil
 			}
 		}
@@ -279,6 +280,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		}
 		if inst.NewNum == -1 {
 			util.Log.With("num", newState.num).Debug("get shutdown state")
+			// t.StartShutdown()
 		}
 
 		// Insert new state in sorted place

@@ -209,6 +209,7 @@ func (ts *TransportSender[T]) sendInFragments(diff string, newNum int64) error {
 		util.Log.With("diff", diff).With("remoteAddr", ts.connection.remoteAddr).Debug("send shutdown to")
 	}
 	// return ts.sendFragments(&inst, newNum)
+	// TODO remove the debug statements
 	return err
 }
 
