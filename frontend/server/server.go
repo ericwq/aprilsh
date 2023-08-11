@@ -678,6 +678,10 @@ mainLoop:
 
 				us := &statesync.UserStream{}
 				us.ApplyString(network.GetRemoteDiff())
+				// rd := network.GetRemoteDiff()
+				// us.ApplyString(rd)
+				// util.Log.With("remoteDiff", rd).Debug("got from client")
+
 				// apply userstream to terminal
 				for i := 0; i < us.Size(); i++ {
 					action := us.GetAction(i)
@@ -773,6 +777,7 @@ mainLoop:
 
 		// write user input and terminal writeback to the host
 		if terminalToHost.Len() > 0 {
+			util.Log.With("terminalToHost", terminalToHost.String()).Debug("write to terminal")
 			_, err := ptmx.WriteString(terminalToHost.String())
 			if err != nil {
 				network.StartShutdown()

@@ -208,9 +208,9 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 	if t.fragments.addFragment(frag) { // complete packet
 		inst := t.fragments.getAssembly()
 
-		if inst.NewNum == -1 {
-			util.Log.Debug("got shutdown message")
-		}
+		// if inst.NewNum == -1 {
+		// 	util.Log.Debug("got shutdown message")
+		// }
 
 		if inst.ProtocolVersion != APRILSH_PROTOCOL_VERSION {
 			return errors.New("aprilsh protocol version mismatch.")
@@ -317,6 +317,9 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 
 		t.receivedState = append(t.receivedState, newState) // insert new state
 		t.sender.setAckNum(t.receivedState[len(t.receivedState)-1].num)
+		for i := range t.receivedState {
+			util.Log.With("i", i).With("num", t.receivedState[i].num).Debug("receivedState")
+		}
 
 		t.sender.remoteHeard(newState.timestamp)
 		if len(inst.Diff) > 0 {

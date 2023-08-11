@@ -206,7 +206,8 @@ func (ts *TransportSender[T]) sendInFragments(diff string, newNum int64) error {
 	err = ts.sendFragments(&inst, newNum)
 
 	// if newNum == -1 && err == nil {
-	util.Log.With("newNum", inst.NewNum).With("AckNum", inst.AckNum).Debug("send fragments")
+	util.Log.With("newNum", inst.NewNum).With("AckNum", inst.AckNum).
+		With("OldNum", inst.OldNum).With("diffLength", len(diff)).Debug("send fragments")
 	// }
 	// return ts.sendFragments(&inst, newNum)
 	// TODO remove the debug statements

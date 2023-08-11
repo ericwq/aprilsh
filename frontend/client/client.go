@@ -489,78 +489,87 @@ func (sc *STMClient) processNetworkInput(s string) {
 }
 
 func (sc *STMClient) processUserInput(buf string) bool {
-	if !sc.network.ShutdownInProgress() {
-		sc.overlays.GetPredictionEngine().SetLocalFrameSent(sc.network.GetSentStateLast())
+	if sc.network.ShutdownInProgress() {
+		return true
+	}
+	sc.overlays.GetPredictionEngine().SetLocalFrameSent(sc.network.GetSentStateLast())
 
-		var input []rune
-		graphemes := uniseg.NewGraphemes(buf)
-		for graphemes.Next() {
-			input = graphemes.Runes()
-			theByte := input[0] // the first byte
+	// Don't predict for bulk data.
+	paste := len(buf) > 100
+	if paste {
+		sc.overlays.GetPredictionEngine().Reset()
+	}
 
+	var input []rune
+	graphemes := uniseg.NewGraphemes(buf)
+	for graphemes.Next() {
+		input = graphemes.Runes()
+		theByte := input[0] // the first byte
+
+		if !paste {
 			sc.overlays.GetPredictionEngine().NewUserInput(sc.localFramebuffer, input)
-
-			if sc.quitSequenceStarted {
-				if theByte == '.' { // Quit sequence is Ctrl-^ .
-					if sc.network.HasRemoteAddr() && !sc.network.ShutdownInProgress() {
-						sc.overlays.GetNotificationEngine().SetNotificationString(
-							"Exiting on user request...", true, true)
-						sc.network.StartShutdown()
-						return true
-					} else {
-						return false
-					}
-				} else if theByte == 0x1A { // Suspend sequence is escape_key Ctrl-Z
-					// Restore terminal and terminal-driver state
-					os.Stdout.WriteString(sc.display.Close())
-
-					term.Restore(int(os.Stdin.Fd()), sc.savedTermios)
-
-					fmt.Printf("\n\033[37;44m[%s is suspended.]\033[m\n", _PACKAGE_STRING)
-
-					// fflush(NULL)
-					//
-					/* actually suspend */
-					// kill(0, SIGSTOP);
-
-					sc.resume()
-				} else if theByte == rune(sc.escapePassKey) || theByte == rune(sc.escapePassKey2) {
-					// Emulation sequence to type escape_key is escape_key +
-					// escape_pass_key (that is escape key without Ctrl)
-					sc.network.GetCurrentState().PushBack([]rune{rune(sc.escapeKey)})
-				} else {
-					// Escape key followed by anything other than . and ^ gets sent literally
-					sc.network.GetCurrentState().PushBack([]rune{rune(sc.escapeKey), theByte})
-				}
-
-				sc.quitSequenceStarted = false
-
-				if sc.overlays.GetNotificationEngine().GetNotificationString() == sc.escapeKeyHelp {
-					sc.overlays.GetNotificationEngine().SetNotificationString("", false, true)
-				}
-
-				continue
-			}
-
-			sc.quitSequenceStarted = sc.escapeKey > 0 && theByte == rune(sc.escapeKey) &&
-				(sc.lfEntered || !sc.escapeRequireslf)
-
-			if sc.quitSequenceStarted {
-				sc.lfEntered = false
-				sc.overlays.GetNotificationEngine().SetNotificationString(sc.escapeKeyHelp, true, false)
-				continue
-			}
-
-			sc.lfEntered = theByte == 0x0A || theByte == 0x0D // LineFeed, Ctrl-J, '\n' or CarriageReturn, Ctrl-M, '\r'
-
-			if theByte == 0x0C { // Ctrl-L
-				sc.repaintRequested = true
-			}
-
-			sc.network.GetCurrentState().PushBack(input)
 		}
 
+		if sc.quitSequenceStarted {
+			if theByte == '.' { // Quit sequence is Ctrl-^ .
+				if sc.network.HasRemoteAddr() && !sc.network.ShutdownInProgress() {
+					sc.overlays.GetNotificationEngine().SetNotificationString(
+						"Exiting on user request...", true, true)
+					sc.network.StartShutdown()
+					return true
+				} else {
+					return false
+				}
+			} else if theByte == 0x1A { // Suspend sequence is escape_key Ctrl-Z
+				// Restore terminal and terminal-driver state
+				os.Stdout.WriteString(sc.display.Close())
+
+				term.Restore(int(os.Stdin.Fd()), sc.savedTermios)
+
+				fmt.Printf("\n\033[37;44m[%s is suspended.]\033[m\n", _PACKAGE_STRING)
+
+				// fflush(NULL)
+				//
+				/* actually suspend */
+				// kill(0, SIGSTOP);
+
+				sc.resume()
+			} else if theByte == rune(sc.escapePassKey) || theByte == rune(sc.escapePassKey2) {
+				// Emulation sequence to type escape_key is escape_key +
+				// escape_pass_key (that is escape key without Ctrl)
+				sc.network.GetCurrentState().PushBack([]rune{rune(sc.escapeKey)})
+			} else {
+				// Escape key followed by anything other than . and ^ gets sent literally
+				sc.network.GetCurrentState().PushBack([]rune{rune(sc.escapeKey), theByte})
+			}
+
+			sc.quitSequenceStarted = false
+
+			if sc.overlays.GetNotificationEngine().GetNotificationString() == sc.escapeKeyHelp {
+				sc.overlays.GetNotificationEngine().SetNotificationString("", false, true)
+			}
+
+			continue
+		}
+
+		sc.quitSequenceStarted = sc.escapeKey > 0 && theByte == rune(sc.escapeKey) &&
+			(sc.lfEntered || !sc.escapeRequireslf)
+
+		if sc.quitSequenceStarted {
+			sc.lfEntered = false
+			sc.overlays.GetNotificationEngine().SetNotificationString(sc.escapeKeyHelp, true, false)
+			continue
+		}
+
+		sc.lfEntered = theByte == 0x0A || theByte == 0x0D // LineFeed, Ctrl-J, '\n' or CarriageReturn, Ctrl-M, '\r'
+
+		if theByte == 0x0C { // Ctrl-L
+			sc.repaintRequested = true
+		}
+
+		sc.network.GetCurrentState().PushBack(input)
 	}
+
 	return true
 }
 
@@ -841,16 +850,13 @@ mainLoop:
 			// util.Log.With("data", networkMsg.Data).Info("got from network")
 			sc.processNetworkInput(networkMsg.Data)
 		case fileMsg := <-fileChan: // got data from file
-			if fileMsg.Err != nil {
-				// logW.Println("#readFromMaster read error: ", fileMsg.Err)
-				util.Log.With("error", fileMsg.Err).Warn("read from file")
-				sc.network.StartShutdown()
-			}
-
 			// input from the user needs to be fed to the network
-			if !sc.processUserInput(fileMsg.Data) {
+			if fileMsg.Err != nil || !sc.processUserInput(fileMsg.Data) {
+				if fileMsg.Err != nil {
+					util.Log.With("error", fileMsg.Err).Warn("read from file")
+				}
 				if !sc.network.HasRemoteAddr() {
-					break
+					break mainLoop
 				} else if !sc.network.ShutdownInProgress() {
 					sc.overlays.GetNotificationEngine().SetNotificationString("Exiting...", true, true)
 					sc.network.StartShutdown()
