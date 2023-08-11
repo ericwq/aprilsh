@@ -504,7 +504,7 @@ func (ne *NotificationEngine) SetEscapeKeyString(str string) {
 	ne.escapeKeyString = fmt.Sprintf(" [To quit: %s .]", str)
 }
 
-func (ne *NotificationEngine) setNetworkError(str string) {
+func (ne *NotificationEngine) SetNetworkError(str string) {
 	ne.message = str
 	ne.messageIsNetworkError = true
 	ne.messageExpiration = time.Now().UnixMilli() + ACK_INTERVAL + 100

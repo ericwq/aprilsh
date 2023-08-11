@@ -946,7 +946,7 @@ func TestNotificationEngine(t *testing.T) {
 		ne.ServerAcked(time.Now().UnixMilli() - v.lastAckedState)
 
 		if v.messageIsNetworkError {
-			ne.setNetworkError(v.name)
+			ne.SetNetworkError(v.name)
 		} else {
 			ne.clearNetworkError()
 			ne.SetNotificationString(v.message, v.permanent, v.showQuitKeystroke)

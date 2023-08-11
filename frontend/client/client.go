@@ -177,7 +177,7 @@ func (c *Config) fetchKey(password string) error {
 			ssh.Password(password),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         time.Duration(2) * time.Second,
+		Timeout:         time.Duration(1) * time.Second,
 	}
 	client, err := ssh.Dial("tcp", c.host+":22", cc)
 	if err != nil {
@@ -842,9 +842,12 @@ mainLoop:
 		// }
 		select {
 		case networkMsg := <-networkChan: // got data from socket
-			if networkMsg.Err != nil { // error handling
-				// logW.Printf("#readFromSocket receive error:%s\n", networkMsg.Err)
+			if networkMsg.Err != nil {
 				util.Log.With("error", networkMsg.Err).Warn("receive from network")
+				if !sc.network.ShutdownInProgress() {
+					sc.overlays.GetNotificationEngine().SetNetworkError(networkMsg.Err.Error())
+				}
+				time.Sleep(time.Duration(200) * time.Millisecond)
 				continue mainLoop
 			}
 			// util.Log.With("data", networkMsg.Data).Info("got from network")
