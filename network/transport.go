@@ -209,14 +209,20 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		inst := t.fragments.getAssembly()
 
 		// if inst.NewNum == -1 {
-		// 	util.Log.Debug("got shutdown message")
+		// 	util.Log.Debug("got shutdown request")
+		// 	for i := range t.sender.sentStates {
+		// 		util.Log.With("i", i).With("num", t.sender.sentStates[i].num).Debug("sentStates")
+		// 	}
+		// 	for i := range t.receivedState {
+		// 		util.Log.With("i", i).With("num", t.receivedState[i].num).Debug("receivedState")
+		// 	}
 		// }
 
 		if inst.ProtocolVersion != APRILSH_PROTOCOL_VERSION {
 			return errors.New("aprilsh protocol version mismatch.")
 		}
 
-		// remove the state for which num < AckNum
+		// remove send state for which num < AckNum
 		t.sender.processAcknowledgmentThrough(inst.AckNum)
 
 		// inform network layer of roundtrip (end-to-end-to-end) connectivity
@@ -247,13 +253,14 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 			// this is security-sensitive and part of how we enforce idempotency
 		}
 
+		// throw away state whoes num < throwawayNum
+		t.processThrowawayUntil(inst.ThrowawayNum)
+
 		// Do not accept state if our queue is full.
 		//
 		// This is better than dropping states from the middle of the
 		// queue (as sender does), because we don't want to ACK a state
 		// and then discard it later.
-		t.processThrowawayUntil(inst.ThrowawayNum)
-
 		if len(t.receivedState) > 1024 { // limit on state queue
 			now := time.Now().UnixMilli()
 			if now < t.receiverQuenchTimer { // deny letting state grow further
@@ -278,10 +285,6 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		if len(inst.Diff) > 0 {
 			newState.state.ApplyString(string(inst.Diff))
 		}
-		if inst.NewNum == -1 {
-			util.Log.With("num", newState.num).Debug("get shutdown state")
-			// t.StartShutdown()
-		}
 
 		// Insert new state in sorted place
 		rs := make([]TimestampedState[R], 0)
@@ -292,8 +295,13 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 				rs = append(rs, t.receivedState[i:]...)
 				t.receivedState = rs
 
-				for i := range t.receivedState {
-					util.Log.With("i", i).With("num", t.receivedState[i].num).Debug("receivedState")
+				if newState.num == -1 {
+					//shutdown state is always out of order
+					util.Log.With("ackNum", inst.AckNum).Debug("get shutdown state")
+					t.sender.setAckNum(newState.num)
+					for i := range t.receivedState {
+						util.Log.With("i", i).With("num", t.receivedState[i].num).Debug("receivedState")
+					}
 				}
 				if t.verbose > 0 {
 					// fmt.Fprintf(os.Stderr, "#recv [%d] Received OUT-OF-ORDER state %d [ack %d]\n",
@@ -318,7 +326,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		t.receivedState = append(t.receivedState, newState) // insert new state
 		t.sender.setAckNum(t.receivedState[len(t.receivedState)-1].num)
 		for i := range t.receivedState {
-			util.Log.With("i", i).With("num", t.receivedState[i].num).Debug("receivedState")
+			util.Log.With("i", i).With("num", t.receivedState[i].num).Debug("receive state")
 		}
 
 		t.sender.remoteHeard(newState.timestamp)

@@ -433,7 +433,7 @@ func (ts *TransportSender[T]) processAcknowledgmentThrough(ackNum int64) {
 				}
 			}
 			ts.sentStates = ss
-			break
+			return
 		}
 	}
 }
