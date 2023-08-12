@@ -321,17 +321,15 @@ func (ts *TransportSender[T]) makeChaff() string {
 func (ts *TransportSender[T]) tick() error {
 	ts.calculateTimers() // updates assumed receiver state and rationalizes
 
-	// fmt.Printf("#tick send to receiver %s.\n", ts.connection.getRemoteAddr())
+	// skip send if there is no peer
 	if !ts.connection.getHasRemoteAddr() {
-		// fmt.Printf("#tick skip tick() no remote addr=%s\n", ts.connection.getRemoteAddr())
 		// util.Log.Debug("tick skip tick: no remote addr")
 		return nil
 	}
 
+	// skip send if the interval is too short
 	now := time.Now().UnixMilli()
-	// fmt.Printf("#tick now=%d, nextAckTime=%d, nextSendTime=%d\n", now, ts.nextAckTime, ts.nextSendTime)
 	if now < ts.nextAckTime && now < ts.nextSendTime {
-		// fmt.Printf("#tick skip tick() nextAckTime+%d, nextSendTime=%d, now=%d\n", ts.nextAckTime, ts.nextSendTime, now)
 		// util.Log.With("now", now).With("now<nextAckTime", now < ts.nextAckTime).
 		// 	With("now<nextSendTime", now < ts.nextSendTime).Debug("tick skip tick: time")
 		return nil

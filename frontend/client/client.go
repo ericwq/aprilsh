@@ -841,8 +841,12 @@ mainLoop:
 		// 	now = time.Now().UnixMilli()
 		// }
 		select {
-		case networkMsg := <-networkChan: // got data from socket
+		case networkMsg := <-networkChan:
+
+			// got data from server
 			if networkMsg.Err != nil {
+
+				// if read from server failed, retry after 0.2 second
 				util.Log.With("error", networkMsg.Err).Warn("receive from network")
 				if !sc.network.ShutdownInProgress() {
 					sc.overlays.GetNotificationEngine().SetNetworkError(networkMsg.Err.Error())
@@ -852,9 +856,13 @@ mainLoop:
 			}
 			// util.Log.With("data", networkMsg.Data).Info("got from network")
 			sc.processNetworkInput(networkMsg.Data)
-		case fileMsg := <-fileChan: // got data from file
+
+		case fileMsg := <-fileChan:
+
 			// input from the user needs to be fed to the network
 			if fileMsg.Err != nil || !sc.processUserInput(fileMsg.Data) {
+
+				// if read from local pts terminal failed, quit
 				if fileMsg.Err != nil {
 					util.Log.With("error", fileMsg.Err).Warn("read from file")
 				}
@@ -930,6 +938,9 @@ mainLoop:
 		err := sc.network.Tick()
 		if err != nil {
 			util.Log.With("error", err).Warn("tick send failed")
+			sc.overlays.GetNotificationEngine().SetNetworkError(err.Error())
+		} else {
+			sc.overlays.GetNotificationEngine().ClearNetworkError()
 		}
 	}
 

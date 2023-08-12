@@ -948,7 +948,7 @@ func TestNotificationEngine(t *testing.T) {
 		if v.messageIsNetworkError {
 			ne.SetNetworkError(v.name)
 		} else {
-			ne.clearNetworkError()
+			ne.ClearNetworkError()
 			ne.SetNotificationString(v.message, v.permanent, v.showQuitKeystroke)
 		}
 

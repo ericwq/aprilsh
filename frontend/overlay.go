@@ -510,7 +510,7 @@ func (ne *NotificationEngine) SetNetworkError(str string) {
 	ne.messageExpiration = time.Now().UnixMilli() + ACK_INTERVAL + 100
 }
 
-func (ne *NotificationEngine) clearNetworkError() {
+func (ne *NotificationEngine) ClearNetworkError() {
 	// fmt.Printf("clearNetworkError #debug messageIsNetworkError=%t\n", ne.messageIsNetworkError)
 	if ne.messageIsNetworkError {
 		ne.messageExpiration = terminal.Min(ne.messageExpiration, time.Now().UnixMilli()+1000)
