@@ -225,7 +225,9 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		}
 
 		// remove send state for which num < AckNum
+		util.Log.With("sentStates", t.getSentStateList()).Warn("Before AckNum")
 		t.sender.processAcknowledgmentThrough(inst.AckNum)
+		util.Log.With("sentStates", t.getSentStateList()).Warn("After AckNum")
 
 		// inform network layer of roundtrip (end-to-end-to-end) connectivity
 		t.connection.setLastRoundtripSuccess(t.sender.getSentStateAckedTimestamp())
@@ -238,7 +240,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		// first, make sure we don't already have the new state
 		for i := range t.receivedState {
 			if inst.NewNum == t.receivedState[i].num {
-				// util.Log.Debug("abandon same shutdown message")
+				util.Log.With("NewNum", inst.NewNum).Warn("duplicate state")
 				return nil
 			}
 		}
@@ -314,7 +316,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 					if len(inst.Diff) > 0 {
 						t.sender.setDataAck()
 					}
-					util.Log.With("receivedState", t.getRStateList()).Debug("receive shutdown state")
+					util.Log.With("receivedState", t.getReceivedStateList()).Debug("receive shutdown state")
 				}
 				if t.verbose > 0 {
 					// fmt.Fprintf(os.Stderr, "#recv [%d] Received OUT-OF-ORDER state %d [ack %d]\n",
@@ -338,7 +340,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 
 		t.receivedState = append(t.receivedState, newState) // insert new state
 		t.sender.setAckNum(t.receivedState[len(t.receivedState)-1].num)
-		util.Log.With("receivedState", t.getRStateList()).Debug("receive state")
+		util.Log.With("receivedState", t.getReceivedStateList()).Debug("receive state")
 
 		t.sender.remoteHeard(newState.timestamp)
 		if len(inst.Diff) > 0 {
@@ -348,11 +350,21 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 	return nil
 }
 
-func (t *Transport[S, R]) getRStateList() string {
+func (t *Transport[S, R]) getReceivedStateList() string {
 	var s strings.Builder
 	s.WriteString("[")
 	for i := range t.receivedState {
 		fmt.Fprintf(&s, "%d,", t.receivedState[i].num)
+	}
+	s.WriteString("]")
+	return s.String()
+}
+
+func (t *Transport[S, R]) getSentStateList() string {
+	var s strings.Builder
+	s.WriteString("[")
+	for i := range t.sender.sentStates {
+		fmt.Fprintf(&s, "%d,", t.sender.sentStates[i].num)
 	}
 	s.WriteString("]")
 	return s.String()
