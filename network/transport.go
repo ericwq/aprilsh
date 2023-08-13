@@ -224,19 +224,20 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 			return errors.New("aprilsh protocol version mismatch.")
 		}
 
-		// remove send state for which num < AckNum
-		util.Log.With("sentStates", t.getSentStateList()).Warn("Before AckNum")
-		t.sender.processAcknowledgmentThrough(inst.AckNum)
-		util.Log.With("sentStates", t.getSentStateList()).Warn("After AckNum")
-
-		// inform network layer of roundtrip (end-to-end-to-end) connectivity
-		t.connection.setLastRoundtripSuccess(t.sender.getSentStateAckedTimestamp())
-
 		util.Log.With("NewNum", inst.NewNum).
 			With("AckNum", inst.AckNum).
 			With("OldNum", inst.OldNum).
 			With("throwawayNum", inst.ThrowawayNum).
 			Debug("got network message")
+
+		// remove send state for which num < AckNum
+		util.Log.With("do", "before").With("sentStates", t.getSentStateList()).Debug("got network message")
+		t.sender.processAcknowledgmentThrough(inst.AckNum)
+		util.Log.With("do", "after ").With("sentStates", t.getSentStateList()).Debug("got network message")
+
+		// inform network layer of roundtrip (end-to-end-to-end) connectivity
+		t.connection.setLastRoundtripSuccess(t.sender.getSentStateAckedTimestamp())
+
 		// first, make sure we don't already have the new state
 		for i := range t.receivedState {
 			if inst.NewNum == t.receivedState[i].num {
@@ -340,7 +341,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 
 		t.receivedState = append(t.receivedState, newState) // insert new state
 		t.sender.setAckNum(t.receivedState[len(t.receivedState)-1].num)
-		util.Log.With("receivedState", t.getReceivedStateList()).Debug("receive state")
+		util.Log.With("receivedState", t.getReceivedStateList()).Debug("got network message")
 
 		t.sender.remoteHeard(newState.timestamp)
 		if len(inst.Diff) > 0 {
@@ -352,11 +353,11 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 
 func (t *Transport[S, R]) getReceivedStateList() string {
 	var s strings.Builder
-	s.WriteString("[")
+	s.WriteString("(")
 	for i := range t.receivedState {
 		fmt.Fprintf(&s, "%d,", t.receivedState[i].num)
 	}
-	s.WriteString("]")
+	s.WriteString(")")
 	return s.String()
 }
 
