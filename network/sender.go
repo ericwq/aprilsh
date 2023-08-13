@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/ericwq/aprilsh/encrypt"
@@ -205,10 +206,19 @@ func (ts *TransportSender[T]) sendInFragments(diff string, newNum int64) error {
 	var err error
 	err = ts.sendFragments(&inst, newNum)
 
-	// if newNum == -1 && err == nil {
-	util.Log.With("newNum", inst.NewNum).With("AckNum", inst.AckNum).
-		With("OldNum", inst.OldNum).With("diffLength", len(diff)).Debug("send fragments")
-	// }
+	var s strings.Builder
+	s.WriteString("[")
+	for i := range ts.sentStates {
+		fmt.Fprintf(&s, "%d,", ts.sentStates[i].num)
+	}
+	s.WriteString("]")
+
+	util.Log.With("sentStates", s.String()).Debug("send fragments---")
+	util.Log.With("NewNum", inst.NewNum).
+		With("OldNum", inst.OldNum).
+		With("AckNum", inst.AckNum).
+		With("throwawayNum", inst.ThrowawayNum).
+		With("diffLength", len(diff)).Debug("send fragments")
 	// return ts.sendFragments(&inst, newNum)
 	// TODO remove the debug statements
 	return err
@@ -267,10 +277,7 @@ func (ts *TransportSender[T]) calculateTimers() {
 
 	// Cut out common prefix of all states
 	ts.rationalizeStates()
-	back := 0
-	if len(ts.sentStates) > 0 {
-		back = len(ts.sentStates) - 1
-	}
+	back := len(ts.sentStates) - 1
 	// util.Log.With("size", len((ts.sentStates))).With("back", back).Debug("check")
 
 	if ts.pendingDataAck && ts.nextAckTime > now+ACK_DELAY {
@@ -364,8 +371,12 @@ func (ts *TransportSender[T]) tick() error {
 	// fmt.Printf("#tick send %q to receiver %s.\n", diff, ts.connection.getRemoteAddr())
 
 	if len(diff) == 0 {
-		// fmt.Printf("#tick sendEmptyAck(): now=%d, nextAckTime=%d\n", now, ts.nextAckTime)
+		// util.Log.With("nextAckTime", ts.nextAckTime).With("nextSendTime", ts.nextSendTime).Debug("tick diff==0")
 		if now >= ts.nextAckTime {
+			// util.Log.With("assumedReceiverState", ts.assumedReceiverState.num).
+			// 	With("now>=nextAckTime", now >= ts.nextAckTime).
+			// 	With("now>=nextSendTime", now >= ts.nextSendTime).
+			// 	Debug("sendEmptyAck")
 			if err := ts.sendEmptyAck(); err != nil {
 				return err
 			}
@@ -377,13 +388,17 @@ func (ts *TransportSender[T]) tick() error {
 			ts.mindelayClock = -1
 		}
 	} else if now >= ts.nextSendTime || now >= ts.nextAckTime {
-		// fmt.Printf("#tick sendToReceiver(): %d, nextAckTime=%d, nextSendTime=%d, diff=%q\n",
-		// 	now, ts.nextSendTime, ts.nextAckTime, diff)
 		// send diff or ack
+		// util.Log.With("assumedReceiverState", ts.assumedReceiverState.num).
+		// 	With("now>=nextAckTime", now >= ts.nextAckTime).
+		// 	With("now>=nextSendTime", now >= ts.nextSendTime).
+		// 	Debug("sendToReceiver")
 		if err := ts.sendToReceiver(diff); err != nil {
 			return err
 		}
 		ts.mindelayClock = -1
+	} else {
+		// util.Log.With("nextAckTime", ts.nextAckTime).With("nextSendTime", ts.nextSendTime).Debug("tick others")
 	}
 
 	return nil

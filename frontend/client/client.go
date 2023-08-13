@@ -474,7 +474,9 @@ func (sc *STMClient) mainInit() error {
 
 func (sc *STMClient) processNetworkInput(s string) {
 	// sc.network.Recv()
-	sc.network.ProcessPayload(s)
+	if err := sc.network.ProcessPayload(s); err != nil {
+		util.Log.With("error", err).Warn("ProcessPayload")
+	}
 
 	//  Now give hints to the overlays
 	rs := sc.network.GetLatestRemoteState()
@@ -500,6 +502,7 @@ func (sc *STMClient) processUserInput(buf string) bool {
 		sc.overlays.GetPredictionEngine().Reset()
 	}
 
+	util.Log.With("buf", buf).Debug("processUserInput")
 	var input []rune
 	graphemes := uniseg.NewGraphemes(buf)
 	for graphemes.Next() {
@@ -608,7 +611,7 @@ func (sc *STMClient) outputNewFrame() {
 	diff := sc.display.NewFrame(!sc.repaintRequested, sc.localFramebuffer, sc.newState)
 	os.Stdout.WriteString(diff)
 	if diff != "" {
-		util.Log.With("diff", diff).Debug("write diff to stdout")
+		util.Log.With("diff", diff).Debug("outputNewFrame")
 	}
 
 	sc.repaintRequested = false
@@ -966,6 +969,5 @@ mainLoop:
 	}
 	eg.Wait()
 
-	fmt.Printf("%s is exiting.\n", _COMMAND_NAME)
 	return nil
 }

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/ericwq/aprilsh/util"
@@ -126,6 +127,7 @@ func (t *Transport[S, R]) ShutdownAcknowledged() bool {
 	return t.sender.getShutdownAcknowledged()
 }
 
+// return true if retries reach times limit or retries time out
 func (t *Transport[S, R]) ShutdownAckTimedout() bool {
 	return t.sender.shutdonwAckTimedout()
 }
@@ -228,6 +230,11 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		// inform network layer of roundtrip (end-to-end-to-end) connectivity
 		t.connection.setLastRoundtripSuccess(t.sender.getSentStateAckedTimestamp())
 
+		util.Log.With("NewNum", inst.NewNum).
+			With("AckNum", inst.AckNum).
+			With("OldNum", inst.OldNum).
+			With("throwawayNum", inst.ThrowawayNum).
+			Debug("got network message")
 		// first, make sure we don't already have the new state
 		for i := range t.receivedState {
 			if inst.NewNum == t.receivedState[i].num {
@@ -289,7 +296,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		// Insert new state in sorted place
 		rs := make([]TimestampedState[R], 0)
 		for i := range t.receivedState {
-			if t.receivedState[i].num > newState.num {
+			if /* newState.num != -1 &&  */ t.receivedState[i].num > newState.num {
 				// insert out-of-order new state
 				rs = append(rs, newState)
 				rs = append(rs, t.receivedState[i:]...)
@@ -297,11 +304,17 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 
 				if newState.num == -1 {
 					//shutdown state is always out of order
-					util.Log.With("ackNum", inst.AckNum).Debug("get shutdown state")
+					// util.Log.With("ackNum", inst.AckNum).
+					// 	With("newNum", inst.NewNum).
+					// 	With("OldNum", inst.OldNum).
+					// 	With("throwawayNum", inst.ThrowawayNum).
+					// 	Debug("get shutdown state")
 					t.sender.setAckNum(newState.num)
-					for i := range t.receivedState {
-						util.Log.With("i", i).With("num", t.receivedState[i].num).Debug("receivedState")
+					t.sender.remoteHeard(newState.timestamp)
+					if len(inst.Diff) > 0 {
+						t.sender.setDataAck()
 					}
+					util.Log.With("receivedState", t.getRStateList()).Debug("receive shutdown state")
 				}
 				if t.verbose > 0 {
 					// fmt.Fprintf(os.Stderr, "#recv [%d] Received OUT-OF-ORDER state %d [ack %d]\n",
@@ -325,9 +338,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 
 		t.receivedState = append(t.receivedState, newState) // insert new state
 		t.sender.setAckNum(t.receivedState[len(t.receivedState)-1].num)
-		for i := range t.receivedState {
-			util.Log.With("i", i).With("num", t.receivedState[i].num).Debug("receive state")
-		}
+		util.Log.With("receivedState", t.getRStateList()).Debug("receive state")
 
 		t.sender.remoteHeard(newState.timestamp)
 		if len(inst.Diff) > 0 {
@@ -335,4 +346,14 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		}
 	}
 	return nil
+}
+
+func (t *Transport[S, R]) getRStateList() string {
+	var s strings.Builder
+	s.WriteString("[")
+	for i := range t.receivedState {
+		fmt.Fprintf(&s, "%d,", t.receivedState[i].num)
+	}
+	s.WriteString("]")
+	return s.String()
 }
