@@ -333,7 +333,6 @@ func main() {
 		fmt.Printf("can't create log file %s.\n", logf.Name())
 		return
 	}
-	fmt.Printf("check client log file %s\n\n", logf.Name())
 	util.Log.SetLevel(slog.LevelDebug)
 	util.Log.SetOutput(logf)
 
@@ -363,7 +362,7 @@ func main() {
 	client.main()
 	client.shutdown()
 
-	fmt.Printf("\n%s is exiting.\n", _COMMAND_NAME)
+	// fmt.Printf("\n%s is exiting.\n", _COMMAND_NAME)
 }
 
 type STMClient struct {
@@ -765,6 +764,7 @@ func (sc *STMClient) shutdown() error {
 
 	err := term.Restore(int(os.Stdin.Fd()), sc.savedTermios)
 	if err != nil {
+		util.Log.With("error", err).Warn("restore terminal failed")
 		return err
 	}
 
@@ -811,11 +811,16 @@ func (sc *STMClient) main() error {
 		frontend.ReadFromNetwork(5, networkChan, networkDownChan, sc.network.GetConnection())
 		return nil
 	})
+
 	// read from pty master file
-	eg.Go(func() error {
-		frontend.ReadFromFile(10, fileChan, fileDownChan, os.Stdin)
-		return nil
-	})
+	//
+	// os.Stdin will always block on the Read operation. The simple
+	// fix is we dont' wait the goroutine to quit.
+	go frontend.ReadFromFile(10, fileChan, fileDownChan, os.Stdin)
+	// eg.Go(func() error {
+	// 	frontend.ReadFromFile(10, fileChan, fileDownChan, os.Stdin)
+	// 	return nil
+	// })
 
 	// intercept signal
 	sigChan := make(chan os.Signal, 1)
@@ -947,16 +952,6 @@ mainLoop:
 		}
 	}
 
-	// consume last message to release the reader
-	select {
-	case <-fileChan:
-	default:
-	}
-	select {
-	case <-networkChan:
-	default:
-	}
-
 	// shutdown the goroutine
 	shutdownChan <- true
 	select {
@@ -965,6 +960,16 @@ mainLoop:
 	}
 	select {
 	case networkDownChan <- "done":
+	default:
+	}
+
+	// consume last message to release reader if possible
+	select {
+	case <-fileChan:
+	default:
+	}
+	select {
+	case <-networkChan:
 	default:
 	}
 	eg.Wait()
