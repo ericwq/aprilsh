@@ -213,12 +213,12 @@ func (ts *TransportSender[T]) sendInFragments(diff string, newNum int64) error {
 	}
 	s.WriteString("]")
 
-	util.Log.With("sentStates", s.String()).Debug("send fragments---")
 	util.Log.With("NewNum", inst.NewNum).
 		With("OldNum", inst.OldNum).
 		With("AckNum", inst.AckNum).
 		With("throwawayNum", inst.ThrowawayNum).
 		With("diffLength", len(diff)).Debug("send fragments")
+	util.Log.With("sentStates", s.String()).Debug("send fragments")
 	// return ts.sendFragments(&inst, newNum)
 	// TODO remove the debug statements
 	return err
@@ -439,15 +439,16 @@ func (ts *TransportSender[T]) processAcknowledgmentThrough(ackNum int64) {
 		// find the first element for which its num == ackNum
 		if ts.sentStates[i].numEq(ackNum) {
 			// remove the element for which its num < ackNum
-			ss := ts.sentStates[:0]
-			for j := range ts.sentStates {
-				if ts.sentStates[j].numLt(ackNum) {
-					// skip this means remove this element
-				} else {
-					ss = append(ss, ts.sentStates[j])
-				}
-			}
-			ts.sentStates = ss
+			// ss := ts.sentStates[:0]
+			// for j := range ts.sentStates {
+			// 	if ts.sentStates[j].numLt(ackNum) {
+			// 		// skip this means remove this element
+			// 	} else {
+			// 		ss = append(ss, ts.sentStates[j])
+			// 	}
+			// }
+			// ts.sentStates = ss
+			ts.sentStates = ts.sentStates[i:]
 			return
 		}
 	}

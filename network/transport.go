@@ -225,15 +225,16 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		}
 
 		util.Log.With("NewNum", inst.NewNum).
-			With("AckNum", inst.AckNum).
 			With("OldNum", inst.OldNum).
+			With("AckNum", inst.AckNum).
 			With("throwawayNum", inst.ThrowawayNum).
+			With("diffLength", len(inst.Diff)).
 			Debug("got network message")
 
 		// remove send state for which num < AckNum
 		util.Log.With("do", "before").With("sentStates", t.getSentStateList()).Debug("got network message")
 		t.sender.processAcknowledgmentThrough(inst.AckNum)
-		util.Log.With("do", "after ").With("sentStates", t.getSentStateList()).Debug("got network message")
+		util.Log.With("do", "after-").With("sentStates", t.getSentStateList()).Debug("got network message")
 
 		// inform network layer of roundtrip (end-to-end-to-end) connectivity
 		t.connection.setLastRoundtripSuccess(t.sender.getSentStateAckedTimestamp())
@@ -241,7 +242,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		// first, make sure we don't already have the new state
 		for i := range t.receivedState {
 			if inst.NewNum == t.receivedState[i].num {
-				util.Log.With("NewNum", inst.NewNum).Warn("duplicate state")
+				util.Log.With("quit", "duplicate state").With("NewNum", inst.NewNum).Debug("got network message")
 				return nil
 			}
 		}
@@ -317,7 +318,9 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 					if len(inst.Diff) > 0 {
 						t.sender.setDataAck()
 					}
-					util.Log.With("receivedState", t.getReceivedStateList()).Debug("receive shutdown state")
+					util.Log.With("receivedState", t.getReceivedStateList()).
+						With("sort", "insert shutdown state").
+						Debug("got network message")
 				}
 				if t.verbose > 0 {
 					// fmt.Fprintf(os.Stderr, "#recv [%d] Received OUT-OF-ORDER state %d [ack %d]\n",
