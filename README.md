@@ -57,7 +57,7 @@ The project name `Aprilsh` is derived from `April+sh`. This project started in s
 - 2023/Jul/24: refine network package for test coverage.
 - 2023/Aug/01: start integration test for client.
 - 2023/Aug/07: add util.Log and rewrite log related part for other packages.
-- 2023/Aug/07: accomplish `exit` command in running aprilsh client.
+- 2023/Aug/14: accomplish `exit` command in running aprilsh client.
 
 ## build dependency
 
