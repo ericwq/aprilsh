@@ -438,17 +438,22 @@ func (ts *TransportSender[T]) processAcknowledgmentThrough(ackNum int64) {
 	for i := range ts.sentStates {
 		// find the first element for which its num == ackNum
 		if ts.sentStates[i].numEq(ackNum) {
-			// remove the element for which its num < ackNum
-			// ss := ts.sentStates[:0]
-			// for j := range ts.sentStates {
-			// 	if ts.sentStates[j].numLt(ackNum) {
-			// 		// skip this means remove this element
-			// 	} else {
-			// 		ss = append(ss, ts.sentStates[j])
-			// 	}
-			// }
-			// ts.sentStates = ss
-			ts.sentStates = ts.sentStates[i:]
+			if ackNum == -1 {
+				// for shutdown ack, keep shutdown state in the first place
+				// is the key, the other state is not important.
+				ts.sentStates = ts.sentStates[i:]
+			} else {
+				// remove the element for which its num < ackNum
+				ss := ts.sentStates[:0]
+				for j := range ts.sentStates {
+					if ts.sentStates[j].numLt(ackNum) {
+						// skip this means remove this element
+					} else {
+						ss = append(ss, ts.sentStates[j])
+					}
+				}
+				ts.sentStates = ss
+			}
 			return
 		}
 	}
