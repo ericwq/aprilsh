@@ -849,16 +849,6 @@ mainLoop:
 		}
 	}
 
-	// consume last message to release the reader
-	select {
-	case <-fileChan:
-	default:
-	}
-	select {
-	case <-networkChan:
-	default:
-	}
-
 	// shutdown the goroutine
 	shutdownChan <- true
 	select {
@@ -867,6 +857,16 @@ mainLoop:
 	}
 	select {
 	case networkDownChan <- "done":
+	default:
+	}
+
+	// consume last message to release reader if possible
+	select {
+	case <-fileChan:
+	default:
+	}
+	select {
+	case <-networkChan:
 	default:
 	}
 	eg.Wait()
@@ -1179,8 +1179,7 @@ func (m *mainSrv) run(conf *Config) {
 				// fmt.Printf("#run got %s from workDone channel. error: %s\n", portStr, err)
 				break
 			}
-			// fmt.Printf("#run got workDone message from %s\n", portStr)
-			util.Log.With("port", p).With("maxPort", m.maxPort).Debug("worker is done")
+			// util.Log.With("port", p).With("maxPort", m.maxPort).Debug("worker is done")
 			// clear worker list
 			delete(m.workers, p)
 		case sd := <-m.downChan: // ready to shutdown mainSrv
