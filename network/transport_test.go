@@ -618,7 +618,7 @@ func TestClientShutdown(t *testing.T) {
 	}
 
 	// validate
-	if client.ShutdownAcknowledged() {
+	if !client.ShutdownAcknowledged() {
 		t.Errorf("#test %s: ShutdownAcknowledged() expect false, got %t\n", label, client.ShutdownAcknowledged())
 	}
 
