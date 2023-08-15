@@ -106,7 +106,7 @@ func TestNewFrame_PutRow(t *testing.T) {
 		{
 			"new screen with big space gap", 'V', 'V',
 			"\x1B[5;1H1st space\x1B[0K\x1b[5;21H2nd!   \x1B[1;37;40m   3rd\x1b[5;79HEOL", true,
-			"\x1b[?25l\r\n1st space\x1b[11X\x1b[5;21H2nd!   \x1b[0;1;37;40m   3rd\x1b[45X\x1b[5;79H\x1b[0;1;37;40mE\x1b[5;80HOL\x1b[?25h", 4,
+			"\x1b[?25l\r\n1st space\x1b[11X\x1b[5;21H2nd!   \x1b[0;1;37;40m   3rd\x1b[0m\x1b[45X\x1b[5;79H\x1b[0;1;37;40mE\x1b[5;80HOL\x1b[?25h", 4,
 			"[  4] 1st.space...........2nd!......3rd.............................................EO",
 		},
 		{
@@ -129,13 +129,16 @@ func TestNewFrame_PutRow(t *testing.T) {
 			"\x1b[?25l\rbackspace\x1b[9;11Hcase\b\b\b\b\x1b[?25h", 8,
 			"[  8] backspace.case..................................................................",
 		},
+		{
+			"mix color case", ' ', ' ', "\x1b[10;1H\x1b[1;34mdevelop\x1b[m  \x1b[1;34mproj\x1b[m", true,
+			"\x1b[?25l\r\n\x1b[0;1;34mdevelop\x1b[0m  \x1b[0;1;34mproj\x1b[?25h\x1b[0m", 9,
+			"[  9] develop..proj ..................................................................",
+		},
 	}
 
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
 
-	// oldE.logT.SetOutput(io.Discard)
-	// newE.logT.SetOutput(io.Discard)
 	defer util.Log.Restore()
 	util.Log.SetOutput(io.Discard)
 
@@ -146,6 +149,8 @@ func TestNewFrame_PutRow(t *testing.T) {
 	}
 
 	for _, v := range tc {
+		// oldE.resetAttrs()
+		// newE.resetAttrs()
 		oldE.cf.fillCells(v.bgRune1, oldE.attrs)
 		newE.cf.fillCells(v.bgRune2, newE.attrs)
 
@@ -185,12 +190,12 @@ func TestNewFrame_ScrollUp(t *testing.T) {
 		{
 			"scroll up 5 lines", ' ', ' ', "\x1B[5;1Hscroll\r\ndown\r\nmore\r\nthan\r\n5 lines!",
 			"\r\ndifferent line", "\x1B[4S", true,
-			"\x1b[?25l\x1b[9;1H\x1b[4S\x1b[6;1Hdifferent\x1b[6;11Hline\x1b[10;15H\x1b[?25h",
+			"\x1b[0m\x1b[?25l\x1b[9;1H\x1b[4S\x1b[6;1Hdifferent\x1b[6;11Hline\x1b[10;15H\x1b[?25h",
 		},
 		{
 			"scroll up 6 lines", ' ', ' ', "\x1B[35;1Hscroll\r\ndown\r\nmore\r\nthan\r\n6\r\nlines!",
 			"", "\x1B[34S", true,
-			"\r\x1b[34S\x1b[40;7H",
+			"\x1b[0m\r\x1b[34S\x1b[40;7H",
 		},
 	}
 

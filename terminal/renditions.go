@@ -75,7 +75,7 @@ func (rend *Renditions) SGR() string {
 	// quick check for default Renditions
 	def := Renditions{}
 	if *rend == def {
-		return ""
+		return "\x1B[0m"
 	}
 	var sgr strings.Builder
 

@@ -219,7 +219,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		// fmt.Printf("#NewFrame initialized=%t, d.showCursorMode=%t\n", initialized, d.showCursorMode)
 		d.showCursorMode = false
 		// ti.TPuts(&b, ti.HideCursor) // civis, "\x1B[?25l]" showCursorMode = false
-		fmt.Fprint(&b, "\x1B[?25l]")
+		fmt.Fprint(&b, "\x1B[?25l")
 	}
 
 	// has the screen buffer mode changed?

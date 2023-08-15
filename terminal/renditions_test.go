@@ -120,7 +120,7 @@ func TestRenditionsSGR_256color(t *testing.T) {
 	}{
 		{Color33, Color47, RapidBlink, "\033[0;6;38:5:33;48:5:47m"},  // 88-color
 		{ColorDefault, ColorDefault, Italic, "\033[0;3m"},            // just italic
-		{ColorDefault, ColorDefault, charAttribute(38), ""},          // default Renditions and no charAttribute generate empty string
+		{ColorDefault, ColorDefault, charAttribute(38), "\x1B[0m"},   // default Renditions and no charAttribute generate empty string
 		{Color128, Color155, Blink, "\033[0;5;38:5:128;48:5:155m"},   // 256-color
 		{Color205, Color228, Inverse, "\033[0;7;38:5:205;48:5:228m"}, // 256-color
 		{ColorRed, ColorWhite, charAttribute(38), "\033[0;91;107m"},  // 16-color set
@@ -153,13 +153,14 @@ func TestRenditionsSGR_ANSIcolor(t *testing.T) {
 	}{
 		{30, 47, Bold, "\033[0;1;30;47m"},
 		{0, 0, Bold, "\033[0;1m"},
-		{0, 0, charAttribute(38), ""}, // buildRendition doesn't support 38,48
+		{0, 0, charAttribute(38), "\x1B[0m"}, // buildRendition doesn't support 38,48
 		{0, 0, Italic, "\033[0;3m"},
 		{0, 0, Underlined, "\033[0;4m"},
 		{39, 49, Invisible, "\033[0;8m"},
 		{37, 40, Faint, "\033[0;2;37;40m"},
 		{90, 107, Underlined, "\033[0;4;90;107m"},
 		{97, 100, Blink, "\033[0;5;97;100m"},
+		{0, 34, Bold, "\033[0;1;34m"},
 	}
 
 	for _, c := range tc {
