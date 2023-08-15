@@ -553,6 +553,7 @@ func (emu *Emulator) HandleStream(seq string) (hds []*Handler) {
 	hds = emu.parser.processStream(seq, hds)
 	for _, hd := range hds {
 		// fmt.Printf("#HandleStream %s, %q\n", strHandlerID[hd.id], hd.sequence)
+		// util.Log.With("id", strHandlerID[hd.id]).With("seq", hd.sequence).Debug("#HandleStream")
 		hd.handle(emu)
 	}
 	return

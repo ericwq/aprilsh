@@ -766,6 +766,51 @@ func TestHandle_SGR_Break(t *testing.T) {
 	}
 }
 
+func TestSequenceWithColor(t *testing.T) {
+	tc := []struct {
+		label string
+		seq   string
+		rends []Renditions
+	}{
+		{"sequence with text and changed color", "\x1b[1;34mdevelop\x1b[m  \x1b[1;34mproj\x1b[m",
+			[]Renditions{
+				{fgColor: ColorNavy, bold: true}, {fgColor: ColorNavy, bold: true}, {fgColor: ColorNavy, bold: true},
+				{fgColor: ColorNavy, bold: true}, {fgColor: ColorNavy, bold: true}, {fgColor: ColorNavy, bold: true},
+				{fgColor: ColorNavy, bold: true}, {}, {}, {fgColor: ColorNavy, bold: true},
+				{fgColor: ColorNavy, bold: true}, {fgColor: ColorNavy, bold: true}, {fgColor: ColorNavy, bold: true}}},
+	}
+	p := NewParser()
+	emu := NewEmulator3(80, 40, 40)
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			// process control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) != 17 {
+				t.Errorf("%s got zero handlers.", v.label)
+			}
+
+			// handle the control sequence
+			for _, hd := range hds {
+				hd.handle(emu)
+			}
+
+			// the break case should not affect the renditions, it will keep the same.
+			rows := 0
+			for pos := range v.rends {
+				cols := pos
+				cell := emu.cf.getCell(rows, cols)
+				got := cell.GetRenditions()
+				if got != v.rends[pos] {
+					t.Errorf("%s: pos %d expect renditions:\n%v %s, got \n%v\n", v.label, pos, v.rends[pos], cell, got)
+				}
+			}
+
+		})
+	}
+}
 func TestHandle_ESC_DCS(t *testing.T) {
 	tc := []struct {
 		name        string
