@@ -707,6 +707,7 @@ mainLoop:
 					}
 					terminalToHost.WriteString(complete.ActOne(action))
 				}
+				util.Log.With("arise", "socket").With("data", terminalToHost.String()).Debug("input from host")
 
 				if !us.Empty() {
 					// register input frame number for future echo ack
@@ -767,6 +768,7 @@ mainLoop:
 				} else {
 					r := complete.Act(masterMsg.Data)
 					terminalToHost.WriteString(r)
+					util.Log.With("arise", "master").With("data", masterMsg.Data).With("r", r).Debug("input from host")
 
 					// update client with new state of terminal
 					network.SetCurrentState(complete)
@@ -777,7 +779,7 @@ mainLoop:
 
 		// write user input and terminal writeback to the host
 		if terminalToHost.Len() > 0 {
-			util.Log.With("terminalToHost", terminalToHost.String()).Debug("write to terminal")
+			util.Log.With("arise", "merge-").With("data", terminalToHost.String()).Debug("input from host")
 			_, err := ptmx.WriteString(terminalToHost.String())
 			if err != nil {
 				network.StartShutdown()

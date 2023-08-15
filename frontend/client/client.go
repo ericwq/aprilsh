@@ -831,6 +831,7 @@ func (sc *STMClient) main() error {
 		for {
 			select {
 			case s := <-sigChan:
+				util.Log.With("signal", s).Debug("got signal")
 				signals.Handler(s)
 			case <-shutdownChan:
 				return nil
@@ -901,6 +902,7 @@ mainLoop:
 			if !sc.network.HasRemoteAddr() {
 				break
 			} else if !sc.network.ShutdownInProgress() {
+				util.Log.Debug("start shutting down.")
 				sc.overlays.GetNotificationEngine().SetNotificationString(
 					"Signal received, shutting down...", true, true)
 				sc.network.StartShutdown()
