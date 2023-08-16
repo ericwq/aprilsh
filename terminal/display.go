@@ -150,7 +150,7 @@ func getRowFrom(from []Cell, posY int, w int) (row []Cell) {
 // compare two terminals and generate mix (grapheme and control sequence) sequence
 // to rebuild the new terminal from the old one.
 //
-// - initialized: if true, it will redraw the whole terminal, otherwise only affected part.
+// - initialized: if false, it will redraw the whole terminal, otherwise only changed part.
 // - oldE: the old terminal state.
 // - newE: the new terminal state.
 func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
@@ -694,29 +694,35 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 	// iterate for every cell
 	for frameX < rowWidth {
 		cell := newRow[frameX]
+		// fmt.Printf("#putRow pos=(%d,%d) cell=%q renditions=%q\n", frameY, frameX, cell, cell.renditions.SGR())
 
 		// Does cell need to be drawn?  Skip all this.
 		if initialized && clearCount == 0 && cell == oldRow[frameX] {
-			d.updateRendition(out, cell.renditions, false)
-			// fmt.Printf("#putRow x=%d, renditions=%q\n", frameX, cell.renditions.SGR())
-			// fmt.Printf("#putRow r,c=%2d,%2d is the same: %q\n", frameY, frameX, cell.contents)
+			// the new cell is the same as the old cell
+
+			// fmt.Printf("#putRow (%2d,%2d) is the same: contents=%q, renditions=%q\n",
+			// 	frameY, frameX, cell.contents, cell.renditions.SGR())
+			d.updateRendition(out, blankRenditions, false)
 			frameX += cell.GetWidth()
 			continue
 		}
 
+		fmt.Printf("#putRow r,c=%2d,%2d is %q\n", frameY, frameX, cell.contents)
 		// Slurp up all the empty cells
 		if cell.IsBlank() {
+			fmt.Printf("#putRow r,c=%2d,%2d is %q\n", frameY, frameX, cell.contents)
 			if cell.IsEarlyWrap() { // skip the early wrap cell.
 				frameX++
 				continue
 			}
+
+			// d.updateRendition(out, cell.renditions, false)
 
 			if clearCount == 0 {
 				blankRenditions = cell.GetRenditions()
 			}
 			if cell.GetRenditions() == blankRenditions {
 				// Remember run of blank cells
-				// fmt.Printf("#putRow r,c=%2d,%2d is %q\n", frameY, frameX, cell.contents)
 				clearCount++
 				frameX++
 				continue
