@@ -674,6 +674,8 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 		cell := newRow[0]
 		d.updateRendition(out, cell.GetRenditions(), false)
 		d.appendCell(out, cell)
+		// fmt.Printf("#putRow (%2d,%2d) is wrap-: contents=%q, renditions=%q\n",
+		// 	frameY, frameX, cell.contents, cell.renditions.SGR())
 		frameX += cell.GetWidth()
 		d.cursorX += cell.GetWidth()
 	}
@@ -699,30 +701,33 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 		// Does cell need to be drawn?  Skip all this.
 		if initialized && clearCount == 0 && cell == oldRow[frameX] {
 			// the new cell is the same as the old cell
+			// don't do anything except move column counting.
 
-			// fmt.Printf("#putRow (%2d,%2d) is the same: contents=%q, renditions=%q\n",
-			// 	frameY, frameX, cell.contents, cell.renditions.SGR())
-			d.updateRendition(out, blankRenditions, false)
+			// fmt.Printf("#putRow (%2d,%2d) is same-: contents=%q, renditions=%q\n",
+			// frameY, frameX, cell.contents, cell.renditions.SGR())
+
+			// check the renditions if it's changed.
+			d.updateRendition(out, cell.renditions, false)
 			frameX += cell.GetWidth()
 			continue
 		}
 
-		fmt.Printf("#putRow r,c=%2d,%2d is %q\n", frameY, frameX, cell.contents)
 		// Slurp up all the empty cells
 		if cell.IsBlank() {
-			fmt.Printf("#putRow r,c=%2d,%2d is %q\n", frameY, frameX, cell.contents)
+			// it's empty cell
+			// fmt.Printf("#putRow (%2d,%2d) is blank: %q\n", frameY, frameX, cell.contents)
 			if cell.IsEarlyWrap() { // skip the early wrap cell.
 				frameX++
 				continue
 			}
 
-			// d.updateRendition(out, cell.renditions, false)
-
 			if clearCount == 0 {
+				// remember the renditions of first empty cell
 				blankRenditions = cell.GetRenditions()
 			}
 			if cell.GetRenditions() == blankRenditions {
 				// Remember run of blank cells
+				// counting the number of empty cells with same renditions
 				clearCount++
 				frameX++
 				continue
@@ -730,20 +735,25 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 		}
 
 		// Clear or write empty cells within the row (not to end).
-		if clearCount > 0 {
+		if clearCount > 0 { // draw empty cells previously counting
 			// Move to the right(correct) position.
 			d.appendSilentMove(out, frameY, frameX-clearCount)
-			// fmt.Printf("#putRow blank x=%2d, cell=%q, rend=%v\n", frameX, cell.contents, cell.renditions)
 			d.updateRendition(out, blankRenditions, false)
+
+			// pcell := newRow[frameX-clearCount]
+			// fmt.Printf("#putRow blank col=%2d, length=%d cell=%q, rend=%q\n",
+			// 	frameX-clearCount, clearCount, pcell.contents, pcell.renditions.SGR())
 
 			canUseErase := d.hasBCE || d.currentRendition == Renditions{}
 			if canUseErase && d.hasECH && clearCount > 4 {
 				// space is more efficient than ECH, if clearCount > 4
 				fmt.Fprintf(out, "\x1B[%dX", clearCount)
 			} else {
+				// fmt.Printf("#putRow space=%q\n", strings.Repeat(" ", clearCount))
 				fmt.Fprint(out, strings.Repeat(" ", clearCount))
 				d.cursorX = frameX
 			}
+
 			// If the current character is *another* empty cell in a different rendition,
 			// we restart counting and continue here
 			clearCount = 0
@@ -771,6 +781,9 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 			d.cursorX = -1
 			d.cursorY = -1
 		}
+
+		// fmt.Printf("#putRow (%2d,%2d) is diff-: contents=%q, renditions=%q\n",
+		// 	frameY, frameX, cell.contents, cell.renditions.SGR())
 		// fmt.Printf("#putRow print x=%2d, wrapThis=%t, cell=%q, rend=%v\n", frameX, wrapThis, cell.contents, cell.renditions)
 		// fmt.Printf("#putRow move from (%2d,%2d) to (%2d,%2d)\n", d.cursorY, d.cursorX, frameY, frameX)
 		d.appendSilentMove(out, frameY, frameX)
@@ -789,6 +802,7 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 		// Move to the right position.
 		d.appendSilentMove(out, frameY, frameX-clearCount)
 		d.updateRendition(out, blankRenditions, false)
+		// fmt.Printf("#putRow (%2d,%2d) is blank: \n", frameY, frameX)
 
 		canUseErase := d.hasBCE || d.currentRendition == Renditions{}
 		if canUseErase && !wrapThis {
@@ -833,6 +847,7 @@ func (d *Display) appendSilentMove(out io.Writer, y int, x int) {
 	if d.cursorX == x && d.cursorY == y {
 		return
 	}
+	// fmt.Printf("#appendSilentMove (%2d,%2d) move showCursorMode=%t\n", y, x, d.showCursorMode)
 	// turn off cursor if necessary before moving cursor
 	if d.showCursorMode {
 		fmt.Fprint(out, "\x1B[?25l") // ti.civis
@@ -865,6 +880,11 @@ func (d *Display) appendMove(out io.Writer, y int, x int) {
 		// Backspaces are good too.
 		if y == lastY && x-lastX < 0 && x-lastX > -5 {
 			fmt.Fprint(out, strings.Repeat("\b", lastX-x)) // BS
+			return
+		}
+		// CUF is shorter than CUP
+		if y == lastY && x-lastX > 0 && x-lastX < 5 {
+			fmt.Fprintf(out, "\x1B[%dC", x-lastX) // CUF
 			return
 		}
 		// More optimizations are possible.

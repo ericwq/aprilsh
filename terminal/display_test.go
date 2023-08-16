@@ -169,11 +169,11 @@ func TestNewFrame_PutRow(t *testing.T) {
 		gotRow := printCells(oldE.cf, v.row)
 
 		// check the replicate result.
-		skipHeader := 87
+		skipHeader := 80 + 7 // rule row + header
 		if !strings.Contains(gotRow, v.expectRow) {
 			for i := range v.expectRow {
 				if v.expectRow[i] != gotRow[skipHeader+i] {
-					t.Logf("%q col=%d expect=%q, got=%q\n", v.label, i, v.expectRow[i], gotRow[skipHeader+i])
+					t.Logf("%q col=%d expect=%q, got=%q\n", v.label, i-6, v.expectRow[i], gotRow[skipHeader+i])
 
 				}
 			}
