@@ -6,6 +6,7 @@ package terminal
 
 import (
 	// "strings"
+	"os"
 	"testing"
 )
 
@@ -181,5 +182,45 @@ func TestRenditionsBuildRenditions(t *testing.T) {
 	r := Renditions{}
 	if r.buildRendition(48) { // buildRendition doesn't support 38,48
 		t.Errorf("buildRenditions expect false, got %t\n", true)
+	}
+}
+
+func TestRenditionsRebuild(t *testing.T) {
+
+	tc := []struct {
+		label  string
+		mix    string
+		posY   []int
+		posX   []int
+		expect []string
+	}{
+		{"mix color", "\x1b[1;34mdevelop\x1b[m  ", []int{0, 0}, []int{0, 7},
+			[]string{"\x1b[0;1;34m", "\x1b[0m"}},
+		{"super mix", "\x1B[5;1H1st space\x1B[0K\x1b[5;21H2nd!   \x1B[1;37;40m   3rd\x1b[5;79HEOL",
+			[]int{4, 4, 4, 4}, []int{0, 26, 30, 78},
+			[]string{"\x1b[0m", "\x1b[0m", "\x1B[0;1;37;40m", "\x1b[0;1;37;40m"}},
+	}
+	emu := NewEmulator3(80, 40, 40)
+	os.Setenv("TERM", "xterm-256color")
+	for _, v := range tc {
+		// process the mix
+		emu.HandleStream(v.mix)
+
+		for i := range v.expect {
+			// get the cell
+			c := emu.GetCell(v.posY[i], v.posX[i])
+
+			// get the renditions
+			r := c.GetRenditions()
+
+			// get text representation of renditions
+			got := r.SGR()
+
+			// validate the rendition text
+			if got != v.expect[i] {
+				t.Errorf("%s at position (%d,%d) expect renditions %q, got %q\n",
+					v.label, v.posY[i], v.posX[i], v.expect[i], got)
+			}
+		}
 	}
 }

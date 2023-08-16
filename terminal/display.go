@@ -147,11 +147,11 @@ func getRowFrom(from []Cell, posY int, w int) (row []Cell) {
 	return row
 }
 
-// NewFrame() compare two terminal and generate mix (grapheme and control sequence) stream
-// to replicate the new terminal content and state to the existing one.
+// compare two terminals and generate mix (grapheme and control sequence) sequence
+// to rebuild the new terminal from the old one.
 //
-// - initialized: the first time is false.
-// - oldE: the existing terminal state.
+// - initialized: if true, it will redraw the whole terminal, otherwise only affected part.
+// - oldE: the old terminal state.
 // - newE: the new terminal state.
 func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	var b strings.Builder
@@ -218,7 +218,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	if !initialized {
 		// fmt.Printf("#NewFrame initialized=%t, d.showCursorMode=%t\n", initialized, d.showCursorMode)
 		d.showCursorMode = false
-		// ti.TPuts(&b, ti.HideCursor) // civis, "\x1B[?25l]" showCursorMode = false
+		// ti.TPuts(&b, ti.HideCursor) // civis, "\x1B[?25l" showCursorMode = false
 		fmt.Fprint(&b, "\x1B[?25l")
 	}
 
@@ -697,6 +697,8 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 
 		// Does cell need to be drawn?  Skip all this.
 		if initialized && clearCount == 0 && cell == oldRow[frameX] {
+			d.updateRendition(out, cell.renditions, false)
+			// fmt.Printf("#putRow x=%d, renditions=%q\n", frameX, cell.renditions.SGR())
 			// fmt.Printf("#putRow r,c=%2d,%2d is the same: %q\n", frameY, frameX, cell.contents)
 			frameX += cell.GetWidth()
 			continue
@@ -870,6 +872,7 @@ func (d *Display) appendMove(out io.Writer, y int, x int) {
 // the generated sequence is wrote to the output stream.
 func (d *Display) updateRendition(out io.Writer, r Renditions, force bool) {
 	if force || d.currentRendition != r {
+		// fmt.Printf("#updateRendition currentRendition=%q\n", d.currentRendition.SGR())
 		out.Write([]byte(r.SGR()))
 		d.currentRendition = r
 	}

@@ -106,7 +106,7 @@ func TestNewFrame_PutRow(t *testing.T) {
 		{
 			"new screen with big space gap", 'V', 'V',
 			"\x1B[5;1H1st space\x1B[0K\x1b[5;21H2nd!   \x1B[1;37;40m   3rd\x1b[5;79HEOL", true,
-			"\x1b[?25l\r\n1st space\x1b[11X\x1b[5;21H2nd!   \x1b[0;1;37;40m   3rd\x1b[0m\x1b[45X\x1b[5;79H\x1b[0;1;37;40mE\x1b[5;80HOL\x1b[?25h", 4,
+			"\x1b[?25l\n\n\n\n1st space\x1b[11X\x1b[5;21H2nd!   \x1b[0;1;37;40m   3rd\x1b[0m\x1b[45X\x1b[5;79H\x1b[0;1;37;40mE\x1b[5;80HOL\x1b[?25h", 4,
 			"[  4] 1st.space...........2nd!......3rd.............................................EO",
 		},
 		{
@@ -126,18 +126,15 @@ func TestNewFrame_PutRow(t *testing.T) {
 		},
 		{
 			"backspace case", ' ', ' ', "\x1b[9;1Hbackspace case\x1b[9;11H", true,
-			"\x1b[?25l\rbackspace\x1b[9;11Hcase\b\b\b\b\x1b[?25h", 8,
+			"\x1b[?25l\x1b[9;1Hbackspace\x1b[9;11Hcase\b\b\b\b\x1b[?25h", 8,
 			"[  8] backspace.case..................................................................",
 		},
 		{
 			"mix color case", ' ', ' ', "\x1b[10;1H\x1b[1;34mdevelop\x1b[m  \x1b[1;34mproj\x1b[m", true,
-			"\x1b[?25l\r\n\x1b[0;1;34mdevelop\x1b[0m  \x1b[0;1;34mproj\x1b[?25h\x1b[0m", 9,
-			"[  9] develop..proj ..................................................................",
+			"\x1b[?25l\x1b[10;1H\x1b[0;1;34mdevelop\x1b[0m\x1b[10;10H\x1b[0;1;34mproj\x1b[0m\x1b[?25h", 9,
+			"[  9] develop..proj...................................................................",
 		},
 	}
-
-	oldE := NewEmulator3(80, 40, 40)
-	newE := NewEmulator3(80, 40, 40)
 
 	defer util.Log.Restore()
 	util.Log.SetOutput(io.Discard)
@@ -149,28 +146,37 @@ func TestNewFrame_PutRow(t *testing.T) {
 	}
 
 	for _, v := range tc {
+		oldE := NewEmulator3(80, 40, 40)
+		newE := NewEmulator3(80, 40, 40)
 		// oldE.resetAttrs()
 		// newE.resetAttrs()
 		oldE.cf.fillCells(v.bgRune1, oldE.attrs)
 		newE.cf.fillCells(v.bgRune2, newE.attrs)
 
-		// make difference between terminal states
+		// use mix to create difference in newE
 		// fmt.Printf("#test NewFrame() newE cursor at (%2d,%2d)\n", newE.GetCursorRow(), newE.GetCursorCol())
 		newE.HandleStream(v.mix)
 
-		// check the difference sequence
-		gotSeq := d.NewFrame(v.initialized, oldE, newE)
-		if gotSeq != v.expectSeq {
-			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
+		// calculate the difference sequence
+		diff := d.NewFrame(v.initialized, oldE, newE)
+		if diff != v.expectSeq {
+			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, diff)
 		}
 
-		// apply difference sequence to target
+		// apply difference sequence to oldE
 		// fmt.Printf("#test NewFrame() oldE cursor at (%2d,%2d)\n", oldE.GetCursorRow(), oldE.GetCursorCol())
-		oldE.HandleStream(gotSeq)
+		oldE.HandleStream(diff)
 		gotRow := printCells(oldE.cf, v.row)
 
 		// check the replicate result.
+		skipHeader := 87
 		if !strings.Contains(gotRow, v.expectRow) {
+			for i := range v.expectRow {
+				if v.expectRow[i] != gotRow[skipHeader+i] {
+					t.Logf("%q col=%d expect=%q, got=%q\n", v.label, i, v.expectRow[i], gotRow[skipHeader+i])
+
+				}
+			}
 			t.Errorf("%q expect \n%s, got \n%s\n", v.label, v.expectRow, gotRow)
 		}
 	}
