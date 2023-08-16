@@ -652,20 +652,30 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	return b.String()
 }
 
-// putRow(): compare two rows to generate the stream to replicate the new row
-// from the old row base.
-// if wrap, write the first column
-// if the rows are the same, just return (false)
+// compare new row with old row to generate the mix stream to rebuild the new row
+// from the old one.
+//
+// if the previous row is wrapped, write the first column.
+//
+// if the two rows are the same (both cell and renditions), just return (false)
+//
 // for each cell:
-// - if the cells are the same, skip it.
+//
+// - if the cells are the same, skip it. change renditions if possible.
+//
 // - if the cells are empty, counting it.
-// - output the empty cells by count number.
+//
+// - output the empty cells with counting number.
+//
 // - re-count empty cell with different rendition.
+//
 // - output the empty cells by count number.
+//
 // - if the cells are not empty cell, output it.
-// clear or write empty cells at EOL if possible.
-// whether we should wrap
-func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *Emulator, frameY int, oldRow []Cell, wrap bool) bool {
+//
+// clear or write empty cells at EOL if possible. whether we should wrap
+func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator,
+	newE *Emulator, frameY int, oldRow []Cell, wrap bool) bool {
 	frameX := 0
 	newRow := getRow(newE, frameY)
 
@@ -716,7 +726,7 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator, newE *
 		if cell.IsBlank() {
 			// it's empty cell
 			// fmt.Printf("#putRow (%2d,%2d) is blank: %q\n", frameY, frameX, cell.contents)
-			if cell.IsEarlyWrap() { // skip the early wrap cell.
+			if cell.IsEarlyWrap() { // skip the early wrap cell. for double width cell
 				frameX++
 				continue
 			}
