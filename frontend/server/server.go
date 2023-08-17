@@ -766,9 +766,9 @@ mainLoop:
 					util.Log.With("error", masterMsg.Err).Warn("read from master")
 					network.StartShutdown()
 				} else {
-					r := complete.Act(masterMsg.Data)
-					terminalToHost.WriteString(r)
-					util.Log.With("arise", "master").With("data", masterMsg.Data).With("r", r).Debug("input from host")
+					out := complete.Act(masterMsg.Data)
+					terminalToHost.WriteString(out)
+					util.Log.With("arise", "master").With("data", masterMsg.Data).With("out", out).Debug("input from host")
 
 					// update client with new state of terminal
 					network.SetCurrentState(complete)

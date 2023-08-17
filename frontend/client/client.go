@@ -171,6 +171,7 @@ func (c *Config) getPassword(in *os.File) (string, error) {
 // % ssh ide@localhost  "echo 'open aprilsh:' | nc localhost 6000 -u -w 1"
 func (c *Config) fetchKey(password string) error {
 
+	// https://betterprogramming.pub/a-simple-cross-platform-ssh-client-in-100-lines-of-go-280644d8beea
 	cc := &ssh.ClientConfig{
 		User: c.user,
 		Auth: []ssh.AuthMethod{

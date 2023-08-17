@@ -208,7 +208,7 @@ func (p *Parser) unhandledInput() {
 
 	util.Log.With("input", p.historyString()).With("state", strInputState[p.inputState]).
 		With("inputOps", p.inputOps).With("nInputOps", p.nInputOps).With("argBuf", p.argBuf.String()).
-		With("unimplement", "Any").Debug("Unhandled input:")
+		With("unimplement", "Any").Warn("Unhandled input:")
 	p.setState(InputState_Normal)
 }
 
