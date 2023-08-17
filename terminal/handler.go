@@ -282,7 +282,7 @@ func hdl_graphemes(emu *Emulator, chs ...rune) {
 	c := emu.cf.getCellPtr(emu.posY, emu.posX)
 	*c = emu.attrs
 	c.SetContents(chs)
-	// fmt.Printf("#hdl_graphemes print %q at (%d,%d) %p\n", c, emu.posY, emu.posX, c)
+	// fmt.Printf("#hdl_graphemes print %q at (%d,%d) %q\n", c, emu.posY, emu.posX, c.renditions.SGR())
 
 	/// for double width graphemes
 	if w == 2 && emu.posX < emu.nColsEff-1 {

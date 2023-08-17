@@ -422,7 +422,9 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	// has cursor visibility changed?
 	// during update row, appendSilentMove() might close the cursor,
 	// Here we open cursor based on the new terminal state.
-	// fmt.Printf("#NewFrame newE=%t, d=%t, oldE=%t\n", newE.showCursorMode, d.showCursorMode, oldE.showCursorMode)
+
+	// fmt.Printf("#NewFrame newE=%t, d=%t, oldE=%t, initialized=%t\n",
+	// 	newE.showCursorMode, d.showCursorMode, oldE.showCursorMode, initialized)
 	if !initialized || newE.showCursorMode != d.showCursorMode {
 		if newE.showCursorMode {
 			fmt.Fprint(&b, "\x1B[?25h") // cvvis
@@ -684,8 +686,10 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator,
 		cell := newRow[0]
 		d.updateRendition(out, cell.GetRenditions(), false)
 		d.appendCell(out, cell)
-		// fmt.Printf("#putRow (%2d,%2d) is wrap-: contents=%q, renditions=%q\n",
+
+		// fmt.Printf("#putRow (%2d,%2d) is wrap-: contents=%q, renditions=%q - write wrap cell\n",
 		// 	frameY, frameX, cell.contents, cell.renditions.SGR())
+
 		frameX += cell.GetWidth()
 		d.cursorX += cell.GetWidth()
 	}
@@ -713,8 +717,8 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator,
 			// the new cell is the same as the old cell
 			// don't do anything except move column counting.
 
-			// fmt.Printf("#putRow (%2d,%2d) is same-: contents=%q, renditions=%q\n",
-			// frameY, frameX, cell.contents, cell.renditions.SGR())
+			// fmt.Printf("#putRow (%2d,%2d) is same-: contents=%q, renditions=%q - skip cell\n",
+			// 	frameY, frameX, cell.contents, cell.renditions.SGR())
 
 			// check the renditions if it's changed.
 			d.updateRendition(out, cell.renditions, false)
@@ -751,8 +755,8 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator,
 			d.updateRendition(out, blankRenditions, false)
 
 			// pcell := newRow[frameX-clearCount]
-			// fmt.Printf("#putRow blank col=%2d, length=%d cell=%q, rend=%q\n",
-			// 	frameX-clearCount, clearCount, pcell.contents, pcell.renditions.SGR())
+			// fmt.Printf("#putRow (%2d,%2d) is empty, length=%d, cell=%q, rend=%q - write empty\n",
+			// 	frameY, frameX-clearCount, clearCount, pcell.contents, pcell.renditions.SGR())
 
 			canUseErase := d.hasBCE || d.currentRendition == Renditions{}
 			if canUseErase && d.hasECH && clearCount > 4 {
@@ -792,10 +796,9 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator,
 			d.cursorY = -1
 		}
 
-		// fmt.Printf("#putRow (%2d,%2d) is diff-: contents=%q, renditions=%q\n",
+		// fmt.Printf("#putRow (%2d,%2d) is diff-: contents=%q, renditions=%q - write cell\n",
 		// 	frameY, frameX, cell.contents, cell.renditions.SGR())
-		// fmt.Printf("#putRow print x=%2d, wrapThis=%t, cell=%q, rend=%v\n", frameX, wrapThis, cell.contents, cell.renditions)
-		// fmt.Printf("#putRow move from (%2d,%2d) to (%2d,%2d)\n", d.cursorY, d.cursorX, frameY, frameX)
+
 		d.appendSilentMove(out, frameY, frameX)
 		d.updateRendition(out, cell.GetRenditions(), false)
 		d.appendCell(out, cell)
@@ -812,7 +815,10 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator,
 		// Move to the right position.
 		d.appendSilentMove(out, frameY, frameX-clearCount)
 		d.updateRendition(out, blankRenditions, false)
-		// fmt.Printf("#putRow (%2d,%2d) is blank: \n", frameY, frameX)
+
+		// pcell := newRow[frameX-clearCount]
+		// fmt.Printf("#putRow (%2d,%2d) is empty, length=%d, cell=%q, rend=%q - write empty at EOL\n",
+		// 	frameY, frameX-clearCount, clearCount, pcell.contents, pcell.renditions.SGR())
 
 		canUseErase := d.hasBCE || d.currentRendition == Renditions{}
 		if canUseErase && !wrapThis {
@@ -908,7 +914,8 @@ func (d *Display) appendMove(out io.Writer, y int, x int) {
 // the generated sequence is wrote to the output stream.
 func (d *Display) updateRendition(out io.Writer, r Renditions, force bool) {
 	if force || d.currentRendition != r {
-		// fmt.Printf("#updateRendition currentRendition=%q\n", d.currentRendition.SGR())
+		// fmt.Printf("#updateRendition currentRendition=%q, new renditions=%q - update renditions\n",
+		// 	d.currentRendition.SGR(), r.SGR())
 		out.Write([]byte(r.SGR()))
 		d.currentRendition = r
 	}
