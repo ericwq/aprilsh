@@ -130,8 +130,8 @@ func TestNewFrame_PutRow(t *testing.T) {
 			"[  8] backspace.case..................................................................",
 		},
 		{
-			"mix color case", ' ', ' ', "\x1b[10;1H\x1b[1;34mdevelop\x1b[m  \x1b[1;34mproj\x1b[m", true,
-			"\x1b[?25l\x1b[10;1H\x1b[0;1;34mdevelop\x1b[0m\x1b[2C\x1b[0;1;34mproj\x1b[0m\x1b[?25h", 9,
+			"mix color case", ' ', ' ', "\x1b[10;1H\x1b[1;34mdevelop\x1b[m  \x1b[1;34mproj     \x1b[m", true,
+			"\x1b[?25l\x1b[10;1H\x1b[0;1;34mdevelop\x1b[0m\x1b[2C\x1b[0;1;34mproj\x1b[5X\x1b[10;19H\x1b[0m\x1b[K\x1b[?25h", 9,
 			"[  9] develop..proj...................................................................",
 		},
 		{
@@ -202,7 +202,7 @@ func TestNewFrame_ScrollUp(t *testing.T) {
 		{
 			"scroll up 5 lines", ' ', ' ', "\x1B[5;1Hscroll\r\ndown\r\nmore\r\nthan\r\n5 lines!",
 			"\r\ndifferent line", "\x1B[4S", true,
-			"\x1b[0m\x1b[?25l\x1b[9;1H\x1b[4S\x1b[6;1Hdifferent\x1b[6;11Hline\x1b[10;15H\x1b[?25h",
+			"\x1b[0m\x1b[?25l\x1b[9;1H\x1b[4S\x1b[6;1Hdifferent\x1b[1Cline\x1b[10;15H\x1b[?25h",
 		},
 		{
 			"scroll up 6 lines", ' ', ' ', "\x1B[35;1Hscroll\r\ndown\r\nmore\r\nthan\r\n6\r\nlines!",
