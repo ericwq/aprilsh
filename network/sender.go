@@ -7,7 +7,6 @@ package network
 import (
 	"fmt"
 	"math"
-	"os"
 	"strings"
 	"time"
 
@@ -213,12 +212,10 @@ func (ts *TransportSender[T]) sendInFragments(diff string, newNum int64) error {
 	}
 	s.WriteString("]")
 
-	util.Log.With("NewNum", inst.NewNum).
-		With("OldNum", inst.OldNum).
-		With("AckNum", inst.AckNum).
-		With("throwawayNum", inst.ThrowawayNum).
-		With("diffLength", len(diff)).Debug("send fragments")
-	util.Log.With("sentStates", s.String()).Debug("send fragments")
+	util.Log.With("sentStates", s.String()).
+		With("diffLength", len(diff)).
+		With("SRTT", ts.connection.getSRTT()).
+		Debug("send fragments")
 	// return ts.sendFragments(&inst, newNum)
 	// TODO remove the debug statements
 	return err
@@ -237,11 +234,23 @@ func (ts *TransportSender[T]) sendFragments(inst *pb.Instruction, newNum int64) 
 		}
 
 		if ts.verbose > 0 {
-			fmt.Fprintf(os.Stderr, "#sendInFragments [%d] Sent [%d=>%d] id %d, frag %d ack=%d, throwaway=%d, len=%d, frame rate=%.2f, timeout=%d, srtt=%.1f\n",
-				(time.Now().UnixMilli() % 100000), inst.OldNum, inst.NewNum,
-				fragments[i].id, fragments[i].fragmentNum, inst.AckNum,
-				inst.ThrowawayNum, len(fragments[i].contents),
-				1000.0/float64(ts.sendInterval()), ts.connection.timeout(), ts.connection.getSRTT())
+			util.Log.With("NewNum", inst.NewNum).
+				With("OldNum", inst.OldNum).
+				With("AckNum", inst.AckNum).
+				With("ThrowawayNum", inst.ThrowawayNum).
+				With("length", len(fragments[i].contents)).
+				Debug("send fragments")
+			util.Log.With("time", (time.Now().UnixMilli()%100000)).
+				With("fragmentsID", fragments[i].id).
+				With("fragmentNum", fragments[i].fragmentNum).
+				With("frameRate", 1000.0/float64(ts.sendInterval())).
+				With("timeout", ts.connection.timeout()).
+				Debug("send fragments")
+			// fmt.Fprintf(os.Stderr, "#sendInFragments [%d] Sent [%d=>%d] id %d, frag %d ack=%d, throwaway=%d, len=%d, frame rate=%.2f, timeout=%d, srtt=%.1f\n",
+			// 	(time.Now().UnixMilli() % 100000), inst.OldNum, inst.NewNum,
+			// 	fragments[i].id, fragments[i].fragmentNum, inst.AckNum,
+			// 	inst.ThrowawayNum, len(fragments[i].contents),
+			// 	1000.0/float64(ts.sendInterval()), ts.connection.timeout(), ts.connection.getSRTT())
 		}
 	}
 

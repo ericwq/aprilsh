@@ -62,7 +62,7 @@ const (
 
 	_VERBOSE_OPEN_PTS    = 99  // test purpose
 	_VERBOSE_START_SHELL = 100 // test purpose
-	_VERBOSE_LOG_STDERR  = 57  // log to stderr
+	_VERBOSE_LOG_SYSLOG  = 57  // log to syslog
 )
 
 func init() {
@@ -412,9 +412,12 @@ func main() {
 	} else {
 		util.Log.SetLevel(slog.LevelInfo)
 	}
+	util.Log.SetOutput(os.Stderr)
 	syslogSupport = false
-	if conf.verbose != _VERBOSE_LOG_STDERR && util.Log.SetupSyslog("udp", "localhost:514") == nil {
-		syslogSupport = true
+	if conf.verbose == _VERBOSE_LOG_SYSLOG {
+		if util.Log.SetupSyslog("udp", "localhost:514") == nil {
+			syslogSupport = true
+		}
 	}
 
 	// start server
@@ -1113,7 +1116,7 @@ func (m *mainSrv) start(conf *Config) {
 
 func (m *mainSrv) handler() {
 	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGHUP, syscall.SIGTERM)
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
 	defer signal.Stop(sig)
 
 	for s := range sig {
@@ -1121,7 +1124,7 @@ func (m *mainSrv) handler() {
 		case syscall.SIGHUP: // TODO:reload the config?
 			// logI.Println("got message SIGHUP.")
 			util.Log.Info("got message SIGHUP")
-		case syscall.SIGTERM:
+		case syscall.SIGTERM, syscall.SIGINT:
 			// logI.Println("got message SIGTERM.")
 			m.downChan <- true
 			return

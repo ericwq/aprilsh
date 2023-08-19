@@ -37,6 +37,7 @@ const (
 	_APRILSH_KEY          = "APRISH_KEY"
 	_PREDICTION_DISPLAY   = "APRISH_PREDICTION_DISPLAY"
 	_PREDICTION_OVERWRITE = "APRISH_PREDICTION_OVERWRITE"
+	_VERBOSE_LOG_TMPFILE  = 2
 )
 
 const (
@@ -329,13 +330,20 @@ func main() {
 	}
 
 	// setup client log file
-	logf, err := util.Log.CreateLogFile(_COMMAND_NAME)
-	if err != nil {
-		fmt.Printf("can't create log file %s.\n", logf.Name())
-		return
+	if conf.verbose > 0 {
+		util.Log.SetLevel(slog.LevelDebug)
+	} else {
+		util.Log.SetLevel(slog.LevelInfo)
 	}
-	util.Log.SetLevel(slog.LevelDebug)
-	util.Log.SetOutput(logf)
+	util.Log.SetOutput(os.Stderr)
+	if conf.verbose == _VERBOSE_LOG_TMPFILE {
+		logf, err := util.Log.CreateLogFile(_COMMAND_NAME)
+		if err != nil {
+			fmt.Printf("can't create log file %s.\n", logf.Name())
+			return
+		}
+		util.Log.SetOutput(logf)
+	}
 
 	// get pwd
 	if conf.pwd == "" {

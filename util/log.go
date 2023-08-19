@@ -29,10 +29,7 @@ func init() {
 	Log = new(logger)
 	Log.programLevel = new(slog.LevelVar)
 	Log.SetLevel(slog.LevelInfo)
-	ho := &slog.HandlerOptions{AddSource: Log.isDebugLevel(), Level: Log.programLevel}
-	Log.Logger = slog.New(slog.NewTextHandler(os.Stderr, ho))
-	slog.SetDefault(Log.Logger)
-	Log.defaultLogger = slog.Default()
+	Log.SetOutput(os.Stderr)
 }
 
 func (l *logger) SetLevel(v slog.Level) {
@@ -44,6 +41,17 @@ func (l *logger) isDebugLevel() bool {
 		return true
 	}
 	return false
+}
+
+func (l *logger) SetOutput(w io.Writer) {
+	ho := &slog.HandlerOptions{AddSource: Log.isDebugLevel(), Level: Log.programLevel}
+	l.Logger = slog.New(slog.NewTextHandler(w, ho))
+	slog.SetDefault(Log.Logger)
+	l.defaultLogger = slog.Default()
+}
+
+func (l *logger) Restore() {
+	l.Logger = l.defaultLogger
 }
 
 // network: udp, address: localhost:514. check net.Dial() for detail
@@ -59,15 +67,6 @@ func (l *logger) SetupSyslog(network string, address string) error {
 	slog.SetDefault(Log.Logger)
 	l.defaultLogger = slog.Default()
 	return nil
-}
-
-func (l *logger) SetOutput(w io.Writer) {
-	ho := &slog.HandlerOptions{AddSource: Log.isDebugLevel(), Level: Log.programLevel}
-	l.Logger = slog.New(slog.NewTextHandler(w, ho))
-}
-
-func (l *logger) Restore() {
-	l.Logger = l.defaultLogger
 }
 
 // create log file based on prefix under tmp directory. such as aprilsh-PID.log
