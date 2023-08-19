@@ -4519,3 +4519,45 @@ func TestHandler(t *testing.T) {
 		}
 	}
 }
+
+func TestMixSequence(t *testing.T) {
+	tc := []struct {
+		name     string
+		seq      string // data stream with control sequences
+		hdIDs    []int
+		hdNumber int // expect handler number
+	}{
+		{"vi sample", "\x1b[?1049h\x1b[22;0;0t\x1b[22;0t\x1b[?1h\x1b=\x1b[H\x1b[2J\x1b]11;?\a\x1b[?2004h\x1b[?u\x1b[c\x1b[?25h",
+			[]int{CSI_CUP, Graphemes}, 12},
+		{"vi output", "\x1b]11;rgb:0000/0000/0000\x1b\\\x1b[?64;1;9;15;21;22c",
+			[]int{}, 2},
+	}
+	p := NewParser()
+	emu := NewEmulator3(8, 4, 0)
+
+	// var place strings.Builder
+	// defer util.Log.Restore()
+	// util.Log.SetOutput(&place)
+
+	for _, v := range tc {
+		t.Run(v.name, func(t *testing.T) {
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			// if v.hdNumber != len(hds) {
+			// 	t.Errorf("%s expect %d handlers, got %d handlers\n", v.name, v.hdNumber, len(hds))
+			// }
+
+			// hdID := 0
+			for _, hd := range hds {
+				hd.handle(emu)
+				t.Errorf("%s: id=%s seq=%q\n", v.name, strHandlerID[hd.id], hd.sequence)
+
+				// hdID = v.hdIDs[j]
+				// if hd.id != hdID { // validate the control sequences id
+				// t.Errorf("%s: seq=%q expect %s, got %s\n", v.name, v.seq, strHandlerID[hdID], strHandlerID[hd.id])
+				// }
+			}
+		})
+	}
+}

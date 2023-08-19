@@ -498,9 +498,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	// open network
 	blank := &statesync.UserStream{}
 	network := network.NewTransportServer(terminal, blank, conf.desiredIP, conf.desiredPort)
-	if conf.verbose == 1 {
-		network.SetVerbose(uint(conf.verbose))
-	}
+	network.SetVerbose(uint(conf.verbose))
 	defer network.Close()
 
 	/*
