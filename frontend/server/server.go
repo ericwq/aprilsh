@@ -11,7 +11,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	// "log"
 	"net"
 	"os"
 	"os/signal"
@@ -710,6 +709,7 @@ mainLoop:
 					}
 					terminalToHost.WriteString(complete.ActOne(action))
 				}
+
 				util.Log.With("arise", "socket").With("data", terminalToHost.String()).Debug("input from host")
 
 				if !us.Empty() {
@@ -771,6 +771,7 @@ mainLoop:
 				} else {
 					out := complete.Act(masterMsg.Data)
 					terminalToHost.WriteString(out)
+
 					util.Log.With("arise", "master").With("data", masterMsg.Data).With("out", out).Debug("input from host")
 
 					// update client with new state of terminal
@@ -782,11 +783,12 @@ mainLoop:
 
 		// write user input and terminal writeback to the host
 		if terminalToHost.Len() > 0 {
-			util.Log.With("arise", "merge-").With("data", terminalToHost.String()).Debug("input from host")
 			_, err := ptmx.WriteString(terminalToHost.String())
 			if err != nil {
 				network.StartShutdown()
 			}
+
+			util.Log.With("arise", "merge-").With("data", terminalToHost.String()).Debug("input from host")
 		}
 
 		idleShutdown := false
