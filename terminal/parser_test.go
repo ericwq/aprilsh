@@ -4526,6 +4526,11 @@ func TestMixSequence(t *testing.T) {
 		seq      string // data stream with control sequences
 		hdNumber int    // expect handler number
 	}{
+		// CSI t
+		// https://github.com/JetBrains/jediterm/commit/931243fe40f6c167e2a45c56d61d521d41e53e91
+		// https://github.com/kovidgoyal/kitty/discussions/3636
+		// CSI u
+		// https://sw.kovidgoyal.net/kitty/keyboard-protocol/#functional-key-definitions
 		{"vi sample", "\x1b[?1049h\x1b[22;0;0t\x1b[22;0t\x1b[?1h\x1b=\x1b[H\x1b[2J\x1b]11;?\a\x1b[?2004h\x1b[?u\x1b[c\x1b[?25h",
 			10},
 		{
