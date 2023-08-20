@@ -1038,9 +1038,8 @@ func (p *Parser) handle_DECALN() (hd *Handler) {
 // ESC / C   Designate G3 Character Set, VT300.
 // https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Controls-beginning-with-ESC
 func (p *Parser) handle_ESC_DCS() (hd *Handler) {
-	// p.logT.Printf("Designate Character Set: destination %q ,%q, %q\n", p.scsDst, p.scsMod, p.ch)
-	util.Log.With("scsDst", p.scsDst).With("scsMod", p.scsMod).With("ch", p.ch).
-		Debug("Designate Character Set")
+	// util.Log.With("scsDst", p.scsDst).With("scsMod", p.scsMod).With("ch", p.ch).
+	// 	Debug("Designate Character Set")
 
 	index := 0
 	charset96 := false
@@ -1245,6 +1244,19 @@ func (p *Parser) handle_DECSCL() (hd *Handler) {
 	hd.handle = func(emu *Emulator) {
 		hdl_csi_decscl(emu, params)
 	}
+	p.setState(InputState_Normal)
+	return hd
+}
+
+// set cursor style
+func (p *Parser) handle_DECSCUSR() (hd *Handler) {
+	arg := p.getPs(0, 1)
+
+	hd = &Handler{id: CSI_DECSCUSR, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *Emulator) {
+		hdl_csi_decscusr(emu, arg)
+	}
+
 	p.setState(InputState_Normal)
 	return hd
 }
@@ -1907,6 +1919,8 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_ecma48_SL()
 		case 'A':
 			hd = p.handle_ecma48_SR()
+		case 'q':
+			hd = p.handle_DECSCUSR()
 		default:
 			p.unhandledInput()
 		}

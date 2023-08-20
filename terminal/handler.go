@@ -49,6 +49,7 @@ const (
 	CSI_DECDC
 	CSI_privRM
 	CSI_DECSCL
+	CSI_DECSCUSR
 	CSI_privSM
 	CSI_DECSTBM
 	CSI_DECSTR
@@ -132,6 +133,7 @@ var strHandlerID = [...]string{
 	"csi_decdc",
 	"csi_decrst",
 	"csi_decscl",
+	"csi_decscusr",
 	"csi_decset",
 	"csi_decstbm",
 	"csi_decstr",
@@ -1738,6 +1740,36 @@ func hdl_csi_decscl(emu *Emulator, params []int) {
 			util.Log.With("unimplement", "DECSCL").With("param", params[1]).
 				Debug("DECSCL: C1 control transmission mode")
 		}
+	}
+}
+
+// CSI Ps SP q
+//
+// Set cursor style (DECSCUSR), VT520.
+//
+//	Ps = 0  ⇒  blinking block.
+//	Ps = 1  ⇒  blinking block (default).
+//	Ps = 2  ⇒  steady block.
+//	Ps = 3  ⇒  blinking underline.
+//	Ps = 4  ⇒  steady underline.
+//	Ps = 5  ⇒  blinking bar, xterm.
+//	Ps = 6  ⇒  steady bar, xterm.
+func hdl_csi_decscusr(emu *Emulator, arg int) {
+	switch arg {
+	case 0:
+		emu.cf.cursor.showStyle = CursorStyle_BlinkBlock
+	case 1:
+		emu.cf.cursor.showStyle = CursorStyle_BlinkBlock_Default
+	case 2:
+		emu.cf.cursor.showStyle = CursorStyle_SteadyBlock
+	case 3:
+		emu.cf.cursor.showStyle = CursorStyle_BlinkUnderline
+	case 4:
+		emu.cf.cursor.showStyle = CursorStyle_SteadyUnderline
+	case 5:
+		emu.cf.cursor.showStyle = CursorStyle_BlinkBar
+	case 6:
+		emu.cf.cursor.showStyle = CursorStyle_SteadyBar
 	}
 }
 
