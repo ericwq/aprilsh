@@ -4555,7 +4555,12 @@ func TestMixSequence(t *testing.T) {
 				t.Errorf("%s expect %d handlers, got %d handlers\n", v.name, v.hdNumber, len(hds))
 				for _, hd := range hds {
 					hd.handle(emu)
-					t.Logf("%s: id=%s seq=%q\n", v.name, strHandlerID[hd.id], hd.sequence)
+					escCount := strings.Count(hd.sequence, "\x1b")
+					if escCount > 1 {
+						t.Logf("%s: id=%s seq=%q warn=ture\n", v.name, strHandlerID[hd.id], hd.sequence)
+					} else {
+						t.Logf("%s: id=%s seq=%q\n", v.name, strHandlerID[hd.id], hd.sequence)
+					}
 				}
 			}
 		})

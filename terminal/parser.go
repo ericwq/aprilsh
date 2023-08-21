@@ -1249,6 +1249,7 @@ func (p *Parser) handle_DECSCL() (hd *Handler) {
 }
 
 // set cursor style
+// TODO: add Display process
 func (p *Parser) handle_DECSCUSR() (hd *Handler) {
 	arg := p.getPs(0, 1)
 
@@ -1398,8 +1399,14 @@ func (p *Parser) handle_DECANM(cl CompatibilityLevel) (hd *Handler) {
 
 // Xterm window operations
 // CSI Ps ; Ps ; Ps t
+// TODO: add Display process
 func (p *Parser) handle_XTWINOPS() (hd *Handler) {
-	// ignore
+	params := p.copyArgs()
+
+	hd = &Handler{id: CSI_XTWINOPS, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *Emulator) {
+		hdl_csi_xtwinops(emu, params, p.historyString())
+	}
 	p.setState(InputState_Normal)
 	return hd
 }

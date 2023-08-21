@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	SaveLineUpperLimit = 50000
+	SaveLineUpperLimit  = 50000
+	windowTitleStackMax = 9
 )
 
 // support both (scrollable) normal screen buffer and alternate screen buffer
@@ -31,10 +32,11 @@ type Framebuffer struct {
 	snapTo       SelectSnapTo // selection state
 	damage       Damage       // damage scope
 
-	iconLabel        string // replicated by NewFrame()
-	windowTitle      string // replicated by NewFrame()
-	bellCount        int    // replicated by NewFrame()
-	titleInitialized bool   // replicated by NewFrame()
+	iconLabel        string   // replicated by NewFrame()
+	windowTitle      string   // replicated by NewFrame()
+	bellCount        int      // replicated by NewFrame()
+	titleInitialized bool     // replicated by NewFrame()
+	windowTitleStack []string // for XTWINOPS
 }
 
 // create a framebuffer, with zero saveLines.
@@ -941,3 +943,20 @@ func cycleSelectSnapTo2(snapTo SelectSnapTo) SelectSnapTo {
 // 	ret = true
 // 	return ret
 // }
+
+func (fb *Framebuffer) saveWindowTitleOnStack() {
+	title := fb.getWindowTitle()
+	fb.windowTitleStack = append(fb.windowTitleStack, title)
+	if len(fb.windowTitleStack) > windowTitleStackMax {
+		fb.windowTitleStack = fb.windowTitleStack[1:]
+	}
+}
+
+func (fb *Framebuffer) restoreWindowTitleOnStack() {
+	if len(fb.windowTitleStack) > 0 {
+		index := len(fb.windowTitleStack) - 1
+		title := fb.windowTitleStack[index]
+		fb.windowTitleStack = fb.windowTitleStack[:index]
+		fb.setWindowTitle(title)
+	}
+}

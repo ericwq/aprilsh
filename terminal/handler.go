@@ -78,6 +78,7 @@ const (
 	CSI_VPA
 	CSI_VPR
 	CSI_XTMODKEYS
+	CSI_XTWINOPS
 	DCS_DECRQSS
 	ESC_BI
 	ESC_DCS
@@ -162,6 +163,7 @@ var strHandlerID = [...]string{
 	"csi_vpa",
 	"csi_vpr",
 	"csi_xtmodkeys",
+	"csi_xtwinops",
 	"dcs_decrqss",
 	"esc_bi",
 	"esc_dcs",
@@ -1898,6 +1900,55 @@ func hdl_csi_xtmodkeys(emu *Emulator, params []int) {
 					Info("XTMODKEYS: illegal argument for modifyOtherKeys")
 			}
 		}
+	}
+}
+
+// CSI Ps ; Ps ; Ps t
+//
+//	Window manipulation (XTWINOPS), dtterm, extended by xterm.
+//	These controls may be disabled using the allowWindowOps
+//	resource.
+//
+//	xterm uses Extended Window Manager Hints (EWMH) to maximize
+//	the window.  Some window managers have incomplete support for
+//	EWMH.  For instance, fvwm, flwm and quartz-wm advertise
+//	support for maximizing windows horizontally or vertically, but
+//	in fact equate those to the maximize operation.
+//	  Ps = 2 2 ; 0  ⇒  Save xterm icon and window title on stack.
+//	  Ps = 2 2 ; 1  ⇒  Save xterm icon title on stack.
+//	  Ps = 2 2 ; 2  ⇒  Save xterm window title on stack.
+//	  Ps = 2 3 ; 0  ⇒  Restore xterm icon and window title from stack.
+//	  Ps = 2 3 ; 1  ⇒  Restore xterm icon title from stack.
+//	  Ps = 2 3 ; 2  ⇒  Restore xterm window title from stack.
+func hdl_csi_xtwinops(emu *Emulator, params []int, sequence string) {
+	if len(params) == 0 {
+		util.Log.With("seq", sequence).With("id", strHandlerID[CSI_XTWINOPS]).
+			Warn("unhandled operation")
+	}
+	switch params[0] {
+	case 22:
+		switch params[1] {
+		case 0, 2:
+			emu.cf.saveWindowTitleOnStack()
+		case 1:
+			fallthrough
+		default:
+			util.Log.With("seq", sequence).With("id", strHandlerID[CSI_XTWINOPS]).
+				Warn("unhandled operation")
+		}
+	case 23:
+		switch params[1] {
+		case 0, 2:
+			emu.cf.restoreWindowTitleOnStack()
+		case 1:
+			fallthrough
+		default:
+			util.Log.With("seq", sequence).With("id", strHandlerID[CSI_XTWINOPS]).
+				Warn("unhandled operation")
+		}
+	default:
+		util.Log.With("seq", sequence).With("id", strHandlerID[CSI_XTWINOPS]).
+			Warn("unhandled operation")
 	}
 }
 
