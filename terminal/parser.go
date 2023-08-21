@@ -466,6 +466,11 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 			hd.handle = func(emu *Emulator) {
 				hdl_osc_10x(emu, cmd, arg)
 			}
+		case 112:
+			hd = &Handler{id: OSC_52, ch: p.ch, sequence: p.historyString()}
+			hd.handle = func(emu *Emulator) {
+				hdl_osc_112(emu, cmd, arg)
+			}
 		default:
 			// p.logU.Printf("unhandled OSC: %d %q\n", cmd, arg)
 			util.Log.With("cmd", cmd).With("arg", arg).Debug("unhandled OSC")

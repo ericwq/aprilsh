@@ -108,6 +108,7 @@ const (
 	OSC_52
 	OSC_0_1_2
 	OSC_10_11_12_17_19
+	OSC_112
 	VT52_EGM
 	VT52_ID
 )
@@ -193,6 +194,7 @@ var strHandlerID = [...]string{
 	"osc_52",
 	"osc_0_1_2",
 	"osc_10_11_12_17_19",
+	"osc_112",
 	"vt52_egm",
 	"vt52_id",
 }
@@ -1319,6 +1321,15 @@ func hdl_osc_0_1_2(emu *Emulator, cmd int, arg string) {
 			emu.cf.setWindowTitle(arg)
 		}
 	}
+}
+
+// OSC Ps ; Pt BEL
+//
+// OSC Ps ; Pt ST
+//
+//	The dynamic colors can also be reset to their default (resource) values:
+//	  Ps = 1 1 2  ⇒  Reset text cursor color.
+func hdl_osc_112(emu *Emulator, cmd int, arg string) {
 }
 
 // CSI Pm h  Set Mode (SM).
