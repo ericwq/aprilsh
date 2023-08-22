@@ -424,22 +424,25 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 
 	defer p.setState(InputState_Normal)
 
-	// get the Ps
+	// get Ps parameter
+	hasPt := true
 	pos := strings.Index(arg, ";")
-	if pos == -1 {
-		// p.logT.Printf("OSC: no ';' exist. %q\n", arg)
-		util.Log.With("arg", arg).Debug("OSC: no ';' exist")
-		return
+	if pos == -1 { // no Pt parameter
+		pos = len(arg)
+		hasPt = false
 	}
 	var err error
 	if cmd, err = strconv.Atoi(arg[:pos]); err != nil {
-		// p.logT.Printf("OSC: illegal Ps parameter. %q\n", arg[:pos])
 		util.Log.With("arg", arg[:pos]).Debug("OSC: illegal Ps parameter")
 		return
 	}
 
-	// get the Pt
-	arg = arg[pos+1:]
+	// get Pt parameter
+	if !hasPt {
+		arg = ""
+	} else {
+		arg = arg[pos+1:]
+	}
 	if cmd < 0 || cmd > 120 {
 		// p.logT.Printf("OSC: malformed command string %d %q\n", cmd, arg)
 		util.Log.With("cmd", cmd).With("arg", arg).Debug("OSC: malformed command string")
@@ -467,7 +470,7 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 				hdl_osc_10x(emu, cmd, arg)
 			}
 		case 112:
-			hd = &Handler{id: OSC_52, ch: p.ch, sequence: p.historyString()}
+			hd = &Handler{id: OSC_112, ch: p.ch, sequence: p.historyString()}
 			hd.handle = func(emu *Emulator) {
 				hdl_osc_112(emu, cmd, arg)
 			}
@@ -1980,6 +1983,7 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 		switch ch {
 		case '\\':
 			hd = p.handle_DCS()
+			p.argBuf.Reset()
 		default:
 			p.argBuf.WriteRune('\x1B')
 			p.argBuf.WriteRune(ch)
@@ -1989,6 +1993,7 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 		switch ch {
 		case '\x07': // final byte = BEL
 			hd = p.handle_OSC()
+			p.argBuf.Reset()
 		case '\x1B':
 			p.setState(InputState_OSC_Esc)
 		default:
@@ -2005,6 +2010,7 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 		switch ch {
 		case '\\': // ESC \ : ST
 			hd = p.handle_OSC()
+			p.argBuf.Reset()
 		default:
 			p.argBuf.WriteRune('\x1B')
 			p.argBuf.WriteRune(ch)

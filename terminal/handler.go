@@ -1330,6 +1330,7 @@ func hdl_osc_0_1_2(emu *Emulator, cmd int, arg string) {
 //	The dynamic colors can also be reset to their default (resource) values:
 //	  Ps = 1 1 2  ⇒  Reset text cursor color.
 func hdl_osc_112(emu *Emulator, cmd int, arg string) {
+	emu.cf.cursor.color = ColorDefault
 }
 
 // CSI Pm h  Set Mode (SM).
