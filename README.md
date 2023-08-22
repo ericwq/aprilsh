@@ -87,4 +87,4 @@ Use the above command to add musl locales support and utmps support for alpine. 
 - [Linux man pages](https://linux.die.net/man/)
 - [C++ Reference](http://www.cplusplus.com/reference/)
 - [Linux logging guide: Understanding syslog, rsyslog, syslog-ng, journald](https://ikshitij.com/linux-logging-guide)
-- [CSI u](https://iterm2.com/documentation-csiu.html)
+- [Comprehensive keyboard handling in terminals](https://sw.kovidgoyal.net/kitty/keyboard-protocol/#functional-key-definitions)
