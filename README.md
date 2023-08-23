@@ -87,4 +87,11 @@ Use the above command to add musl locales support and utmps support for alpine. 
 - [Linux man pages](https://linux.die.net/man/)
 - [C++ Reference](http://www.cplusplus.com/reference/)
 - [Linux logging guide: Understanding syslog, rsyslog, syslog-ng, journald](https://ikshitij.com/linux-logging-guide)
+
+## CSI u
+Need some time to figure out how to support CSI u in aprilsh.
+
 - [Comprehensive keyboard handling in terminals](https://sw.kovidgoyal.net/kitty/keyboard-protocol/#functional-key-definitions)
+- [feat(tui): query terminal for CSI u support](https://github.com/neovim/neovim/pull/18181)
+- [Fix Keyboard Input on Terminals - Please](https://www.leonerd.org.uk/hacks/fixterms/)
+- [xterm modified-keys](https://invisible-island.net/xterm/modified-keys.html)

@@ -4521,17 +4521,20 @@ func TestHandler(t *testing.T) {
 	}
 }
 
+// CSI t
+// https://github.com/JetBrains/jediterm/commit/931243fe40f6c167e2a45c56d61d521d41e53e91
+// https://github.com/kovidgoyal/kitty/discussions/3636
+// CSI u
+// https://sw.kovidgoyal.net/kitty/keyboard-protocol/#functional-key-definitions
+// https://www.leonerd.org.uk/hacks/fixterms/
+// https://invisible-island.net/xterm/modified-keys.html
+// https://github.com/neovim/neovim/pull/18181
 func TestMixSequence(t *testing.T) {
 	tc := []struct {
 		name     string
 		seq      string // data stream with control sequences
 		hdNumber int    // expect handler number
 	}{
-		// CSI t
-		// https://github.com/JetBrains/jediterm/commit/931243fe40f6c167e2a45c56d61d521d41e53e91
-		// https://github.com/kovidgoyal/kitty/discussions/3636
-		// CSI u
-		// https://sw.kovidgoyal.net/kitty/keyboard-protocol/#functional-key-definitions
 		{"vi sample 1", "\x1b[?1049h\x1b[22;0;0t\x1b[22;0t\x1b[?1h\x1b=\x1b[H\x1b[2J\x1b]11;?\a\x1b[?2004h\x1b[?u\x1b[c\x1b[?25h",
 			12},
 		{"vi sample 2", "\x1b[?25l\x1b(B\x1b[m\x1b[H\x1b[2J\x1b[>4;2m\x1b]112\a\x1b[2 q\x1b[?1002h\x1b[?1006h\x1b[38;2;233;233;244m\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[J\x1b[H",
