@@ -224,7 +224,7 @@ func (p *Parser) setState(newState int) {
 	if newState == InputState_Normal {
 		p.nInputOps = 0
 		p.inputOps[0] = 0
-
+		p.resetHistory()
 	} else if p.inputState == InputState_Normal {
 		p.traceNormalInput()
 	}
