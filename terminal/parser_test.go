@@ -1805,17 +1805,133 @@ func TestHandle_XTMMODEKEYS(t *testing.T) {
 	}
 }
 
-func TestHandle_XTWINOPS(t *testing.T) {
-	seq := "\x1B[t"
+func TestHandle_XTWINOPS_Save(t *testing.T) {
+	tc := []struct {
+		label   string
+		seq     string
+		hdIDs   []int
+		index   int
+		warnMsg []string
+	}{
+		{"XTWINOPS 22 0", "\x1B[22;0t", []int{CSI_XTWINOPS}, 0, []string{}},
+		{"XTWINOPS 22 2", "\x1B[22;2t", []int{CSI_XTWINOPS}, 0, []string{}},
+		{"XTWINOPS 22 1", "\x1B[22;1t", []int{CSI_XTWINOPS}, 0, []string{"unhandled operation", "\\x1b[22;1t"}},
+	}
 	p := NewParser()
-	hds := make([]*Handler, 0, 16)
-	hds = p.processStream(seq, hds)
+	emu := NewEmulator3(80, 40, 5)
 
-	if len(hds) == 0 {
-		t.Errorf("XTWINOPS seq=%q expect zero handlers.", seq)
+	var place strings.Builder
+	defer util.Log.Restore()
+	util.Log.SetOutput(&place)
+
+	for _, v := range tc {
+		emu.resetTerminal()
+
+		t.Run(v.label, func(t *testing.T) {
+			// process control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) == 0 {
+				t.Errorf("%s got zero handlers.", v.label)
+			}
+
+			// prepare window title
+			expect := "expect window title"
+			emu.cf.setWindowTitle(expect)
+
+			// execute the control sequence
+			for j, hd := range hds {
+				hd.handle(emu)
+				if hd.id != v.hdIDs[j] { // validate the control sequences id
+					t.Errorf("%s: seq=%q expect %s, got %s\n",
+						v.label, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+				}
+			}
+
+			// validate the result
+			got := emu.cf.windowTitleStack[len(emu.cf.windowTitleStack)-1]
+			if got != expect {
+				t.Errorf("%s exect window title %q, got %q\n",
+					v.label, expect, got)
+			}
+			if len(v.warnMsg) > 0 {
+				// check log message
+				for j := range v.warnMsg {
+					if !strings.Contains(place.String(), v.warnMsg[j]) {
+						t.Errorf("%s: expect %q, got %s\n", v.label, v.warnMsg[j], place.String())
+					}
+				}
+			}
+		})
 	}
 }
 
+func TestHandle_XTWINOPS_Restore(t *testing.T) {
+	tc := []struct {
+		label   string
+		seq     string
+		hdIDs   []int
+		index   int
+		warnMsg []string
+	}{
+		{"XTWINOPS 23 0", "\x1B[23;0t", []int{CSI_XTWINOPS}, 0, []string{}},
+		{"XTWINOPS 23 2", "\x1B[23;2t", []int{CSI_XTWINOPS}, 0, []string{}},
+		{"XTWINOPS 23 1", "\x1B[23;1t", []int{CSI_XTWINOPS}, 0, []string{"unhandled operation", "\\x1b[23;1t"}},
+		{"XTWINOPS unhandled no Ps", "\x1B[t", []int{CSI_XTWINOPS}, 0, []string{"unhandled operation", "\\x1b[t"}},
+		{"XTWINOPS unhandled illegal Ps", "\x1B[25t", []int{CSI_XTWINOPS}, 0, []string{"unhandled operation", "\\x1b[25t"}},
+	}
+	p := NewParser()
+	emu := NewEmulator3(80, 40, 5)
+
+	var place strings.Builder
+	defer util.Log.Restore()
+	util.Log.SetOutput(&place)
+
+	for _, v := range tc {
+		emu.resetTerminal()
+
+		t.Run(v.label, func(t *testing.T) {
+			// process control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) == 0 {
+				t.Errorf("%s got zero handlers.", v.label)
+			}
+
+			// prepare window title in stack
+			expect := "expect window title restore"
+			emu.cf.setWindowTitle(expect)
+			emu.cf.saveWindowTitleOnStack()
+
+			// execute the control sequence
+			for j, hd := range hds {
+				hd.handle(emu)
+				if hd.id != v.hdIDs[j] { // validate the control sequences id
+					t.Errorf("%s: seq=%q expect %s, got %s\n",
+						v.label, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+				}
+			}
+
+			if len(v.warnMsg) > 0 {
+				// check log message
+				for j := range v.warnMsg {
+					if !strings.Contains(place.String(), v.warnMsg[j]) {
+						t.Errorf("%s: expect %q, got %s\n", v.label, v.warnMsg[j], place.String())
+					}
+				}
+			} else {
+				// validate the result
+				got := emu.cf.getWindowTitle()
+				if got != expect {
+					t.Errorf("%s exect window title %q, got %q\n",
+						v.label, expect, got)
+				}
+			}
+		})
+	}
+}
 func damageArea(cf *Framebuffer, y1, x1, y2, x2 int) (start, end int) {
 	start = cf.getIdx(y1, x1)
 	end = cf.getIdx(y2, x2)

@@ -453,7 +453,14 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		fmt.Fprintf(&b, "\x1B[%d q", Ps)
 	}
 
-	// have renditions changed?
+	// has cursor color changed to default?
+	if !initialized || newE.cf.cursor.color != oldE.cf.cursor.color {
+		if newE.cf.cursor.color == ColorDefault {
+			fmt.Fprintf(&b, "\x1B]112\a")
+		}
+	}
+
+	// has renditions changed?
 	d.updateRendition(&b, newE.GetRenditions(), !initialized)
 
 	// has bracketed paste mode changed?

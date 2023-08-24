@@ -1937,6 +1937,7 @@ func hdl_csi_xtwinops(emu *Emulator, params []int, sequence string) {
 	if len(params) == 0 {
 		util.Log.With("seq", sequence).With("id", strHandlerID[CSI_XTWINOPS]).
 			Warn("unhandled operation")
+		return
 	}
 	switch params[0] {
 	case 22:

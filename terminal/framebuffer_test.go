@@ -704,3 +704,25 @@ func extractFrom(cells []Cell) string {
 
 	return b.String()
 }
+func TestSaveWindowTitleOnStack(t *testing.T) {
+	fb, _, _ := NewFramebuffer3(80, 40, 40)
+
+	title := "our title prefix "
+	fb.setWindowTitle(title)
+
+	//push to the stack max
+	for i := 0; i < 10; i++ {
+		tt := fmt.Sprintf("%s%d", title, i)
+		fb.setWindowTitle(tt)
+		fb.saveWindowTitleOnStack()
+		// fmt.Printf("i=%d, %s\n", i+1, tt)
+	}
+
+	// always got the last pushed result
+	fb.restoreWindowTitleOnStack()
+	expect := fmt.Sprintf("%s%d", title, 9)
+	got := fb.getWindowTitle()
+	if got != expect {
+		t.Errorf("windowTitle stack expect %s, got %s\n", expect, got)
+	}
+}
