@@ -30,12 +30,12 @@ import (
 type Display struct {
 	// erase character is part of vt200 but not supported by tmux
 	// (or by "screen" terminfo entry, which is what tmux advertises)
-	hasECH   bool
-	hasBCE   bool   // erases result in cell filled with background color
-	hasTitle bool   // supports window title and icon name
-	smcup    string // enter and exit alternate screen mode
-	rmcup    string // enter and exit alternate screen mode
-	ti       *terminfo.Terminfo
+	hasECH       bool
+	hasBCE       bool   // erases result in cell filled with background color
+	supportTitle bool   // supports window title and icon name
+	smcup        string // enter and exit alternate screen mode
+	rmcup        string // enter and exit alternate screen mode
+	ti           *terminfo.Terminfo
 
 	// fields from FrameState
 	cursorX, cursorY int
@@ -58,7 +58,7 @@ func NewDisplay(useEnvironment bool) (d *Display, e error) {
 	d = &Display{}
 	d.hasECH = true
 	d.hasBCE = true
-	d.hasTitle = true
+	d.supportTitle = true
 
 	// d.logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 
@@ -85,12 +85,12 @@ func NewDisplay(useEnvironment bool) (d *Display, e error) {
 		// have reliable information on this, so we hardcode a whitelist of
 		// terminal type prefixes.  This is the list from Debian's default
 		// screenrc, plus "screen" itself (which also covers tmux).
-		d.hasTitle = false
+		d.supportTitle = false
 		titleTermTypes := []string{"xterm", "rxvt", "kterm", "Eterm", "screen"}
 		if term != "" {
 			for _, tt := range titleTermTypes {
 				if strings.HasPrefix(term, tt) {
-					d.hasTitle = true
+					d.supportTitle = true
 					break
 				}
 			}
@@ -163,8 +163,26 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		fmt.Fprint(&b, "\a")
 	}
 
+	// has window title stack changed
+	// initialized doesn't matter
+	// TODO work with osc 1,2,3
+	oldWTS := oldE.cf.windowTitleStack
+	newWTS := newE.cf.windowTitleStack
+	if len(oldWTS) == len(newWTS) {
+		if len(newWTS) == windowTitleStackMax && !reflect.DeepEqual(oldWTS, newWTS) {
+			// reach stack max with difference
+			fmt.Fprintf(&b, "\x1B[22;0t")
+		}
+	} else if len(newWTS) > len(oldWTS) {
+		// save title to stack
+		fmt.Fprintf(&b, "\x1B[22;0t")
+	} else {
+		// restore title from stack
+		fmt.Fprintf(&b, "\x1B[23;0t")
+	}
+
 	// has icon label or window title changed?
-	if d.hasTitle && newE.isTitleInitialized() &&
+	if d.supportTitle && newE.isTitleInitialized() &&
 		(!initialized || newE.GetIconLabel() != oldE.GetIconLabel() || newE.GetWindowTitle() != oldE.GetWindowTitle()) {
 		if newE.GetIconLabel() == newE.GetWindowTitle() {
 			// write combined Icon label and Window Title

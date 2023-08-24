@@ -19,13 +19,13 @@ import (
 
 func TestDisplay(t *testing.T) {
 	tc := []struct {
-		label    string
-		useEnv   bool
-		termEnv  string
-		err      error
-		hasECH   bool
-		hasBCE   bool
-		hasTitle bool
+		label        string
+		useEnv       bool
+		termEnv      string
+		err          error
+		hasECH       bool
+		hasBCE       bool
+		supportTitle bool
 	}{
 		{"useEnvironment, base TERM", true, "alacritty", nil, true, true, false},
 		{"useEnvironment, base TERM, title support", true, "xterm", nil, true, true, true},
@@ -47,8 +47,8 @@ func TestDisplay(t *testing.T) {
 				if d.hasECH != v.hasECH {
 					t.Errorf("%q expect ech %t, got %t\n", v.label, v.hasECH, d.hasECH)
 				}
-				if d.hasTitle != v.hasTitle {
-					t.Errorf("%q expect title %t, got %t\n", v.label, v.hasTitle, d.hasTitle)
+				if d.supportTitle != v.supportTitle {
+					t.Errorf("%q expect title %t, got %t\n", v.label, v.supportTitle, d.supportTitle)
 				}
 			} else {
 				// fmt.Printf("#test NewDisplay() %q return %q ,expect %q\n", v.label, e, v.err)

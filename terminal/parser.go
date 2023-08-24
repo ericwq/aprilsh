@@ -94,15 +94,6 @@ type Parser struct {
 func NewParser() *Parser {
 	p := &Parser{}
 
-	// TODO consider to rotate the log file and limit the log file size.
-	// file, err := os.OpenFile("aprish.logs.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	// if err != nil {
-	//     log.Fatal(err)
-	// }
-	// p.logT = log.New(os.Stderr, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
-	// p.logE = log.New(os.Stderr, "ERRO: ", log.Ldate|log.Ltime|log.Lshortfile)
-	// p.logU = log.New(os.Stderr, "(Uimplemented): ", log.Ldate|log.Ltime|log.Lshortfile)
-
 	p.reset()
 	return p
 }
@@ -1257,7 +1248,6 @@ func (p *Parser) handle_DECSCL() (hd *Handler) {
 }
 
 // set cursor style
-// TODO: add Display process
 func (p *Parser) handle_DECSCUSR() (hd *Handler) {
 	arg := p.getPs(0, 1)
 
@@ -1407,7 +1397,6 @@ func (p *Parser) handle_DECANM(cl CompatibilityLevel) (hd *Handler) {
 
 // Xterm window operations
 // CSI Ps ; Ps ; Ps t
-// TODO: add Display process
 func (p *Parser) handle_XTWINOPS() (hd *Handler) {
 	params := p.copyArgs()
 
