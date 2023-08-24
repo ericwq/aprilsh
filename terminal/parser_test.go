@@ -4370,6 +4370,52 @@ func TestHandle_OSC_10x(t *testing.T) {
 	}
 }
 
+func TestHandle_OSC_112(t *testing.T) {
+	tc := []struct {
+		label       string
+		seq         string
+		cursorColor Color
+		hdIDs       []int
+	}{
+		{"osc 112 ST end", "\x1B]112\x1B\\", Color100, []int{OSC_112}},
+		{"osc 112 BEL end", "\x1B]112\a", Color200, []int{OSC_112}},
+		{"osc 112 extra Pt", "\x1B]112;12\x1B\\", Color150, []int{OSC_112}},
+	}
+	p := NewParser()
+	emu := NewEmulator3(80, 40, 5)
+
+	for _, v := range tc {
+		emu.resetTerminal()
+
+		t.Run(v.label, func(t *testing.T) {
+			// process control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) == 0 {
+				t.Errorf("%s got zero handlers.", v.label)
+			}
+
+			//set different color for test
+			emu.cf.cursor.color = v.cursorColor
+
+			// execute the control sequence
+			for j, hd := range hds {
+				hd.handle(emu)
+				if hd.id != v.hdIDs[j] { // validate the control sequences id
+					t.Errorf("%s: seq=%q expect %s, got %s\n",
+						v.label, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+				}
+			}
+
+			got := emu.cf.cursor.color
+			if got != ColorDefault {
+				t.Errorf("%s exect cursor color %d, got %d\n",
+					v.label, ColorDefault, got)
+			}
+		})
+	}
+}
 func TestHandle_DECSCUSR(t *testing.T) {
 	tc := []struct {
 		label   string
