@@ -4370,6 +4370,63 @@ func TestHandle_OSC_10x(t *testing.T) {
 	}
 }
 
+func TestHandle_DECSCUSR(t *testing.T) {
+	tc := []struct {
+		label   string
+		hdIDs   []int
+		seq     string
+		style   CursorStyle
+		warnMsg string
+	}{
+		{"blink block", []int{CSI_DECSCUSR}, "\x1B[0 q", CursorStyle_BlinkBlock, ""},
+		{"default blink block", []int{CSI_DECSCUSR}, "\x1B[ q", CursorStyle_BlinkBlock, ""},
+		{"blink block", []int{CSI_DECSCUSR}, "\x1B[1 q", CursorStyle_BlinkBlock, ""},
+		{"steady block", []int{CSI_DECSCUSR}, "\x1B[2 q", CursorStyle_SteadyBlock, ""},
+		{"blink underline", []int{CSI_DECSCUSR}, "\x1B[3 q", CursorStyle_BlinkUnderline, ""},
+		{"steady underline", []int{CSI_DECSCUSR}, "\x1B[4 q", CursorStyle_SteadyUnderline, ""},
+		{"blink bar", []int{CSI_DECSCUSR}, "\x1B[5 q", CursorStyle_BlinkBar, ""},
+		{"steady bar", []int{CSI_DECSCUSR}, "\x1B[6 q", CursorStyle_SteadyBar, ""},
+		{"unexpected parameter", []int{CSI_DECSCUSR}, "\x1B[7 q", CursorStyle_Invalid, "unexpected Ps parameter"},
+	}
+	p := NewParser()
+	emu := NewEmulator3(80, 40, 40)
+
+	var place strings.Builder
+	defer util.Log.Restore()
+	util.Log.SetOutput(&place)
+
+	for _, v := range tc {
+		emu.resetTerminal()
+		t.Run(v.label, func(t *testing.T) {
+			// process control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			// execute the control sequence
+			for j, hd := range hds {
+				hd.handle(emu)
+				if hd.id != v.hdIDs[j] { // validate the control sequences name
+					t.Errorf("%s:\t %q expect %s, got %s\n",
+						v.label, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+				}
+			}
+
+			if v.style == CursorStyle_Invalid {
+				// check log message
+				if !strings.Contains(place.String(), v.warnMsg) {
+					t.Errorf("%s: expect %q, got %q\n", v.label, v.warnMsg, place.String())
+				}
+			} else {
+				// validate cursor style
+				got := emu.cf.cursor.showStyle
+				if got != v.style {
+					t.Errorf("%s expect cursor style %d, got %d\n", v.label, v.style, got)
+				}
+			}
+		})
+	}
+}
+
 func TestHandle_DCS(t *testing.T) {
 	tc := []struct {
 		name    string

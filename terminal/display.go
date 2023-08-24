@@ -433,6 +433,26 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		}
 	}
 
+	// has cursor style changed?
+	if !initialized || newE.cf.cursor.showStyle != oldE.cf.cursor.showStyle {
+		Ps := 1 // default is blinking block
+		switch newE.cf.cursor.showStyle {
+		case CursorStyle_BlinkBlock:
+			Ps = 1
+		case CursorStyle_SteadyBlock:
+			Ps = 2
+		case CursorStyle_BlinkUnderline:
+			Ps = 3
+		case CursorStyle_SteadyUnderline:
+			Ps = 4
+		case CursorStyle_BlinkBar:
+			Ps = 5
+		case CursorStyle_SteadyBar:
+			Ps = 6
+		}
+		fmt.Fprintf(&b, "\x1B[%d q", Ps)
+	}
+
 	// have renditions changed?
 	d.updateRendition(&b, newE.GetRenditions(), !initialized)
 

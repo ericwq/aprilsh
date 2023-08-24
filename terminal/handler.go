@@ -1770,10 +1770,8 @@ func hdl_csi_decscl(emu *Emulator, params []int) {
 //	Ps = 6  ⇒  steady bar, xterm.
 func hdl_csi_decscusr(emu *Emulator, arg int) {
 	switch arg {
-	case 0:
+	case 0, 1:
 		emu.cf.cursor.showStyle = CursorStyle_BlinkBlock
-	case 1:
-		emu.cf.cursor.showStyle = CursorStyle_BlinkBlock_Default
 	case 2:
 		emu.cf.cursor.showStyle = CursorStyle_SteadyBlock
 	case 3:
@@ -1784,6 +1782,9 @@ func hdl_csi_decscusr(emu *Emulator, arg int) {
 		emu.cf.cursor.showStyle = CursorStyle_BlinkBar
 	case 6:
 		emu.cf.cursor.showStyle = CursorStyle_SteadyBar
+	default:
+		util.Log.With("id", strHandlerID[CSI_DECSCUSR]).With("arg", arg).
+			Warn("unexpected Ps parameter")
 	}
 }
 

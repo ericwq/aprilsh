@@ -137,7 +137,7 @@ func TestNewFrame_PutRow(t *testing.T) {
 		{
 			"mix color, false initialized case", ' ', ' ',
 			"\x1b[10;1H\x1b[1;34mdevelop\x1b[m  \x1b[1;35mproj\x1b[m", false,
-			"\x1b[?5l\x1b[r\x1b[0m\x1b[H\x1b[2J\x1b[?25l\x1b[?47l\x1b[r\x1b[?69l\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[0;1;34mdevelop\x1b[0m  \x1b[0;1;35mproj\x1b[0m\x1b[K\r\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\x1b[10;14H\x1b[?25h\x1b[0m\x1b[?2004l\x1b[?1003l\x1b[?1002l\x1b[?1001l\x1b[?1000l\x1b[?1004l\x1b[?1015l\x1b[?1006l\x1b[?1005l\x1b[?7h\x1b[20l\x1b[2l\x1b[4l\x1b[12h\x1b[?67l\x1b[?1036h\x1b[?1007l\x1b[?1l\x1b[?6l\x1b>\x1b[?3l\x1b[3g\x1b[64\"p\x1b[>4;1m", 9,
+			"\x1b[?5l\x1b[r\x1b[0m\x1b[H\x1b[2J\x1b[?25l\x1b[?47l\x1b[r\x1b[?69l\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[0;1;34mdevelop\x1b[0m  \x1b[0;1;35mproj\x1b[0m\x1b[K\r\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\x1b[10;14H\x1b[?25h\x1b[1 q\x1b[0m\x1b[?2004l\x1b[?1003l\x1b[?1002l\x1b[?1001l\x1b[?1000l\x1b[?1004l\x1b[?1015l\x1b[?1006l\x1b[?1005l\x1b[?7h\x1b[20l\x1b[2l\x1b[4l\x1b[12h\x1b[?67l\x1b[?1036h\x1b[?1007l\x1b[?1l\x1b[?6l\x1b>\x1b[?3l\x1b[3g\x1b[64\"p\x1b[>4;1m", 9,
 			"[  9] develop..proj...................................................................",
 		},
 	}
@@ -296,6 +296,47 @@ func TestNewFrame_Bell(t *testing.T) {
 
 		// check the expect difference sequence
 		gotSeq := d.NewFrame(v.initialized, oldE, newE)
+		if gotSeq != v.expectSeq {
+			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
+		}
+	}
+}
+
+func TestNewFrame_CursorStyle(t *testing.T) {
+	tc := []struct {
+		label     string
+		showStyle CursorStyle
+		expectSeq string
+	}{
+		{"same blink block", CursorStyle_BlinkBlock, ""},
+		{"steady block", CursorStyle_SteadyBlock, "\x1B[2 q"},
+		{"blink underline", CursorStyle_BlinkUnderline, "\x1B[3 q"},
+		{"steady underline", CursorStyle_SteadyUnderline, "\x1B[4 q"},
+		{"blink bar", CursorStyle_BlinkBar, "\x1B[5 q"},
+		{"steady bar", CursorStyle_SteadyBar, "\x1B[6 q"},
+	}
+	oldE := NewEmulator3(80, 40, 40)
+	newE := NewEmulator3(80, 40, 40)
+
+	// defer util.Log.Restore()
+	// util.Log.SetOutput(io.Discard)
+
+	os.Setenv("TERM", "xterm-256color")
+	d, e := NewDisplay(true)
+	if e != nil {
+		t.Errorf("#test NewFrame() create display error: %s\n", e)
+	}
+
+	for _, v := range tc {
+		// reset the terminal to avoid overlap
+		oldE.resetTerminal()
+		newE.resetTerminal()
+
+		// new cursor show style
+		newE.cf.cursor.showStyle = v.showStyle
+
+		// check the expect difference sequence
+		gotSeq := d.NewFrame(true, oldE, newE)
 		if gotSeq != v.expectSeq {
 			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
 		}

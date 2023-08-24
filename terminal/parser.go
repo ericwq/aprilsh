@@ -241,7 +241,7 @@ func (p *Parser) collectNumericParameters(ch rune) (isNumeric bool) {
 		p.inputOps[p.nInputOps-1] += int(ch - '0')
 		if p.inputOps[p.nInputOps-1] >= 65535 {
 			// p.logE.Printf("the number is too big: > 65535, %d", p.inputOps[p.nInputOps-1])
-			util.Log.With("last number in inputOps", p.inputOps[p.nInputOps-1]).
+			util.Log.With("lastInputOps", p.inputOps[p.nInputOps-1]).
 				Error("the number is too big: > 65535")
 			p.setState(InputState_Normal)
 		}
