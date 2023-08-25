@@ -241,13 +241,13 @@ func (f *Fragmenter) makeFragments(inst *pb.Instruction, mtu int) (ret []*Fragme
 	f.lastMTU = mtu
 
 	data, _ := proto.Marshal(inst)
-	p0, _ := GetCompressor().Compress(data)
-	payload := []byte(p0)
+	payload, _ := GetCompressor().Compress(data)
+	// payload := []byte(p0)
 
 	var fragmentNum uint16 = 0
 	pos := 0
 
-	util.Log.With("p0", len(p0)).With("payload", len(payload)).With("mtu", mtu).Debug("send fragments")
+	// util.Log.With("p0", len(p0)).With("payload", len(payload)).With("mtu", mtu).Debug("send fragments")
 
 	for payload != nil {
 		final := false
