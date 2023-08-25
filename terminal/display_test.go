@@ -352,8 +352,8 @@ func TestNewFrame_WindowTitleIconName(t *testing.T) {
 		expectSeq   string
 	}{
 		{"no window title and icon name", true, "", "", ""},
-		{"has window title", true, "window title", "", "\x1b]1;\a\x1b]2;window title\a"},
-		{"has chinese icon name", true, "", "图标名称", "\x1b]1;图标名称\a\x1b]2;\a"},
+		{"has window title", true, "window title", "", "\x1b]2;window title\a"},
+		{"has chinese icon name", true, "", "图标名称", "\x1b]1;图标名称\a"},
 		{"has same window title & icon name", true, "中文标题", "中文标题", "\x1b]0;中文标题\a"},
 	}
 	oldE := NewEmulator3(80, 40, 40)
@@ -390,6 +390,70 @@ func TestNewFrame_WindowTitleIconName(t *testing.T) {
 		if gotSeq != v.expectSeq {
 			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
 		}
+	}
+}
+
+func TestNewFrame_TitleStack(t *testing.T) {
+	tc := []struct {
+		label       string
+		initialized bool
+		newStack    []string
+		oldStack    []string
+		expectSeq   string
+	}{
+		{"no stack", true,
+			[]string{},
+			[]string{}, ""},
+		{"new stack = old stack", true,
+			[]string{"a1", "a2"},
+			[]string{"a1", "a2"}, ""},
+		{"new stack > old stack", true,
+			[]string{"a", "b", "c"},
+			[]string{"a", "b"}, "\x1b]2;c\a\x1b[22;0t"},
+		{"new stack < old stack", true,
+			[]string{"t1", "t2"},
+			[]string{"t1", "t2", "t3"}, "\x1b[23;0t\x1b]2;t2\a"},
+		{"max stack with diff", true,
+			[]string{"w1", "w2", "w3", "w4", "w5", "w6", "w7", "w8", "w9"},
+			[]string{"w0", "w1", "w2", "w3", "w4", "w5", "w6", "w7", "w8"},
+			"\x1b]2;w9\a\x1b[22;0t"},
+	}
+
+	oldE := NewEmulator3(80, 40, 40)
+	newE := NewEmulator3(80, 40, 40)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
+
+	os.Setenv("TERM", "xterm-256color")
+	d, e := NewDisplay(true)
+	if e != nil {
+		t.Errorf("#test NewFrame() create display error: %s\n", e)
+	}
+
+	for _, v := range tc {
+		oldE.resetTerminal()
+		newE.resetTerminal()
+		// reset the terminal to avoid overlap
+		t.Run(v.label, func(t *testing.T) {
+			// prepare new stack
+			for i := range v.newStack {
+				newE.cf.setTitleInitialized()
+				newE.cf.setWindowTitle(v.newStack[i])
+				newE.cf.saveWindowTitleOnStack()
+			}
+			// prepare old stack
+			for i := range v.oldStack {
+				oldE.cf.setTitleInitialized()
+				oldE.cf.setWindowTitle(v.oldStack[i])
+				oldE.cf.saveWindowTitleOnStack()
+			}
+
+			// check the expect difference sequence
+			gotSeq := d.NewFrame(v.initialized, oldE, newE)
+			if gotSeq != v.expectSeq {
+				t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
+			}
+		})
 	}
 }
 
@@ -1059,7 +1123,7 @@ func buildSelectionDataSequence(raw string) string {
 	return fmt.Sprintf("\x1B]%d;%s;%s\x1B\\", 52, "pc", Pd)
 }
 
-func TestDisplayCone(t *testing.T) {
+func TestDisplayClone(t *testing.T) {
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
 	if e != nil {

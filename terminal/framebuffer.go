@@ -962,3 +962,7 @@ func (fb *Framebuffer) restoreWindowTitleOnStack() {
 		fb.setWindowTitle(title)
 	}
 }
+
+func (fb *Framebuffer) resetWindowTitleStack() {
+	fb.windowTitleStack = make([]string, 0)
+}

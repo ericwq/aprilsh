@@ -168,33 +168,32 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	// TODO work with osc 1,2,3
 	oldWTS := oldE.cf.windowTitleStack
 	newWTS := newE.cf.windowTitleStack
+	titleAndStackBothChange := false
 	if len(oldWTS) == len(newWTS) {
 		if len(newWTS) == windowTitleStackMax && !reflect.DeepEqual(oldWTS, newWTS) {
 			// reach stack max with difference
+			// change title first then stack
+			d.titleChanged(initialized, oldE, newE, &b)
 			fmt.Fprintf(&b, "\x1B[22;0t")
+			titleAndStackBothChange = true
 		}
 	} else if len(newWTS) > len(oldWTS) {
 		// save title to stack
+		// change title first then stack
+		d.titleChanged(initialized, oldE, newE, &b)
 		fmt.Fprintf(&b, "\x1B[22;0t")
+		titleAndStackBothChange = true
 	} else {
 		// restore title from stack
+		// change stack first then title
 		fmt.Fprintf(&b, "\x1B[23;0t")
+		d.titleChanged(initialized, oldE, newE, &b)
+		titleAndStackBothChange = true
 	}
 
 	// has icon label or window title changed?
-	if d.supportTitle && newE.isTitleInitialized() &&
-		(!initialized || newE.GetIconLabel() != oldE.GetIconLabel() || newE.GetWindowTitle() != oldE.GetWindowTitle()) {
-		if newE.GetIconLabel() == newE.GetWindowTitle() {
-			// write combined Icon label and Window Title
-			fmt.Fprintf(&b, "\x1B]0;%s\x07", newE.GetWindowTitle())
-			// ST is more correct, but BEL more widely supported
-		} else {
-			// write Icon label
-			fmt.Fprintf(&b, "\x1B]1;%s\x07", newE.GetIconLabel())
-
-			// write Window Title
-			fmt.Fprintf(&b, "\x1B]2;%s\x07", newE.GetWindowTitle())
-		}
+	if !titleAndStackBothChange {
+		d.titleChanged(initialized, oldE, newE, &b)
 	}
 
 	// has reverse video state changed?
@@ -966,6 +965,27 @@ func (d *Display) updateRendition(out io.Writer, r Renditions, force bool) {
 	}
 }
 
+func (d *Display) titleChanged(initialized bool, oldE, newE *Emulator, b io.Writer) {
+	// has icon label or window title changed?
+	if d.supportTitle && newE.isTitleInitialized() && (!initialized ||
+		newE.GetIconLabel() != oldE.GetIconLabel() || newE.GetWindowTitle() != oldE.GetWindowTitle()) {
+		if newE.GetIconLabel() == newE.GetWindowTitle() {
+			// write combined Icon label and Window Title
+			fmt.Fprintf(b, "\x1B]0;%s\x07", newE.GetWindowTitle())
+			// ST is more correct, but BEL more widely supported
+		} else {
+			// write Icon label
+			if newE.GetIconLabel() != "" {
+				fmt.Fprintf(b, "\x1B]1;%s\x07", newE.GetIconLabel())
+			}
+
+			// write Window Title
+			if newE.GetWindowTitle() != "" {
+				fmt.Fprintf(b, "\x1B]2;%s\x07", newE.GetWindowTitle())
+			}
+		}
+	}
+}
 func (d *Display) Open() string {
 	var b strings.Builder
 	if d.smcup != "" {

@@ -264,6 +264,7 @@ func (emu *Emulator) resetTerminal() {
 	emu.cf.dropScrollbackHistory()
 	emu.cf.resetBell()
 	emu.cf.resetTitle()
+	emu.cf.resetWindowTitleStack()
 	emu.marginTop, emu.marginBottom = emu.cf.resetMargins()
 	emu.clearScreen()
 

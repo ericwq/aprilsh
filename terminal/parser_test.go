@@ -1838,6 +1838,7 @@ func TestHandle_XTWINOPS_Save(t *testing.T) {
 
 			// prepare window title
 			expect := "expect window title"
+			emu.cf.setTitleInitialized()
 			emu.cf.setWindowTitle(expect)
 
 			// execute the control sequence
@@ -1850,17 +1851,18 @@ func TestHandle_XTWINOPS_Save(t *testing.T) {
 			}
 
 			// validate the result
-			got := emu.cf.windowTitleStack[len(emu.cf.windowTitleStack)-1]
-			if got != expect {
-				t.Errorf("%s exect window title %q, got %q\n",
-					v.label, expect, got)
-			}
 			if len(v.warnMsg) > 0 {
 				// check log message
 				for j := range v.warnMsg {
 					if !strings.Contains(place.String(), v.warnMsg[j]) {
 						t.Errorf("%s: expect %q, got %s\n", v.label, v.warnMsg[j], place.String())
 					}
+				}
+			} else {
+				got := emu.cf.windowTitleStack[len(emu.cf.windowTitleStack)-1]
+				if got != expect {
+					t.Errorf("%s exect window title %q, got %q\n",
+						v.label, expect, got)
 				}
 			}
 		})
