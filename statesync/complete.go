@@ -111,7 +111,7 @@ func (c *Complete) RegisterInputFrame(num, now int64) {
 // return 0 if history frame state + 50ms < now. That means now is larger than 50ms.
 // return max int if there is only one history frame.
 // return normal gap between now and history frame + 50ms.
-func (c *Complete) waitTime(now int64) int {
+func (c *Complete) WaitTime(now int64) int {
 	if len(c.inputHistory) < 2 {
 		return math.MaxInt
 	}

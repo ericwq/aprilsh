@@ -1331,7 +1331,7 @@ func (om *OverlayManager) SetTitlePrefix(v string) {
 	om.title.setPrefix(v)
 }
 
-func (om *OverlayManager) waitTime() int {
+func (om *OverlayManager) WaitTime() int {
 	return terminal.Min(om.notifications.waitTime(), om.predictions.waitTime())
 }
 

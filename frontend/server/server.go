@@ -11,6 +11,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"os"
 	"os/signal"
@@ -61,7 +62,7 @@ const (
 
 	_VERBOSE_OPEN_PTS    = 99  // test purpose
 	_VERBOSE_START_SHELL = 100 // test purpose
-	_VERBOSE_LOG_SYSLOG  = 57  // log to syslog
+	_VERBOSE_LOG_SYSLOG  = 514 // log to syslog
 )
 
 func init() {
@@ -609,6 +610,7 @@ func serve(ptmx *os.File, complete *statesync.Complete, waitChan chan bool,
 	// scale timeouts
 	networkTimeoutMs := networkTimeout * 1000
 	networkSignaledTimeoutMs := networkSignaledTimeout * 1000
+
 	lastRemoteNum := network.GetRemoteStateNum()
 	var connectedUtmp bool
 	var forceConnectionChangEvt bool
@@ -657,12 +659,37 @@ func serve(ptmx *os.File, complete *statesync.Complete, waitChan chan bool,
 
 mainLoop:
 	for {
+		timeout := math.MaxInt16
 		now := time.Now().UnixMilli()
+
+		timeout = terminal.Min(timeout, network.WaitTime())
+		timeout = terminal.Min(timeout, complete.WaitTime(now))
+
+		if network.GetRemoteStateNum() > 0 || network.ShutdownInProgress() {
+			timeout = terminal.Min(timeout, 5000)
+		}
+
+		// The server goes completely asleep if it has no remote peer.
+		// We may want to wake up sooner.
+		if networkTimeoutMs > 0 {
+			rs := network.GetLatestRemoteState()
+			networkSleep := networkTimeoutMs - (now - rs.GetTimestamp())
+			if networkSleep < 0 {
+				networkSleep = 0
+			} else if networkSleep > math.MaxInt16 {
+				networkSleep = math.MaxInt16
+			}
+			timeout = terminal.Min(timeout, int(networkSleep))
+		}
+
+		timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
+
 		p := network.GetLatestRemoteState()
 		timeSinceRemoteState = now - p.GetTimestamp()
 		terminalToHost.Reset()
 
 		select {
+		case <-timer.C:
 		case socketMsg := <-networkChan: // packet received from the network
 			if socketMsg.Err != nil {
 				// fmt.Printf("#readFromSocket receive error:%s\n", socketMsg.Err)
@@ -776,7 +803,6 @@ mainLoop:
 					network.SetCurrentState(complete)
 				}
 			}
-		default:
 		}
 
 		// write user input and terminal writeback to the host

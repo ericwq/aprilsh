@@ -165,7 +165,7 @@ func TestCompleteWaitTime(t *testing.T) {
 			// fmt.Printf("#test setEchoAck timestamp=%d, ts=%d\n", p.timestamp, ts)
 		}
 
-		got := c.waitTime(now + ts + v.time)
+		got := c.WaitTime(now + ts + v.time)
 		if v.expect != got {
 			t.Errorf("%q expect %d, got %d\n", v.label, v.expect, got)
 		}

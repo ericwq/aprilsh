@@ -371,7 +371,7 @@ func main() {
 	client.main()
 	client.shutdown()
 
-	// fmt.Printf("\n%s is exiting.\n", _COMMAND_NAME)
+	fmt.Printf("\r")
 }
 
 type STMClient struct {
@@ -848,17 +848,21 @@ func (sc *STMClient) main() error {
 		}
 	})
 
-	// now := time.Now().UnixMilli()
 mainLoop:
 	for {
 		sc.outputNewFrame()
 
-		// gapT := time.Now().UnixMilli() - now
-		// if gapT > 1000 {
-		// 	util.Log.Info("running.")
-		// 	now = time.Now().UnixMilli()
-		// }
+		waitTime := terminal.Min(sc.network.WaitTime(), sc.overlays.WaitTime())
+
+		// Handle startup "Connecting..." message
+		if sc.stillConnecting() {
+			waitTime = terminal.Min(250, waitTime)
+		}
+
+		timer := time.NewTimer(time.Duration(waitTime) * time.Millisecond)
+
 		select {
+		case <-timer.C:
 		case networkMsg := <-networkChan:
 
 			// got data from server
@@ -891,7 +895,6 @@ mainLoop:
 					sc.network.StartShutdown()
 				}
 			}
-		default:
 		}
 
 		if signals.GotSignal(syscall.SIGWINCH) {

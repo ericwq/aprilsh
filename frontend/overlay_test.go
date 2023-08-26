@@ -1031,7 +1031,7 @@ func TestOverlayManager_waitTime(t *testing.T) {
 
 		ne.messageExpiration = time.Now().UnixMilli() + v.messageExpiration
 
-		got := om.waitTime()
+		got := om.WaitTime()
 		if got != v.expect {
 			t.Errorf("%q expect waitTime=%d, got %d\n", v.name, v.expect, got)
 		}
