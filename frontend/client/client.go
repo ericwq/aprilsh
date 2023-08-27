@@ -198,7 +198,8 @@ func (c *Config) fetchKey(password string) error {
 	// Once a Session is created, you can execute a single command on
 	// the remote side using the Run method.
 	var b []byte
-	cmd := fmt.Sprintf("echo '%s' | nc localhost %d -u -w 1", _ASH_OPEN, c.port)
+	// cmd := fmt.Sprintf("echo '%s' | nc localhost %d -u -w 1", _ASH_OPEN, c.port)
+	cmd := "aprilsh-server --start"
 	// fmt.Printf("execute cmd %s\n", cmd)
 	if b, err = session.Output(cmd); err != nil {
 		return err

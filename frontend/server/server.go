@@ -86,10 +86,12 @@ func printVersion() {
 // [-s] [-v] [-i LOCALADDR] [-p PORT[:PORT2]] [-c COLORS] [-l NAME=VALUE] [-- COMMAND...]
 var usage = `Usage:
   ` + _COMMAND_NAME + ` [-v] [-h] [--auto N]
+  ` + _COMMAND_NAME + ` [--start]
   ` + _COMMAND_NAME + ` [-s] [--verbose V] [-i LOCALADDR] [-p PORT[:PORT2]] [-l NAME=VALUE] [-t TERM] [-- command...]
 Options:
   -h, --help     print this message
   -v, --version  print version information
+      --start    start a connection
   -a, --auto     auto stop the server after N seconds
   -s, --server   listen with SSH ip
   -i, --ip       listen with this ip/host
@@ -243,6 +245,8 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.BoolVar(&conf.version, "version", false, "print version information")
 	flagSet.BoolVar(&conf.version, "v", false, "print version information")
 
+	flagSet.BoolVar(&conf.startConn, "start", false, "start a connection")
+
 	flagSet.BoolVar(&conf.server, "server", false, "listen with SSH ip")
 	flagSet.BoolVar(&conf.server, "s", false, "listen with SSH ip")
 
@@ -283,6 +287,7 @@ type Config struct {
 	locales     localeFlag // localse environment variables
 	term        string     // client TERM
 	autoStop    int        // auto stop after N seconds
+	startConn   bool       // start a connection
 
 	commandPath string   // shell command path (absolute path)
 	commandArgv []string // the positional (non-flag) command-line arguments.
@@ -406,6 +411,11 @@ func main() {
 		return
 	}
 
+	if conf.startConn {
+		startConnection(conf.desiredPort)
+		return
+	}
+
 	// setup server log file
 	if conf.verbose > 0 {
 		util.Log.SetLevel(slog.LevelDebug)
@@ -439,6 +449,45 @@ func getShellNameFrom(shellPath string) (shellName string) {
 	shellName = "-" + shellName
 
 	return
+}
+
+func startConnection(port string) {
+	// Unlike Dial, ListenPacket creates a connection without any
+	// association with peers.
+	conn, err := net.ListenPacket("udp", ":0")
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer conn.Close()
+
+	dest, err := net.ResolveUDPAddr("udp", "localhost:"+port)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	// request from server
+	request := fmt.Sprintf("%s", _ASH_OPEN)
+	conn.SetDeadline(time.Now().Add(time.Millisecond * 10))
+	n, err := conn.WriteTo([]byte(request), dest)
+	if err != nil {
+		fmt.Println("write to udp: ", err)
+		return
+	} else if n != len(request) {
+		fmt.Println("can't send correct query.")
+		return
+	}
+
+	// read the response
+	response := make([]byte, 128)
+	conn.SetDeadline(time.Now().Add(time.Millisecond * 10))
+	m, _, err := conn.ReadFrom(response)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Printf("%s", string(response[:m]))
 }
 
 // worker started by mainSrv.run(). worker will listen on specified port and
