@@ -581,6 +581,10 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	// prepare host field for utmp record
 	utmpHost := fmt.Sprintf("%s [%d]", _PACKAGE_STRING, os.Getpid())
 
+	// start the udp server, serve the udp request
+	waitChan := make(chan bool)
+	go conf.serve(ptmx, terminal, waitChan, network, networkTimeout, networkSignaledTimeout)
+
 	// start the shell with pts
 	shell, err := startShell(pts, utmpHost, conf)
 	pts.Close() // it's copied by shell process, it's safe to close it here.
@@ -598,15 +602,10 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		// update last log
 		util.UpdateLastLog(ptmxName, getCurrentUser(), utmpHost) // TODO use pts.Name() or ptmx name?
 
-		// start the udp server, serve the udp request
-		waitChan := make(chan bool)
-		go conf.serve(ptmx, terminal, waitChan, network, networkTimeout, networkSignaledTimeout)
 		whChan <- &workhorse{shell, ptmx}
-		// fmt.Printf("#runWorker start listening on :%s\n", conf.desiredPort)
 		util.Log.With("desiredPort", conf.desiredPort).Info("start listening on")
 
 		// wait for the shell to finish.
-		// fmt.Printf("#runWorker shell.Wait() %p %v\n", shell, shell)
 		if state, err := shell.Wait(); err != nil || state.Exited() {
 			// logW.Printf("#runWorker shell.Wait fail: %s, state: %s\n", err, state)
 			if err != nil {
@@ -698,6 +697,7 @@ func serve(ptmx *os.File, complete *statesync.Complete, waitChan chan bool,
 	})
 
 	var timeoutIfNoClient int64 = 60000
+	childReleased := false
 
 mainLoop:
 	for {
@@ -823,7 +823,14 @@ mainLoop:
 
 				// TODO syslog?
 
-				// TODO child release?
+				// tell startShell to start login session
+				if !childReleased {
+					_, err := ptmx.WriteString("\n")
+					if err != nil {
+						util.Log.With("error", err).Error("release child failed")
+					}
+					childReleased = true
+				}
 			}
 		case masterMsg := <-fileChan:
 			// input from the host needs to be fed to the terminal
@@ -1070,28 +1077,23 @@ func startShell(pts *os.File, utmpHost string, conf *Config) (*os.Process, error
 		warnUnattached(pts, utmpHost)
 	}
 
-	// Wait for parent to release us.
-	// var buf string
-	// if _, err := fmt.Fscanf(cmd.Stdin, "%s", &buf); err != nil {
-	// 	return cmd, err
-	// }
-
 	encrypt.ReenableDumpingCore()
 
 	/*
 		additional logic for pty.StartWithAttrs() end
 	*/
 
+	// wait for runWorker to release us
+	var buf string
+	if _, err := fmt.Fscanf(pts, "%s", &buf); err != nil {
+		util.Log.With("error", err).Error("wait for release failed")
+		return nil, err
+	}
+
 	proc, err := os.StartProcess(conf.commandPath, conf.commandArgv, &procAttr)
 	if err != nil {
 		return nil, err
 	}
-	// fmt.Printf("#startShell before cmd.Start(), %q\n", cmd.Path)
-	// if err := cmd.Start(); err != nil {
-	// 	return cmd, err
-	// }
-	//
-	// return cmd, nil
 	return proc, nil
 }
 
@@ -1311,16 +1313,16 @@ func (m *mainSrv) run(conf *Config) {
 			key := <-m.exChan
 			// fmt.Printf("#run got key %q\n", key)
 
+			// response session key and udp port to client
+			msg := fmt.Sprintf("%d,%s", p, key)
+			m.writeRespTo(addr, _ASH_OPEN, msg)
+
 			// blocking read the workhorse from runWorker
 			wh := <-m.whChan
 			// logI.Printf("#run got workhorse %p %v\n", wh.shell, wh.shell)
 			if wh.shell != nil {
 				m.workers[p] = wh
 			}
-
-			// response session key and udp port to client
-			msg := fmt.Sprintf("%d,%s", p, key)
-			m.writeRespTo(addr, _ASH_OPEN, msg)
 		} else if strings.HasPrefix(req, _ASH_CLOSE) {
 			// fmt.Printf("#mainSrv run() receive request %q\n", req)
 			// 'close aprish:[port]' to stop the server
