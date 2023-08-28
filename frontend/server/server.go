@@ -48,8 +48,6 @@ var (
 	utmpSupport   bool
 	syslogSupport bool
 	signals       frontend.Signals
-	// logW        *log.Logger
-	// logI        *log.Logger
 )
 
 const (
@@ -66,14 +64,8 @@ const (
 )
 
 func init() {
-	// initLog()
 	utmpSupport = utmp.HasUtmpSupport()
 }
-
-// func initLog() {
-// 	logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-// 	logI = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
-// }
 
 func printVersion() {
 	fmt.Printf("%s (%s) [build %s]\n\n", _COMMAND_NAME, _PACKAGE_STRING, BuildVersion)
@@ -86,12 +78,12 @@ func printVersion() {
 // [-s] [-v] [-i LOCALADDR] [-p PORT[:PORT2]] [-c COLORS] [-l NAME=VALUE] [-- COMMAND...]
 var usage = `Usage:
   ` + _COMMAND_NAME + ` [-v] [-h] [--auto N]
-  ` + _COMMAND_NAME + ` [--start]
+  ` + _COMMAND_NAME + ` [-b]
   ` + _COMMAND_NAME + ` [-s] [--verbose V] [-i LOCALADDR] [-p PORT[:PORT2]] [-l NAME=VALUE] [-t TERM] [-- command...]
 Options:
   -h, --help     print this message
   -v, --version  print version information
-      --start    start a connection
+  -b, --begin    begin a client connection
   -a, --auto     auto stop the server after N seconds
   -s, --server   listen with SSH ip
   -i, --ip       listen with this ip/host
@@ -245,7 +237,8 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.BoolVar(&conf.version, "version", false, "print version information")
 	flagSet.BoolVar(&conf.version, "v", false, "print version information")
 
-	flagSet.BoolVar(&conf.startConn, "start", false, "start a connection")
+	flagSet.BoolVar(&conf.begin, "begin", false, "begin a client connection")
+	flagSet.BoolVar(&conf.begin, "b", false, "begin a client connection")
 
 	flagSet.BoolVar(&conf.server, "server", false, "listen with SSH ip")
 	flagSet.BoolVar(&conf.server, "s", false, "listen with SSH ip")
@@ -287,7 +280,7 @@ type Config struct {
 	locales     localeFlag // localse environment variables
 	term        string     // client TERM
 	autoStop    int        // auto stop after N seconds
-	startConn   bool       // start a connection
+	begin       bool       // begin a client connection
 
 	commandPath string   // shell command path (absolute path)
 	commandArgv []string // the positional (non-flag) command-line arguments.
@@ -411,8 +404,8 @@ func main() {
 		return
 	}
 
-	if conf.startConn {
-		startConnection(conf.desiredPort)
+	if conf.begin {
+		beginClientConn(conf.desiredPort)
 		return
 	}
 
@@ -451,7 +444,7 @@ func getShellNameFrom(shellPath string) (shellName string) {
 	return
 }
 
-func startConnection(port string) {
+func beginClientConn(port string) {
 	// Unlike Dial, ListenPacket creates a connection without any
 	// association with peers.
 	conn, err := net.ListenPacket("udp", ":0")
