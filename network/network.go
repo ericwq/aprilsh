@@ -17,11 +17,13 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
 	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/util"
+
 	// "golang.org/x/net/ipv4"
 	"golang.org/x/sys/unix"
 )
@@ -236,6 +238,7 @@ type Connection struct {
 
 	// sendError string
 	// logW *log.Logger
+	sync.RWMutex
 }
 
 func NewConnection(desiredIp string, desiredPort string) *Connection { // server
@@ -543,6 +546,8 @@ func (c *Connection) hopPort() {
 
 // return the our udp connection
 func (c *Connection) sock() udpConn {
+	// c.RLock()
+	// defer c.RUnlock()
 	return c.socks[len(c.socks)-1].(udpConn)
 }
 
@@ -684,6 +689,8 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 }
 
 func (c *Connection) setMTU(addr net.Addr) {
+	// c.Lock()
+	// defer c.Unlock()
 	if addr, ok := addr.(*net.UDPAddr); ok {
 		if addr, ok := netip.AddrFromSlice(addr.IP); ok {
 			if addr.Is6() {
@@ -697,6 +704,9 @@ func (c *Connection) setMTU(addr net.Addr) {
 
 // use the latest connection to send the message to remote
 func (c *Connection) send(s string) (sendError error) {
+	c.Lock()
+	defer c.Unlock()
+
 	if !c.hasRemoteAddr {
 		return
 	}
@@ -748,6 +758,8 @@ func (c *Connection) send(s string) (sendError error) {
 
 // receive packet from remote
 func (c *Connection) Recv() (payload string, err error) {
+	c.Lock()
+	defer c.Unlock()
 	for i := range c.socks {
 		payload, err = c.recvOne(c.socks[i].(udpConn))
 		if err != nil {
@@ -771,6 +783,8 @@ func (c *Connection) Recv() (payload string, err error) {
 }
 
 func (c *Connection) getMTU() int {
+	// c.RLock()
+	// defer c.RUnlock()
 	return c.mtu
 }
 
@@ -780,15 +794,22 @@ func (c *Connection) getMTU() int {
 // }
 
 func (c *Connection) getKey() string {
+	// c.RLock()
+	// defer c.RUnlock()
 	return c.key.String()
 }
 
 func (c *Connection) getHasRemoteAddr() bool {
+	// c.RLock()
+	// defer c.RUnlock()
 	return c.hasRemoteAddr
 }
 
 // calculate and restrict the RTO (retransmission timeout) between 50-1000 ms.
 func (c *Connection) timeout() int64 {
+	c.RLock()
+	defer c.RUnlock()
+
 	// uint64_t RTO = lrint(ceil(SRTT + 4 * RTTVAR))
 	RTO := (int64)(math.Round(math.Ceil(c.SRTT + 4*c.RTTVAR)))
 	if RTO < MIN_RTO {
@@ -800,18 +821,27 @@ func (c *Connection) timeout() int64 {
 }
 
 func (c *Connection) getSRTT() float64 {
+	c.RLock()
+	defer c.RUnlock()
 	return c.SRTT
 }
 
 func (c *Connection) getRemoteAddr() net.Addr {
+	c.RLock()
+	defer c.RUnlock()
 	return c.remoteAddr
 }
 
 func (c *Connection) setLastRoundtripSuccess(success int64) {
+	// c.Lock()
+	// defer c.Unlock()
 	c.lastRoundtripSuccess = success
 }
 
 func (c *Connection) SetReadDeadline(t time.Time) (err error) {
+	c.Lock()
+	defer c.Unlock()
+
 	for i := range c.socks {
 		err = c.socks[i].SetReadDeadline(t)
 		if err != nil {

@@ -864,6 +864,7 @@ mainLoop:
 
 		select {
 		case <-timer.C:
+			// util.Log.With("timer", waitTime).Debug("time out")
 		case networkMsg := <-networkChan:
 
 			// got data from server
