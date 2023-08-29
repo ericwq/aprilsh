@@ -199,8 +199,8 @@ func (c *Config) fetchKey(password string) error {
 	// the remote side using the Run method.
 	var b []byte
 	// cmd := fmt.Sprintf("echo '%s' | nc localhost %d -u -w 1", _ASH_OPEN, c.port)
-	cmd := "aprilsh-server -b"
-	// fmt.Printf("execute cmd %s\n", cmd)
+	cmd := "$HOME/.local/bin/aprilsh-server -b"
+	// fmt.Printf(/"execute cmd %s\n", cmd)
 	if b, err = session.Output(cmd); err != nil {
 		return err
 	}

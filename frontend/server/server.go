@@ -386,6 +386,7 @@ func (conf *Config) buildConfig() (string, bool) {
 
 // parse the flag first, print help or version based on flag
 // then run the main listening server
+// aprilsh-server should be installed under $HOME/.local/bin
 func main() {
 	conf, _, err := parseFlags(os.Args[0], os.Args[1:])
 	if err == flag.ErrHelp {
@@ -823,7 +824,8 @@ mainLoop:
 
 				// TODO syslog?
 
-				// tell startShell to start login session
+				// upon receive network message, perform the following one time action,
+				// release startShell() to start login session
 				if !childReleased {
 					_, err := ptmx.WriteString("\n")
 					if err != nil {
@@ -940,7 +942,7 @@ mainLoop:
 	default:
 	}
 
-	// consume last message to release reader if possible
+	// consume last message to free reader if possible
 	select {
 	case <-fileChan:
 	default:
@@ -1083,9 +1085,9 @@ func startShell(pts *os.File, utmpHost string, conf *Config) (*os.Process, error
 		additional logic for pty.StartWithAttrs() end
 	*/
 
-	// wait for runWorker to release us
-	var buf string
-	if _, err := fmt.Fscanf(pts, "%s", &buf); err != nil {
+	// wait for serve() to release us
+	var buf bytes.Buffer
+	if _, err := pts.Read(buf.Bytes()); err != nil {
 		util.Log.With("error", err).Error("wait for release failed")
 		return nil, err
 	}

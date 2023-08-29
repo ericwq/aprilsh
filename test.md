@@ -68,3 +68,15 @@ go tool covdata textfmt -i=./coverage/unit,./coverage/int -o coverage/profile
 go tool cover -func coverage/profile
 go tool cover -html coverage/profile
 ```
+
+### start server
+```sh
+go build -o $HOME/.local/bin/aprilsh-server server.go
+$HOME/.local/bin/aprilsh-server -verbose 1 2>> /tmp/aprilsh-server.log
+```
+### start client
+```sh
+cd develop/aprilsh/frontend/client
+go build client.go
+./client -verbose 1  -pwd password ide@localhost 2>> /tmp/aprilsh.log
+```
