@@ -370,7 +370,7 @@ func humanReadableDuration(numSeconds int, secondsAbbr string) string {
 }
 
 func (ne *NotificationEngine) serverLate(ts int64) bool {
-	return ts-ne.lastWordFromServer > 65000
+	return ts-ne.lastWordFromServer > 6500
 }
 
 func (ne *NotificationEngine) replyLate(ts int64) bool {
@@ -1332,6 +1332,9 @@ func (om *OverlayManager) SetTitlePrefix(v string) {
 }
 
 func (om *OverlayManager) WaitTime() int {
+	// util.Log.With("predictions", om.predictions.waitTime()).
+	// 	With("notifications", om.notifications.waitTime()).
+	// 	Debug("waitTime")
 	return terminal.Min(om.notifications.waitTime(), om.predictions.waitTime())
 }
 

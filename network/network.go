@@ -800,8 +800,8 @@ func (c *Connection) getKey() string {
 }
 
 func (c *Connection) getHasRemoteAddr() bool {
-	// c.RLock()
-	// defer c.RUnlock()
+	c.RLock()
+	defer c.RUnlock()
 	return c.hasRemoteAddr
 }
 
