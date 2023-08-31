@@ -818,7 +818,7 @@ func (sc *STMClient) main() error {
 	// read from network
 	eg.Go(func() error {
 		// if we have 2 client ip, 5 ms for each client
-		frontend.ReadFromNetwork(5, networkChan, networkDownChan, sc.network.GetConnection())
+		frontend.ReadFromNetwork(10, networkChan, networkDownChan, sc.network.GetConnection())
 		return nil
 	})
 
@@ -864,10 +864,10 @@ mainLoop:
 
 		select {
 		case <-timer.C:
-			// util.Log.With("overlays", sc.overlays.WaitTime()).
-			// 	With("network", sc.network.WaitTime()).
-			// 	With("waitTime", waitTime).
-			// 	Debug("time out")
+			util.Log.With("overlays", sc.overlays.WaitTime()).
+				With("network", sc.network.WaitTime()).
+				With("waitTime", waitTime).
+				Debug("mainLoop")
 		case networkMsg := <-networkChan:
 
 			// got data from server
