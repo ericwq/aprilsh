@@ -4,8 +4,8 @@
 *.dll
 *.so
 *.dylib
-client
-server
+frontend/client/client
+frontend/server/server
 coverage
 
 # Test binary, built with `go test -c`
