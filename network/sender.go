@@ -409,6 +409,9 @@ func (ts *TransportSender[T]) tick() error {
 	} else {
 		// util.Log.With("nextAckTime", ts.nextAckTime).With("nextSendTime", ts.nextSendTime).Debug("tick others")
 	}
+	// util.Log.With("nextAckTime", ts.nextAckTime).
+	// 	With("nextSendTime", ts.nextSendTime).
+	// 	Debug("send fragments")
 
 	return nil
 }
