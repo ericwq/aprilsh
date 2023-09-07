@@ -89,10 +89,11 @@ func (ts *TransportSender[T]) updateAssumedReceiverState() {
 	// transmitted recently enough ago
 	ts.assumedReceiverState = &ts.sentStates[0]
 
+	timeout := ts.connection.timeout()
 	for i := 1; i < len(ts.sentStates); i++ {
 		// fmt.Printf("#updateAssumedReceiverState now-ts.sentStates[%2d].timestamp=%4d, ts.connection.timeout()+ACK_DELAY=%d ",
 		// 	i, now-ts.sentStates[i].timestamp, ts.connection.timeout()+ACK_DELAY)
-		if now-ts.sentStates[i].timestamp < ts.connection.timeout()+ACK_DELAY {
+		if now-ts.sentStates[i].timestamp < timeout+ACK_DELAY {
 			ts.assumedReceiverState = &ts.sentStates[i]
 			// fmt.Printf("assumedReceiverState=%2d \n", i)
 		} else {
@@ -428,12 +429,14 @@ func (ts *TransportSender[T]) waitTime() int {
 
 	now := time.Now().UnixMilli()
 
+	// util.Log.With("nextSendTime", ts.nextSendTime).
+	// 	With("nextAckTime", ts.nextAckTime).
+	// 	With("nextWakeup", nextWakeup).
+	// 	With("now", now).
+	// 	Debug("sender waitTime")
 	if !ts.connection.getHasRemoteAddr() {
 		return math.MaxInt
 	}
-
-	// fmt.Printf("#waitTime nextSendTime=%d, nextAckTime=%d, nextWakeup=%d, now=%d\n",
-	// 	ts.nextSendTime, ts.nextAckTime, nextWakeup, now)
 
 	if nextWakeup > now {
 		return int(nextWakeup - now)
