@@ -115,9 +115,11 @@ func (c *Complete) WaitTime(now int64) int {
 	if len(c.inputHistory) < 2 {
 		return math.MaxInt
 	}
+	// start from the second
 	nextEchoAckTime := c.inputHistory[1].timestamp + ECHO_TIMEOUT
-	// fmt.Printf("#registerInputFrame now=%d, nextEchoAckTime=%d, nextEchoAckTime <= now is %t\n",
-	// 	now, nextEchoAckTime, nextEchoAckTime <= now)
+
+	// util.Log.With("now", now).
+	// 	With("nextEchoAckTime", nextEchoAckTime).With("gap", nextEchoAckTime-now)
 
 	if nextEchoAckTime <= now {
 		return 0
