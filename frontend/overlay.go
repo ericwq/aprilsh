@@ -1335,7 +1335,16 @@ func (om *OverlayManager) WaitTime() int {
 	// util.Log.With("predictions", om.predictions.waitTime()).
 	// 	With("notifications", om.notifications.waitTime()).
 	// 	Debug("waitTime")
-	return terminal.Min(om.notifications.waitTime(), om.predictions.waitTime())
+	w1 := om.notifications.waitTime()
+	w2 := om.predictions.waitTime()
+	if w1 < 0 {
+		w1 = 2
+	}
+	if w2 < 0 {
+		w2 = 2
+	}
+	// return terminal.Min(om.notifications.waitTime(), om.predictions.waitTime())
+	return terminal.Min(w1, w2)
 }
 
 func (om *OverlayManager) Apply(emu *terminal.Emulator) {
