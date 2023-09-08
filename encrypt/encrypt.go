@@ -12,7 +12,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
-	"sync"
 	"sync/atomic"
 	"syscall"
 
@@ -194,7 +193,7 @@ func (m *Message) GetPayload() (payload []byte) {
 type Session struct {
 	base64Key Base64Key
 	aead      cipher.AEAD
-	sync.Mutex
+	// sync.Mutex
 }
 
 func NewSession(key Base64Key) (*Session, error) {
@@ -221,8 +220,8 @@ func NewSession(key Base64Key) (*Session, error) {
 
 // Encrypt with AES-128 GCM
 func (s *Session) Encrypt(plainText *Message) []byte {
-	s.Lock()
-	defer s.Unlock()
+	// s.Lock()
+	// defer s.Unlock()
 	nonce := plainText.nonce
 
 	cipherText := s.aead.Seal(nonce, nonce, plainText.text, nil)
@@ -231,8 +230,8 @@ func (s *Session) Encrypt(plainText *Message) []byte {
 
 // Decrypt with AES-128 GCM
 func (s *Session) Decrypt(text []byte) (*Message, error) {
-	s.Lock()
-	defer s.Unlock()
+	// s.Lock()
+	// defer s.Unlock()
 	ns := s.aead.NonceSize()
 	nonce, cipherText := text[:ns], text[ns:]
 	// fmt.Printf("#decrypt ciphertext=% x, %p\n", cipherText, cipherText)
