@@ -279,14 +279,17 @@ func (ts *TransportSender[T]) calculateTimers() {
 	// 	len(ts.sentStates), ts.sentStates[back].timestamp, now)
 
 	// Update assumed receiver state
+	util.Log.With("point", "a1.1.1").Debug("mainLoop")
 	ts.updateAssumedReceiverState()
 	// fmt.Printf("#calculateTimers assumedReceiverState=%d, lastHeard=%d, mindelayClock=%d, pendingDataAck=%t\n",
 	// 	ts.getAssumedReceiverStateIdx(), ts.lastHeard, ts.mindelayClock, ts.pendingDataAck)
 	// fmt.Printf("#calculateTimers nextAckTime=%d, nextSendTime=%d\n",
 	// 	ts.nextAckTime, ts.nextSendTime)
 
+	util.Log.With("point", "a1.1.2").Debug("mainLoop")
 	// Cut out common prefix of all states
 	ts.rationalizeStates()
+	util.Log.With("point", "a1.1.3").Debug("mainLoop")
 	back := len(ts.sentStates) - 1
 	// util.Log.With("size", len((ts.sentStates))).With("back", back).Debug("check")
 
@@ -322,6 +325,7 @@ func (ts *TransportSender[T]) calculateTimers() {
 		ts.nextAckTime = ts.sentStates[back].timestamp + int64(ts.sendInterval())
 		// fmt.Printf("#calculateTimers after nextAckTime=%d\n", ts.nextAckTime)
 	}
+	util.Log.With("point", "a1.1.4").Debug("mainLoop")
 }
 
 // make chaff with random length and random contents.
@@ -419,7 +423,10 @@ func (ts *TransportSender[T]) tick() error {
 
 // Returns the number of ms to wait until next possible event.
 func (ts *TransportSender[T]) waitTime() int {
+	util.Log.With("point", "a1.1").Debug("mainLoop")
 	ts.calculateTimers()
+	util.Log.With("point", "a1.2").Debug("mainLoop")
+	defer util.Log.With("point", "a1.3").Debug("mainLoop")
 
 	// if nextSendTime < nextAckTime, use the nextSendTime
 	nextWakeup := ts.nextAckTime

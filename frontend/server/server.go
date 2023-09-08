@@ -661,20 +661,22 @@ func serve(ptmx *os.File, complete *statesync.Complete, waitChan chan bool,
 	var terminalToHost strings.Builder
 	var timeSinceRemoteState int64
 
-	var networkChan chan frontend.Message
+	// var networkChan chan frontend.Message
 	var fileChan chan frontend.Message
-	networkChan = make(chan frontend.Message, 1)
+	// networkChan = make(chan frontend.Message, 1)
 	fileChan = make(chan frontend.Message, 1)
 	fileDownChan := make(chan any, 1)
-	networkDownChan := make(chan any, 1)
+	// networkDownChan := make(chan any, 1)
 
 	eg := errgroup.Group{}
 	// read from socket
-	eg.Go(func() error {
-		frontend.ReadFromNetwork(5, networkChan, networkDownChan, network.GetConnection())
-		// readFromSocket(10, networkChan, network)
-		return nil
-	})
+	/*
+		eg.Go(func() error {
+			frontend.ReadFromNetwork(5, networkChan, networkDownChan, network.GetConnection())
+			// readFromSocket(10, networkChan, network)
+			return nil
+		})
+	*/
 	// read from pty master file
 	eg.Go(func() error {
 		frontend.ReadFromFile(5, fileChan, fileDownChan, ptmx)
@@ -737,23 +739,12 @@ mainLoop:
 		timeSinceRemoteState = now - p.GetTimestamp()
 		terminalToHost.Reset()
 
-		timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
-		util.Log.With("point", "b").Debug("mainLoop")
-		select {
-		case <-timer.C:
-			util.Log.With("complete", complete.WaitTime(now)).
-				// With("network", network.WaitTime()).
-				With("networkSleep", networkSleep).
-				With("timeout", timeout).
-				Debug("mainLoop")
-		case socketMsg := <-networkChan: // packet received from the network
-			if socketMsg.Err != nil {
-				// fmt.Printf("#readFromSocket receive error:%s\n", socketMsg.Err)
-				util.Log.With("error", socketMsg.Err).Warn("read from network")
-				continue mainLoop
-			}
-
-			network.ProcessPayload(socketMsg.Data)
+		payload, err := frontend.NetworkRead(5, network.GetConnection())
+		if err != nil {
+			util.Log.With("error", err).Warn("read from network")
+			continue mainLoop
+		} else if payload != "" {
+			network.ProcessPayload(payload)
 
 			// is new user input available for the terminal?
 			if network.GetRemoteStateNum() != lastRemoteNum {
@@ -847,6 +838,25 @@ mainLoop:
 					childReleased = true
 				}
 			}
+		}
+
+		timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
+		util.Log.With("point", "b").Debug("mainLoop")
+		select {
+		case <-timer.C:
+			util.Log.With("complete", complete.WaitTime(now)).
+				// With("network", network.WaitTime()).
+				With("networkSleep", networkSleep).
+				With("timeout", timeout).
+				Debug("mainLoop")
+			/*
+				case socketMsg := <-networkChan: // packet received from the network
+					if socketMsg.Err != nil {
+						// fmt.Printf("#readFromSocket receive error:%s\n", socketMsg.Err)
+						util.Log.With("error", socketMsg.Err).Warn("read from network")
+						continue mainLoop
+					}
+			*/
 		case masterMsg := <-fileChan:
 			// input from the host needs to be fed to the terminal
 			if !network.ShutdownInProgress() {
@@ -940,7 +950,7 @@ mainLoop:
 
 		util.Log.With("point", "c").Debug("mainLoop")
 
-		err := network.Tick()
+		err = network.Tick()
 		if err != nil {
 			util.Log.With("error", err).Warn("tick send failed")
 		}
@@ -953,20 +963,20 @@ mainLoop:
 	case fileDownChan <- "done":
 	default:
 	}
-	select {
-	case networkDownChan <- "done":
-	default:
-	}
+	// select {
+	// case networkDownChan <- "done":
+	// default:
+	// }
 
 	// consume last message to free reader if possible
 	select {
 	case <-fileChan:
 	default:
 	}
-	select {
-	case <-networkChan:
-	default:
-	}
+	// select {
+	// case <-networkChan:
+	// default:
+	// }
 	eg.Wait()
 
 	// notify the runWorker
