@@ -11,12 +11,14 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"net"
 	"os"
 	"os/signal"
 	"os/user"
 	"reflect"
+	"runtime/pprof"
 	"sort"
 	"strconv"
 	"strings"
@@ -388,6 +390,14 @@ func (conf *Config) buildConfig() (string, bool) {
 // then run the main listening server
 // aprilsh-server should be installed under $HOME/.local/bin
 func main() {
+	cpuf, err := os.Create("cpu_profile")
+	if err != nil {
+		log.Fatal(err)
+	}
+	pprof.StartCPUProfile(cpuf)
+	defer pprof.StopCPUProfile()
+
+	// https://jvns.ca/blog/2017/09/24/profiling-go-with-pprof/
 	conf, _, err := parseFlags(os.Args[0], os.Args[1:])
 	if err == flag.ErrHelp {
 		printUsage("", usage)
@@ -701,21 +711,21 @@ func serve(ptmx *os.File, complete *statesync.Complete, waitChan chan bool,
 
 mainLoop:
 	for {
-		util.Log.With("point", "a").Debug("mainLoop")
+		// util.Log.With("point", "a").Debug("mainLoop")
 
 		timeout := math.MaxInt16
 		now := time.Now().UnixMilli()
 
-		util.Log.With("point", "a1").Debug("mainLoop")
+		// util.Log.With("point", "a1").Debug("mainLoop")
 		timeout = terminal.Min(timeout, network.WaitTime()) // network.WaitTime cost time
-		util.Log.With("point", "a2").Debug("mainLoop")
+		// util.Log.With("point", "a2").Debug("mainLoop")
 		timeout = terminal.Min(timeout, complete.WaitTime(now))
 
 		if network.GetRemoteStateNum() > 0 || network.ShutdownInProgress() {
 			timeout = terminal.Min(timeout, 5000)
 		}
 
-		util.Log.With("point", "a3").Debug("mainLoop")
+		// util.Log.With("point", "a3").Debug("mainLoop")
 		// The server goes completely asleep if it has no remote peer.
 		// We may want to wake up sooner.
 		var networkSleep int64
@@ -730,7 +740,7 @@ mainLoop:
 			timeout = terminal.Min(timeout, int(networkSleep))
 		}
 
-		util.Log.With("point", "a4").Debug("mainLoop")
+		// util.Log.With("point", "a4").Debug("mainLoop")
 
 		p := network.GetLatestRemoteState()
 		timeSinceRemoteState = now - p.GetTimestamp()
@@ -744,7 +754,7 @@ mainLoop:
 		// }
 
 		timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
-		util.Log.With("point", "b").Debug("mainLoop")
+		// util.Log.With("point", "b").Debug("mainLoop")
 		select {
 		case <-timer.C:
 			util.Log.With("complete", complete.WaitTime(now)).
@@ -943,13 +953,13 @@ mainLoop:
 			break
 		}
 
-		util.Log.With("point", "c").Debug("mainLoop")
+		// util.Log.With("point", "c").Debug("mainLoop")
 
 		err := network.Tick()
 		if err != nil {
 			util.Log.With("error", err).Warn("tick send failed")
 		}
-		util.Log.With("point", "d").Debug("mainLoop")
+		// util.Log.With("point", "d").Debug("mainLoop")
 	}
 
 	// shutdown the goroutine
