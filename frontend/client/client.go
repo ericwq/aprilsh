@@ -242,7 +242,7 @@ func (c *Config) fetchKey(password string) error {
 		}
 		// fmt.Printf("fetchKey port=%d, key=%s\n", c.port, c.key)
 	} else {
-		return errors.New("malform response")
+		return errors.New(fmt.Sprintf("malform response : %s", body[1]))
 	}
 
 	return nil
@@ -975,6 +975,9 @@ mainLoop:
 		if err != nil {
 			util.Log.With("error", err).Warn("tick send failed")
 			sc.overlays.GetNotificationEngine().SetNetworkError(err.Error())
+			// if errors.Is(err, syscall.ECONNREFUSED) {
+			sc.network.StartShutdown()
+			util.Log.Debug("start shutting down.")
 		} else {
 			sc.overlays.GetNotificationEngine().ClearNetworkError()
 		}
