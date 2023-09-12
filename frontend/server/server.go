@@ -1330,31 +1330,36 @@ func (m *mainSrv) run(conf *Config) {
 			// prepare next port
 			p := m.getAvailabePort() // TODO set limit for port?
 
-			// start the worker
-			conf2 := *conf
-			conf2.desiredPort = fmt.Sprintf("%d", p)
+			if !m.isPortExist(p) { // check exist port
+				// start the worker
+				conf2 := *conf
+				conf2.desiredPort = fmt.Sprintf("%d", p)
 
-			// For security, make sure we don't dump core
-			encrypt.DisableDumpingCore()
+				// For security, make sure we don't dump core
+				encrypt.DisableDumpingCore()
 
-			m.eg.Go(func() error {
-				return m.runWorker(&conf2, m.exChan, m.whChan)
-			})
-			// fmt.Printf("#run start a worker at %s\n", conf2.desiredPort)
+				m.eg.Go(func() error {
+					return m.runWorker(&conf2, m.exChan, m.whChan)
+				})
+				// fmt.Printf("#run start a worker at %s\n", conf2.desiredPort)
 
-			// blocking read the key from runWorker
-			key := <-m.exChan
-			// fmt.Printf("#run got key %q\n", key)
+				// blocking read the key from runWorker
+				key := <-m.exChan
+				// fmt.Printf("#run got key %q\n", key)
 
-			// response session key and udp port to client
-			msg := fmt.Sprintf("%d,%s", p, key)
-			m.writeRespTo(addr, _ASH_OPEN, msg)
+				// response session key and udp port to client
+				msg := fmt.Sprintf("%d,%s", p, key)
+				m.writeRespTo(addr, _ASH_OPEN, msg)
 
-			// blocking read the workhorse from runWorker
-			wh := <-m.whChan
-			// logI.Printf("#run got workhorse %p %v\n", wh.shell, wh.shell)
-			if wh.shell != nil {
-				m.workers[p] = wh
+				// blocking read the workhorse from runWorker
+				wh := <-m.whChan
+				// logI.Printf("#run got workhorse %p %v\n", wh.shell, wh.shell)
+				if wh.shell != nil {
+					m.workers[p] = wh
+				}
+			} else {
+				resp := m.writeRespTo(addr, _ASH_OPEN, "duplicate request")
+				util.Log.With("request", req).With("response", resp).Warn("duplicate request")
 			}
 		} else if strings.HasPrefix(req, _ASH_CLOSE) {
 			// fmt.Printf("#mainSrv run() receive request %q\n", req)
@@ -1372,17 +1377,14 @@ func (m *mainSrv) run(conf *Config) {
 					// fmt.Printf("#mainSrv run() send %q to client\n", resp)
 				} else {
 					resp := m.writeRespTo(addr, _ASH_CLOSE, "port does not exist")
-					// logW.Printf("#mainSrv run() request %q got %q\n", req, resp)
 					util.Log.With("request", req).With("response", resp).Warn("port does not exit")
 				}
 			} else {
 				resp := m.writeRespTo(addr, _ASH_CLOSE, "wrong port number")
-				// logW.Printf("#mainSrv run() request %q got %q\n", req, resp)
 				util.Log.With("request", req).With("response", resp).Warn("wrong port number")
 			}
 		} else {
 			resp := m.writeRespTo(addr, _ASH_CLOSE, "unknow request")
-			// logW.Printf("#mainSrv run() request %q got %q\n", req, resp)
 			util.Log.With("request", req).With("response", resp).Warn("unknow request")
 		}
 	}
@@ -1423,6 +1425,15 @@ func (m *mainSrv) getAvailabePort() (port int) {
 	// util.Log.With("port", port).With("maxPort", m.maxPort).
 	// 	With("workers", len(m.workers)).Debug("getAvailabePort")
 	return port
+}
+
+func (m *mainSrv) isPortExist(port int) bool {
+	for p := range m.workers {
+		if port == p {
+			return true
+		}
+	}
+	return false
 }
 
 // write header and message to addr
