@@ -80,3 +80,5 @@ cd develop/aprilsh/frontend/client
 go build client.go
 ./client -verbose 1  -pwd password ide@localhost 2>> /tmp/aprilsh.log
 ```
+### pprof
+go tool pprof client cpu.profile

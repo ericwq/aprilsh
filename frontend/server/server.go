@@ -11,7 +11,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"math"
 	"net"
 	"os"
@@ -390,9 +389,10 @@ func (conf *Config) buildConfig() (string, bool) {
 // then run the main listening server
 // aprilsh-server should be installed under $HOME/.local/bin
 func main() {
-	cpuf, err := os.Create("cpu_profile")
+	cpuf, err := os.Create("cpu.profile")
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println(err)
+		return
 	}
 	pprof.StartCPUProfile(cpuf)
 	defer pprof.StopCPUProfile()

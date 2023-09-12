@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"syscall"
@@ -305,6 +306,14 @@ func (c *Config) buildConfig() (string, bool) {
 }
 
 func main() {
+	cpuf, err := os.Create("cpu.profile")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	pprof.StartCPUProfile(cpuf)
+	defer pprof.StopCPUProfile()
+
 	// For security, make sure we don't dump core
 	encrypt.DisableDumpingCore()
 
