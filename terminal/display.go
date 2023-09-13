@@ -147,6 +147,18 @@ func getRowFrom(from []Cell, posY int, w int) (row []Cell) {
 	return row
 }
 
+func equalRow(a, b []Cell) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if v != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 // compare two terminals and generate mix (grapheme and control sequence) sequence
 // to rebuild the new terminal from the old one.
 //
@@ -739,7 +751,8 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator,
 	}
 
 	// If rows are the same object, we don't need to do anything at all.
-	if initialized && reflect.DeepEqual(newRow, oldRow) {
+	// if initialized && reflect.DeepEqual(newRow, oldRow) {
+	if initialized && equalRow(newRow, oldRow) {
 		return false
 	}
 
