@@ -8,6 +8,7 @@ frontend/client/client
 frontend/server/server
 coverage
 cpu.profile
+mem.profile
 
 # Test binary, built with `go test -c`
 *.test

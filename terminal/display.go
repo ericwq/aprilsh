@@ -150,8 +150,8 @@ func equalRow(a, b []Cell) bool {
 	if len(a) != len(b) {
 		return false
 	}
-	for i, v := range a {
-		if v != b[i] {
+	for i := range a {
+		if a[i] != b[i] {
 			return false
 		}
 	}
@@ -162,8 +162,8 @@ func equalIntSlice(a, b []int) bool {
 	if len(a) != len(b) {
 		return false
 	}
-	for i, v := range a {
-		if v != b[i] {
+	for i := range a {
+		if a[i] != b[i] {
 			return false
 		}
 	}
@@ -174,8 +174,8 @@ func equalStringlice(a, b []string) bool {
 	if len(a) != len(b) {
 		return false
 	}
-	for i, v := range a {
-		if v != b[i] {
+	for i := range a {
+		if a[i] != b[i] {
 			return false
 		}
 	}

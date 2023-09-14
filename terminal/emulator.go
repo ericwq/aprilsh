@@ -779,8 +779,8 @@ func (emu *Emulator) Equal(x *Emulator) bool {
 		return false
 	}
 
-	for i, v := range emu.tabStops {
-		if v != x.tabStops[i] {
+	for i := range emu.tabStops {
+		if emu.tabStops[i] != x.tabStops[i] {
 			return false
 		}
 	}

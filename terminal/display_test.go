@@ -1146,3 +1146,30 @@ func TestDisplayClone(t *testing.T) {
 		t.Errorf("#test Clone() expect currentRendition %#v, got %#v\n", rend, c.currentRendition)
 	}
 }
+
+func equalRow2(a, b []Cell) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func BenchmarkEqualRow(b *testing.B) {
+	var x, y []Cell
+	x = make([]Cell, 80*80)
+	y = make([]Cell, 80*80)
+
+	for i := 0; i < 80*80; i++ {
+		x[i] = Cell{contents: fmt.Sprintf("%b", i)}
+		y[i] = Cell{contents: fmt.Sprintf("%b", i*2)}
+	}
+
+	for i := 0; i < b.N; i++ {
+		equalRow2(x, y)
+	}
+}

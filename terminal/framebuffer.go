@@ -661,8 +661,8 @@ func (fb *Framebuffer) Equal(x *Framebuffer) bool {
 	if len(fb.cells) != len(x.cells) {
 		return false
 	}
-	for i, v := range fb.cells {
-		if v != x.cells[i] {
+	for i := range fb.cells {
+		if fb.cells[i] != x.cells[i] {
 			return false
 		}
 		// if !v.Equal(&x.cells[i]) {
@@ -678,8 +678,8 @@ func (fb *Framebuffer) Equal(x *Framebuffer) bool {
 	if len(fb.windowTitleStack) != len(x.windowTitleStack) {
 		return false
 	}
-	for i, v := range fb.windowTitleStack {
-		if v != x.windowTitleStack[i] {
+	for i := range fb.windowTitleStack {
+		if fb.windowTitleStack[i] != x.windowTitleStack[i] {
 			return false
 		}
 	}
