@@ -733,41 +733,40 @@ func (emu *Emulator) Clone() *Emulator {
 
 func (emu *Emulator) Equal(x *Emulator) bool {
 	if emu.nRows != x.nRows || emu.nCols != x.nCols {
+		// fmt.Printf("nRows=(%d,%d), nCols=(%d,%d)\n", emu.nRows, x.nRows, emu.nCols, x.nCols)
 		return false
 	}
 
 	if emu.posX != x.posX || emu.posY != x.posY ||
-
 		emu.marginTop != x.marginTop || emu.marginBottom != x.marginBottom {
+		// fmt.Printf("posX=(%d,%d), posY=(%d,%d), marginTop=(%d,%d), marginBottom=(%d,%d)\n",
+		// 	emu.posX, x.posX, emu.posY, x.posY, emu.marginTop, x.marginTop, emu.marginBottom, x.marginBottom)
 		return false
 	}
 
 	if emu.lastCol != x.lastCol || emu.attrs != x.attrs ||
-
 		emu.fg != x.fg || emu.bg != x.bg {
+		// fmt.Printf("lastCol=(%t,%t), attrs=(%v,%v), fg=(%v,%v), bg=(%v,%v)\n",
+		// 	emu.lastCol, x.lastCol, emu.attrs, x.attrs, emu.fg, x.fg, emu.bg, x.bg)
 		return false
 	}
 
 	if emu.reverseVideo != x.reverseVideo || emu.hasFocus != x.hasFocus ||
-
 		emu.showCursorMode != x.showCursorMode || emu.altScreenBufferMode != x.altScreenBufferMode {
 		return false
 	}
 
 	if emu.autoWrapMode != x.autoWrapMode || emu.autoNewlineMode != x.autoNewlineMode ||
-
 		emu.keyboardLocked != x.keyboardLocked || emu.insertMode != x.insertMode {
 		return false
 	}
 
 	if emu.bkspSendsDel != x.bkspSendsDel || emu.localEcho != x.localEcho ||
-
 		emu.bracketedPasteMode != x.bracketedPasteMode || emu.altScrollMode != x.altScrollMode {
 		return false
 	}
 
 	if emu.altSendsEscape != x.altSendsEscape || emu.modifyOtherKeys != x.modifyOtherKeys ||
-
 		emu.horizMarginMode != x.horizMarginMode {
 		return false
 	}
@@ -786,5 +785,5 @@ func (emu *Emulator) Equal(x *Emulator) bool {
 		}
 	}
 
-	return emu.cf == x.cf && emu.frame_pri.Equal(&x.frame_pri) && emu.frame_alt.Equal(&x.frame_alt)
+	return emu.frame_pri.Equal(&x.frame_pri) && emu.frame_alt.Equal(&x.frame_alt)
 }

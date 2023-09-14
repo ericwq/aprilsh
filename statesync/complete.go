@@ -6,7 +6,6 @@ package statesync
 
 import (
 	"math"
-	"reflect"
 
 	pb "github.com/ericwq/aprilsh/protobufs/host"
 	"github.com/ericwq/aprilsh/terminal"
@@ -144,7 +143,8 @@ func (c *Complete) DiffFrom(existing *Complete) string {
 		hm.Instruction = append(hm.Instruction, &instEcho)
 	}
 
-	if !reflect.DeepEqual(existing.getFramebuffer(), c.getFramebuffer()) {
+	// if !reflect.DeepEqual(existing.getFramebuffer(), c.getFramebuffer()) {
+	if !existing.getFramebuffer().Equal(c.getFramebuffer()) {
 		if existing.terminal.GetWidth() != c.terminal.GetWidth() ||
 			existing.terminal.GetHeight() != c.terminal.GetHeight() {
 			w := int32(c.terminal.GetWidth())

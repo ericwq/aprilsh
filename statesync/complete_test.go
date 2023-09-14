@@ -50,10 +50,6 @@ func TestCompleteApplyString(t *testing.T) {
 		c0, _ := NewComplete(80, 40, 40)
 		c1, _ := NewComplete(80, 40, 40)
 
-		// disable log trace
-		// c0.terminal.SetLogTraceOutput(io.Discard)
-		// c1.terminal.SetLogTraceOutput(io.Discard)
-
 		// resize new state if necessary
 		if v.height != 0 && v.width != 0 {
 			r := terminal.Resize{Width: v.width, Height: v.height}
@@ -81,15 +77,15 @@ func TestCompleteApplyString(t *testing.T) {
 		c0.ApplyString(diff)
 
 		// validate the result
-		// if got := c0.DiffFrom(c1); got != "" {
-		if !c0.Equal(c1) {
-			got := c0.DiffFrom(c1)
+		if got := c0.DiffFrom(c1); got != "" {
+			// if !c0.Equal(c1) {
+			// got := c0.DiffFrom(c1)
 			t.Errorf("%q expect empty result after ApplyString(), got %q\n", v.label, got)
 		}
 	}
 }
 
-func TestCompleteApplyString_Fail(t *testing.T) {
+func TestApplyString_Fail(t *testing.T) {
 	diff := "mislead\n\x04:\x02@\x03\n2\x120\"."
 
 	c, _ := NewComplete(80, 40, 40)

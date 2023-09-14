@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"reflect"
 	"strings"
 
 	"github.com/ericwq/terminfo"
@@ -159,6 +158,30 @@ func equalRow(a, b []Cell) bool {
 	return true
 }
 
+func equalIntSlice(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if v != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func equalStringlice(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i, v := range a {
+		if v != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 // compare two terminals and generate mix (grapheme and control sequence) sequence
 // to rebuild the new terminal from the old one.
 //
@@ -182,7 +205,8 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	newWTS := newE.cf.windowTitleStack
 	titleAndStackBothChange := false
 	if len(oldWTS) == len(newWTS) {
-		if len(newWTS) == windowTitleStackMax && !reflect.DeepEqual(oldWTS, newWTS) {
+		if len(newWTS) == windowTitleStackMax && !equalStringlice(oldWTS, newWTS) {
+			// if len(newWTS) == windowTitleStackMax && !reflect.DeepEqual(oldWTS, newWTS) {
 			// reach stack max with difference
 			// change title first then stack
 			d.titleChanged(initialized, oldE, newE, &b)
@@ -349,7 +373,8 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 			newRow = getRow(newE, 0)
 			oldRow = getRowFrom(resizeScreen, row, newE.nCols)
 
-			if reflect.DeepEqual(newRow, oldRow) {
+			if equalRow(newRow, oldRow) {
+				// if reflect.DeepEqual(newRow, oldRow) {
 				// if row 0, we're looking at ourselves and probably didn't scroll
 				if row == 0 {
 					break
@@ -363,7 +388,8 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 				for regionHeight := 1; linesScrolled+regionHeight < newE.GetHeight(); regionHeight++ {
 					newRow = getRow(newE, regionHeight)
 					oldRow = getRowFrom(resizeScreen, linesScrolled+regionHeight, newE.nCols)
-					if reflect.DeepEqual(newRow, oldRow) {
+					if equalRow(newRow, oldRow) {
+						// if reflect.DeepEqual(newRow, oldRow) {
 						scrollHeight = regionHeight + 1
 					} else {
 						break
@@ -658,7 +684,8 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	}
 
 	// has tab stop position changed?
-	if !initialized || !reflect.DeepEqual(newE.tabStops, oldE.tabStops) {
+	if !initialized || !equalIntSlice(newE.tabStops, oldE.tabStops) {
+		// if !initialized || !reflect.DeepEqual(newE.tabStops, oldE.tabStops) {
 		if len(newE.tabStops) == 0 {
 			// clear tab stop if necessary
 			fmt.Fprint(&b, "\x1B[3g") // TBC
