@@ -827,7 +827,7 @@ func (sc *STMClient) main() error {
 	// read from network
 	eg.Go(func() error {
 		// if we have 2 client ip, 5 ms for each client
-		frontend.ReadFromNetwork(5, networkChan, networkDownChan, sc.network.GetConnection())
+		frontend.ReadFromNetwork(1, networkChan, networkDownChan, sc.network.GetConnection())
 		return nil
 	})
 
@@ -835,7 +835,7 @@ func (sc *STMClient) main() error {
 	//
 	// os.Stdin will always block on the Read operation. The simple
 	// fix is we dont' wait the goroutine to quit.
-	go frontend.ReadFromFile(5, fileChan, fileDownChan, os.Stdin)
+	go frontend.ReadFromFile(1, fileChan, fileDownChan, os.Stdin)
 	// eg.Go(func() error {
 	// 	frontend.ReadFromFile(10, fileChan, fileDownChan, os.Stdin)
 	// 	return nil

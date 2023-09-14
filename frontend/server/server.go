@@ -681,13 +681,13 @@ func serve(ptmx *os.File, complete *statesync.Complete, waitChan chan bool,
 	eg := errgroup.Group{}
 	// read from socket
 	eg.Go(func() error {
-		frontend.ReadFromNetwork(5, networkChan, networkDownChan, network.GetConnection())
+		frontend.ReadFromNetwork(1, networkChan, networkDownChan, network.GetConnection())
 		return nil
 	})
 
 	// read from pty master file
 	eg.Go(func() error {
-		frontend.ReadFromFile(5, fileChan, fileDownChan, ptmx)
+		frontend.ReadFromFile(1, fileChan, fileDownChan, ptmx)
 		return nil
 	})
 
