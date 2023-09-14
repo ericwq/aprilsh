@@ -637,6 +637,52 @@ func (fb *Framebuffer) invalidateSelection(damage *Rect) {
 	fb.selection.clear()
 }
 
+func (fb *Framebuffer) Equal(x *Framebuffer) bool {
+	if fb.nCols != x.nCols || fb.nRows != x.nRows ||
+		fb.saveLines != x.saveLines {
+		return false
+	}
+
+	if fb.scrollHead != x.scrollHead || fb.marginTop != x.marginTop ||
+		fb.marginBottom != x.marginBottom {
+		return false
+	}
+
+	if fb.historyRows != x.historyRows || fb.viewOffset != x.viewOffset ||
+		fb.margin != x.margin {
+		return false
+	}
+
+	if fb.cursor != x.cursor || fb.selection != x.selection ||
+		fb.snapTo != x.snapTo || fb.damage != fb.damage {
+		return false
+	}
+
+	if len(fb.cells) != len(x.cells) {
+		return false
+	}
+	for i, v := range fb.cells {
+		if v != x.cells[i] {
+			return false
+		}
+	}
+
+	if fb.iconLabel != x.iconLabel || fb.windowTitle != x.windowTitle ||
+		fb.bellCount != x.bellCount || fb.titleInitialized != x.titleInitialized {
+		return false
+	}
+
+	if len(fb.windowTitleStack) != len(x.windowTitleStack) {
+		return false
+	}
+	for i, v := range fb.windowTitleStack {
+		if v != x.windowTitleStack[i] {
+			return false
+		}
+	}
+	return true
+}
+
 /* --------------------------------------------------- new frame end here */
 /*
 func (fb *Framebuffer) newRow() *Row {

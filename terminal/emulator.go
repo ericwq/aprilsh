@@ -75,13 +75,6 @@ type Emulator struct {
 	selectionStore map[rune]string // local storage buffer for selection data in sequence OSC 52
 	selectionData  string          // replicated by NewFrame(), store the selection data for OSC 52
 
-	// logger
-	// logE *log.Logger
-	// logT *log.Logger // trace
-	// logU *log.Logger
-	// logW *log.Logger
-	// logI *log.Logger
-
 	/*
 		CursorVisible             bool // true/false
 		ReverseVideo              bool // two possible value: Reverse(true), Normal(false)
@@ -736,4 +729,62 @@ func (emu *Emulator) Clone() *Emulator {
 
 	// ignore logI,logT,logU,logW
 	return &clone
+}
+
+func (emu *Emulator) Equal(x *Emulator) bool {
+	if emu.nRows != x.nRows || emu.nCols != x.nCols {
+		return false
+	}
+
+	if emu.posX != x.posX || emu.posY != x.posY ||
+
+		emu.marginTop != x.marginTop || emu.marginBottom != x.marginBottom {
+		return false
+	}
+
+	if emu.lastCol != x.lastCol || emu.attrs != x.attrs ||
+
+		emu.fg != x.fg || emu.bg != x.bg {
+		return false
+	}
+
+	if emu.reverseVideo != x.reverseVideo || emu.hasFocus != x.hasFocus ||
+
+		emu.showCursorMode != x.showCursorMode || emu.altScreenBufferMode != x.altScreenBufferMode {
+		return false
+	}
+
+	if emu.autoWrapMode != x.autoWrapMode || emu.autoNewlineMode != x.autoNewlineMode ||
+
+		emu.keyboardLocked != x.keyboardLocked || emu.insertMode != x.insertMode {
+		return false
+	}
+
+	if emu.bkspSendsDel != x.bkspSendsDel || emu.localEcho != x.localEcho ||
+
+		emu.bracketedPasteMode != x.bracketedPasteMode || emu.altScrollMode != x.altScrollMode {
+		return false
+	}
+
+	if emu.altSendsEscape != x.altSendsEscape || emu.modifyOtherKeys != x.modifyOtherKeys ||
+
+		emu.horizMarginMode != x.horizMarginMode {
+		return false
+	}
+
+	if emu.nColsEff != x.nColsEff || emu.hMargin != x.hMargin {
+		return false
+	}
+
+	if len(emu.tabStops) != len(x.tabStops) {
+		return false
+	}
+
+	for i, v := range emu.tabStops {
+		if v != x.tabStops[i] {
+			return false
+		}
+	}
+
+	return emu.cf == x.cf && emu.frame_pri.Equal(&x.frame_pri) && emu.frame_alt.Equal(&x.frame_alt)
 }

@@ -7,6 +7,7 @@ package statesync
 import (
 	"io"
 	"math"
+	"reflect"
 	"testing"
 	"time"
 
@@ -188,5 +189,92 @@ func TestCompleteClone(t *testing.T) {
 
 	if !c.Equal(clone) {
 		t.Errorf("#test clone expect %v, got %v\n", c, clone)
+	}
+}
+
+func (c *Complete) equalDiffFrom(x *Complete) bool {
+	// use DiffFrom to compare the state
+	if diff := c.DiffFrom(x); diff != "" {
+		return false
+	}
+	return true
+	// return reflect.DeepEqual(c.terminal, x.terminal) && c.echoAck == x.echoAck
+}
+
+func (c *Complete) deepEqual(x *Complete) bool {
+	return reflect.DeepEqual(c.terminal, x.terminal) && c.echoAck == x.echoAck
+}
+
+func (c *Complete) customEqual(x *Complete) bool {
+	if c.echoAck != x.echoAck {
+		return false
+	}
+
+	return c.terminal.Equal(x.terminal)
+}
+
+// https://blog.logrocket.com/benchmarking-golang-improve-function-performance/
+// https://coder.today/tech/2018-11-10_profiling-your-golang-app-in-3-steps/
+// https://www.speedscope.app/
+func BenchmarkEqualDiffFrom(b *testing.B) {
+	tc := []struct {
+		label string
+		seq0  string
+		seq1  string
+	}{
+		{"fill one row with string", "\x1B[4;4HErase to the end of line\x1B[0K.", "\x1B[6;67HLAST"},
+		// {"fill one row and set ack", "\x1B[7;7H左边\x1B[7;77H中文", 0, 0, 3},
+	}
+	v := tc[0]
+	c0, _ := NewComplete(80, 40, 40)
+	c1, _ := NewComplete(80, 40, 40)
+
+	c0.terminal.HandleStream(v.seq0)
+	c1.terminal.HandleStream(v.seq1)
+
+	for i := 0; i < b.N; i++ {
+		c0.equalDiffFrom(c1)
+	}
+}
+
+func BenchmarkDeepEqual(b *testing.B) {
+	tc := []struct {
+		label string
+		seq0  string
+		seq1  string
+	}{
+		{"fill one row with string", "\x1B[4;4HErase to the end of line\x1B[0K.", "\x1B[6;67HLAST"},
+		// {"fill one row and set ack", "\x1B[7;7H左边\x1B[7;77H中文", 0, 0, 3},
+	}
+	v := tc[0]
+	c0, _ := NewComplete(80, 40, 40)
+	c1, _ := NewComplete(80, 40, 40)
+
+	c0.terminal.HandleStream(v.seq0)
+	c1.terminal.HandleStream(v.seq1)
+
+	for i := 0; i < b.N; i++ {
+		c0.deepEqual(c1)
+	}
+}
+
+func BenchmarkCustomEqual(b *testing.B) {
+	tc := []struct {
+		label string
+		seq0  string
+		seq1  string
+	}{
+		{"fill one row with string", "\x1B[4;4HErase to the end of line\x1B[0K.", "\x1B[6;67HLAST"},
+		// {"fill one row and set ack", "\x1B[7;7H左边\x1B[7;77H中文", 0, 0, 3},
+	}
+	v := tc[0]
+	c0, _ := NewComplete(80, 40, 40)
+	c1, _ := NewComplete(80, 40, 40)
+
+	c0.terminal.HandleStream(v.seq0)
+	c1.terminal.HandleStream(v.seq1)
+
+	for i := 0; i < b.N; i++ {
+		c0.customEqual(c1)
 	}
 }

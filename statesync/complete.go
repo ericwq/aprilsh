@@ -206,12 +206,11 @@ func (c *Complete) ApplyString(diff string) error {
 
 // implements network.State[C any] interface
 func (c *Complete) Equal(x *Complete) bool {
-	// use DiffFrom to compare the state
-	// if diff := c.DiffFrom(x); diff != "" {
-	// 	return false
-	// }
-	// return true
-	return reflect.DeepEqual(c.terminal, x.terminal) && c.echoAck == x.echoAck
+	if c.echoAck != x.echoAck {
+		return false
+	}
+
+	return c.terminal.Equal(x.terminal)
 }
 
 // implements network.State[C any] interface
