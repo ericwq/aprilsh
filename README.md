@@ -59,6 +59,7 @@ The project name `Aprilsh` is derived from `April+sh`. This project started in s
 - 2023/Aug/07: add util.Log and rewrite log related part for other packages.
 - 2023/Aug/14: accomplish `exit` command in running aprilsh client.
 - 2023/Aug/22: add OSC 112, DECSCUR, XTWINOPS 22,23 support; study CSI u.
+- 2023/Sep/15: improve the performance of client and server.
 
 ## build dependency
 
@@ -87,6 +88,7 @@ Use the above command to add musl locales support and utmps support for alpine. 
 - [Linux man pages](https://linux.die.net/man/)
 - [C++ Reference](http://www.cplusplus.com/reference/)
 - [Linux logging guide: Understanding syslog, rsyslog, syslog-ng, journald](https://ikshitij.com/linux-logging-guide)
+- [Benchmarking in Golang: Improving function performance](https://blog.logrocket.com/benchmarking-golang-improve-function-performance/)
 
 ## CSI u
 Need some time to figure out how to support CSI u in aprilsh.
