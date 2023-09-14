@@ -82,3 +82,4 @@ go build client.go
 ```
 ### pprof
 go tool pprof client cpu.profile
+go test -bench=. -count 5 -run=^# -benchmem
