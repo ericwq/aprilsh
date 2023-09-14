@@ -201,13 +201,14 @@ func (c *Complete) deepEqual(x *Complete) bool {
 	return reflect.DeepEqual(c.terminal, x.terminal) && c.echoAck == x.echoAck
 }
 
-func (c *Complete) customEqual(x *Complete) bool {
-	if c.echoAck != x.echoAck {
-		return false
-	}
-
-	return c.terminal.Equal(x.terminal)
-}
+// check Equal mthod
+// func (c *Complete) customEqual(x *Complete) bool {
+// 	if c.echoAck != x.echoAck {
+// 		return false
+// 	}
+//
+// 	return c.terminal.Equal(x.terminal)
+// }
 
 // https://blog.logrocket.com/benchmarking-golang-improve-function-performance/
 // https://coder.today/tech/2018-11-10_profiling-your-golang-app-in-3-steps/
@@ -271,6 +272,69 @@ func BenchmarkCustomEqual(b *testing.B) {
 	c1.terminal.HandleStream(v.seq1)
 
 	for i := 0; i < b.N; i++ {
-		c0.customEqual(c1)
+		c0.Equal(c1)
+	}
+}
+
+func BenchmarkDiffFrom(b *testing.B) {
+	tc := []struct {
+		label string
+		seq0  string
+		seq1  string
+	}{
+		{"fill one row with string", "\x1B[4;4HErase to the end of line\x1B[0K.", "\x1B[6;67HLAST"},
+		// {"fill one row and set ack", "\x1B[7;7H左边\x1B[7;77H中文", 0, 0, 3},
+	}
+	v := tc[0]
+	c0, _ := NewComplete(80, 40, 40)
+	c1, _ := NewComplete(80, 40, 40)
+
+	c0.terminal.HandleStream(v.seq0)
+	c1.terminal.HandleStream(v.seq1)
+
+	for i := 0; i < b.N; i++ {
+		c0.DiffFrom(c1)
+	}
+}
+
+func BenchmarkDiffFromFramebuffer(b *testing.B) {
+	tc := []struct {
+		label string
+		seq0  string
+		seq1  string
+	}{
+		{"fill one row with string", "\x1B[4;4HErase to the end of line\x1B[0K.", "\x1B[6;67HLAST"},
+		// {"fill one row and set ack", "\x1B[7;7H左边\x1B[7;77H中文", 0, 0, 3},
+	}
+	v := tc[0]
+	c0, _ := NewComplete(80, 40, 40)
+	c1, _ := NewComplete(80, 40, 40)
+
+	c0.terminal.HandleStream(v.seq0)
+	c1.terminal.HandleStream(v.seq1)
+
+	for i := 0; i < b.N; i++ {
+		c0.getFramebuffer().Equal(c1.getFramebuffer())
+	}
+}
+
+func BenchmarkDiffFromNewFrame(b *testing.B) {
+	tc := []struct {
+		label string
+		seq0  string
+		seq1  string
+	}{
+		{"fill one row with string", "\x1B[4;4HErase to the end of line\x1B[0K.", "\x1B[6;67HLAST"},
+		// {"fill one row and set ack", "\x1B[7;7H左边\x1B[7;77H中文", 0, 0, 3},
+	}
+	v := tc[0]
+	c0, _ := NewComplete(80, 40, 40)
+	c1, _ := NewComplete(80, 40, 40)
+
+	c0.terminal.HandleStream(v.seq0)
+	c1.terminal.HandleStream(v.seq1)
+
+	for i := 0; i < b.N; i++ {
+		c0.display.NewFrame(true, c0.terminal, c1.terminal)
 	}
 }
