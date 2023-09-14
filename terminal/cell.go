@@ -25,6 +25,18 @@ type Cell struct {
 	dwidthCont bool // indicate this cell is the second cell of double width grapheme if true
 }
 
+// func (c *Cell) Equal(x *Cell) bool {
+// 	if c.contents != x.contents {
+// 		return false
+// 	}
+//
+// 	if c.dirty != x.dirty || c.wrap != x.wrap ||
+// 		c.earlyWrap != x.earlyWrap || c.dwidth != x.dwidth || c.dwidthCont != x.dwidthCont {
+// 		return false
+// 	}
+// 	return c.renditions.Equal(&x.renditions)
+// }
+
 // return true if the contents is "" or " " or non-break space(\uC2A0).
 func (c Cell) IsBlank() bool {
 	if c.dwidth || c.dwidthCont {

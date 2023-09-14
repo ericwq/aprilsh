@@ -665,6 +665,9 @@ func (fb *Framebuffer) Equal(x *Framebuffer) bool {
 		if v != x.cells[i] {
 			return false
 		}
+		// if !v.Equal(&x.cells[i]) {
+		// 	return false
+		// }
 	}
 
 	if fb.iconLabel != x.iconLabel || fb.windowTitle != x.windowTitle ||

@@ -38,6 +38,19 @@ type Renditions struct {
 	invisible  bool
 }
 
+// func (r *Renditions) Equal(x *Renditions) bool {
+// 	if r.fgColor != x.fgColor || r.bgColor != x.bgColor {
+// 		return false
+// 	}
+//
+// 	if r.bold != x.bold || r.faint != x.faint || r.italic != x.italic ||
+// 		r.underline != x.underline || r.blink != x.blink || r.rapidBlink != x.rapidBlink ||
+// 		r.inverse != x.inverse || r.invisible != x.invisible {
+// 		return false
+// 	}
+// 	return true
+// }
+
 // set the ANSI foreground indexed color. The index start from 0. represent ANSI standard color.
 func (rend *Renditions) SetForegroundColor(index int) {
 	rend.fgColor = PaletteColor(index)
