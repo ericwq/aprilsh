@@ -1338,10 +1338,10 @@ func (om *OverlayManager) WaitTime() int {
 	w1 := om.notifications.waitTime()
 	w2 := om.predictions.waitTime()
 	if w1 < 0 {
-		w1 = 2
+		w1 = 0
 	}
 	if w2 < 0 {
-		w2 = 2
+		w2 = 0
 	}
 	// return terminal.Min(om.notifications.waitTime(), om.predictions.waitTime())
 	return terminal.Min(w1, w2)
