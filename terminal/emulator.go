@@ -785,6 +785,35 @@ func (emu *Emulator) Equal(x *Emulator) bool {
 		}
 	}
 
+	if emu.charsetState.vtMode != x.charsetState.vtMode ||
+		emu.charsetState.gl != x.charsetState.gl || emu.charsetState.gr != x.charsetState.gr {
+		return false
+	}
+
+	if emu.compatLevel != x.compatLevel || emu.cursorKeyMode != x.cursorKeyMode ||
+		emu.keypadMode != x.keypadMode || emu.originMode != x.originMode || emu.colMode != x.colMode {
+		return false
+	}
+
+	if emu.savedCursor_SCO != x.savedCursor_SCO || emu.savedCursor_DEC_pri != x.savedCursor_DEC_pri ||
+		emu.savedCursor_DEC_alt != x.savedCursor_DEC_alt {
+		return false
+	}
+
+	if emu.mouseTrk != x.mouseTrk {
+		return false
+	}
+
+	if emu.selectionData != x.selectionData {
+		return false
+	}
+
+	for k := range emu.selectionStore {
+		if emu.selectionStore[k] != x.selectionStore[k] {
+			return false
+		}
+	}
+
 	// return emu.frame_pri.Equal(&x.frame_pri) && emu.frame_alt.Equal(&x.frame_alt)
 	return emu.cf.Equal(x.cf)
 }
