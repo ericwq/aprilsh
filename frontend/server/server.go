@@ -389,14 +389,6 @@ func (conf *Config) buildConfig() (string, bool) {
 // then run the main listening server
 // aprilsh-server should be installed under $HOME/.local/bin
 func main() {
-	cpuf, err := os.Create("cpu.profile")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	pprof.StartCPUProfile(cpuf)
-	defer pprof.StopCPUProfile()
-
 	// https://jvns.ca/blog/2017/09/24/profiling-go-with-pprof/
 	conf, _, err := parseFlags(os.Args[0], os.Args[1:])
 	if err == flag.ErrHelp {
@@ -433,6 +425,26 @@ func main() {
 			syslogSupport = true
 		}
 	}
+
+	cpuf, err := os.Create("cpu.profile")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	pprof.StartCPUProfile(cpuf)
+	defer pprof.StopCPUProfile()
+
+	f, err := os.Create("mem.profile")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	pprof.WriteHeapProfile(f)
+	defer f.Close()
+	// we need a webserver to get the pprof webserver
+	// go func() {
+	// 	fmt.Println(http.ListenAndServe("localhost:6060", nil))
+	// }()
 
 	// start server
 	srv := newMainSrv(conf, runWorker)
