@@ -188,6 +188,27 @@ func TestCompleteClone(t *testing.T) {
 	}
 }
 
+func TestEqual(t *testing.T) {
+	tc := []struct {
+		label string
+		seq0  string
+		seq1  string
+	}{
+		{"custom equal", "\x1B[6;67HLAST\x1B[1;7H", "\x1B[6;67HLAST\x1B[1;7H"},
+		// {"fill one row and set ack", "\x1B[7;7H左边\x1B[7;77H中文", 0, 0, 3},
+	}
+	v := tc[0]
+	c0, _ := NewComplete(80, 40, 40)
+	c1, _ := NewComplete(80, 40, 40)
+
+	c0.terminal.HandleStream(v.seq0)
+	c1.terminal.HandleStream(v.seq1)
+
+	if !c0.Equal(c1) {
+		t.Errorf("%q expect not equal object\n", v.label)
+	}
+}
+
 func (c *Complete) equalDiffFrom(x *Complete) bool {
 	// use DiffFrom to compare the state
 	if diff := c.DiffFrom(x); diff != "" {
@@ -213,13 +234,13 @@ func (c *Complete) deepEqual(x *Complete) bool {
 // https://blog.logrocket.com/benchmarking-golang-improve-function-performance/
 // https://coder.today/tech/2018-11-10_profiling-your-golang-app-in-3-steps/
 // https://www.speedscope.app/
-func BenchmarkEqualDiffFrom(b *testing.B) {
+func BenchmarkDiffFromEqual(b *testing.B) {
 	tc := []struct {
 		label string
 		seq0  string
 		seq1  string
 	}{
-		{"fill one row with string", "\x1B[4;4HErase to the end of line\x1B[0K.", "\x1B[6;67HLAST"},
+		{"fill one row with string", "\x1B[6;67HLAST", "\x1B[6;67HLAST"},
 		// {"fill one row and set ack", "\x1B[7;7H左边\x1B[7;77H中文", 0, 0, 3},
 	}
 	v := tc[0]
@@ -240,7 +261,7 @@ func BenchmarkDeepEqual(b *testing.B) {
 		seq0  string
 		seq1  string
 	}{
-		{"fill one row with string", "\x1B[4;4HErase to the end of line\x1B[0K.", "\x1B[6;67HLAST"},
+		{"fill one row with string", "\x1B[6;67HLAST", "\x1B[6;67HLAST"},
 		// {"fill one row and set ack", "\x1B[7;7H左边\x1B[7;77H中文", 0, 0, 3},
 	}
 	v := tc[0]
@@ -255,13 +276,13 @@ func BenchmarkDeepEqual(b *testing.B) {
 	}
 }
 
-func BenchmarkCustomEqual(b *testing.B) {
+func BenchmarkEqual(b *testing.B) {
 	tc := []struct {
 		label string
 		seq0  string
 		seq1  string
 	}{
-		{"fill one row with string", "\x1B[4;4HErase to the end of line\x1B[0K.", "\x1B[6;67HLAST"},
+		{"fill one row with string", "\x1B[6;67HLAST", "\x1B[6;67HLAST"},
 		// {"fill one row and set ack", "\x1B[7;7H左边\x1B[7;77H中文", 0, 0, 3},
 	}
 	v := tc[0]
@@ -297,7 +318,7 @@ func BenchmarkDiffFrom(b *testing.B) {
 	}
 }
 
-func BenchmarkDiffFromFramebuffer(b *testing.B) {
+func BenchmarkFramebuffer_Equal(b *testing.B) {
 	tc := []struct {
 		label string
 		seq0  string
@@ -318,7 +339,7 @@ func BenchmarkDiffFromFramebuffer(b *testing.B) {
 	}
 }
 
-func BenchmarkDiffFromNewFrame(b *testing.B) {
+func BenchmarkNewFrame(b *testing.B) {
 	tc := []struct {
 		label string
 		seq0  string

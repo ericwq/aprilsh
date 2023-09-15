@@ -785,5 +785,6 @@ func (emu *Emulator) Equal(x *Emulator) bool {
 		}
 	}
 
-	return emu.frame_pri.Equal(&x.frame_pri) && emu.frame_alt.Equal(&x.frame_alt)
+	// return emu.frame_pri.Equal(&x.frame_pri) && emu.frame_alt.Equal(&x.frame_alt)
+	return emu.cf.Equal(x.cf)
 }

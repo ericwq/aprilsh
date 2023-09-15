@@ -210,7 +210,7 @@ func (c *Complete) Equal(x *Complete) bool {
 		return false
 	}
 
-	return c.terminal.Equal(x.terminal)
+	return c.terminal.Equal(x.terminal) // && c.echoAck == x.echoAck
 }
 
 // implements network.State[C any] interface

@@ -661,11 +661,12 @@ func (fb *Framebuffer) Equal(x *Framebuffer) bool {
 	if len(fb.cells) != len(x.cells) {
 		return false
 	}
-	for i := range fb.cells {
+	// for i := range fb.cells {
+	for i := 0; i < len(fb.cells); i++ {
 		if fb.cells[i] != x.cells[i] {
 			return false
 		}
-		// if !v.Equal(&x.cells[i]) {
+		// if !fb.cells[i].Equal(&x.cells[i]) {
 		// 	return false
 		// }
 	}
