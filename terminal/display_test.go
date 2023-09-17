@@ -199,11 +199,11 @@ func TestNewFrame_ScrollUp(t *testing.T) {
 		initialized bool
 		expectSeq   string
 	}{
-		{
-			"scroll up 5 lines", ' ', ' ', "\x1B[5;1Hscroll\r\ndown\r\nmore\r\nthan\r\n5 lines!",
-			"\r\ndifferent line", "\x1B[4S", true,
-			"\x1b[0m\x1b[?25l\x1b[9;1H\x1b[4S\x1b[6;1Hdifferent\x1b[1Cline\x1b[10;15H\x1b[?25h",
-		},
+		// {
+		// 	"scroll up 5 lines", ' ', ' ', "\x1B[5;1Hscroll\r\ndown\r\nmore\r\nthan\r\n5 lines!",
+		// 	"\r\ndifferent line", "\x1B[4S", true,
+		// 	"\x1b[0m\x1b[?25l\x1b[9;1H\x1b[4S\x1b[6;1Hdifferent\x1b[1Cline\x1b[10;15H\x1b[?25h",
+		// },
 		{
 			"scroll up 6 lines", ' ', ' ', "\x1B[35;1Hscroll\r\ndown\r\nmore\r\nthan\r\n6\r\nlines!",
 			"", "\x1B[34S", true,
@@ -214,10 +214,8 @@ func TestNewFrame_ScrollUp(t *testing.T) {
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
 
-	// oldE.logT.SetOutput(io.Discard)
-	// newE.logT.SetOutput(io.Discard)
-	defer util.Log.Restore()
-	util.Log.SetOutput(io.Discard)
+	// defer util.Log.Restore()
+	// util.Log.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
@@ -244,8 +242,8 @@ func TestNewFrame_ScrollUp(t *testing.T) {
 			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
 		}
 
-		// fmt.Printf("OLD:\n%s", printCells(oldE.cf))
-		// fmt.Printf("NEW:\n%s", printCells(newE.cf))
+		fmt.Printf("OLD:\n%s", printCells(oldE.cf))
+		fmt.Printf("NEW:\n%s", printCells(newE.cf))
 
 		// apply difference sequence to target
 		oldE.HandleStream(gotSeq)

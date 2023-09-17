@@ -337,28 +337,31 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		}
 	}
 
-	/* resize and copy old screen */
-	// we copy the old screen to avoid changing the existing terminal state.
+	resizeScreen := oldE.cf.cells
+	if newE.nCols != oldE.nCols || newE.nRows != oldE.nRows {
+		/* resize and copy old screen */
+		// we copy the old screen to avoid changing the same part.
 
-	// prepare place for the old screen
-	oldScreen := make([]Cell, oldE.nCols*oldE.nRows)
-	oldE.cf.fullCopyCells(oldScreen)
+		// prepare place for the old screen
+		// oldScreen := make([]Cell, oldE.nCols*oldE.nRows)
+		// oldE.cf.fullCopyCells(oldScreen)
 
-	// prepare place for the new screen
-	resizeScreen := make([]Cell, newE.nCols*newE.nRows)
+		// prepare place for the resized screen
+		resizeScreen = make([]Cell, newE.nCols*newE.nRows)
 
-	nCopyCols := Min(oldE.nCols, newE.nCols) // minimal column length
-	nCopyRows := Min(oldE.nRows, newE.nRows) // minimal row length
+		nCopyCols := Min(oldE.nCols, newE.nCols) // minimal column length
+		nCopyRows := Min(oldE.nRows, newE.nRows) // minimal row length
 
-	// copy the old screen to the new place
-	for pY := 0; pY < nCopyRows; pY++ {
-		srcStartIdx := pY * nCopyCols
-		srcEndIdx := srcStartIdx + nCopyCols
-		dstStartIdx := pY * nCopyCols
-		copy(resizeScreen[dstStartIdx:], oldScreen[srcStartIdx:srcEndIdx])
+		// copy the old screen to the new place
+		for pY := 0; pY < nCopyRows; pY++ {
+			srcStartIdx := pY * nCopyCols
+			srcEndIdx := srcStartIdx + nCopyCols
+			dstStartIdx := pY * nCopyCols
+			copy(resizeScreen[dstStartIdx:], oldE.cf.cells[srcStartIdx:srcEndIdx])
+		}
+		// oldScreen = nil
+		/* resize and copy old screen */
 	}
-	oldScreen = nil
-	/* resize and copy old screen */
 
 	var frameY int
 	var oldRow []Cell
