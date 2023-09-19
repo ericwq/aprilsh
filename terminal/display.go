@@ -374,10 +374,12 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 
 		for row := 0; row < newE.GetHeight(); row++ {
 			newRow = getRow(newE, 0)
-			oldRow = getRowFrom(resizeScreen, row, newE.nCols)
+			// oldRow = getRowFrom(resizeScreen, row, newE.nCols)
+			oldRow = getRow(oldE, row)
 
 			if equalRow(newRow, oldRow) {
-				// if reflect.DeepEqual(newRow, oldRow) {
+				// fmt.Printf("new screen row 0 is the same as old screen row %d\n", row)
+
 				// if row 0, we're looking at ourselves and probably didn't scroll
 				if row == 0 {
 					break
@@ -390,14 +392,18 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 				// how big is the region that was scrolled?
 				for regionHeight := 1; linesScrolled+regionHeight < newE.GetHeight(); regionHeight++ {
 					newRow = getRow(newE, regionHeight)
-					oldRow = getRowFrom(resizeScreen, linesScrolled+regionHeight, newE.nCols)
+					// oldRow = getRowFrom(resizeScreen, linesScrolled+regionHeight, newE.nCols)
+					oldRow = getRow(oldE, regionHeight+linesScrolled)
 					if equalRow(newRow, oldRow) {
-						// if reflect.DeepEqual(newRow, oldRow) {
+						// fmt.Printf("new screen row %d is the same as old screen row %d\n",
+						// 	regionHeight, regionHeight+linesScrolled)
 						scrollHeight = regionHeight + 1
 					} else {
 						break
 					}
 				}
+				// fmt.Printf("new screen has %d same rows with the old screen, start from %d\n",
+				// 	scrollHeight, linesScrolled)
 
 				break
 			}
@@ -419,12 +425,11 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 				// creen, just do a CR and LFs.
 				if scrollHeight+linesScrolled == newE.GetHeight() && d.cursorY+1 == newE.GetHeight() {
 					fmt.Fprint(&b, "\r")
-					// fmt.Fprint(&b, strings.Repeat("\n", linesScrolled)) // ind
 					fmt.Fprintf(&b, "\x1B[%dS", linesScrolled)
 					d.cursorX = 0
 				} else {
 					// set scrolling region
-					// fmt.Fprintf(&b, "\x1B[%d;%dr", topMargin+1, bottomMargin+1)
+					fmt.Fprintf(&b, "\x1B[%d;%dr", topMargin+1, bottomMargin+1)
 
 					// go to bottom of scrolling region
 					d.cursorY = -1
@@ -436,7 +441,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 					// fmt.Fprint(&b, strings.Repeat("\r", linesScrolled)) // ind
 
 					// reset scrolling region
-					// fmt.Fprint(&b, "\x1B[r")
+					fmt.Fprint(&b, "\x1B[r")
 
 					// invalidate cursor position after unsetting scrolling region
 					d.cursorY = -1
@@ -455,18 +460,22 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 					dstStart := i * newE.nCols
 
 					if i+linesScrolled <= bottomMargin {
-						copy(resizeScreen[dstStart:], getRowFrom(resizeScreen, linesScrolled+i, newE.nCols))
+						copy(resizeScreen[dstStart:], getRow(oldE, linesScrolled+i))
+						// copy(resizeScreen[dstStart:], getRowFrom(resizeScreen, linesScrolled+i, newE.nCols))
 					} else {
 						copy(resizeScreen[dstStart:], blankRow[:])
+						fmt.Printf("row %d is blank\n", i)
 					}
 				}
+
 			}
 		}
 	}
 	// Now update the display, row by row
 	wrap := false
 	for ; frameY < newE.GetHeight(); frameY++ {
-		oldRow = getRowFrom(resizeScreen, frameY, newE.nCols)
+		// oldRow = getRowFrom(resizeScreen, frameY, newE.nCols)
+		oldRow = getRow(oldE, frameY)
 		wrap = d.putRow(&b, initialized, oldE, newE, frameY, oldRow, wrap)
 	}
 

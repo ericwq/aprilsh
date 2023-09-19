@@ -235,6 +235,8 @@ func TestNewFrame_ScrollUp(t *testing.T) {
 		// make scroll difference between terminal states
 		newE.HandleStream(v.mixSeq + v.extraSeq + v.scrollSeq)
 		oldE.HandleStream(v.mixSeq)
+		// fmt.Printf("NEW:\n%s", printCells(newE.cf))
+		// fmt.Printf("OLD:\n%s", printCells(oldE.cf))
 
 		// check the expect difference sequence
 		gotSeq := d.NewFrame(v.initialized, oldE, newE)
@@ -242,11 +244,13 @@ func TestNewFrame_ScrollUp(t *testing.T) {
 			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, gotSeq)
 		}
 
-		fmt.Printf("OLD:\n%s", printCells(oldE.cf))
-		fmt.Printf("NEW:\n%s", printCells(newE.cf))
+		fmt.Printf("gotSeq=%q\n", gotSeq)
 
 		// apply difference sequence to target
 		oldE.HandleStream(gotSeq)
+		// fmt.Printf("new scrollHead=%d, old scrollHead=%d\n", newE.cf.scrollHead, oldE.cf.scrollHead)
+		// fmt.Printf("OLD:\n%s", printCells(oldE.cf))
+		// fmt.Printf("NEW:\n%s", printCells(newE.cf))
 
 		// compare the first row to validate the scroll
 		newRow := getRow(newE, 0)
