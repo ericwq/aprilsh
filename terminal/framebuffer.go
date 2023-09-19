@@ -13,6 +13,7 @@ import (
 const (
 	SaveLineUpperLimit  = 50000
 	windowTitleStackMax = 9
+	SaveLinesRowsRatio  = 3
 )
 
 // support both (scrollable) normal screen buffer and alternate screen buffer

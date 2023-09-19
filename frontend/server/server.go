@@ -559,7 +559,8 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	}
 
 	// open parser and terminal
-	terminal, err := statesync.NewComplete(int(windowSize.Col), int(windowSize.Row), 0)
+	savedLines := int(windowSize.Row) * terminal.SaveLinesRowsRatio
+	terminal, err := statesync.NewComplete(int(windowSize.Col), int(windowSize.Row), savedLines)
 
 	// open network
 	blank := &statesync.UserStream{}

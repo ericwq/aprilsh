@@ -465,7 +465,7 @@ func (sc *STMClient) mainInit() error {
 	}
 
 	// local state
-	savedLines := row * 5
+	savedLines := row * terminal.SaveLinesRowsRatio // 3 tims rows
 	sc.localFramebuffer = terminal.NewEmulator3(col, row, savedLines)
 	sc.newState = terminal.NewEmulator3(1, 1, savedLines)
 
