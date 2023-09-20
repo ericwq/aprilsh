@@ -15,6 +15,66 @@ import (
 	"github.com/ericwq/terminfo/dynamic"
 )
 
+// LookupTerminfo attempts to find a definition for the named $TERM falling
+// back to attempting to parse the output from infocmp.
+func LookupTerminfo(name string) (ti *terminfo.Terminfo, e error) {
+	ti, e = terminfo.LookupTerminfo(name)
+	if e != nil {
+		// ti, e = loadDynamicTerminfo(name)
+		ti, _, e := dynamic.LoadTerminfo(name)
+		if e != nil {
+			return nil, e
+		}
+		terminfo.AddTerminfo(ti)
+	}
+
+	return
+}
+
+// return the specified row from terminal.
+func getRow(emu *Emulator, posY int) (row []Cell) {
+	start := emu.cf.getViewRowIdx(posY)
+	end := start + emu.nCols
+	row = emu.cf.cells[start:end]
+	return row
+}
+
+func equalRow(a, b []Cell) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func equalIntSlice(a, b []int) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+func equalStringlice(a, b []string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
 /*
  *	 The following are some interesting questions I asked several month ago. As I know terminfo
  *	 and terminal better, the answter is more clear and confident than before.
@@ -37,9 +97,9 @@ type Display struct {
 	ti           *terminfo.Terminfo
 
 	// fields from FrameState
-	cursorX, cursorY int
-	currentRendition Renditions
-	showCursorMode   bool // mosh: cursorVisible
+	// cursorX, cursorY int
+	// currentRendition Renditions
+	// showCursorMode   bool // mosh: cursorVisible
 
 	// logW *log.Logger
 }
@@ -104,84 +164,6 @@ func NewDisplay(useEnvironment bool) (d *Display, e error) {
 	return d, nil
 }
 
-// LookupTerminfo attempts to find a definition for the named $TERM falling
-// back to attempting to parse the output from infocmp.
-func LookupTerminfo(name string) (ti *terminfo.Terminfo, e error) {
-	ti, e = terminfo.LookupTerminfo(name)
-	if e != nil {
-		// ti, e = loadDynamicTerminfo(name)
-		ti, _, e := dynamic.LoadTerminfo(name)
-		if e != nil {
-			return nil, e
-		}
-		terminfo.AddTerminfo(ti)
-	}
-
-	return
-}
-
-/*
-func loadDynamicTerminfo(term string) (*terminfo.Terminfo, error) {
-	ti, _, e := dynamic.LoadTerminfo(term)
-	if e != nil {
-		return nil, e
-	}
-	return ti, nil
-}
-*/
-
-// return the specified row from the new terminal.
-func getRow(newE *Emulator, posY int) (row []Cell) {
-	start := newE.cf.getViewRowIdx(posY)
-	end := start + newE.nCols
-	row = newE.cf.cells[start:end]
-	return row
-}
-
-// extract specified row from the resize screen.
-// func getRowFrom(from []Cell, posY int, w int) (row []Cell) {
-// 	start := posY * w
-// 	end := start + w
-// 	row = from[start:end]
-// 	return row
-// }
-
-func equalRow(a, b []Cell) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}
-
-func equalIntSlice(a, b []int) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}
-
-func equalStringlice(a, b []string) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}
-
 // compare two terminals and generate mix (grapheme and control sequence) sequence
 // to rebuild the new terminal from the old one.
 //
@@ -190,6 +172,13 @@ func equalStringlice(a, b []string) bool {
 // - newE: the new terminal state.
 func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	var b strings.Builder
+
+	frame := new(FrameState)
+	frame.cursorX = 0
+	frame.cursorY = 0
+	frame.currentRendition = Renditions{}
+	frame.showCursorMode = oldE.showCursorMode
+	frame.lastFrame = oldE
 	// ti := d.ti
 
 	// has bell been rung?
@@ -255,22 +244,19 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		fmt.Fprint(&b, "\x1B[H\x1B[2J")
 
 		initialized = false // resize will force the initialized
-		d.cursorX = 0
-		d.cursorY = 0
-		d.currentRendition = Renditions{}
+		frame.cursorX = 0
+		frame.cursorY = 0
+		frame.currentRendition = Renditions{}
 	} else {
-		d.cursorX = oldE.GetCursorCol()
-		d.cursorY = oldE.GetCursorRow()
-		d.currentRendition = oldE.GetRenditions()
+		frame.cursorX = oldE.GetCursorCol()
+		frame.cursorY = oldE.GetCursorRow()
+		frame.currentRendition = oldE.GetRenditions()
 	}
-
-	// init showCursorMode from old screen
-	d.showCursorMode = oldE.showCursorMode
 
 	// is cursor visibility initialized?
 	if !initialized {
 		// fmt.Printf("#NewFrame initialized=%t, d.showCursorMode=%t\n", initialized, d.showCursorMode)
-		d.showCursorMode = false
+		frame.showCursorMode = false
 		// ti.TPuts(&b, ti.HideCursor) // civis, "\x1B[?25l" showCursorMode = false
 		fmt.Fprint(&b, "\x1B[?25l")
 	}
@@ -339,6 +325,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 
 	resizeScreen := oldE.cf.cells
 	if newE.nCols != oldE.nCols || newE.nRows != oldE.nRows {
+		// TODO resize processing
 		/* resize and copy old screen */
 		// we copy the old screen to avoid changing the same part.
 
@@ -366,11 +353,11 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	var frameY int
 	var oldRow []Cell
 	var newRow []Cell
+	var linesScrolled int
+	var scrollHeight int
 
 	// shortcut -- has display moved up(text up, window down) by a certain number of lines?
 	if initialized {
-		var linesScrolled int
-		var scrollHeight int
 
 		for row := 0; row < newE.GetHeight(); row++ {
 			newRow = getRow(newE, 0)
@@ -414,7 +401,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 
 			if linesScrolled > 0 {
 				// reset the renditions
-				d.updateRendition(&b, Renditions{}, true)
+				frame.updateRendition(&b, Renditions{}, true)
 
 				topMargin := 0
 				bottomMargin := topMargin + linesScrolled + scrollHeight - 1
@@ -423,18 +410,18 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 
 				// Common case:  if we're already on the bottom line and we're scrolling the whole
 				// creen, just do a CR and LFs.
-				if scrollHeight+linesScrolled == newE.GetHeight() && d.cursorY+1 == newE.GetHeight() {
+				if scrollHeight+linesScrolled == newE.GetHeight() && frame.cursorY+1 == newE.GetHeight() {
 					fmt.Fprint(&b, "\r")
 					fmt.Fprintf(&b, "\x1B[%dS", linesScrolled)
-					d.cursorX = 0
+					frame.cursorX = 0
 				} else {
 					// set scrolling region
 					fmt.Fprintf(&b, "\x1B[%d;%dr", topMargin+1, bottomMargin+1)
 
 					// go to bottom of scrolling region
-					d.cursorY = -1
-					d.cursorX = -1
-					d.appendSilentMove(&b, bottomMargin, 0)
+					frame.cursorY = -1
+					frame.cursorX = -1
+					frame.appendSilentMove(&b, bottomMargin, 0)
 
 					// scroll text up by <linesScrolled>
 					fmt.Fprintf(&b, "\x1B[%dS", linesScrolled)
@@ -444,8 +431,8 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 					fmt.Fprint(&b, "\x1B[r")
 
 					// invalidate cursor position after unsetting scrolling region
-					d.cursorY = -1
-					d.cursorX = -1
+					frame.cursorY = -1
+					frame.cursorX = -1
 				}
 
 				// // Now we need a proper blank row.
@@ -472,20 +459,21 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		}
 	}
 
+	// fmt.Printf("#NewFrame frameY=%2d, seq=%q\n", frameY, b.String())
 	// Now update the display, row by row
 	wrap := false
 	for ; frameY < newE.GetHeight(); frameY++ {
 		// oldRow = getRowFrom(resizeScreen, frameY, newE.nCols)
-		oldRow = getRow(oldE, frameY)
-		wrap = d.putRow(&b, initialized, oldE, newE, frameY, oldRow, wrap)
-		// fmt.Printf("#NewFrame frameY=%d, seq=%q\n", frameY, b.String())
+		oldRow = getRow(oldE, frameY+linesScrolled)
+		wrap = d.putRow(&b, initialized, frame, newE, frameY, oldRow, wrap)
+		// fmt.Printf("#NewFrame frameY=%2d, seq=%q\n", frameY, b.String())
 	}
 
 	// fmt.Printf("#NewFrame d.cursorY=%d,d.cursorX=%d newE (%d,%d)\n", d.cursorY, d.cursorX, newE.GetCursorRow(), newE.GetCursorCol())
 	// has cursor location changed?
-	if !initialized || newE.GetCursorRow() != d.cursorY || newE.GetCursorCol() != d.cursorX {
+	if !initialized || newE.GetCursorRow() != frame.cursorY || newE.GetCursorCol() != frame.cursorX {
 		// TODO using cursor position from display or cursor position from terminal?
-		d.appendMove(&b, newE.GetCursorRow(), newE.GetCursorCol())
+		frame.appendMove(&b, newE.GetCursorRow(), newE.GetCursorCol())
 	}
 
 	// has cursor visibility changed?
@@ -494,7 +482,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 
 	// fmt.Printf("#NewFrame newE=%t, d=%t, oldE=%t, initialized=%t\n",
 	// 	newE.showCursorMode, d.showCursorMode, oldE.showCursorMode, initialized)
-	if !initialized || newE.showCursorMode != d.showCursorMode {
+	if !initialized || newE.showCursorMode != frame.showCursorMode {
 		if newE.showCursorMode {
 			fmt.Fprint(&b, "\x1B[?25h") // cvvis
 		} else {
@@ -530,7 +518,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	}
 
 	// has renditions changed?
-	d.updateRendition(&b, newE.GetRenditions(), !initialized)
+	frame.updateRendition(&b, newE.GetRenditions(), !initialized)
 
 	// has bracketed paste mode changed?
 	if !initialized || newE.bracketedPasteMode != oldE.bracketedPasteMode {
@@ -705,17 +693,17 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 			fmt.Fprint(&b, "\x1B[3g") // TBC
 		} else {
 			// save the cursor position
-			cursorY := d.cursorY
-			cursorX := d.cursorX
+			cursorY := frame.cursorY
+			cursorX := frame.cursorX
 
 			// rebuild the tab stop
 			for _, tabStop := range newE.tabStops {
-				d.appendMove(&b, 0, tabStop) // CUP: move cursor to the tab stop position
-				fmt.Fprint(&b, "\x1BH")      // HTS: set current position as tab stop
+				frame.appendMove(&b, 0, tabStop) // CUP: move cursor to the tab stop position
+				fmt.Fprint(&b, "\x1BH")          // HTS: set current position as tab stop
 			}
 
 			// restore the cursor position
-			d.appendMove(&b, cursorY, cursorX)
+			frame.appendMove(&b, cursorY, cursorX)
 		}
 	}
 
@@ -773,7 +761,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 // - if the cells are not empty cell, output it.
 //
 // clear or write empty cells at EOL if possible. whether we should wrap
-func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator,
+func (d *Display) putRow(out io.Writer, initialized bool, frame *FrameState,
 	newE *Emulator, frameY int, oldRow []Cell, wrap bool) bool {
 	frameX := 0
 	newRow := getRow(newE, frameY)
@@ -781,14 +769,14 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator,
 	// If we're forced to write the first column because of wrap, go ahead and do so.
 	if wrap {
 		cell := newRow[0]
-		d.updateRendition(out, cell.GetRenditions(), false)
-		d.appendCell(out, cell)
+		frame.updateRendition(out, cell.GetRenditions(), false)
+		frame.appendCell(out, cell)
 
 		// fmt.Printf("#putRow (%2d,%2d) is wrap-: contents=%q, renditions=%q - write wrap cell\n",
 		// 	frameY, frameX, cell.contents, cell.renditions.SGR())
 
 		frameX += cell.GetWidth()
-		d.cursorX += cell.GetWidth()
+		frame.cursorX += cell.GetWidth()
 	}
 
 	// If rows are the same object, we don't need to do anything at all.
@@ -820,7 +808,7 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator,
 			// 	frameY, frameX, cell.contents, cell.renditions.SGR())
 
 			// check the renditions if it's changed.
-			d.updateRendition(out, cell.renditions, false)
+			frame.updateRendition(out, cell.renditions, false)
 			frameX += cell.GetWidth()
 			continue
 		}
@@ -850,21 +838,21 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator,
 		// Clear or write empty cells within the row (not to end).
 		if clearCount > 0 { // draw empty cells previously counting
 			// Move to the right(correct) position.
-			d.appendSilentMove(out, frameY, frameX-clearCount)
-			d.updateRendition(out, blankRenditions, false)
+			frame.appendSilentMove(out, frameY, frameX-clearCount)
+			frame.updateRendition(out, blankRenditions, false)
 
 			// pcell := newRow[frameX-clearCount]
 			// fmt.Printf("#putRow (%2d,%2d) is empty, length=%d, cell=%q, rend=%q - write empty\n",
 			// 	frameY, frameX-clearCount, clearCount, pcell.contents, pcell.renditions.SGR())
 
-			canUseErase := d.hasBCE || d.currentRendition == Renditions{}
+			canUseErase := d.hasBCE || frame.currentRendition == Renditions{}
 			if canUseErase && d.hasECH && clearCount > 4 {
 				// space is more efficient than ECH, if clearCount > 4
 				fmt.Fprintf(out, "\x1B[%dX", clearCount)
 			} else {
 				// fmt.Printf("#putRow space=%q\n", strings.Repeat(" ", clearCount))
 				fmt.Fprint(out, strings.Repeat(" ", clearCount))
-				d.cursorX = frameX
+				frame.cursorX = frameX
 			}
 
 			// If the current character is *another* empty cell in a different rendition,
@@ -891,18 +879,18 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator,
 			verification.
 		*/
 		if wrapThis && frameX+cellWidth >= rowWidth {
-			d.cursorX = -1
-			d.cursorY = -1
+			frame.cursorX = -1
+			frame.cursorY = -1
 		}
 
 		// fmt.Printf("#putRow (%2d,%2d) is diff-: contents=%q, renditions=%q - write cell\n",
 		// 	frameY, frameX, cell.contents, cell.renditions.SGR())
 
-		d.appendSilentMove(out, frameY, frameX)
-		d.updateRendition(out, cell.GetRenditions(), false)
-		d.appendCell(out, cell)
+		frame.appendSilentMove(out, frameY, frameX)
+		frame.updateRendition(out, cell.GetRenditions(), false)
+		frame.appendCell(out, cell)
 		frameX += cellWidth
-		d.cursorX += cellWidth
+		frame.cursorX += cellWidth
 		if frameX >= rowWidth {
 			wroteLastCell = true
 		}
@@ -912,19 +900,19 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator,
 	// Clear or write empty cells at EOL.
 	if clearCount > 0 {
 		// Move to the right position.
-		d.appendSilentMove(out, frameY, frameX-clearCount)
-		d.updateRendition(out, blankRenditions, false)
+		frame.appendSilentMove(out, frameY, frameX-clearCount)
+		frame.updateRendition(out, blankRenditions, false)
 
 		// pcell := newRow[frameX-clearCount]
 		// fmt.Printf("#putRow (%2d,%2d) is empty, length=%d, cell=%q, rend=%q - write empty at EOL\n",
 		// 	frameY, frameX-clearCount, clearCount, pcell.contents, pcell.renditions.SGR())
 
-		canUseErase := d.hasBCE || d.currentRendition == Renditions{}
+		canUseErase := d.hasBCE || frame.currentRendition == Renditions{}
 		if canUseErase && !wrapThis {
 			fmt.Fprint(out, "\x1B[K") // ti.el,  Erase in Line (EL), Erase to Right (default)
 		} else {
 			fmt.Fprint(out, strings.Repeat(" ", clearCount))
-			d.cursorX = frameX
+			frame.cursorX = frameX
 			wroteLastCell = true
 		}
 	}
@@ -935,89 +923,18 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator,
 		// we let the real cursor actually wrap around in cases where it wrapped around for us.
 		if wrapThis {
 			// Update our cursor, and ask for wrap on the next row.
-			d.cursorX = 0
-			d.cursorY++
+			frame.cursorX = 0
+			frame.cursorY++
 			return true
 		} else {
 			// Resort to CR/LF and update our cursor.
 			fmt.Fprint(out, "\r\n")
-			d.cursorX = 0
-			d.cursorY++
+			frame.cursorX = 0
+			frame.cursorY++
 			// fmt.Printf("#putRow display cursor position (%2d,%3d)\n", d.cursorY, d.cursorX)
 		}
 	}
 	return false
-}
-
-// generate grapheme sequence to change the terminal contents.
-// the generated sequence is wrote to the output stream.
-func (d *Display) appendCell(out io.Writer, cell Cell) {
-	// should we write space for empty contents?
-	cell.printGrapheme(out)
-}
-
-// turn off cursor if necessary, use appendMove to move cursor to position.
-// the generated sequence is wrote to the output stream.
-func (d *Display) appendSilentMove(out io.Writer, y int, x int) {
-	if d.cursorX == x && d.cursorY == y {
-		return
-	}
-	// fmt.Printf("#appendSilentMove (%2d,%2d) move showCursorMode=%t\n", y, x, d.showCursorMode)
-	// turn off cursor if necessary before moving cursor
-	if d.showCursorMode {
-		fmt.Fprint(out, "\x1B[?25l") // ti.civis
-		d.showCursorMode = false
-	}
-	d.appendMove(out, y, x)
-}
-
-// generate CUP sequence to move cursor, use CR/LF/BS sequence to replace CUP if possible.
-// the generated sequence is wrote to the output stream.
-func (d *Display) appendMove(out io.Writer, y int, x int) {
-	lastX := d.cursorX
-	lastY := d.cursorY
-
-	d.cursorX = x
-	d.cursorY = y
-
-	// fmt.Printf("#appendMove display change to (%2d,%2d)\n", d.cursorY, d.cursorX)
-	// Only optimize if cursor position is known
-	if lastX != -1 && lastY != -1 {
-		// Can we use CR and/or LF?  They're cheap and easier to trace.
-		if x == 0 && y-lastY >= 0 && y-lastY < 5 {
-			// less than 5 is efficient than CUP
-			if lastX != 0 {
-				fmt.Fprint(out, "\r") // CR
-			}
-			fmt.Fprint(out, strings.Repeat("\n", y-lastY)) // LF
-			return
-		}
-		// Backspaces are good too.
-		if y == lastY && x-lastX < 0 && x-lastX > -5 {
-			fmt.Fprint(out, strings.Repeat("\b", lastX-x)) // BS
-			return
-		}
-		// CUF is shorter than CUP
-		if y == lastY && x-lastX > 0 && x-lastX < 5 {
-			fmt.Fprintf(out, "\x1B[%dC", x-lastX) // CUF
-			return
-		}
-		// More optimizations are possible.
-	}
-
-	fmt.Fprintf(out, "\x1B[%d;%dH", y+1, x+1) // ti.cup
-}
-
-// if current renditions is different from parameter renditions, generate
-// SGR sequence to change the cell renditions and update the current renditions.
-// the generated sequence is wrote to the output stream.
-func (d *Display) updateRendition(out io.Writer, r Renditions, force bool) {
-	if force || d.currentRendition != r {
-		// fmt.Printf("#updateRendition currentRendition=%q, new renditions=%q - update renditions\n",
-		// 	d.currentRendition.SGR(), r.SGR())
-		out.Write([]byte(r.SGR()))
-		d.currentRendition = r
-	}
 }
 
 func (d *Display) titleChanged(initialized bool, oldE, newE *Emulator, b io.Writer) {
@@ -1041,6 +958,7 @@ func (d *Display) titleChanged(initialized bool, oldE, newE *Emulator, b io.Writ
 		}
 	}
 }
+
 func (d *Display) Open() string {
 	var b strings.Builder
 	if d.smcup != "" {
@@ -1077,4 +995,82 @@ func (d *Display) Clone() *Display {
 	// ignore logW
 	// ignore terminfo
 	return &clone
+}
+
+type FrameState struct {
+	cursorX, cursorY int
+	currentRendition Renditions
+	showCursorMode   bool // mosh: cursorVisible
+	lastFrame        *Emulator
+}
+
+// generate grapheme sequence to change the terminal contents.
+// the generated sequence is wrote to the output stream.
+func (fs *FrameState) appendCell(out io.Writer, cell Cell) {
+	// should we write space for empty contents?
+	cell.printGrapheme(out)
+}
+
+// turn off cursor if necessary, use appendMove to move cursor to position.
+// the generated sequence is wrote to the output stream.
+func (fs *FrameState) appendSilentMove(out io.Writer, y int, x int) {
+	if fs.cursorX == x && fs.cursorY == y {
+		return
+	}
+	// fmt.Printf("#appendSilentMove (%2d,%2d) move showCursorMode=%t\n", y, x, d.showCursorMode)
+	// turn off cursor if necessary before moving cursor
+	if fs.showCursorMode {
+		fmt.Fprint(out, "\x1B[?25l") // ti.civis
+		fs.showCursorMode = false
+	}
+	fs.appendMove(out, y, x)
+}
+
+// generate CUP sequence to move cursor, use CR/LF/BS sequence to replace CUP if possible.
+// the generated sequence is wrote to the output stream.
+func (fs *FrameState) appendMove(out io.Writer, y int, x int) {
+	lastX := fs.cursorX
+	lastY := fs.cursorY
+
+	fs.cursorX = x
+	fs.cursorY = y
+
+	// fmt.Printf("#appendMove display change to (%2d,%2d)\n", d.cursorY, d.cursorX)
+	// Only optimize if cursor position is known
+	if lastX != -1 && lastY != -1 {
+		// Can we use CR and/or LF?  They're cheap and easier to trace.
+		if x == 0 && y-lastY >= 0 && y-lastY < 5 {
+			// less than 5 is efficient than CUP
+			if lastX != 0 {
+				fmt.Fprint(out, "\r") // CR
+			}
+			fmt.Fprint(out, strings.Repeat("\n", y-lastY)) // LF
+			return
+		}
+		// Backspaces are good too.
+		if y == lastY && x-lastX < 0 && x-lastX > -5 {
+			fmt.Fprint(out, strings.Repeat("\b", lastX-x)) // BS
+			return
+		}
+		// CUF is shorter than CUP
+		if y == lastY && x-lastX > 0 && x-lastX < 5 {
+			fmt.Fprintf(out, "\x1B[%dC", x-lastX) // CUF
+			return
+		}
+		// More optimizations are possible.
+	}
+
+	fmt.Fprintf(out, "\x1B[%d;%dH", y+1, x+1) // ti.cup
+}
+
+// if current renditions is different from parameter renditions, generate
+// SGR sequence to change the cell renditions and update the current renditions.
+// the generated sequence is wrote to the output stream.
+func (fs *FrameState) updateRendition(out io.Writer, r Renditions, force bool) {
+	if force || fs.currentRendition != r {
+		// fmt.Printf("#updateRendition currentRendition=%q, new renditions=%q - update renditions\n",
+		// 	d.currentRendition.SGR(), r.SGR())
+		out.Write([]byte(r.SGR()))
+		fs.currentRendition = r
+	}
 }
