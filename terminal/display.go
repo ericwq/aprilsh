@@ -179,12 +179,13 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	frame.currentRendition = Renditions{}
 	frame.showCursorMode = oldE.showCursorMode
 	frame.lastFrame = oldE
+	frame.out = &b
 	// ti := d.ti
 
 	// has bell been rung?
 	if newE.cf.getBellCount() != oldE.cf.getBellCount() {
 		// ti.TPuts(&b, ti.Bell)
-		fmt.Fprint(&b, "\a")
+		frame.append("\a")
 	}
 
 	// has window title stack changed
@@ -199,19 +200,19 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 			// reach stack max with difference
 			// change title first then stack
 			d.titleChanged(initialized, oldE, newE, &b)
-			fmt.Fprintf(&b, "\x1B[22;0t")
+			frame.append("\x1B[22;0t")
 			titleAndStackBothChange = true
 		}
 	} else if len(newWTS) > len(oldWTS) {
 		// save title to stack
 		// change title first then stack
 		d.titleChanged(initialized, oldE, newE, &b)
-		fmt.Fprintf(&b, "\x1B[22;0t")
+		frame.append("\x1B[22;0t")
 		titleAndStackBothChange = true
 	} else {
 		// restore title from stack
 		// change stack first then title
-		fmt.Fprintf(&b, "\x1B[23;0t")
+		frame.append("\x1B[23;0t")
 		d.titleChanged(initialized, oldE, newE, &b)
 		titleAndStackBothChange = true
 	}
@@ -225,9 +226,9 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	if !initialized || newE.reverseVideo != oldE.reverseVideo {
 		// set reverse video
 		if newE.reverseVideo {
-			fmt.Fprintf(&b, "\x1B[?5h")
+			frame.append("\x1B[?5h")
 		} else {
-			fmt.Fprintf(&b, "\x1B[?5l")
+			frame.append("\x1B[?5l")
 		}
 	}
 
@@ -236,12 +237,12 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	// the size of the received terminal is changed by ApplyString()
 	if !initialized || newE.nCols != oldE.nCols || newE.nRows != oldE.nRows {
 		// TODO why reset scrolling region?
-		fmt.Fprintf(&b, "\x1B[r") // smgtb, reset scrolling region, reset top/bottom margin
+		frame.append("\x1B[r") // smgtb, reset scrolling region, reset top/bottom margin
 
 		// ti.TPuts(&b, ti.AttrOff)  // sgr0, "\x1B[0m" turn off all attribute modes
 		// ti.TPuts(&b, ti.Clear)    // clear, "\x1B[H\x1B[2J" clear screen and home cursor
-		fmt.Fprint(&b, "\x1B[0m")
-		fmt.Fprint(&b, "\x1B[H\x1B[2J")
+		frame.append("\x1B[0m")
+		frame.append("\x1B[H\x1B[2J")
 
 		initialized = false // resize will force the initialized
 		frame.cursorX = 0
@@ -258,7 +259,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		// fmt.Printf("#NewFrame initialized=%t, d.showCursorMode=%t\n", initialized, d.showCursorMode)
 		frame.showCursorMode = false
 		// ti.TPuts(&b, ti.HideCursor) // civis, "\x1B[?25l" showCursorMode = false
-		fmt.Fprint(&b, "\x1B[?25l")
+		frame.append("\x1B[?25l")
 	}
 
 	// has the screen buffer mode changed?
@@ -266,31 +267,31 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	// screen buffer mode reset the whole screen.
 	if !initialized || newE.altScreenBufferMode != oldE.altScreenBufferMode {
 		if newE.altScreenBufferMode {
-			fmt.Fprint(&b, "\x1B[?47h")
+			frame.append("\x1B[?47h")
 		} else {
-			fmt.Fprint(&b, "\x1B[?47l")
+			frame.append("\x1B[?47l")
 		}
 	}
 
 	// has the margin changed?
 	if !initialized || (newE.marginTop != oldE.marginTop || newE.marginBottom != oldE.marginBottom) {
 		if newE.cf.margin {
-			fmt.Fprintf(&b, "\x1B[%d;%dr", newE.marginTop+1, newE.marginBottom) // new margin
+			frame.append("\x1B[%d;%dr", newE.marginTop+1, newE.marginBottom) // new margin
 		} else {
-			fmt.Fprint(&b, "\x1B[r") // reset margin
+			frame.append("\x1B[r") // reset margin
 		}
 	}
 
 	// has the horizontal margin changed?
 	if !initialized || newE.horizMarginMode != oldE.horizMarginMode {
 		if newE.horizMarginMode {
-			fmt.Fprint(&b, "\x1B[?69h")
+			frame.append("\x1B[?69h")
 			if newE.hMargin != oldE.hMargin || newE.nColsEff != oldE.nColsEff {
 				// decslrm set left/right margin
-				fmt.Fprintf(&b, "\x1B[%d;%ds", newE.hMargin+1, newE.nColsEff)
+				frame.append("\x1B[%d;%ds", newE.hMargin+1, newE.nColsEff)
 			}
 		} else {
-			fmt.Fprint(&b, "\x1B[?69l")
+			frame.append("\x1B[?69l")
 		}
 	}
 
@@ -308,18 +309,18 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	// Any single shift 2 (SS2) or single shift 3 (SS3) functions sent
 	if !initialized || newE.savedCursor_DEC.isSet != oldE.savedCursor_DEC.isSet {
 		if newE.savedCursor_DEC.isSet && !oldE.savedCursor_DEC.isSet {
-			fmt.Fprint(&b, "\x1B7") // decsc
+			frame.append("\x1B7") // decsc
 		} else if !newE.savedCursor_DEC.isSet && oldE.savedCursor_DEC.isSet {
-			fmt.Fprint(&b, "\x1B8") // decrc
+			frame.append("\x1B8") // decrc
 		}
 	}
 
 	// has SCO saved cursor changed
 	if !initialized || newE.savedCursor_SCO.isSet != oldE.savedCursor_SCO.isSet {
 		if newE.savedCursor_SCO.isSet && !oldE.savedCursor_SCO.isSet {
-			fmt.Fprint(&b, "\x1B[s") // scosc
+			frame.append("\x1B[s") // scosc
 		} else if !newE.savedCursor_SCO.isSet && oldE.savedCursor_SCO.isSet {
-			fmt.Fprint(&b, "\x1B[u") // scorc
+			frame.append("\x1B[u") // scorc
 		}
 	}
 
@@ -401,7 +402,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 
 			if linesScrolled > 0 {
 				// reset the renditions
-				frame.updateRendition(&b, Renditions{}, true)
+				frame.updateRendition(Renditions{}, true)
 
 				topMargin := 0
 				bottomMargin := topMargin + linesScrolled + scrollHeight - 1
@@ -411,24 +412,23 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 				// Common case:  if we're already on the bottom line and we're scrolling the whole
 				// creen, just do a CR and LFs.
 				if scrollHeight+linesScrolled == newE.GetHeight() && frame.cursorY+1 == newE.GetHeight() {
-					fmt.Fprint(&b, "\r")
-					fmt.Fprintf(&b, "\x1B[%dS", linesScrolled)
+					frame.append("\r")
+					frame.append("\x1B[%dS", linesScrolled)
 					frame.cursorX = 0
 				} else {
 					// set scrolling region
-					fmt.Fprintf(&b, "\x1B[%d;%dr", topMargin+1, bottomMargin+1)
+					frame.append("\x1B[%d;%dr", topMargin+1, bottomMargin+1)
 
 					// go to bottom of scrolling region
 					frame.cursorY = -1
 					frame.cursorX = -1
-					frame.appendSilentMove(&b, bottomMargin, 0)
+					frame.appendSilentMove(bottomMargin, 0)
 
 					// scroll text up by <linesScrolled>
-					fmt.Fprintf(&b, "\x1B[%dS", linesScrolled)
-					// fmt.Fprint(&b, strings.Repeat("\r", linesScrolled)) // ind
+					frame.append("\x1B[%dS", linesScrolled)
 
 					// reset scrolling region
-					fmt.Fprint(&b, "\x1B[r")
+					frame.append("\x1B[r")
 
 					// invalidate cursor position after unsetting scrolling region
 					frame.cursorY = -1
@@ -459,21 +459,23 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		}
 	}
 
-	// fmt.Printf("#NewFrame frameY=%2d, seq=%q\n", frameY, b.String())
+	// seq := b.String()
+	// fmt.Printf("#NewFrame frameY=%2d, seq=%q, putRow for each.\n", frameY, seq)
 	// Now update the display, row by row
 	wrap := false
 	for ; frameY < newE.GetHeight(); frameY++ {
 		// oldRow = getRowFrom(resizeScreen, frameY, newE.nCols)
 		oldRow = getRow(oldE, frameY+linesScrolled)
-		wrap = d.putRow(&b, initialized, frame, newE, frameY, oldRow, wrap)
-		// fmt.Printf("#NewFrame frameY=%2d, seq=%q\n", frameY, b.String())
+		wrap = d.putRow(initialized, frame, newE, frameY, oldRow, wrap)
+		// fmt.Printf("#NewFrame frameY=%2d, seq=%q\n", frameY, strings.Replace(b.String(), seq, "", 1))
+		// seq = b.String()
 	}
 
 	// fmt.Printf("#NewFrame d.cursorY=%d,d.cursorX=%d newE (%d,%d)\n", d.cursorY, d.cursorX, newE.GetCursorRow(), newE.GetCursorCol())
 	// has cursor location changed?
 	if !initialized || newE.GetCursorRow() != frame.cursorY || newE.GetCursorCol() != frame.cursorX {
 		// TODO using cursor position from display or cursor position from terminal?
-		frame.appendMove(&b, newE.GetCursorRow(), newE.GetCursorCol())
+		frame.appendMove(newE.GetCursorRow(), newE.GetCursorCol())
 	}
 
 	// has cursor visibility changed?
@@ -484,9 +486,9 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	// 	newE.showCursorMode, d.showCursorMode, oldE.showCursorMode, initialized)
 	if !initialized || newE.showCursorMode != frame.showCursorMode {
 		if newE.showCursorMode {
-			fmt.Fprint(&b, "\x1B[?25h") // cvvis
+			frame.append("\x1B[?25h") // cvvis
 		} else {
-			fmt.Fprint(&b, "\x1B[?25l") // civis
+			frame.append("\x1B[?25l") // civis
 		}
 	}
 
@@ -507,139 +509,139 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		case CursorStyle_SteadyBar:
 			Ps = 6
 		}
-		fmt.Fprintf(&b, "\x1B[%d q", Ps)
+		frame.append("\x1B[%d q", Ps)
 	}
 
 	// has cursor color changed to default?
 	if !initialized || newE.cf.cursor.color != oldE.cf.cursor.color {
 		if newE.cf.cursor.color == ColorDefault {
-			fmt.Fprintf(&b, "\x1B]112\a")
+			frame.append("\x1B]112\a")
 		}
 	}
 
 	// has renditions changed?
-	frame.updateRendition(&b, newE.GetRenditions(), !initialized)
+	frame.updateRendition(newE.GetRenditions(), !initialized)
 
 	// has bracketed paste mode changed?
 	if !initialized || newE.bracketedPasteMode != oldE.bracketedPasteMode {
 		if newE.bracketedPasteMode {
-			fmt.Fprint(&b, "\x1B[?2004h")
+			frame.append("\x1B[?2004h")
 		} else {
-			fmt.Fprint(&b, "\x1B[?2004l")
+			frame.append("\x1B[?2004l")
 		}
 	}
 
 	// has mouse reporting mode changed?
 	if !initialized || newE.mouseTrk.mode != oldE.mouseTrk.mode {
 		if newE.mouseTrk.mode == MouseTrackingMode_Disable {
-			fmt.Fprint(&b, "\x1B[?1003l")
-			fmt.Fprint(&b, "\x1B[?1002l")
-			fmt.Fprint(&b, "\x1B[?1001l")
-			fmt.Fprint(&b, "\x1B[?1000l")
+			frame.append("\x1B[?1003l")
+			frame.append("\x1B[?1002l")
+			frame.append("\x1B[?1001l")
+			frame.append("\x1B[?1000l")
 		} else {
 			// close old mouse reporting mode
 			if oldE.mouseTrk.mode != MouseTrackingMode_Disable {
-				fmt.Fprintf(&b, "\x1B[?%dl", oldE.mouseTrk.mode)
+				frame.append("\x1B[?%dl", oldE.mouseTrk.mode)
 			}
 			// open new mouse reporting mode
-			fmt.Fprintf(&b, "\x1B[?%dh", newE.mouseTrk.mode)
+			frame.append("\x1B[?%dh", newE.mouseTrk.mode)
 		}
 	}
 
 	// has mouse focus mode changed?
 	if !initialized || newE.mouseTrk.focusEventMode != oldE.mouseTrk.focusEventMode {
 		if newE.mouseTrk.focusEventMode {
-			fmt.Fprint(&b, "\x1B[?1004h")
+			frame.append("\x1B[?1004h")
 		} else {
-			fmt.Fprint(&b, "\x1B[?1004l")
+			frame.append("\x1B[?1004l")
 		}
 	}
 
 	// has mouse encoding mode changed?
 	if !initialized || newE.mouseTrk.enc != oldE.mouseTrk.enc {
 		if newE.mouseTrk.enc == MouseTrackingEnc_Default {
-			fmt.Fprint(&b, "\x1B[?1015l")
-			fmt.Fprint(&b, "\x1B[?1006l")
-			fmt.Fprint(&b, "\x1B[?1005l")
+			frame.append("\x1B[?1015l")
+			frame.append("\x1B[?1006l")
+			frame.append("\x1B[?1005l")
 		} else {
 			// close old mouse encoding mode
 			if oldE.mouseTrk.enc != MouseTrackingEnc_Default {
-				fmt.Fprintf(&b, "\x1B[?%dl", oldE.mouseTrk.enc)
+				frame.append("\x1B[?%dl", oldE.mouseTrk.enc)
 			}
 			// open new mouse encoding mode
-			fmt.Fprintf(&b, "\x1B[?%dh", newE.mouseTrk.enc)
+			frame.append("\x1B[?%dh", newE.mouseTrk.enc)
 		}
 	}
 
 	// has auto wrap mode changed?
 	if !initialized || newE.autoWrapMode != oldE.autoWrapMode {
 		if newE.autoWrapMode {
-			fmt.Fprint(&b, "\x1B[?7h")
+			frame.append("\x1B[?7h")
 		} else {
-			fmt.Fprint(&b, "\x1B[?7l")
+			frame.append("\x1B[?7l")
 		}
 	}
 
 	// has auto newline mode changed?
 	if !initialized || newE.autoNewlineMode != oldE.autoNewlineMode {
 		if newE.autoNewlineMode {
-			fmt.Fprint(&b, "\x1B[20h")
+			frame.append("\x1B[20h")
 		} else {
-			fmt.Fprint(&b, "\x1B[20l")
+			frame.append("\x1B[20l")
 		}
 	}
 
 	// has keyboard action mode changed?
 	if !initialized || newE.keyboardLocked != oldE.keyboardLocked {
 		if newE.keyboardLocked {
-			fmt.Fprint(&b, "\x1B[2h")
+			frame.append("\x1B[2h")
 		} else {
-			fmt.Fprint(&b, "\x1B[2l")
+			frame.append("\x1B[2l")
 		}
 	}
 
 	// has insert mode changed?
 	if !initialized || newE.insertMode != oldE.insertMode {
 		if newE.insertMode {
-			fmt.Fprint(&b, "\x1B[4h")
+			frame.append("\x1B[4h")
 		} else {
-			fmt.Fprint(&b, "\x1B[4l")
+			frame.append("\x1B[4l")
 		}
 	}
 
 	// has local echo changed?
 	if !initialized || newE.localEcho != oldE.localEcho {
 		if newE.localEcho {
-			fmt.Fprint(&b, "\x1B[12l") // reverse order
+			frame.append("\x1B[12l") // reverse order
 		} else {
-			fmt.Fprint(&b, "\x1B[12h") // reverse order
+			frame.append("\x1B[12h") // reverse order
 		}
 	}
 
 	// has backspace send delete changed?
 	if !initialized || newE.bkspSendsDel != oldE.bkspSendsDel {
 		if newE.bkspSendsDel {
-			fmt.Fprint(&b, "\x1B[?67l") // DECRST reverse order
+			frame.append("\x1B[?67l") // DECRST reverse order
 		} else {
-			fmt.Fprint(&b, "\x1B[?67h") // DECSET reverse order
+			frame.append("\x1B[?67h") // DECSET reverse order
 		}
 	}
 
 	// has alt key as ESC changed?
 	if !initialized || newE.altSendsEscape != oldE.altSendsEscape {
 		if newE.altSendsEscape {
-			fmt.Fprint(&b, "\x1B[?1036h") // DECSET
+			frame.append("\x1B[?1036h") // DECSET
 		} else {
-			fmt.Fprint(&b, "\x1B[?1036l") // DECRST
+			frame.append("\x1B[?1036l") // DECRST
 		}
 	}
 
 	// has altScrollMode changed?
 	if !initialized || newE.altScrollMode != oldE.altScrollMode {
 		if newE.altScrollMode {
-			fmt.Fprint(&b, "\x1B[?1007h") // DECSET
+			frame.append("\x1B[?1007h") // DECSET
 		} else {
-			fmt.Fprint(&b, "\x1B[?1007l") // DECRST
+			frame.append("\x1B[?1007l") // DECRST
 		}
 	}
 
@@ -648,9 +650,9 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	if !initialized || newE.cursorKeyMode != oldE.cursorKeyMode {
 		switch newE.cursorKeyMode {
 		case CursorKeyMode_Application:
-			fmt.Fprint(&b, "\x1B[?1h") // DECSET
+			frame.append("\x1B[?1h") // DECSET
 		case CursorKeyMode_ANSI:
-			fmt.Fprint(&b, "\x1B[?1l") // DECRST
+			frame.append("\x1B[?1l") // DECRST
 		}
 	}
 
@@ -658,9 +660,9 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	if !initialized || newE.originMode != oldE.originMode {
 		switch newE.originMode {
 		case OriginMode_ScrollingRegion:
-			fmt.Fprint(&b, "\x1B[?6h") // DECSET
+			frame.append("\x1B[?6h") // DECSET
 		case OriginMode_Absolute:
-			fmt.Fprint(&b, "\x1B[?6l") // DECRST
+			frame.append("\x1B[?6l") // DECRST
 		}
 	}
 
@@ -669,9 +671,9 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	if !initialized || newE.keypadMode != oldE.keypadMode {
 		switch newE.keypadMode {
 		case KeypadMode_Application:
-			fmt.Fprint(&b, "\x1B=") // DECKPAM
+			frame.append("\x1B=") // DECKPAM
 		case KeypadMode_Normal:
-			fmt.Fprint(&b, "\x1B>") // DECKPNM
+			frame.append("\x1B>") // DECKPNM
 		}
 	}
 
@@ -679,9 +681,9 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	if !initialized || newE.colMode != oldE.colMode {
 		switch newE.colMode {
 		case ColMode_C132:
-			fmt.Fprint(&b, "\x1B[?3h") // DECSET
+			frame.append("\x1B[?3h") // DECSET
 		case ColMode_C80:
-			fmt.Fprint(&b, "\x1B[?3l") // DECRST
+			frame.append("\x1B[?3l") // DECRST
 		}
 	}
 
@@ -690,7 +692,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		// if !initialized || !reflect.DeepEqual(newE.tabStops, oldE.tabStops) {
 		if len(newE.tabStops) == 0 {
 			// clear tab stop if necessary
-			fmt.Fprint(&b, "\x1B[3g") // TBC
+			frame.append("\x1B[3g") // TBC
 		} else {
 			// save the cursor position
 			cursorY := frame.cursorY
@@ -698,12 +700,12 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 
 			// rebuild the tab stop
 			for _, tabStop := range newE.tabStops {
-				frame.appendMove(&b, 0, tabStop) // CUP: move cursor to the tab stop position
-				fmt.Fprint(&b, "\x1BH")          // HTS: set current position as tab stop
+				frame.appendMove(0, tabStop) // CUP: move cursor to the tab stop position
+				frame.append("\x1BH")        // HTS: set current position as tab stop
 			}
 
 			// restore the cursor position
-			frame.appendMove(&b, cursorY, cursorX)
+			frame.appendMove(cursorY, cursorX)
 		}
 	}
 
@@ -711,11 +713,11 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	if !initialized || newE.compatLevel != oldE.compatLevel {
 		switch newE.compatLevel {
 		case CompatLevel_VT52:
-			fmt.Fprint(&b, "\x1B[?2l") // DECSET
+			frame.append("\x1B[?2l") // DECSET
 		case CompatLevel_VT100:
-			fmt.Fprint(&b, "\x1B[61\"p") // DECSCL
+			frame.append("\x1B[61\"p") // DECSCL
 		case CompatLevel_VT400:
-			fmt.Fprint(&b, "\x1B[64\"p") // DECSCL
+			frame.append("\x1B[64\"p") // DECSCL
 		}
 	}
 
@@ -725,14 +727,14 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		// the possible value for modifyOtherKeys is [0,1,2]
 		// fmt.Printf("#NewFrame modifyOtherKeys newE=%d, oldE=%d, initialized=%t\n",
 		// 	newE.modifyOtherKeys, oldE.modifyOtherKeys, initialized)
-		fmt.Fprintf(&b, "\x1B[>4;%dm", newE.modifyOtherKeys)
+		frame.append("\x1B[>4;%dm", newE.modifyOtherKeys)
 	}
 
 	// has OSC 52 selection data changed?
 	if !initialized || newE.selectionData != oldE.selectionData {
 		// the selectionData is in the form of "\x1B]52;%s;%s\x1B\\"
 		// see hdl_osc_52() for detail
-		fmt.Fprint(&b, newE.selectionData)
+		frame.append(newE.selectionData)
 	}
 
 	// TODO do we need to consider cursor selection area.
@@ -761,7 +763,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 // - if the cells are not empty cell, output it.
 //
 // clear or write empty cells at EOL if possible. whether we should wrap
-func (d *Display) putRow(out io.Writer, initialized bool, frame *FrameState,
+func (d *Display) putRow(initialized bool, frame *FrameState,
 	newE *Emulator, frameY int, oldRow []Cell, wrap bool) bool {
 	frameX := 0
 	newRow := getRow(newE, frameY)
@@ -769,8 +771,8 @@ func (d *Display) putRow(out io.Writer, initialized bool, frame *FrameState,
 	// If we're forced to write the first column because of wrap, go ahead and do so.
 	if wrap {
 		cell := newRow[0]
-		frame.updateRendition(out, cell.GetRenditions(), false)
-		frame.appendCell(out, cell)
+		frame.updateRendition(cell.GetRenditions(), false)
+		frame.appendCell(cell)
 
 		// fmt.Printf("#putRow (%2d,%2d) is wrap-: contents=%q, renditions=%q - write wrap cell\n",
 		// 	frameY, frameX, cell.contents, cell.renditions.SGR())
@@ -808,7 +810,7 @@ func (d *Display) putRow(out io.Writer, initialized bool, frame *FrameState,
 			// 	frameY, frameX, cell.contents, cell.renditions.SGR())
 
 			// check the renditions if it's changed.
-			frame.updateRendition(out, cell.renditions, false)
+			frame.updateRendition(cell.renditions, false)
 			frameX += cell.GetWidth()
 			continue
 		}
@@ -838,8 +840,8 @@ func (d *Display) putRow(out io.Writer, initialized bool, frame *FrameState,
 		// Clear or write empty cells within the row (not to end).
 		if clearCount > 0 { // draw empty cells previously counting
 			// Move to the right(correct) position.
-			frame.appendSilentMove(out, frameY, frameX-clearCount)
-			frame.updateRendition(out, blankRenditions, false)
+			frame.appendSilentMove(frameY, frameX-clearCount)
+			frame.updateRendition(blankRenditions, false)
 
 			// pcell := newRow[frameX-clearCount]
 			// fmt.Printf("#putRow (%2d,%2d) is empty, length=%d, cell=%q, rend=%q - write empty\n",
@@ -848,10 +850,10 @@ func (d *Display) putRow(out io.Writer, initialized bool, frame *FrameState,
 			canUseErase := d.hasBCE || frame.currentRendition == Renditions{}
 			if canUseErase && d.hasECH && clearCount > 4 {
 				// space is more efficient than ECH, if clearCount > 4
-				fmt.Fprintf(out, "\x1B[%dX", clearCount)
+				frame.append("\x1B[%dX", clearCount)
 			} else {
 				// fmt.Printf("#putRow space=%q\n", strings.Repeat(" ", clearCount))
-				fmt.Fprint(out, strings.Repeat(" ", clearCount))
+				frame.append(strings.Repeat(" ", clearCount))
 				frame.cursorX = frameX
 			}
 
@@ -886,9 +888,9 @@ func (d *Display) putRow(out io.Writer, initialized bool, frame *FrameState,
 		// fmt.Printf("#putRow (%2d,%2d) is diff-: contents=%q, renditions=%q - write cell\n",
 		// 	frameY, frameX, cell.contents, cell.renditions.SGR())
 
-		frame.appendSilentMove(out, frameY, frameX)
-		frame.updateRendition(out, cell.GetRenditions(), false)
-		frame.appendCell(out, cell)
+		frame.appendSilentMove(frameY, frameX)
+		frame.updateRendition(cell.GetRenditions(), false)
+		frame.appendCell(cell)
 		frameX += cellWidth
 		frame.cursorX += cellWidth
 		if frameX >= rowWidth {
@@ -900,8 +902,8 @@ func (d *Display) putRow(out io.Writer, initialized bool, frame *FrameState,
 	// Clear or write empty cells at EOL.
 	if clearCount > 0 {
 		// Move to the right position.
-		frame.appendSilentMove(out, frameY, frameX-clearCount)
-		frame.updateRendition(out, blankRenditions, false)
+		frame.appendSilentMove(frameY, frameX-clearCount)
+		frame.updateRendition(blankRenditions, false)
 
 		// pcell := newRow[frameX-clearCount]
 		// fmt.Printf("#putRow (%2d,%2d) is empty, length=%d, cell=%q, rend=%q - write empty at EOL\n",
@@ -909,9 +911,9 @@ func (d *Display) putRow(out io.Writer, initialized bool, frame *FrameState,
 
 		canUseErase := d.hasBCE || frame.currentRendition == Renditions{}
 		if canUseErase && !wrapThis {
-			fmt.Fprint(out, "\x1B[K") // ti.el,  Erase in Line (EL), Erase to Right (default)
+			frame.append("\x1B[K") // ti.el,  Erase in Line (EL), Erase to Right (default)
 		} else {
-			fmt.Fprint(out, strings.Repeat(" ", clearCount))
+			frame.append(strings.Repeat(" ", clearCount))
 			frame.cursorX = frameX
 			wroteLastCell = true
 		}
@@ -928,7 +930,7 @@ func (d *Display) putRow(out io.Writer, initialized bool, frame *FrameState,
 			return true
 		} else {
 			// Resort to CR/LF and update our cursor.
-			fmt.Fprint(out, "\r\n")
+			frame.append("\r\n")
 			frame.cursorX = 0
 			frame.cursorY++
 			// fmt.Printf("#putRow display cursor position (%2d,%3d)\n", d.cursorY, d.cursorX)
@@ -1002,33 +1004,42 @@ type FrameState struct {
 	currentRendition Renditions
 	showCursorMode   bool // mosh: cursorVisible
 	lastFrame        *Emulator
+	out              io.Writer
+}
+
+func (fs *FrameState) append(x string, v ...any) {
+	if len(v) == 0 {
+		fmt.Fprint(fs.out, x)
+	} else {
+		fmt.Fprintf(fs.out, x, v...)
+	}
 }
 
 // generate grapheme sequence to change the terminal contents.
 // the generated sequence is wrote to the output stream.
-func (fs *FrameState) appendCell(out io.Writer, cell Cell) {
+func (fs *FrameState) appendCell(cell Cell) {
 	// should we write space for empty contents?
-	cell.printGrapheme(out)
+	cell.printGrapheme(fs.out)
 }
 
 // turn off cursor if necessary, use appendMove to move cursor to position.
 // the generated sequence is wrote to the output stream.
-func (fs *FrameState) appendSilentMove(out io.Writer, y int, x int) {
+func (fs *FrameState) appendSilentMove(y int, x int) {
 	if fs.cursorX == x && fs.cursorY == y {
 		return
 	}
 	// fmt.Printf("#appendSilentMove (%2d,%2d) move showCursorMode=%t\n", y, x, d.showCursorMode)
 	// turn off cursor if necessary before moving cursor
 	if fs.showCursorMode {
-		fmt.Fprint(out, "\x1B[?25l") // ti.civis
+		fs.append("\x1B[?25l") // ti.civis
 		fs.showCursorMode = false
 	}
-	fs.appendMove(out, y, x)
+	fs.appendMove(y, x)
 }
 
 // generate CUP sequence to move cursor, use CR/LF/BS sequence to replace CUP if possible.
 // the generated sequence is wrote to the output stream.
-func (fs *FrameState) appendMove(out io.Writer, y int, x int) {
+func (fs *FrameState) appendMove(y int, x int) {
 	lastX := fs.cursorX
 	lastY := fs.cursorY
 
@@ -1042,35 +1053,35 @@ func (fs *FrameState) appendMove(out io.Writer, y int, x int) {
 		if x == 0 && y-lastY >= 0 && y-lastY < 5 {
 			// less than 5 is efficient than CUP
 			if lastX != 0 {
-				fmt.Fprint(out, "\r") // CR
+				fs.append("\r") // CR
 			}
-			fmt.Fprint(out, strings.Repeat("\n", y-lastY)) // LF
+			fs.append(strings.Repeat("\n", y-lastY)) // LF
 			return
 		}
 		// Backspaces are good too.
 		if y == lastY && x-lastX < 0 && x-lastX > -5 {
-			fmt.Fprint(out, strings.Repeat("\b", lastX-x)) // BS
+			fs.append(strings.Repeat("\b", lastX-x)) // BS
 			return
 		}
 		// CUF is shorter than CUP
 		if y == lastY && x-lastX > 0 && x-lastX < 5 {
-			fmt.Fprintf(out, "\x1B[%dC", x-lastX) // CUF
+			fs.append("\x1B[%dC", x-lastX) // CUF
 			return
 		}
 		// More optimizations are possible.
 	}
 
-	fmt.Fprintf(out, "\x1B[%d;%dH", y+1, x+1) // ti.cup
+	fs.append("\x1B[%d;%dH", y+1, x+1) // ti.cup
 }
 
 // if current renditions is different from parameter renditions, generate
 // SGR sequence to change the cell renditions and update the current renditions.
 // the generated sequence is wrote to the output stream.
-func (fs *FrameState) updateRendition(out io.Writer, r Renditions, force bool) {
+func (fs *FrameState) updateRendition(r Renditions, force bool) {
 	if force || fs.currentRendition != r {
 		// fmt.Printf("#updateRendition currentRendition=%q, new renditions=%q - update renditions\n",
 		// 	d.currentRendition.SGR(), r.SGR())
-		out.Write([]byte(r.SGR()))
+		fs.append(r.SGR())
 		fs.currentRendition = r
 	}
 }
