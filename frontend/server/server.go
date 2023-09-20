@@ -434,13 +434,14 @@ func main() {
 	pprof.StartCPUProfile(cpuf)
 	defer pprof.StopCPUProfile()
 
-	f, err := os.Create("mem.profile")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	pprof.WriteHeapProfile(f)
-	defer f.Close()
+	// f, err := os.Create("mem.profile")
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
+	// pprof.WriteHeapProfile(f)
+	// defer f.Close()
+
 	// we need a webserver to get the pprof webserver
 	// go func() {
 	// 	fmt.Println(http.ListenAndServe("localhost:6060", nil))
