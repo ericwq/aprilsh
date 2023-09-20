@@ -139,12 +139,12 @@ func getRow(newE *Emulator, posY int) (row []Cell) {
 }
 
 // extract specified row from the resize screen.
-func getRowFrom(from []Cell, posY int, w int) (row []Cell) {
-	start := posY * w
-	end := start + w
-	row = from[start:end]
-	return row
-}
+// func getRowFrom(from []Cell, posY int, w int) (row []Cell) {
+// 	start := posY * w
+// 	end := start + w
+// 	row = from[start:end]
+// 	return row
+// }
 
 func equalRow(a, b []Cell) bool {
 	if len(a) != len(b) {
@@ -448,35 +448,37 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 					d.cursorX = -1
 				}
 
-				// Now we need a proper blank row.
-				blankRow := make([]Cell, newE.nCols)
-				for i := range blankRow {
-					// set both contents and renditions
-					blankRow[i] = newE.attrs
-				}
-
-				// do the move in our local new screen
-				for i := topMargin; i <= bottomMargin; i++ {
-					dstStart := i * newE.nCols
-
-					if i+linesScrolled <= bottomMargin {
-						copy(resizeScreen[dstStart:], getRow(oldE, linesScrolled+i))
-						// copy(resizeScreen[dstStart:], getRowFrom(resizeScreen, linesScrolled+i, newE.nCols))
-					} else {
-						copy(resizeScreen[dstStart:], blankRow[:])
-						fmt.Printf("row %d is blank\n", i)
-					}
-				}
-
+				// // Now we need a proper blank row.
+				// blankRow := make([]Cell, newE.nCols)
+				// for i := range blankRow {
+				// 	// set both contents and renditions
+				// 	blankRow[i] = newE.attrs
+				// }
+				//
+				// // do the move in our local new screen
+				// for i := topMargin; i <= bottomMargin; i++ {
+				// 	dstStart := i * newE.nCols
+				//
+				// 	if i+linesScrolled <= bottomMargin {
+				// 		copy(resizeScreen[dstStart:], getRow(oldE, linesScrolled+i))
+				// 		// copy(resizeScreen[dstStart:], getRowFrom(resizeScreen, linesScrolled+i, newE.nCols))
+				// 	} else {
+				// 		copy(resizeScreen[dstStart:], blankRow[:])
+				// 		// fmt.Printf("row %d is blank\n", i)
+				// 	}
+				// }
+				//
 			}
 		}
 	}
+
 	// Now update the display, row by row
 	wrap := false
 	for ; frameY < newE.GetHeight(); frameY++ {
 		// oldRow = getRowFrom(resizeScreen, frameY, newE.nCols)
 		oldRow = getRow(oldE, frameY)
 		wrap = d.putRow(&b, initialized, oldE, newE, frameY, oldRow, wrap)
+		// fmt.Printf("#NewFrame frameY=%d, seq=%q\n", frameY, b.String())
 	}
 
 	// fmt.Printf("#NewFrame d.cursorY=%d,d.cursorX=%d newE (%d,%d)\n", d.cursorY, d.cursorX, newE.GetCursorRow(), newE.GetCursorCol())
@@ -792,6 +794,7 @@ func (d *Display) putRow(out io.Writer, initialized bool, oldE *Emulator,
 	// If rows are the same object, we don't need to do anything at all.
 	// if initialized && reflect.DeepEqual(newRow, oldRow) {
 	if initialized && equalRow(newRow, oldRow) {
+		// fmt.Printf("same row %d\n", frameY)
 		return false
 	}
 
