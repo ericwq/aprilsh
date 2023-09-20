@@ -1196,7 +1196,7 @@ func newMainSrv(conf *Config, runWorker func(*Config, chan string, chan *workhor
 	m.downChan = make(chan bool, 1)
 	m.exChan = make(chan string, 1)
 	m.whChan = make(chan *workhorse, 1)
-	m.timeout = 200
+	m.timeout = 20
 	m.eg = errgroup.Group{}
 
 	return &m
@@ -1453,6 +1453,7 @@ func (m *mainSrv) isPortExist(port int) bool {
 // write header and message to addr
 func (m *mainSrv) writeRespTo(addr *net.UDPAddr, header, msg string) (resp string) {
 	resp = fmt.Sprintf("%s%s\n", header, msg)
+	util.Log.With("resp", resp).Debug("writeRespTo")
 	m.conn.SetDeadline(time.Now().Add(time.Millisecond * 200))
 	m.conn.WriteToUDP([]byte(resp), addr)
 	return
