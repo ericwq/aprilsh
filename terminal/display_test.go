@@ -14,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/util"
 )
 
@@ -1173,5 +1174,45 @@ func BenchmarkEqualRow(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		equalRow2(x, y)
+	}
+}
+
+func BenchmarkStringBuilder(b *testing.B) {
+	buf := encrypt.PrngFill(16)
+	var bd strings.Builder
+
+	bd.Grow(len(buf) * 5)
+	for i := 0; i < b.N; i++ {
+		bd.Write(buf)
+	}
+}
+
+func BenchmarkAppend(b *testing.B) {
+
+	var sb strings.Builder
+
+	frame := new(FrameState)
+	frame.cursorX = 0
+	frame.cursorY = 0
+	frame.currentRendition = Renditions{}
+	frame.out = &sb
+
+	for i := 0; i < b.N; i++ {
+		frame.append("payload")
+	}
+}
+
+func BenchmarkAppendx(b *testing.B) {
+
+	var sb strings.Builder
+
+	frame := new(FrameState)
+	frame.cursorX = 0
+	frame.cursorY = 0
+	frame.currentRendition = Renditions{}
+	frame.out = &sb
+
+	for i := 0; i < b.N; i++ {
+		frame.append("%s", "powerpoint")
 	}
 }

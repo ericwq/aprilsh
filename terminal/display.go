@@ -6,7 +6,6 @@ package terminal
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
@@ -1004,13 +1003,15 @@ type FrameState struct {
 	currentRendition Renditions
 	showCursorMode   bool // mosh: cursorVisible
 	lastFrame        *Emulator
-	out              io.Writer
+	out              *strings.Builder
 }
 
 func (fs *FrameState) append(x string, v ...any) {
 	if len(v) == 0 {
-		fmt.Fprint(fs.out, x)
+		fs.out.WriteString(x)
+		// fmt.Fprint(fs.out, x)
 	} else {
+		// fs.out.WriteString(fmt.Sprintf(x, v...))
 		fmt.Fprintf(fs.out, x, v...)
 	}
 }
