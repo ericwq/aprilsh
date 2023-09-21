@@ -963,7 +963,7 @@ mainLoop:
 
 		// abort if no connection over 60 seconds
 		if network.GetRemoteStateNum() == 0 && timeSinceRemoteState >= timeoutIfNoClient {
-			fmt.Printf("No connection within %d seconds\n", timeoutIfNoClient/1000)
+			util.Log.With("seconds", timeoutIfNoClient/1000).Warn("No connection within %d seconds")
 			break
 		}
 
@@ -1033,7 +1033,8 @@ func printWelcome(pid int, port int, tty *os.File) {
 	if tty != nil {
 		inputUTF8, err := util.CheckIUTF8(int(tty.Fd()))
 		if err != nil {
-			fmt.Printf("Warning: %s\n", err)
+			// fmt.Printf("Warning: %s\n", err)
+			util.Log.Warn(err.Error())
 		}
 
 		if !inputUTF8 {

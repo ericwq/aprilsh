@@ -383,7 +383,7 @@ func main() {
 	client.main()
 	client.shutdown()
 
-	fmt.Printf("\r")
+	fmt.Printf("\n")
 }
 
 type STMClient struct {
