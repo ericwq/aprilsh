@@ -220,9 +220,10 @@ func (c *Config) fetchKey(password string) error {
 	*/
 
 	// open aprilsh:60001,31kR3xgfmNxhDESXQ8VIQw==
-	body := strings.Split(strings.TrimSuffix(out, "\n"), ":")
+	// util.Log.With("out", out).Debug("fetchKey")
+	body := strings.Split(out, ":")
 	if len(body) != 2 || !strings.HasPrefix(_ASH_OPEN, body[0]) {
-		resp := fmt.Sprintf("no response, please make sure the server is running. %s", strings.TrimSuffix(out, "\n"))
+		resp := fmt.Sprintf("no response, please make sure the server is running. %s", out)
 		return errors.New(resp)
 	}
 

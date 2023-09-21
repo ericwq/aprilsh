@@ -485,7 +485,7 @@ func beginClientConn(port string) {
 
 	// request from server
 	request := fmt.Sprintf("%s", _ASH_OPEN)
-	conn.SetDeadline(time.Now().Add(time.Millisecond * 10))
+	conn.SetDeadline(time.Now().Add(time.Millisecond * 20))
 	n, err := conn.WriteTo([]byte(request), dest)
 	if err != nil {
 		fmt.Println("write to udp: ", err)
@@ -497,7 +497,7 @@ func beginClientConn(port string) {
 
 	// read the response
 	response := make([]byte, 128)
-	conn.SetDeadline(time.Now().Add(time.Millisecond * 10))
+	conn.SetDeadline(time.Now().Add(time.Millisecond * 40))
 	m, _, err := conn.ReadFrom(response)
 	if err != nil {
 		fmt.Println(err)
@@ -1453,8 +1453,8 @@ func (m *mainSrv) isPortExist(port int) bool {
 // write header and message to addr
 func (m *mainSrv) writeRespTo(addr *net.UDPAddr, header, msg string) (resp string) {
 	resp = fmt.Sprintf("%s%s\n", header, msg)
-	util.Log.With("resp", resp).Debug("writeRespTo")
-	m.conn.SetDeadline(time.Now().Add(time.Millisecond * 200))
+	// util.Log.With("resp", resp).Debug("writeRespTo")
+	m.conn.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(m.timeout)))
 	m.conn.WriteToUDP([]byte(resp), addr)
 	return
 }
