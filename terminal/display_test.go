@@ -1150,16 +1150,65 @@ func TestDisplayClone(t *testing.T) {
 	// }
 }
 
-func equalRow2(a, b []Cell) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
+/*
+	func equalIntSlice(a, b []int) bool {
+		if len(a) != len(b) {
 			return false
 		}
+		for i := range a {
+			if a[i] != b[i] {
+				return false
+			}
+		}
+		return true
 	}
-	return true
+
+	func equalStringlice(a, b []string) bool {
+		if len(a) != len(b) {
+			return false
+		}
+		for i := range a {
+			if a[i] != b[i] {
+				return false
+			}
+		}
+		return true
+	}
+*/
+
+func TestEqualSlice(t *testing.T) {
+
+	a := []int{1, 2, 3, 4}
+	b := []int{1, 2, 3, 2}
+
+	if equalSlice(a, b) {
+		t.Errorf("compare two int slice should return false\n")
+	}
+
+	c := []string{"h", "e", "l", "l", "o"}
+	d := []string{"h", "e", "l", "l", "a"}
+
+	if equalSlice(c, d) {
+		t.Errorf("compare two string slice should return false\n")
+	}
+}
+
+func BenchmarkEqualSlice(b *testing.B) {
+	a := []int{1, 2, 3, 4}
+	c := []int{1, 2, 3, 2}
+
+	for i := 0; i < b.N; i++ {
+		equalSlice(a, c)
+	}
+}
+
+func BenchmarkEqualSlice2(b *testing.B) {
+	c := []string{"h", "e", "l", "l", "o"}
+	d := []string{"h", "e", "l", "l", "a"}
+
+	for i := 0; i < b.N; i++ {
+		equalSlice(c, d)
+	}
 }
 
 func BenchmarkEqualRow(b *testing.B) {
@@ -1173,7 +1222,7 @@ func BenchmarkEqualRow(b *testing.B) {
 	}
 
 	for i := 0; i < b.N; i++ {
-		equalRow2(x, y)
+		equalRow(x, y)
 	}
 }
 

@@ -13,6 +13,7 @@ import (
 	"github.com/ericwq/terminfo"
 	_ "github.com/ericwq/terminfo/base"
 	"github.com/ericwq/terminfo/dynamic"
+	"golang.org/x/exp/constraints"
 )
 
 // LookupTerminfo attempts to find a definition for the named $TERM falling
@@ -51,19 +52,7 @@ func equalRow(a, b []Cell) bool {
 	return true
 }
 
-func equalIntSlice(a, b []int) bool {
-	if len(a) != len(b) {
-		return false
-	}
-	for i := range a {
-		if a[i] != b[i] {
-			return false
-		}
-	}
-	return true
-}
-
-func equalStringlice(a, b []string) bool {
+func equalSlice[T constraints.Ordered](a, b []T) bool {
 	if len(a) != len(b) {
 		return false
 	}
@@ -198,7 +187,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	newWTS := newE.cf.windowTitleStack
 	titleAndStackBothChange := false
 	if len(oldWTS) == len(newWTS) {
-		if len(newWTS) == windowTitleStackMax && !equalStringlice(oldWTS, newWTS) {
+		if len(newWTS) == windowTitleStackMax && !equalSlice(oldWTS, newWTS) {
 			// if len(newWTS) == windowTitleStackMax && !reflect.DeepEqual(oldWTS, newWTS) {
 			// reach stack max with difference
 			// change title first then stack
@@ -691,7 +680,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	}
 
 	// has tab stop position changed?
-	if !initialized || !equalIntSlice(newE.tabStops, oldE.tabStops) {
+	if !initialized || !equalSlice(newE.tabStops, oldE.tabStops) {
 		// if !initialized || !reflect.DeepEqual(newE.tabStops, oldE.tabStops) {
 		if len(newE.tabStops) == 0 {
 			// clear tab stop if necessary
