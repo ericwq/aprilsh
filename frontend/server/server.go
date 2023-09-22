@@ -871,8 +871,9 @@ mainLoop:
 				if !childReleased {
 					_, err := ptmx.WriteString("\n")
 					if err != nil {
-						util.Log.With("error", err).Error("release child failed")
+						util.Log.With("error", err).Error("release shell failed")
 					}
+					// util.Log.Debug("send release shell key.")
 					childReleased = true
 				}
 			}
@@ -890,7 +891,9 @@ mainLoop:
 					out := complete.Act(masterMsg.Data)
 					terminalToHost.WriteString(out)
 
-					util.Log.With("arise", "master").With("data", masterMsg.Data).With("out", out).Debug("input from host")
+					util.Log.With("arise", "master").
+						With("data", masterMsg.Data).
+						With("out", out).Debug("input from host")
 
 					// update client with new state of terminal
 					network.SetCurrentState(complete)
@@ -1132,11 +1135,15 @@ func startShell(pts *os.File, utmpHost string, conf *Config) (*os.Process, error
 	*/
 
 	// wait for serve() to release us
-	var buf bytes.Buffer
-	if _, err := pts.Read(buf.Bytes()); err != nil {
-		util.Log.With("error", err).Error("wait for release failed")
+	buf := make([]byte, 128)
+	// var n int
+	// var err error
+
+	if n, err := pts.Read(buf); err != nil {
+		util.Log.With("error", err).With("n", n).Error("wait for release shell failed")
 		return nil, err
 	}
+	// util.Log.With("buf", buf[:n]).Debug("got release shell key.")
 
 	proc, err := os.StartProcess(conf.commandPath, conf.commandArgv, &procAttr)
 	if err != nil {
