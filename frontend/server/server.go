@@ -771,11 +771,11 @@ mainLoop:
 		// util.Log.With("point", "b").Debug("mainLoop")
 		select {
 		case <-timer.C:
-			util.Log.With("complete", complete.WaitTime(now)).
-				// With("network", network.WaitTime()).
-				With("networkSleep", networkSleep).
-				With("timeout", timeout).
-				Debug("mainLoop")
+			// util.Log.With("complete", complete.WaitTime(now)).
+			// 	// With("network", network.WaitTime()).
+			// 	With("networkSleep", networkSleep).
+			// 	With("timeout", timeout).
+			// 	Debug("mainLoop")
 		case socketMsg := <-networkChan: // packet received from the network
 			if socketMsg.Err != nil {
 				// fmt.Printf("#readFromSocket receive error:%s\n", socketMsg.Err)

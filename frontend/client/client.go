@@ -877,10 +877,10 @@ mainLoop:
 
 		select {
 		case <-timer.C:
-			util.Log.With("overlays", sc.overlays.WaitTime()).
-				With("network", sc.network.WaitTime()).
-				With("waitTime", waitTime).
-				Debug("mainLoop")
+			// util.Log.With("overlays", sc.overlays.WaitTime()).
+			// 	With("network", sc.network.WaitTime()).
+			// 	With("waitTime", waitTime).
+			// 	Debug("mainLoop")
 		case networkMsg := <-networkChan:
 
 			// got data from server
