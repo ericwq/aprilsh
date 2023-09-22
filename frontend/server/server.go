@@ -497,7 +497,7 @@ func beginClientConn(port string) {
 
 	// read the response
 	response := make([]byte, 128)
-	conn.SetDeadline(time.Now().Add(time.Millisecond * 40))
+	conn.SetDeadline(time.Now().Add(time.Millisecond * 90))
 	m, _, err := conn.ReadFrom(response)
 	if err != nil {
 		fmt.Println(err)
@@ -609,6 +609,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	// start the udp server, serve the udp request
 	waitChan := make(chan bool)
 	go conf.serve(ptmx, terminal, waitChan, network, networkTimeout, networkSignaledTimeout)
+	util.Log.With("desiredPort", conf.desiredPort).Info("start listening on")
 
 	// start the shell with pts
 	shell, err := startShell(pts, utmpHost, conf)
@@ -628,7 +629,6 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		util.UpdateLastLog(ptmxName, getCurrentUser(), utmpHost) // TODO use pts.Name() or ptmx name?
 
 		whChan <- &workhorse{shell, ptmx}
-		util.Log.With("desiredPort", conf.desiredPort).Info("start listening on")
 
 		// wait for the shell to finish.
 		if state, err := shell.Wait(); err != nil || state.Exited() {
@@ -1136,10 +1136,10 @@ func startShell(pts *os.File, utmpHost string, conf *Config) (*os.Process, error
 
 	// wait for serve() to release us
 	buf := make([]byte, 128)
-	// var n int
-	// var err error
+	var n int
+	var err error
 
-	if n, err := pts.Read(buf); err != nil {
+	if n, err = pts.Read(buf); err != nil {
 		util.Log.With("error", err).With("n", n).Error("wait for release shell failed")
 		return nil, err
 	}
