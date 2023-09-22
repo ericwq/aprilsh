@@ -23,7 +23,6 @@ import (
 	"github.com/ericwq/aprilsh/statesync"
 	"github.com/ericwq/aprilsh/terminal"
 	"github.com/ericwq/aprilsh/util"
-	_ "github.com/ericwq/terminfo/base"
 	"github.com/rivo/uniseg"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/exp/slog"
@@ -547,7 +546,10 @@ func (sc *STMClient) processUserInput(buf string) bool {
 				// Restore terminal and terminal-driver state
 				os.Stdout.WriteString(sc.display.Close())
 
-				term.Restore(int(os.Stdin.Fd()), sc.savedTermios)
+				if err := term.Restore(int(os.Stdin.Fd()), sc.savedTermios); err != nil {
+					util.Log.With("error", err).Error("restore terminal failed")
+					return false
+				}
 
 				fmt.Printf("\n\033[37;44m[%s is suspended.]\033[m\n", _PACKAGE_STRING)
 
@@ -555,6 +557,7 @@ func (sc *STMClient) processUserInput(buf string) bool {
 				//
 				/* actually suspend */
 				// kill(0, SIGSTOP);
+				// TODO check SIGSTOP
 
 				sc.resume()
 			} else if theByte == rune(sc.escapePassKey) || theByte == rune(sc.escapePassKey2) {
@@ -669,7 +672,7 @@ func (sc *STMClient) init() error {
 
 	var err error
 	// Verify terminal configuration
-	sc.savedTermios, _ = term.GetState(int(os.Stdin.Fd()))
+	sc.savedTermios, err = term.GetState(int(os.Stdin.Fd()))
 	if err != nil {
 		return err
 	}
@@ -783,8 +786,7 @@ func (sc *STMClient) shutdown() error {
 	// Restore terminal and terminal-driver state
 	os.Stdout.WriteString(sc.display.Close())
 
-	err := term.Restore(int(os.Stdin.Fd()), sc.savedTermios)
-	if err != nil {
+	if err := term.Restore(int(os.Stdin.Fd()), sc.savedTermios); err != nil {
 		util.Log.With("error", err).Warn("restore terminal failed")
 		return err
 	}

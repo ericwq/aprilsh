@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ericwq/aprilsh/util"
 	"github.com/ericwq/terminfo"
 	_ "github.com/ericwq/terminfo/base"
 	"github.com/ericwq/terminfo/dynamic"
@@ -93,7 +94,7 @@ type Display struct {
 	supportTitle bool   // supports window title and icon name
 	smcup        string // enter and exit alternate screen mode
 	rmcup        string // enter and exit alternate screen mode
-	ti           *terminfo.Terminfo
+	// ti           *terminfo.Terminfo
 
 	// fields from FrameState
 	// cursorX, cursorY int
@@ -158,8 +159,11 @@ func NewDisplay(useEnvironment bool) (d *Display, e error) {
 		d.smcup = ti.EnterCA
 		d.rmcup = ti.ExitCA
 
-		d.ti = ti
+		// d.ti = ti
+		util.Log.With("smcup", d.smcup).With("rmcup", d.rmcup).
+			With("term", term).Debug("NewDisplay")
 	}
+
 	return d, nil
 }
 
