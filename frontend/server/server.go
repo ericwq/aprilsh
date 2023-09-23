@@ -288,7 +288,7 @@ type Config struct {
 	withMotd    bool
 
 	// the serve func
-	serve func(*os.File, *statesync.Complete, chan bool,
+	serve func(*os.File, *io.PipeWriter, *statesync.Complete, chan bool,
 		*network.Transport[*statesync.Complete, *statesync.UserStream], int64, int64) error
 }
 
@@ -603,16 +603,20 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	}() // Best effort.
 	// fmt.Printf("#runWorker openPTS successfully.\n")
 
+	// use pipe to signal when to start shell
+	// pw and pr is close inside serve() and startShell()
+	pr, pw := io.Pipe()
+
 	// prepare host field for utmp record
 	utmpHost := fmt.Sprintf("%s [%d]", _PACKAGE_STRING, os.Getpid())
 
 	// start the udp server, serve the udp request
 	waitChan := make(chan bool)
-	go conf.serve(ptmx, terminal, waitChan, network, networkTimeout, networkSignaledTimeout)
+	go conf.serve(ptmx, pw, terminal, waitChan, network, networkTimeout, networkSignaledTimeout)
 	util.Log.With("desiredPort", conf.desiredPort).Info("start listening on")
 
 	// start the shell with pts
-	shell, err := startShell(pts, utmpHost, conf)
+	shell, err := startShell(pts, pr, utmpHost, conf)
 	pts.Close() // it's copied by shell process, it's safe to close it here.
 	if err != nil {
 		// logW.Printf("#runWorker startShell fail: %s\n", err)
@@ -650,7 +654,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		}
 	}
 
-	// fmt.Printf("[%s is exiting.]\n\n", _COMMAND_NAME)
+	// fmt.Printf("[%s is exiting.]\n", _COMMAND_NAME)
 	// https://www.dolthub.com/blog/2022-11-28-go-os-exec-patterns/
 	// https://www.prakharsrivastav.com/posts/golang-context-and-cancellation/
 
@@ -668,7 +672,7 @@ func getCurrentUser() string {
 	return user.Username
 }
 
-func serve(ptmx *os.File, complete *statesync.Complete, waitChan chan bool,
+func serve(ptmx *os.File, pw *io.PipeWriter, complete *statesync.Complete, waitChan chan bool,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
 	networkTimeout int64, networkSignaledTimeout int64) error {
 	// TODO consider timeout according to mosh 1.4
@@ -870,8 +874,7 @@ mainLoop:
 				// upon receive network message, perform the following one time action,
 				// release startShell() to start login session
 				if !childReleased {
-					_, err := ptmx.WriteString("\n")
-					if err != nil {
+					if err := pw.Close(); err != nil {
 						util.Log.With("error", err).Error("send release shell message failed")
 					}
 					util.Log.With("action", "send").Debug("release shell message")
@@ -1072,7 +1075,7 @@ func openPTS(wsize *unix.Winsize) (ptmx *os.File, pts *os.File, err error) {
 }
 
 // set IUTF8 flag for pts file. start shell process according to Config.
-func startShell(pts *os.File, utmpHost string, conf *Config) (*os.Process, error) {
+func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) (*os.Process, error) {
 	if conf.verbose == _VERBOSE_START_SHELL {
 		return nil, errors.New("fail to start shell")
 	}
@@ -1136,16 +1139,17 @@ func startShell(pts *os.File, utmpHost string, conf *Config) (*os.Process, error
 	*/
 
 	// wait for serve() to release us
+	util.Log.With("action", "wait").Debug("release shell message")
 	buf := make([]byte, 81)
-	var n int
-	var err error
-
-	util.Log.With("action", "wait").With("buf", buf[:n]).Debug("release shell message")
-	if n, err = pts.Read(buf); err != nil {
-		util.Log.With("error", err).With("n", n).Error("wait for release shell failed")
-		return nil, err
+	for {
+		_, err := pr.Read(buf)
+		if err != nil && errors.Is(err, io.EOF) {
+			util.Log.With("error", err).Debug("release shell message")
+			break
+		}
 	}
-	util.Log.With("action", "receive").With("buf", buf[:n]).Debug("release shell message")
+	pr.Close()
+	util.Log.With("action", "receive").Debug("release shell message")
 
 	proc, err := os.StartProcess(conf.commandPath, conf.commandArgv, &procAttr)
 	if err != nil {
