@@ -464,6 +464,7 @@ func (sc *STMClient) mainInit() error {
 	if err != nil {
 		return err
 	}
+	util.Log.With("col", col).With("row", row).Debug("client window size")
 
 	// local state
 	savedLines := row * terminal.SaveLinesRowsRatio // 3 tims rows

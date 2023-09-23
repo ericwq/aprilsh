@@ -9,7 +9,6 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ericwq/aprilsh/util"
 	"github.com/ericwq/terminfo"
 	_ "github.com/ericwq/terminfo/base"
 	"github.com/ericwq/terminfo/dynamic"
@@ -149,8 +148,8 @@ func NewDisplay(useEnvironment bool) (d *Display, e error) {
 		d.rmcup = ti.ExitCA
 
 		// d.ti = ti
-		util.Log.With("smcup", d.smcup).With("rmcup", d.rmcup).
-			With("term", term).Debug("NewDisplay")
+		// util.Log.With("smcup", d.smcup).With("rmcup", d.rmcup).
+		// 	With("term", term).Debug("NewDisplay")
 	}
 
 	return d, nil
