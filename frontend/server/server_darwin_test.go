@@ -78,7 +78,7 @@ func TestBuildConfig_Darwin_locale(t *testing.T) {
 				v.conf0.serve = nil // disable the serve func for testing
 
 			}
-			out := captureStdoutRun(testFunc)
+			out := captureOutputRun(testFunc)
 
 			if hint != v.hint || ok != v.ok {
 				t.Errorf("#test buildConfig got hint=%s, ok=%t, expect hint=%s, ok=%t\n", hint, ok, v.hint, v.ok)

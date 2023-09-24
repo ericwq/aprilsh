@@ -1179,17 +1179,17 @@ func TestDisplayClone(t *testing.T) {
 func TestEqualSlice(t *testing.T) {
 
 	a := []int{1, 2, 3, 4}
-	b := []int{1, 2, 3, 2}
+	b := []int{1, 2, 3, 4}
 
-	if equalSlice(a, b) {
-		t.Errorf("compare two int slice should return false\n")
+	if !equalSlice(a, b) {
+		t.Errorf("compare two int slice should return true\n")
 	}
 
 	c := []string{"h", "e", "l", "l", "o"}
-	d := []string{"h", "e", "l", "l", "a"}
+	d := []string{"h", "e", "l", "l", "o"}
 
-	if equalSlice(c, d) {
-		t.Errorf("compare two string slice should return false\n")
+	if !equalSlice(c, d) {
+		t.Errorf("compare two string slice should return true\n")
 	}
 }
 

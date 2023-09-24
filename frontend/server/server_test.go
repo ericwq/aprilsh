@@ -120,7 +120,7 @@ func TestPrintUsage(t *testing.T) {
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 
-			out := captureStdoutRun(func() {
+			out := captureOutputRun(func() {
 				printUsage(v.hints, usage)
 			})
 
@@ -228,7 +228,7 @@ func TestMainHelp(t *testing.T) {
 		main()
 	}
 
-	out := captureStdoutRun(testHelpFunc)
+	out := captureOutputRun(testHelpFunc)
 
 	// validate result
 	expect := []string{"Usage:", _COMMAND_NAME, cmdOptions}
@@ -247,34 +247,15 @@ func TestMainHelp(t *testing.T) {
 }
 
 // capture the stdout and run the
-func captureLogRun(f func()) string {
-	// intercept log output
-	var b strings.Builder
-	// logW.SetOutput(&b)
-	// logI.SetOutput(&b)
-	defer util.Log.Restore()
-	util.Log.SetOutput(&b)
-	util.Log.SetLevel(slog.LevelDebug)
-
-	// call the test func
-	f()
-
-	// restore logW
-	// logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-	// logI = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
-
-	return b.String()
-}
-
-// capture the stdout and run the
-func captureStdoutRun(f func()) []byte {
-	// save the stdout and create replaced pipe
-	rescueStdout := os.Stdout
+func captureOutputRun(f func()) []byte {
+	// save the stdout,stderr and create replaced pipe
+	stderr := os.Stderr
+	stdout := os.Stdout
 	r, w, _ := os.Pipe()
-	// replace stdout with pipe writer
-	// alll the output to stdout is captured
+	// replace stdout,stderr with pipe writer
+	// alll the output to stdout,stderr is captured
+	os.Stderr = w
 	os.Stdout = w
-	// initLog()
 	defer util.Log.Restore()
 	util.Log.SetOutput(w)
 	util.Log.SetLevel(slog.LevelDebug)
@@ -289,7 +270,8 @@ func captureStdoutRun(f func()) []byte {
 	w.Close()
 	// get the output
 	out, _ := ioutil.ReadAll(r)
-	os.Stdout = rescueStdout
+	os.Stderr = stderr
+	os.Stdout = stdout
 	r.Close()
 
 	return out
@@ -305,7 +287,7 @@ func TestMainVersion(t *testing.T) {
 
 	}
 
-	out := captureStdoutRun(testHelpFunc)
+	out := captureOutputRun(testHelpFunc)
 
 	// validate result
 	expect := []string{_COMMAND_NAME, "build", "wangqi ericwq057@qq.com", "reborn mosh with aprilsh"}
@@ -329,7 +311,7 @@ func TestMainParseFlagsError(t *testing.T) {
 		main()
 	}
 
-	out := captureStdoutRun(testFunc)
+	out := captureOutputRun(testFunc)
 
 	// validate result
 	expect := []string{"Hints:", "flag provided but not defined: -foo", "Usage:", "Options:"}
@@ -378,7 +360,7 @@ func TestMainRun(t *testing.T) {
 		main()
 	}
 
-	out := captureStdoutRun(testFunc)
+	out := captureOutputRun(testFunc)
 	// fmt.Printf("###\n%s\n###\n", string(out))
 
 	// validate the result from printWelcome
@@ -409,7 +391,7 @@ func TestMainBuildConfigFail(t *testing.T) {
 
 	// prepare for buildConfig fail
 	buildConfigTest = true
-	out := captureStdoutRun(testFunc)
+	out := captureOutputRun(testFunc)
 
 	// restore the condition
 	buildConfigTest = false
@@ -696,7 +678,7 @@ func TestMainServerPortrangeError(t *testing.T) {
 		main()
 	}
 
-	out := captureStdoutRun(testFunc)
+	out := captureOutputRun(testFunc)
 	// validate port range check
 	expect := "Bad UDP port"
 	got := string(out)
@@ -1315,7 +1297,7 @@ func TestWaitError(t *testing.T) {
 	}
 }
 
-func mockServe(ptmx *os.File, terminal *statesync.Complete,
+func mockServe(ptmx *os.File, pw *io.PipeWriter, terminal *statesync.Complete, x chan bool,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
 	networkTimeout int64, networkSignaledTimeout int64) error {
 	return nil
@@ -1359,14 +1341,16 @@ func TestRunWorkerKill(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			// intercept stdout
-			saveStdout := os.Stdout
-			r, w, _ := os.Pipe()
-			os.Stdout = w
-
 			defer util.Log.Restore()
-			util.Log.SetLevel(slog.LevelDebug)
-			util.Log.SetOutput(w)
+			util.Log.SetOutput(os.Stdout)
+			// intercept stdout
+			// saveStdout := os.Stdout
+			// r, w, _ := os.Pipe()
+			// os.Stdout = w
+			//
+			// defer util.Log.Restore()
+			// util.Log.SetLevel(slog.LevelDebug)
+			// util.Log.SetOutput(w)
 
 			// set serve func and runWorker func
 			v.conf.serve = mockServe
@@ -1392,19 +1376,20 @@ func TestRunWorkerKill(t *testing.T) {
 			}
 
 			// stop the comd process
-			wh := srv.workers[7101]
+			// wh := srv.workers[7101]
 			time.AfterFunc(time.Duration(100)*time.Millisecond, func() {
-				wh.shell.Kill()
+				// wh.shell.Kill()
 				// fmt.Printf("-- #test stop workhorse reports error=%v\n", e)
+				srv.downChan <- true
 			})
 
 			srv.wait()
 
 			// restore stdout
-			w.Close()
-			ioutil.ReadAll(r)
-			os.Stdout = saveStdout
-			r.Close()
+			// w.Close()
+			// ioutil.ReadAll(r)
+			// os.Stdout = saveStdout
+			// r.Close()
 		})
 	}
 }
@@ -1533,7 +1518,7 @@ func TestStartShellFail(t *testing.T) {
 	}
 
 	// os.Stdin doesn't support IUTF8 flag, startShell should failed
-	if _, err := startShell(os.Stdin, "aprilsh [123]", conf); err == nil {
+	if _, err := startShell(os.Stdin, nil, "aprilsh [123]", conf); err == nil {
 		t.Errorf("#test startShell should report error.\n")
 		// t.Error(err)
 	}
@@ -1544,11 +1529,17 @@ func TestStartShellFail(t *testing.T) {
 		pts.Close()
 	}()
 
+	pr, pw := io.Pipe()
+	go func() {
+		time.Sleep(5 * time.Millisecond)
+		pw.Close()
+	}()
 	// commandPath is wrong, startShell should failed.
-	if _, err := startShell(pts, "aprilsh [123]", conf); err == nil {
+	if _, err := startShell(pts, pr, "aprilsh [123]", conf); err == nil {
 		t.Errorf("#test startShell should report error.\n")
 		// t.Error(err)
 	}
+	pr.Close()
 }
 
 func TestOpenPTSFail(t *testing.T) {
