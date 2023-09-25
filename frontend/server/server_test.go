@@ -1320,7 +1320,7 @@ func failRunWorker(conf *Config, exChan chan string, whChan chan *workhorse) err
 	return errors.New("failed worker.")
 }
 
-func testRunWorkerKill(t *testing.T) {
+func TestRunWorkerKill(t *testing.T) {
 	tc := []struct {
 		label  string
 		pause  int    // pause between client send and read
@@ -1331,7 +1331,7 @@ func testRunWorkerKill(t *testing.T) {
 		{
 			"runWorker stopped by signal kill", 20, _ASH_OPEN + "7101,", 50,
 			Config{
-				version: false, server: true, verbose: 1, desiredIP: "", desiredPort: "7100",
+				version: false, server: true, verbose: _VERBOSE_SKIP_START, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
@@ -1341,6 +1341,7 @@ func testRunWorkerKill(t *testing.T) {
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			defer util.Log.Restore()
+			util.Log.SetLevel(slog.LevelDebug)
 			util.Log.SetOutput(os.Stdout)
 			// intercept stdout
 			// saveStdout := os.Stdout
@@ -1376,11 +1377,11 @@ func testRunWorkerKill(t *testing.T) {
 
 			// stop the comd process
 			// wh := srv.workers[7101]
-			time.AfterFunc(time.Duration(100)*time.Millisecond, func() {
-				// wh.shell.Kill()
-				// fmt.Printf("-- #test stop workhorse reports error=%v\n", e)
-				srv.downChan <- true
-			})
+			// time.AfterFunc(time.Duration(100)*time.Millisecond, func() {
+			// 	// wh.shell.Kill()
+			// 	// fmt.Printf("-- #test stop workhorse reports error=%v\n", e)
+			// 	srv.downChan <- true
+			// })
 
 			srv.wait()
 

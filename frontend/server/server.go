@@ -61,6 +61,7 @@ const (
 
 	_VERBOSE_OPEN_PTS    = 99  // test purpose
 	_VERBOSE_START_SHELL = 100 // test purpose
+	_VERBOSE_SKIP_START  = 101 // skip start shell message
 	_VERBOSE_LOG_SYSLOG  = 514 // log to syslog
 )
 
@@ -930,10 +931,14 @@ mainLoop:
 		}
 
 		if signals.AnySignal() || idleShutdown {
+			util.Log.Debug("got SIG signal, start shutdown.")
 			// shutdown signal
 			if network.HasRemoteAddr() && !network.ShutdownInProgress() {
 				network.StartShutdown()
 			} else {
+				util.Log.With("HasRemoteAddr", network.HasRemoteAddr()).
+					With("ShutdownInProgress", network.ShutdownInProgress()).
+					Debug("got SIG signal, break loop.")
 				break
 			}
 		}
@@ -1141,17 +1146,19 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 	*/
 
 	// wait for serve() to release us
-	util.Log.With("action", "wait").Debug("start shell message")
-	buf := make([]byte, 81)
-	for {
-		_, err := pr.Read(buf)
-		if err != nil && errors.Is(err, io.EOF) {
-			util.Log.With("error", err).Debug("start shell message")
-			break
+	if pr != nil && conf.verbose != _VERBOSE_SKIP_START {
+		util.Log.With("action", "wait").Debug("start shell message")
+		buf := make([]byte, 81)
+		for {
+			_, err := pr.Read(buf)
+			if err != nil && errors.Is(err, io.EOF) {
+				util.Log.With("error", err).Debug("start shell message")
+				break
+			}
 		}
+		pr.Close()
+		util.Log.With("action", "receive").Debug("start shell message")
 	}
-	pr.Close()
-	util.Log.With("action", "receive").Debug("start shell message")
 
 	proc, err := os.StartProcess(conf.commandPath, conf.commandArgv, &procAttr)
 	if err != nil {
@@ -1259,6 +1266,7 @@ func (m *mainSrv) handler() {
 			util.Log.Info("got message SIGHUP")
 		case syscall.SIGTERM, syscall.SIGINT:
 			// logI.Println("got message SIGTERM.")
+			util.Log.Info("got message SIGTERM or SIGINT")
 			m.downChan <- true
 			return
 		}
@@ -1332,7 +1340,7 @@ func (m *mainSrv) run(conf *Config) {
 			} else { // kill the workers
 				for i := range m.workers {
 					m.workers[i].shell.Kill()
-					// fmt.Printf("kill %d\n", i)
+					util.Log.With("port", i).Info("stop shell listening on")
 				}
 				return
 			}

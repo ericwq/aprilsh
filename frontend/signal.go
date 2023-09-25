@@ -43,7 +43,12 @@ func (s *Signals) Handler(signal os.Signal) {
 // This method does not consume signal notifications.
 func (s *Signals) AnySignal() (rv bool) {
 	for i := range s {
-		rv = rv || s[i].Load() > 0
+		x := s[i].Load() > 0
+		rv = rv || x
+		if x {
+			s[i].Store(0)
+		}
+		// break
 	}
 	return
 }
