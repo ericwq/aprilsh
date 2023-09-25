@@ -40,15 +40,15 @@ func (s *Signals) Handler(signal os.Signal) {
 }
 
 // Check whether we got any signal.
-// This method does not consume signal notifications.
+// This method consumes the first signal notification.
 func (s *Signals) AnySignal() (rv bool) {
 	for i := range s {
 		x := s[i].Load() > 0
 		rv = rv || x
 		if x {
-			s[i].Store(0)
+			s[i].Store(0) // clear the signal
+			// break
 		}
-		// break
 	}
 	return
 }

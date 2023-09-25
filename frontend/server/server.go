@@ -644,10 +644,10 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		}
 
 		// wait serve to finish
-		util.Log.With("ptmx", ptmx).Debug("wait serve to finish")
+		util.Log.With("ptmx", ptmx.Name()).Debug("wait serve to finish")
 		<-waitChan
 		// logI.Printf("#runWorker stop listening on :%s\n", conf.desiredPort)
-		util.Log.With("desiredPort", conf.desiredPort).Info("stop listening on")
+		util.Log.With("port", conf.desiredPort).Info("stop listening on")
 
 		// clear utmp entry
 		if utmpSupport {
@@ -931,20 +931,23 @@ mainLoop:
 		}
 
 		if signals.AnySignal() || idleShutdown {
-			util.Log.Debug("got SIG signal, start shutdown.")
+			util.Log.With("HasRemoteAddr", network.HasRemoteAddr()).
+				With("ShutdownInProgress", network.ShutdownInProgress()).
+				Debug("got signal: start shutdown")
 			// shutdown signal
 			if network.HasRemoteAddr() && !network.ShutdownInProgress() {
 				network.StartShutdown()
 			} else {
 				util.Log.With("HasRemoteAddr", network.HasRemoteAddr()).
 					With("ShutdownInProgress", network.ShutdownInProgress()).
-					Debug("got SIG signal, break loop.")
+					Debug("got signal: break loop")
 				break
 			}
 		}
 
 		// quit if our shutdown has been acknowledged
 		if network.ShutdownInProgress() && network.ShutdownAcknowledged() {
+			// util.Log.Debug("shutdown break")
 			break
 		}
 
@@ -1263,10 +1266,10 @@ func (m *mainSrv) handler() {
 		switch s {
 		case syscall.SIGHUP: // TODO:reload the config?
 			// logI.Println("got message SIGHUP.")
-			util.Log.Info("got message SIGHUP")
+			util.Log.Info("got signal: SIGHUP")
 		case syscall.SIGTERM, syscall.SIGINT:
 			// logI.Println("got message SIGTERM.")
-			util.Log.Info("got message SIGTERM or SIGINT")
+			util.Log.Info("got signal: SIGTERM or SIGINT")
 			m.downChan <- true
 			return
 		}
@@ -1340,7 +1343,7 @@ func (m *mainSrv) run(conf *Config) {
 			} else { // kill the workers
 				for i := range m.workers {
 					m.workers[i].shell.Kill()
-					util.Log.With("port", i).Info("stop shell listening on")
+					util.Log.With("port", i).Debug("stop shell")
 				}
 				return
 			}
