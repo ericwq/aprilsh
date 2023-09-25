@@ -1573,22 +1573,39 @@ func TestStartShellFail(t *testing.T) {
 	}
 }
 
-func testOpenPTSFail(t *testing.T) {
-	var ws *unix.Winsize
+func TestOpenPTS(t *testing.T) {
 
-	// nil ws is the test condition
-	ptmx, pts, err := openPTS(ws)
-	defer func() {
-		if e1 := ptmx.Close(); e1 != nil {
-			t.Errorf("#test close pty master failed: %s\n", e1)
-		}
-		if e2 := pts.Close(); e2 != nil {
-			t.Errorf("#test close pty slave failed,: %s\n", e2)
-		}
-	}()
+	tc := []struct {
+		label  string
+		ws     unix.Winsize
+		errStr string
+	}{
+		{"invalid parameter error", unix.Winsize{}, "invalid parameter"},
+		{"invalid parameter error", unix.Winsize{Row: 4, Col: 4}, ""},
+	}
 
-	if err == nil {
-		t.Errorf("#test openPTS should report error.\n")
+	for i, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			var ptmx, pts *os.File
+			var err error
+			if i == 0 {
+				ptmx, pts, err = openPTS(nil)
+			} else {
+				ptmx, pts, err = openPTS(&v.ws)
+			}
+			defer ptmx.Close()
+			defer pts.Close()
+			if i == 0 {
+				if !strings.Contains(err.Error(), v.errStr) {
+					t.Errorf("%q should report %q, got %q\n", v.label, v.errStr, err)
+					fmt.Printf("%#v\n", err)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("%q expect no error, got %s\n", v.label, err)
+				}
+			}
+		})
 	}
 }
 
@@ -1799,6 +1816,35 @@ func TestGetAvailablePort(t *testing.T) {
 			if got != v.expect {
 				t.Errorf("#test %s expect %d, got %d\n", v.label, v.expect, got)
 			}
+		})
+	}
+}
+
+func TestIsPortExist(t *testing.T) {
+	tc := []struct {
+		label string
+		port  int
+		ret   bool
+	}{
+		{"port exist", 101, true},
+		{"port does not exist", 10, false},
+	}
+
+	// prepare workers data
+	conf := &Config{desiredPort: "6000"}
+
+	srv := newMainSrv(conf, mockRunWorker)
+	srv.workers[100] = &workhorse{nil, os.Stderr}
+	srv.workers[101] = &workhorse{nil, os.Stdout}
+	srv.workers[111] = &workhorse{nil, os.Stdin}
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			got := srv.isPortExist(v.port)
+			if got != v.ret {
+				t.Errorf("%q port %d: expect %t, got %t\n", v.label, v.port, v.ret, got)
+			}
+
 		})
 	}
 }
