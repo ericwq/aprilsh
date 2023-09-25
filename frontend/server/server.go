@@ -1074,10 +1074,12 @@ func openPTS(wsize *unix.Winsize) (ptmx *os.File, pts *os.File, err error) {
 	return
 }
 
+var failToStartShell = errors.New("fail to start shell")
+
 // set IUTF8 flag for pts file. start shell process according to Config.
 func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) (*os.Process, error) {
 	if conf.verbose == _VERBOSE_START_SHELL {
-		return nil, errors.New("fail to start shell")
+		return nil, failToStartShell
 	}
 	// set IUTF8 if available
 	if err := util.SetIUTF8(int(pts.Fd())); err != nil {

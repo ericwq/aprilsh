@@ -14,6 +14,8 @@ import (
 	"github.com/ericwq/aprilsh/util"
 )
 
+var strENOTTY = "operation not supported by device"
+
 func TestBuildConfig_Darwin_DefaultShell(t *testing.T) {
 	label := "no SHELL, getShell() return empty string."
 	conf0 := &Config{

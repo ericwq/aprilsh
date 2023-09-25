@@ -114,26 +114,3 @@ func ReadFromNetwork(timeout int, msgChan chan Message, doneChan chan any, netwo
 		}
 	}
 }
-
-func NetworkRead(timeout int, network DeadLineReceiver) (payload string, err error) {
-	// set read time out
-	network.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
-	// packet received from the network
-	payload, err = network.Recv()
-	// if payload != "" {
-	// 	util.Log.With("payload", payload).With("err", err).Debug("read from network")
-	// }
-	if err != nil {
-		if errors.Is(err, os.ErrDeadlineExceeded) {
-			// read timeout
-			// msgChan <- Message{err, ""}
-			return "", nil
-		} else {
-			// EOF goes here
-			return "", err
-		}
-	} else {
-		// normal read
-		return payload, nil
-	}
-}

@@ -10,7 +10,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net"
 	"os"
@@ -88,7 +87,7 @@ func TestPrintVersion(t *testing.T) {
 
 	// restore stdout
 	w.Close()
-	b, _ := ioutil.ReadAll(r)
+	b, _ := io.ReadAll(r)
 	os.Stdout = saveStdout
 	r.Close()
 
@@ -269,7 +268,7 @@ func captureOutputRun(f func()) []byte {
 	// close pipe writer
 	w.Close()
 	// get the output
-	out, _ := ioutil.ReadAll(r)
+	out, _ := io.ReadAll(r)
 	os.Stderr = stderr
 	os.Stdout = stdout
 	r.Close()
@@ -762,7 +761,7 @@ func TestGetTimeFrom(t *testing.T) {
 
 	// read and restore the stdout
 	w.Close()
-	ioutil.ReadAll(r)
+	io.ReadAll(r)
 	os.Stdout = rescueStdout
 }
 
@@ -863,7 +862,7 @@ func TestStart(t *testing.T) {
 
 			// restore stdout
 			w.Close()
-			ioutil.ReadAll(r)
+			io.ReadAll(r)
 			os.Stdout = saveStdout
 			r.Close()
 		})
@@ -1034,7 +1033,7 @@ func TestPrintWelcome(t *testing.T) {
 
 		// restore stdout
 		w.Close()
-		b, _ := ioutil.ReadAll(r)
+		b, _ := io.ReadAll(r)
 		os.Stdout = saveStdout
 		r.Close()
 
@@ -1144,7 +1143,7 @@ func TestRunFail(t *testing.T) {
 
 			// restore stdout
 			w.Close()
-			ioutil.ReadAll(r)
+			io.ReadAll(r)
 			os.Stdout = saveStdout
 			r.Close()
 		})
@@ -1222,7 +1221,7 @@ func TestRunFail2(t *testing.T) {
 
 			// restore stdout
 			w.Close()
-			ioutil.ReadAll(r)
+			io.ReadAll(r)
 			os.Stdout = saveStdout
 			r.Close()
 		})
@@ -1277,7 +1276,7 @@ func TestWaitError(t *testing.T) {
 
 			// restore stdout
 			w.Close()
-			out, _ := ioutil.ReadAll(r)
+			out, _ := io.ReadAll(r)
 			os.Stdout = saveStdout
 			r.Close()
 
@@ -1503,7 +1502,7 @@ func testRunWorkerStop(t *testing.T) {
 
 			// restore stdout
 			w.Close()
-			ioutil.ReadAll(r)
+			io.ReadAll(r)
 			os.Stdout = saveStdout
 			r.Close()
 		})
@@ -1511,35 +1510,67 @@ func testRunWorkerStop(t *testing.T) {
 }
 
 func TestStartShellFail(t *testing.T) {
-	conf := &Config{
-		version: false, server: true, verbose: 1, desiredIP: "", desiredPort: "7100",
-		locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, term: "kitty",
-		commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false,
+	tc := []struct {
+		label    string
+		errStr   string
+		pts      *os.File
+		pr       *io.PipeReader
+		utmpHost string
+		conf     Config
+	}{
+		{"first error return", "fail to start shell", nil, nil, "",
+			Config{verbose: _VERBOSE_START_SHELL},
+		},
+		{"IUTF8 error return", strENOTTY, os.Stdin, nil, "",
+			Config{verbose: 0},
+		}, // os.Stdin doesn't support IUTF8 flag, startShell should failed
+		{"start shell error return", "/bin/xxxsh", os.Stdin, nil, "aprilsh [123]",
+			Config{version: false, server: true, verbose: 1, desiredIP: "", desiredPort: "7100",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, term: "kitty",
+				commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false},
+		}, // commandPath is wrong, startShell should failed.
+		{"start shell error with term", "/bin/xxxsh", os.Stdin, nil, "aprilsh [123]",
+			Config{version: false, server: true, verbose: 1, desiredIP: "", desiredPort: "7100",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, term: "",
+				commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: true},
+		}, // term is empty, withMotd is true, startShell should failed.
 	}
 
-	// os.Stdin doesn't support IUTF8 flag, startShell should failed
-	if _, err := startShell(os.Stdin, nil, "aprilsh [123]", conf); err == nil {
-		t.Errorf("#test startShell should report error.\n")
-		// t.Error(err)
-	}
+	// defer util.Log.Restore()
+	// util.Log.SetOutput(os.Stdout)
+	// util.Log.SetLevel(slog.LevelDebug)
 
-	ptmx, pts, _ := pty.Open() // open pty master and slave
-	defer func() {
-		ptmx.Close()
-		pts.Close()
-	}()
+	for i, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			if i >= 2 {
+				// open pty master and slave
+				ptmx, pts, _ := pty.Open()
+				defer func() {
+					ptmx.Close()
+					pts.Close()
+				}()
+				v.pts = pts
 
-	pr, pw := io.Pipe()
-	go func() {
-		time.Sleep(5 * time.Millisecond)
-		pw.Close()
-	}()
-	// commandPath is wrong, startShell should failed.
-	if _, err := startShell(pts, pr, "aprilsh [123]", conf); err == nil {
-		t.Errorf("#test startShell should report error.\n")
-		// t.Error(err)
+				// open pipe for parameter
+				pr, pw := io.Pipe()
+				v.pr = pr
+
+				go func() {
+					time.Sleep(2 * time.Millisecond)
+					pw.Close()
+					util.Log.With("action", "send").Debug("start shell message")
+				}()
+			}
+
+			_, err := startShell(v.pts, v.pr, v.utmpHost, &v.conf)
+
+			// validate error
+			if !strings.Contains(err.Error(), v.errStr) {
+				t.Errorf("%q should report %q, got %q\n", v.label, v.errStr, err)
+				fmt.Printf("%#v\n", err)
+			}
+		})
 	}
-	pr.Close()
 }
 
 func testOpenPTSFail(t *testing.T) {

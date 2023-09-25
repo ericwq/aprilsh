@@ -16,6 +16,8 @@ import (
 
 var idx = 0
 
+var strENOTTY = "inappropriate ioctl for device"
+
 func mockGetUtmpx() *utmp.Utmpx {
 	userName := getCurrentUser()
 	rs := []struct {
