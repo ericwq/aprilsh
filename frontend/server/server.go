@@ -875,9 +875,9 @@ mainLoop:
 				// release startShell() to start login session
 				if !childReleased {
 					if err := pw.Close(); err != nil {
-						util.Log.With("error", err).Error("send release shell message failed")
+						util.Log.With("error", err).Error("send start shell message failed")
 					}
-					util.Log.With("action", "send").Debug("release shell message")
+					util.Log.With("action", "send").Debug("start shell message")
 					childReleased = true
 				}
 			}
@@ -1139,17 +1139,17 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 	*/
 
 	// wait for serve() to release us
-	util.Log.With("action", "wait").Debug("release shell message")
+	util.Log.With("action", "wait").Debug("start shell message")
 	buf := make([]byte, 81)
 	for {
 		_, err := pr.Read(buf)
 		if err != nil && errors.Is(err, io.EOF) {
-			util.Log.With("error", err).Debug("release shell message")
+			util.Log.With("error", err).Debug("start shell message")
 			break
 		}
 	}
 	pr.Close()
-	util.Log.With("action", "receive").Debug("release shell message")
+	util.Log.With("action", "receive").Debug("start shell message")
 
 	proc, err := os.StartProcess(conf.commandPath, conf.commandArgv, &procAttr)
 	if err != nil {

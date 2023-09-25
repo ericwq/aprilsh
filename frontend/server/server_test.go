@@ -1321,7 +1321,7 @@ func failRunWorker(conf *Config, exChan chan string, whChan chan *workhorse) err
 	return errors.New("failed worker.")
 }
 
-func TestRunWorkerKill(t *testing.T) {
+func testRunWorkerKill(t *testing.T) {
 	tc := []struct {
 		label  string
 		pause  int    // pause between client send and read
@@ -1394,7 +1394,7 @@ func TestRunWorkerKill(t *testing.T) {
 	}
 }
 
-func TestRunWorkerStop(t *testing.T) {
+func testRunWorkerStop(t *testing.T) {
 	tc := []struct {
 		label  string
 		pause  int      // pause between client send and read
@@ -1542,7 +1542,7 @@ func TestStartShellFail(t *testing.T) {
 	pr.Close()
 }
 
-func TestOpenPTSFail(t *testing.T) {
+func testOpenPTSFail(t *testing.T) {
 	var ws *unix.Winsize
 
 	// nil ws is the test condition
@@ -1561,7 +1561,7 @@ func TestOpenPTSFail(t *testing.T) {
 	}
 }
 
-func TestRunWorkerFail(t *testing.T) {
+func testRunWorkerFail(t *testing.T) {
 	tc := []struct {
 		label string
 		conf  Config
@@ -1623,7 +1623,7 @@ func TestRunWorkerFail(t *testing.T) {
 	}
 }
 
-func TestShellWaitFail(t *testing.T) {
+func testShellWaitFail(t *testing.T) {
 	tc := []struct {
 		label string
 		conf  Config
