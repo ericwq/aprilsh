@@ -1491,7 +1491,7 @@ func TestRunWorkerFail(t *testing.T) {
 	}
 }
 
-func TestCloseAprilsh(t *testing.T) {
+func TestRunCloseFail(t *testing.T) {
 	tc := []struct {
 		label  string
 		pause  int      // pause between client send and read
@@ -1611,7 +1611,7 @@ func TestCloseAprilsh(t *testing.T) {
 	}
 }
 
-func TestOpenAprilshDuplicate(t *testing.T) {
+func TestRunOpenDuplicate(t *testing.T) {
 	tc := []struct {
 		label  string
 		pause  int      // pause between client send and read
@@ -1909,5 +1909,21 @@ func TestIsPortExist(t *testing.T) {
 			}
 
 		})
+	}
+}
+
+func BenchmarkGetAvailablePort(b *testing.B) {
+
+	conf := &Config{desiredPort: "100"}
+	srv := newMainSrv(conf, mockRunWorker)
+	srv.workers[100] = &workhorse{nil, os.Stderr}
+	srv.workers[101] = &workhorse{nil, os.Stdout}
+	srv.workers[102] = &workhorse{nil, os.Stdin}
+
+	srv.maxPort = 102
+
+	for i := 0; i < b.N; i++ {
+		srv.getAvailabePort()
+		srv.maxPort-- // hedge maxPort++ in getAvailabePort
 	}
 }

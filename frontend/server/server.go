@@ -1442,8 +1442,8 @@ func (m *mainSrv) getAvailabePort() (port int) {
 
 		// check minimal available port
 		for i := 0; i < m.maxPort-m.port-1; i++ {
-			// fmt.Printf("#getAvailabePort check port+k=%d, ports[i]=%d\n", port+i+1, ports[i])
-			if port+i+1 < ports[i] {
+			// fmt.Printf("#getAvailabePort check port+i+1=%d, ports[i]=%d, i=%d\n", port+i+1, ports[i], i)
+			if i < len(ports) && port+i+1 < ports[i] {
 				port = port + i + 1
 				break
 			}
@@ -1454,7 +1454,8 @@ func (m *mainSrv) getAvailabePort() (port int) {
 			port = m.maxPort
 			m.maxPort++
 		}
-		// fmt.Printf("#getAvailabePort search port=%d\n", port)
+		// fmt.Printf("#getAvailabePort return port=%d, m.port=%d, maxPort=%d\n",
+		// port, m.port, m.maxPort)
 	} else if len(m.workers) == 0 {
 		port = m.port + 1
 	}
