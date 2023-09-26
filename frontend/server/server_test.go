@@ -10,11 +10,9 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"log"
 	"net"
 	"os"
 	"os/exec"
-	"os/signal"
 	"os/user"
 	"reflect"
 	"runtime"
@@ -31,7 +29,6 @@ import (
 	"github.com/ericwq/aprilsh/util"
 	"golang.org/x/exp/slog"
 	"golang.org/x/sys/unix"
-	"golang.org/x/term"
 )
 
 func TestPrintMotd(t *testing.T) {
@@ -345,39 +342,55 @@ func TestParseFlagsUsage(t *testing.T) {
 }
 
 func TestMainRun(t *testing.T) {
-	// shutdown after 7ms
-	time.AfterFunc(7*time.Millisecond, func() {
-		// fmt.Printf("#test main buildConfig PID:%d\n", os.Getpid())
-		syscall.Kill(os.Getpid(), syscall.SIGHUP)
-		syscall.Kill(os.Getpid(), syscall.SIGTERM)
-	})
-
-	testFunc := func() {
-		// prepare data: verbose == 57 means log to the stderr
-		os.Args = []string{_COMMAND_NAME, "-verbose", "57", "-locale",
-			"LC_ALL=en_US.UTF-8", "-p", "6100", "--", "/bin/sh", "-sh"}
-		// test
-		main()
+	tc := []struct {
+		label  string
+		args   []string
+		expect []string
+	}{
+		{"run main and killed by signal",
+			[]string{_COMMAND_NAME, "-verbose", "1", "-locale",
+				"LC_ALL=en_US.UTF-8", "-p", "6100", "--", "/bin/sh", "-sh"},
+			[]string{"aprilsh-server", "start listening on", "buildVersion",
+				"got signal: SIGHUP", "got signal: SIGTERM or SIGINT"}},
+		{"run main and killeb by -a",
+			[]string{_COMMAND_NAME, "-a=1", "-locale", // auto stop after 1 second
+				"LC_ALL=en_US.UTF-8", "-p", "6200", "--", "/bin/sh", "-sh"},
+			[]string{"aprilsh-server", "start listening on", "buildVersion",
+				"stop listening", "6200"}},
 	}
+	for i, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
 
-	out := captureOutputRun(testFunc)
-	// fmt.Printf("###\n%s\n###\n", string(out))
+			if i == 0 {
+				// shutdown after 7ms
+				time.AfterFunc(7*time.Millisecond, func() {
+					// fmt.Printf("#test main buildConfig PID:%d\n", os.Getpid())
+					syscall.Kill(os.Getpid(), syscall.SIGHUP)
+					syscall.Kill(os.Getpid(), syscall.SIGTERM)
+				})
+			}
 
-	// validate the result from printWelcome
-	expect := []string{
-		"aprilsh-server", "start listening on", "buildVersion",
-		"got signal: SIGHUP", "got signal: SIGTERM or SIGINT",
-	}
-	result := string(out)
-	found := 0
-	for i := range expect {
-		if strings.Contains(result, expect[i]) {
-			// fmt.Printf("found %s\n", expect[i])
-			found++
-		}
-	}
-	if found != len(expect) {
-		t.Errorf("#test expect %q, got %s\n", expect, result)
+			testFunc := func() {
+				os.Args = v.args
+				main()
+			}
+
+			out := captureOutputRun(testFunc)
+			// fmt.Printf("###\n%s\n###\n", string(out))
+
+			// validate the result from printWelcome
+			result := string(out)
+			found := 0
+			for i := range v.expect {
+				if strings.Contains(result, v.expect[i]) {
+					// fmt.Printf("found %s\n", expect[i])
+					found++
+				}
+			}
+			if found != len(v.expect) {
+				t.Errorf("#test expect %q, got %s\n", v.expect, result)
+			}
+		})
 	}
 }
 
@@ -767,45 +780,47 @@ func TestGetTimeFrom(t *testing.T) {
 	os.Stdout = rescueStdout
 }
 
-func testPTY() error {
-	// Create arbitrary command.
-	c := exec.Command("bash")
+/*
+	func testPTY() error {
+		// Create arbitrary command.
+		c := exec.Command("bash")
 
-	// Start the command with a pty.
-	ptmx, err := pty.Start(c)
-	if err != nil {
-		return err
-	}
-	// Make sure to close the pty at the end.
-	defer func() { _ = ptmx.Close() }() // Best effort.
-
-	// Handle pty size.
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, syscall.SIGWINCH)
-	go func() {
-		for range ch {
-			if err := pty.InheritSize(os.Stdin, ptmx); err != nil {
-				log.Printf("error resizing pty: %s", err)
-			}
+		// Start the command with a pty.
+		ptmx, err := pty.Start(c)
+		if err != nil {
+			return err
 		}
-	}()
-	ch <- syscall.SIGWINCH                        // Initial resize.
-	defer func() { signal.Stop(ch); close(ch) }() // Cleanup signals when done.
+		// Make sure to close the pty at the end.
+		defer func() { _ = ptmx.Close() }() // Best effort.
 
-	// Set stdin in raw mode.
-	oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
-	if err != nil {
-		panic(err)
+		// Handle pty size.
+		ch := make(chan os.Signal, 1)
+		signal.Notify(ch, syscall.SIGWINCH)
+		go func() {
+			for range ch {
+				if err := pty.InheritSize(os.Stdin, ptmx); err != nil {
+					log.Printf("error resizing pty: %s", err)
+				}
+			}
+		}()
+		ch <- syscall.SIGWINCH                        // Initial resize.
+		defer func() { signal.Stop(ch); close(ch) }() // Cleanup signals when done.
+
+		// Set stdin in raw mode.
+		oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
+		if err != nil {
+			panic(err)
+		}
+		defer func() { _ = term.Restore(int(os.Stdin.Fd()), oldState) }() // Best effort.
+
+		// Copy stdin to the pty and the pty to stdout.
+		// NOTE: The goroutine will keep reading until the next keystroke before returning.
+		go func() { _, _ = io.Copy(ptmx, os.Stdin) }()
+		_, _ = io.Copy(os.Stdout, ptmx)
+
+		return nil
 	}
-	defer func() { _ = term.Restore(int(os.Stdin.Fd()), oldState) }() // Best effort.
-
-	// Copy stdin to the pty and the pty to stdout.
-	// NOTE: The goroutine will keep reading until the next keystroke before returning.
-	go func() { _, _ = io.Copy(ptmx, os.Stdin) }()
-	_, _ = io.Copy(os.Stdout, ptmx)
-
-	return nil
-}
+*/
 
 func TestStart(t *testing.T) {
 	tc := []struct {
@@ -925,6 +940,7 @@ func TestStartFail(t *testing.T) {
 }
 
 // the mock runWorker send the key, pause some time and close the
+// worker by send finish message
 func mockRunWorker(conf *Config, exChan chan string, whChan chan *workhorse) error {
 	// send the mock key
 	// fmt.Println("#mockRunWorker send mock key to run().")
@@ -938,6 +954,23 @@ func mockRunWorker(conf *Config, exChan chan string, whChan chan *workhorse) err
 	exChan <- conf.desiredPort
 
 	whChan <- &workhorse{}
+	return nil
+}
+
+// the mock runWorker send the key, pause some time and try to close the
+// worker by send wrong finish message: port+"x"
+func mockRunWorker2(conf *Config, exChan chan string, whChan chan *workhorse) error {
+	// send the mock key
+	exChan <- "mock key from mockRunWorker2"
+
+	// pause some time
+	time.Sleep(time.Duration(2) * time.Millisecond)
+
+	// fail to stop the worker on purpose
+	exChan <- conf.desiredPort + "x"
+
+	whChan <- &workhorse{}
+
 	return nil
 }
 
@@ -1155,23 +1188,6 @@ func TestRunFail(t *testing.T) {
 
 	srv2 := &mainSrv{}
 	srv2.run(&Config{})
-}
-
-// the mock runWorker send the key, pause some time and try to close the
-// worker by send wrong finish message: port+"x"
-func mockRunWorker2(conf *Config, exChan chan string, whChan chan *workhorse) error {
-	// send the mock key
-	exChan <- "mock key from mockRunWorker2"
-
-	// pause some time
-	time.Sleep(time.Duration(2) * time.Millisecond)
-
-	// fail to stop the worker on purpose
-	exChan <- conf.desiredPort + "x"
-
-	whChan <- &workhorse{}
-
-	return nil
 }
 
 func TestRunFail2(t *testing.T) {
@@ -1474,7 +1490,7 @@ func TestRunWorkerFail(t *testing.T) {
 		})
 	}
 }
-func testRunWorkerStop(t *testing.T) {
+func TestCloseAprilsh(t *testing.T) {
 	tc := []struct {
 		label  string
 		pause  int      // pause between client send and read
@@ -1489,7 +1505,7 @@ func testRunWorkerStop(t *testing.T) {
 			[]string{},
 			50,
 			Config{
-				version: false, server: true, verbose: 1, desiredIP: "", desiredPort: "7100",
+				version: false, server: true, verbose: _VERBOSE_SKIP_START, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
@@ -1499,7 +1515,7 @@ func testRunWorkerStop(t *testing.T) {
 			[]string{"7100"},
 			50,
 			Config{
-				version: false, server: true, verbose: 1, desiredIP: "", desiredPort: "7120",
+				version: false, server: true, verbose: _VERBOSE_SKIP_START, desiredIP: "", desiredPort: "7120",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
@@ -1509,7 +1525,7 @@ func testRunWorkerStop(t *testing.T) {
 			[]string{"7121x"},
 			50,
 			Config{
-				version: false, server: true, verbose: 1, desiredIP: "", desiredPort: "7130",
+				version: false, server: true, verbose: _VERBOSE_SKIP_START, desiredIP: "", desiredPort: "7130",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
@@ -1519,7 +1535,7 @@ func testRunWorkerStop(t *testing.T) {
 			[]string{"two", "params"},
 			50,
 			Config{
-				version: false, server: true, verbose: 1, desiredIP: "", desiredPort: "7140",
+				version: false, server: true, verbose: _VERBOSE_SKIP_START, desiredIP: "", desiredPort: "7140",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
@@ -1528,16 +1544,17 @@ func testRunWorkerStop(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			defer util.Log.Restore()
-			util.Log.SetLevel(slog.LevelDebug)
-			util.Log.SetOutput(os.Stdout)
-			// intercept stdout
-			// saveStdout := os.Stdout
-			// r, w, _ := os.Pipe()
-			// os.Stdout = w
 			// defer util.Log.Restore()
-			// util.Log.SetOutput(w)
 			// util.Log.SetLevel(slog.LevelDebug)
+			// util.Log.SetOutput(os.Stdout)
+
+			// intercept stdout
+			saveStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+			defer util.Log.Restore()
+			util.Log.SetOutput(w)
+			util.Log.SetLevel(slog.LevelDebug)
 
 			// set serve func and runWorker func
 			v.conf.serve = mockServe
@@ -1585,10 +1602,10 @@ func testRunWorkerStop(t *testing.T) {
 			srv.wait()
 
 			// restore stdout
-			// w.Close()
-			// io.ReadAll(r)
-			// os.Stdout = saveStdout
-			// r.Close()
+			w.Close()
+			io.ReadAll(r)
+			os.Stdout = saveStdout
+			r.Close()
 		})
 	}
 }

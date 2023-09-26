@@ -17,7 +17,6 @@ import (
 	"os/signal"
 	"os/user"
 	"reflect"
-	"runtime/pprof"
 	"sort"
 	"strconv"
 	"strings"
@@ -427,13 +426,13 @@ func main() {
 		}
 	}
 
-	cpuf, err := os.Create("cpu.profile")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	pprof.StartCPUProfile(cpuf)
-	defer pprof.StopCPUProfile()
+	// cpuf, err := os.Create("cpu.profile")
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
+	// pprof.StartCPUProfile(cpuf)
+	// defer pprof.StopCPUProfile()
 
 	// f, err := os.Create("mem.profile")
 	// if err != nil {
@@ -1403,7 +1402,7 @@ func (m *mainSrv) run(conf *Config) {
 			}
 		} else if strings.HasPrefix(req, _ASH_CLOSE) {
 			// fmt.Printf("#mainSrv run() receive request %q\n", req)
-			// 'close aprish:[port]' to stop the server
+			// 'close aprilsh:[port]' to stop the server
 			pstr := strings.TrimPrefix(req, _ASH_CLOSE)
 			port, err := strconv.Atoi(pstr)
 			if err == nil {
