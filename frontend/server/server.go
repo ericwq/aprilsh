@@ -889,7 +889,9 @@ mainLoop:
 				if masterMsg.Err != nil {
 					// fmt.Println("#readFromMaster report error: ", masterMsg.Err)
 					util.Log.With("error", masterMsg.Err).Warn("read from master")
-					network.StartShutdown()
+					if !signals.AnySignal() { // avoid conflict with signal
+						network.StartShutdown()
+					}
 				} else {
 					out := complete.Act(masterMsg.Data)
 					terminalToHost.WriteString(out)
@@ -907,7 +909,7 @@ mainLoop:
 		// write user input and terminal writeback to the host
 		if terminalToHost.Len() > 0 {
 			_, err := ptmx.WriteString(terminalToHost.String())
-			if err != nil {
+			if err != nil && !signals.AnySignal() { // avoid conflict with signal
 				network.StartShutdown()
 			}
 
@@ -932,6 +934,7 @@ mainLoop:
 			util.Log.With("HasRemoteAddr", network.HasRemoteAddr()).
 				With("ShutdownInProgress", network.ShutdownInProgress()).
 				Debug("got signal: start shutdown")
+			signals.Clear()
 			// shutdown signal
 			if network.HasRemoteAddr() && !network.ShutdownInProgress() {
 				network.StartShutdown()
