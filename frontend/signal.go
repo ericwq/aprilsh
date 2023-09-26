@@ -54,7 +54,7 @@ func (s *Signals) AnySignal() (rv bool) {
 // clear all the signals
 func (s *Signals) Clear() {
 	for i := range s {
-		s[i].Store(0) // clear the signal
+		// clear signal
+		s[i].Store(0)
 	}
-	return
 }

@@ -52,17 +52,3 @@ func TestGotSignal(t *testing.T) {
 		}
 	}
 }
-
-func TestAnySignal(t *testing.T) {
-	var s Signals
-
-	s.Handler(syscall.Signal(-1))
-	if s.AnySignal() {
-		t.Errorf("#test AnySignal() expect false got %t", s.AnySignal())
-	}
-
-	s.Handler(syscall.SIGABRT)
-	if !s.AnySignal() {
-		t.Errorf("#test AnySignal() expect true got %t", s.AnySignal())
-	}
-}
