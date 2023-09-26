@@ -636,11 +636,10 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		whChan <- &workhorse{shell, ptmx}
 
 		// wait for the shell to finish.
-		if state, err := shell.Wait(); err != nil || state.Exited() {
-			// logW.Printf("#runWorker shell.Wait fail: %s, state: %s\n", err, state)
-			if err != nil {
-				util.Log.With("error", err).With("state", state).Warn("shell.Wait fail")
-			}
+		var state *os.ProcessState
+		state, err = shell.Wait()
+		if err != nil || state.Exited() {
+			util.Log.With("error", err).With("state", state).Warn("shell.Wait fail")
 		}
 
 		// wait serve to finish
@@ -1394,7 +1393,7 @@ func (m *mainSrv) run(conf *Config) {
 
 				// blocking read the workhorse from runWorker
 				wh := <-m.whChan
-				// logI.Printf("#run got workhorse %p %v\n", wh.shell, wh.shell)
+				// fmt.Printf("#run got workhorse %p %v\n", wh.shell, wh.shell)
 				if wh.shell != nil {
 					m.workers[p] = wh
 				}

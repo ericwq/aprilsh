@@ -354,7 +354,8 @@ func TestMainRun(t *testing.T) {
 
 	testFunc := func() {
 		// prepare data: verbose == 57 means log to the stderr
-		os.Args = []string{_COMMAND_NAME, "-verbose", "57", "-locale", "LC_ALL=en_US.UTF-8", "-p", "6100", "--", "/bin/sh", "-sh"}
+		os.Args = []string{_COMMAND_NAME, "-verbose", "57", "-locale",
+			"LC_ALL=en_US.UTF-8", "-p", "6100", "--", "/bin/sh", "-sh"}
 		// test
 		main()
 	}
@@ -365,7 +366,7 @@ func TestMainRun(t *testing.T) {
 	// validate the result from printWelcome
 	expect := []string{
 		"aprilsh-server", "start listening on", "buildVersion",
-		"got message SIGHUP", // "got message SIGTERM",
+		"got signal: SIGHUP", "got signal: SIGTERM or SIGINT",
 	}
 	result := string(out)
 	found := 0
@@ -383,7 +384,8 @@ func TestMainRun(t *testing.T) {
 func TestMainBuildConfigFail(t *testing.T) {
 	testFunc := func() {
 		// prepare parameter
-		os.Args = []string{_COMMAND_NAME, "-locale", "LC_ALL=en_US.UTF-8", "-p", "6100", "--", "/bin/sh", "-sh"}
+		os.Args = []string{_COMMAND_NAME, "-locale", "LC_ALL=en_US.UTF-8",
+			"-p", "6100", "--", "/bin/sh", "-sh"}
 		// test
 		main()
 	}
@@ -1228,7 +1230,7 @@ func TestRunFail2(t *testing.T) {
 	}
 }
 
-func TestWaitError(t *testing.T) {
+func TestMainSrvWaitError(t *testing.T) {
 	tc := []struct {
 		label  string
 		pause  int    // pause between client send and read
@@ -1299,6 +1301,8 @@ func TestWaitError(t *testing.T) {
 func mockServe(ptmx *os.File, pw *io.PipeWriter, terminal *statesync.Complete, x chan bool,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
 	networkTimeout int64, networkSignaledTimeout int64) error {
+	time.Sleep(20 * time.Millisecond)
+	x <- true
 	return nil
 }
 
@@ -1320,7 +1324,7 @@ func failRunWorker(conf *Config, exChan chan string, whChan chan *workhorse) err
 	return errors.New("failed worker.")
 }
 
-func TestRunWorkerKill(t *testing.T) {
+func TestRunWorkerKillSignal(t *testing.T) {
 	tc := []struct {
 		label  string
 		pause  int    // pause between client send and read
@@ -1329,7 +1333,7 @@ func TestRunWorkerKill(t *testing.T) {
 		conf   Config
 	}{
 		{
-			"runWorker stopped by signal kill", 20, _ASH_OPEN + "7101,", 50,
+			"runWorker stopped by signal kill", 10, _ASH_OPEN + "7101,", 50,
 			Config{
 				version: false, server: true, verbose: _VERBOSE_SKIP_START, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -1340,17 +1344,18 @@ func TestRunWorkerKill(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			defer util.Log.Restore()
-			util.Log.SetLevel(slog.LevelDebug)
-			util.Log.SetOutput(os.Stdout)
-			// intercept stdout
-			// saveStdout := os.Stdout
-			// r, w, _ := os.Pipe()
-			// os.Stdout = w
-			//
 			// defer util.Log.Restore()
 			// util.Log.SetLevel(slog.LevelDebug)
-			// util.Log.SetOutput(w)
+			// util.Log.SetOutput(os.Stdout)
+
+			// intercept stdout
+			saveStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+
+			defer util.Log.Restore()
+			util.Log.SetLevel(slog.LevelDebug)
+			util.Log.SetOutput(w)
 
 			// set serve func and runWorker func
 			v.conf.serve = mockServe
@@ -1360,7 +1365,7 @@ func TestRunWorkerKill(t *testing.T) {
 			v.conf.commandPath = os.Getenv("SHELL")
 			v.conf.commandArgv = []string{getShellNameFrom(v.conf.commandPath)}
 
-			// send shutdown message after some time (finish ms)
+			// send kill signal after some time (finish ms)
 			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
 			go func() {
 				<-timer1.C
@@ -1375,25 +1380,100 @@ func TestRunWorkerKill(t *testing.T) {
 				t.Errorf("#test run expect %q got %q\n", v.resp, resp)
 			}
 
-			// stop the comd process
-			// wh := srv.workers[7101]
-			// time.AfterFunc(time.Duration(100)*time.Millisecond, func() {
-			// 	// wh.shell.Kill()
-			// 	// fmt.Printf("-- #test stop workhorse reports error=%v\n", e)
-			// 	srv.downChan <- true
-			// })
-
 			srv.wait()
 
 			// restore stdout
-			// w.Close()
-			// ioutil.ReadAll(r)
-			// os.Stdout = saveStdout
-			// r.Close()
+			w.Close()
+			io.ReadAll(r)
+			os.Stdout = saveStdout
+			r.Close()
 		})
 	}
 }
 
+func TestRunWorkerFail(t *testing.T) {
+	tc := []struct {
+		label string
+		conf  Config
+	}{
+		{
+			"openPTS fail", Config{
+				version: false, server: true, verbose: _VERBOSE_OPEN_PTS, desiredIP: "", desiredPort: "7100",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, term: "kitty",
+				commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false,
+			},
+		},
+		{
+			"startShell fail", Config{
+				version: false, server: true, verbose: _VERBOSE_START_SHELL, desiredIP: "", desiredPort: "7200",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, term: "kitty",
+				commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false,
+			},
+		},
+		{
+			"shell.Wait fail", Config{
+				version: false, server: true, verbose: _VERBOSE_SKIP_START, desiredIP: "", desiredPort: "7300",
+				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, term: "kitty",
+				commandPath: "echo", commandArgv: []string{"2"}, withMotd: false,
+			},
+		},
+	}
+
+	exChan := make(chan string, 1)
+	whChan := make(chan *workhorse, 1)
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+
+			// intercept log output
+			var b strings.Builder
+			defer util.Log.Restore()
+			util.Log.SetOutput(&b)
+			util.Log.SetLevel(slog.LevelDebug)
+
+			var wg sync.WaitGroup
+			var hasWorkhorse bool
+			v.conf.serve = mockServe
+			if strings.HasPrefix(v.label, "shell.Wait") {
+				v.conf.commandPath, _ = exec.LookPath(v.conf.commandPath)
+				hasWorkhorse = true // last one has effective work horse.
+			}
+
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				<-exChan       // get the key
+				wh := <-whChan // get the workhorse
+				if hasWorkhorse {
+					if wh.ptmx == nil || wh.shell == nil {
+						t.Errorf("#test runWorker fail should return empty workhorse\n")
+					}
+
+				} else {
+					if wh.ptmx != nil || wh.shell != nil {
+						t.Errorf("#test runWorker fail should return empty workhorse\n")
+					}
+					msg := <-exChan // get the done message
+					if msg != v.conf.desiredPort {
+						t.Errorf("#test runWorker fail should return %s, got %s\n", v.conf.desiredPort, msg)
+					}
+				}
+			}()
+
+			if hasWorkhorse {
+				if err := runWorker(&v.conf, exChan, whChan); err != nil {
+					t.Errorf("#test runWorker should not report error.\n")
+				}
+			} else {
+				if err := runWorker(&v.conf, exChan, whChan); err == nil {
+					t.Errorf("#test runWorker should report error.\n")
+				}
+			}
+
+			wg.Wait()
+		})
+	}
+}
 func testRunWorkerStop(t *testing.T) {
 	tc := []struct {
 		label  string
@@ -1448,13 +1528,16 @@ func testRunWorkerStop(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			// intercept stdout
-			saveStdout := os.Stdout
-			r, w, _ := os.Pipe()
-			os.Stdout = w
 			defer util.Log.Restore()
-			util.Log.SetOutput(w)
 			util.Log.SetLevel(slog.LevelDebug)
+			util.Log.SetOutput(os.Stdout)
+			// intercept stdout
+			// saveStdout := os.Stdout
+			// r, w, _ := os.Pipe()
+			// os.Stdout = w
+			// defer util.Log.Restore()
+			// util.Log.SetOutput(w)
+			// util.Log.SetLevel(slog.LevelDebug)
 
 			// set serve func and runWorker func
 			v.conf.serve = mockServe
@@ -1502,10 +1585,10 @@ func testRunWorkerStop(t *testing.T) {
 			srv.wait()
 
 			// restore stdout
-			w.Close()
-			io.ReadAll(r)
-			os.Stdout = saveStdout
-			r.Close()
+			// w.Close()
+			// io.ReadAll(r)
+			// os.Stdout = saveStdout
+			// r.Close()
 		})
 	}
 }
@@ -1606,130 +1689,6 @@ func TestOpenPTS(t *testing.T) {
 					t.Errorf("%q expect no error, got %s\n", v.label, err)
 				}
 			}
-		})
-	}
-}
-
-func testRunWorkerFail(t *testing.T) {
-	tc := []struct {
-		label string
-		conf  Config
-	}{
-		{
-			"openPTS fail", Config{
-				version: false, server: true, verbose: _VERBOSE_OPEN_PTS, desiredIP: "", desiredPort: "7100",
-				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, term: "kitty",
-				commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false,
-			},
-		},
-		{
-			"startShell fail", Config{
-				version: false, server: true, verbose: _VERBOSE_START_SHELL, desiredIP: "", desiredPort: "7200",
-				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, term: "kitty",
-				commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false,
-			},
-		},
-	}
-
-	exChan := make(chan string, 1)
-	whChan := make(chan *workhorse, 1)
-
-	for _, v := range tc {
-		t.Run(v.label, func(t *testing.T) {
-			var wg sync.WaitGroup
-
-			// intercept log output
-			var b strings.Builder
-			// logW.SetOutput(&b)
-			defer util.Log.Restore()
-			util.Log.SetOutput(&b)
-			util.Log.SetLevel(slog.LevelDebug)
-
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				<-exChan       // get the key
-				wh := <-whChan // get the workhorse
-				if wh.ptmx != nil || wh.shell != nil {
-					t.Errorf("#test runWorker fail should return empty workhorse\n")
-				}
-				msg := <-exChan // get the done message
-				if msg != v.conf.desiredPort {
-					t.Errorf("#test runWorker fail should return %s, got %s\n", v.conf.desiredPort, msg)
-				}
-			}()
-
-			if err := runWorker(&v.conf, exChan, whChan); err == nil {
-				t.Errorf("#test runWorker should report error.\n")
-				// t.Error(err)
-			}
-
-			wg.Wait()
-
-			// restore logW
-			// logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-		})
-	}
-}
-
-func testShellWaitFail(t *testing.T) {
-	tc := []struct {
-		label string
-		conf  Config
-	}{
-		{
-			"shell.Wait fail", Config{
-				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7300",
-				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, term: "kitty",
-				commandPath: "echo", commandArgv: []string{"2"}, withMotd: false,
-			},
-		},
-	}
-
-	exChan := make(chan string, 1)
-	whChan := make(chan *workhorse, 1)
-
-	for _, v := range tc {
-		t.Run(v.label, func(t *testing.T) {
-			if strings.HasPrefix(v.label, "shell.Wait") {
-				// find executable path
-				v.conf.commandPath, _ = exec.LookPath(v.conf.commandPath)
-				// set serve func
-				v.conf.serve = mockServe
-			}
-
-			var wg sync.WaitGroup
-
-			// intercept log output
-			var b strings.Builder
-			// logW.SetOutput(&b)
-			defer util.Log.Restore()
-			util.Log.SetOutput(&b)
-			util.Log.SetLevel(slog.LevelDebug)
-
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				<-exChan       // get the key
-				wh := <-whChan // get the workhorse
-				if wh.ptmx == nil || wh.shell == nil {
-					t.Errorf("#test runWorker fail should return a workhorse.\n")
-				}
-				msg := <-exChan // get the done message
-				if msg != v.conf.desiredPort {
-					t.Errorf("#test runWorker fail should return %s, got %s\n", v.conf.desiredPort, msg)
-				}
-			}()
-
-			if err := runWorker(&v.conf, exChan, whChan); err != nil {
-				t.Errorf("#test runWorker should report error.\n")
-				// t.Error(err)
-			}
-
-			wg.Wait()
-
-			// restore logW
-			// logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 		})
 	}
 }
