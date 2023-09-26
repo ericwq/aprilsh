@@ -1490,6 +1490,7 @@ func TestRunWorkerFail(t *testing.T) {
 		})
 	}
 }
+
 func TestCloseAprilsh(t *testing.T) {
 	tc := []struct {
 		label  string
@@ -1599,6 +1600,91 @@ func TestCloseAprilsh(t *testing.T) {
 			}
 
 			// fmt.Printf("#test got stop response %s\n", resp2)
+			srv.wait()
+
+			// restore stdout
+			w.Close()
+			io.ReadAll(r)
+			os.Stdout = saveStdout
+			r.Close()
+		})
+	}
+}
+
+func TestOpenAprilshDuplicate(t *testing.T) {
+	tc := []struct {
+		label  string
+		pause  int      // pause between client send and read
+		resp1  string   // response of start action
+		resp2  string   // response of stop action
+		resp3  string   // response of additinoal open request
+		exp    []string // ex parameter
+		finish int      // pause before shutdown message
+		conf   Config
+	}{
+		{
+			"open aprilsh with duplicate request", 20, _ASH_OPEN + "7101,", _ASH_CLOSE + "done",
+			_ASH_OPEN + "duplicate request", []string{}, 50,
+			Config{
+				version: false, server: true, verbose: _VERBOSE_SKIP_START, desiredIP: "", desiredPort: "7100",
+				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
+				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
+			},
+		},
+	}
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			// defer util.Log.Restore()
+			// util.Log.SetLevel(slog.LevelDebug)
+			// util.Log.SetOutput(os.Stdout)
+
+			// intercept stdout
+			saveStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+			defer util.Log.Restore()
+			util.Log.SetOutput(w)
+			util.Log.SetLevel(slog.LevelDebug)
+
+			// set serve func and runWorker func
+			v.conf.serve = mockServe
+			srv := newMainSrv(&v.conf, runWorker)
+
+			/// set commandPath and commandArgv based on environment
+			v.conf.commandPath = os.Getenv("SHELL")
+			v.conf.commandArgv = []string{getShellNameFrom(v.conf.commandPath)}
+
+			// send shutdown message after some time (finish ms)
+			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
+			go func() {
+				<-timer1.C
+				srv.downChan <- true
+			}()
+
+			srv.start(&v.conf)
+
+			// start a new connection
+			resp1 := mockClient(v.conf.desiredPort, v.pause, _ASH_OPEN)
+			if !strings.HasPrefix(resp1, v.resp1) {
+				t.Errorf("#test run expect %q got %q\n", v.resp1, resp1)
+			}
+			// fmt.Printf("#test got 1 response %q\n", resp1)
+
+			// start a new connection
+			resp3 := mockClient(v.conf.desiredPort, v.pause, _ASH_OPEN)
+			if !strings.HasPrefix(resp3, v.resp3) {
+				t.Errorf("#test run expect %q got %q\n", v.resp3, resp3)
+			}
+			// fmt.Printf("#test got 3 response %q\n", resp3)
+
+			// stop the new connection
+			resp2 := mockClient(v.conf.desiredPort, v.pause, _ASH_CLOSE, v.exp...)
+			if !strings.HasPrefix(resp2, v.resp2) {
+				t.Errorf("#test run expect %q got %q\n", v.resp1, resp2)
+			}
+			// fmt.Printf("#test got 2 response %q\n", resp2)
+
 			srv.wait()
 
 			// restore stdout

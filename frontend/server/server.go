@@ -1361,11 +1361,11 @@ func (m *mainSrv) run(conf *Config) {
 				continue
 			}
 		}
-		// fmt.Printf("#run receive %q from %s\n", strings.TrimSpace(string(buf[0:n])), addr)
 
 		req := strings.TrimSpace(string(buf[0:n]))
-		// 'open aprilsh:' to start the server
-		if strings.HasPrefix(req, _ASH_OPEN) {
+		// fmt.Printf("#run receive %q from %s\n", req, addr)
+
+		if strings.HasPrefix(req, _ASH_OPEN) { // 'open aprilsh:'
 			// prepare next port
 			p := m.getAvailabePort() // TODO set limit for port?
 
@@ -1400,9 +1400,8 @@ func (m *mainSrv) run(conf *Config) {
 				resp := m.writeRespTo(addr, _ASH_OPEN, "duplicate request")
 				util.Log.With("request", req).With("response", resp).Warn("duplicate request")
 			}
-		} else if strings.HasPrefix(req, _ASH_CLOSE) {
+		} else if strings.HasPrefix(req, _ASH_CLOSE) { // 'close aprilsh:[port]'
 			// fmt.Printf("#mainSrv run() receive request %q\n", req)
-			// 'close aprilsh:[port]' to stop the server
 			pstr := strings.TrimPrefix(req, _ASH_CLOSE)
 			port, err := strconv.Atoi(pstr)
 			if err == nil {
