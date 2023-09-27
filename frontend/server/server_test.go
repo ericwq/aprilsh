@@ -357,6 +357,9 @@ func TestMainRun(t *testing.T) {
 				"LC_ALL=en_US.UTF-8", "-p", "6200", "--", "/bin/sh", "-sh"},
 			[]string{"aprilsh-server", "start listening on", "buildVersion",
 				"stop listening", "6200"}},
+		{"run main and killeb by -a, write to syslog",
+			[]string{_COMMAND_NAME, "-a=1", "-verbose", "514"}, // auto stop after 1 second
+			[]string{}},
 	}
 	for i, v := range tc {
 		t.Run(v.label, func(t *testing.T) {

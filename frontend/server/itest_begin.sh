@@ -21,6 +21,7 @@ go build -cover -coverpkg=$PKGS -o ./server .
 
 #
 # start the server
+# here 514 doesn't work, it looks like a bug for coverage. fix it with unit test.
 GOCOVERDIR=./coverage/int ./server -verbose 514 2>> /tmp/aprilsh-server.log &
 spid=$!
 
