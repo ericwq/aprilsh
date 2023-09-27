@@ -351,8 +351,9 @@ func TestMainRun(t *testing.T) {
 			[]string{_COMMAND_NAME, "-verbose", "1", "-locale",
 				"LC_ALL=en_US.UTF-8", "-p", "6100", "--", "/bin/sh", "-sh"},
 			[]string{"aprilsh-server", "start listening on", "buildVersion",
-				"got signal: SIGHUP", "got signal: SIGTERM or SIGINT"}},
-		{"run main and killeb by -a",
+				"got signal: SIGHUP", "got signal: SIGTERM or SIGINT",
+				"stop listening", "6100"}},
+		{"run main and killed by -a",
 			[]string{_COMMAND_NAME, "-a=1", "-locale", // auto stop after 1 second
 				"LC_ALL=en_US.UTF-8", "-p", "6200", "--", "/bin/sh", "-sh"},
 			[]string{"aprilsh-server", "start listening on", "buildVersion",
@@ -366,7 +367,7 @@ func TestMainRun(t *testing.T) {
 
 			if i < 2 {
 				// shutdown after 7ms
-				time.AfterFunc(7*time.Millisecond, func() {
+				time.AfterFunc(17*time.Millisecond, func() {
 					// fmt.Printf("#test main buildConfig PID:%d\n", os.Getpid())
 					syscall.Kill(os.Getpid(), syscall.SIGHUP)
 					syscall.Kill(os.Getpid(), syscall.SIGTERM)
