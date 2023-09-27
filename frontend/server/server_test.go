@@ -364,7 +364,7 @@ func TestMainRun(t *testing.T) {
 	for i, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 
-			if i == 0 {
+			if i < 2 {
 				// shutdown after 7ms
 				time.AfterFunc(7*time.Millisecond, func() {
 					// fmt.Printf("#test main buildConfig PID:%d\n", os.Getpid())
@@ -1505,11 +1505,11 @@ func TestRunCloseFail(t *testing.T) {
 		conf   Config
 	}{
 		{
-			"runWorker stopped by " + _ASH_CLOSE, 20, _ASH_OPEN + "7101,", _ASH_CLOSE + "done",
+			"runWorker stopped by " + _ASH_CLOSE, 20, _ASH_OPEN + "7111,", _ASH_CLOSE + "done",
 			[]string{},
 			50,
 			Config{
-				version: false, server: true, verbose: _VERBOSE_SKIP_START, desiredIP: "", desiredPort: "7100",
+				version: false, server: true, verbose: _VERBOSE_SKIP_START, desiredIP: "", desiredPort: "7110",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
