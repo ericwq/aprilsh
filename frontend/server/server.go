@@ -422,6 +422,7 @@ func main() {
 	syslogSupport = false
 	if conf.verbose == _VERBOSE_LOG_SYSLOG {
 		if util.Log.SetupSyslog("udp", "localhost:514") == nil {
+			// util.Log.With("verbose", conf.verbose).Debug("log to syslog")
 			syslogSupport = true
 		}
 	}
@@ -471,33 +472,36 @@ func getShellNameFrom(shellPath string) (shellName string) {
 func beginClientConn(port string) {
 	// Unlike Dial, ListenPacket creates a connection without any
 	// association with peers.
-	conn, err := net.ListenPacket("udp", ":0")
-	if err != nil {
-		fmt.Println(err)
-	}
+	conn, _ := net.ListenPacket("udp", ":0")
+	// conn, err := net.ListenPacket("udp", ":0")
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
 	defer conn.Close()
 
-	dest, err := net.ResolveUDPAddr("udp", "localhost:"+port)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
+	dest, _ := net.ResolveUDPAddr("udp", "localhost:"+port)
+	// dest, err := net.ResolveUDPAddr("udp", "localhost:"+port)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
 
 	// request from server
 	request := fmt.Sprintf("%s", _ASH_OPEN)
 	conn.SetDeadline(time.Now().Add(time.Millisecond * 20))
-	n, err := conn.WriteTo([]byte(request), dest)
-	if err != nil {
-		fmt.Println("write to udp: ", err)
-		return
-	} else if n != len(request) {
-		fmt.Println("can't send correct query.")
-		return
-	}
+	conn.WriteTo([]byte(request), dest)
+	// n, err := conn.WriteTo([]byte(request), dest)
+	// if err != nil {
+	// 	fmt.Println("write to udp: ", err)
+	// 	return
+	// } else if n != len(request) {
+	// 	fmt.Println("can't send correct query.")
+	// 	return
+	// }
 
 	// read the response
 	response := make([]byte, 128)
-	conn.SetDeadline(time.Now().Add(time.Millisecond * 90))
+	conn.SetDeadline(time.Now().Add(time.Millisecond * 200))
 	m, _, err := conn.ReadFrom(response)
 	if err != nil {
 		fmt.Println(err)
@@ -979,7 +983,7 @@ mainLoop:
 
 		// abort if no connection over 60 seconds
 		if network.GetRemoteStateNum() == 0 && timeSinceRemoteState >= timeoutIfNoClient {
-			util.Log.With("seconds", timeoutIfNoClient/1000).Warn("No connection within %d seconds")
+			util.Log.With("seconds", timeoutIfNoClient/1000).Warn("No connection within x seconds")
 			break
 		}
 
