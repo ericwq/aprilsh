@@ -60,6 +60,7 @@ The project name `Aprilsh` is derived from `April+sh`. This project started in s
 - 2023/Aug/14: accomplish `exit` command in running aprilsh client.
 - 2023/Aug/22: add OSC 112, DECSCUR, XTWINOPS 22,23 support; study CSI u.
 - 2023/Sep/15: improve the performance of client and server.
+- 2023/Sep/28: fix bug for Display and add integration test for server.
 
 ## build dependency
 
