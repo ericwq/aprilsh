@@ -4,21 +4,6 @@
 # Terminate the test if any command below does not complete successfully.
 set -e
 
-# 
-# prepare coverage directory
-rm -rf coverage
-mkdir -p coverage/unit 
-mkdir -p coverage/int
-
-#
-# selecting package to cover
-PKGS="github.com/ericwq/aprilsh/frontend/server"
-
-#
-# build server for test
-# go build -cover -coverpkg=$PKGS -o ~/.local/bin/aprilsh-server server.go
-go build -cover -coverpkg=$PKGS -o ./server .
-
 #
 # start the server
 # here 514 doesn't work, it looks like a bug for coverage. fix it with unit test.
@@ -46,9 +31,9 @@ go test -cover . -args -test.gocoverdir=./coverage/unit
 
 #
 # Convert total coverage to cover profile
-go tool covdata textfmt -i=./coverage/unit,./coverage/int -o coverage/profile
+#go tool covdata textfmt -i=./coverage/unit,./coverage/int -o coverage/profile
 
 #
 # View total coverage
-go tool cover -func coverage/profile
+#go tool cover -func coverage/profile
 # go tool cover -html coverage/profile
