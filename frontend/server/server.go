@@ -987,13 +987,13 @@ mainLoop:
 			break
 		}
 
-		// util.Log.With("point", "c").Debug("mainLoop")
+		util.Log.With("point", "c").Debug("mainLoop")
 
 		err := network.Tick()
 		if err != nil {
 			util.Log.With("error", err).Warn("tick send failed")
 		}
-		// util.Log.With("point", "d").Debug("mainLoop")
+		util.Log.With("point", "d").Debug("mainLoop")
 	}
 
 	// shutdown the goroutine

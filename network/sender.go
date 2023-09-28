@@ -152,11 +152,11 @@ func (ts *TransportSender[T]) sendToReceiver(diff string) error {
 		newNum = -1
 	}
 
-	now := time.Now().UnixMilli()
+	// now := time.Now().UnixMilli()
 	if newNum == ts.sentStates[back].num {
-		ts.sentStates[back].timestamp = now
+		ts.sentStates[back].timestamp = time.Now().UnixMilli()
 	} else {
-		ts.addSentState(now, newNum, ts.currentState)
+		ts.addSentState(time.Now().UnixMilli(), newNum, ts.currentState)
 	}
 
 	if err := ts.sendInFragments(diff, newNum); err != nil {
@@ -166,8 +166,8 @@ func (ts *TransportSender[T]) sendToReceiver(diff string) error {
 	/* successfully sent, probably */
 	/* ("probably" because the FIRST size-exceeded datagram doesn't get an error) */
 	ts.assumedReceiverState = &ts.sentStates[len(ts.sentStates)-1]
-	ts.nextAckTime = now + ACK_INTERVAL
-	ts.nextSendTime = -1
+	ts.nextAckTime = time.Now().UnixMilli() + ACK_INTERVAL
+	ts.nextSendTime = math.MaxInt64
 
 	return nil
 }
@@ -188,7 +188,7 @@ func (ts *TransportSender[T]) sendEmptyAck() error {
 	}
 
 	ts.nextAckTime = now + ACK_INTERVAL
-	ts.nextSendTime = -1
+	ts.nextSendTime = math.MaxInt64
 
 	return nil
 }
@@ -325,7 +325,10 @@ func (ts *TransportSender[T]) calculateTimers() {
 		ts.nextAckTime = ts.sentStates[back].timestamp + int64(ts.sendInterval())
 		// fmt.Printf("#calculateTimers after nextAckTime=%d\n", ts.nextAckTime)
 	}
-	// util.Log.With("point", "a1.1.4").Debug("mainLoop")
+	util.Log.With("nextAckTime", ts.nextAckTime).
+		With("nextSendTime", ts.nextSendTime).
+		With("now", now).
+		Debug("calculateTimers")
 }
 
 // make chaff with random length and random contents.
@@ -394,23 +397,25 @@ func (ts *TransportSender[T]) tick() error {
 			if err := ts.sendEmptyAck(); err != nil {
 				return err
 			}
-			ts.mindelayClock = -1
+			ts.mindelayClock = math.MaxInt64
 		}
 
 		if now >= ts.nextSendTime {
-			ts.nextSendTime = -1
-			ts.mindelayClock = -1
+			ts.nextSendTime = math.MaxInt64
+			ts.mindelayClock = math.MaxInt64
 		}
 	} else if now >= ts.nextSendTime || now >= ts.nextAckTime {
 		// send diff or ack
 		// util.Log.With("assumedReceiverState", ts.assumedReceiverState.num).
 		// 	With("now>=nextAckTime", now >= ts.nextAckTime).
 		// 	With("now>=nextSendTime", now >= ts.nextSendTime).
-		// 	Debug("sendToReceiver")
+		// 	With("nextSendTime", ts.nextSendTime).
+		// 	With("nextAckTime", ts.nextAckTime).
+		// 	Debug("send fragments")
 		if err := ts.sendToReceiver(diff); err != nil {
 			return err
 		}
-		ts.mindelayClock = -1
+		ts.mindelayClock = math.MaxInt64
 	} else {
 		// util.Log.With("nextAckTime", ts.nextAckTime).With("nextSendTime", ts.nextSendTime).Debug("tick others")
 	}
