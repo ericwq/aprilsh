@@ -7,7 +7,7 @@ set -e
 #
 # start the server
 # - output debug level log information to specified file
-GOCOVERDIR=./coverage/int ./server -verbose 1 2>> /tmp/aprilsh-server.log &
+GOCOVERDIR=./coverage/int ~/.local/bin/aprilsh-server -verbose 1 2>> /tmp/aprilsh-server.log &
 spid=$!
 
 #

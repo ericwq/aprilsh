@@ -315,7 +315,7 @@ func (ts *TransportSender[T]) calculateTimers() {
 		// currentState is the newest and assumed receiver state but not the oldest sent state
 		ts.nextSendTime = ts.sentStates[back].timestamp + ts.connection.timeout() + ACK_DELAY
 	} else {
-		ts.nextSendTime = -1 // math.MaxInt64
+		ts.nextSendTime = math.MaxInt64
 	}
 
 	// speed up shutdown sequence
