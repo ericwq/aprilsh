@@ -36,7 +36,7 @@ func TestCompleteApplyString(t *testing.T) {
 		label         string
 		seq           string
 		width, height int
-		echoAck       int64
+		echoAck       uint64
 	}{
 		{"fill one row with string", "\x1B[4;4HErase to the end of line\x1B[0K.", 0, 0, 0},
 		{"fill one row and resize", "\x1B[6;67HLAST", 70, 30, 0},

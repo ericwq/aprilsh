@@ -7,13 +7,12 @@ option go_package = "/protobufs";
 // github.com/ericwq/aprish/protobufs
 
 message Instruction {
-  uint32 protocol_version = 1;
+	uint32 protocol_version = 1;
 
-  int64 old_num = 2;
-  int64 new_num = 3;
-  int64 ack_num = 4;
-  int64 throwaway_num = 5;
-  optional bytes diff = 6;
-  optional bytes chaff = 7;
-
+	uint64 old_num = 2;
+	uint64 new_num = 3;
+	uint64 ack_num = 4;
+	uint64 throwaway_num = 5;
+	optional bytes diff = 6;
+	optional bytes chaff = 7;
 }

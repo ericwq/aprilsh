@@ -382,7 +382,7 @@ func main() {
 	client.main()
 	client.shutdown()
 
-	fmt.Printf("\nConnection to %s closed.\n", conf.host)
+	fmt.Printf("Connection to %s closed.\n", conf.host)
 }
 
 type STMClient struct {

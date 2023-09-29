@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -51,7 +50,7 @@ func TestTransportClientSend(t *testing.T) {
 	time.Sleep(time.Millisecond * 20)
 
 	// validate sentStates status
-	var expectNum int64
+	var expectNum uint64
 	gotNum := client.sender.getSentStateAcked()
 	if gotNum != expectNum {
 		t.Errorf("#test R1 client sentStates expect first num %d, got %d\n", expectNum, gotNum)
@@ -155,7 +154,7 @@ func TestTransportServerSend(t *testing.T) {
 
 	// restore stderr
 	w.Close()
-	ioutil.ReadAll(r) // discard the output of stderr
+	io.ReadAll(r) // discard the output of stderr
 	// b, _ := ioutil.ReadAll(r)
 	os.Stderr = saveStderr
 	r.Close()
@@ -207,7 +206,7 @@ func TestTransportRecvVersionError(t *testing.T) {
 	util.Log.SetOutput(io.Discard)
 
 	// send customized instruction to server
-	var newNum int64 = 1
+	var newNum uint64 = 1
 	inst := pb.Instruction{}
 	inst.ProtocolVersion = APRILSH_PROTOCOL_VERSION + 1 // mock version
 	inst.OldNum = client.sender.assumedReceiverState.num
@@ -257,7 +256,7 @@ func TestTransportRecvRepeat(t *testing.T) {
 	time.Sleep(time.Millisecond * 20)
 
 	// second round, send repeat state
-	var newNum int64 = 1
+	var newNum uint64 = 1
 	client.sender.sendInFragments("", newNum)
 	time.Sleep(time.Millisecond * 20)
 
@@ -293,7 +292,7 @@ func TestTransportRecvNotFoundOld(t *testing.T) {
 	util.Log.SetOutput(io.Discard)
 
 	// send customized instruction to server
-	var newNum int64 = 1
+	var newNum uint64 = 1
 	inst := pb.Instruction{}
 	inst.ProtocolVersion = APRILSH_PROTOCOL_VERSION
 	inst.OldNum = 3 // oldNum doesn't exist
@@ -352,7 +351,7 @@ func TestTransportRecvOverLimit(t *testing.T) {
 	}
 
 	// send customized instruction to server
-	var newNum int64 = 1024
+	var newNum uint64 = 1024
 	client.sender.sendInFragments("", newNum)
 	time.Sleep(time.Millisecond * 20)
 
@@ -366,7 +365,7 @@ func TestTransportRecvOverLimit(t *testing.T) {
 
 	// restore stderr
 	w.Close()
-	ioutil.ReadAll(r) // discard the output of stderr
+	io.ReadAll(r) // discard the output of stderr
 	// b, _ := ioutil.ReadAll(r)
 	os.Stderr = saveStderr
 	r.Close()
@@ -411,7 +410,7 @@ func TestTransportRecvOverLimit2(t *testing.T) {
 	}
 
 	// send customized instruction to server
-	var newNum int64 = 1024
+	var newNum uint64 = 1024
 	client.sender.sendInFragments("", newNum)
 	time.Sleep(time.Millisecond * 20)
 
@@ -426,7 +425,7 @@ func TestTransportRecvOverLimit2(t *testing.T) {
 
 	// restore stderr
 	w.Close()
-	ioutil.ReadAll(r) // discard the output of stderr
+	io.ReadAll(r) // discard the output of stderr
 	// b, _ := ioutil.ReadAll(r)
 	os.Stderr = saveStderr
 	r.Close()
@@ -473,7 +472,7 @@ func TestTransportRecvOutOfOrder(t *testing.T) {
 	time.Sleep(time.Millisecond * 10)
 
 	// send customized instruction to server
-	var newNum int64 = 3
+	var newNum uint64 = 3
 	client.sender.sendInFragments("", newNum)
 	time.Sleep(time.Millisecond * 20)
 
@@ -485,7 +484,7 @@ func TestTransportRecvOutOfOrder(t *testing.T) {
 
 	// restore stderr
 	w.Close()
-	ioutil.ReadAll(r) // discard the output of stderr
+	io.ReadAll(r) // discard the output of stderr
 	// b, _ := ioutil.ReadAll(r)
 	os.Stderr = saveStderr
 	r.Close()
@@ -624,7 +623,7 @@ func TestClientShutdown(t *testing.T) {
 
 	// restore stderr
 	w.Close()
-	ioutil.ReadAll(r) // discard the output of stderr
+	io.ReadAll(r) // discard the output of stderr
 	// b, _ := ioutil.ReadAll(r)
 	os.Stderr = saveStderr
 	r.Close()

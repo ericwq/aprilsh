@@ -15,7 +15,7 @@ func TestTimestampedStaeGetxxx(t *testing.T) {
 	blank := &statesync.UserStream{}
 
 	now := time.Now().UnixMilli()
-	expectNum := int64(4)
+	expectNum := uint64(4)
 	s := TimestampedState[*statesync.UserStream]{state: blank, num: expectNum, timestamp: now}
 
 	if s.GetTimestamp() != now {

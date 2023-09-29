@@ -17,7 +17,7 @@ const (
 )
 
 type pair struct {
-	frameNum  int64 // remote frame number
+	frameNum  uint64 // remote frame number
 	timestamp int64
 }
 
@@ -25,7 +25,7 @@ type pair struct {
 type Complete struct {
 	terminal     *terminal.Emulator
 	inputHistory []pair
-	echoAck      int64
+	echoAck      uint64
 	display      *terminal.Display
 }
 
@@ -62,14 +62,14 @@ func (c *Complete) GetEmulator() *terminal.Emulator {
 	return c.terminal
 }
 
-func (c *Complete) GetEchoAck() int64 {
+func (c *Complete) GetEchoAck() uint64 {
 	return c.echoAck
 }
 
 // shrink input history according to timestamp. return true if newestEchoAck changed.
 // update echoAck if find the newest state.
 func (c *Complete) SetEchoAck(now int64) (ret bool) {
-	var newestEchoAck int64 = 0
+	var newestEchoAck uint64 = 0
 	for _, v := range c.inputHistory {
 		// fmt.Printf("#setEchoAck timestamp=%d, now-ECHO_TIMEOUT=%d, condition is %t\n",
 		// 	v.timestamp, now-ECHO_TIMEOUT, v.timestamp <= now-ECHO_TIMEOUT)
@@ -103,7 +103,7 @@ func (c *Complete) SetEchoAck(now int64) (ret bool) {
 
 // register the latest remote state number and time.
 // the latest remote state is the client input state.
-func (c *Complete) RegisterInputFrame(num, now int64) {
+func (c *Complete) RegisterInputFrame(num uint64, now int64) {
 	c.inputHistory = append(c.inputHistory, pair{num, now})
 }
 

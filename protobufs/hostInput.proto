@@ -5,27 +5,27 @@ package HostBuffers;
 option go_package = "/protobufs/host";
 
 message HostMessage {
-  repeated Instruction instruction = 1;
+	repeated Instruction instruction = 1;
 }
 
 message Instruction {
-  optional HostBytes hostbytes = 2;
-  optional ResizeMessage resize = 3;
-  optional EchoAck echoack = 7;
-  /* extensions 2 to max; */
+	optional HostBytes hostbytes = 2;
+	optional ResizeMessage resize = 3;
+	optional EchoAck echoack = 7;
+	/* extensions 2 to max; */
 }
 
 message HostBytes {
-  optional bytes hoststring = 4;
+	optional bytes hoststring = 4;
 }
 
 message ResizeMessage {
-  optional int32 width = 5;
-  optional int32 height = 6;
+	optional int32 width = 5;
+	optional int32 height = 6;
 }
 
 message EchoAck {
-  optional int64 echo_ack_num = 8;
+	optional uint64 echo_ack_num = 8;
 }
 
 /* extend Instruction { */

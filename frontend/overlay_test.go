@@ -6,6 +6,7 @@ package frontend
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -28,7 +29,7 @@ func TestOverlay(t *testing.T) {
 	}
 
 	co.reset()
-	if co.expirationFrame != -1 || co.tentativeUntilEpoch != -1 || co.active != false {
+	if co.expirationFrame != math.MaxUint64 || co.tentativeUntilEpoch != math.MaxInt64 || co.active != false {
 		t.Errorf("reset() expirationFrame should be %d, got %d\n", -1, co.expirationFrame)
 	}
 }
@@ -63,8 +64,8 @@ func TestMoveApply(t *testing.T) {
 func TestMoveGetValidity(t *testing.T) {
 	tc := []struct {
 		name            string
-		lateAck         int64
-		expirationFrame int64
+		lateAck         uint64
+		expirationFrame uint64
 		active          bool
 		rowEmu, colEmu  int
 		rowCcm, colCcm  int
@@ -149,7 +150,7 @@ func TestCellGetValidity(t *testing.T) {
 		name     string
 		active   bool
 		row, col int
-		lateAck  int64
+		lateAck  uint64
 		unknown  bool
 		base     string // base content
 		predict  string // prediction
@@ -412,7 +413,7 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 		row, col       int    // the specified row and col
 		base           string // base content
 		predict        string // prediction
-		lateAck        int64  // lateAck control the pending result
+		lateAck        uint64 // lateAck control the pending result
 		confirmedEpoch int64  // this control the appply result
 		expect         string // the expect content
 	}{
@@ -480,7 +481,7 @@ func TestPrediction_NewUserInput_Backspace_Overwrite(t *testing.T) {
 		row, col       int    // the specified row and col
 		base           string // base content
 		predict        string // prediction
-		lateAck        int64  // lateAck control the pending result
+		lateAck        uint64 // lateAck control the pending result
 		confirmedEpoch int64  // this control the appply result
 		expect         string // the expect content
 	}{
@@ -691,9 +692,9 @@ func TestPredictionCull(t *testing.T) {
 		predict             string            // prediction
 		frame               string            // the expect content
 		displayPreference   DisplayPreference // display preference
-		localFrameLateAcked int64             // getValidity use localFrameLateAcked to validity cell or cursor prediction
-		localFrameSent      int64             // the cell prediction expirationFrame is set by localFrameSent+1
-		sendInterval        int
+		localFrameLateAcked uint64            // getValidity use localFrameLateAcked to validity cell or cursor prediction
+		localFrameSent      uint64            // the cell prediction expirationFrame is set by localFrameSent+1
+		sendInterval        uint
 	}{
 		/* 0*/ {"displayPreference is never", 0, 0, "", "", "", Never, 0, 0, 0},
 		/* 1*/ {"IncorrectOrExpired >confirmedEpoch, killEpoch()", 1, 70, "", "right", "wrong", Adaptive, 2, 1, 0},
@@ -844,8 +845,8 @@ func TestPredictionNewInput(t *testing.T) {
 func TestSetLocalFrameAcked(t *testing.T) {
 	pe := newPredictionEngine()
 
-	var expect int64 = 7
-	pe.SetLocalFrameAcked(int64(expect))
+	var expect uint64 = 7
+	pe.SetLocalFrameAcked(expect)
 
 	if pe.localFrameAcked != expect {
 		t.Errorf("#test SetLocalFrameAcked expect %d, got %d\n", expect, pe.localFrameAcked)

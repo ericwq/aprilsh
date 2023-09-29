@@ -26,15 +26,15 @@ type State[C any] interface {
 
 type TimestampedState[T State[T]] struct {
 	timestamp int64
-	num       int64
+	num       uint64
 	state     T
 }
 
-func (t *TimestampedState[T]) numEq(v int64) bool {
+func (t *TimestampedState[T]) numEq(v uint64) bool {
 	return t.num == v
 }
 
-func (t *TimestampedState[T]) numLt(v int64) bool {
+func (t *TimestampedState[T]) numLt(v uint64) bool {
 	return t.num < v
 }
 

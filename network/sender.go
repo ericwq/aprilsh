@@ -52,9 +52,9 @@ type TransportSender[T State[T]] struct {
 	shutdownStart      int64
 
 	// information about receiver state
-	ackNum         int64
+	ackNum         uint64
 	pendingDataAck bool
-	SEND_MINDELAY  int   // ms to collect all input
+	SEND_MINDELAY  uint  // ms to collect all input
 	lastHeard      int64 // last time received new state
 
 	mindelayClock int64 // time of first pending change to current state
@@ -75,9 +75,9 @@ func NewTransportSender[T State[T]](connection *Connection, initialState T) *Tra
 	ts.nextAckTime = now
 	ts.nextSendTime = now
 
-	ts.shutdownStart = -1
+	ts.shutdownStart = math.MaxInt64
 	ts.SEND_MINDELAY = 8
-	ts.mindelayClock = -1
+	ts.mindelayClock = math.MaxInt64
 	return ts
 }
 
@@ -139,7 +139,7 @@ func (ts *TransportSender[T]) rationalizeStates() {
 }
 
 func (ts *TransportSender[T]) sendToReceiver(diff string) error {
-	var newNum int64
+	var newNum uint64
 	back := len(ts.sentStates) - 1
 	if ts.currentState.Equal(ts.sentStates[back].state) { // previously sent
 		newNum = ts.sentStates[back].num
@@ -149,7 +149,7 @@ func (ts *TransportSender[T]) sendToReceiver(diff string) error {
 
 	// special case for shutdown sequence
 	if ts.shutdownInProgress {
-		newNum = -1
+		newNum = math.MaxUint64
 	}
 
 	// now := time.Now().UnixMilli()
@@ -179,7 +179,7 @@ func (ts *TransportSender[T]) sendEmptyAck() error {
 
 	// special case for shutdown sequence
 	if ts.shutdownInProgress {
-		newNum = -1
+		newNum = math.MaxUint64
 	}
 
 	ts.addSentState(now, newNum, ts.currentState)
@@ -193,7 +193,7 @@ func (ts *TransportSender[T]) sendEmptyAck() error {
 	return nil
 }
 
-func (ts *TransportSender[T]) sendInFragments(diff string, newNum int64) error {
+func (ts *TransportSender[T]) sendInFragments(diff string, newNum uint64) error {
 	inst := pb.Instruction{}
 	inst.ProtocolVersion = APRILSH_PROTOCOL_VERSION
 	inst.OldNum = ts.assumedReceiverState.num
@@ -222,8 +222,8 @@ func (ts *TransportSender[T]) sendInFragments(diff string, newNum int64) error {
 	return err
 }
 
-func (ts *TransportSender[T]) sendFragments(inst *pb.Instruction, newNum int64) error {
-	if newNum == -1 {
+func (ts *TransportSender[T]) sendFragments(inst *pb.Instruction, newNum uint64) error {
+	if newNum == math.MaxUint64 {
 		ts.shutdownTries++
 	}
 
@@ -260,7 +260,7 @@ func (ts *TransportSender[T]) sendFragments(inst *pb.Instruction, newNum int64) 
 }
 
 // add state into the send states list.
-func (ts *TransportSender[T]) addSentState(timestamp int64, num int64, state T) {
+func (ts *TransportSender[T]) addSentState(timestamp int64, num uint64, state T) {
 	s := TimestampedState[T]{timestamp, num, state.Clone()}
 	ts.sentStates = append(ts.sentStates, s)
 
@@ -299,7 +299,7 @@ func (ts *TransportSender[T]) calculateTimers() {
 
 	if !ts.currentState.Equal(ts.sentStates[back].state) {
 		// currentState is not the newest sent states
-		if ts.mindelayClock == -1 {
+		if ts.mindelayClock == math.MaxInt64 {
 			ts.mindelayClock = now
 		}
 
@@ -308,7 +308,7 @@ func (ts *TransportSender[T]) calculateTimers() {
 	} else if !ts.currentState.Equal(ts.assumedReceiverState.state) && ts.lastHeard+ACTIVE_RETRY_TIMEOUT > now {
 		// currentState is newest sent state but not the assumed receiver state
 		ts.nextSendTime = ts.sentStates[back].timestamp + int64(ts.sendInterval())
-		if ts.mindelayClock != -1 {
+		if ts.mindelayClock != math.MaxInt64 {
 			ts.nextSendTime = terminal.Max(ts.nextSendTime, ts.mindelayClock+int64(ts.SEND_MINDELAY))
 		}
 	} else if !ts.currentState.Equal(ts.sentStates[0].state) && ts.lastHeard+ACTIVE_RETRY_TIMEOUT > now {
@@ -319,16 +319,16 @@ func (ts *TransportSender[T]) calculateTimers() {
 	}
 
 	// speed up shutdown sequence
-	if ts.shutdownInProgress || ts.ackNum == -1 {
+	if ts.shutdownInProgress || ts.ackNum == math.MaxUint64 {
 		// fmt.Printf("#calculateTimers before nextAckTime=%d, last sentStates time=%d, sendInterval=%d\n",
 		// 	ts.nextAckTime, ts.sentStates[back].timestamp, ts.sendInterval())
 		ts.nextAckTime = ts.sentStates[back].timestamp + int64(ts.sendInterval())
 		// fmt.Printf("#calculateTimers after nextAckTime=%d\n", ts.nextAckTime)
 	}
-	util.Log.With("nextAckTime", ts.nextAckTime).
-		With("nextSendTime", ts.nextSendTime).
-		With("now", now).
-		Debug("calculateTimers")
+	// util.Log.With("nextAckTime", ts.nextAckTime).
+	// 	With("nextSendTime", ts.nextSendTime).
+	// 	With("now", now).
+	// 	Debug("calculateTimers")
 }
 
 // make chaff with random length and random contents.
@@ -416,12 +416,12 @@ func (ts *TransportSender[T]) tick() error {
 			return err
 		}
 		ts.mindelayClock = math.MaxInt64
-	} else {
+		// } else {
 		// util.Log.With("nextAckTime", ts.nextAckTime).With("nextSendTime", ts.nextSendTime).Debug("tick others")
 	}
-	// util.Log.With("nextAckTime", ts.nextAckTime).
-	// 	With("nextSendTime", ts.nextSendTime).
-	// 	Debug("send fragments")
+	util.Log.With("nextAckTime", ts.nextAckTime).
+		With("nextSendTime", ts.nextSendTime).
+		Debug("send fragments")
 
 	return nil
 }
@@ -459,35 +459,29 @@ func (ts *TransportSender[T]) waitTime() int {
 
 // Executed upon receipt of ack
 // remove sent states whose num less than ack num.
-func (ts *TransportSender[T]) processAcknowledgmentThrough(ackNum int64) {
+func (ts *TransportSender[T]) processAcknowledgmentThrough(ackNum uint64) {
 	// Ignore ack if we have culled the state it's acknowledging
 
 	for i := range ts.sentStates {
 		// find the first element for which its num == ackNum
 		if ts.sentStates[i].numEq(ackNum) {
-			if ackNum == -1 {
-				// for shutdown ack, keep shutdown state in the first place
-				// is the key, the other state is not important.
-				ts.sentStates = ts.sentStates[i:]
-			} else {
-				// remove the element for which its num < ackNum
-				ss := ts.sentStates[:0]
-				for j := range ts.sentStates {
-					if ts.sentStates[j].numLt(ackNum) {
-						// skip this means remove this element
-					} else {
-						ss = append(ss, ts.sentStates[j])
-					}
+			// remove the element for which its num < ackNum
+			ss := ts.sentStates[:0]
+			for j := range ts.sentStates {
+				if ts.sentStates[j].numLt(ackNum) {
+					// skip this means remove this element
+				} else {
+					ss = append(ss, ts.sentStates[j])
 				}
-				ts.sentStates = ss
 			}
-			return
+			ts.sentStates = ss
+			break
 		}
 	}
 }
 
 // Executed upon entry to new receiver state
-func (ts *TransportSender[T]) setAckNum(ackNum int64) {
+func (ts *TransportSender[T]) setAckNum(ackNum uint64) {
 	ts.ackNum = ackNum
 }
 
@@ -528,11 +522,11 @@ func (ts *TransportSender[T]) getShutdownInProgress() bool {
 }
 
 func (ts *TransportSender[T]) getShutdownAcknowledged() bool {
-	return ts.sentStates[0].num == -1
+	return ts.sentStates[0].num == math.MaxUint64
 }
 
 func (ts *TransportSender[T]) getCounterpartyShutdownAcknowledged() bool {
-	return ts.fragmenter.lastAckSentShutdown()
+	return ts.fragmenter.lastAckSent() == math.MaxUint64
 }
 
 // get the first sent state timestamp
@@ -541,12 +535,12 @@ func (ts *TransportSender[T]) getSentStateAckedTimestamp() int64 {
 }
 
 // get the first sent state num
-func (ts *TransportSender[T]) getSentStateAcked() int64 {
+func (ts *TransportSender[T]) getSentStateAcked() uint64 {
 	return ts.sentStates[0].num
 }
 
 // get the last sent state num
-func (ts *TransportSender[T]) getSentStateLast() int64 {
+func (ts *TransportSender[T]) getSentStateLast() uint64 {
 	return ts.sentStates[len(ts.sentStates)-1].num
 }
 
@@ -561,12 +555,12 @@ func (ts *TransportSender[T]) shutdonwAckTimedout() bool {
 	return false
 }
 
-func (ts *TransportSender[T]) setSendDelay(delay int) {
+func (ts *TransportSender[T]) setSendDelay(delay uint) {
 	ts.SEND_MINDELAY = delay
 }
 
 // Try to send roughly two frames per RTT, bounded by limits on frame rate
-func (ts *TransportSender[T]) sendInterval() int {
+func (ts *TransportSender[T]) sendInterval() uint {
 	// int SEND_INTERVAL = lrint(ceil(connection->get_SRTT() / 2.0))
 	SEND_INTERVAL := math.Round(math.Ceil(ts.connection.getSRTT() / 2.0))
 	// fmt.Printf("#sendInterval SEND_INTERVAL=%f, SRTT=%f\n", SEND_INTERVAL, ts.connection.getSRTT())
@@ -575,7 +569,7 @@ func (ts *TransportSender[T]) sendInterval() int {
 	} else if SEND_INTERVAL > SEND_INTERVAL_MAX {
 		SEND_INTERVAL = SEND_INTERVAL_MAX
 	}
-	return int(SEND_INTERVAL)
+	return uint(SEND_INTERVAL)
 }
 
 func (ts *TransportSender[T]) getAssumedReceiverStateIdx() int {

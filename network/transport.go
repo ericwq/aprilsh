@@ -60,7 +60,7 @@ func NewTransportClient[S State[S], R State[R]](initialState S, initialRemote R,
 
 // The sender uses throwawayNum to tell us the earliest received state that
 // we need to keep around
-func (t *Transport[S, R]) processThrowawayUntil(throwawayNum int64) {
+func (t *Transport[S, R]) processThrowawayUntil(throwawayNum uint64) {
 	rs := t.receivedState[:0]
 	for i := range t.receivedState {
 		if t.receivedState[i].num >= throwawayNum {
@@ -154,7 +154,7 @@ func (t *Transport[S, R]) GetLatestRemoteState() TimestampedState[R] {
 	return t.receivedState[last]
 }
 
-func (t *Transport[S, R]) GetRemoteStateNum() int64 {
+func (t *Transport[S, R]) GetRemoteStateNum() uint64 {
 	last := len(t.receivedState) - 1
 	return t.receivedState[last].num
 }
@@ -164,7 +164,7 @@ func (t *Transport[S, R]) SetVerbose(verbose uint) {
 	t.verbose = verbose
 }
 
-func (t *Transport[S, R]) SetSendDelay(delay int) {
+func (t *Transport[S, R]) SetSendDelay(delay uint) {
 	t.sender.setSendDelay(delay)
 }
 
@@ -172,15 +172,15 @@ func (t *Transport[S, R]) GetSentStateAckedTimestamp() int64 {
 	return t.sender.getSentStateAckedTimestamp()
 }
 
-func (t *Transport[S, R]) GetSentStateAcked() int64 {
+func (t *Transport[S, R]) GetSentStateAcked() uint64 {
 	return t.sender.getSentStateAcked()
 }
 
-func (t *Transport[S, R]) GetSentStateLast() int64 {
+func (t *Transport[S, R]) GetSentStateLast() uint64 {
 	return t.sender.getSentStateLast()
 }
 
-func (t *Transport[S, R]) SentInterval() int {
+func (t *Transport[S, R]) SentInterval() uint {
 	return t.sender.sendInterval()
 }
 
@@ -298,49 +298,50 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		}
 
 		// Insert new state in sorted place
-		rs := make([]TimestampedState[R], 0)
+		// rs := make([]TimestampedState[R], 0)
+		rs := t.receivedState[:0]
 		for i := range t.receivedState {
-			if /* newState.num != -1 &&  */ t.receivedState[i].num > newState.num {
+			// if /* newState.num != -1 &&  */ t.receivedState[i].num > newState.num {
+			if t.receivedState[i].num > newState.num {
 				// insert out-of-order new state
 				rs = append(rs, newState)
 				rs = append(rs, t.receivedState[i:]...)
 				t.receivedState = rs
 
-				if newState.num == -1 {
-					//shutdown state is always out of order
-					// util.Log.With("ackNum", inst.AckNum).
-					// 	With("newNum", inst.NewNum).
-					// 	With("OldNum", inst.OldNum).
-					// 	With("throwawayNum", inst.ThrowawayNum).
-					// 	Debug("get shutdown state")
-					t.sender.setAckNum(newState.num)
-					t.sender.remoteHeard(newState.timestamp)
-					if len(inst.Diff) > 0 {
-						t.sender.setDataAck()
-					}
-					util.Log.With("receivedState", t.getReceivedStateList()).
-						With("sort", "insert shutdown state").
-						Debug("got network message")
-				}
+				// if newState.num == math.MaxUint64 {
+				// 	//shutdown state is always out of order
+				// 	// util.Log.With("ackNum", inst.AckNum).
+				// 	// 	With("newNum", inst.NewNum).
+				// 	// 	With("OldNum", inst.OldNum).
+				// 	// 	With("throwawayNum", inst.ThrowawayNum).
+				// 	// 	Debug("get shutdown state")
+				// 	t.sender.setAckNum(newState.num)
+				// 	t.sender.remoteHeard(newState.timestamp)
+				// 	if len(inst.Diff) > 0 {
+				// 		t.sender.setDataAck()
+				// 	}
+				// 	util.Log.With("receivedState", t.getReceivedStateList()).
+				// 		With("sort", "insert shutdown state").
+				// 		Debug("got network message")
+				// }
 				if t.verbose > 0 {
-					// fmt.Fprintf(os.Stderr, "#recv [%d] Received OUT-OF-ORDER state %d [ack %d]\n",
-					// 	time.Now().UnixMilli()%100000, newState.num, inst.AckNum)
-					util.Log.With("time", time.Now().UnixMilli()%100000).With("ackNum", inst.AckNum).
-						With("newNum", newState.num).Debug("#recv Received OUT-OF-ORDER state")
+					util.Log.With("time", time.Now().UnixMilli()%100000).
+						With("newNum", newState.num).
+						With("ackNum", inst.AckNum).
+						Debug("#recv Received OUT-OF-ORDER state x [ack y]")
 				}
 				return nil
 			}
 			rs = append(rs, t.receivedState[i])
 		}
-		/*
-			if t.verbose > 0 { // TODO remove this duplicated log statements
-				// fmt.Fprintf(os.Stderr, "#recv [%d] Received state %d [coming from %d, ack %d]\n",
-				// 	time.Now().UnixMilli()%100000, newState.num, inst.OldNum, inst.AckNum)
-				util.Log.With("time", time.Now().UnixMilli()%100000).With("newNum", newState.num).
-					With("OldNum", inst.OldNum).With("AckNum", inst.AckNum).
-					Debug("#recv Received state coming from ack state")
-			}
-		*/
+
+		if t.verbose > 0 { // TODO remove this duplicated log statements
+			util.Log.With("time", time.Now().UnixMilli()%100000).
+				With("newNum", newState.num).
+				With("OldNum", inst.OldNum).
+				With("AckNum", inst.AckNum).
+				Debug("#recv Received state x [coming from y, ack state z]")
+		}
 
 		// fmt.Printf("#recv receive state num %d from %q got diff=%q.\n", newState.num, t.connection.remoteAddr, inst.Diff)
 

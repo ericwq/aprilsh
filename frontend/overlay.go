@@ -67,21 +67,21 @@ var strValidity = [...]string{
 
 // base of cell prediction or cursor prediction
 type conditionalOverlay struct {
-	expirationFrame     int64 // frame number, Emulator number.
-	col                 int   // cursor/cell column
-	active              bool  // represents a prediction at all
-	tentativeUntilEpoch int64 // the epoch of overlay, when to show
-	predictionTime      int64 // used to find long-pending predictions, default value -1
+	expirationFrame     uint64 // frame number, Emulator number.
+	col                 int    // cursor/cell column
+	active              bool   // represents a prediction at all
+	tentativeUntilEpoch int64  // the epoch of overlay, when to show
+	predictionTime      int64  // used to find long-pending predictions, default value -1
 }
 
-func newConditionalOverlay(expirationFrame int64, col int, tentativeUntilEpoch int64) conditionalOverlay {
+func newConditionalOverlay(expirationFrame uint64, col int, tentativeUntilEpoch int64) conditionalOverlay {
 	// default active is false, default predictionTime is -1
 	co := conditionalOverlay{}
 	co.expirationFrame = expirationFrame
 	co.col = col
 	co.active = false
 	co.tentativeUntilEpoch = tentativeUntilEpoch
-	co.predictionTime = -1
+	co.predictionTime = math.MaxInt64
 
 	return co
 }
@@ -93,13 +93,13 @@ func (co *conditionalOverlay) tentative(confirmedEpoch int64) bool {
 
 // reset expirationFrame and tentativeUntilEpoch
 func (co *conditionalOverlay) reset() {
-	co.expirationFrame = -1
-	co.tentativeUntilEpoch = -1
+	co.expirationFrame = math.MaxUint64
+	co.tentativeUntilEpoch = math.MaxInt64
 	co.active = false
 }
 
 // set expirationFrame and predictionTime
-func (co *conditionalOverlay) expire(expirationFrame, now int64) {
+func (co *conditionalOverlay) expire(expirationFrame uint64, now int64) {
 	co.expirationFrame = expirationFrame
 	co.predictionTime = now
 }
@@ -110,7 +110,7 @@ type conditionalCursorMove struct {
 	row int // cursor row
 }
 
-func newConditionalCursorMove(expirationFrame int64, row int, col int, tentativeUntilEpoch int64) conditionalCursorMove {
+func newConditionalCursorMove(expirationFrame uint64, row int, col int, tentativeUntilEpoch int64) conditionalCursorMove {
 	ccm := conditionalCursorMove{}
 	ccm.conditionalOverlay = newConditionalOverlay(expirationFrame, col, tentativeUntilEpoch)
 	ccm.row = row
@@ -136,7 +136,7 @@ func (ccm *conditionalCursorMove) apply(emu *terminal.Emulator, confirmedEpoch i
 // is greater than expirationFrame and the cursor position of frame is the same as
 // cursor prediction, otherwise IncorrectOrExpired. if the cursor prediction
 // is not active, return Inactive.
-func (ccm *conditionalCursorMove) getValidity(emu *terminal.Emulator, lateAck int64) Validity {
+func (ccm *conditionalCursorMove) getValidity(emu *terminal.Emulator, lateAck uint64) Validity {
 	if !ccm.active { // only validate active prediction
 		return Inactive
 	}
@@ -169,7 +169,7 @@ type conditionalOverlayCell struct {
 	// we don't give credit for correct predictions that match the original contents
 }
 
-func newConditionalOverlayCell(expirationFrame int64, col int, tentativeUntilEpoch int64) conditionalOverlayCell {
+func newConditionalOverlayCell(expirationFrame uint64, col int, tentativeUntilEpoch int64) conditionalOverlayCell {
 	coc := conditionalOverlayCell{}
 	coc.conditionalOverlay = newConditionalOverlay(expirationFrame, col, tentativeUntilEpoch)
 	coc.replacement = terminal.Cell{}
@@ -267,7 +267,7 @@ if the lateAck is greater than or equal to the expiration frame, then:
 
   - if the frame celll doesn't match the prediction cell, return IncorrectOrExpired.
 */
-func (coc *conditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, lateAck int64) Validity {
+func (coc *conditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, lateAck uint64) Validity {
 	if !coc.active {
 		return Inactive
 	}
@@ -524,16 +524,16 @@ type PredictionEngine struct {
 	parser                terminal.Parser
 	overlays              []conditionalOverlayRow
 	cursors               []conditionalCursorMove
-	localFrameSent        int64 // the last sent state num
-	localFrameAcked       int64 // the first sent state num
-	localFrameLateAcked   int64 // the last received remote state ack
-	predictionEpoch       int64 // only in becomeTentative(), update predictionEpoch
-	confirmedEpoch        int64 // only in cull() Correct validity condition, update confirmedEpoch
-	flagging              bool  // whether we are underlining predictions
-	srttTrigger           bool  // show predictions because of slow round trip time
-	glitchTrigger         int   // show predictions temporarily because of long-pending prediction
+	localFrameSent        uint64 // the last sent state num
+	localFrameAcked       uint64 // the first sent state num
+	localFrameLateAcked   uint64 // the last received remote state ack
+	predictionEpoch       int64  // only in becomeTentative(), update predictionEpoch
+	confirmedEpoch        int64  // only in cull() Correct validity condition, update confirmedEpoch
+	flagging              bool   // whether we are underlining predictions
+	srttTrigger           bool   // show predictions because of slow round trip time
+	glitchTrigger         int    // show predictions temporarily because of long-pending prediction
 	lastQuickConfirmation int64
-	sendInterval          int
+	sendInterval          uint
 	lastWidth             int
 	lastHeight            int
 	displayPreference     DisplayPreference
@@ -1039,19 +1039,19 @@ func (pe *PredictionEngine) Reset() {
 	// fmt.Println("reset #clear cursors and overlays")
 }
 
-func (pe *PredictionEngine) SetLocalFrameSent(v int64) {
+func (pe *PredictionEngine) SetLocalFrameSent(v uint64) {
 	pe.localFrameSent = v
 }
 
-func (pe *PredictionEngine) SetLocalFrameAcked(v int64) {
+func (pe *PredictionEngine) SetLocalFrameAcked(v uint64) {
 	pe.localFrameAcked = v
 }
 
-func (pe *PredictionEngine) SetLocalFrameLateAcked(v int64) {
+func (pe *PredictionEngine) SetLocalFrameLateAcked(v uint64) {
 	pe.localFrameLateAcked = v
 }
 
-func (pe *PredictionEngine) SetSendInterval(value int) {
+func (pe *PredictionEngine) SetSendInterval(value uint) {
 	pe.sendInterval = value
 }
 

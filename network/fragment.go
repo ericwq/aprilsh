@@ -7,6 +7,7 @@ package network
 import (
 	"bytes"
 	"encoding/binary"
+	"math"
 	"sort"
 	"strings"
 	"unsafe"
@@ -107,6 +108,7 @@ type FragmentAssembly struct {
 func NewFragmentAssembly() *FragmentAssembly {
 	f := new(FragmentAssembly)
 
+	f.currentId = math.MaxUint64
 	f.fragmentsArrived = 0
 	f.fragmentsTotal = -1
 	f.fragments = make([]*Fragment, 0)
@@ -203,22 +205,16 @@ type Fragmenter struct {
 func NewFragmenter() *Fragmenter {
 	f := new(Fragmenter)
 	f.nextInstructionId = 0
-	f.lastMTU = -1
+	f.lastMTU = math.MaxInt
 	f.lastInstruction = new(pb.Instruction)
-	f.lastInstruction.OldNum = 0
-	f.lastInstruction.NewNum = 0
+	f.lastInstruction.OldNum = math.MaxUint64 // 0
+	f.lastInstruction.NewNum = math.MaxUint64 // 0
 
 	return f
 }
 
 func (f *Fragmenter) lastAckSent() uint64 {
-	return uint64(f.lastInstruction.AckNum)
-	// return f.lastInstruction.AckNum
-}
-
-// last instruction contains AckNum equals -1, which means shutdown.
-func (f *Fragmenter) lastAckSentShutdown() bool {
-	return f.lastInstruction.AckNum == -1
+	return f.lastInstruction.AckNum
 }
 
 // convert Instruction into Fragments slice.

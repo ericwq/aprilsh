@@ -7,7 +7,6 @@ package network
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math"
 	"os"
 	"strings"
@@ -57,7 +56,7 @@ func TestSenderUpdateAssumedReceiverState(t *testing.T) {
 		now := time.Now().UnixMilli()
 		for i := 0; i < 33; i++ { // addSentState require upper limit 32
 			s, _ := statesync.NewComplete(80, 40, 0)
-			ts.addSentState(now, int64(i+1), s)
+			ts.addSentState(now, uint64(i+1), s)
 		}
 
 		// change the timestamp to avoid wait
@@ -82,7 +81,7 @@ func TestSenderProcessAcknowledgmentThrough(t *testing.T) {
 	tc := []struct {
 		label  string
 		pause  int
-		ackNum int64
+		ackNum uint64
 		expect int
 	}{
 		{"remove first state", 50, 1, 5},
@@ -100,7 +99,7 @@ func TestSenderProcessAcknowledgmentThrough(t *testing.T) {
 		for i := 1; i < 6; i++ {
 			now := time.Now().UnixMilli()
 			time.Sleep(time.Millisecond * time.Duration(v.pause))
-			ts.addSentState(now, int64(i), s)
+			ts.addSentState(now, uint64(i), s)
 			// fmt.Printf("%q No.%2d state in sendStates, point to %p\n", v.label, i, ts.sentStates[i].state)
 		}
 
@@ -147,7 +146,7 @@ func TestSenderRationalizeStates(t *testing.T) {
 
 			pushUserBytesTo(state, keystroke)
 
-			ts.addSentState(time.Now().UnixMilli(), int64(i+1), state)
+			ts.addSentState(time.Now().UnixMilli(), uint64(i+1), state)
 			// fmt.Printf("%q add state %s to %2d\n", v.label, state, i+1)
 		}
 
@@ -199,7 +198,7 @@ func TestSenderAttemptProspectiveResendOptimization(t *testing.T) {
 		for i, keystroke := range v.states {
 			state := &statesync.UserStream{}
 			pushUserBytesTo(state, keystroke)
-			ts.addSentState(time.Now().UnixMilli(), int64(i+1), state)
+			ts.addSentState(time.Now().UnixMilli(), uint64(i+1), state)
 		}
 
 		// prepare currentState and assumedReceiverState
@@ -251,12 +250,12 @@ func TestSenderCalculateTimers(t *testing.T) {
 		{
 			"current = newest, lastHeard over due ", "abc",
 			[]string{"abcd", "abcde", "abcdef", "abcdefg"},
-			4, 10, -2 * ACTIVE_RETRY_TIMEOUT, 5, false, true, -1, 0,
+			4, 10, -2 * ACTIVE_RETRY_TIMEOUT, 5, false, true, math.MaxInt64, 0,
 		},
 		{
-			"current = newest, lastHeard over due ", "abc",
+			"current = newest, lastHeard over due shutdown false", "abc",
 			[]string{"abcd", "abcde", "abcdef", "abcdefg"},
-			4, 10, -2 * ACTIVE_RETRY_TIMEOUT, 5, true, false, -1, 0,
+			4, 10, -2 * ACTIVE_RETRY_TIMEOUT, 5, true, false, math.MaxInt64, 0,
 		},
 	}
 
@@ -274,7 +273,7 @@ func TestSenderCalculateTimers(t *testing.T) {
 		for i, keystroke := range v.states {
 			state := &statesync.UserStream{}
 			pushUserBytesTo(state, keystroke)
-			ts.addSentState(now, int64(i+1), state)
+			ts.addSentState(now, uint64(i+1), state)
 		}
 
 		// change the timestamp to avoid wait
@@ -297,7 +296,7 @@ func TestSenderCalculateTimers(t *testing.T) {
 			ts.nextAckTime = time.Now().UnixMilli() + 2*ACK_DELAY
 		}
 		if v.shutdown { // corner case for shutdown
-			ts.setAckNum(-1)
+			ts.setAckNum(math.MaxUint64)
 		}
 		// ts.assumedReceiverState = &ts.sentStates[v.assumedIdx]
 
@@ -308,13 +307,13 @@ func TestSenderCalculateTimers(t *testing.T) {
 		gotNextSendTime := ts.nextSendTime
 
 		if gotNextAckTime != v.expectNextAckTime {
-			if v.expectNextAckTime == -1 {
+			if v.expectNextAckTime == math.MaxInt64 {
 				t.Errorf("%q expect nextAckTime %d, got %d\n", v.label, v.expectNextAckTime, gotNextAckTime)
 			}
 		}
 
 		if gotNextSendTime != v.expectNextSendTime {
-			if v.expectNextSendTime == -1 {
+			if v.expectNextSendTime == math.MaxInt64 {
 				t.Errorf("%q expect nextSendTime %d, got %d\n", v.label, v.expectNextSendTime, gotNextSendTime)
 			}
 		}
@@ -327,11 +326,11 @@ func TestSenderCalculateTimers(t *testing.T) {
 		// 2) hasRemoteAddr = true
 		// 3) send < ack
 		ts.connection.hasRemoteAddr = true
-		gotWaitTiem := ts.waitTime()
-		if gotWaitTiem != waitTime[k] {
-			fmt.Printf("#test send<ack=%t, send>now=%t, ack>now=%t, gotWaitTiem=%d\n",
-				ts.nextSendTime < ts.nextAckTime, ts.nextSendTime > now, ts.nextAckTime > now, gotWaitTiem)
-			t.Errorf("#test waitTime round:%d, expect %d, got %d\n", k, waitTime[k], gotWaitTiem)
+		gotWaitTime := ts.waitTime()
+		if gotWaitTime != waitTime[k] {
+			t.Logf("#test send<ack=%t, send>now=%t, ack>now=%t, gotWaitTiem=%d\n",
+				ts.nextSendTime < ts.nextAckTime, ts.nextSendTime > now, ts.nextAckTime > now, gotWaitTime)
+			t.Errorf("#test waitTime round:%d, expect %d, got %d\n", k, waitTime[k], gotWaitTime)
 		}
 
 		// validate corner case for tick()
@@ -403,10 +402,11 @@ func TestSenderSendEmptyAckShutdown(t *testing.T) {
 	expect := client.sender.getSentStateLast()
 	// got := server.getRemoteStateNum()
 	// TODO shutdown send newNum (-1) to peer, with the sorted receivedState, the shutdown logic need to be checked
-	got := server.receivedState[0].num
+	got := server.receivedState[len(server.receivedState)-1].num
 
 	if got != expect {
 		t.Errorf("#test recv repeat expect %d, got %d\n", expect, got)
+		t.Errorf("#test receivedState length=%d\n", len(server.receivedState))
 	}
 
 	// fmt.Println("#test shutdown AFTER.")
@@ -522,7 +522,7 @@ func TestSenderSendToReceiverShutdown(t *testing.T) {
 	expect := client.sender.getSentStateLast()
 	// got := server.getRemoteStateNum()
 	// TODO shutdown send newNum (-1) to peer, with the sorted receivedState, the shutdown logic need to be checked
-	got := server.receivedState[0].num
+	got := server.receivedState[len(server.receivedState)-1].num
 
 	if got != expect {
 		t.Errorf("#test recv repeat expect %d, got %d\n", expect, got)
@@ -639,7 +639,7 @@ func TestSenderTickVerify(t *testing.T) {
 
 	// restore stderr
 	w.Close()
-	ioutil.ReadAll(r) // discard the output of stderr
+	io.ReadAll(r) // discard the output of stderr
 	// b, _ := ioutil.ReadAll(r)
 	os.Stderr = saveStderr
 	r.Close()
@@ -736,9 +736,9 @@ func TestSenderShutdonwAckTimedout(t *testing.T) {
 
 	// test SetSendDelay
 	ts.sender.SEND_MINDELAY = 0
-	expect := 12
+	var expect uint = 12
 	ts.SetSendDelay(expect)
-	if ts.sender.SEND_MINDELAY != expect {
+	if ts.sender.SEND_MINDELAY != uint(expect) {
 		t.Errorf("#test setSendDelay() expect %d, got %d\n", expect, ts.sender.SEND_MINDELAY)
 	}
 
