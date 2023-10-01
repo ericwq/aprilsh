@@ -732,21 +732,16 @@ func serve(ptmx *os.File, pw *io.PipeWriter, complete *statesync.Complete, waitC
 
 mainLoop:
 	for {
-		// util.Log.With("point", "a").Debug("mainLoop")
-
 		timeout := math.MaxInt16
 		now := time.Now().UnixMilli()
 
-		// util.Log.With("point", "a1").Debug("mainLoop")
 		timeout = terminal.Min(timeout, network.WaitTime()) // network.WaitTime cost time
-		// util.Log.With("point", "a2").Debug("mainLoop")
 		timeout = terminal.Min(timeout, complete.WaitTime(now))
 
 		if network.GetRemoteStateNum() > 0 || network.ShutdownInProgress() {
 			timeout = terminal.Min(timeout, 5000)
 		}
 
-		// util.Log.With("point", "a3").Debug("mainLoop")
 		// The server goes completely asleep if it has no remote peer.
 		// We may want to wake up sooner.
 		var networkSleep int64
@@ -761,21 +756,11 @@ mainLoop:
 			timeout = terminal.Min(timeout, int(networkSleep))
 		}
 
-		// util.Log.With("point", "a4").Debug("mainLoop")
-
 		p := network.GetLatestRemoteState()
 		timeSinceRemoteState = now - p.GetTimestamp()
 		terminalToHost.Reset()
 
-		// payload, err := frontend.NetworkRead(5, network.GetConnection())
-		// if err != nil {
-		// 	util.Log.With("error", err).Warn("read from network")
-		// 	continue mainLoop
-		// } else if payload != "" {
-		// }
-
 		timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
-		// util.Log.With("point", "b").Debug("mainLoop")
 		select {
 		case <-timer.C:
 			// util.Log.With("complete", complete.WaitTime(now)).

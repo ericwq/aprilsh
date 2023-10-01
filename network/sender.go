@@ -279,17 +279,15 @@ func (ts *TransportSender[T]) calculateTimers() {
 	// 	len(ts.sentStates), ts.sentStates[back].timestamp, now)
 
 	// Update assumed receiver state
-	// util.Log.With("point", "a1.1.1").Debug("mainLoop")
 	ts.updateAssumedReceiverState()
 	// fmt.Printf("#calculateTimers assumedReceiverState=%d, lastHeard=%d, mindelayClock=%d, pendingDataAck=%t\n",
 	// 	ts.getAssumedReceiverStateIdx(), ts.lastHeard, ts.mindelayClock, ts.pendingDataAck)
 	// fmt.Printf("#calculateTimers nextAckTime=%d, nextSendTime=%d\n",
 	// 	ts.nextAckTime, ts.nextSendTime)
 
-	// util.Log.With("point", "a1.1.2").Debug("mainLoop")
 	// Cut out common prefix of all states
 	ts.rationalizeStates()
-	// util.Log.With("point", "a1.1.3").Debug("mainLoop")
+
 	back := len(ts.sentStates) - 1
 	// util.Log.With("size", len((ts.sentStates))).With("back", back).Debug("check")
 
@@ -305,15 +303,22 @@ func (ts *TransportSender[T]) calculateTimers() {
 
 		ts.nextSendTime = terminal.Max(ts.mindelayClock+int64(ts.SEND_MINDELAY),
 			ts.sentStates[back].timestamp+int64(ts.sendInterval()))
+		util.Log.With("status", "currentState != last send states.").Debug("calculateTimers")
 	} else if !ts.currentState.Equal(ts.assumedReceiverState.state) && ts.lastHeard+ACTIVE_RETRY_TIMEOUT > now {
 		// currentState is newest sent state but not the assumed receiver state
 		ts.nextSendTime = ts.sentStates[back].timestamp + int64(ts.sendInterval())
 		if ts.mindelayClock != math.MaxInt64 {
 			ts.nextSendTime = terminal.Max(ts.nextSendTime, ts.mindelayClock+int64(ts.SEND_MINDELAY))
 		}
+		util.Log.With("status", "currentState = last send states, != the assumed state.").
+			With("lastHeard", ts.lastHeard).
+			Debug("calculateTimers")
 	} else if !ts.currentState.Equal(ts.sentStates[0].state) && ts.lastHeard+ACTIVE_RETRY_TIMEOUT > now {
 		// currentState is the newest and assumed receiver state but not the oldest sent state
 		ts.nextSendTime = ts.sentStates[back].timestamp + ts.connection.timeout() + ACK_DELAY
+		util.Log.With("status", "currentState = last send states, != the assumed state.").
+			With("lastHeard", ts.lastHeard).
+			Debug("calculateTimers")
 	} else {
 		ts.nextSendTime = math.MaxInt64
 	}
@@ -324,10 +329,12 @@ func (ts *TransportSender[T]) calculateTimers() {
 		// 	ts.nextAckTime, ts.sentStates[back].timestamp, ts.sendInterval())
 		ts.nextAckTime = ts.sentStates[back].timestamp + int64(ts.sendInterval())
 		// fmt.Printf("#calculateTimers after nextAckTime=%d\n", ts.nextAckTime)
+		util.Log.With("nextAckTime", ts.nextAckTime).
+			With("ackNum", ts.ackNum).
+			Debug("calculateTimers")
 	}
 	// util.Log.With("nextAckTime", ts.nextAckTime).
 	// 	With("nextSendTime", ts.nextSendTime).
-	// 	With("now", now).
 	// 	Debug("calculateTimers")
 }
 
@@ -387,6 +394,10 @@ func (ts *TransportSender[T]) tick() error {
 
 	// fmt.Printf("#tick send %q to receiver %s.\n", diff, ts.connection.getRemoteAddr())
 
+	util.Log.With("nextAckTime", ts.nextAckTime).
+		With("nextSendTime", ts.nextSendTime).
+		With("assumedReceiverState", ts.assumedReceiverState.num).
+		Debug("send fragments")
 	if len(diff) == 0 {
 		// util.Log.With("nextAckTime", ts.nextAckTime).With("nextSendTime", ts.nextSendTime).Debug("tick diff==0")
 		if now >= ts.nextAckTime {
@@ -421,6 +432,7 @@ func (ts *TransportSender[T]) tick() error {
 	}
 	util.Log.With("nextAckTime", ts.nextAckTime).
 		With("nextSendTime", ts.nextSendTime).
+		With("now", now).
 		Debug("send fragments")
 
 	return nil
@@ -428,10 +440,7 @@ func (ts *TransportSender[T]) tick() error {
 
 // Returns the number of ms to wait until next possible event.
 func (ts *TransportSender[T]) waitTime() int {
-	// util.Log.With("point", "a1.1").Debug("mainLoop")
 	ts.calculateTimers()
-	// util.Log.With("point", "a1.2").Debug("mainLoop")
-	// defer util.Log.With("point", "a1.3").Debug("mainLoop")
 
 	// if nextSendTime < nextAckTime, use the nextSendTime
 	nextWakeup := ts.nextAckTime

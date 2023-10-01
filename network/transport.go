@@ -347,12 +347,15 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 
 		t.receivedState = append(t.receivedState, newState) // insert new state
 		t.sender.setAckNum(t.receivedState[len(t.receivedState)-1].num)
-		util.Log.With("receivedState", t.getReceivedStateList()).Debug("got network message")
 
 		t.sender.remoteHeard(newState.timestamp)
 		if len(inst.Diff) > 0 {
 			t.sender.setDataAck()
 		}
+
+		util.Log.With("receivedState", t.getReceivedStateList()).
+			With("AckNum", t.receivedState[len(t.receivedState)-1].num).
+			Debug("got network message")
 	}
 	return nil
 }
