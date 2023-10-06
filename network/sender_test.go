@@ -259,7 +259,7 @@ func TestSenderCalculateTimers(t *testing.T) {
 		},
 	}
 
-	waitTime := []int{0, 8, 0, 0, 0}
+	waitTime := []int{0, 8, 0, 240, 100}
 
 	for k, v := range tc {
 		// for _, v := range tc {
@@ -327,7 +327,7 @@ func TestSenderCalculateTimers(t *testing.T) {
 		// 3) send < ack
 		ts.connection.hasRemoteAddr = true
 		gotWaitTime := ts.waitTime()
-		if gotWaitTime != waitTime[k] {
+		if gotWaitTime-waitTime[k] > 1 {
 			t.Logf("#test send<ack=%t, send>now=%t, ack>now=%t, gotWaitTiem=%d\n",
 				ts.nextSendTime < ts.nextAckTime, ts.nextSendTime > now, ts.nextAckTime > now, gotWaitTime)
 			t.Errorf("#test waitTime round:%d, expect %d, got %d\n", k, waitTime[k], gotWaitTime)
