@@ -356,6 +356,9 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		util.Log.With("receivedState", t.getReceivedStateList()).
 			With("AckNum", t.receivedState[len(t.receivedState)-1].num).
 			Debug("got network message")
+		util.Log.With("nextAckTime", t.sender.nextAckTime).
+			With("nextSendTime", t.sender.nextSendTime).
+			Debug("got network message")
 	}
 	return nil
 }
