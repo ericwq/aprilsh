@@ -336,11 +336,11 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		}
 
 		if t.verbose > 0 { // TODO remove this duplicated log statements
-			util.Log.With("time", time.Now().UnixMilli()%100000).
-				With("newNum", newState.num).
-				With("OldNum", inst.OldNum).
-				With("AckNum", inst.AckNum).
-				Debug("#recv Received state x [coming from y, ack state z]")
+			// util.Log.With("time", time.Now().UnixMilli()%100000).
+			// 	With("newNum", newState.num).
+			// 	With("OldNum", inst.OldNum).
+			// 	With("AckNum", inst.AckNum).
+			// 	Debug("#recv Received state x [coming from y, ack state z]")
 		}
 
 		// fmt.Printf("#recv receive state num %d from %q got diff=%q.\n", newState.num, t.connection.remoteAddr, inst.Diff)

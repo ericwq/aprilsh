@@ -402,7 +402,7 @@ func (ts *TransportSender[T]) tick() error {
 	util.Log.With("nextAckTime", ts.nextAckTime).
 		With("nextSendTime", ts.nextSendTime).
 		With("assumedReceiverState", ts.assumedReceiverState.num).
-		With("now", now).
+		// With("now", now).
 		Debug("send fragments")
 	if len(diff) == 0 {
 		if now >= ts.nextAckTime {
