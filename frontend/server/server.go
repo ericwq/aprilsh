@@ -972,8 +972,7 @@ mainLoop:
 			break
 		}
 
-		// util.Log.With("point", "c").Debug("mainLoop")
-
+		util.Log.With("before", "tick").Warn("mainLoop")
 		err := network.Tick()
 		if err != nil {
 			util.Log.With("error", err).Warn("tick send failed")

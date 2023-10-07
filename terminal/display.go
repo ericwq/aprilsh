@@ -1059,6 +1059,7 @@ func (fs *FrameState) appendMove(y int, x int) {
 		// CUF is shorter than CUP
 		if y == lastY && x-lastX > 0 && x-lastX < 5 {
 			fs.append("\x1B[%dC", x-lastX) // CUF
+			// fs.append(strings.Repeat(" ", x-lastX)) // use ' ' to replace CUF
 			return
 		}
 		// More optimizations are possible.
