@@ -736,7 +736,11 @@ mainLoop:
 		now := time.Now().UnixMilli()
 
 		timeout = terminal.Min(timeout, network.WaitTime()) // network.WaitTime cost time
+		// nto := timeout
 		timeout = terminal.Min(timeout, complete.WaitTime(now))
+		// util.Log.With("network.WaitTime", nto).
+		// 	With("complete.WaitTime", complete.WaitTime(now)).
+		// 	Debug("mainLoop")
 
 		if network.GetRemoteStateNum() > 0 || network.ShutdownInProgress() {
 			timeout = terminal.Min(timeout, 5000)
@@ -760,6 +764,7 @@ mainLoop:
 		timeSinceRemoteState = now - p.GetTimestamp()
 		terminalToHost.Reset()
 
+		util.Log.With("timeout", timeout).Debug("mainLoop")
 		timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
 		select {
 		case <-timer.C:

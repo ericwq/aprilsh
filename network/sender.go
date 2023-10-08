@@ -293,7 +293,7 @@ func (ts *TransportSender[T]) calculateTimers() {
 	// util.Log.With("size", len((ts.sentStates))).With("back", back).Debug("check")
 
 	if ts.pendingDataAck && ts.nextAckTime > now+ACK_DELAY {
-		ts.nextAckTime = now + ACK_DELAY
+		ts.nextAckTime = now + ACK_DELAY // got data from remote, send ack message later
 		util.Log.With("status", "pendingDataAck").
 			With("nextAckTime", ts.nextAckTime).
 			// With("nextSendTime", ts.nextSendTime).
@@ -306,6 +306,7 @@ func (ts *TransportSender[T]) calculateTimers() {
 			ts.mindelayClock = now
 		}
 
+		// current state changed and not sent, send current state later
 		ts.nextSendTime = terminal.Max(ts.mindelayClock+int64(ts.SEND_MINDELAY),
 			ts.sentStates[back].timestamp+int64(ts.sendInterval()))
 		util.Log.With("status", "currentState!=lastSendStates").
@@ -332,7 +333,7 @@ func (ts *TransportSender[T]) calculateTimers() {
 			With("lastHeard", ts.lastHeard).
 			Debug("calculateTimers")
 	} else {
-		ts.nextSendTime = math.MaxInt64 // nothing need to be sent actively.
+		ts.nextSendTime = math.MaxInt64 // nothing need to be sent actively
 		util.Log.With("status", "others").
 			With("nextSendTime", ts.nextSendTime).
 			// With("nextAckTime", ts.nextAckTime).
