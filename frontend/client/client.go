@@ -867,7 +867,7 @@ mainLoop:
 	for {
 		sc.outputNewFrame()
 
-		util.Log.With("before", "waitTime").Warn("mainLoop")
+		// util.Log.With("before", "waitTime").Warn("mainLoop")
 		waitTime := terminal.Min(sc.network.WaitTime(), sc.overlays.WaitTime())
 
 		// Handle startup "Connecting..." message
@@ -977,7 +977,7 @@ mainLoop:
 			sc.overlays.GetNotificationEngine().SetNotificationString("", false, true)
 		}
 
-		util.Log.With("before", "tick").Warn("mainLoop")
+		// util.Log.With("before", "tick").Warn("mainLoop")
 		err := sc.network.Tick()
 		if err != nil {
 			util.Log.With("error", err).Warn("tick send failed")
