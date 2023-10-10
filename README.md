@@ -23,6 +23,10 @@ There are also some goals for this project:
 
 The project name `Aprilsh` is derived from `April+sh`. This project started in shanghai April 2022, and it's a remote shell.
 
+## status
+
+not ready for public release. check [here](status.md) for progress deatil.
+
 ## build dependency
 
 ```sh

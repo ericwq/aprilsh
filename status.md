@@ -38,4 +38,5 @@
 - 2023/Aug/22: add OSC 112, DECSCUR, XTWINOPS 22,23 support; study CSI u.
 - 2023/Sep/15: improve the performance of client and server.
 - 2023/Sep/28: fix bug for Display and add integration test for server.
+- 2023/Oct/10: fix uncompress buffer size bug and fix max uint64 bug.
 
