@@ -772,6 +772,7 @@ func (c *Connection) Recv() (payload string, err error) {
 			}
 		}
 
+		// util.Log.With("payload", len(payload)).Debug("Recv")
 		c.pruneSockets()
 		return
 	}

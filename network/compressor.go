@@ -7,6 +7,7 @@ package network
 import (
 	"bytes"
 	"compress/zlib"
+	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -43,9 +44,11 @@ func (c *Compressor) Compress(input []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-const bufSize = 1250 // a little bit bigger than network MTU
+// const bufSize = 2250 // a little bit bigger than network MTU
+// buffer size bigger than mtu is wrong. some Uncompress data is larger than payload
 
 func (c *Compressor) Uncompress(input []byte) ([]byte, error) {
+	bufSize := len(input) * 4 // limited by mtu and compress ratio: we assume 4
 	buf := make([]byte, bufSize)
 
 	if len(input) > bufSize {
@@ -61,6 +64,9 @@ func (c *Compressor) Uncompress(input []byte) ([]byte, error) {
 
 	n, err := r.Read(buf)
 	if err == io.EOF && n > 0 {
+		if n > bufSize {
+			return nil, errors.New("overflow buffer size")
+		}
 		return buf[:n], nil
 	}
 

@@ -243,7 +243,11 @@ func (f *Fragmenter) makeFragments(inst *pb.Instruction, mtu int) (ret []*Fragme
 	var fragmentNum uint16 = 0
 	pos := 0
 
-	// util.Log.With("p0", len(p0)).With("payload", len(payload)).With("mtu", mtu).Debug("send fragments")
+	// util.Log.With("mtu", mtu).
+	// 	With("diff", len(inst.Diff)).
+	// 	With("data", len(data)).
+	// 	With("payload", len(payload[pos:])).
+	// 	Debug("+: fragments")
 
 	for payload != nil {
 		final := false

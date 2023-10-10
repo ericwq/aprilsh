@@ -229,12 +229,12 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 			With("AckNum", inst.AckNum).
 			With("throwawayNum", inst.ThrowawayNum).
 			With("diffLength", len(inst.Diff)).
-			Debug("got network message")
+			Debug("got message")
 
 		// remove send state for which num < AckNum
-		util.Log.With("do", "before").With("sentStates", t.getSentStateList()).Debug("got network message")
+		util.Log.With("do", "before").With("sentStates", t.getSentStateList()).Debug("got message")
 		t.sender.processAcknowledgmentThrough(inst.AckNum)
-		util.Log.With("do", "after-").With("sentStates", t.getSentStateList()).Debug("got network message")
+		util.Log.With("do", "after-").With("sentStates", t.getSentStateList()).Debug("got message")
 
 		// inform network layer of roundtrip (end-to-end-to-end) connectivity
 		t.connection.setLastRoundtripSuccess(t.sender.getSentStateAckedTimestamp())
@@ -242,7 +242,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		// first, make sure we don't already have the new state
 		for i := range t.receivedState {
 			if inst.NewNum == t.receivedState[i].num {
-				util.Log.With("quit", "duplicate state").With("NewNum", inst.NewNum).Debug("got network message")
+				util.Log.With("quit", "duplicate state").With("NewNum", inst.NewNum).Debug("got message")
 				return nil
 			}
 		}
@@ -322,7 +322,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 				// 	}
 				// 	util.Log.With("receivedState", t.getReceivedStateList()).
 				// 		With("sort", "insert shutdown state").
-				// 		Debug("got network message")
+				// 		Debug("got message")
 				// }
 				if t.verbose > 0 {
 					util.Log.With("time", time.Now().UnixMilli()%100000).
@@ -356,10 +356,10 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		util.Log.With("receivedState", t.getReceivedStateList()).
 			With("AckNum", t.receivedState[len(t.receivedState)-1].num).
 			With("pendingDataAck", t.sender.pendingDataAck).
-			Debug("got network message")
+			Debug("got message")
 		util.Log.With("nextAckTime", t.sender.nextAckTime).
 			With("nextSendTime", t.sender.nextSendTime).
-			Debug("got network message")
+			Debug("got message")
 	}
 	return nil
 }

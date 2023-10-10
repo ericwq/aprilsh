@@ -217,7 +217,7 @@ func (ts *TransportSender[T]) sendInFragments(diff string, newNum uint64) error 
 		util.Log.With("sentStates", s.String()).
 			With("diffLength", len(diff)).
 			With("SRTT", ts.connection.getSRTT()).
-			Debug("send fragments")
+			Debug("send message")
 		// return ts.sendFragments(&inst, newNum)
 	}
 	return err
@@ -241,18 +241,18 @@ func (ts *TransportSender[T]) sendFragments(inst *pb.Instruction, newNum uint64)
 				With("AckNum", inst.AckNum).
 				With("ThrowawayNum", inst.ThrowawayNum).
 				// With("length", len(fragments[i].contents)).
-				Debug("send fragments")
+				Debug("send message")
 			// util.Log.With("time", (time.Now().UnixMilli()%100000)).
 			// 	With("fragmentsID", fragments[i].id).
 			// 	With("fragmentNum", fragments[i].fragmentNum).
 			// 	With("frameRate", 1000.0/float64(ts.sendInterval())).
 			// 	With("timeout", ts.connection.timeout()).
-			// 	Debug("send fragments")
-			util.Log.With("mindelayClock", ts.mindelayClock).
-				With("SEND_MINDELAY", ts.SEND_MINDELAY).
-				With("sendInterval", ts.sendInterval()).
-				With("timeout", ts.connection.timeout()).
-				Debug("send fragments")
+			// 	Debug("send message")
+			// util.Log.With("mindelayClock", ts.mindelayClock).
+			// 	With("SEND_MINDELAY", ts.SEND_MINDELAY).
+			// 	With("sendInterval", ts.sendInterval()).
+			// 	With("timeout", ts.connection.timeout()).
+			// 	Debug("send message")
 		}
 	}
 
@@ -373,9 +373,8 @@ func (ts *TransportSender[T]) tick() error {
 
 	// Determine if a new diff or empty ack needs to be sent
 	diff := ts.currentState.DiffFrom(ts.assumedReceiverState.state)
-	// fmt.Printf("#tick A assumedReceiverState=%d\n ", ts.getAssumedReceiverStateIdx())
 	diff = ts.attemptProspectiveResendOptimization(diff)
-	// fmt.Printf("#tick B assumedReceiverState=%d\n ", ts.getAssumedReceiverStateIdx())
+	// util.Log.With("diffLength", len(diff)).Debug("send message")
 
 	if ts.verbose > 0 {
 		if ts.hookForTick != nil { // hook function for testing
@@ -403,7 +402,7 @@ func (ts *TransportSender[T]) tick() error {
 		With("nextSendTime", ts.nextSendTime).
 		With("assumedReceiverState", ts.assumedReceiverState.num).
 		With("now", now).
-		Debug("send fragments")
+		Debug("send message")
 	if len(diff) == 0 {
 		if now >= ts.nextAckTime {
 			if err := ts.sendEmptyAck(); err != nil {
@@ -419,7 +418,7 @@ func (ts *TransportSender[T]) tick() error {
 	} else if now >= ts.nextSendTime || now >= ts.nextAckTime {
 		util.Log.With(">nextSendTime", now >= ts.nextSendTime).
 			With(">nextAckTime", now >= ts.nextAckTime).
-			Debug("send fragments")
+			Debug("send message")
 		// send diff or ack
 		if err := ts.sendToReceiver(diff); err != nil {
 			return err
@@ -429,7 +428,7 @@ func (ts *TransportSender[T]) tick() error {
 	util.Log.With("nextAckTime", ts.nextAckTime).
 		With("nextSendTime", ts.nextSendTime).
 		With("now", time.Now().UnixMilli()).
-		Debug("send fragments")
+		Debug("send message")
 
 	return nil
 }
