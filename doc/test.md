@@ -77,8 +77,9 @@ $HOME/.local/bin/aprilsh-server -verbose 1 2>> /tmp/aprilsh-server.log
 ### start client
 ```sh
 cd develop/aprilsh/frontend/client
-go build client.go
+go build .
 ./client -verbose 1  -pwd password ide@localhost 2>> /tmp/aprilsh.log
+./client -verbose 1 -pwd password ide@172.17.0.3 2>> /tmp/aprilsh.log
 ```
 ### pprof
 go tool pprof client cpu.profile

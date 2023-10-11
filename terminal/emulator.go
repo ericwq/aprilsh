@@ -733,83 +733,174 @@ func (emu *Emulator) Clone() *Emulator {
 
 func (emu *Emulator) Equal(x *Emulator) bool {
 	if emu.nRows != x.nRows || emu.nCols != x.nCols {
-		// fmt.Printf("nRows=(%d,%d), nCols=(%d,%d)\n", emu.nRows, x.nRows, emu.nCols, x.nCols)
+		msg := fmt.Sprintf("nRows=(%d,%d), nCols=(%d,%d)", emu.nRows, x.nRows, emu.nCols, x.nCols)
+		util.Log.Debug(msg)
 		return false
 	}
 
 	if emu.posX != x.posX || emu.posY != x.posY ||
 		emu.marginTop != x.marginTop || emu.marginBottom != x.marginBottom {
-		// fmt.Printf("posX=(%d,%d), posY=(%d,%d), marginTop=(%d,%d), marginBottom=(%d,%d)\n",
-		// 	emu.posX, x.posX, emu.posY, x.posY, emu.marginTop, x.marginTop, emu.marginBottom, x.marginBottom)
+		msg := fmt.Sprintf("posX=(%d,%d), posY=(%d,%d), marginTop=(%d,%d), marginBottom=(%d,%d)",
+			emu.posX, x.posX, emu.posY, x.posY, emu.marginTop, x.marginTop, emu.marginBottom, x.marginBottom)
+		util.Log.Debug(msg)
 		return false
 	}
 
 	if emu.lastCol != x.lastCol || emu.attrs != x.attrs ||
 		emu.fg != x.fg || emu.bg != x.bg {
-		// fmt.Printf("lastCol=(%t,%t), attrs=(%v,%v), fg=(%v,%v), bg=(%v,%v)\n",
-		// 	emu.lastCol, x.lastCol, emu.attrs, x.attrs, emu.fg, x.fg, emu.bg, x.bg)
+		msg := fmt.Sprintf("lastCol=(%t,%t), attrs=(%v,%v), fg=(%v,%v), bg=(%v,%v)",
+			emu.lastCol, x.lastCol, emu.attrs, x.attrs, emu.fg, x.fg, emu.bg, x.bg)
+		util.Log.Debug(msg)
 		return false
 	}
 
 	if emu.reverseVideo != x.reverseVideo || emu.hasFocus != x.hasFocus ||
 		emu.showCursorMode != x.showCursorMode || emu.altScreenBufferMode != x.altScreenBufferMode {
+		msg := fmt.Sprintf("reverseVideo=(%t,%t), hasFocus=(%t,%t), showCursorMode(%t,%t), altScreenBufferMode=(%t,%t)",
+			emu.reverseVideo, x.reverseVideo, emu.hasFocus, x.hasFocus, emu.showCursorMode, x.showCursorMode,
+			emu.altScreenBufferMode, x.altScreenBufferMode)
+		util.Log.Debug(msg)
 		return false
 	}
 
 	if emu.autoWrapMode != x.autoWrapMode || emu.autoNewlineMode != x.autoNewlineMode ||
 		emu.keyboardLocked != x.keyboardLocked || emu.insertMode != x.insertMode {
+		msg := fmt.Sprintf("autoWrapMode=(%t,%t), autoNewlineMode=(%t,%t), keyboardLocked=(%t,%t), insertMode=(%t,%t)",
+			emu.autoWrapMode, x.autoWrapMode, emu.autoNewlineMode, x.autoNewlineMode,
+			emu.keyboardLocked, x.keyboardLocked, emu.insertMode, x.insertMode)
+		util.Log.Debug(msg)
 		return false
 	}
 
 	if emu.bkspSendsDel != x.bkspSendsDel || emu.localEcho != x.localEcho ||
 		emu.bracketedPasteMode != x.bracketedPasteMode || emu.altScrollMode != x.altScrollMode {
+		msg := fmt.Sprintf("bkspSendsDel=(%t,%t), localEcho=(%t,%t), bracketedPasteMode=(%t,%t), altScrollMode=(%t,%t)",
+			emu.bkspSendsDel, x.bkspSendsDel, emu.localEcho, x.localEcho,
+			emu.bracketedPasteMode, x.bracketedPasteMode, emu.altScrollMode, x.altScrollMode)
+		util.Log.Debug(msg)
 		return false
 	}
 
 	if emu.altSendsEscape != x.altSendsEscape || emu.modifyOtherKeys != x.modifyOtherKeys ||
 		emu.horizMarginMode != x.horizMarginMode {
+		msg := fmt.Sprintf("altSendsEscape=(%t,%t), modifyOtherKeys=(%d,%d), horizMarginMode=(%t,%t) ",
+			emu.altSendsEscape, x.altSendsEscape, emu.modifyOtherKeys, x.modifyOtherKeys,
+			emu.horizMarginMode, x.horizMarginMode)
+		util.Log.Debug(msg)
 		return false
 	}
 
 	if emu.nColsEff != x.nColsEff || emu.hMargin != x.hMargin {
+		msg := fmt.Sprintf("nColsEff=(%d,%d), hMargin=(%d,%d)",
+			emu.nColsEff, x.nColsEff, emu.hMargin, x.hMargin)
+		util.Log.Debug(msg)
 		return false
 	}
 
 	if len(emu.tabStops) != len(x.tabStops) {
+		msg := fmt.Sprintf("tabStops length=(%d,%d)", len(emu.tabStops), len(x.tabStops))
+		util.Log.Debug(msg)
 		return false
 	}
 
 	for i := range emu.tabStops {
 		if emu.tabStops[i] != x.tabStops[i] {
+			msg := fmt.Sprintf("tabStops[%d]=(%d,%d)", i, emu.tabStops[i], x.tabStops[i])
+			util.Log.Debug(msg)
 			return false
 		}
 	}
 
-	if emu.charsetState.vtMode != x.charsetState.vtMode ||
-		emu.charsetState.gl != x.charsetState.gl || emu.charsetState.gr != x.charsetState.gr {
+	if emu.charsetState.vtMode != x.charsetState.vtMode || emu.charsetState.gl != x.charsetState.gl ||
+		emu.charsetState.gr != x.charsetState.gr || emu.charsetState.ss != x.charsetState.ss {
+		msg := fmt.Sprintf(
+			"charsetState.vtMode=(%t,%t), charsetState.gl=(%d,%d), charsetState.gr=(%d,%d), charsetState.ss=(%d,%d)",
+			emu.charsetState.vtMode, x.charsetState.vtMode, emu.charsetState.gl, x.charsetState.gl,
+			emu.charsetState.gr, x.charsetState.gr, emu.charsetState.ss, x.charsetState.ss)
+		util.Log.Debug(msg)
 		return false
 	}
 
 	if emu.compatLevel != x.compatLevel || emu.cursorKeyMode != x.cursorKeyMode ||
 		emu.keypadMode != x.keypadMode || emu.originMode != x.originMode || emu.colMode != x.colMode {
+		msg := fmt.Sprintf("compatLevel=(%d,%d), cursorKeyMode=(%d,%d), keypadMode=(%d,%d), originMode=(%d,%d), colMode=(%d,%d)",
+			emu.compatLevel, x.compatLevel, emu.cursorKeyMode, x.cursorKeyMode,
+			emu.keypadMode, x.keypadMode, emu.originMode, x.originMode,
+			emu.colMode, x.colMode)
+		util.Log.Debug(msg)
 		return false
 	}
 
-	if emu.savedCursor_SCO != x.savedCursor_SCO || emu.savedCursor_DEC_pri != x.savedCursor_DEC_pri ||
-		emu.savedCursor_DEC_alt != x.savedCursor_DEC_alt {
+	if emu.savedCursor_SCO != x.savedCursor_SCO {
+		msg := fmt.Sprintf("savedCursor_SCO=(%v,%v)", emu.savedCursor_SCO, x.savedCursor_SCO)
+		util.Log.Debug(msg)
+		return false
+	}
+
+	if emu.savedCursor_DEC_pri.SavedCursor_SCO != x.savedCursor_DEC_pri.SavedCursor_SCO ||
+		emu.savedCursor_DEC_pri.attrs != emu.savedCursor_DEC_pri.attrs ||
+		emu.savedCursor_DEC_pri.originMode != x.savedCursor_DEC_pri.originMode {
+		msg := fmt.Sprintf("savedCursor_DEC_pri .SavedCursor_SCO=(%v,%v), .attrs=(%v,%v), .originMode=(%d,%d)",
+			emu.savedCursor_DEC_pri.SavedCursor_SCO, x.savedCursor_DEC_pri.SavedCursor_SCO,
+			emu.savedCursor_DEC_pri.attrs, x.savedCursor_DEC_pri.attrs,
+			emu.savedCursor_DEC_pri.originMode, x.savedCursor_DEC_pri.originMode)
+		util.Log.Debug(msg)
+		return false
+	}
+
+	if emu.savedCursor_DEC_pri.charsetState.vtMode != x.savedCursor_DEC_pri.charsetState.vtMode ||
+		emu.savedCursor_DEC_pri.charsetState.gl != x.savedCursor_DEC_pri.charsetState.gl ||
+		emu.savedCursor_DEC_pri.charsetState.gr != x.savedCursor_DEC_pri.charsetState.gr ||
+		emu.savedCursor_DEC_pri.charsetState.ss != x.savedCursor_DEC_pri.charsetState.ss {
+		msg := fmt.Sprintf("savedCursor_DEC_pri .charsetState .vtMode=(%t,%t), .gl=(%d,%d), .gr=(%d,%d), .ss=(%d,%d)",
+			emu.savedCursor_DEC_pri.charsetState.vtMode, x.savedCursor_DEC_pri.charsetState.vtMode,
+			emu.savedCursor_DEC_pri.charsetState.gl, x.savedCursor_DEC_pri.charsetState.gl,
+			emu.savedCursor_DEC_pri.charsetState.gr, x.savedCursor_DEC_pri.charsetState.gr,
+			emu.savedCursor_DEC_pri.charsetState.ss, x.savedCursor_DEC_pri.charsetState.ss)
+		util.Log.Debug(msg)
+		return false
+	}
+
+	if emu.savedCursor_DEC_alt.SavedCursor_SCO != x.savedCursor_DEC_alt.SavedCursor_SCO ||
+		emu.savedCursor_DEC_alt.attrs != emu.savedCursor_DEC_alt.attrs ||
+		emu.savedCursor_DEC_alt.originMode != x.savedCursor_DEC_alt.originMode {
+		msg := fmt.Sprintf("savedCursor_DEC_alt .SavedCursor_SCO=(%v,%v), .attrs=(%v,%v), .originMode=(%d,%d)",
+			emu.savedCursor_DEC_alt.SavedCursor_SCO, x.savedCursor_DEC_alt.SavedCursor_SCO,
+			emu.savedCursor_DEC_alt.attrs, x.savedCursor_DEC_alt.attrs,
+			emu.savedCursor_DEC_alt.originMode, x.savedCursor_DEC_alt.originMode)
+		util.Log.Debug(msg)
+		return false
+	}
+
+	if emu.savedCursor_DEC_alt.charsetState.vtMode != x.savedCursor_DEC_alt.charsetState.vtMode ||
+		emu.savedCursor_DEC_alt.charsetState.gl != x.savedCursor_DEC_alt.charsetState.gl ||
+		emu.savedCursor_DEC_alt.charsetState.gr != x.savedCursor_DEC_alt.charsetState.gr ||
+		emu.savedCursor_DEC_alt.charsetState.ss != x.savedCursor_DEC_alt.charsetState.ss {
+		msg := fmt.Sprintf("savedCursor_DEC_alt .charsetState .vtMode=(%t,%t), .gl=(%d,%d), .gr=(%d,%d), .ss=(%d,%d)",
+			emu.savedCursor_DEC_alt.charsetState.vtMode, x.savedCursor_DEC_alt.charsetState.vtMode,
+			emu.savedCursor_DEC_alt.charsetState.gl, x.savedCursor_DEC_alt.charsetState.gl,
+			emu.savedCursor_DEC_alt.charsetState.gr, x.savedCursor_DEC_alt.charsetState.gr,
+			emu.savedCursor_DEC_alt.charsetState.ss, x.savedCursor_DEC_alt.charsetState.ss)
+		util.Log.Debug(msg)
 		return false
 	}
 
 	if emu.mouseTrk != x.mouseTrk {
+		msg := fmt.Sprintf("mouseTrk=(%v,%v)", emu.mouseTrk, x.mouseTrk)
+		util.Log.Debug(msg)
 		return false
 	}
 
 	if emu.selectionData != x.selectionData {
+		msg := fmt.Sprintf("selectionData=(%q,%q)", len(emu.selectionData), len(x.selectionData))
+		util.Log.Debug(msg)
 		return false
 	}
 
 	for k := range emu.selectionStore {
 		if emu.selectionStore[k] != x.selectionStore[k] {
+			msg := fmt.Sprintf("selectionStore[%c]=(%q,%q)", k, emu.selectionStore[k], x.selectionStore[k])
+			util.Log.Debug(msg)
 			return false
 		}
 	}
