@@ -735,6 +735,7 @@ mainLoop:
 		timeout := math.MaxInt16
 		now := time.Now().UnixMilli()
 
+		util.Log.With("point", 100).Debug("mainLoop")
 		timeout = terminal.Min(timeout, network.WaitTime()) // network.WaitTime cost time
 		// nto := timeout
 		timeout = terminal.Min(timeout, complete.WaitTime(now))
