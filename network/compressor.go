@@ -8,7 +8,6 @@ import (
 	"bytes"
 	"compress/zlib"
 	"errors"
-	"fmt"
 	"io"
 	"sync"
 )
@@ -51,9 +50,9 @@ func (c *Compressor) Uncompress(input []byte) ([]byte, error) {
 	bufSize := len(input) * 4 // limited by mtu and compress ratio: we assume 4
 	buf := make([]byte, bufSize)
 
-	if len(input) > bufSize {
-		return nil, fmt.Errorf("content length exceed the buffer size %d", bufSize)
-	}
+	// if len(input) > bufSize {
+	// 	return nil, fmt.Errorf("content length exceed the buffer size %d", bufSize)
+	// }
 	b := bytes.NewReader(input)
 
 	r, err := zlib.NewReader(b)
