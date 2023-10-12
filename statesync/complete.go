@@ -144,7 +144,7 @@ func (c *Complete) DiffFrom(existing *Complete) string {
 	}
 
 	// if !reflect.DeepEqual(existing.getFramebuffer(), c.getFramebuffer()) {
-	if !existing.getFramebuffer().Equal(c.getFramebuffer()) {
+	if !c.getFramebuffer().Equal(existing.getFramebuffer()) {
 		if existing.terminal.GetWidth() != c.terminal.GetWidth() ||
 			existing.terminal.GetHeight() != c.terminal.GetHeight() {
 			w := int32(c.terminal.GetWidth())
@@ -152,12 +152,11 @@ func (c *Complete) DiffFrom(existing *Complete) string {
 			instResize := pb.Instruction{Resize: &pb.ResizeMessage{Width: &w, Height: &h}}
 			hm.Instruction = append(hm.Instruction, &instResize)
 		}
-	}
-
-	update := c.display.NewFrame(true, existing.terminal, c.terminal)
-	if len(update) > 0 {
-		instBytes := pb.Instruction{Hostbytes: &pb.HostBytes{Hoststring: []byte(update)}}
-		hm.Instruction = append(hm.Instruction, &instBytes)
+		update := c.display.NewFrame(true, existing.terminal, c.terminal)
+		if len(update) > 0 {
+			instBytes := pb.Instruction{Hostbytes: &pb.HostBytes{Hoststring: []byte(update)}}
+			hm.Instruction = append(hm.Instruction, &instBytes)
+		}
 	}
 
 	output, _ := proto.Marshal(&hm)

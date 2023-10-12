@@ -765,7 +765,7 @@ mainLoop:
 		timeSinceRemoteState = now - p.GetTimestamp()
 		terminalToHost.Reset()
 
-		util.Log.With("timeout", timeout).Debug("mainLoop")
+		util.Log.With("point", 200).With("timeout", timeout).Debug("mainLoop")
 		timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
 		select {
 		case <-timer.C:
@@ -978,6 +978,7 @@ mainLoop:
 			break
 		}
 
+		util.Log.With("point", 500).Debug("mainLoop")
 		err := network.Tick()
 		if err != nil {
 			util.Log.With("error", err).Warn("tick send failed")

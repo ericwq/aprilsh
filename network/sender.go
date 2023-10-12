@@ -357,6 +357,8 @@ func (ts *TransportSender[T]) makeChaff() string {
 func (ts *TransportSender[T]) tick() error {
 	ts.calculateTimers() // updates assumed receiver state and rationalizes
 
+	// util.Log.With("point", 100).Debug("tick")
+
 	// skip send if there is no peer
 	if !ts.connection.getHasRemoteAddr() {
 		// util.Log.Debug("tick skip tick: no remote addr")
@@ -371,10 +373,13 @@ func (ts *TransportSender[T]) tick() error {
 		return nil
 	}
 
+	// util.Log.With("point", 200).With("assumedReceiverState", ts.getAssumedReceiverStateIdx()).Debug("tick")
 	// Determine if a new diff or empty ack needs to be sent
 	diff := ts.currentState.DiffFrom(ts.assumedReceiverState.state)
+	// util.Log.With("point", 210).Debug("tick")
 	diff = ts.attemptProspectiveResendOptimization(diff)
-	// util.Log.With("diffLength", len(diff)).Debug("send message")
+	// util.Log.With("diffLength", diff).Debug("send message")
+	// util.Log.With("point", 300).Debug("tick")
 
 	if ts.verbose > 0 {
 		if ts.hookForTick != nil { // hook function for testing
@@ -383,17 +388,20 @@ func (ts *TransportSender[T]) tick() error {
 		// verify diff has round-trip identity (modulo Unicode fallback rendering)
 		newState := ts.assumedReceiverState.state.Clone()
 		newState.ApplyString(diff)
+		// util.Log.With("point", 400).Debug("tick")
 		if !ts.currentState.Equal(newState) {
 			util.Log.Warn("#tick Warning, round-trip Instruction verification failed!")
 		}
 
 		// Also verify that both the original frame and generated frame have the same initial diff.
+		// util.Log.With("point", 500).Debug("tick")
 		currentDiff := ts.currentState.InitDiff()
+		// util.Log.With("point", 600).Debug("tick")
 		newDiff := newState.InitDiff()
 		if currentDiff != newDiff {
 			util.Log.Warn("#tick Warning, target state Instruction verification failed!")
 		}
-		// fmt.Printf("#tick newDiff=%q, currentDiff=%q, diff=%q\n", newDiff, currentDiff, diff)
+		// util.Log.With("point", 700).Debug("tick")
 	}
 
 	// fmt.Printf("#tick send %q to receiver %s.\n", diff, ts.connection.getRemoteAddr())

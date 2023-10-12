@@ -727,6 +727,10 @@ func (emu *Emulator) Clone() *Emulator {
 	// init selectionStore
 	clone.initSelectionStore()
 
+	// clone windowTitleStack
+	clone.cf.windowTitleStack = make([]string, len(emu.cf.windowTitleStack))
+	copy(clone.cf.windowTitleStack, emu.cf.windowTitleStack)
+
 	// ignore logI,logT,logU,logW
 	return &clone
 }
