@@ -735,7 +735,7 @@ mainLoop:
 		timeout := math.MaxInt16
 		now := time.Now().UnixMilli()
 
-		util.Log.With("point", 100).Debug("mainLoop")
+		// util.Log.With("point", 100).Debug("mainLoop")
 		timeout = terminal.Min(timeout, network.WaitTime()) // network.WaitTime cost time
 		// nto := timeout
 		timeout = terminal.Min(timeout, complete.WaitTime(now))
@@ -978,7 +978,7 @@ mainLoop:
 			break
 		}
 
-		util.Log.With("point", 500).Debug("mainLoop")
+		// util.Log.With("point", 500).Debug("mainLoop")
 		err := network.Tick()
 		if err != nil {
 			util.Log.With("error", err).Warn("tick send failed")

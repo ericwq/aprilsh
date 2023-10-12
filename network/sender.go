@@ -378,7 +378,7 @@ func (ts *TransportSender[T]) tick() error {
 	diff := ts.currentState.DiffFrom(ts.assumedReceiverState.state)
 	// util.Log.With("point", 210).Debug("tick")
 	diff = ts.attemptProspectiveResendOptimization(diff)
-	// util.Log.With("diffLength", diff).Debug("send message")
+	util.Log.With("diff", diff).With("length", len(diff)).Debug("send message")
 	// util.Log.With("point", 300).Debug("tick")
 
 	if ts.verbose > 0 {

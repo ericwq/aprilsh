@@ -75,7 +75,7 @@ func NewFramebuffer3(nCols, nRows, saveLines int) (fb Framebuffer, marginTop int
 	marginTop = fb.marginTop
 	marginBottom = fb.nRows
 
-	// fb.windowTitleStack = make([]string, 0)
+	fb.windowTitleStack = make([]string, 0)
 	return
 }
 

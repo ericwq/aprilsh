@@ -835,6 +835,11 @@ func (emu *Emulator) Equal(x *Emulator) bool {
 		return false
 	}
 
+	// if emu.savedCursor_SCO != x.savedCursor_SCO || emu.savedCursor_DEC_pri != x.savedCursor_DEC_pri ||
+	// 	emu.savedCursor_DEC_alt != x.savedCursor_DEC_alt {
+	// 	return false
+	// }
+
 	if emu.savedCursor_SCO != x.savedCursor_SCO {
 		// msg := fmt.Sprintf("savedCursor_SCO=(%v,%v)", emu.savedCursor_SCO, x.savedCursor_SCO)
 		// util.Log.Debug(msg)
