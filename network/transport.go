@@ -228,7 +228,6 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 			With("OldNum", inst.OldNum).
 			With("AckNum", inst.AckNum).
 			With("throwawayNum", inst.ThrowawayNum).
-			With("diffLength", len(inst.Diff)).
 			Debug("got message")
 
 		// remove send state for which num < AckNum
@@ -356,6 +355,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		util.Log.With("receivedState", t.getReceivedStateList()).
 			With("AckNum", t.receivedState[len(t.receivedState)-1].num).
 			With("pendingDataAck", t.sender.pendingDataAck).
+			With("diffLength", len(inst.Diff)).
 			Debug("got message")
 		util.Log.With("nextAckTime", t.sender.nextAckTime).
 			With("nextSendTime", t.sender.nextSendTime).
