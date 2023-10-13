@@ -152,13 +152,14 @@ func (c *Complete) DiffFrom(existing *Complete) string {
 			instResize := pb.Instruction{Resize: &pb.ResizeMessage{Width: &w, Height: &h}}
 			hm.Instruction = append(hm.Instruction, &instResize)
 		}
-		update := c.display.NewFrame(true, existing.terminal, c.terminal)
-		if len(update) > 0 {
-			instBytes := pb.Instruction{Hostbytes: &pb.HostBytes{Hoststring: []byte(update)}}
-			hm.Instruction = append(hm.Instruction, &instBytes)
-		}
 	}
 
+	// the following part consider the cursor movement.
+	update := c.display.NewFrame(true, existing.terminal, c.terminal)
+	if len(update) > 0 {
+		instBytes := pb.Instruction{Hostbytes: &pb.HostBytes{Hoststring: []byte(update)}}
+		hm.Instruction = append(hm.Instruction, &instBytes)
+	}
 	output, _ := proto.Marshal(&hm)
 	return string(output)
 }
