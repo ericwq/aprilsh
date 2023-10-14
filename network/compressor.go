@@ -7,7 +7,6 @@ package network
 import (
 	"bytes"
 	"compress/zlib"
-	"errors"
 	"io"
 	"sync"
 )
@@ -63,9 +62,9 @@ func (c *Compressor) Uncompress(input []byte) ([]byte, error) {
 
 	n, err := r.Read(buf)
 	if err == io.EOF && n > 0 {
-		if n > bufSize {
-			return nil, errors.New("overflow buffer size")
-		}
+		// if n > bufSize {
+		// 	return nil, errors.New("overflow buffer size")
+		// }
 		return buf[:n], nil
 	}
 
