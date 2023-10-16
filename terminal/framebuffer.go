@@ -711,6 +711,70 @@ func (fb *Framebuffer) Equal(x *Framebuffer) bool {
 	return true
 }
 
+func (fb *Framebuffer) Equals(x *Framebuffer) bool {
+	if fb.nCols != x.nCols || fb.nRows != x.nRows || fb.saveLines != x.saveLines {
+		fmt.Printf("nCols=(%d,%d), nRows=(%d,%d), saveLines=(%d,%d)",
+			fb.nCols, x.nCols, fb.nRows, x.nRows, fb.saveLines, x.saveLines)
+		return false
+	}
+
+	if fb.scrollHead != x.scrollHead || fb.marginTop != x.marginTop ||
+		fb.marginBottom != x.marginBottom {
+		fmt.Printf("scrollHead=(%d,%d), marginTop=(%d,%d), marginBottom=(%d,%d)",
+			fb.scrollHead, x.scrollHead, fb.marginTop, x.marginTop, fb.marginBottom, x.marginBottom)
+		return false
+	}
+
+	if fb.historyRows != x.historyRows || fb.viewOffset != x.viewOffset ||
+		fb.margin != x.margin {
+		fmt.Printf("historyRows=(%d,%d), viewOffset=(%d,%d)",
+			fb.historyRows, x.historyRows, fb.viewOffset, x.viewOffset)
+		return false
+	}
+
+	if fb.cursor != x.cursor || fb.selection != x.selection ||
+		fb.snapTo != x.snapTo || fb.damage != fb.damage {
+		fmt.Printf("cursor=(%v,%v), selection=(%v,%v), snapTo=(%v,%v), damage=(%v,%v)",
+			fb.cursor, x.cursor, fb.selection, x.selection, fb.snapTo, x.snapTo, fb.damage, x.damage)
+		return false
+	}
+
+	if len(fb.cells) != len(x.cells) {
+		fmt.Printf("cells length=(%d,%d)", len(fb.cells), len(x.cells))
+		return false
+	}
+	// for i := range fb.cells {
+	for i := 0; i < len(fb.cells); i++ {
+		if fb.cells[i] != x.cells[i] {
+			fmt.Printf("cells[%d]=(%v,%v)", i, fb.cells[i], x.cells[i])
+			return false
+		}
+		// if !fb.cells[i].Equal(&x.cells[i]) {
+		// 	return false
+		// }
+	}
+
+	if fb.iconLabel != x.iconLabel || fb.windowTitle != x.windowTitle ||
+		fb.bellCount != x.bellCount || fb.titleInitialized != x.titleInitialized {
+		fmt.Printf("iconLabel=(%s,%s), windowTitle=(%s,%s), bellCount=(%d,%d), titleInitialized=(%t,%t)",
+			fb.iconLabel, x.iconLabel, fb.windowTitle, x.windowTitle,
+			fb.bellCount, x.bellCount, fb.titleInitialized, x.titleInitialized)
+		return false
+	}
+
+	if len(fb.windowTitleStack) != len(x.windowTitleStack) {
+		fmt.Printf("windowTitleStack length=(%d,%d)", len(fb.windowTitleStack), len(x.windowTitleStack))
+		return false
+	}
+	for i := range fb.windowTitleStack {
+		if fb.windowTitleStack[i] != x.windowTitleStack[i] {
+			fmt.Printf("windowTitleStack[%d]=(%s,%s)", i, fb.windowTitleStack[i], x.windowTitleStack[i])
+			return false
+		}
+	}
+	return true
+}
+
 /* --------------------------------------------------- new frame end here */
 /*
 func (fb *Framebuffer) newRow() *Row {

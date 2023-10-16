@@ -5,9 +5,11 @@
 package statesync
 
 import (
+	"fmt"
 	"io"
 	"math"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -185,6 +187,95 @@ func TestCompleteClone(t *testing.T) {
 
 	if !c.Equal(clone) {
 		t.Errorf("#test clone expect %v, got %v\n", c, clone)
+	}
+}
+
+func (c *Complete) Equals(x *Complete) bool {
+	fmt.Println("***** ")
+	if c.echoAck != x.echoAck {
+		return false
+	}
+
+	ret := c.terminal.Equals(x.terminal) // && c.echoAck == x.echoAck
+	fmt.Println("")
+	fmt.Println("***** ")
+	return ret
+}
+
+// "go 1.19\r\n\r\nuse (\r\n\t./aprilsh\r\n\t./terminfo\r\n)"
+func TestDiffFrom(t *testing.T) {
+	tc := []struct {
+		label string
+		seq1  []string // sequence after vi file command
+		seq2  []string // sequence after quit vi command
+		resp  string
+	}{
+		{"simple case", []string{}, []string{"ide@openrc-nvide:~/develop $ \x1b[6n"}, "\x1b[1;30R"},
+		{"vi and quit",
+			[]string{
+				/*vi start*/ "\x1b[?1049h\x1b[22;0;0t\x1b[?1h\x1b=\x1b[H\x1b[2J\x1b]11;?\a\x1b[?2004h\x1b[?u\x1b[c\x1b[?25h",
+				// "\x1b]11;rgb:0000/0000/0000\x1b\\\x1b[?64;1;9;15;21;22c"
+				/*clear screen*/ "\x1b[?25l\x1b(B\x1b[m\x1b[H\x1b[2J\x1b[>4;2m\x1b]112\a\x1b[2 q\x1b[?1002h\x1b[?1006h\x1b[38;2;233;233;244m\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[J\x1b[H",
+				/*vi file*/ "\x1b(B\x1b[m\x1b[38;2;98;100;131m  \x1b(B\x1b[m\x1b[38;2;248;248;242m1 \x1b(B\x1b[m\x1b[38;2;233;233;244m\x1b[48;2;45;48;62mgo 1.19                                                                                                                                                         \r\n\x1b(B\x1b[m\x1b[38;2;98;100;131m  \x1b(B\x1b[m\x1b[38;2;94;95;105m2 \x1b(B\x1b[m\x1b[38;2;233;233;244m\x1b[K\r\n\x1b(B\x1b[m\x1b[38;2;98;100;131m  \x1b(B\x1b[m\x1b[38;2;94;95;105m3 \x1b(B\x1b[m\x1b[38;2;233;233;244muse (\x1b[K\r\n\x1b(B\x1b[m\x1b[38;2;98;100;131m  \x1b(B\x1b[m\x1b[38;2;94;95;105m4 \x1b(B\x1b[m\x1b[38;2;233;233;244m   ./aprilsh\x1b[K\r\n\x1b(B\x1b[m\x1b[38;2;98;100;131m  \x1b(B\x1b[m\x1b[38;2;94;95;105m5 \x1b(B\x1b[m\x1b[38;2;233;233;244m   ./terminfo\x1b[K\r\n\x1b(B\x1b[m\x1b[38;2;98;100;131m  \x1b(B\x1b[m\x1b[38;2;94;95;105m6 \x1b(B\x1b[m\x1b[38;2;233;233;244m)\x1b[K\x1b(B\x1b[m\x1b[38;2;98;100;131m\r\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b(B\x1b[0;1m\x1b[38;2;40;42;54m\x1b[48;2;139;155;205m \ue7c5\x1b[39;3H NORMAL\x1b(B\x1b[m\x1b[38;2;139;155;205m\x1b[48;2;94;95;105m\ue0bc\x1b[39;11H \x1b(B\x1b[m\x1b[38;2;94;95;105m\x1b[48;2;65;67;79m\ue0bc\x1b[39;13H \x1b(B\x1b[m\x1b[38;2;248;248;242m\x1b[48;2;65;67;79m go.work \x1b(B\x1b[m\x1b[38;2;65;67;79m\ue0bc\x1b[39;24H                                                                                                                         \x1b(B\x1b[m\x1b[38;2;255;112;112m\ue0b6\x1b[39;146H\x1b(B\x1b[m\x1b[38;2;55;56;68m\x1b[48;2;255;112;112m\U000f024b\x1b[39;147H \x1b(B\x1b[m\x1b[38;2;248;248;242m\x1b[48;2;65;67;79m develop \x1b(B\x1b[m\x1b[38;2;80;250;123m\x1b[48;2;65;67;79m\ue0b6\x1b[39;158H\x1b(B\x1b[m\x1b[38;2;40;42;54m\x1b[48;2;80;250;123m\ue612\x1b[39;159H \x1b(B\x1b[m\x1b[38;2;80;250;123m\x1b[48;2;65;67;79m Top \x1b(B\x1b[m\x1b[38;2;233;233;244m\r\n\x1b[J\x1b]112\a\x1b[2 q\x1b[1;5H\x1b[?25h",
+				/*screen border*/ "\x1b[?25l\n\n\n\x1b(B\x1b[m\x1b[38;2;60;61;73m│\x1b[4;6H  \x1b[5;5H│\x1b[5;6H  \x1b[1;5H\x1b[?25h",
+				/*loading*/ "\x1b[?25l\x1b[39;52H\x1b(B\x1b[m\x1b[38;2;80;250;123m \U000f0aa2\x1b[39;54H Setting up workspace Loading packages... (0%)                             \x1b(B\x1b[m\x1b[38;2;139;155;205m \uf085\x1b[39;131H  LSP ~ gopls \x1b[1;5H\x1b[?25h",
+				/*loading*/ "\x1b[?25l\x1b[39;49H\x1b(B\x1b[m\x1b[38;2;80;250;123m \U000f0aa2\x1b[39;51H Setting up workspace Finished loading packages. (0%)\x1b[1;5H\x1b[?25h",
+				/*loading*/ "\x1b[?25l\x1b[39;49H\x1b(B\x1b[m\x1b[38;2;65;67;79m                                                                                \x1b[1;5H\x1b[?25h",
+			},
+			[]string{
+				/*1st sequence after :q*/ "\x1b[?25l\r\x1b[40;1H\x1b[?25h",
+				/*2nd sequence after :q*/ "\x1b[?25l\x1b]112\a\x1b[2 q\x1b[?25h",
+				/*3rd sequence after :q*/ "\x1b[?25l\x1b]112\a\x1b[2 q\x1b[?1002l\x1b[?1006l\x1b(B\x1b[m\x1b[?25h\x1b[?1l\x1b>\x1b[>4;0m\x1b[?1049l\x1b[23;0;0t\x1b[?2004l\x1b[?1004l\x1b[?25h",
+				/*4th sequence after :q*/ "ide@openrc-nvide:~/develop $ \x1b[6n",
+			}, "\x1b[33;30R"},
+	}
+
+	nCols := 80
+	nRows := 40
+	savedLines := nRows * 3
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+
+			a, _ := NewComplete(nCols, nRows, savedLines)
+			c, _ := NewComplete(nCols, nRows, savedLines)
+
+			// assumed state prepare
+			var t1 strings.Builder
+			for i := range v.seq1 {
+				ret := a.Act(v.seq1[i])
+				c.Act(v.seq1[i])
+				t1.WriteString(ret)
+			}
+
+			// current state changed after :q command
+			var t2 strings.Builder
+			for i := range v.seq2 {
+				ret := c.Act(v.seq2[i])
+				t2.WriteString(ret)
+			}
+			if v.resp != t2.String() {
+				t.Errorf("%s: terminal response expect %q, got %q\n", v.label, v.resp, t2.String())
+			}
+
+			diff := c.DiffFrom(a)
+			n := a.Clone()
+			n.ApplyString(diff)
+
+			if !c.Equals(n) {
+
+				t.Errorf("%s: round-trip Instruction verification failed!", v.label)
+				t.Logf("%s: diff=%q", v.label, diff)
+			}
+
+			cd := c.InitDiff()
+			nd := n.InitDiff()
+			if cd != nd {
+				t.Errorf("%s: target state Instruction verification failed!", v.label)
+				t.Logf("current state diff=%q", cd)
+				t.Logf("new     state diff=%q", nd)
+			}
+		})
 	}
 }
 
