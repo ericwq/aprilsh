@@ -80,9 +80,13 @@ func NewFramebuffer3(nCols, nRows, saveLines int) (fb Framebuffer, marginTop int
 }
 
 func (fb *Framebuffer) resize(nCols, nRows int) (marginTop, marginBottom int) {
-	if fb.nCols == nCols && fb.nRows == nRows {
-		return
-	}
+	// marginTop = fb.marginTop
+	// marginBottom = nRows
+	fmt.Printf("Framebuffer.resize nCols=%d, nRows=%d, saveLines=%d\n", nCols, nRows, fb.saveLines)
+	// if fb.nCols == nCols && fb.nRows == nRows {
+	// 	fmt.Printf("Framebuffer.resize same cols*rows\n")
+	// 	return
+	// }
 
 	// adjust the internal cell storage according to the new size
 	// the defalt constructor of Cell set the contents field to ""
@@ -122,6 +126,7 @@ func (fb *Framebuffer) resize(nCols, nRows int) (marginTop, marginBottom int) {
 	marginTop = 0
 	marginBottom = nRows // external report marginBottom
 
+	fmt.Printf("Framebuffer.resize nCols=%d, nRows=%d, saveLines=%d\n", nCols, nRows, fb.saveLines)
 	return
 }
 

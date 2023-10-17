@@ -459,20 +459,29 @@ func (emu *Emulator) switchScreenBufferMode(altScreenBufferMode bool) {
 	}
 
 	if altScreenBufferMode {
+		fmt.Printf("+switchScreenBufferMode=%t marginBottom=%d, marginTop=%d, nRows=%d, nCols=%d\n",
+			emu.altScreenBufferMode, emu.marginBottom, emu.marginTop, emu.nRows, emu.nCols)
 		emu.frame_alt, emu.marginTop, emu.marginBottom = NewFramebuffer3(emu.nCols, emu.nRows, 0)
 		emu.cf = &emu.frame_alt
+		emu.cf.expose()
 
 		emu.savedCursor_DEC = &emu.savedCursor_DEC_alt
 		emu.altScreenBufferMode = true
 	} else {
+		fmt.Printf("-switchScreenBufferMode=%t marginBottom=%d, marginTop=%d, nRows=%d, nCols=%d\n",
+			emu.altScreenBufferMode, emu.marginBottom, emu.marginTop, emu.nRows, emu.nCols)
+		emu.marginTop, emu.marginBottom = emu.frame_pri.resize(emu.nCols, emu.nRows)
 		emu.cf = &emu.frame_pri
-		emu.marginTop, emu.marginBottom = emu.cf.resize(emu.nCols, emu.nRows)
 		emu.cf.expose()
+		emu.frame_alt.freeCells()
 
 		emu.savedCursor_DEC_alt.isSet = false
 		emu.savedCursor_DEC = &emu.savedCursor_DEC_pri
 		emu.altScreenBufferMode = false
 	}
+
+	fmt.Printf(" switchScreenBufferMode=%t marginBottom=%d, marginTop=%d, nRows=%d, nCols=%d\n",
+		emu.altScreenBufferMode, emu.marginBottom, emu.marginTop, emu.nRows, emu.nCols)
 }
 
 // only set compatibility level for emulator

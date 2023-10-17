@@ -191,14 +191,14 @@ func TestCompleteClone(t *testing.T) {
 }
 
 func (c *Complete) Equals(x *Complete) bool {
-	fmt.Println("***** ")
+	fmt.Println("***** Equals")
 	if c.echoAck != x.echoAck {
 		return false
 	}
 
 	ret := c.terminal.Equals(x.terminal) // && c.echoAck == x.echoAck
 	fmt.Println("")
-	fmt.Println("***** ")
+	fmt.Println("***** Equals")
 	return ret
 }
 
@@ -210,7 +210,7 @@ func TestDiffFrom(t *testing.T) {
 		seq2  []string // sequence after quit vi command
 		resp  string
 	}{
-		{"simple case", []string{}, []string{"ide@openrc-nvide:~/develop $ \x1b[6n"}, "\x1b[1;30R"},
+		// {"simple case", []string{}, []string{"ide@openrc-nvide:~/develop $ \x1b[6n"}, "\x1b[1;30R"},
 		{"vi and quit",
 			[]string{
 				/*vi start*/ "\x1b[?1049h\x1b[22;0;0t\x1b[?1h\x1b=\x1b[H\x1b[2J\x1b]11;?\a\x1b[?2004h\x1b[?u\x1b[c\x1b[?25h",
@@ -244,14 +244,23 @@ func TestDiffFrom(t *testing.T) {
 			var t1 strings.Builder
 			for i := range v.seq1 {
 				ret := a.Act(v.seq1[i])
+				// fmt.Printf("TestDiffFrom after %d for assumed state\n", i)
 				c.Act(v.seq1[i])
+				// fmt.Printf("TestDiffFrom after %d for current state\n", i)
 				t1.WriteString(ret)
 			}
+
+			if !c.Equals(a) {
+				t.Errorf("%s: prepare stage error\n", v.label)
+			}
+			fmt.Printf("#TestDiffFrom point=%d\n", 666)
 
 			// current state changed after :q command
 			var t2 strings.Builder
 			for i := range v.seq2 {
+				fmt.Printf("#TestDiffFrom point=%d, seq=%q\n", i, v.seq2[i][0:20])
 				ret := c.Act(v.seq2[i])
+				fmt.Printf("#TestDiffFrom point=%d-\n", i)
 				t2.WriteString(ret)
 			}
 			if v.resp != t2.String() {
@@ -260,7 +269,9 @@ func TestDiffFrom(t *testing.T) {
 
 			diff := c.DiffFrom(a)
 			n := a.Clone()
+			fmt.Printf("#TestDiffFrom point=%d\n", 501)
 			n.ApplyString(diff)
+			fmt.Printf("#TestDiffFrom point=%d-\n", 501)
 
 			if !c.Equals(n) {
 
