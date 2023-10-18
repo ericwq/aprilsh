@@ -5,7 +5,6 @@
 package statesync
 
 import (
-	"fmt"
 	"math"
 
 	pb "github.com/ericwq/aprilsh/protobufs/host"
