@@ -275,11 +275,10 @@ func TestDiffFrom(t *testing.T) {
 			fmt.Printf("#TestDiffFrom point=%d\n", 501)
 			diff := c.DiffFrom(a)
 			fmt.Printf("#TestDiffFrom point=%d seq=%q\n", 501, diff)
+
 			n := a.Clone()
 			n.ApplyString(diff)
-
 			if !c.Equals(n) {
-
 				t.Errorf("%s: round-trip Instruction verification failed!", v.label)
 				t.Logf("%s: diff=%q", v.label, diff)
 			}

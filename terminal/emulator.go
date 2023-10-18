@@ -465,6 +465,7 @@ func (emu *Emulator) switchScreenBufferMode(altScreenBufferMode bool) {
 		emu.frame_alt, emu.marginTop, emu.marginBottom = NewFramebuffer3(emu.nCols, emu.nRows, 0)
 		emu.cf = &emu.frame_alt
 		emu.cf.expose()
+		emu.clearScreen() // fill screen with space
 
 		emu.savedCursor_DEC = &emu.savedCursor_DEC_alt
 		emu.altScreenBufferMode = true

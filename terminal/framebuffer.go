@@ -1092,9 +1092,11 @@ func cycleSelectSnapTo2(snapTo SelectSnapTo) SelectSnapTo {
 
 func (fb *Framebuffer) saveWindowTitleOnStack() {
 	title := fb.getWindowTitle()
-	fb.windowTitleStack = append(fb.windowTitleStack, title)
-	if len(fb.windowTitleStack) > windowTitleStackMax {
-		fb.windowTitleStack = fb.windowTitleStack[1:]
+	if title != "" {
+		fb.windowTitleStack = append(fb.windowTitleStack, title)
+		if len(fb.windowTitleStack) > windowTitleStackMax {
+			fb.windowTitleStack = fb.windowTitleStack[1:]
+		}
 	}
 }
 
