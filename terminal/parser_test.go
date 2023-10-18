@@ -4761,11 +4761,12 @@ func TestMixSequence(t *testing.T) {
 		{"vi sample 2", "\x1b[?25l\x1b(B\x1b[m\x1b[H\x1b[2J\x1b[>4;2m\x1b]112\a\x1b[2 q\x1b[?1002h\x1b[?1006h\x1b[38;2;233;233;244m\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[J\x1b[H",
 			73},
 		{"vi sample 3", "\x1b[?25l\r\n\x1b[0;1;34mNvChad\x1b[0m\x1b[13;28Hgo.work\x1b[13;55H\x1b[0;1;34mmosh\x1b[0m\x1b[13;82H\x1b[0;1;34mnvide\x1b[0m\x1b[13;109H\x1b[0;1;34mtelescope.nvim\x1b[0m\r\n\x1b[0;1;34maprilsh\x1b[0m\x1b[14;28Hgo.work.sum\x1b[14;55Hmosh-1.3.2.tar.gz\x1b[14;82Hpersonal-access-token.txt\x1b[2C\x1b[0;1;34mterminfo\x1b[0m\r\n\x1b[0;1;34mdotfiles\x1b[0m\x1b[15;28H\x1b[0;1;34mgolangIDE\x1b[0m\x1b[15;55H\x1b[0;1;34mneovim-lua\x1b[0m\x1b[15;82H\x1b[0;1;34ms6\x1b[0m\r\n\x1b[?25h", 174},
-		{"vi file and quit 1", "\x1b[?25l\r\x1b[40;1H\x1b[?25h", 2},
-		{"vi file and quit 2", "\x1b[?25l\x1b]112\a\x1b[2 q\x1b[?25h", 2},
-		{"vi file and quit 3", "\x1b[?25l\x1b]112\a\x1b[2 q\x1b[?1002l\x1b[?1006l\x1b(B\x1b[m\x1b[?25h\x1b[?1l\x1b>\x1b[>4;0m\x1b[?1049l\x1b[23;0;0t\x1b[?2004l\x1b[?1004l\x1b[?25h", 2},
-		{"vi file and quit 4", "ide@openrc-nvide:~/develop $ \x1b[6n", 2},
-		{"vi file and quit result", "\a\x1b[22;0t\x1b[r\x1b[0m\x1b[H\x1b[2J\x1b[?25l\x1b[?47l\x1b[r\x1b[?69l\x1b[1;30H\x1b[?25h\x1b[1 q\x1b]112\a\x1b[0m\x1b[?2004l\x1b[?1003l\x1b[?1002l\x1b[?1001l\x1b[?1000l\x1b[?1004l\x1b[?1015l\x1b[?1006l\x1b[?1005l\x1b[?7h\x1b[20l\x1b[2l\x1b[4l\x1b[12h\x1b[?67l\x1b[?1036h\x1b[?1007l\x1b[?1l\x1b[?6l\x1b>\x1b[?3l\x1b[3g\x1b[64\"p\x1b[>4;0m", 2},
+		{"vi file and quit 1", "\x1b[?25l\r\x1b[40;1H\x1b[?25h", 4},
+		{"vi file and quit 2", "\x1b[?25l\x1b]112\a\x1b[2 q\x1b[?25h", 4},
+		{"vi file and quit 3", "\x1b[?25l\x1b]112\a\x1b[2 q\x1b[?1002l\x1b[?1006l\x1b(B\x1b[m\x1b[?25h\x1b[?1l\x1b>\x1b[>4;0m\x1b[?1049l\x1b[23;0;0t\x1b[?2004l\x1b[?1004l\x1b[?25h", 16},
+		{"vi file and quit 4", "ide@openrc-nvide:~/develop $ \x1b[6n", 30},
+		{"vi file and quit result", "\a\x1b[22;0t\x1b[r\x1b[0m\x1b[H\x1b[2J\x1b[?25l\x1b[?47l\x1b[r\x1b[?69l\x1b[1;30H\x1b[?25h\x1b[1 q\x1b]112\a\x1b[0m\x1b[?2004l\x1b[?1003l\x1b[?1002l\x1b[?1001l\x1b[?1000l\x1b[?1004l\x1b[?1015l\x1b[?1006l\x1b[?1005l\x1b[?7h\x1b[20l\x1b[2l\x1b[4l\x1b[12h\x1b[?67l\x1b[?1036h\x1b[?1007l\x1b[?1l\x1b[?6l\x1b>\x1b[?3l\x1b[3g\x1b[64\"p\x1b[>4;0m", 39},
+		{"vi utf-8 file", "\x1b[?1049h\x1b[22;0;0t\x1b[?1h\x1b=\x1b[H\x1b[2J\x1b]11;?\a\x1b[?2004h\x1b[?u\x1b[c\x1b[?25h", 11},
 	}
 	p := NewParser()
 	emu := NewEmulator3(8, 4, 0)
