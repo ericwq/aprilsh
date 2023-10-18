@@ -161,7 +161,7 @@ func (c *Complete) DiffFrom(existing *Complete) string {
 		instBytes := pb.Instruction{Hostbytes: &pb.HostBytes{Hoststring: []byte(update)}}
 		hm.Instruction = append(hm.Instruction, &instBytes)
 	}
-	fmt.Printf("#DiffFrom diff=%q\n", update)
+	// fmt.Printf("#DiffFrom diff=%q\n", update)
 	output, _ := proto.Marshal(&hm)
 	return string(output)
 }
