@@ -228,8 +228,8 @@ func TestDiffFrom(t *testing.T) {
 				/*3rd sequence after :q*/ "\x1b[?25l\x1b]112\a\x1b[2 q\x1b[?1002l\x1b[?1006l\x1b(B\x1b[m\x1b[?25h\x1b[?1l\x1b>\x1b[>4;0m\x1b[?1049l\x1b[23;0;0t\x1b[?2004l\x1b[?1004l\x1b[?25h",
 				/*4th sequence after :q*/ "ide@openrc-nvide:~/develop $ \x1b[6n",
 			}, "\x1b[1;30R"},
-		{"vi utf-8 file",
-			[]string{},
+		{"screen with content then vi utf-8 file",
+			[]string{"ide@openrc-nvide:~/develop $ \x1b[6n"},
 			[]string{
 				"\x1b[?1049h\x1b[22;0;0t\x1b[?1h\x1b=\x1b[H\x1b[2J\x1b]11;?\a\x1b[?2004h\x1b[?u\x1b[c\x1b[?25h",
 			}, "\x1b]11;rgb:0000/0000/0000\x1b\\\x1b[?64;1;9;15;21;22c"},
