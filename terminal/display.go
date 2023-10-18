@@ -256,7 +256,14 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	// has the screen buffer mode changed?
 	// change screen buffer is something like resize, except resize remains partial content,
 	// screen buffer mode reset the whole screen.
-	if !initialized || newE.altScreenBufferMode != oldE.altScreenBufferMode {
+	if newE.altScreen1049 != oldE.altScreen1049 {
+		if newE.altScreen1049 {
+			frame.append("\x1B[?1049h")
+		} else {
+			frame.append("\x1B[?1049l")
+		}
+		// fmt.Printf("Display.NewFrame newE.altScreen1049=%t\n", newE.altScreen1049)
+	} else if !initialized || newE.altScreenBufferMode != oldE.altScreenBufferMode {
 		if newE.altScreenBufferMode {
 			frame.append("\x1B[?47h")
 		} else {

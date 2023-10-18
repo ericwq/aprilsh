@@ -38,6 +38,7 @@ type Emulator struct {
 	hasFocus            bool // default true
 	showCursorMode      bool // replicated by NewFrame(), default true, ds.cursor_visible
 	altScreenBufferMode bool // replicated by NewFrame(), , Alternate Screen Buffer
+	altScreen1049       bool // DECSET and DECRST 1049, default false
 	autoWrapMode        bool // replicated by NewFrame(), default:true
 	autoNewlineMode     bool // replicated by NewFrame(), LNM
 	keyboardLocked      bool // replicated by NewFrame(),
@@ -927,6 +928,7 @@ func (emu *Emulator) Equal(x *Emulator) bool {
 	return emu.cf.Equal(x.cf)
 }
 
+// TODO remove this after finish test.
 func (emu *Emulator) Equals(x *Emulator) bool {
 	if emu.nRows != x.nRows || emu.nCols != x.nCols {
 		fmt.Printf("nRows=(%d,%d), nCols=(%d,%d)", emu.nRows, x.nRows, emu.nCols, x.nCols)

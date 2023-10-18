@@ -210,7 +210,7 @@ func TestDiffFrom(t *testing.T) {
 		seq2  []string // sequence after quit vi command
 		resp  string
 	}{
-		// {"simple case", []string{}, []string{"ide@openrc-nvide:~/develop $ \x1b[6n"}, "\x1b[1;30R"},
+		{"simple case", []string{}, []string{"ide@openrc-nvide:~/develop $ \x1b[6n"}, "\x1b[1;30R"},
 		{"vi and quit",
 			[]string{
 				/*vi start*/ "\x1b[?1049h\x1b[22;0;0t\x1b[?1h\x1b=\x1b[H\x1b[2J\x1b]11;?\a\x1b[?2004h\x1b[?u\x1b[c\x1b[?25h",
@@ -227,7 +227,7 @@ func TestDiffFrom(t *testing.T) {
 				/*2nd sequence after :q*/ "\x1b[?25l\x1b]112\a\x1b[2 q\x1b[?25h",
 				/*3rd sequence after :q*/ "\x1b[?25l\x1b]112\a\x1b[2 q\x1b[?1002l\x1b[?1006l\x1b(B\x1b[m\x1b[?25h\x1b[?1l\x1b>\x1b[>4;0m\x1b[?1049l\x1b[23;0;0t\x1b[?2004l\x1b[?1004l\x1b[?25h",
 				/*4th sequence after :q*/ "ide@openrc-nvide:~/develop $ \x1b[6n",
-			}, "\x1b[33;30R"},
+			}, "\x1b[1;30R"},
 	}
 
 	nCols := 80
@@ -250,30 +250,30 @@ func TestDiffFrom(t *testing.T) {
 				t1.WriteString(ret)
 			}
 
-			if !c.Equals(a) {
+			if !c.Equal(a) {
 				t.Errorf("%s: prepare stage error\n", v.label)
 			}
-			fmt.Printf("#TestDiffFrom point=%d\n", 666)
+			// fmt.Printf("#TestDiffFrom point=%d\n", 666)
 
 			// current state changed after :q command
 			var t2 strings.Builder
 			for i := range v.seq2 {
-				fmt.Printf("#TestDiffFrom point=%d, seq=%q\n", i, v.seq2[i][0:20])
+				// fmt.Printf("#TestDiffFrom point=%d, seq=%q\n", i, v.seq2[i][0:20])
 				ret := c.Act(v.seq2[i])
-				fmt.Printf("#TestDiffFrom point=%d-\n", i)
+				// fmt.Printf("#TestDiffFrom point=%d-\n", i)
 				t2.WriteString(ret)
 			}
 			if v.resp != t2.String() {
 				t.Errorf("%s: terminal response expect %q, got %q\n", v.label, v.resp, t2.String())
 			}
 
+			// fmt.Printf("#TestDiffFrom point=%d\n", 501)
 			diff := c.DiffFrom(a)
+			// fmt.Printf("#TestDiffFrom point=%d seq=%q\n", 501, diff)
 			n := a.Clone()
-			fmt.Printf("#TestDiffFrom point=%d\n", 501)
 			n.ApplyString(diff)
-			fmt.Printf("#TestDiffFrom point=%d-\n", 501)
 
-			if !c.Equals(n) {
+			if !c.Equal(n) {
 
 				t.Errorf("%s: round-trip Instruction verification failed!", v.label)
 				t.Logf("%s: diff=%q", v.label, diff)

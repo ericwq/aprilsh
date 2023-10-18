@@ -716,6 +716,7 @@ func (fb *Framebuffer) Equal(x *Framebuffer) bool {
 	return true
 }
 
+// TODO remove this after finish test.
 func (fb *Framebuffer) Equals(x *Framebuffer) bool {
 	if fb.nCols != x.nCols || fb.nRows != x.nRows || fb.saveLines != x.saveLines {
 		fmt.Printf("nCols=(%d,%d), nRows=(%d,%d), saveLines=(%d,%d)",

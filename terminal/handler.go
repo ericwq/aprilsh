@@ -498,13 +498,14 @@ func hdl_esc_decsc(emu *Emulator) {
 	emu.savedCursor_DEC.originMode = emu.originMode
 	emu.savedCursor_DEC.charsetState = emu.charsetState
 	emu.savedCursor_DEC.isSet = true
+	// fmt.Printf("esc_decsc 501: save DEC: (%d,%d) isSet=%t\n", emu.posY, emu.posX, emu.savedCursor_DEC.isSet)
 }
 
 // ESC 8     Restore Cursor (DECRC), VT100.
 func hdl_esc_decrc(emu *Emulator) {
 	if !emu.savedCursor_DEC.isSet {
 		// emu.logI.Println("Asked to restore cursor (DECRC) but it has not been saved.")
-		util.Log.Info("Asked to restore cursor (DECRC) but it has not been saved")
+		util.Log.Warn("Asked to restore cursor (DECRC) but it has not been saved")
 	} else {
 		emu.posX = emu.savedCursor_DEC.posX
 		emu.posY = emu.savedCursor_DEC.posY
@@ -514,6 +515,7 @@ func hdl_esc_decrc(emu *Emulator) {
 		emu.originMode = emu.savedCursor_DEC.originMode
 		emu.charsetState = emu.savedCursor_DEC.charsetState
 		emu.savedCursor_DEC.isSet = false
+		// fmt.Printf("esc_decsc 518: restore DEC: (%d,%d) isSet=%t\n", emu.posY, emu.posX, emu.savedCursor_DEC.isSet)
 	}
 }
 
@@ -1407,13 +1409,13 @@ func hdl_csi_privSM(emu *Emulator, params []int) {
 			emu.autoWrapMode = true
 		case 8:
 			// emu.logU.Println("DECARM: Set auto-repeat mode")
-			util.Log.With("unimplement", "DECSET").Debug("DECARM: Set auto-repeat mode")
+			util.Log.With("unimplement", "DECSET").Warn("DECARM: Set auto-repeat mode")
 		case 9:
 			// emu.framebuffer.DS.mouseTrk.mode = MouseModeX10
 			emu.mouseTrk.mode = MouseTrackingMode_X10_Compat
 		case 12:
 			// emu.logU.Println("Start blinking cursor") // TODO support blinking
-			util.Log.With("unimplement", "DECSET").Debug("Start blinking cursor")
+			util.Log.With("unimplement", "DECSET").Warn("Start blinking cursor")
 		case 25:
 			// emu.framebuffer.DS.CursorVisible = true // DECTCEM zutty:showCursorMode
 			emu.showCursorMode = true
@@ -1468,12 +1470,14 @@ func hdl_csi_privSM(emu *Emulator, params []int) {
 		case 1049:
 			hdl_esc_decsc(emu)
 			emu.switchScreenBufferMode(true)
+			emu.altScreen1049 = true
+			// fmt.Printf("privRM:1474 swith screen buffer mode. altScreen1049=%t\n", emu.altScreen1049)
 		case 2004:
 			// emu.framebuffer.DS.BracketedPaste = true // xterm zutty:bracketedPasteMode
 			emu.bracketedPasteMode = true
 		default:
 			// emu.logU.Printf("set priv mode %d\n", param)
-			util.Log.With("unimplement", "DECSET").With("param", param).Debug("set priv mode")
+			util.Log.With("unimplement", "DECSET").With("param", param).Warn("set priv mode")
 		}
 	}
 }
@@ -1506,13 +1510,13 @@ func hdl_csi_privRM(emu *Emulator, params []int) {
 			emu.autoWrapMode = false
 		case 8:
 			// emu.logU.Println("DECARM: Reset auto-repeat mode")
-			util.Log.With("unimplement", "DECRST").Debug("DECARM: Reset auto-repeat mode")
+			util.Log.With("unimplement", "DECRST").Warn("DECARM: Reset auto-repeat mode")
 		case 9, 1000, 1001, 1002, 1003:
 			// emu.framebuffer.DS.mouseTrk.mode = MouseModeNone
 			emu.mouseTrk.mode = MouseTrackingMode_Disable
 		case 12:
 			// emu.logU.Println("Stop blinking cursor")
-			util.Log.With("unimplement", "DECRST").Debug("Stop blinking cursor")
+			util.Log.With("unimplement", "DECRST").Warn("Stop blinking cursor")
 		case 25:
 			// emu.framebuffer.DS.CursorVisible = false
 			emu.showCursorMode = false
@@ -1551,12 +1555,14 @@ func hdl_csi_privRM(emu *Emulator, params []int) {
 		case 1049:
 			emu.switchScreenBufferMode(false)
 			hdl_esc_decrc(emu)
+			emu.altScreen1049 = false
+			// fmt.Printf("privRM:1559 swith screen buffer mode. altScreen1049=%t\n", emu.altScreen1049)
 		case 2004:
 			// emu.framebuffer.DS.BracketedPaste = false
 			emu.bracketedPasteMode = false
 		default:
 			// emu.logU.Printf("reset priv mode %d\n", param)
-			util.Log.With("unimplement", "DECRST").With("param", param).Debug("reset priv mode")
+			util.Log.With("unimplement", "DECRST").With("param", param).Warn("reset priv mode")
 		}
 	}
 }
