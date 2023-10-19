@@ -241,3 +241,8 @@ func (u *UserStream) Clone() *UserStream {
 
 	return &clone
 }
+
+// for test purpose
+func (u *UserStream) Equals(x *UserStream) bool {
+	return u.Equal(x)
+}

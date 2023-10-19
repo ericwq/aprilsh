@@ -253,9 +253,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		frame.append("\x1B[?25l")
 	}
 
-	// has the screen buffer mode changed?
-	// change screen buffer is something like resize, except resize remains partial content,
-	// screen buffer mode reset the whole screen.
+	// check 1049 first
 	if newE.altScreen1049 != oldE.altScreen1049 {
 		if newE.altScreen1049 {
 			frame.append("\x1B[?1049h")
@@ -263,11 +261,36 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 			frame.append("\x1B[?1049l")
 		}
 		// fmt.Printf("Display.NewFrame newE.altScreen1049=%t\n", newE.altScreen1049)
-	} else if !initialized || newE.altScreenBufferMode != oldE.altScreenBufferMode {
-		if newE.altScreenBufferMode {
-			frame.append("\x1B[?47h")
-		} else {
-			frame.append("\x1B[?47l")
+	} else {
+		// has the screen buffer mode changed?
+		// change screen buffer is something like resize, except resize remains partial content,
+		// screen buffer mode reset the whole screen.
+		if !initialized || newE.altScreenBufferMode != oldE.altScreenBufferMode {
+			if newE.altScreenBufferMode {
+				frame.append("\x1B[?1047h")
+			} else {
+				frame.append("\x1B[?1047l")
+			}
+		}
+
+		// has saved cursor changed?
+		// Let the target terminal decide what to save, here we just issue the control sequence.
+		//
+		// Saves the following items in the terminal's memory:
+		//
+		// Cursor position
+		// Character attributes set by the SGR command
+		// Character sets (G0, G1, G2, or G3) currently in GL and GR
+		// Wrap flag (autowrap or no autowrap)
+		// State of origin mode (DECOM)
+		// Selective erase attribute
+		// Any single shift 2 (SS2) or single shift 3 (SS3) functions sent
+		if !initialized || newE.savedCursor_DEC.isSet != oldE.savedCursor_DEC.isSet {
+			if newE.savedCursor_DEC.isSet && !oldE.savedCursor_DEC.isSet {
+				frame.append("\x1B1048") // decsc: VT100 use \x1B7
+			} else if !newE.savedCursor_DEC.isSet && oldE.savedCursor_DEC.isSet {
+				frame.append("\x1B1048") // decrc: vt100 use \x1B8
+			}
 		}
 	}
 
@@ -290,26 +313,6 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 			}
 		} else {
 			frame.append("\x1B[?69l")
-		}
-	}
-
-	// has saved cursor changed?
-	// Let the target terminal decide what to save, here we just issue the control sequence.
-	//
-	// Saves the following items in the terminal's memory:
-	//
-	// Cursor position
-	// Character attributes set by the SGR command
-	// Character sets (G0, G1, G2, or G3) currently in GL and GR
-	// Wrap flag (autowrap or no autowrap)
-	// State of origin mode (DECOM)
-	// Selective erase attribute
-	// Any single shift 2 (SS2) or single shift 3 (SS3) functions sent
-	if !initialized || newE.savedCursor_DEC.isSet != oldE.savedCursor_DEC.isSet {
-		if newE.savedCursor_DEC.isSet && !oldE.savedCursor_DEC.isSet {
-			frame.append("\x1B7") // decsc
-		} else if !newE.savedCursor_DEC.isSet && oldE.savedCursor_DEC.isSet {
-			frame.append("\x1B8") // decrc
 		}
 	}
 

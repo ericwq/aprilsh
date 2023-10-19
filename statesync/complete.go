@@ -5,6 +5,7 @@
 package statesync
 
 import (
+	"fmt"
 	"math"
 
 	pb "github.com/ericwq/aprilsh/protobufs/host"
@@ -231,4 +232,17 @@ func (c *Complete) Clone() *Complete {
 	copy(clone.inputHistory, c.inputHistory)
 
 	return &clone
+}
+
+// fot test purpose
+func (c *Complete) Equals(x *Complete) bool {
+	fmt.Println("***** Equals")
+	if c.echoAck != x.echoAck {
+		return false
+	}
+
+	ret := c.terminal.Equals(x.terminal) // && c.echoAck == x.echoAck
+	fmt.Println("")
+	fmt.Println("***** Equals")
+	return ret
 }

@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"strings"
 	"unicode"
+
+	"github.com/ericwq/aprilsh/util"
 )
 
 const (
@@ -1097,6 +1099,8 @@ func (fb *Framebuffer) saveWindowTitleOnStack() {
 		if len(fb.windowTitleStack) > windowTitleStackMax {
 			fb.windowTitleStack = fb.windowTitleStack[1:]
 		}
+	} else {
+		util.Log.Warn("save title on stack failed, no title exist!")
 	}
 }
 

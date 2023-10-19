@@ -190,18 +190,6 @@ func TestCompleteClone(t *testing.T) {
 	}
 }
 
-func (c *Complete) Equals(x *Complete) bool {
-	fmt.Println("***** Equals")
-	if c.echoAck != x.echoAck {
-		return false
-	}
-
-	ret := c.terminal.Equals(x.terminal) // && c.echoAck == x.echoAck
-	fmt.Println("")
-	fmt.Println("***** Equals")
-	return ret
-}
-
 // "go 1.19\r\n\r\nuse (\r\n\t./aprilsh\r\n\t./terminfo\r\n)"
 func TestDiffFrom(t *testing.T) {
 	tc := []struct {
