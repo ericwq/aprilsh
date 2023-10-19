@@ -21,6 +21,14 @@ type CharsetState struct {
 	ss int
 }
 
+func (cs *CharsetState) Equal(x *CharsetState) bool {
+	if cs.vtMode != x.vtMode || cs.gl != x.gl || cs.gr != x.gr || cs.ss != x.ss {
+		return false
+	}
+
+	return true
+}
+
 /*
 This is only a place holder for charset.
 

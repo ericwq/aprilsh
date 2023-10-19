@@ -254,7 +254,9 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	}
 
 	// check 1049 first
-	if newE.altScreen1049 != oldE.altScreen1049 {
+	asbChanged := false
+	if !initialized || newE.altScreen1049 != oldE.altScreen1049 {
+		asbChanged = true
 		if newE.altScreen1049 {
 			frame.append("\x1B[?1049h")
 		} else {
@@ -266,6 +268,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		// change screen buffer is something like resize, except resize remains partial content,
 		// screen buffer mode reset the whole screen.
 		if !initialized || newE.altScreenBufferMode != oldE.altScreenBufferMode {
+			asbChanged = true
 			if newE.altScreenBufferMode {
 				frame.append("\x1B[?1047h")
 			} else {
@@ -276,15 +279,6 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		// has saved cursor changed?
 		// Let the target terminal decide what to save, here we just issue the control sequence.
 		//
-		// Saves the following items in the terminal's memory:
-		//
-		// Cursor position
-		// Character attributes set by the SGR command
-		// Character sets (G0, G1, G2, or G3) currently in GL and GR
-		// Wrap flag (autowrap or no autowrap)
-		// State of origin mode (DECOM)
-		// Selective erase attribute
-		// Any single shift 2 (SS2) or single shift 3 (SS3) functions sent
 		if !initialized || newE.savedCursor_DEC.isSet != oldE.savedCursor_DEC.isSet {
 			if newE.savedCursor_DEC.isSet && !oldE.savedCursor_DEC.isSet {
 				frame.append("\x1B1048") // decsc: VT100 use \x1B7
@@ -359,7 +353,8 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	var scrollHeight int
 
 	// shortcut -- has display moved up(text up, window down) by a certain number of lines?
-	if initialized {
+	// NOTE: not availble for alternate screen buffer changed.
+	if initialized && !asbChanged {
 
 		for row := 0; row < newE.GetHeight(); row++ {
 			newRow = getRow(newE, 0)

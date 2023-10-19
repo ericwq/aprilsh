@@ -5,7 +5,6 @@
 package statesync
 
 import (
-	"fmt"
 	"io"
 	"math"
 	"reflect"
@@ -227,6 +226,9 @@ func TestDiffFrom(t *testing.T) {
 	nRows := 40
 	savedLines := nRows * 3
 
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
+
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 
@@ -260,9 +262,9 @@ func TestDiffFrom(t *testing.T) {
 				t.Errorf("%s: terminal response expect %q, got %q\n", v.label, v.resp, t2.String())
 			}
 
-			fmt.Printf("#TestDiffFrom point=%d\n", 501)
+			// fmt.Printf("#TestDiffFrom point=%d\n", 501)
 			diff := c.DiffFrom(a)
-			fmt.Printf("#TestDiffFrom point=%d seq=%q\n", 501, diff)
+			// fmt.Printf("#TestDiffFrom point=%d seq=%q\n", 501, diff)
 
 			n := a.Clone()
 			n.ApplyString(diff)

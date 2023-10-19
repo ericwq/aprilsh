@@ -826,8 +826,7 @@ func (emu *Emulator) Equal(x *Emulator) bool {
 		}
 	}
 
-	if emu.charsetState.vtMode != x.charsetState.vtMode || emu.charsetState.gl != x.charsetState.gl ||
-		emu.charsetState.gr != x.charsetState.gr || emu.charsetState.ss != x.charsetState.ss {
+	if !emu.charsetState.Equal(&x.charsetState) {
 		// msg := fmt.Sprintf(
 		// 	"charsetState.vtMode=(%t,%t), charsetState.gl=(%d,%d), charsetState.gr=(%d,%d), charsetState.ss=(%d,%d)",
 		// 	emu.charsetState.vtMode, x.charsetState.vtMode, emu.charsetState.gl, x.charsetState.gl,
@@ -846,62 +845,14 @@ func (emu *Emulator) Equal(x *Emulator) bool {
 		return false
 	}
 
-	// if emu.savedCursor_SCO != x.savedCursor_SCO || emu.savedCursor_DEC_pri != x.savedCursor_DEC_pri ||
-	// 	emu.savedCursor_DEC_alt != x.savedCursor_DEC_alt {
-	// 	return false
-	// }
-
 	if emu.savedCursor_SCO != x.savedCursor_SCO {
-		// msg := fmt.Sprintf("savedCursor_SCO=(%v,%v)", emu.savedCursor_SCO, x.savedCursor_SCO)
-		// util.Log.Debug(msg)
 		return false
 	}
 
-	if emu.savedCursor_DEC_pri.SavedCursor_SCO != x.savedCursor_DEC_pri.SavedCursor_SCO ||
-		emu.savedCursor_DEC_pri.attrs != emu.savedCursor_DEC_pri.attrs ||
-		emu.savedCursor_DEC_pri.originMode != x.savedCursor_DEC_pri.originMode {
-		// msg := fmt.Sprintf("savedCursor_DEC_pri .SavedCursor_SCO=(%v,%v), .attrs=(%v,%v), .originMode=(%d,%d)",
-		// 	emu.savedCursor_DEC_pri.SavedCursor_SCO, x.savedCursor_DEC_pri.SavedCursor_SCO,
-		// 	emu.savedCursor_DEC_pri.attrs, x.savedCursor_DEC_pri.attrs,
-		// 	emu.savedCursor_DEC_pri.originMode, x.savedCursor_DEC_pri.originMode)
-		// util.Log.Debug(msg)
-		return false
-	}
-
-	if emu.savedCursor_DEC_pri.charsetState.vtMode != x.savedCursor_DEC_pri.charsetState.vtMode ||
-		emu.savedCursor_DEC_pri.charsetState.gl != x.savedCursor_DEC_pri.charsetState.gl ||
-		emu.savedCursor_DEC_pri.charsetState.gr != x.savedCursor_DEC_pri.charsetState.gr ||
-		emu.savedCursor_DEC_pri.charsetState.ss != x.savedCursor_DEC_pri.charsetState.ss {
-		// msg := fmt.Sprintf("savedCursor_DEC_pri .charsetState .vtMode=(%t,%t), .gl=(%d,%d), .gr=(%d,%d), .ss=(%d,%d)",
-		// 	emu.savedCursor_DEC_pri.charsetState.vtMode, x.savedCursor_DEC_pri.charsetState.vtMode,
-		// 	emu.savedCursor_DEC_pri.charsetState.gl, x.savedCursor_DEC_pri.charsetState.gl,
-		// 	emu.savedCursor_DEC_pri.charsetState.gr, x.savedCursor_DEC_pri.charsetState.gr,
-		// 	emu.savedCursor_DEC_pri.charsetState.ss, x.savedCursor_DEC_pri.charsetState.ss)
-		// util.Log.Debug(msg)
-		return false
-	}
-
-	if emu.savedCursor_DEC_alt.SavedCursor_SCO != x.savedCursor_DEC_alt.SavedCursor_SCO ||
-		emu.savedCursor_DEC_alt.attrs != emu.savedCursor_DEC_alt.attrs ||
-		emu.savedCursor_DEC_alt.originMode != x.savedCursor_DEC_alt.originMode {
-		// msg := fmt.Sprintf("savedCursor_DEC_alt .SavedCursor_SCO=(%v,%v), .attrs=(%v,%v), .originMode=(%d,%d)",
-		// 	emu.savedCursor_DEC_alt.SavedCursor_SCO, x.savedCursor_DEC_alt.SavedCursor_SCO,
-		// 	emu.savedCursor_DEC_alt.attrs, x.savedCursor_DEC_alt.attrs,
-		// 	emu.savedCursor_DEC_alt.originMode, x.savedCursor_DEC_alt.originMode)
-		// util.Log.Debug(msg)
-		return false
-	}
-
-	if emu.savedCursor_DEC_alt.charsetState.vtMode != x.savedCursor_DEC_alt.charsetState.vtMode ||
-		emu.savedCursor_DEC_alt.charsetState.gl != x.savedCursor_DEC_alt.charsetState.gl ||
-		emu.savedCursor_DEC_alt.charsetState.gr != x.savedCursor_DEC_alt.charsetState.gr ||
-		emu.savedCursor_DEC_alt.charsetState.ss != x.savedCursor_DEC_alt.charsetState.ss {
-		// msg := fmt.Sprintf("savedCursor_DEC_alt .charsetState .vtMode=(%t,%t), .gl=(%d,%d), .gr=(%d,%d), .ss=(%d,%d)",
-		// 	emu.savedCursor_DEC_alt.charsetState.vtMode, x.savedCursor_DEC_alt.charsetState.vtMode,
-		// 	emu.savedCursor_DEC_alt.charsetState.gl, x.savedCursor_DEC_alt.charsetState.gl,
-		// 	emu.savedCursor_DEC_alt.charsetState.gr, x.savedCursor_DEC_alt.charsetState.gr,
-		// 	emu.savedCursor_DEC_alt.charsetState.ss, x.savedCursor_DEC_alt.charsetState.ss)
-		// util.Log.Debug(msg)
+	if emu.savedCursor_DEC.SavedCursor_SCO != x.savedCursor_DEC.SavedCursor_SCO ||
+		emu.savedCursor_DEC.attrs != x.savedCursor_DEC.attrs ||
+		emu.savedCursor_DEC.originMode != x.savedCursor_DEC.originMode ||
+		!emu.savedCursor_DEC.charsetState.Equal(&x.savedCursor_DEC.charsetState) {
 		return false
 	}
 
@@ -1002,8 +953,7 @@ func (emu *Emulator) Equals(x *Emulator) bool {
 		}
 	}
 
-	if emu.charsetState.vtMode != x.charsetState.vtMode || emu.charsetState.gl != x.charsetState.gl ||
-		emu.charsetState.gr != x.charsetState.gr || emu.charsetState.ss != x.charsetState.ss {
+	if !emu.charsetState.Equal(&x.charsetState) {
 		fmt.Printf(
 			"charsetState.vtMode=(%t,%t), charsetState.gl=(%d,%d), charsetState.gr=(%d,%d), charsetState.ss=(%d,%d)",
 			emu.charsetState.vtMode, x.charsetState.vtMode, emu.charsetState.gl, x.charsetState.gl,
@@ -1020,57 +970,27 @@ func (emu *Emulator) Equals(x *Emulator) bool {
 		return false
 	}
 
-	// if emu.savedCursor_SCO != x.savedCursor_SCO || emu.savedCursor_DEC_pri != x.savedCursor_DEC_pri ||
-	// 	emu.savedCursor_DEC_alt != x.savedCursor_DEC_alt {
-	// 	return false
-	// }
-
 	if emu.savedCursor_SCO != x.savedCursor_SCO {
 		fmt.Printf("savedCursor_SCO=(%v,%v)", emu.savedCursor_SCO, x.savedCursor_SCO)
 		return false
 	}
 
-	if emu.savedCursor_DEC_pri.SavedCursor_SCO != x.savedCursor_DEC_pri.SavedCursor_SCO ||
-		emu.savedCursor_DEC_pri.attrs != emu.savedCursor_DEC_pri.attrs ||
-		emu.savedCursor_DEC_pri.originMode != x.savedCursor_DEC_pri.originMode {
-		fmt.Printf("savedCursor_DEC_pri .SavedCursor_SCO=(%v,%v), .attrs=(%v,%v), .originMode=(%d,%d)",
-			emu.savedCursor_DEC_pri.SavedCursor_SCO, x.savedCursor_DEC_pri.SavedCursor_SCO,
-			emu.savedCursor_DEC_pri.attrs, x.savedCursor_DEC_pri.attrs,
-			emu.savedCursor_DEC_pri.originMode, x.savedCursor_DEC_pri.originMode)
-		return false
-	}
-
-	if emu.savedCursor_DEC_pri.charsetState.vtMode != x.savedCursor_DEC_pri.charsetState.vtMode ||
-		emu.savedCursor_DEC_pri.charsetState.gl != x.savedCursor_DEC_pri.charsetState.gl ||
-		emu.savedCursor_DEC_pri.charsetState.gr != x.savedCursor_DEC_pri.charsetState.gr ||
-		emu.savedCursor_DEC_pri.charsetState.ss != x.savedCursor_DEC_pri.charsetState.ss {
-		fmt.Printf("savedCursor_DEC_pri .charsetState .vtMode=(%t,%t), .gl=(%d,%d), .gr=(%d,%d), .ss=(%d,%d)",
-			emu.savedCursor_DEC_pri.charsetState.vtMode, x.savedCursor_DEC_pri.charsetState.vtMode,
-			emu.savedCursor_DEC_pri.charsetState.gl, x.savedCursor_DEC_pri.charsetState.gl,
-			emu.savedCursor_DEC_pri.charsetState.gr, x.savedCursor_DEC_pri.charsetState.gr,
-			emu.savedCursor_DEC_pri.charsetState.ss, x.savedCursor_DEC_pri.charsetState.ss)
-		return false
-	}
-
-	if emu.savedCursor_DEC_alt.SavedCursor_SCO != x.savedCursor_DEC_alt.SavedCursor_SCO ||
-		emu.savedCursor_DEC_alt.attrs != emu.savedCursor_DEC_alt.attrs ||
-		emu.savedCursor_DEC_alt.originMode != x.savedCursor_DEC_alt.originMode {
-		fmt.Printf("savedCursor_DEC_alt .SavedCursor_SCO=(%v,%v), .attrs=(%v,%v), .originMode=(%d,%d)",
-			emu.savedCursor_DEC_alt.SavedCursor_SCO, x.savedCursor_DEC_alt.SavedCursor_SCO,
-			emu.savedCursor_DEC_alt.attrs, x.savedCursor_DEC_alt.attrs,
-			emu.savedCursor_DEC_alt.originMode, x.savedCursor_DEC_alt.originMode)
-		return false
-	}
-
-	if emu.savedCursor_DEC_alt.charsetState.vtMode != x.savedCursor_DEC_alt.charsetState.vtMode ||
-		emu.savedCursor_DEC_alt.charsetState.gl != x.savedCursor_DEC_alt.charsetState.gl ||
-		emu.savedCursor_DEC_alt.charsetState.gr != x.savedCursor_DEC_alt.charsetState.gr ||
-		emu.savedCursor_DEC_alt.charsetState.ss != x.savedCursor_DEC_alt.charsetState.ss {
-		fmt.Printf("savedCursor_DEC_alt .charsetState .vtMode=(%t,%t), .gl=(%d,%d), .gr=(%d,%d), .ss=(%d,%d)",
-			emu.savedCursor_DEC_alt.charsetState.vtMode, x.savedCursor_DEC_alt.charsetState.vtMode,
-			emu.savedCursor_DEC_alt.charsetState.gl, x.savedCursor_DEC_alt.charsetState.gl,
-			emu.savedCursor_DEC_alt.charsetState.gr, x.savedCursor_DEC_alt.charsetState.gr,
-			emu.savedCursor_DEC_alt.charsetState.ss, x.savedCursor_DEC_alt.charsetState.ss)
+	if emu.savedCursor_DEC.SavedCursor_SCO != x.savedCursor_DEC.SavedCursor_SCO ||
+		emu.savedCursor_DEC.attrs != x.savedCursor_DEC.attrs ||
+		emu.savedCursor_DEC.originMode != x.savedCursor_DEC.originMode ||
+		!emu.savedCursor_DEC.charsetState.Equal(&x.savedCursor_DEC.charsetState) {
+		if !emu.savedCursor_DEC.charsetState.Equal(&x.savedCursor_DEC.charsetState) {
+			fmt.Printf("savedCursor_DEC .charsetState .vtMode=(%t,%t), .gl=(%d,%d), .gr=(%d,%d), .ss=(%d,%d)",
+				emu.savedCursor_DEC.charsetState.vtMode, x.savedCursor_DEC.charsetState.vtMode,
+				emu.savedCursor_DEC.charsetState.gl, x.savedCursor_DEC.charsetState.gl,
+				emu.savedCursor_DEC.charsetState.gr, x.savedCursor_DEC.charsetState.gr,
+				emu.savedCursor_DEC.charsetState.ss, x.savedCursor_DEC.charsetState.ss)
+		} else {
+			fmt.Printf("savedCursor_DEC .SavedCursor_SCO=(%v,%v), .attrs=(%v,%v), .originMode=(%d,%d)",
+				emu.savedCursor_DEC.SavedCursor_SCO, x.savedCursor_DEC.SavedCursor_SCO,
+				emu.savedCursor_DEC.attrs, x.savedCursor_DEC.attrs,
+				emu.savedCursor_DEC.originMode, x.savedCursor_DEC.originMode)
+		}
 		return false
 	}
 
