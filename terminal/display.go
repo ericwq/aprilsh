@@ -354,7 +354,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 
 	// shortcut -- has display moved up(text up, window down) by a certain number of lines?
 	// NOTE: not availble for alternate screen buffer changed.
-	if initialized && !asbChanged {
+	if initialized && !asbChanged && !newE.altScreenBufferMode {
 
 		for row := 0; row < newE.GetHeight(); row++ {
 			newRow = getRow(newE, 0)

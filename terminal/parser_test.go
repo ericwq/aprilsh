@@ -4768,7 +4768,7 @@ func TestMixSequence(t *testing.T) {
 		{"vi file and quit result", "\a\x1b[22;0t\x1b[r\x1b[0m\x1b[H\x1b[2J\x1b[?25l\x1b[?47l\x1b[r\x1b[?69l\x1b[1;30H\x1b[?25h\x1b[1 q\x1b]112\a\x1b[0m\x1b[?2004l\x1b[?1003l\x1b[?1002l\x1b[?1001l\x1b[?1000l\x1b[?1004l\x1b[?1015l\x1b[?1006l\x1b[?1005l\x1b[?7h\x1b[20l\x1b[2l\x1b[4l\x1b[12h\x1b[?67l\x1b[?1036h\x1b[?1007l\x1b[?1l\x1b[?6l\x1b>\x1b[?3l\x1b[3g\x1b[64\"p\x1b[>4;0m", 39},
 		{"empty screen, vi utf-8 file", "\x1b[?1049h\x1b[22;0;0t\x1b[?1h\x1b=\x1b[H\x1b[2J\x1b]11;?\a\x1b[?2004h\x1b[?u\x1b[c\x1b[?25h", 11},
 		{"empty screen, vi utf-8 dup", "\x1b[?1049h\x1b[?2004h\x1b[?1h\x1b=", 4},
-		{"screen with content, vi utf-8", "\x1b[?1049h\x1b[0m\x1b[1;40r\x1b[?25l\x1b[40;1H\x1b[1S\x1b[r\x1b[40;1H\x1b[K\x1b[1;1H\x1b[?25h\x1b[?2004h\x1b[?1h\x1b=", 2},
+		{"screen with content, vi utf-8", "\x1b[?1049h\x1b[0m\x1b[1;40r\x1b[?25l\x1b[40;1H\x1b[1S\x1b[r\x1b[40;1H\x1b[K\x1b[1;1H\x1b[?25h\x1b[?2004h\x1b[?1h\x1b=", 14},
 	}
 	p := NewParser()
 	emu := NewEmulator3(8, 4, 0)

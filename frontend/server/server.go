@@ -729,6 +729,7 @@ func serve(ptmx *os.File, pw *io.PipeWriter, complete *statesync.Complete, waitC
 
 	var timeoutIfNoClient int64 = 60000
 	childReleased := false
+	// titleDone := false
 
 mainLoop:
 	for {
@@ -888,6 +889,11 @@ mainLoop:
 						network.StartShutdown()
 					}
 				} else {
+					// if !titleDone {
+					// 	// TODO save old title and set new one.
+					// 	complete.Act(fmt.Sprintf("\x1B]0;%s\a", _PACKAGE_STRING))
+					// 	titleDone = true
+					// }
 					out := complete.Act(masterMsg.Data)
 					terminalToHost.WriteString(out)
 
