@@ -255,7 +255,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 
 	// check 1049 first
 	asbChanged := false
-	if !initialized || newE.altScreen1049 != oldE.altScreen1049 {
+	if newE.altScreen1049 != oldE.altScreen1049 {
 		asbChanged = true
 		if newE.altScreen1049 {
 			frame.append("\x1B[?1049h")
@@ -281,9 +281,9 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		//
 		if !initialized || newE.savedCursor_DEC.isSet != oldE.savedCursor_DEC.isSet {
 			if newE.savedCursor_DEC.isSet && !oldE.savedCursor_DEC.isSet {
-				frame.append("\x1B1048") // decsc: VT100 use \x1B7
+				frame.append("\x1B[?1048h") // decsc: VT100 use \x1B7
 			} else if !newE.savedCursor_DEC.isSet && oldE.savedCursor_DEC.isSet {
-				frame.append("\x1B1048") // decrc: vt100 use \x1B8
+				frame.append("\x1B[?1048l") // decrc: vt100 use \x1B8
 			}
 		}
 	}

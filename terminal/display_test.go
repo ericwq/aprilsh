@@ -138,7 +138,7 @@ func TestNewFrame_PutRow(t *testing.T) {
 		{
 			"mix color, false initialized case", ' ', ' ',
 			"\x1b[10;1H\x1b[1;34mdevelop\x1b[m  \x1b[1;35mproj\x1b[m", false,
-			"\x1b[?5l\x1b[r\x1b[0m\x1b[H\x1b[2J\x1b[?25l\x1b[?47l\x1b[r\x1b[?69l\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[0;1;34mdevelop\x1b[0m  \x1b[0;1;35mproj\x1b[0m\x1b[K\r\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\x1b[10;14H\x1b[?25h\x1b[1 q\x1b]112\a\x1b[0m\x1b[?2004l\x1b[?1003l\x1b[?1002l\x1b[?1001l\x1b[?1000l\x1b[?1004l\x1b[?1015l\x1b[?1006l\x1b[?1005l\x1b[?7h\x1b[20l\x1b[2l\x1b[4l\x1b[12h\x1b[?67l\x1b[?1036h\x1b[?1007l\x1b[?1l\x1b[?6l\x1b>\x1b[?3l\x1b[3g\x1b[64\"p\x1b[>4;1m", 9,
+			"\x1b[?5l\x1b[r\x1b[0m\x1b[H\x1b[2J\x1b[?25l\x1b[?1047l\x1b[r\x1b[?69l\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[0;1;34mdevelop\x1b[0m  \x1b[0;1;35mproj\x1b[0m\x1b[K\r\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\x1b[10;14H\x1b[?25h\x1b[1 q\x1b]112\a\x1b[0m\x1b[?2004l\x1b[?1003l\x1b[?1002l\x1b[?1001l\x1b[?1000l\x1b[?1004l\x1b[?1015l\x1b[?1006l\x1b[?1005l\x1b[?7h\x1b[20l\x1b[2l\x1b[4l\x1b[12h\x1b[?67l\x1b[?1036h\x1b[?1007l\x1b[?1l\x1b[?6l\x1b>\x1b[?3l\x1b[3g\x1b[64\"p\x1b[>4;1m", 9,
 			"[  9] develop..proj...................................................................",
 		},
 	}
@@ -547,8 +547,8 @@ func TestNewFrame_AltScreenBufferMode(t *testing.T) {
 		seq                 string
 		expectSeq           string
 	}{
-		{"already initialized, has altScreenBufferMode", true, true, "\x1B[?47h", "\x1B[?47h"},
-		{"already initialized, no altScreenBufferMode", true, false, "\x1B[?47h", "\x1B[?47l"},
+		{"already initialized, has altScreenBufferMode", true, true, "\x1B[?1047h", "\x1B[?1047h"},
+		{"already initialized, no altScreenBufferMode", true, false, "\x1B[?1047h", "\x1B[?1047l"},
 	}
 	oldE := NewEmulator3(8, 4, 4)
 	newE := NewEmulator3(8, 4, 4)
@@ -680,8 +680,8 @@ func TestNewFrame_Decsc(t *testing.T) {
 		seq         string
 		expectSeq   string
 	}{
-		{"already initialized, new has decsc", true, true, "\x1B7", "\x1b7"},
-		{"already initialized, old has decsc", true, false, "\x1B7", "\x1b8"},
+		{"already initialized, new has decsc", true, true, "\x1B7", "\x1b[?1048h"},
+		{"already initialized, old has decsc", true, false, "\x1B7", "\x1b[?1048l"},
 		{"already initialized, both no decsc", true, false, "", ""},
 	}
 	oldE := NewEmulator3(8, 8, 4)

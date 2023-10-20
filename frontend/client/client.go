@@ -698,6 +698,7 @@ func (sc *STMClient) init() error {
 
 	// Put terminal in application-cursor-key mode
 	os.Stdout.WriteString(sc.display.Open())
+	// util.Log.With("seq", sc.display.Open()).Debug("open terminal")
 
 	// Add our name to window title
 	prefix := os.Getenv("APRILSH_TITLE_PREFIX")
@@ -785,6 +786,7 @@ func (sc *STMClient) shutdown() error {
 
 	// Restore terminal and terminal-driver state
 	os.Stdout.WriteString(sc.display.Close())
+	// util.Log.With("seq", sc.display.Close()).Debug("close terminal")
 
 	if err := term.Restore(int(os.Stdin.Fd()), sc.savedTermios); err != nil {
 		util.Log.With("error", err).Warn("restore terminal failed")
