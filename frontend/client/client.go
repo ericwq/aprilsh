@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"runtime/pprof"
 	"strconv"
 	"strings"
 	"syscall"
@@ -307,13 +306,13 @@ func (c *Config) buildConfig() (string, bool) {
 }
 
 func main() {
-	cpuf, err := os.Create("cpu.profile")
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	pprof.StartCPUProfile(cpuf)
-	defer pprof.StopCPUProfile()
+	// cpuf, err := os.Create("cpu.profile")
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
+	// pprof.StartCPUProfile(cpuf)
+	// defer pprof.StopCPUProfile()
 
 	// For security, make sure we don't dump core
 	encrypt.DisableDumpingCore()
@@ -862,6 +861,9 @@ func (sc *STMClient) main() error {
 			}
 		}
 	})
+
+	// // set the new title
+	// os.Stdout.WriteString(fmt.Sprintf("\x1B]0;%s@%s\a", _PACKAGE_STRING, sc.ip))
 
 mainLoop:
 	for {
