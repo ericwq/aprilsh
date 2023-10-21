@@ -729,7 +729,6 @@ func serve(ptmx *os.File, pw *io.PipeWriter, complete *statesync.Complete, waitC
 
 	var timeoutIfNoClient int64 = 60000
 	childReleased := false
-	titleDone := false
 
 mainLoop:
 	for {
@@ -889,10 +888,6 @@ mainLoop:
 						network.StartShutdown()
 					}
 				} else {
-					if !titleDone {
-						complete.Act(fmt.Sprintf("\x1B]0;%s\a", _PACKAGE_STRING))
-						titleDone = true
-					}
 					out := complete.Act(masterMsg.Data)
 					terminalToHost.WriteString(out)
 
@@ -1141,6 +1136,9 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 
 		warnUnattached(pts, utmpHost)
 	}
+
+	// set new title
+	fmt.Fprintf(pts, "\x1B]0;%s\a", _PACKAGE_STRING)
 
 	encrypt.ReenableDumpingCore()
 
