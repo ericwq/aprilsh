@@ -408,7 +408,7 @@ func main() {
 	}
 
 	if conf.begin {
-		beginClientConn(conf.desiredPort)
+		beginClientConn(conf.desiredPort, conf.term)
 		return
 	}
 
@@ -469,7 +469,7 @@ func getShellNameFrom(shellPath string) (shellName string) {
 	return
 }
 
-func beginClientConn(port string) {
+func beginClientConn(port string, term string) {
 	// Unlike Dial, ListenPacket creates a connection without any
 	// association with peers.
 	conn, _ := net.ListenPacket("udp", ":0")
@@ -487,7 +487,7 @@ func beginClientConn(port string) {
 	// }
 
 	// request from server
-	request := fmt.Sprintf("%s", _ASH_OPEN)
+	request := fmt.Sprintf("%s%s", _ASH_OPEN, term)
 	conn.SetDeadline(time.Now().Add(time.Millisecond * 20))
 	conn.WriteTo([]byte(request), dest)
 	// n, err := conn.WriteTo([]byte(request), dest)
@@ -1091,6 +1091,7 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 
 	// set TERM based on client TERM
 	if conf.term != "" {
+		// util.Log.With("term", conf.term).Debug("start shell message")
 		os.Setenv("TERM", conf.term)
 	} else {
 		os.Setenv("TERM", "xterm-256color") // default TERM
@@ -1373,6 +1374,7 @@ func (m *mainSrv) run(conf *Config) {
 				// start the worker
 				conf2 := *conf
 				conf2.desiredPort = fmt.Sprintf("%d", p)
+				conf2.term = strings.TrimPrefix(req, _ASH_OPEN)
 
 				// For security, make sure we don't dump core
 				encrypt.DisableDumpingCore()
