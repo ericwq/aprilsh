@@ -71,8 +71,8 @@ go tool cover -html coverage/profile
 
 ### start server
 ```sh
-go build -o $HOME/.local/bin/aprilsh-server server.go
-$HOME/.local/bin/aprilsh-server -verbose 1 2>> /tmp/aprilsh-server.log
+go build -o $HOME/.local/bin/ashd .
+$HOME/.local/bin/ashd -verbose 1 2>> /tmp/ashd.log
 ```
 ### start client
 ```sh

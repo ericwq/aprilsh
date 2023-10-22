@@ -16,4 +16,4 @@ PKGS="github.com/ericwq/aprilsh/frontend/server"
 
 #
 # build server for test
-go build -cover -coverpkg=$PKGS -o ~/.local/bin/aprilsh-server .
+go build -cover -coverpkg=$PKGS -o ~/.local/bin/ashd .
