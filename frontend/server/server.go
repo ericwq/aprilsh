@@ -617,7 +617,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	// start the udp server, serve the udp request
 	waitChan := make(chan bool)
 	go conf.serve(ptmx, pw, terminal, waitChan, network, networkTimeout, networkSignaledTimeout)
-	util.Log.With("desiredPort", conf.desiredPort).Info("start listening on")
+	util.Log.With("desiredPort", conf.desiredPort).With("clientTERM", conf.term).Info("start listening on")
 
 	// start the shell with pts
 	shell, err := startShell(pts, pr, utmpHost, conf)
