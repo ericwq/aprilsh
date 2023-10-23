@@ -338,8 +338,8 @@ func (c *conditionalOverlayRow) apply(emu *terminal.Emulator, confirmedEpoch int
 
 // represent the prediction notifications
 type NotificationEngine struct {
-	lastWordFromServer    int64
-	lastAckedState        int64
+	lastWordFromServer    int64 // last received state timestamp
+	lastAckedState        int64 // last sent state (acked) timestamp
 	escapeKeyString       string
 	message               string
 	messageIsNetworkError bool
@@ -352,7 +352,7 @@ func newNotificationEngien() *NotificationEngine {
 	ne.lastWordFromServer = time.Now().UnixMilli()
 	ne.lastAckedState = time.Now().UnixMilli()
 	ne.messageIsNetworkError = false
-	ne.messageExpiration = -1
+	ne.messageExpiration = math.MaxInt64
 	ne.showQuitKeystroke = true
 	return ne
 }
@@ -471,27 +471,28 @@ func (ne *NotificationEngine) ServerAcked(ts int64) {
 }
 
 func (ne *NotificationEngine) waitTime() int {
-	nextExpiry := math.MaxInt
+	var nextExpiry int64 = math.MaxInt64
 	now := time.Now().UnixMilli()
-	nextExpiry = terminal.Min(nextExpiry, int(ne.messageExpiration-now))
+	nextExpiry = terminal.Min(nextExpiry, ne.messageExpiration-now)
 
 	if ne.needCountup(now) {
-		countupInterval := 1000
+		var countupInterval int64 = 1000
 		if now-ne.lastWordFromServer > 60000 {
-			// If we've been disconnected for 60 seconds, save power by updating the display less often.
+			// If we've been disconnected for 60 seconds, save power by updating
+			// the display less often.
 			countupInterval = ACK_INTERVAL
 		}
 		nextExpiry = terminal.Min(nextExpiry, countupInterval)
 	}
 
-	return nextExpiry
+	return int(nextExpiry)
 }
 
 // default parameters: permanent = false, showQuitKeystroke = true
 func (ne *NotificationEngine) SetNotificationString(message string, permanent bool, showQuitKeystroke bool) {
 	ne.message = message
 	if permanent {
-		ne.messageExpiration = -1
+		ne.messageExpiration = math.MaxInt64
 	} else {
 		ne.messageExpiration = time.Now().UnixMilli() + 1000
 	}
@@ -1332,19 +1333,12 @@ func (om *OverlayManager) SetTitlePrefix(v string) {
 }
 
 func (om *OverlayManager) WaitTime() int {
-	// util.Log.With("predictions", om.predictions.waitTime()).
-	// 	With("notifications", om.notifications.waitTime()).
-	// 	Debug("waitTime")
 	w1 := om.notifications.waitTime()
 	w2 := om.predictions.waitTime()
-	if w1 < 0 {
-		w1 = 0
-	}
-	if w2 < 0 {
-		w2 = 0
-	}
-	// return terminal.Min(om.notifications.waitTime(), om.predictions.waitTime())
+	// util.Log.With("predictions", w2).With("notifications", w1).Debug("waitTime")
 	return terminal.Min(w1, w2)
+
+	// return terminal.Min(om.notifications.waitTime(), om.predictions.waitTime())
 }
 
 func (om *OverlayManager) Apply(emu *terminal.Emulator) {

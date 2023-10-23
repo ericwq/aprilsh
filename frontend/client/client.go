@@ -872,8 +872,10 @@ mainLoop:
 	for {
 		sc.outputNewFrame()
 
-		// util.Log.With("before", "waitTime").Warn("mainLoop")
-		waitTime := terminal.Min(sc.network.WaitTime(), sc.overlays.WaitTime())
+		w0 := sc.network.WaitTime()
+		w1 := sc.overlays.WaitTime()
+		waitTime := terminal.Min(w0, w1)
+		// waitTime := terminal.Min(sc.network.WaitTime(), sc.overlays.WaitTime())
 
 		// Handle startup "Connecting..." message
 		if sc.stillConnecting() {
@@ -881,7 +883,8 @@ mainLoop:
 		}
 
 		timer := time.NewTimer(time.Duration(waitTime) * time.Millisecond)
-
+		util.Log.With("point", 100).With("network.WaitTime", w0).
+			With("overlays.WaitTime", w1).With("timeout", waitTime).Debug("mainLoop")
 		select {
 		case <-timer.C:
 			// util.Log.With("overlays", sc.overlays.WaitTime()).
