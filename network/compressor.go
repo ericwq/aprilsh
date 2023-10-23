@@ -46,7 +46,7 @@ func (c *Compressor) Compress(input []byte) ([]byte, error) {
 // buffer size bigger than mtu is wrong. some Uncompress data is larger than payload
 
 func (c *Compressor) Uncompress(input []byte) ([]byte, error) {
-	bufSize := len(input) * 4 // limited by mtu and compress ratio: we assume 4
+	bufSize := len(input) * 9 // limited by mtu and compress ratio: we assume 9
 	buf := make([]byte, bufSize)
 
 	// if len(input) > bufSize {
@@ -61,7 +61,7 @@ func (c *Compressor) Uncompress(input []byte) ([]byte, error) {
 	defer r.Close()
 
 	n, err := r.Read(buf)
-	if err == io.EOF && n > 0 {
+	if err == io.EOF && n < bufSize {
 		// if n > bufSize {
 		// 	return nil, errors.New("overflow buffer size")
 		// }
