@@ -389,7 +389,7 @@ func (ts *TransportSender[T]) tick() error {
 		newState.ApplyString(diff)
 		// util.Log.With("point", 400).Debug("tick")
 		if !ts.currentState.Equal(newState) {
-			ts.currentState.Equals(newState) // TODO remove this if integration test is finished
+			ts.currentState.EqualTrace(newState) // TODO remove this if integration test is finished
 			util.Log.Warn("#tick Warning, round-trip Instruction verification failed!")
 		}
 

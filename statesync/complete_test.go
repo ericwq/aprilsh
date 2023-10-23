@@ -245,7 +245,7 @@ func TestDiffFrom(t *testing.T) {
 				t1.WriteString(ret)
 			}
 
-			if !c.Equals(a) {
+			if !c.EqualTrace(a) {
 				t.Errorf("%s: prepare stage error\n", v.label)
 			}
 			// fmt.Printf("#TestDiffFrom point=%d\n", 666)
@@ -268,7 +268,7 @@ func TestDiffFrom(t *testing.T) {
 
 			n := a.Clone()
 			n.ApplyString(diff)
-			if !c.Equals(n) {
+			if !c.EqualTrace(n) {
 				t.Errorf("%s: round-trip Instruction verification failed!", v.label)
 				t.Logf("%s: diff=%q", v.label, diff)
 			}

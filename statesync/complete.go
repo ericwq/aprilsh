@@ -234,13 +234,13 @@ func (c *Complete) Clone() *Complete {
 }
 
 // fot test purpose
-func (c *Complete) Equals(x *Complete) bool {
+func (c *Complete) EqualTrace(x *Complete) bool {
 	// fmt.Println("***** Equals")
 	if c.echoAck != x.echoAck {
 		return false
 	}
 
-	ret := c.terminal.Equals(x.terminal) // && c.echoAck == x.echoAck
+	ret := c.terminal.EqualTrace(x.terminal) // && c.echoAck == x.echoAck
 	// fmt.Println("")
 	// fmt.Println("***** Equals-")
 	return ret

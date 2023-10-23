@@ -18,7 +18,7 @@ type State[C any] interface {
 	InitDiff() string
 	ApplyString(diff string) error
 	Equal(x C) bool
-	Equals(x C) bool // for test purpose
+	EqualTrace(x C) bool // for test purpose
 
 	// interface from code
 	ResetInput()

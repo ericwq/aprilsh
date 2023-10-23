@@ -243,6 +243,6 @@ func (u *UserStream) Clone() *UserStream {
 }
 
 // for test purpose
-func (u *UserStream) Equals(x *UserStream) bool {
+func (u *UserStream) EqualTrace(x *UserStream) bool {
 	return u.Equal(x)
 }

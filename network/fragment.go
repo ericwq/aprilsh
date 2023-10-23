@@ -245,8 +245,8 @@ func (f *Fragmenter) makeFragments(inst *pb.Instruction, mtu int) (ret []*Fragme
 
 	util.Log.With("mtu", mtu).
 		With("diff", len(inst.Diff)).
-		With("data", len(data)).
-		With("payload", len(payload[pos:])).
+		With("marshal", len(data)).
+		With("compress", len(payload[pos:])).
 		Debug("send message")
 
 	for payload != nil {
