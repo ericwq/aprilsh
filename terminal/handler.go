@@ -1321,6 +1321,7 @@ func hdl_osc_0_1_2(emu *Emulator, cmd int, arg string) {
 
 		if setTitle {
 			emu.cf.setWindowTitle(arg)
+			util.Log.With("title", emu.cf.getWindowTitle()).Debug("OSC 0 set window title")
 		}
 	}
 }

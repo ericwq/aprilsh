@@ -72,14 +72,14 @@ go tool cover -html coverage/profile
 ### start server
 ```sh
 go build -o $HOME/.local/bin/ashd .
-$HOME/.local/bin/ashd -verbose 1 2>> /tmp/ashd.log
+$HOME/.local/bin/apshd -verbose 1 2>> /tmp/apshd.log
 ```
 ### start client
 ```sh
 cd develop/aprilsh/frontend/client
-go build .
-./client -verbose 1  -pwd password ide@localhost 2>> /tmp/aprilsh.log
-./client -verbose 1 -pwd password ide@172.17.0.3 2>> /tmp/aprilsh.log
+go build -o apsh .
+./apsh -verbose 1  -pwd password ide@localhost 2>> /tmp/apsh.log
+./apsh -verbose 1 -pwd password ide@172.17.0.3 2>> /tmp/apsh.log
 ```
 ### pprof
 go tool pprof client cpu.profile

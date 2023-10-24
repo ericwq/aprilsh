@@ -5,6 +5,7 @@
 *.so
 *.dylib
 frontend/client/client
+frontend/client/apsh
 frontend/server/server
 coverage
 cpu.profile

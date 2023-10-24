@@ -32,7 +32,7 @@ import (
 
 const (
 	_PACKAGE_STRING       = "aprilsh"
-	_COMMAND_NAME         = "aprilsh-client"
+	_COMMAND_NAME         = "apsh"
 	_APRILSH_KEY          = "APRISH_KEY"
 	_PREDICTION_DISPLAY   = "APRISH_PREDICTION_DISPLAY"
 	_PREDICTION_OVERWRITE = "APRISH_PREDICTION_OVERWRITE"
@@ -198,7 +198,7 @@ func (c *Config) fetchKey(password string) error {
 	// the remote side using the Run method.
 	var b []byte
 	// cmd := fmt.Sprintf("echo '%s' | nc localhost %d -u -w 1", _ASH_OPEN, c.port)
-	cmd := fmt.Sprintf("~/.local/bin/ashd -b -t %s", os.Getenv("TERM"))
+	cmd := fmt.Sprintf("~/.local/bin/apshd -b -t %s", os.Getenv("TERM"))
 	// util.Log.With("cmd", cmd).Debug("execute command")
 
 	if b, err = session.Output(cmd); err != nil {
@@ -699,7 +699,7 @@ func (sc *STMClient) init() error {
 
 	// Put terminal in application-cursor-key mode
 	os.Stdout.WriteString(sc.display.Open())
-	// util.Log.With("seq", sc.display.Open()).Debug("open terminal")
+	util.Log.With("seq", sc.display.Open()).Debug("open terminal")
 
 	// Add our name to window title
 	prefix := os.Getenv("APRILSH_TITLE_PREFIX")
@@ -787,7 +787,7 @@ func (sc *STMClient) shutdown() error {
 
 	// Restore terminal and terminal-driver state
 	os.Stdout.WriteString(sc.display.Close())
-	// util.Log.With("seq", sc.display.Close()).Debug("close terminal")
+	util.Log.With("seq", sc.display.Close()).Debug("close terminal")
 
 	if err := term.Restore(int(os.Stdin.Fd()), sc.savedTermios); err != nil {
 		util.Log.With("error", err).Warn("restore terminal failed")

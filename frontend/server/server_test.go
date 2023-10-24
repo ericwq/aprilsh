@@ -350,13 +350,13 @@ func TestMainRun(t *testing.T) {
 		{"run main and killed by signal",
 			[]string{_COMMAND_NAME, "-verbose", "1", "-locale",
 				"LC_ALL=en_US.UTF-8", "-p", "6100", "--", "/bin/sh", "-sh"},
-			[]string{"aprilsh-server", "start listening on", "buildVersion",
+			[]string{_COMMAND_NAME, "start listening on", "buildVersion",
 				"got signal: SIGHUP", "got signal: SIGTERM or SIGINT",
 				"stop listening", "6100"}},
 		{"run main and killed by -a",
 			[]string{_COMMAND_NAME, "-a=1", "-locale", // auto stop after 1 second
 				"LC_ALL=en_US.UTF-8", "-p", "6200", "--", "/bin/sh", "-sh"},
-			[]string{"aprilsh-server", "start listening on", "buildVersion",
+			[]string{_COMMAND_NAME, "start listening on", "buildVersion",
 				"stop listening", "6200"}},
 		{"run main and killeb by -a, write to syslog",
 			[]string{_COMMAND_NAME, "-a=1", "-verbose", "514"}, // auto stop after 1 second
