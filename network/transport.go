@@ -294,10 +294,10 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		newState.num = inst.NewNum
 		if len(inst.Diff) > 0 {
 			newState.state.ApplyString(string(inst.Diff))
+			util.Log.With("applyString", inst.Diff).Debug("got message")
 		}
 
 		// Insert new state in sorted place
-		// rs := make([]TimestampedState[R], 0)
 		rs := t.receivedState[:0]
 		for i := range t.receivedState {
 			// if /* newState.num != -1 &&  */ t.receivedState[i].num > newState.num {
@@ -307,22 +307,6 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 				rs = append(rs, t.receivedState[i:]...)
 				t.receivedState = rs
 
-				// if newState.num == math.MaxUint64 {
-				// 	//shutdown state is always out of order
-				// 	// util.Log.With("ackNum", inst.AckNum).
-				// 	// 	With("newNum", inst.NewNum).
-				// 	// 	With("OldNum", inst.OldNum).
-				// 	// 	With("throwawayNum", inst.ThrowawayNum).
-				// 	// 	Debug("get shutdown state")
-				// 	t.sender.setAckNum(newState.num)
-				// 	t.sender.remoteHeard(newState.timestamp)
-				// 	if len(inst.Diff) > 0 {
-				// 		t.sender.setDataAck()
-				// 	}
-				// 	util.Log.With("receivedState", t.getReceivedStateList()).
-				// 		With("sort", "insert shutdown state").
-				// 		Debug("got message")
-				// }
 				if t.verbose > 0 {
 					util.Log.With("time", time.Now().UnixMilli()%100000).
 						With("newNum", newState.num).
@@ -333,16 +317,6 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 			}
 			rs = append(rs, t.receivedState[i])
 		}
-
-		// if t.verbose > 0 { // TODO remove this duplicated log statements
-		// 	util.Log.With("time", time.Now().UnixMilli()%100000).
-		// 		With("newNum", newState.num).
-		// 		With("OldNum", inst.OldNum).
-		// 		With("AckNum", inst.AckNum).
-		// 		Debug("#recv Received state x [coming from y, ack state z]")
-		// }
-
-		// fmt.Printf("#recv receive state num %d from %q got diff=%q.\n", newState.num, t.connection.remoteAddr, inst.Diff)
 
 		t.receivedState = append(t.receivedState, newState) // insert new state
 		t.sender.setAckNum(t.receivedState[len(t.receivedState)-1].num)
