@@ -71,11 +71,13 @@ go tool cover -html coverage/profile
 
 ### start server
 ```sh
-go build -o $HOME/.local/bin/ashd .
-$HOME/.local/bin/apshd -verbose 1 2>> /tmp/apshd.log
+go build -o ~/.local/bin/ashd .
+~/.local/bin/apshd -verbose 1 2>> /tmp/apshd.log
+GOCOVERDIR=./coverage/int ~/.local/bin/apshd -verbose 1 2>> /tmp/apshd.log
 ```
 ### start client
 ```sh
+docker exec -u ide -it nvide ash
 cd develop/aprilsh/frontend/client
 go build -o apsh .
 ./apsh -verbose 1  -pwd password ide@localhost 2>> /tmp/apsh.log

@@ -617,7 +617,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	// start the udp server, serve the udp request
 	waitChan := make(chan bool)
 	go conf.serve(ptmx, pw, terminal, waitChan, network, networkTimeout, networkSignaledTimeout)
-	util.Log.With("port", conf.desiredPort).With("clientTERM", conf.term).Info("start listening on")
+	util.Log.With("port", conf.desiredPort).With("clientTERM", conf.term).Info(_COMMAND_NAME + "start listening on")
 
 	// start the shell with pts
 	shell, err := startShell(pts, pr, utmpHost, conf)
@@ -642,14 +642,16 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		var state *os.ProcessState
 		state, err = shell.Wait()
 		if err != nil || state.Exited() {
-			util.Log.With("error", err).With("state", state).Warn("shell.Wait fail")
+			if err != nil {
+				util.Log.With("error", err).With("state", state).Warn("shell.Wait fail")
+			}
 		}
 
 		// wait serve to finish
 		util.Log.With("ptmx", ptmx.Name()).Debug("wait serve to finish")
 		<-waitChan
 		// logI.Printf("#runWorker stop listening on :%s\n", conf.desiredPort)
-		util.Log.With("port", conf.desiredPort).Info("stop listening on")
+		util.Log.With("port", conf.desiredPort).Info(_COMMAND_NAME + " stop listening on")
 
 		// clear utmp entry
 		if utmpSupport {
