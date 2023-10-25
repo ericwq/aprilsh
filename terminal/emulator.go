@@ -76,15 +76,11 @@ type Emulator struct {
 	selectionStore map[rune]string // local storage buffer for selection data in sequence OSC 52
 	selectionData  string          // replicated by NewFrame(), store the selection data for OSC 52
 
-	/*
-		CursorVisible             bool // true/false
-		ReverseVideo              bool // two possible value: Reverse(true), Normal(false)
-		MouseReportingMode        int  // replace it with MouseTrackingMode
-		MouseFocusEvent           bool // replace it with MouseTrackingState.focusEventMode
-		MouseAlternateScroll      bool // rename to altScrollMode
-		MouseEncodingMode         int  // replace it with MouseTrackingEnc
-		ApplicationModeCursorKeys bool // =cursorKeyMode two possible value : Application(true), ANSI(false)
-	*/
+	iconLabel        string   // replicated by NewFrame()
+	windowTitle      string   // replicated by NewFrame()
+	bellCount        int      // replicated by NewFrame()
+	titleInitialized bool     // replicated by NewFrame()
+	windowTitleStack []string // for XTWINOPS
 }
 
 func NewEmulator3(nCols, nRows, saveLines int) *Emulator {
@@ -131,7 +127,7 @@ func NewEmulator3(nCols, nRows, saveLines int) *Emulator {
 	// emu.initLog()
 
 	emu.resetTerminal()
-
+	emu.windowTitleStack = make([]string, 0)
 	return emu
 }
 
@@ -256,9 +252,9 @@ func (emu *Emulator) resetTerminal() {
 
 	emu.switchColMode(ColMode_C80)
 	emu.cf.dropScrollbackHistory()
-	emu.cf.resetBell()
-	emu.cf.resetTitle()
-	emu.cf.resetWindowTitleStack()
+	emu.resetBell()
+	emu.resetTitle()
+	emu.resetWindowTitleStack()
 	emu.marginTop, emu.marginBottom = emu.cf.resetMargins()
 	emu.clearScreen()
 
@@ -665,22 +661,6 @@ func (emu *Emulator) GetRenditions() (rnd Renditions) {
 	return emu.attrs.renditions
 }
 
-func (emu *Emulator) PrefixWindowTitle(prefix string) {
-	emu.cf.prefixWindowTitle(prefix)
-}
-
-func (emu *Emulator) GetWindowTitle() string {
-	return emu.cf.getWindowTitle()
-}
-
-func (emu *Emulator) GetIconLabel() string {
-	return emu.cf.getIconLabel()
-}
-
-func (emu *Emulator) isTitleInitialized() bool {
-	return emu.cf.isTitleInitialized()
-}
-
 func (emu *Emulator) SetCursorVisible(visible bool) {
 	if !visible {
 		emu.cf.setCursorStyle(CursorStyle_Hidden)
@@ -739,13 +719,73 @@ func (emu *Emulator) Clone() *Emulator {
 	clone.initSelectionStore()
 
 	// clone windowTitleStack
-	clone.cf.windowTitleStack = make([]string, len(emu.cf.windowTitleStack))
-	copy(clone.cf.windowTitleStack, emu.cf.windowTitleStack)
+	clone.windowTitleStack = make([]string, len(emu.windowTitleStack))
+	copy(clone.windowTitleStack, emu.windowTitleStack)
 
 	// ignore logI,logT,logU,logW
 	return &clone
 }
 
+func (emu *Emulator) PrefixWindowTitle(prefix string) {
+	emu.prefixWindowTitle(prefix)
+}
+
+func (emu *Emulator) GetWindowTitle() string {
+	return emu.getWindowTitle()
+}
+
+func (emu *Emulator) GetIconLabel() string {
+	return emu.getIconLabel()
+}
+
+func (emu *Emulator) setTitleInitialized()          { emu.titleInitialized = true }
+func (emu *Emulator) isTitleInitialized() bool      { return emu.titleInitialized }
+func (emu *Emulator) setIconLabel(iconLabel string) { emu.iconLabel = iconLabel }
+func (emu *Emulator) setWindowTitle(title string)   { emu.windowTitle = title }
+func (emu *Emulator) getIconLabel() string          { return emu.iconLabel }
+func (emu *Emulator) getWindowTitle() string        { return emu.windowTitle }
+func (emu *Emulator) resetTitle() {
+	emu.windowTitle = ""
+	emu.iconLabel = ""
+	emu.titleInitialized = false
+}
+
+func (emu *Emulator) prefixWindowTitle(s string) {
+	if emu.iconLabel == emu.windowTitle {
+		/* preserve equivalence */
+		emu.iconLabel = s + emu.iconLabel
+	}
+	emu.windowTitle = s + emu.windowTitle
+}
+
+func (emu *Emulator) ringBell()         { emu.bellCount += 1 }
+func (emu *Emulator) getBellCount() int { return emu.bellCount }
+func (emu *Emulator) resetBell()        { emu.bellCount = 0 }
+
+func (emu *Emulator) saveWindowTitleOnStack() {
+	title := emu.GetWindowTitle()
+	if title != "" {
+		emu.windowTitleStack = append(emu.windowTitleStack, title)
+		if len(emu.windowTitleStack) > windowTitleStackMax {
+			emu.windowTitleStack = emu.windowTitleStack[1:]
+		}
+	} else {
+		util.Log.Warn("save title on stack failed, no title exist!")
+	}
+}
+
+func (emu *Emulator) restoreWindowTitleOnStack() {
+	if len(emu.windowTitleStack) > 0 {
+		index := len(emu.windowTitleStack) - 1
+		title := emu.windowTitleStack[index]
+		emu.windowTitleStack = emu.windowTitleStack[:index]
+		emu.setWindowTitle(title)
+	}
+}
+
+func (emu *Emulator) resetWindowTitleStack() {
+	emu.windowTitleStack = make([]string, 0)
+}
 func (emu *Emulator) Equal(x *Emulator) bool {
 	return emu.equal(x, false)
 }
@@ -941,6 +981,37 @@ func (emu *Emulator) equal(x *Emulator, trace bool) bool {
 		}
 	}
 
+	if emu.iconLabel != x.iconLabel || emu.windowTitle != x.windowTitle ||
+		emu.bellCount != x.bellCount || emu.titleInitialized != x.titleInitialized {
+		if trace {
+			msg := fmt.Sprintf("iconLabel=(%s,%s), windowTitle=(%s,%s), bellCount=(%d,%d), titleInitialized=(%t,%t)",
+				emu.iconLabel, x.iconLabel, emu.windowTitle, x.windowTitle,
+				emu.bellCount, x.bellCount, emu.titleInitialized, x.titleInitialized)
+			util.Log.Warn(msg)
+		}
+		return false
+	}
+
+	if len(emu.windowTitleStack) != len(x.windowTitleStack) {
+		if trace {
+			msg := fmt.Sprintf("windowTitleStack length=(%d,%d)", len(emu.windowTitleStack), len(x.windowTitleStack))
+			util.Log.Warn(msg)
+		}
+		return false
+	}
+	for i := range emu.windowTitleStack {
+		if emu.windowTitleStack[i] != x.windowTitleStack[i] {
+			if trace {
+				msg := fmt.Sprintf("windowTitleStack[%d]=(%s,%s)", i, emu.windowTitleStack[i], x.windowTitleStack[i])
+				util.Log.Warn(msg)
+			}
+			return false
+		}
+	}
 	// return emu.frame_pri.Equal(&x.frame_pri) && emu.frame_alt.Equal(&x.frame_alt)
 	return emu.cf.equal(x.cf, trace)
+}
+
+func cycleSelectSnapTo2(snapTo SelectSnapTo) SelectSnapTo {
+	return SelectSnapTo((int(snapTo) + 1) % int(SelectSnapTo_COUNT))
 }

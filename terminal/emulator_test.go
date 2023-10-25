@@ -304,13 +304,13 @@ func TestEmulatorPrefixWindowTitle(t *testing.T) {
 
 	base := "base title"
 	prefix := "前缀"
-	emu.cf.setTitleInitialized()
-	emu.cf.setWindowTitle(base)
+	emu.setTitleInitialized()
+	emu.setWindowTitle(base)
 
 	emu.PrefixWindowTitle(prefix)
 
 	expect := prefix + base
-	got := emu.cf.getWindowTitle()
+	got := emu.GetWindowTitle()
 
 	if got != expect {
 		t.Errorf("#test PrefixWindowTitle() expect %q, got %q\n", expect, got)
@@ -488,5 +488,64 @@ func testCalculateCellNum(t *testing.T) {
 	// fmt.Printf("#test calculateCellNum() posX=%d, right edge=%d, got=%d\n ", emu.posX, emu.nColsEff, got)
 	if got != 0 {
 		t.Errorf("#test calculateCellNum() expect 0, got %d\n", got)
+	}
+}
+
+func TestIconNameWindowTitle(t *testing.T) {
+	tc := []struct {
+		name        string
+		windowTitle string
+		iconName    string
+		prefix      string
+		expect      string
+	}{
+		{"english diff string", "english window title", "english icon name", "prefix ", "english icon name"},
+		{"chinese same string", "中文窗口标题", "中文窗口标题", "Aprish:", "Aprish:中文窗口标题"},
+	}
+	emu := NewEmulator3(80, 40, 40)
+	for _, v := range tc {
+		emu.setWindowTitle(v.windowTitle)
+		emu.setIconLabel(v.iconName)
+		emu.setTitleInitialized()
+
+		if !emu.isTitleInitialized() {
+			t.Errorf("%q expect isTitleInitialized %t, got %t\n", v.name, true, emu.isTitleInitialized())
+		}
+
+		if emu.GetIconLabel() != v.iconName {
+			t.Errorf("%q expect IconName %q, got %q\n", v.name, v.iconName, emu.GetIconLabel())
+		}
+
+		if emu.GetWindowTitle() != v.windowTitle {
+			t.Errorf("%q expect windowTitle %q, got %q\n", v.name, v.windowTitle, emu.GetWindowTitle())
+		}
+
+		emu.PrefixWindowTitle(v.prefix)
+		if emu.GetIconLabel() != v.expect {
+			t.Errorf("%q expect prefix iconName %q, got %q\n", v.name, v.expect, emu.GetIconLabel())
+		}
+	}
+}
+
+func TestSaveWindowTitleOnStack(t *testing.T) {
+	emu := NewEmulator3(80, 40, 40)
+
+	title := "our title prefix "
+	emu.setWindowTitle(title)
+
+	//push to the stack max
+	for i := 0; i < 10; i++ {
+		tt := fmt.Sprintf("%s%d", title, i)
+		emu.setWindowTitle(tt)
+		emu.saveWindowTitleOnStack()
+		// fmt.Printf("i=%d, %s\n", i+1, tt)
+	}
+
+	// always got the last pushed result
+	emu.restoreWindowTitleOnStack()
+	expect := fmt.Sprintf("%s%d", title, 9)
+	got := emu.GetWindowTitle()
+	if got != expect {
+		t.Errorf("windowTitle stack expect %s, got %s\n", expect, got)
 	}
 }

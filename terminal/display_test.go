@@ -294,7 +294,7 @@ func TestNewFrame_Bell(t *testing.T) {
 		newE.resetTerminal()
 
 		if v.bell {
-			newE.cf.ringBell()
+			newE.ringBell()
 		}
 
 		// check the expect difference sequence
@@ -379,13 +379,13 @@ func TestNewFrame_WindowTitleIconName(t *testing.T) {
 		newE.resetTerminal()
 
 		if v.windowTitle != "" {
-			newE.cf.setWindowTitle(v.windowTitle)
-			newE.cf.setTitleInitialized()
+			newE.setWindowTitle(v.windowTitle)
+			newE.setTitleInitialized()
 		}
 
 		if v.iconName != "" {
-			newE.cf.setIconLabel(v.iconName)
-			newE.cf.setTitleInitialized()
+			newE.setIconLabel(v.iconName)
+			newE.setTitleInitialized()
 		}
 
 		// check the expect difference sequence
@@ -440,15 +440,15 @@ func TestNewFrame_TitleStack(t *testing.T) {
 		t.Run(v.label, func(t *testing.T) {
 			// prepare new stack
 			for i := range v.newStack {
-				newE.cf.setTitleInitialized()
-				newE.cf.setWindowTitle(v.newStack[i])
-				newE.cf.saveWindowTitleOnStack()
+				newE.setTitleInitialized()
+				newE.setWindowTitle(v.newStack[i])
+				newE.saveWindowTitleOnStack()
 			}
 			// prepare old stack
 			for i := range v.oldStack {
-				oldE.cf.setTitleInitialized()
-				oldE.cf.setWindowTitle(v.oldStack[i])
-				oldE.cf.saveWindowTitleOnStack()
+				oldE.setTitleInitialized()
+				oldE.setWindowTitle(v.oldStack[i])
+				oldE.saveWindowTitleOnStack()
 			}
 
 			// check the expect difference sequence

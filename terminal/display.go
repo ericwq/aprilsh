@@ -174,7 +174,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	// ti := d.ti
 
 	// has bell been rung?
-	if newE.cf.getBellCount() != oldE.cf.getBellCount() {
+	if newE.getBellCount() != oldE.getBellCount() {
 		// ti.TPuts(&b, ti.Bell)
 		frame.append("\a")
 	}
@@ -182,8 +182,8 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	// has window title stack changed
 	// initialized doesn't matter
 	// TODO work with osc 1,2,3
-	oldWTS := oldE.cf.windowTitleStack
-	newWTS := newE.cf.windowTitleStack
+	oldWTS := oldE.windowTitleStack
+	newWTS := newE.windowTitleStack
 	titleAndStackBothChange := false
 	if len(oldWTS) == len(newWTS) {
 		if len(newWTS) == windowTitleStackMax && !equalSlice(oldWTS, newWTS) {

@@ -34,12 +34,6 @@ type Framebuffer struct {
 	selection    Rect         // selection area
 	snapTo       SelectSnapTo // selection state
 	damage       Damage       // damage scope
-
-	iconLabel        string   // replicated by NewFrame()
-	windowTitle      string   // replicated by NewFrame()
-	bellCount        int      // replicated by NewFrame()
-	titleInitialized bool     // replicated by NewFrame()
-	windowTitleStack []string // for XTWINOPS
 }
 
 // create a framebuffer, with zero saveLines.
@@ -77,7 +71,6 @@ func NewFramebuffer3(nCols, nRows, saveLines int) (fb Framebuffer, marginTop int
 	marginTop = fb.marginTop
 	marginBottom = fb.nRows
 
-	fb.windowTitleStack = make([]string, 0)
 	return
 }
 
@@ -709,86 +702,5 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) bool {
 		// 	return false
 		// }
 	}
-
-	if fb.iconLabel != x.iconLabel || fb.windowTitle != x.windowTitle ||
-		fb.bellCount != x.bellCount || fb.titleInitialized != x.titleInitialized {
-		if trace {
-			msg := fmt.Sprintf("iconLabel=(%s,%s), windowTitle=(%s,%s), bellCount=(%d,%d), titleInitialized=(%t,%t)",
-				fb.iconLabel, x.iconLabel, fb.windowTitle, x.windowTitle,
-				fb.bellCount, x.bellCount, fb.titleInitialized, x.titleInitialized)
-			util.Log.Warn(msg)
-		}
-		return false
-	}
-
-	if len(fb.windowTitleStack) != len(x.windowTitleStack) {
-		if trace {
-			msg := fmt.Sprintf("windowTitleStack length=(%d,%d)", len(fb.windowTitleStack), len(x.windowTitleStack))
-			util.Log.Warn(msg)
-		}
-		return false
-	}
-	for i := range fb.windowTitleStack {
-		if fb.windowTitleStack[i] != x.windowTitleStack[i] {
-			if trace {
-				msg := fmt.Sprintf("windowTitleStack[%d]=(%s,%s)", i, fb.windowTitleStack[i], x.windowTitleStack[i])
-				util.Log.Warn(msg)
-			}
-			return false
-		}
-	}
 	return true
-}
-
-func (fb *Framebuffer) setTitleInitialized()          { fb.titleInitialized = true }
-func (fb *Framebuffer) isTitleInitialized() bool      { return fb.titleInitialized }
-func (fb *Framebuffer) setIconLabel(iconLabel string) { fb.iconLabel = iconLabel }
-func (fb *Framebuffer) setWindowTitle(title string)   { fb.windowTitle = title }
-func (fb *Framebuffer) getIconLabel() string          { return fb.iconLabel }
-func (fb *Framebuffer) getWindowTitle() string        { return fb.windowTitle }
-func (fb *Framebuffer) resetTitle() {
-	fb.windowTitle = ""
-	fb.iconLabel = ""
-	fb.titleInitialized = false
-}
-
-func (fb *Framebuffer) prefixWindowTitle(s string) {
-	if fb.iconLabel == fb.windowTitle {
-		/* preserve equivalence */
-		fb.iconLabel = s + fb.iconLabel
-	}
-	fb.windowTitle = s + fb.windowTitle
-}
-
-func (fb *Framebuffer) ringBell()         { fb.bellCount += 1 }
-func (fb *Framebuffer) getBellCount() int { return fb.bellCount }
-func (fb *Framebuffer) resetBell()        { fb.bellCount = 0 }
-
-func cycleSelectSnapTo2(snapTo SelectSnapTo) SelectSnapTo {
-	return SelectSnapTo((int(snapTo) + 1) % int(SelectSnapTo_COUNT))
-}
-
-func (fb *Framebuffer) saveWindowTitleOnStack() {
-	title := fb.getWindowTitle()
-	if title != "" {
-		fb.windowTitleStack = append(fb.windowTitleStack, title)
-		if len(fb.windowTitleStack) > windowTitleStackMax {
-			fb.windowTitleStack = fb.windowTitleStack[1:]
-		}
-	} else {
-		util.Log.Warn("save title on stack failed, no title exist!")
-	}
-}
-
-func (fb *Framebuffer) restoreWindowTitleOnStack() {
-	if len(fb.windowTitleStack) > 0 {
-		index := len(fb.windowTitleStack) - 1
-		title := fb.windowTitleStack[index]
-		fb.windowTitleStack = fb.windowTitleStack[:index]
-		fb.setWindowTitle(title)
-	}
-}
-
-func (fb *Framebuffer) resetWindowTitleStack() {
-	fb.windowTitleStack = make([]string, 0)
 }

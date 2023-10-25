@@ -1195,7 +1195,7 @@ func TestHandle_BEL(t *testing.T) {
 		t.Errorf("BEL got nil for seq=%q\n", seq)
 	}
 
-	bellCount := emu.cf.getBellCount()
+	bellCount := emu.getBellCount()
 	if bellCount == 0 || hds[0].id != C0_BEL {
 		t.Errorf("BEL expect %d, got %d\n", 1, bellCount)
 		t.Errorf("BEL expect %s, got %s\n", strHandlerID[C0_BEL], strHandlerID[hds[0].id])
@@ -1838,8 +1838,8 @@ func TestHandle_XTWINOPS_Save(t *testing.T) {
 
 			// prepare window title
 			expect := "expect window title"
-			emu.cf.setTitleInitialized()
-			emu.cf.setWindowTitle(expect)
+			emu.setTitleInitialized()
+			emu.setWindowTitle(expect)
 
 			// execute the control sequence
 			for j, hd := range hds {
@@ -1859,7 +1859,7 @@ func TestHandle_XTWINOPS_Save(t *testing.T) {
 					}
 				}
 			} else {
-				got := emu.cf.windowTitleStack[len(emu.cf.windowTitleStack)-1]
+				got := emu.windowTitleStack[len(emu.windowTitleStack)-1]
 				if got != expect {
 					t.Errorf("%s exect window title %q, got %q\n",
 						v.label, expect, got)
@@ -1904,8 +1904,8 @@ func TestHandle_XTWINOPS_Restore(t *testing.T) {
 
 			// prepare window title in stack
 			expect := "expect window title restore"
-			emu.cf.setWindowTitle(expect)
-			emu.cf.saveWindowTitleOnStack()
+			emu.setWindowTitle(expect)
+			emu.saveWindowTitleOnStack()
 
 			// execute the control sequence
 			for j, hd := range hds {
@@ -1925,7 +1925,7 @@ func TestHandle_XTWINOPS_Restore(t *testing.T) {
 				}
 			} else {
 				// validate the result
-				got := emu.cf.getWindowTitle()
+				got := emu.GetWindowTitle()
 				if got != expect {
 					t.Errorf("%s exect window title %q, got %q\n",
 						v.label, expect, got)
@@ -4094,8 +4094,8 @@ func TestHandle_OSC_0_1_2(t *testing.T) {
 			hd.handle(emu)
 
 			// get the result
-			windowTitle := emu.cf.windowTitle
-			iconName := emu.cf.iconLabel
+			windowTitle := emu.windowTitle
+			iconName := emu.iconLabel
 
 			if hd.id != v.hdIDs[0] {
 				t.Errorf("%s seq=%q handler expect %q, got %q\n", v.name, v.seq, strHandlerID[v.hdIDs[0]], strHandlerID[hd.id])

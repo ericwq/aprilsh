@@ -21,43 +21,6 @@ func TestNewFramebuffer3_Oversize(t *testing.T) {
 	}
 }
 
-func TestIconNameWindowTitle(t *testing.T) {
-	tc := []struct {
-		name        string
-		windowTitle string
-		iconName    string
-		prefix      string
-		expect      string
-	}{
-		{"english diff string", "english window title", "english icon name", "prefix ", "english icon name"},
-		{"chinese same string", "中文窗口标题", "中文窗口标题", "Aprish:", "Aprish:中文窗口标题"},
-	}
-	fb, _, _ := NewFramebuffer3(80, 40, 40)
-	for _, v := range tc {
-		fb.setWindowTitle(v.windowTitle)
-		fb.setIconLabel(v.iconName)
-		fb.setTitleInitialized()
-
-		if !fb.isTitleInitialized() {
-			t.Errorf("%q expect isTitleInitialized %t, got %t\n", v.name, true, fb.isTitleInitialized())
-		}
-
-		if fb.getIconLabel() != v.iconName {
-			t.Errorf("%q expect IconName %q, got %q\n", v.name, v.iconName, fb.getIconLabel())
-		}
-
-		if fb.getWindowTitle() != v.windowTitle {
-			t.Errorf("%q expect windowTitle %q, got %q\n", v.name, v.windowTitle, fb.getWindowTitle())
-		}
-
-		fb.prefixWindowTitle(v.prefix)
-		if fb.getIconLabel() != v.expect {
-			t.Errorf("%q expect prefix iconName %q, got %q\n", v.name, v.expect, fb.getIconLabel())
-		}
-
-	}
-}
-
 type Row struct {
 	row     int
 	count   int
@@ -703,26 +666,4 @@ func extractFrom(cells []Cell) string {
 	}
 
 	return b.String()
-}
-func TestSaveWindowTitleOnStack(t *testing.T) {
-	fb, _, _ := NewFramebuffer3(80, 40, 40)
-
-	title := "our title prefix "
-	fb.setWindowTitle(title)
-
-	//push to the stack max
-	for i := 0; i < 10; i++ {
-		tt := fmt.Sprintf("%s%d", title, i)
-		fb.setWindowTitle(tt)
-		fb.saveWindowTitleOnStack()
-		// fmt.Printf("i=%d, %s\n", i+1, tt)
-	}
-
-	// always got the last pushed result
-	fb.restoreWindowTitleOnStack()
-	expect := fmt.Sprintf("%s%d", title, 9)
-	got := fb.getWindowTitle()
-	if got != expect {
-		t.Errorf("windowTitle stack expect %s, got %s\n", expect, got)
-	}
 }

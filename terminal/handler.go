@@ -330,7 +330,7 @@ func hdl_c0_ht(emu *Emulator) {
 // Bell (BEL  is Ctrl-G).
 // ring the bell
 func hdl_c0_bel(emu *Emulator) {
-	emu.cf.ringBell()
+	emu.ringBell()
 }
 
 // Carriage Return (CR  is Ctrl-M).
@@ -1313,15 +1313,15 @@ func hdl_osc_0_1_2(emu *Emulator, cmd int, arg string) {
 	setIcon := cmd == 0 || cmd == 1
 	setTitle := cmd == 0 || cmd == 2
 	if setIcon || setTitle {
-		emu.cf.setTitleInitialized()
+		emu.setTitleInitialized()
 
 		if setIcon {
-			emu.cf.setIconLabel(arg)
+			emu.setIconLabel(arg)
 		}
 
 		if setTitle {
-			emu.cf.setWindowTitle(arg)
-			util.Log.With("title", emu.cf.getWindowTitle()).Debug("OSC 0 set window title")
+			emu.setWindowTitle(arg)
+			util.Log.With("title", emu.GetWindowTitle()).Debug("OSC 0 set window title")
 		}
 	}
 }
@@ -1950,7 +1950,7 @@ func hdl_csi_xtwinops(emu *Emulator, params []int, sequence string) {
 	case 22:
 		switch params[1] {
 		case 0, 2:
-			emu.cf.saveWindowTitleOnStack()
+			emu.saveWindowTitleOnStack()
 		case 1:
 			fallthrough
 		default:
@@ -1960,7 +1960,7 @@ func hdl_csi_xtwinops(emu *Emulator, params []int, sequence string) {
 	case 23:
 		switch params[1] {
 		case 0, 2:
-			emu.cf.restoreWindowTitleOnStack()
+			emu.restoreWindowTitleOnStack()
 		case 1:
 			fallthrough
 		default:
