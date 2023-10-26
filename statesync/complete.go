@@ -70,12 +70,14 @@ func (c *Complete) GetEchoAck() uint64 {
 // shrink input history according to timestamp. return true if newestEchoAck changed.
 // update echoAck if find the newest state.
 func (c *Complete) SetEchoAck(now int64) (ret bool) {
+
 	var newestEchoAck uint64 = 0
 	for _, v := range c.inputHistory {
 		// fmt.Printf("#setEchoAck timestamp=%d, now-ECHO_TIMEOUT=%d, condition is %t\n",
 		// 	v.timestamp, now-ECHO_TIMEOUT, v.timestamp <= now-ECHO_TIMEOUT)
 		if v.timestamp <= now-ECHO_TIMEOUT {
 			newestEchoAck = v.frameNum
+			util.Log.With("newestEchoAck", newestEchoAck).With("time", v.timestamp%10000).Debug("SetEchoAck")
 		}
 	}
 
@@ -85,17 +87,22 @@ func (c *Complete) SetEchoAck(now int64) (ret bool) {
 	// and capacity as the original, so the storage is reused for the filtered
 	// slice. Of course, the original contents are modified.
 	b := c.inputHistory[:0]
+	var z []uint64
 	for _, x := range c.inputHistory {
 		if x.frameNum >= newestEchoAck {
 			b = append(b, x)
 		}
+		z = append(z, x.frameNum)
 	}
 	c.inputHistory = b
 
 	if c.echoAck != newestEchoAck {
-		// fmt.Printf("#setEchoAck echoAck=%d, newestEchoAck=%d\n", c.echoAck, newestEchoAck)
 		ret = true
 	}
+
+	defer util.Log.With("newestEchoAck", newestEchoAck).
+		With("inputHistory", z).With("time", now%10000).
+		With("return", ret).Debug("SetEchoAck")
 
 	// fmt.Printf("#setEchoAck echoAck changed(%t) to %d\n", ret, c.echoAck)
 	c.echoAck = newestEchoAck
@@ -112,7 +119,7 @@ func (c *Complete) RegisterInputFrame(num uint64, now int64) {
 // return max int if there is only one history frame.
 // return normal gap between now and history frame + 50ms.
 func (c *Complete) WaitTime(now int64) int {
-	defer util.Log.With("inputHistory length", len(c.inputHistory)).Debug("Complete WaitTime")
+	// defer util.Log.With("inputHistory length", len(c.inputHistory)).Debug("Complete WaitTime")
 	if len(c.inputHistory) < 2 {
 		return math.MaxInt
 	}
@@ -146,7 +153,8 @@ func (c *Complete) DiffFrom(existing *Complete) string {
 	}
 
 	// if !reflect.DeepEqual(existing.getFramebuffer(), c.getFramebuffer()) {
-	if !c.getFramebuffer().Equal(existing.getFramebuffer()) {
+	// if !c.getFramebuffer().Equal(existing.getFramebuffer()) {
+	if !c.Equal(existing) {
 		if existing.terminal.GetWidth() != c.terminal.GetWidth() ||
 			existing.terminal.GetHeight() != c.terminal.GetHeight() {
 			w := int32(c.terminal.GetWidth())
@@ -154,14 +162,15 @@ func (c *Complete) DiffFrom(existing *Complete) string {
 			instResize := pb.Instruction{Resize: &pb.ResizeMessage{Width: &w, Height: &h}}
 			hm.Instruction = append(hm.Instruction, &instResize)
 		}
+
+		// the following part consider the cursor movement.
+		update := c.display.NewFrame(true, existing.terminal, c.terminal)
+		if len(update) > 0 {
+			instBytes := pb.Instruction{Hostbytes: &pb.HostBytes{Hoststring: []byte(update)}}
+			hm.Instruction = append(hm.Instruction, &instBytes)
+		}
 	}
 
-	// the following part consider the cursor movement.
-	update := c.display.NewFrame(true, existing.terminal, c.terminal)
-	if len(update) > 0 {
-		instBytes := pb.Instruction{Hostbytes: &pb.HostBytes{Hoststring: []byte(update)}}
-		hm.Instruction = append(hm.Instruction, &instBytes)
-	}
 	// fmt.Printf("#DiffFrom diff=%q\n", update)
 	output, _ := proto.Marshal(&hm)
 	return string(output)

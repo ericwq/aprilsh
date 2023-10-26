@@ -333,6 +333,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 			Debug("got message")
 		util.Log.With("nextAckTime", t.sender.nextAckTime).
 			With("nextSendTime", t.sender.nextSendTime).
+			With("time", newState.GetTimestamp()%10000).
 			Debug("got message")
 	}
 	return nil
