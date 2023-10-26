@@ -231,9 +231,9 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 			Debug("got message")
 
 		// remove send state for which num < AckNum
-		util.Log.With("do", "before").With("sentStates", t.getSentStateList()).Debug("got message")
+		// util.Log.With("do", "before").With("sentStates", t.getSentStateList()).Debug("got message")
 		t.sender.processAcknowledgmentThrough(inst.AckNum)
-		util.Log.With("do", "after-").With("sentStates", t.getSentStateList()).Debug("got message")
+		// util.Log.With("do", "after-").With("sentStates", t.getSentStateList()).Debug("got message")
 
 		// inform network layer of roundtrip (end-to-end-to-end) connectivity
 		t.connection.setLastRoundtripSuccess(t.sender.getSentStateAckedTimestamp())

@@ -9,6 +9,7 @@ import (
 
 	pb "github.com/ericwq/aprilsh/protobufs/host"
 	"github.com/ericwq/aprilsh/terminal"
+	"github.com/ericwq/aprilsh/util"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -111,6 +112,7 @@ func (c *Complete) RegisterInputFrame(num uint64, now int64) {
 // return max int if there is only one history frame.
 // return normal gap between now and history frame + 50ms.
 func (c *Complete) WaitTime(now int64) int {
+	defer util.Log.With("inputHistory length", len(c.inputHistory)).Debug("Complete WaitTime")
 	if len(c.inputHistory) < 2 {
 		return math.MaxInt
 	}

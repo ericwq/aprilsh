@@ -761,6 +761,7 @@ mainLoop:
 			timeout = terminal.Min(timeout, int(networkSleep))
 		}
 
+		now = time.Now().UnixMilli()
 		p := network.GetLatestRemoteState()
 		timeSinceRemoteState = now - p.GetTimestamp()
 		terminalToHost.Reset()
