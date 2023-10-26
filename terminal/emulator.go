@@ -770,7 +770,7 @@ func (emu *Emulator) saveWindowTitleOnStack() {
 			emu.windowTitleStack = emu.windowTitleStack[1:]
 		}
 	} else {
-		util.Log.Warn("save title on stack failed, no title exist!")
+		util.Log.Warn("save title on stack failed: no title exist.")
 	}
 }
 
@@ -780,6 +780,8 @@ func (emu *Emulator) restoreWindowTitleOnStack() {
 		title := emu.windowTitleStack[index]
 		emu.windowTitleStack = emu.windowTitleStack[:index]
 		emu.setWindowTitle(title)
+	} else {
+		util.Log.Warn("restore title from stack failed: empty stack.")
 	}
 }
 

@@ -617,7 +617,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	// start the udp server, serve the udp request
 	waitChan := make(chan bool)
 	go conf.serve(ptmx, pw, terminal, waitChan, network, networkTimeout, networkSignaledTimeout)
-	util.Log.With("port", conf.desiredPort).With("clientTERM", conf.term).Info(_COMMAND_NAME + "start listening on")
+	util.Log.With("port", conf.desiredPort).With("clientTERM", conf.term).Info("start listening on")
 
 	// start the shell with pts
 	shell, err := startShell(pts, pr, utmpHost, conf)
@@ -651,7 +651,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		util.Log.With("ptmx", ptmx.Name()).Debug("wait serve to finish")
 		<-waitChan
 		// logI.Printf("#runWorker stop listening on :%s\n", conf.desiredPort)
-		util.Log.With("port", conf.desiredPort).Info(_COMMAND_NAME + " stop listening on")
+		util.Log.With("port", conf.desiredPort).Info("stop listening on")
 
 		// clear utmp entry
 		if utmpSupport {
@@ -737,13 +737,11 @@ mainLoop:
 		timeout := math.MaxInt16
 		now := time.Now().UnixMilli()
 
-		// util.Log.With("point", 100).Debug("mainLoop")
 		timeout = terminal.Min(timeout, network.WaitTime()) // network.WaitTime cost time
-		// nto := timeout
-		timeout = terminal.Min(timeout, complete.WaitTime(now))
-		// util.Log.With("network.WaitTime", nto).
-		// 	With("complete.WaitTime", complete.WaitTime(now)).
-		// 	Debug("mainLoop")
+		w0 := timeout
+		w1 := complete.WaitTime(now)
+		timeout = terminal.Min(timeout, w1)
+		// timeout = terminal.Min(timeout, complete.WaitTime(now))
 
 		if network.GetRemoteStateNum() > 0 || network.ShutdownInProgress() {
 			timeout = terminal.Min(timeout, 5000)
@@ -767,7 +765,8 @@ mainLoop:
 		timeSinceRemoteState = now - p.GetTimestamp()
 		terminalToHost.Reset()
 
-		util.Log.With("point", 200).With("timeout", timeout).Debug("mainLoop")
+		util.Log.With("point", 200).With("network.WaitTime", w0).
+			With("complete.WaitTime", w1).With("timeout", timeout).Debug("mainLoop")
 		timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
 		select {
 		case <-timer.C:
@@ -821,7 +820,9 @@ mainLoop:
 					terminalToHost.WriteString(complete.ActOne(action))
 				}
 
-				util.Log.With("arise", "socket").With("data", terminalToHost.String()).Debug("input from host")
+				if terminalToHost.Len() > 0 {
+					util.Log.With("arise", "socket").With("data", terminalToHost.String()).Debug("input from host")
+				}
 
 				if !us.Empty() {
 					// register input frame number for future echo ack
@@ -873,7 +874,7 @@ mainLoop:
 					if err := pw.Close(); err != nil {
 						util.Log.With("error", err).Error("send start shell message failed")
 					}
-					util.Log.With("action", "send").Debug("start shell message")
+					// util.Log.With("action", "send").Debug("start shell message")
 					childReleased = true
 				}
 			}
@@ -1036,7 +1037,7 @@ func getTimeFrom(env string, def int64) (ret int64) {
 func printWelcome(pid int, port int, tty *os.File) {
 	// fmt.Printf("%s start listening on :%d. build version %s [pid=%d] \n", _COMMAND_NAME, port, BuildVersion, pid)
 	util.Log.With("port", port).With("buildVersion", BuildVersion).With("pid", pid).
-		Info(_COMMAND_NAME + " start listening on")
+		Info("start listening on")
 	// fmt.Printf("Copyright 2022~2023 wangqi.\n")
 	// fmt.Printf("%s%s", "Use of this source code is governed by a MIT-style",
 	// 	"license that can be found in the LICENSE file.\n")
@@ -1151,17 +1152,18 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 
 	// wait for serve() to release us
 	if pr != nil && conf.verbose != _VERBOSE_SKIP_START {
-		util.Log.With("action", "wait").Debug("start shell message")
+		// util.Log.With("action", "wait").Debug("start shell message")
 		buf := make([]byte, 81)
 		for {
 			_, err := pr.Read(buf)
 			if err != nil && errors.Is(err, io.EOF) {
-				util.Log.With("error", err).Debug("start shell message")
+				// util.Log.With("error", err).Debug("start shell message")
 				break
 			}
 		}
 		pr.Close()
-		util.Log.With("action", "receive").Debug("start shell message")
+		// util.Log.With("action", "receive").Debug("start shell message")
+		util.Log.With("pty", pts.Name()).Info("start shell at")
 	}
 
 	proc, err := os.StartProcess(conf.commandPath, conf.commandArgv, &procAttr)
@@ -1314,7 +1316,7 @@ func (m *mainSrv) run(conf *Config) {
 		m.conn.Close()
 		m.wg.Done()
 		// fmt.Printf("%s  stop listening on :%d.\n", _COMMAND_NAME, m.port)
-		util.Log.With("port", m.port).Info(_COMMAND_NAME + " stop listening")
+		util.Log.With("port", m.port).Info("stop listening")
 	}()
 
 	buf := make([]byte, 128)
