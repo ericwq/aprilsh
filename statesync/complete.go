@@ -26,8 +26,8 @@ type pair struct {
 // Complete implements network.State[C any] interface
 type Complete struct {
 	terminal     *terminal.Emulator
-	inputHistory []pair
-	echoAck      uint64
+	inputHistory []pair // user input history
+	echoAck      uint64 // which user input is echoed?
 	display      *terminal.Display
 }
 
@@ -225,7 +225,7 @@ func (c *Complete) Equal(x *Complete) bool {
 		return false
 	}
 
-	return c.terminal.Equal(x.terminal) // && c.echoAck == x.echoAck
+	return c.terminal.Equal(x.terminal)
 }
 
 // implements network.State[C any] interface
@@ -248,16 +248,14 @@ func (c *Complete) Clone() *Complete {
 }
 
 // fot test purpose
+// implements network.State[C any] interface
 func (c *Complete) EqualTrace(x *Complete) bool {
-	// fmt.Println("***** Equals")
 	if c.echoAck != x.echoAck {
 		msg := fmt.Sprintf("echoAck=(%d,%d)", c.echoAck, x.echoAck)
 		util.Log.Warn(msg)
 		return false
 	}
 
-	ret := c.terminal.EqualTrace(x.terminal) // && c.echoAck == x.echoAck
-	// fmt.Println("")
-	// fmt.Println("***** Equals-")
+	ret := c.terminal.EqualTrace(x.terminal)
 	return ret
 }

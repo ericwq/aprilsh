@@ -726,24 +726,15 @@ func (emu *Emulator) Clone() *Emulator {
 	return &clone
 }
 
-func (emu *Emulator) PrefixWindowTitle(prefix string) {
-	emu.prefixWindowTitle(prefix)
-}
-
-func (emu *Emulator) GetWindowTitle() string {
-	return emu.getWindowTitle()
-}
-
-func (emu *Emulator) GetIconLabel() string {
-	return emu.getIconLabel()
-}
-
-func (emu *Emulator) setTitleInitialized()          { emu.titleInitialized = true }
-func (emu *Emulator) isTitleInitialized() bool      { return emu.titleInitialized }
-func (emu *Emulator) setIconLabel(iconLabel string) { emu.iconLabel = iconLabel }
-func (emu *Emulator) setWindowTitle(title string)   { emu.windowTitle = title }
-func (emu *Emulator) getIconLabel() string          { return emu.iconLabel }
-func (emu *Emulator) getWindowTitle() string        { return emu.windowTitle }
+func (emu *Emulator) PrefixWindowTitle(prefix string) { emu.prefixWindowTitle(prefix) }
+func (emu *Emulator) GetWindowTitle() string          { return emu.getWindowTitle() }
+func (emu *Emulator) GetIconLabel() string            { return emu.getIconLabel() }
+func (emu *Emulator) setTitleInitialized()            { emu.titleInitialized = true }
+func (emu *Emulator) isTitleInitialized() bool        { return emu.titleInitialized }
+func (emu *Emulator) setIconLabel(iconLabel string)   { emu.iconLabel = iconLabel }
+func (emu *Emulator) setWindowTitle(title string)     { emu.windowTitle = title }
+func (emu *Emulator) getIconLabel() string            { return emu.iconLabel }
+func (emu *Emulator) getWindowTitle() string          { return emu.windowTitle }
 func (emu *Emulator) resetTitle() {
 	emu.windowTitle = ""
 	emu.iconLabel = ""
