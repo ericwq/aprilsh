@@ -5,6 +5,7 @@
 package statesync
 
 import (
+	"fmt"
 	"math"
 
 	pb "github.com/ericwq/aprilsh/protobufs/host"
@@ -250,6 +251,8 @@ func (c *Complete) Clone() *Complete {
 func (c *Complete) EqualTrace(x *Complete) bool {
 	// fmt.Println("***** Equals")
 	if c.echoAck != x.echoAck {
+		msg := fmt.Sprintf("echoAck=(%d,%d)", c.echoAck, x.echoAck)
+		util.Log.Warn(msg)
 		return false
 	}
 

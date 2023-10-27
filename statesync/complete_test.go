@@ -7,6 +7,7 @@ package statesync
 import (
 	"io"
 	"math"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/ericwq/aprilsh/terminal"
 	"github.com/ericwq/aprilsh/util"
+	"golang.org/x/exp/slog"
 )
 
 func TestCompleteSubtract(t *testing.T) {
@@ -193,13 +195,14 @@ func TestCompleteClone(t *testing.T) {
 func TestDiffFrom(t *testing.T) {
 	tc := []struct {
 		label string
-		seq1  []string // sequence after vi file command
-		seq2  []string // sequence after quit vi command
+		seq1  []string // sequence before action
+		seq2  []string // sequence after action
 		resp  string
 	}{
 		{"simple case", []string{}, []string{"ide@openrc-nvide:~/develop $ \x1b[6n"}, "\x1b[1;30R"},
 		{"vi and quit",
 			[]string{
+				"\x1b]0;aprilsh\a", // set title to avoid title stack warning
 				/*vi start*/ "\x1b[?1049h\x1b[22;0;0t\x1b[?1h\x1b=\x1b[H\x1b[2J\x1b]11;?\a\x1b[?2004h\x1b[?u\x1b[c\x1b[?25h",
 				// "\x1b]11;rgb:0000/0000/0000\x1b\\\x1b[?64;1;9;15;21;22c"
 				/*clear screen*/ "\x1b[?25l\x1b(B\x1b[m\x1b[H\x1b[2J\x1b[>4;2m\x1b]112\a\x1b[2 q\x1b[?1002h\x1b[?1006h\x1b[38;2;233;233;244m\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[J\x1b[H",
@@ -216,10 +219,23 @@ func TestDiffFrom(t *testing.T) {
 				/*4th sequence after :q*/ "ide@openrc-nvide:~/develop $ \x1b[6n",
 			}, "\x1b[1;30R"},
 		{"screen with content then vi utf-8 file",
-			[]string{"ide@openrc-nvide:~/develop $ \x1b[6n"},
+			[]string{
+				"\x1b]0;aprilsh\a", // set title to avoid title stack warning
+				"ide@openrc-nvide:~/develop $ \x1b[6n"},
 			[]string{
 				"\x1b[?1049h\x1b[22;0;0t\x1b[?1h\x1b=\x1b[H\x1b[2J\x1b]11;?\a\x1b[?2004h\x1b[?u\x1b[c\x1b[?25h",
 			}, "\x1b]11;rgb:0000/0000/0000\x1b\\\x1b[?64;1;9;15;21;22c"},
+		{"cat file larger than screen rows",
+			[]string{
+				"nvide:0.8.9\r\n\r\nLua, C/C++ and Golang Integrated Development Environment.\r\nPowered by neovim, luals, gopls and clangd.\r\n",
+				"\x1b]0;aprilsh\a",
+				"ide@openrc-nvide:~ $ cd develop\r\n",
+				"ide@openrc-nvide:~/develop $ ls\r\n",
+				"\x1b[1;34mNvChad\x1b[m                     \x1b[0;0mgit.md\x1b[m                     \x1b[1;34mgolangIDE\x1b[m                  \x1b[1;34mneovim-lua\x1b[m                 \x1b[1;34ms6\x1b[m\r\n\x1b[1;34maprilsh\x1b[m                    \x1b[0;0mgo.work\x1b[m                    \x1b[1;34mmosh\x1b[m                       \x1b[1;34mnvide\x1b[m                      \x1b[1;34mtelescope.nvim\x1b[m\r\n\x1b[1;34mdotfiles\x1b[m                   \x1b[0;0mgo.work.sum\x1b[m                \x1b[0;0mmosh-1.3.2.tar.gz\x1b[m          \x1b[0;0mpersonal-access-token.txt\x1b[m  \x1b[1;34mterminfo\x1b[m\r\n",
+				"ide@openrc-nvide:~/develop $ cat tokens.txt\r\n",
+			},
+			[]string{"111\r\naaa\r\nbbb\r\n\r\nccc\r\nddd\r\n\r\neeee\r\nffff\r\n\r\nggg\r\nhhh#\r\n\r\napp\r\niii\r\n\r\njjj\r\nkkk#\r\n\r\nlll\r\nmmm\r\n\r\n#nnn \r\n\r\nooo.\r\nppp\r\n\r\nqqq\r\nrrr\r\nsss\r\nttt\r\n\r\n隐uuu\r\n方式vvv\r\niwww\r\nxxx\r\n\r\nyyy\r\nzzz\r\n\r\n专用aaa\r\nbbb\r\nccc\r\nddd\r\n\r\neee\r\nfff\r\nggg\r\n"},
+			""},
 	}
 
 	nCols := 80
@@ -227,7 +243,9 @@ func TestDiffFrom(t *testing.T) {
 	savedLines := nRows * 3
 
 	defer util.Log.Restore()
-	util.Log.SetOutput(io.Discard)
+	// util.Log.SetOutput(io.Discard)
+	util.Log.SetLevel(slog.LevelDebug)
+	util.Log.SetOutput(os.Stderr)
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
