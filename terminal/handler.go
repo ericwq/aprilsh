@@ -1912,12 +1912,12 @@ func hdl_csi_xtmodkeys(emu *Emulator, params []int) {
 			if params[1] <= 2 {
 				emu.modifyOtherKeys = uint(params[1])
 				// emu.logT.Printf("XTMODKEYS: modifyOtherKeys set to %d\n", emu.modifyOtherKeys)
-				util.Log.With("modifyOtherKeys", emu.modifyOtherKeys).
-					Debug("XTMODKEYS: modifyOtherKeys set to")
+				// util.Log.With("modifyOtherKeys", emu.modifyOtherKeys).
+				// 	Debug("XTMODKEYS: modifyOtherKeys set to")
 			} else {
 				// emu.logI.Printf("XTMODKEYS: illegal argument for modifyOtherKeys: %d\n", params[1])
 				util.Log.With("params", params[1]).
-					Info("XTMODKEYS: illegal argument for modifyOtherKeys")
+					Warn("XTMODKEYS: illegal argument for modifyOtherKeys")
 			}
 		}
 	}

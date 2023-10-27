@@ -1126,6 +1126,9 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 		Env:   env,
 	}
 
+	// // open terminal
+	// fmt.Fprintf(pts, "\x1b[?1049h\x1b[22;0;0t\x1b[?1h")
+	//
 	if conf.withMotd && !motdHushed() {
 		// For Ubuntu, try and print one of {,/var}/run/motd.dynamic.
 		// This file is only updated when pam_motd is run, but when
