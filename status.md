@@ -39,4 +39,8 @@
 - 2023/Sep/15: improve the performance of client and server.
 - 2023/Sep/28: fix bug for Display and add integration test for server.
 - 2023/Oct/10: fix uncompress buffer size bug and fix max uint64 bug.
-
+- 2023/Oct/17: fix Framebuffer.resize() resize bug.
+- 2023/Oct/19: fix NewFrame() bug for alternate screen buffer.
+- 2023/Oct/22: pass client Term to server.
+- 2023/Oct/23: fix uncompress buffer overflow bug.
+- 2023/Oct/27: fix window title bug.
