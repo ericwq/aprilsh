@@ -73,12 +73,12 @@ func (c *Complete) SetEchoAck(now int64) (ret bool) {
 
 	var newestEchoAck uint64 = 0
 	for _, v := range c.inputHistory {
-		// fmt.Printf("#setEchoAck timestamp=%d, now-ECHO_TIMEOUT=%d, condition is %t\n",
-		// 	v.timestamp, now-ECHO_TIMEOUT, v.timestamp <= now-ECHO_TIMEOUT)
 		if v.timestamp <= now-ECHO_TIMEOUT {
 			newestEchoAck = v.frameNum
-			util.Log.With("newestEchoAck", newestEchoAck).With("time", v.timestamp%10000).Debug("SetEchoAck")
 		}
+		// combine with RegisterInputFrame, if there is any user input
+		// the echo ack will send back to client.
+		// util.Log.With("frameNum", v.frameNum).With("timestamp", v.timestamp%10000).Debug("SetEchoAck")
 	}
 
 	// filter frame number which is less than newestEchoAck
@@ -104,7 +104,6 @@ func (c *Complete) SetEchoAck(now int64) (ret bool) {
 		With("inputHistory", z).With("time", now%10000).
 		With("return", ret).Debug("SetEchoAck")
 
-	// fmt.Printf("#setEchoAck echoAck changed(%t) to %d\n", ret, c.echoAck)
 	c.echoAck = newestEchoAck
 	return
 }
@@ -118,6 +117,9 @@ func (c *Complete) RegisterInputFrame(num uint64, now int64) {
 // return 0 if history frame state + 50ms < now. That means now is larger than 50ms.
 // return max int if there is only one history frame.
 // return normal gap between now and history frame + 50ms.
+//
+// if the frame is not acked after ECHO_TIMEOUT, give short WaitTime to accelerate
+// ack actions.
 func (c *Complete) WaitTime(now int64) int {
 	// defer util.Log.With("inputHistory length", len(c.inputHistory)).Debug("Complete WaitTime")
 	if len(c.inputHistory) < 2 {
