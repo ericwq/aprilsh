@@ -162,7 +162,6 @@ func NewDisplay(useEnvironment bool) (d *Display, e error) {
 // - oldE: the old terminal state.
 // - newE: the new terminal state.
 func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
-	var b strings.Builder
 
 	frame := new(FrameState)
 	frame.cursorX = 0
@@ -170,7 +169,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	frame.currentRendition = Renditions{}
 	frame.showCursorMode = oldE.showCursorMode
 	frame.lastFrame = oldE
-	frame.out = &b
+	frame.out = &strings.Builder{}
 	// ti := d.ti
 
 	// has bell been rung?
@@ -181,7 +180,6 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 
 	// has window title stack changed
 	// initialized doesn't matter
-	// TODO work with osc 1,2,3
 	oldWTS := oldE.windowTitleStack
 	newWTS := newE.windowTitleStack
 	titleAndStackBothChange := false
@@ -734,7 +732,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	}
 
 	// TODO do we need to consider cursor selection area.
-	return b.String()
+	return frame.output()
 }
 
 // compare new row with old row to generate the mix stream to rebuild the new row
@@ -1083,4 +1081,8 @@ func (fs *FrameState) updateRendition(r Renditions, force bool) {
 		fs.append(r.SGR())
 		fs.currentRendition = r
 	}
+}
+
+func (fs *FrameState) output() string {
+	return fs.out.String()
 }
