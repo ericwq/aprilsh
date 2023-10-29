@@ -562,6 +562,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		windowSize.Col = 80
 		windowSize.Row = 24
 	}
+	util.Log.With("cols", windowSize.Col).With("rows", windowSize.Row).Debug("init terminal size")
 
 	// open parser and terminal
 	savedLines := int(windowSize.Row) * terminal.SaveLinesRowsRatio

@@ -151,6 +151,7 @@ func resetCharsetState(charsetState *CharsetState) {
 }
 
 func (emu *Emulator) resize(nCols, nRows int) {
+	util.Log.With("cols", nCols).With("rows", nRows).Debug("Emulator.resize")
 	if emu.nCols == nCols && emu.nRows == nRows {
 		return
 	}
