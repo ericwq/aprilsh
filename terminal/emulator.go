@@ -982,16 +982,17 @@ func (emu *Emulator) equal(x *Emulator, trace bool) bool {
 		}
 	}
 
-	for k := range emu.selectionStore {
-		if emu.selectionStore[k] != x.selectionStore[k] {
-			if trace {
-				msg := fmt.Sprintf("selectionStore[%c]=(%q,%q)", k, emu.selectionStore[k], x.selectionStore[k])
-				util.Log.Warn(msg)
-			} else {
-				return false
-			}
-		}
-	}
+	/* we don't compare selectionStore */
+	// for k := range emu.selectionStore {
+	// 	if emu.selectionStore[k] != x.selectionStore[k] {
+	// 		if trace {
+	// 			msg := fmt.Sprintf("selectionStore[%c]=(%q,%q)", k, emu.selectionStore[k], x.selectionStore[k])
+	// 			util.Log.Warn(msg)
+	// 		} else {
+	// 			return false
+	// 		}
+	// 	}
+	// }
 
 	if emu.iconLabel != x.iconLabel || emu.windowTitle != x.windowTitle ||
 		emu.bellCount != x.bellCount || emu.titleInitialized != x.titleInitialized {
