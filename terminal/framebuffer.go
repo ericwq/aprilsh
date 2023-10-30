@@ -642,14 +642,17 @@ func (fb *Framebuffer) Equal(x *Framebuffer) bool {
 	return fb.equal(x, false)
 }
 
-func (fb *Framebuffer) equal(x *Framebuffer, trace bool) bool {
+func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
+	ret = true
 	if fb.nCols != x.nCols || fb.nRows != x.nRows || fb.saveLines != x.saveLines {
 		if trace {
 			msg := fmt.Sprintf("nCols=(%d,%d), nRows=(%d,%d), saveLines=(%d,%d)",
 				fb.nCols, x.nCols, fb.nRows, x.nRows, fb.saveLines, x.saveLines)
 			util.Log.Warn(msg)
+			ret = false
+		} else {
+			return false
 		}
-		return false
 	}
 
 	if fb.scrollHead != x.scrollHead || fb.marginTop != x.marginTop ||
@@ -658,8 +661,10 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) bool {
 			msg := fmt.Sprintf("scrollHead=(%d,%d), marginTop=(%d,%d), marginBottom=(%d,%d)",
 				fb.scrollHead, x.scrollHead, fb.marginTop, x.marginTop, fb.marginBottom, x.marginBottom)
 			util.Log.Warn(msg)
+			ret = false
+		} else {
+			return false
 		}
-		return false
 	}
 
 	if fb.historyRows != x.historyRows || fb.viewOffset != x.viewOffset ||
@@ -668,8 +673,10 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) bool {
 			msg := fmt.Sprintf("historyRows=(%d,%d), viewOffset=(%d,%d)",
 				fb.historyRows, x.historyRows, fb.viewOffset, x.viewOffset)
 			util.Log.Warn(msg)
+			ret = false
+		} else {
+			return false
 		}
-		return false
 	}
 
 	if fb.cursor != x.cursor || fb.selection != x.selection ||
@@ -678,16 +685,20 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) bool {
 			msg := fmt.Sprintf("cursor=(%v,%v), selection=(%v,%v), snapTo=(%v,%v), damage=(%v,%v)",
 				fb.cursor, x.cursor, fb.selection, x.selection, fb.snapTo, x.snapTo, fb.damage, x.damage)
 			util.Log.Warn(msg)
+			ret = false
+		} else {
+			return false
 		}
-		return false
 	}
 
 	if len(fb.cells) != len(x.cells) {
 		if trace {
 			msg := fmt.Sprintf("cells length=(%d,%d)", len(fb.cells), len(x.cells))
 			util.Log.Warn(msg)
+			ret = false
+		} else {
+			return false
 		}
-		return false
 	}
 	// for i := range fb.cells {
 	for i := 0; i < len(fb.cells); i++ {
@@ -695,12 +706,11 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) bool {
 			if trace {
 				msg := fmt.Sprintf("cells[%d]=(%v,%v)", i, fb.cells[i], x.cells[i])
 				util.Log.Warn(msg)
+				ret = false
+			} else {
+				return false
 			}
-			return false
 		}
-		// if !fb.cells[i].Equal(&x.cells[i]) {
-		// 	return false
-		// }
 	}
-	return true
+	return ret
 }
