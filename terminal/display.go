@@ -128,12 +128,12 @@ func NewDisplay(useEnvironment bool) (d *Display, e error) {
 			d.hasBCE = true
 		}
 
-		// Check if we can set the window title and icon name.  terminfo does not
-		// have reliable information on this, so we hardcode a whitelist of
-		// terminal type prefixes.  This is the list from Debian's default
-		// screenrc, plus "screen" itself (which also covers tmux).
+		/* Check if we can set the window title and icon name.  terminfo does not
+		   have reliable information on this, so we hardcode a whitelist of
+		   terminal type prefixes. */
+
 		d.supportTitle = false
-		titleTermTypes := []string{"xterm", "rxvt", "kterm", "Eterm", "screen"}
+		titleTermTypes := []string{"xterm", "rxvt", "kterm", "Eterm", "alacritty", "screen", "tmux"}
 		if term != "" {
 			for _, tt := range titleTermTypes {
 				if strings.HasPrefix(term, tt) {
