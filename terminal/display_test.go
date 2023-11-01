@@ -28,7 +28,7 @@ func TestDisplay(t *testing.T) {
 		hasBCE       bool
 		supportTitle bool
 	}{
-		{"useEnvironment, base TERM", true, "alacritty", nil, true, true, false},
+		{"useEnvironment, base TERM", true, "alacritty", nil, true, true, true},
 		{"useEnvironment, base TERM, title support", true, "xterm", nil, true, true, true},
 		{"useEnvironment, dynamic TERM", true, "sun", errors.New("terminal entry not found"), true, true, false}, // we choose sun, because sun fade out from the market
 		{"useEnvironment, wrong TERM", true, "stranger", errors.New("infocmp: couldn't open terminfo file"), false, false, false},
