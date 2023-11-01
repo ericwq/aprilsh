@@ -178,8 +178,8 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		frame.append("\a")
 	}
 
-	// has window title stack changed
-	// initialized doesn't matter
+	// has icon name or window title changed?
+	// Enhanced: has window title stack changed?
 	oldWTS := oldE.windowTitleStack
 	newWTS := newE.windowTitleStack
 	titleAndStackBothChange := false
@@ -209,6 +209,13 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	// has icon label or window title changed?
 	if !titleAndStackBothChange {
 		d.titleChanged(initialized, frame, oldE, newE)
+	}
+
+	// has clipboard changed?
+	if newE.selectionData != oldE.selectionData {
+		// the selectionData is in the form of "\x1B]52;%s;%s\x1B\\"
+		// see hdl_osc_52() for detail
+		frame.append(newE.selectionData)
 	}
 
 	// has reverse video state changed?
@@ -317,155 +324,8 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		}
 	}
 
-	resizeScreen := oldE.cf.cells
-	if newE.nCols != oldE.nCols || newE.nRows != oldE.nRows {
-		// TODO resize processing
-		/* resize and copy old screen */
-		// we copy the old screen to avoid changing the same part.
+	d.replicateContent(initialized, oldE, newE, asbChanged, frame)
 
-		// prepare place for the old screen
-		// oldScreen := make([]Cell, oldE.nCols*oldE.nRows)
-		// oldE.cf.fullCopyCells(oldScreen)
-
-		// prepare place for the resized screen
-		resizeScreen = make([]Cell, newE.nCols*newE.nRows)
-
-		nCopyCols := Min(oldE.nCols, newE.nCols) // minimal column length
-		nCopyRows := Min(oldE.nRows, newE.nRows) // minimal row length
-
-		// copy the old screen to the new place
-		for pY := 0; pY < nCopyRows; pY++ {
-			srcStartIdx := pY * nCopyCols
-			srcEndIdx := srcStartIdx + nCopyCols
-			dstStartIdx := pY * nCopyCols
-			copy(resizeScreen[dstStartIdx:], oldE.cf.cells[srcStartIdx:srcEndIdx])
-		}
-		// oldScreen = nil
-		/* resize and copy old screen */
-	}
-
-	var frameY int
-	var oldRow []Cell
-	var newRow []Cell
-	var linesScrolled int
-	var scrollHeight int
-
-	// shortcut -- has display moved up(text up, window down) by a certain number of lines?
-	// NOTE: not availble for alternate screen buffer changed.
-	if initialized && !asbChanged && !newE.altScreenBufferMode {
-
-		for row := 0; row < newE.GetHeight(); row++ {
-			newRow = getRow(newE, 0)
-			// oldRow = getRowFrom(resizeScreen, row, newE.nCols)
-			oldRow = getRow(oldE, row)
-
-			if equalRow(newRow, oldRow) {
-				// fmt.Printf("new screen row 0 is the same as old screen row %d\n", row)
-
-				// if row 0, we're looking at ourselves and probably didn't scroll
-				if row == 0 {
-					break
-				}
-
-				// found a scroll: text up, window down
-				linesScrolled = row
-				scrollHeight = 1
-
-				// how big is the region that was scrolled?
-				for regionHeight := 1; linesScrolled+regionHeight < newE.GetHeight(); regionHeight++ {
-					newRow = getRow(newE, regionHeight)
-					// oldRow = getRowFrom(resizeScreen, linesScrolled+regionHeight, newE.nCols)
-					oldRow = getRow(oldE, regionHeight+linesScrolled)
-					if equalRow(newRow, oldRow) {
-						// fmt.Printf("new screen row %d is the same as old screen row %d\n",
-						// 	regionHeight, regionHeight+linesScrolled)
-						scrollHeight = regionHeight + 1
-					} else {
-						break
-					}
-				}
-				// fmt.Printf("new screen has %d same rows with the old screen, start from %d\n",
-				// 	scrollHeight, linesScrolled)
-
-				break
-			}
-		}
-
-		if scrollHeight > 0 {
-			frameY = scrollHeight
-
-			if linesScrolled > 0 {
-				// reset the renditions
-				frame.updateRendition(Renditions{}, true)
-
-				topMargin := 0
-				bottomMargin := topMargin + linesScrolled + scrollHeight - 1
-				// fmt.Printf("#NewFrame scrollHeight=%2d, linesScrolled=%2d, frameY=%2d, bottomMargin=%2d\n",
-				// 	scrollHeight, linesScrolled, frameY, bottomMargin)
-
-				// Common case:  if we're already on the bottom line and we're scrolling the whole
-				// creen, just do a CR and LFs.
-				if scrollHeight+linesScrolled == newE.GetHeight() && frame.cursorY+1 == newE.GetHeight() {
-					frame.append("\r")
-					frame.append("\x1B[%dS", linesScrolled)
-					frame.cursorX = 0
-				} else {
-					// set scrolling region
-					frame.append("\x1B[%d;%dr", topMargin+1, bottomMargin+1)
-
-					// go to bottom of scrolling region
-					frame.cursorY = -1
-					frame.cursorX = -1
-					frame.appendSilentMove(bottomMargin, 0)
-
-					// scroll text up by <linesScrolled>
-					frame.append("\x1B[%dS", linesScrolled)
-
-					// reset scrolling region
-					frame.append("\x1B[r")
-
-					// invalidate cursor position after unsetting scrolling region
-					frame.cursorY = -1
-					frame.cursorX = -1
-				}
-
-				// // Now we need a proper blank row.
-				// blankRow := make([]Cell, newE.nCols)
-				// for i := range blankRow {
-				// 	// set both contents and renditions
-				// 	blankRow[i] = newE.attrs
-				// }
-				//
-				// // do the move in our local new screen
-				// for i := topMargin; i <= bottomMargin; i++ {
-				// 	dstStart := i * newE.nCols
-				//
-				// 	if i+linesScrolled <= bottomMargin {
-				// 		copy(resizeScreen[dstStart:], getRow(oldE, linesScrolled+i))
-				// 		// copy(resizeScreen[dstStart:], getRowFrom(resizeScreen, linesScrolled+i, newE.nCols))
-				// 	} else {
-				// 		copy(resizeScreen[dstStart:], blankRow[:])
-				// 		// fmt.Printf("row %d is blank\n", i)
-				// 	}
-				// }
-				//
-			}
-		}
-	}
-
-	// seq := b.String()
-	// fmt.Printf("#NewFrame frameY=%2d, seq=%q, putRow for each.\n", frameY, seq)
-	// Now update the display, row by row
-	wrap := false
-	for ; frameY < newE.GetHeight(); frameY++ {
-		// oldRow = getRowFrom(resizeScreen, frameY, newE.nCols)
-		oldRow = getRow(oldE, frameY+linesScrolled)
-		wrap = d.putRow(initialized, frame, newE, frameY, oldRow, wrap)
-		// fmt.Printf("#NewFrame frameY=%2d, seq=%q\n", frameY, strings.Replace(b.String(), seq, "", 1))
-		// seq = b.String()
-	}
-
-	// fmt.Printf("#NewFrame d.cursorY=%d,d.cursorX=%d newE (%d,%d)\n", d.cursorY, d.cursorX, newE.GetCursorRow(), newE.GetCursorCol())
 	// has cursor location changed?
 	if !initialized || newE.GetCursorRow() != frame.cursorY || newE.GetCursorCol() != frame.cursorX {
 		// TODO using cursor position from display or cursor position from terminal?
@@ -724,15 +584,159 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		frame.append("\x1B[>4;%dm", newE.modifyOtherKeys)
 	}
 
-	// has OSC 52 selection data changed?
-	if !initialized || newE.selectionData != oldE.selectionData {
-		// the selectionData is in the form of "\x1B]52;%s;%s\x1B\\"
-		// see hdl_osc_52() for detail
-		frame.append(newE.selectionData)
-	}
-
 	// TODO do we need to consider cursor selection area.
 	return frame.output()
+}
+
+func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, asbChanged bool, frame *FrameState) {
+	resizeScreen := oldE.cf.cells
+	if newE.nCols != oldE.nCols || newE.nRows != oldE.nRows {
+		// TODO resize processing
+		/* resize and copy old screen */
+		// we copy the old screen to avoid changing the same part.
+
+		// prepare place for the old screen
+		// oldScreen := make([]Cell, oldE.nCols*oldE.nRows)
+		// oldE.cf.fullCopyCells(oldScreen)
+
+		// prepare place for the resized screen
+		resizeScreen = make([]Cell, newE.nCols*newE.nRows)
+
+		nCopyCols := Min(oldE.nCols, newE.nCols) // minimal column length
+		nCopyRows := Min(oldE.nRows, newE.nRows) // minimal row length
+
+		// copy the old screen to the new place
+		for pY := 0; pY < nCopyRows; pY++ {
+			srcStartIdx := pY * nCopyCols
+			srcEndIdx := srcStartIdx + nCopyCols
+			dstStartIdx := pY * nCopyCols
+			copy(resizeScreen[dstStartIdx:], oldE.cf.cells[srcStartIdx:srcEndIdx])
+		}
+		// oldScreen = nil
+		/* resize and copy old screen */
+	}
+
+	var frameY int
+	var oldRow []Cell
+	var newRow []Cell
+	var linesScrolled int
+	var scrollHeight int
+
+	// shortcut -- has display moved up(text up, window down) by a certain number of lines?
+	// NOTE: not availble for alternate screen buffer changed.
+	if initialized && !asbChanged && !newE.altScreenBufferMode {
+
+		for row := 0; row < newE.GetHeight(); row++ {
+			newRow = getRow(newE, 0)
+			// oldRow = getRowFrom(resizeScreen, row, newE.nCols)
+			oldRow = getRow(oldE, row)
+
+			if equalRow(newRow, oldRow) {
+				// fmt.Printf("new screen row 0 is the same as old screen row %d\n", row)
+
+				// if row 0, we're looking at ourselves and probably didn't scroll
+				if row == 0 {
+					break
+				}
+
+				// found a scroll: text up, window down
+				linesScrolled = row
+				scrollHeight = 1
+
+				// how big is the region that was scrolled?
+				for regionHeight := 1; linesScrolled+regionHeight < newE.GetHeight(); regionHeight++ {
+					newRow = getRow(newE, regionHeight)
+					// oldRow = getRowFrom(resizeScreen, linesScrolled+regionHeight, newE.nCols)
+					oldRow = getRow(oldE, regionHeight+linesScrolled)
+					if equalRow(newRow, oldRow) {
+						// fmt.Printf("new screen row %d is the same as old screen row %d\n",
+						// 	regionHeight, regionHeight+linesScrolled)
+						scrollHeight = regionHeight + 1
+					} else {
+						break
+					}
+				}
+				// fmt.Printf("new screen has %d same rows with the old screen, start from %d\n",
+				// 	scrollHeight, linesScrolled)
+
+				break
+			}
+		}
+
+		if scrollHeight > 0 {
+			frameY = scrollHeight
+
+			if linesScrolled > 0 {
+				// reset the renditions
+				frame.updateRendition(Renditions{}, true)
+
+				topMargin := 0
+				bottomMargin := topMargin + linesScrolled + scrollHeight - 1
+				// fmt.Printf("#NewFrame scrollHeight=%2d, linesScrolled=%2d, frameY=%2d, bottomMargin=%2d\n",
+				// 	scrollHeight, linesScrolled, frameY, bottomMargin)
+
+				// Common case:  if we're already on the bottom line and we're scrolling the whole
+				// creen, just do a CR and LFs.
+				if scrollHeight+linesScrolled == newE.GetHeight() && frame.cursorY+1 == newE.GetHeight() {
+					frame.append("\r")
+					frame.append("\x1B[%dS", linesScrolled)
+					frame.cursorX = 0
+				} else {
+					// set scrolling region
+					frame.append("\x1B[%d;%dr", topMargin+1, bottomMargin+1)
+
+					// go to bottom of scrolling region
+					frame.cursorY = -1
+					frame.cursorX = -1
+					frame.appendSilentMove(bottomMargin, 0)
+
+					// scroll text up by <linesScrolled>
+					frame.append("\x1B[%dS", linesScrolled)
+
+					// reset scrolling region
+					frame.append("\x1B[r")
+
+					// invalidate cursor position after unsetting scrolling region
+					frame.cursorY = -1
+					frame.cursorX = -1
+				}
+
+				// // Now we need a proper blank row.
+				// blankRow := make([]Cell, newE.nCols)
+				// for i := range blankRow {
+				// 	// set both contents and renditions
+				// 	blankRow[i] = newE.attrs
+				// }
+				//
+				// // do the move in our local new screen
+				// for i := topMargin; i <= bottomMargin; i++ {
+				// 	dstStart := i * newE.nCols
+				//
+				// 	if i+linesScrolled <= bottomMargin {
+				// 		copy(resizeScreen[dstStart:], getRow(oldE, linesScrolled+i))
+				// 		// copy(resizeScreen[dstStart:], getRowFrom(resizeScreen, linesScrolled+i, newE.nCols))
+				// 	} else {
+				// 		copy(resizeScreen[dstStart:], blankRow[:])
+				// 		// fmt.Printf("row %d is blank\n", i)
+				// 	}
+				// }
+				//
+			}
+		}
+	}
+
+	// seq := b.String()
+	// fmt.Printf("#NewFrame frameY=%2d, seq=%q, putRow for each.\n", frameY, seq)
+	// Now update the display, row by row
+	wrap := false
+	for ; frameY < newE.GetHeight(); frameY++ {
+		// oldRow = getRowFrom(resizeScreen, frameY, newE.nCols)
+		oldRow = getRow(oldE, frameY+linesScrolled)
+		wrap = d.putRow(initialized, frame, newE, frameY, oldRow, wrap)
+		// fmt.Printf("#NewFrame frameY=%2d, seq=%q\n", frameY, strings.Replace(b.String(), seq, "", 1))
+		// seq = b.String()
+	}
+
 }
 
 // compare new row with old row to generate the mix stream to rebuild the new row

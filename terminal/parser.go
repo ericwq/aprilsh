@@ -424,7 +424,7 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 	}
 	var err error
 	if cmd, err = strconv.Atoi(arg[:pos]); err != nil {
-		util.Log.With("arg", arg[:pos]).Debug("OSC: illegal Ps parameter")
+		util.Log.With("arg", arg[:pos]).Warn("OSC: illegal Ps parameter")
 		return
 	}
 
@@ -436,7 +436,7 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 	}
 	if cmd < 0 || cmd > 120 {
 		// p.logT.Printf("OSC: malformed command string %d %q\n", cmd, arg)
-		util.Log.With("cmd", cmd).With("arg", arg).Debug("OSC: malformed command string")
+		util.Log.With("cmd", cmd).With("arg", arg).Warn("OSC: malformed command string")
 	} else {
 		switch cmd {
 		// create the ActOn
@@ -467,7 +467,7 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 			}
 		default:
 			// p.logU.Printf("unhandled OSC: %d %q\n", cmd, arg)
-			util.Log.With("cmd", cmd).With("arg", arg).Debug("unhandled OSC")
+			util.Log.With("cmd", cmd).With("arg", arg).Warn("unhandled OSC")
 		}
 	}
 

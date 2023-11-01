@@ -780,6 +780,7 @@ func (emu *Emulator) restoreWindowTitleOnStack() {
 func (emu *Emulator) resetWindowTitleStack() {
 	emu.windowTitleStack = make([]string, 0)
 }
+
 func (emu *Emulator) Equal(x *Emulator) bool {
 	return emu.equal(x, false)
 }
