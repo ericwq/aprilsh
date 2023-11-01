@@ -546,19 +546,29 @@ func (emu *Emulator) GetParser() *Parser {
 // }
 
 // parse and handle the stream together.
-func (emu *Emulator) HandleStream(seq string) (hds []*Handler) {
+func (emu *Emulator) HandleStream(seq string) (hds []*Handler, seq2 string) {
 	if len(seq) == 0 {
-		return
+		return nil, seq2
 	}
+
+	// record the sequences which affect the output
+	var seqb strings.Builder
+	count := emu.cf.damage.count()
 
 	hds = make([]*Handler, 0, 16)
 	hds = emu.parser.processStream(seq, hds)
 	for _, hd := range hds {
-		// fmt.Printf("#HandleStream %s, %q\n", strHandlerID[hd.id], hd.sequence)
-		// util.Log.With("id", strHandlerID[hd.id]).With("seq", hd.sequence).Debug("#HandleStream")
 		hd.handle(emu)
+		if emu.cf.damage.count() == count { // yeah, the content is changed
+			seqb.WriteString(hd.sequence)
+		} else {
+			util.Log.With("id", strHandlerID[hd.id]).With("seq", hd.sequence).Debug("HandleStream skip")
+			count = emu.cf.damage.count()
+		}
 	}
-	return
+
+	seq2 = seqb.String()
+	return hds, seq2
 }
 
 func (emu *Emulator) GetFramebuffer() *Framebuffer {
@@ -1027,6 +1037,28 @@ func (emu *Emulator) equal(x *Emulator, trace bool) bool {
 	}
 	// return emu.frame_pri.Equal(&x.frame_pri) && emu.frame_alt.Equal(&x.frame_alt)
 	return emu.cf.equal(x.cf, trace)
+}
+
+func (emu *Emulator) ResetDamage() {
+	emu.cf.resetDamage()
+}
+
+func (emu *Emulator) getDamageRows() (rows int) {
+	row1 := emu.cf.damage.start / emu.nCols
+	row2 := emu.cf.damage.end / emu.nCols
+
+	if row2 > row1 {
+		return row2 - row1
+	}
+
+	return emu.cf.nRows + emu.cf.saveLines - (row1 - row2)
+}
+
+func (emu *Emulator) getRawRow(posY int) (row []Cell) {
+	start := emu.cf.getPhysRowIdx(posY)
+	end := start + emu.nCols
+	row = emu.cf.cells[start:end]
+	return row
 }
 
 func cycleSelectSnapTo2(snapTo SelectSnapTo) SelectSnapTo {

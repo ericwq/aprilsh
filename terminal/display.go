@@ -231,6 +231,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	// has size changed?
 	// the size of the display terminal isn't changed.
 	// the size of the received terminal is changed by ApplyString()
+	sizeChanged := false
 	if !initialized || newE.nCols != oldE.nCols || newE.nRows != oldE.nRows {
 		// TODO why reset scrolling region?
 		frame.append("\x1B[r") // smgtb, reset scrolling region, reset top/bottom margin
@@ -244,6 +245,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		frame.cursorX = 0
 		frame.cursorY = 0
 		frame.currentRendition = Renditions{}
+		sizeChanged = true
 	} else {
 		frame.cursorX = oldE.GetCursorCol()
 		frame.cursorY = oldE.GetCursorRow()
@@ -324,7 +326,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		}
 	}
 
-	d.replicateContent(initialized, oldE, newE, asbChanged, frame)
+	d.replicateContent(initialized, oldE, newE, sizeChanged, asbChanged, frame)
 
 	// has cursor location changed?
 	if !initialized || newE.GetCursorRow() != frame.cursorY || newE.GetCursorCol() != frame.cursorX {
@@ -588,7 +590,23 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	return frame.output()
 }
 
-func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, asbChanged bool, frame *FrameState) {
+func (d *Display) replicateContent0(initialized bool, oldE, newE *Emulator, sizeChanged, asbChanged bool, frame *FrameState) {
+	if asbChanged {
+
+	} else if sizeChanged {
+
+	} else {
+		// update the display, row by row based on damage information
+		var oldRow []Cell
+		wrap := false
+		for frameY := newE.posY; frameY < newE.getDamageRows(); frameY++ {
+			oldRow = newE.getRawRow(frameY)
+			wrap = d.putRow(initialized, frame, newE, frameY, oldRow, wrap)
+		}
+	}
+}
+
+func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeChanged, asbChanged bool, frame *FrameState) {
 	resizeScreen := oldE.cf.cells
 	if newE.nCols != oldE.nCols || newE.nRows != oldE.nRows {
 		// TODO resize processing

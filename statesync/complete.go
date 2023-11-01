@@ -29,6 +29,7 @@ type Complete struct {
 	inputHistory []pair // user input history
 	echoAck      uint64 // which user input is echoed?
 	display      *terminal.Display
+	sequences    string
 }
 
 func NewComplete(nCols, nRows, saveLines int) (*Complete, error) {
@@ -45,7 +46,8 @@ func NewComplete(nCols, nRows, saveLines int) (*Complete, error) {
 
 // let the terminal parse and handle the data stream.
 func (c *Complete) Act(str string) string {
-	c.terminal.HandleStream(str)
+	c.terminal.ResetDamage()
+	_, c.sequences = c.terminal.HandleStream(str)
 
 	return c.terminal.ReadOctetsToHost()
 }
@@ -167,14 +169,15 @@ func (c *Complete) DiffFrom(existing *Complete) string {
 		}
 
 		// the following part consider the cursor movement.
-		update := c.display.NewFrame(true, existing.terminal, c.terminal)
+		// update := c.display.NewFrame(true, existing.terminal, c.terminal)
+		update := c.sequences
 		if len(update) > 0 {
 			instBytes := pb.Instruction{Hostbytes: &pb.HostBytes{Hoststring: []byte(update)}}
 			hm.Instruction = append(hm.Instruction, &instBytes)
 		}
+		util.Log.With("update", update).Debug("DiffFrom")
 	}
 
-	// fmt.Printf("#DiffFrom diff=%q\n", update)
 	output, _ := proto.Marshal(&hm)
 	return string(output)
 }

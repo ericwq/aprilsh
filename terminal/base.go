@@ -30,7 +30,7 @@ func (p Point) less(rhs Point) bool {
 
 // Point(this) < Point(rhs)
 func (p Point) equal(rhs Point) bool {
-	return p== rhs
+	return p == rhs
 	// return p.x == rhs.x && p.y == rhs.y
 }
 
@@ -89,6 +89,10 @@ type Damage struct {
 	totalCells int
 }
 
+func (dmg *Damage) count() int {
+	return dmg.end - dmg.start
+}
+
 func (dmg *Damage) reset() {
 	dmg.start = 0
 	dmg.end = 0
@@ -129,7 +133,7 @@ func Max[T constraints.Ordered](x, y T) T {
 	return y
 }
 
-func Abs[T constraints.Signed| constraints.Float](x T) T {
+func Abs[T constraints.Signed | constraints.Float](x T) T {
 	if x < 0 {
 		return -x
 	}
