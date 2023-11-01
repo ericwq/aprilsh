@@ -48,6 +48,7 @@ func NewComplete(nCols, nRows, saveLines int) (*Complete, error) {
 func (c *Complete) Act(str string) string {
 	c.terminal.ResetDamage()
 	_, c.sequences = c.terminal.HandleStream(str)
+	// util.Log.With("seq", c.sequences).Debug("Complete.Act")
 
 	return c.terminal.ReadOctetsToHost()
 }
@@ -169,13 +170,12 @@ func (c *Complete) DiffFrom(existing *Complete) string {
 		}
 
 		// the following part consider the cursor movement.
-		// update := c.display.NewFrame(true, existing.terminal, c.terminal)
-		update := c.sequences
+		update := c.display.NewFrame(true, existing.terminal, c.terminal, c.sequences)
 		if len(update) > 0 {
 			instBytes := pb.Instruction{Hostbytes: &pb.HostBytes{Hoststring: []byte(update)}}
 			hm.Instruction = append(hm.Instruction, &instBytes)
 		}
-		util.Log.With("update", update).Debug("DiffFrom")
+		// util.Log.With("update", update).Debug("DiffFrom")
 	}
 
 	output, _ := proto.Marshal(&hm)

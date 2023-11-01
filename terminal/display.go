@@ -161,7 +161,7 @@ func NewDisplay(useEnvironment bool) (d *Display, e error) {
 // - initialized: if false, it will redraw the whole terminal, otherwise only changed part.
 // - oldE: the old terminal state.
 // - newE: the new terminal state.
-func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
+func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator, seq ...string) string {
 
 	frame := new(FrameState)
 	frame.cursorX = 0
@@ -326,13 +326,13 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 		}
 	}
 
-	d.replicateContent(initialized, oldE, newE, sizeChanged, asbChanged, frame)
+	d.replicateContent(initialized, oldE, newE, sizeChanged, asbChanged, frame, seq...)
 
 	// has cursor location changed?
-	if !initialized || newE.GetCursorRow() != frame.cursorY || newE.GetCursorCol() != frame.cursorX {
-		// TODO using cursor position from display or cursor position from terminal?
-		frame.appendMove(newE.GetCursorRow(), newE.GetCursorCol())
-	}
+	// if !initialized || newE.GetCursorRow() != frame.cursorY || newE.GetCursorCol() != frame.cursorX {
+	// 	// TODO using cursor position from display or cursor position from terminal?
+	// 	frame.appendMove(newE.GetCursorRow(), newE.GetCursorCol())
+	// }
 
 	// has cursor visibility changed?
 	// during update row, appendSilentMove() might close the cursor,
@@ -590,23 +590,18 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	return frame.output()
 }
 
-func (d *Display) replicateContent0(initialized bool, oldE, newE *Emulator, sizeChanged, asbChanged bool, frame *FrameState) {
-	if asbChanged {
+func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeChanged bool,
+	asbChanged bool, frame *FrameState, seq ...string) {
 
-	} else if sizeChanged {
-
+	if seq != nil && len(seq) > 0 {
+		frame.append(seq[0])
 	} else {
-		// update the display, row by row based on damage information
-		var oldRow []Cell
-		wrap := false
-		for frameY := newE.posY; frameY < newE.getDamageRows(); frameY++ {
-			oldRow = newE.getRawRow(frameY)
-			wrap = d.putRow(initialized, frame, newE, frameY, oldRow, wrap)
-		}
+		d.replicateContent0(initialized, oldE, newE, sizeChanged, asbChanged, frame)
 	}
 }
 
-func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeChanged, asbChanged bool, frame *FrameState) {
+func (d *Display) replicateContent0(initialized bool, oldE, newE *Emulator, sizeChanged bool,
+	asbChanged bool, frame *FrameState) {
 	resizeScreen := oldE.cf.cells
 	if newE.nCols != oldE.nCols || newE.nRows != oldE.nRows {
 		// TODO resize processing

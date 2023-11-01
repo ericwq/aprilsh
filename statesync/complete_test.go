@@ -5,6 +5,7 @@
 package statesync
 
 import (
+	"fmt"
 	"io"
 	"math"
 	"os"
@@ -253,15 +254,16 @@ func TestDiffFrom(t *testing.T) {
 			a, _ := NewComplete(nCols, nRows, savedLines)
 			c, _ := NewComplete(nCols, nRows, savedLines)
 
+			// fmt.Printf("#TestDiffFrom point=%d\n", 333)
 			// assumed state prepare
-			var t1 strings.Builder
+			var t2 strings.Builder
+			var ss strings.Builder
 			for i := range v.seq1 {
-				ret := a.Act(v.seq1[i])
-				// fmt.Printf("TestDiffFrom after %d for assumed state\n", i)
-				c.Act(v.seq1[i])
-				// fmt.Printf("TestDiffFrom after %d for current state\n", i)
-				t1.WriteString(ret)
+				ss.WriteString(v.seq1[i])
 			}
+			t2.WriteString(a.Act(ss.String()))
+			// fmt.Printf("#TestDiffFrom point=%d\n", 444)
+			c.Act(ss.String())
 
 			if !c.EqualTrace(a) {
 				t.Errorf("%s: prepare stage error\n", v.label)
@@ -269,20 +271,20 @@ func TestDiffFrom(t *testing.T) {
 			// fmt.Printf("#TestDiffFrom point=%d\n", 666)
 
 			// current state changed after :q command
-			var t2 strings.Builder
+			t2.Reset()
+			ss.Reset()
 			for i := range v.seq2 {
-				// fmt.Printf("#TestDiffFrom point=%d, seq=%q\n", i, v.seq2[i][0:20])
-				ret := c.Act(v.seq2[i])
-				// fmt.Printf("#TestDiffFrom point=%d-\n", i)
-				t2.WriteString(ret)
+				ss.WriteString(v.seq2[i])
 			}
+
+			t2.WriteString(c.Act(ss.String()))
 			if v.resp != t2.String() {
 				t.Errorf("%s: terminal response expect %q, got %q\n", v.label, v.resp, t2.String())
 			}
 
-			// fmt.Printf("#TestDiffFrom point=%d\n", 501)
+			fmt.Printf("#TestDiffFrom point=%d\n", 501)
 			diff := c.DiffFrom(a)
-			// fmt.Printf("#TestDiffFrom point=%d seq=%q\n", 501, diff)
+			fmt.Printf("#TestDiffFrom point=%d seq=%q\n", 501, diff)
 
 			n := a.Clone()
 			n.ApplyString(diff)
