@@ -1894,24 +1894,23 @@ func hdl_csi_xtmodkeys(emu *Emulator, params []int) {
 			if params[1] != 0 {
 				// emu.logU.Printf("XTMODKEYS: modifyKeyboard = %d\n", params[1])
 				util.Log.With("unimplement", "XTMODKEYS").
-					With("params", params[1]).Debug("XTMODKEYS: modifyKeyboard")
+					With("params", params[1]).Warn("XTMODKEYS: modifyKeyboard")
 			}
 		case 1:
 			if params[1] != 2 {
 				// emu.logU.Printf("XTMODKEYS: modifyCursorKeys = %d\n", params[1])
 				util.Log.With("unimplement", "XTMODKEYS").
-					With("params", params[1]).Debug("XTMODKEYS: modifyCursorKeys")
+					With("params", params[1]).Warn("XTMODKEYS: modifyCursorKeys")
 			}
 		case 2:
 			if params[1] != 2 {
 				// emu.logU.Printf("XTMODKEYS: modifyFunctionKeys = %d\n", params[1])
 				util.Log.With("unimplement", "XTMODKEYS").With("params", params[1]).
-					Debug("XTMODKEYS: modifyFunctionKeys")
+					Warn("XTMODKEYS: modifyFunctionKeys")
 			}
 		case 4:
 			if params[1] <= 2 {
 				emu.modifyOtherKeys = uint(params[1])
-				// emu.logT.Printf("XTMODKEYS: modifyOtherKeys set to %d\n", emu.modifyOtherKeys)
 				// util.Log.With("modifyOtherKeys", emu.modifyOtherKeys).
 				// 	Debug("XTMODKEYS: modifyOtherKeys set to")
 			} else {

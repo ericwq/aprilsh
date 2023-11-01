@@ -1189,12 +1189,11 @@ func TestHandle_BEL(t *testing.T) {
 	seq := "\x07"
 	emu := NewEmulator3(8, 4, 4)
 
-	hds := emu.HandleStream(seq)
+	hds, _ := emu.HandleStream(seq)
 
 	if len(hds) == 0 {
 		t.Errorf("BEL got nil for seq=%q\n", seq)
 	}
-
 	bellCount := emu.getBellCount()
 	if bellCount == 0 || hds[0].id != C0_BEL {
 		t.Errorf("BEL expect %d, got %d\n", 1, bellCount)
@@ -1756,18 +1755,15 @@ func TestHandle_XTMMODEKEYS(t *testing.T) {
 		{"XTMODEKEYS 1:break", []int{CSI_XTMODKEYS}, "\x1B[>1;2m", 3, ""},
 		{"XTMODEKEYS 2:x    ", []int{CSI_XTMODKEYS}, "\x1B[>2;1m", 3, "XTMODKEYS: modifyFunctionKeys"},
 		{"XTMODEKEYS 2:break", []int{CSI_XTMODKEYS}, "\x1B[>2;2m", 3, ""},
-		{"XTMODEKEYS 4:x    ", []int{CSI_XTMODKEYS}, "\x1B[>4;2m", 2, "XTMODKEYS: modifyOtherKeys set to"},
+		{"XTMODEKEYS 4:x    ", []int{CSI_XTMODKEYS}, "\x1B[>4;2m", 2, ""},
 		{"XTMODEKEYS 4:break", []int{CSI_XTMODKEYS}, "\x1B[>4;3m", 3, "XTMODKEYS: illegal argument for modifyOtherKeys"},
-		{"XTMODEKEYS 1 parameter", []int{CSI_XTMODKEYS}, "\x1B[>4m", 0, "XTMODKEYS: modifyOtherKeys set to"},
+		{"XTMODEKEYS 1 parameter", []int{CSI_XTMODKEYS}, "\x1B[>4m", 0, ""},
 		{"XTMODEKEYS 0 parameter", []int{CSI_XTMODKEYS}, "\x1B[>m", 3, ""}, // no parameter
 	}
 
 	p := NewParser()
 	emu := NewEmulator3(8, 4, 4)
 	var place strings.Builder // all the message is output to herer
-	// emu.logU.SetOutput(&place)
-	// emu.logT.SetOutput(&place)
-	// emu.logI.SetOutput(&place)
 	defer util.Log.Restore()
 	util.Log.SetOutput(&place)
 	util.Log.SetLevel(slog.LevelDebug)
@@ -1794,7 +1790,7 @@ func TestHandle_XTMMODEKEYS(t *testing.T) {
 
 		// validate the output message
 		if v.msg != "" && !strings.Contains(place.String(), v.msg) {
-			t.Errorf("%s seq=%q output: expect %s, got %s\n", v.name, v.seq, v.msg, place.String())
+			t.Errorf("%s seq=%q output: expect %q, got %q\n", v.name, v.seq, v.msg, place.String())
 		}
 
 		// validate the data changed
