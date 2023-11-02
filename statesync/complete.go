@@ -173,7 +173,7 @@ func (c *Complete) DiffFrom(existing *Complete) string {
 			instBytes := pb.Instruction{Hostbytes: &pb.HostBytes{Hoststring: []byte(update)}}
 			hm.Instruction = append(hm.Instruction, &instBytes)
 		}
-		util.Log.With("update", update).Debug("DiffFrom")
+		// util.Log.With("update", update).Debug("DiffFrom")
 	}
 
 	output, _ := proto.Marshal(&hm)

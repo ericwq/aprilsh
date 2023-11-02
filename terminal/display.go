@@ -592,8 +592,25 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 
 func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeChanged bool,
 	asbChanged bool, frame *FrameState) {
-	// util.Log.With("old", oldE.cf.damage).With("new", newE.cf.damage).Debug("replicateContent")
-	d.replicateContent0(initialized, oldE, newE, sizeChanged, asbChanged, frame)
+	// fmt.Printf("#replicateContent rows,cols: (%2d,%2d) vs. (%2d,%2d)\n",
+	// 	newE.posY, newE.posX, oldE.posY, oldE.posX)
+	// fmt.Printf("#replicateContent cursor   : (%2d,%2d) vs. (%2d,%2d)\n",
+	// 	newE.cf.cursor.posY, newE.cf.cursor.posX, oldE.cf.cursor.posY, oldE.cf.cursor.posX)
+	// fmt.Printf("#replicateContent damage   : (%2d,%2d) vs. (%2d,%2d)\n",
+	// 	newE.cf.damage.start, newE.cf.damage.end, oldE.cf.damage.start, oldE.cf.damage.end)
+
+	var frameY int
+	var oldRow []Cell
+	var linesScrolled int
+	wrap := false
+	for ; frameY < newE.GetHeight(); frameY++ {
+		// oldRow = getRowFrom(resizeScreen, frameY, newE.nCols)
+		oldRow = getRow(oldE, frameY+linesScrolled)
+		wrap = d.putRow(initialized, frame, newE, frameY, oldRow, wrap)
+		// fmt.Printf("#NewFrame frameY=%2d, seq=%q\n", frameY, strings.Replace(b.String(), seq, "", 1))
+		// seq = b.String()
+	}
+	// d.replicateContent0(initialized, oldE, newE, sizeChanged, asbChanged, frame)
 }
 
 func (d *Display) replicateContent0(initialized bool, oldE, newE *Emulator, sizeChanged bool,
