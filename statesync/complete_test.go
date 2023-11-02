@@ -5,6 +5,7 @@
 package statesync
 
 import (
+	"fmt"
 	"io"
 	"math"
 	"os"

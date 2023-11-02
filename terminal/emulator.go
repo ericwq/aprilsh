@@ -1028,9 +1028,9 @@ func (emu *Emulator) equal(x *Emulator, trace bool) bool {
 	return emu.cf.equal(x.cf, trace)
 }
 
-func (emu *Emulator) ResetDamage() {
-	emu.cf.resetDamage()
-}
+// func (emu *Emulator) ResetDamage() {
+// 	emu.cf.resetDamage()
+// }
 
 func (emu *Emulator) getDamageRows() (rows int) {
 	row1 := emu.cf.damage.start / emu.nCols

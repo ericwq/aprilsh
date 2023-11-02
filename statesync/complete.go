@@ -45,7 +45,7 @@ func NewComplete(nCols, nRows, saveLines int) (*Complete, error) {
 
 // let the terminal parse and handle the data stream.
 func (c *Complete) Act(str string) string {
-	c.terminal.ResetDamage()
+	// c.terminal.ResetDamage()
 	c.terminal.HandleStream(str)
 
 	return c.terminal.ReadOctetsToHost()

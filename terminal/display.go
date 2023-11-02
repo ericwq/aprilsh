@@ -592,6 +592,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 
 func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeChanged bool,
 	asbChanged bool, frame *FrameState) {
+	// util.Log.With("old", oldE.cf.damage).With("new", newE.cf.damage).Debug("replicateContent")
 	d.replicateContent0(initialized, oldE, newE, sizeChanged, asbChanged, frame)
 }
 
