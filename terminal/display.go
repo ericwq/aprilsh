@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/ericwq/aprilsh/util"
 	"github.com/ericwq/terminfo"
 	_ "github.com/ericwq/terminfo/base"
 	"github.com/ericwq/terminfo/dynamic"
@@ -589,15 +590,26 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	// TODO do we need to consider cursor selection area.
 	return frame.output()
 }
+func (d *Display) printFramebufferInfo(oldE, newE *Emulator) {
+	util.Log.With("rows,cols: ", fmt.Sprintf("(%2d,%2d) vs. (%2d,%2d)",
+		newE.posY, newE.posX, oldE.posY, oldE.posX)).Debug("replicateContent")
+	util.Log.With("cursor   : ", fmt.Sprintf("(%2d,%2d) vs. (%2d,%2d)",
+		newE.cf.cursor.posY, newE.cf.cursor.posX, oldE.cf.cursor.posY, oldE.cf.cursor.posX)).Debug("replicateContent")
+	util.Log.With("damage   : ", fmt.Sprintf("(%2d,%2d) vs. (%2d,%2d)",
+		newE.cf.damage.start, newE.cf.damage.end, oldE.cf.damage.start, oldE.cf.damage.end)).Debug("replicateContent")
+	util.Log.With("viewOffset : ", fmt.Sprintf("%2d vs. %2d",
+		newE.cf.viewOffset, oldE.cf.viewOffset)).Debug("replicateContent")
+	util.Log.With("scrollHead : ", fmt.Sprintf("%2d vs. %2d",
+		newE.cf.scrollHead, oldE.cf.scrollHead)).Debug("replicateContent")
+	util.Log.With("historyRows: ", fmt.Sprintf("%2d vs. %2d",
+		newE.cf.historyRows, oldE.cf.historyRows)).Debug("replicateContent")
+}
 
+// https://tomscii.sig7.se/zutty/doc/HACKING.html#Frame
 func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeChanged bool,
 	asbChanged bool, frame *FrameState) {
-	// fmt.Printf("#replicateContent rows,cols: (%2d,%2d) vs. (%2d,%2d)\n",
-	// 	newE.posY, newE.posX, oldE.posY, oldE.posX)
-	// fmt.Printf("#replicateContent cursor   : (%2d,%2d) vs. (%2d,%2d)\n",
-	// 	newE.cf.cursor.posY, newE.cf.cursor.posX, oldE.cf.cursor.posY, oldE.cf.cursor.posX)
-	// fmt.Printf("#replicateContent damage   : (%2d,%2d) vs. (%2d,%2d)\n",
-	// 	newE.cf.damage.start, newE.cf.damage.end, oldE.cf.damage.start, oldE.cf.damage.end)
+
+	d.printFramebufferInfo(oldE, newE)
 
 	var frameY int
 	var oldRow []Cell
