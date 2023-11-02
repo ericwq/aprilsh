@@ -5,7 +5,6 @@
 package statesync
 
 import (
-	"fmt"
 	"io"
 	"math"
 	"os"
@@ -200,7 +199,11 @@ func TestDiffFrom(t *testing.T) {
 		seq2  []string // sequence after action
 		resp  string
 	}{
-		{"simple case", []string{}, []string{"ide@openrc-nvide:~/develop $ \x1b[6n"}, "\x1b[1;30R"},
+		{"simple case", []string{},
+			[]string{
+				"nvide:0.8.9\r\n",
+				"\r\nLua, C/C++ and Golang Integrated Development Environment.\r\nPowered by neovim, luals, gopls and clangd.\r\n", "\x1b]0;aprilsh\a",
+				"ide@openrc-nvide:~/develop $ \x1b[6n"}, "\x1b[5;30R"},
 		{"vi and quit",
 			[]string{
 				"\x1b]0;aprilsh\a", // set title to avoid title stack warning
@@ -282,9 +285,9 @@ func TestDiffFrom(t *testing.T) {
 				t.Errorf("%s: terminal response expect %q, got %q\n", v.label, v.resp, t2.String())
 			}
 
-			fmt.Printf("#TestDiffFrom point=%d\n", 501)
+			// fmt.Printf("#TestDiffFrom point=%d\n", 501)
 			diff := c.DiffFrom(a)
-			fmt.Printf("#TestDiffFrom point=%d seq=%q\n", 501, diff)
+			// fmt.Printf("#TestDiffFrom point=%d seq=%q\n", 501, diff)
 
 			n := a.Clone()
 			n.ApplyString(diff)

@@ -29,7 +29,6 @@ type Complete struct {
 	inputHistory []pair // user input history
 	echoAck      uint64 // which user input is echoed?
 	display      *terminal.Display
-	sequences    string
 }
 
 func NewComplete(nCols, nRows, saveLines int) (*Complete, error) {
@@ -47,8 +46,7 @@ func NewComplete(nCols, nRows, saveLines int) (*Complete, error) {
 // let the terminal parse and handle the data stream.
 func (c *Complete) Act(str string) string {
 	c.terminal.ResetDamage()
-	_, c.sequences = c.terminal.HandleStream(str)
-	// util.Log.With("seq", c.sequences).Debug("Complete.Act")
+	c.terminal.HandleStream(str)
 
 	return c.terminal.ReadOctetsToHost()
 }
@@ -104,9 +102,9 @@ func (c *Complete) SetEchoAck(now int64) (ret bool) {
 		ret = true
 	}
 
-	defer util.Log.With("newestEchoAck", newestEchoAck).
-		With("inputHistory", z).With("time", now%10000).
-		With("return", ret).Debug("SetEchoAck")
+	// defer util.Log.With("newestEchoAck", newestEchoAck).
+	// 	With("inputHistory", z).With("time", now%10000).
+	// 	With("return", ret).Debug("SetEchoAck")
 
 	c.echoAck = newestEchoAck
 	return
@@ -170,12 +168,12 @@ func (c *Complete) DiffFrom(existing *Complete) string {
 		}
 
 		// the following part consider the cursor movement.
-		update := c.display.NewFrame(true, existing.terminal, c.terminal, c.sequences)
+		update := c.display.NewFrame(true, existing.terminal, c.terminal)
 		if len(update) > 0 {
 			instBytes := pb.Instruction{Hostbytes: &pb.HostBytes{Hoststring: []byte(update)}}
 			hm.Instruction = append(hm.Instruction, &instBytes)
 		}
-		// util.Log.With("update", update).Debug("DiffFrom")
+		util.Log.With("update", update).Debug("DiffFrom")
 	}
 
 	output, _ := proto.Marshal(&hm)

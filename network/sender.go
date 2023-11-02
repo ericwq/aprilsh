@@ -302,26 +302,26 @@ func (ts *TransportSender[T]) calculateTimers() {
 		ts.nextSendTime = terminal.Min(ts.mindelayClock+int64(ts.SEND_MINDELAY),
 			ts.sentStates[back].timestamp+int64(ts.sendInterval()))
 		// we change from Max to Min to avoid duplicat message
-		util.Log.With("status", "currentState!=lastSendStates").
-			With("nextSendTime", ts.nextSendTime).
-			Debug("calculateTimers")
+		// util.Log.With("status", "currentState!=lastSendStates").
+		// 	With("nextSendTime", ts.nextSendTime).
+		// 	Debug("calculateTimers")
 	} else if !ts.currentState.Equal(ts.assumedReceiverState.state) && ts.lastHeard+ACTIVE_RETRY_TIMEOUT > now {
 		// currentState is last sent state but not the assumed receiver state
 		ts.nextSendTime = ts.sentStates[back].timestamp + int64(ts.sendInterval())
 		if ts.mindelayClock != math.MaxInt64 {
 			ts.nextSendTime = terminal.Max(ts.nextSendTime, ts.mindelayClock+int64(ts.SEND_MINDELAY))
 		}
-		util.Log.With("status", "currentState==lastSendStates!=AssumedState").
-			With("nextSendTime", ts.nextSendTime).
-			With("lastHeard", ts.lastHeard).
-			Debug("calculateTimers")
+		// util.Log.With("status", "currentState==lastSendStates!=AssumedState").
+		// 	With("nextSendTime", ts.nextSendTime).
+		// 	With("lastHeard", ts.lastHeard).
+		// 	Debug("calculateTimers")
 	} else if !ts.currentState.Equal(ts.sentStates[0].state) && ts.lastHeard+ACTIVE_RETRY_TIMEOUT > now {
 		// currentState is the last and assumed receiver state but not the oldest sent state
 		ts.nextSendTime = ts.sentStates[back].timestamp + ts.connection.timeout() + ACK_DELAY
-		util.Log.With("status", "currentState==lastSendStates==AssumedState").
-			With("nextSendTime", ts.nextSendTime).
-			With("lastHeard", ts.lastHeard).
-			Debug("calculateTimers")
+		// util.Log.With("status", "currentState==lastSendStates==AssumedState").
+		// 	With("nextSendTime", ts.nextSendTime).
+		// 	With("lastHeard", ts.lastHeard).
+		// 	Debug("calculateTimers")
 	} else {
 		ts.nextSendTime = math.MaxInt64 // nothing need to be sent actively
 		// util.Log.With("status", "others").
@@ -332,11 +332,11 @@ func (ts *TransportSender[T]) calculateTimers() {
 	// speed up shutdown sequence
 	if ts.shutdownInProgress || ts.ackNum == math.MaxUint64 {
 		ts.nextAckTime = ts.sentStates[back].timestamp + int64(ts.sendInterval())
-		util.Log.With("status", "shutdown").
-			With("nextAckTime", ts.nextAckTime).
-			With("ackNum", ts.ackNum).
-			With("shutdown", ts.shutdownInProgress).
-			Debug("calculateTimers")
+		// util.Log.With("status", "shutdown").
+		// 	With("nextAckTime", ts.nextAckTime).
+		// 	With("ackNum", ts.ackNum).
+		// 	With("shutdown", ts.shutdownInProgress).
+		// 	Debug("calculateTimers")
 	}
 	// util.Log.With("nextAckTime", ts.nextAckTime).
 	// 	With("nextSendTime", ts.nextSendTime).

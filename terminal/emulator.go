@@ -546,40 +546,18 @@ func (emu *Emulator) GetParser() *Parser {
 // }
 
 // parse and handle the stream together.
-func (emu *Emulator) HandleStream(seq string) (hds []*Handler, seq2 string) {
+func (emu *Emulator) HandleStream(seq string) (hds []*Handler) {
 	if len(seq) == 0 {
-		return nil, seq2
+		return nil
 	}
-
-	// record the sequences which affect the output
-	var seqb strings.Builder
-	count := emu.cf.damage.count()
 
 	hds = make([]*Handler, 0, 16)
 	hds = emu.parser.processStream(seq, hds)
 	for _, hd := range hds {
 		hd.handle(emu)
-		if inHDs(hd.id) || emu.cf.damage.count() != count { // yeah, the content is changed
-			seqb.WriteString(hd.sequence)
-			count = emu.cf.damage.count()
-			// } else {
-			// 	util.Log.With("id", strHandlerID[hd.id]).With("seq", hd.sequence).
-			// 		With("count", count).With("newCount", emu.cf.damage.count()).
-			// 		Debug("HandleStream skip")
-		}
 	}
 
-	seq2 = seqb.String()
-	return hds, seq2
-}
-
-func inHDs(x int) (ret bool) {
-	switch x {
-	case Graphemes, C0_CR, CSI_SGR, ESC_IND, CSI_CUP, CSI_ED, CSI_EL, CSI_privSM, CSI_privRM:
-		ret = true
-	default:
-	}
-	return ret
+	return hds
 }
 
 func (emu *Emulator) GetFramebuffer() *Framebuffer {

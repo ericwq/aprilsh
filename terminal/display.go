@@ -161,7 +161,7 @@ func NewDisplay(useEnvironment bool) (d *Display, e error) {
 // - initialized: if false, it will redraw the whole terminal, otherwise only changed part.
 // - oldE: the old terminal state.
 // - newE: the new terminal state.
-func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator, seq ...string) string {
+func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 
 	frame := new(FrameState)
 	frame.cursorX = 0
@@ -326,13 +326,13 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator, seq ...string
 		}
 	}
 
-	d.replicateContent(initialized, oldE, newE, sizeChanged, asbChanged, frame, seq...)
+	d.replicateContent(initialized, oldE, newE, sizeChanged, asbChanged, frame)
 
 	// has cursor location changed?
-	// if !initialized || newE.GetCursorRow() != frame.cursorY || newE.GetCursorCol() != frame.cursorX {
-	// 	// TODO using cursor position from display or cursor position from terminal?
-	// 	frame.appendMove(newE.GetCursorRow(), newE.GetCursorCol())
-	// }
+	if !initialized || newE.GetCursorRow() != frame.cursorY || newE.GetCursorCol() != frame.cursorX {
+		// TODO using cursor position from display or cursor position from terminal?
+		frame.appendMove(newE.GetCursorRow(), newE.GetCursorCol())
+	}
 
 	// has cursor visibility changed?
 	// during update row, appendSilentMove() might close the cursor,
@@ -591,13 +591,8 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator, seq ...string
 }
 
 func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeChanged bool,
-	asbChanged bool, frame *FrameState, seq ...string) {
-
-	if seq != nil && len(seq) > 0 {
-		frame.append(seq[0])
-	} else {
-		d.replicateContent0(initialized, oldE, newE, sizeChanged, asbChanged, frame)
-	}
+	asbChanged bool, frame *FrameState) {
+	d.replicateContent0(initialized, oldE, newE, sizeChanged, asbChanged, frame)
 }
 
 func (d *Display) replicateContent0(initialized bool, oldE, newE *Emulator, sizeChanged bool,

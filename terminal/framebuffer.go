@@ -679,11 +679,21 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 		}
 	}
 
-	if fb.cursor != x.cursor || fb.selection != x.selection ||
-		fb.snapTo != x.snapTo || fb.damage != fb.damage {
+	if fb.cursor.color != x.cursor.color || fb.cursor.showStyle != x.cursor.showStyle {
 		if trace {
-			msg := fmt.Sprintf("cursor=(%v,%v), selection=(%v,%v), snapTo=(%v,%v), damage=(%v,%v)",
-				fb.cursor, x.cursor, fb.selection, x.selection, fb.snapTo, x.snapTo, fb.damage, x.damage)
+			msg := fmt.Sprintf("cursor.color=(%d,%d), cursor.showStyle=(%d,%d)",
+				fb.cursor.color, x.cursor.color, fb.cursor.showStyle, x.cursor.showStyle)
+			util.Log.Warn(msg)
+			ret = false
+		} else {
+			return false
+		}
+	}
+
+	if fb.selection != x.selection || fb.snapTo != x.snapTo || fb.damage != fb.damage {
+		if trace {
+			msg := fmt.Sprintf("selection=(%v,%v), snapTo=(%v,%v), damage=(%v,%v)",
+				fb.selection, x.selection, fb.snapTo, x.snapTo, fb.damage, x.damage)
 			util.Log.Warn(msg)
 			ret = false
 		} else {

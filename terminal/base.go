@@ -89,10 +89,9 @@ type Damage struct {
 	totalCells int
 }
 
-func (dmg *Damage) count() int {
-	return dmg.end - dmg.start
-}
-
+//	func (dmg *Damage) count() int {
+//		return dmg.end - dmg.start
+//	}
 func (dmg *Damage) reset() {
 	dmg.start = 0
 	dmg.end = 0
