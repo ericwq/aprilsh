@@ -591,18 +591,28 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	return frame.output()
 }
 func (d *Display) printFramebufferInfo(oldE, newE *Emulator) {
-	util.Log.With("rows,cols: ", fmt.Sprintf("(%2d,%2d) vs. (%2d,%2d)",
+	util.Log.With("columns   [E]:", fmt.Sprintf("%3d vs. %3d",
+		newE.nCols, oldE.nCols)).Debug("replicateContent")
+	util.Log.With("rows      [E]:", fmt.Sprintf("%3d vs. %3d",
+		newE.nRows, oldE.nRows)).Debug("replicateContent")
+	util.Log.With("position  [E]:", fmt.Sprintf("(%3d,%3d) vs. (%3d,%3d)",
 		newE.posY, newE.posX, oldE.posY, oldE.posX)).Debug("replicateContent")
-	util.Log.With("cursor   : ", fmt.Sprintf("(%2d,%2d) vs. (%2d,%2d)",
-		newE.cf.cursor.posY, newE.cf.cursor.posX, oldE.cf.cursor.posY, oldE.cf.cursor.posX)).Debug("replicateContent")
-	util.Log.With("damage   : ", fmt.Sprintf("(%2d,%2d) vs. (%2d,%2d)",
-		newE.cf.damage.start, newE.cf.damage.end, oldE.cf.damage.start, oldE.cf.damage.end)).Debug("replicateContent")
-	util.Log.With("viewOffset : ", fmt.Sprintf("%2d vs. %2d",
-		newE.cf.viewOffset, oldE.cf.viewOffset)).Debug("replicateContent")
-	util.Log.With("scrollHead : ", fmt.Sprintf("%2d vs. %2d",
+	util.Log.With("saveLines    :", fmt.Sprintf("%3d vs. %3d",
+		newE.cf.saveLines, oldE.cf.saveLines)).Debug("replicateContent")
+	util.Log.With("scrollHead   :", fmt.Sprintf("%3d vs. %3d",
 		newE.cf.scrollHead, oldE.cf.scrollHead)).Debug("replicateContent")
-	util.Log.With("historyRows: ", fmt.Sprintf("%2d vs. %2d",
+	util.Log.With("marginTop    :", fmt.Sprintf("%3d vs. %3d",
+		newE.cf.marginTop, oldE.cf.marginTop)).Debug("replicateContent")
+	util.Log.With("marginBottom :", fmt.Sprintf("%3d vs. %3d",
+		newE.cf.marginBottom, oldE.cf.marginBottom)).Debug("replicateContent")
+	util.Log.With("historyRows  :", fmt.Sprintf("%3d vs. %3d",
 		newE.cf.historyRows, oldE.cf.historyRows)).Debug("replicateContent")
+	util.Log.With("viewOffset   :", fmt.Sprintf("%3d vs. %3d",
+		newE.cf.viewOffset, oldE.cf.viewOffset)).Debug("replicateContent")
+	util.Log.With("cursor       :", fmt.Sprintf("(%3d,%3d) vs. (%3d,%3d)",
+		newE.cf.cursor.posY, newE.cf.cursor.posX, oldE.cf.cursor.posY, oldE.cf.cursor.posX)).Debug("replicateContent")
+	util.Log.With("damage       :", fmt.Sprintf("(%3d,%3d) vs. (%3d,%3d)",
+		newE.cf.damage.start, newE.cf.damage.end, oldE.cf.damage.start, oldE.cf.damage.end)).Debug("replicateContent")
 }
 
 // https://tomscii.sig7.se/zutty/doc/HACKING.html#Frame

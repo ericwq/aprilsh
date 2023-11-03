@@ -238,7 +238,7 @@ func TestDiffFrom(t *testing.T) {
 				"\x1b[1;34mNvChad\x1b[m                     \x1b[0;0mgit.md\x1b[m                     \x1b[1;34mgolangIDE\x1b[m                  \x1b[1;34mneovim-lua\x1b[m                 \x1b[1;34ms6\x1b[m\r\n\x1b[1;34maprilsh\x1b[m                    \x1b[0;0mgo.work\x1b[m                    \x1b[1;34mmosh\x1b[m                       \x1b[1;34mnvide\x1b[m                      \x1b[1;34mtelescope.nvim\x1b[m\r\n\x1b[1;34mdotfiles\x1b[m                   \x1b[0;0mgo.work.sum\x1b[m                \x1b[0;0mmosh-1.3.2.tar.gz\x1b[m          \x1b[0;0mpersonal-access-token.txt\x1b[m  \x1b[1;34mterminfo\x1b[m\r\n",
 				"ide@openrc-nvide:~/develop $ cat tokens.txt\r\n",
 			},
-			[]string{"111\r\naaa\r\nbbb\r\n\r\nccc\r\nddd\r\n\r\neeee\r\nffff\r\n\r\nggg\r\nhhh#\r\n\r\napp\r\niii\r\n\r\njjj\r\nkkk#\r\n\r\nlll\r\nmmm\r\n\r\n#nnn \r\n\r\nooo.\r\nppp\r\n\r\nqqq\r\nrrr\r\nsss\r\nttt\r\n\r\n隐uuu\r\n方式vvv\r\niwww\r\nxxx\r\n\r\nyyy\r\nzzz\r\n\r\n专用aaa\r\nbbb\r\nccc\r\nddd\r\n\r\neee\r\nfff\r\nggg\r\n"},
+			[]string{"111\r\naaa\r\nbbb\r\n\r\nccc\r\nddd\r\n\r\neeee\r\nffff\r\n\r\nggg\r\nhhh#\r\n\r\napp\r\niii\r\n\r\njjj\r\nkkk#\r\n\r\nlll\r\nmmm\r\n\r\n#nnn \r\n\r\nooo.\r\nppp\r\n\r\nqqq\r\nrrr\r\nsss\r\nttt\r\n\r\n隐uuu\r\n方式vvv\r\niwww\r\nxxx\r\n\r\nyyy\r\nzzz\r\n\r\n专用aaa\r\nbbb\r\nccc\r\nddd\r\n\r\neee\r\nfff\r\nggg\r\n"}, // total 48 \n
 			""},
 	}
 
@@ -271,7 +271,8 @@ func TestDiffFrom(t *testing.T) {
 			if !c.EqualTrace(a) {
 				t.Errorf("%s: prepare stage error\n", v.label)
 			}
-			// fmt.Printf("#TestDiffFrom point=%d\n", 666)
+			// fmt.Printf("#TestDiffFrom pos=(%d,%d)\n", c.GetEmulator().GetCursorRow(), c.GetEmulator().GetCursorCol())
+			// fmt.Printf("#TestDiffFrom pos=(%d,%d)\n", a.GetEmulator().GetCursorRow(), a.GetEmulator().GetCursorCol())
 
 			// current state changed after :q command
 			t2.Reset()
