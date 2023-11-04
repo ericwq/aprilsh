@@ -710,12 +710,12 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 			return false
 		}
 	}
-	// for i := range fb.cells {
+
 	for i := 0; i < len(fb.cells); i++ {
 		if fb.cells[i] != x.cells[i] {
 			if trace {
-				row := i / fb.nRows
-				col := i % fb.nCols
+				row := i / fb.nCols
+				col := i % fb.nRows
 				msg := fmt.Sprintf("cells[%d,%d]=(%v,%v) [only show first not equal]", row, col, fb.cells[i], x.cells[i])
 				util.Log.Warn(msg)
 				ret = false

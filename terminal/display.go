@@ -32,6 +32,13 @@ func LookupTerminfo(name string) (ti *terminfo.Terminfo, e error) {
 	return
 }
 
+func getRawRow(emu *Emulator, rowY int) (row []Cell) {
+	start := emu.nCols * rowY
+	end := start + emu.nCols
+	row = emu.cf.cells[start:end]
+	return row
+}
+
 // return the specified row from terminal.
 func getRow(emu *Emulator, posY int) (row []Cell) {
 	start := emu.cf.getViewRowIdx(posY)
@@ -619,20 +626,41 @@ func (d *Display) printFramebufferInfo(oldE, newE *Emulator) {
 func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeChanged bool,
 	asbChanged bool, frame *FrameState) {
 
-	d.printFramebufferInfo(oldE, newE)
+	// d.printFramebufferInfo(oldE, newE)
 
-	var frameY int
-	var oldRow []Cell
-	var linesScrolled int
-	wrap := false
-	for ; frameY < newE.GetHeight(); frameY++ {
-		// oldRow = getRowFrom(resizeScreen, frameY, newE.nCols)
-		oldRow = getRow(oldE, frameY+linesScrolled)
-		wrap = d.putRow(initialized, frame, newE, frameY, oldRow, wrap)
-		// fmt.Printf("#NewFrame frameY=%2d, seq=%q\n", frameY, strings.Replace(b.String(), seq, "", 1))
-		// seq = b.String()
+	// case: add content more than one screen
+	if newE.cf.historyRows > 0 && newE.cf.historyRows > oldE.cf.historyRows {
+		var countRows int // replicate range
+		var oldRow []Cell
+
+		rawY := oldE.cf.getPhysicalRow(oldE.posY) // start row, it's physical row
+		frameY := oldE.posY                       // screen row
+		countRows = newE.nRows + (newE.cf.historyRows - oldE.cf.historyRows)
+
+		wrap := false
+		// prefix := frame.output()
+		for rawY < countRows {
+			oldRow = getRawRow(oldE, rawY)
+			wrap = d.putRow2(initialized, frame, newE, rawY, frameY, oldRow, wrap)
+
+			// util.Log.With("rawY", rawY).With("frameY", frameY).With("wrap", wrap).
+			// 	With("output", strings.TrimPrefix(frame.output(), prefix)).Debug("replicateContent")
+			// prefix = frame.output()
+
+			// wrap around the end of the scrolling area
+			rawY += 1
+			if rawY == newE.cf.marginBottom {
+				rawY = newE.cf.marginTop
+			}
+
+			frameY += 1
+			// if frameY >= newE.GetHeight() {
+			// 	frameY = newE.GetHeight()
+			// }
+		}
+	} else {
+		d.replicateContent0(initialized, oldE, newE, sizeChanged, asbChanged, frame)
 	}
-	// d.replicateContent0(initialized, oldE, newE, sizeChanged, asbChanged, frame)
 }
 
 func (d *Display) replicateContent0(initialized bool, oldE, newE *Emulator, sizeChanged bool,
@@ -985,6 +1013,182 @@ func (d *Display) putRow(initialized bool, frame *FrameState,
 	return false
 }
 
+func (d *Display) putRow2(initialized bool, frame *FrameState,
+	newE *Emulator, rawY int, frameY int, oldRow []Cell, wrap bool) bool {
+	frameX := 0
+	newRow := getRawRow(newE, rawY)
+
+	// If we're forced to write the first column because of wrap, go ahead and do so.
+	if wrap {
+		cell := newRow[0]
+		frame.updateRendition(cell.GetRenditions(), false)
+		frame.appendCell(cell)
+
+		// fmt.Printf("#putRow (%2d,%2d) is wrap-: contents=%q, renditions=%q - write wrap cell\n",
+		// 	frameY, frameX, cell.contents, cell.renditions.SGR())
+
+		frameX += cell.GetWidth()
+		frame.cursorX += cell.GetWidth()
+	}
+
+	// If rows are the same object, we don't need to do anything at all.
+	if initialized && equalRow(newRow, oldRow) {
+		// fmt.Printf("same row %d\n", frameY)
+		return false
+	}
+
+	// this row should be wrapped. TODO: need to consider double width cell
+	wrapThis := newRow[len(newRow)-1].wrap
+	// fmt.Printf("#putRow row=%d, wrapThis=%t\n", frameY, wrapThis)
+	rowWidth := newE.nCols
+	clearCount := 0
+	wroteLastCell := false
+	blankRenditions := Renditions{}
+
+	// iterate for every cell
+	for frameX < rowWidth {
+		cell := newRow[frameX]
+		// fmt.Printf("#putRow pos=(%d,%d) cell=%q renditions=%q\n", frameY, frameX, cell, cell.renditions.SGR())
+
+		// Does cell need to be drawn?  Skip all this.
+		if initialized && clearCount == 0 && cell == oldRow[frameX] {
+			// the new cell is the same as the old cell
+			// don't do anything except move column counting.
+
+			// fmt.Printf("#putRow (%2d,%2d) is same-: contents=%q, renditions=%q - skip cell\n",
+			// 	frameY, frameX, cell.contents, cell.renditions.SGR())
+
+			// check the renditions if it's changed.
+			frame.updateRendition(cell.renditions, false)
+			frameX += cell.GetWidth()
+			continue
+		}
+
+		// Slurp up all the empty cells
+		if cell.IsBlank() {
+			// it's empty cell
+			// fmt.Printf("#putRow (%2d,%2d) is blank: %q\n", frameY, frameX, cell.contents)
+			if cell.IsEarlyWrap() { // skip the early wrap cell. for double width cell
+				frameX++
+				continue
+			}
+
+			if clearCount == 0 {
+				// remember the renditions of first empty cell
+				blankRenditions = cell.GetRenditions()
+			}
+			if cell.GetRenditions() == blankRenditions {
+				// Remember run of blank cells
+				// counting the number of empty cells with same renditions
+				clearCount++
+				frameX++
+				continue
+			}
+		}
+
+		// Clear or write empty cells within the row (not to end).
+		if clearCount > 0 { // draw empty cells previously counting
+			// Move to the right(correct) position.
+			frame.appendSilentMove(frameY, frameX-clearCount)
+			frame.updateRendition(blankRenditions, false)
+
+			// pcell := newRow[frameX-clearCount]
+			// fmt.Printf("#putRow (%2d,%2d) is empty, length=%d, cell=%q, rend=%q - write empty\n",
+			// 	frameY, frameX-clearCount, clearCount, pcell.contents, pcell.renditions.SGR())
+
+			canUseErase := d.hasBCE || frame.currentRendition == Renditions{}
+			if canUseErase && d.hasECH && clearCount > 4 {
+				// space is more efficient than ECH, if clearCount > 4
+				frame.append("\x1B[%dX", clearCount)
+			} else {
+				// fmt.Printf("#putRow space=%q\n", strings.Repeat(" ", clearCount))
+				frame.append(strings.Repeat(" ", clearCount))
+				frame.cursorX = frameX
+			}
+
+			// If the current character is *another* empty cell in a different rendition,
+			// we restart counting and continue here
+			clearCount = 0
+			if cell.IsBlank() {
+				blankRenditions = cell.GetRenditions()
+				clearCount = 1
+				frameX++
+				continue
+			}
+		}
+
+		// Now draw a character cell.
+		// Move to the right position.
+		cellWidth := cell.GetWidth()
+		/*
+			If we are about to print the last character in a wrapping row,
+			trash the cursor position to force explicit positioning.  We do
+			this because our input terminal state may have the cursor on
+			the autowrap column ("column 81"), but our output terminal
+			states always snap the cursor to the true last column ("column
+			80"), and we want to be able to apply the diff to either, for
+			verification.
+		*/
+		if wrapThis && frameX+cellWidth >= rowWidth {
+			frame.cursorX = -1
+			frame.cursorY = -1
+		}
+
+		// fmt.Printf("#putRow (%2d,%2d) is diff-: contents=%q, renditions=%q - write cell\n",
+		// 	frameY, frameX, cell.contents, cell.renditions.SGR())
+
+		frame.appendSilentMove(frameY, frameX)
+		frame.updateRendition(cell.GetRenditions(), false)
+		frame.appendCell(cell)
+		frameX += cellWidth
+		frame.cursorX += cellWidth
+		if frameX >= rowWidth {
+			wroteLastCell = true
+		}
+	}
+	/* End of line. */
+
+	// Clear or write empty cells at EOL.
+	if clearCount > 0 {
+		// Move to the right position.
+		frame.appendSilentMove(frameY, frameX-clearCount)
+		frame.updateRendition(blankRenditions, false)
+
+		// pcell := newRow[frameX-clearCount]
+		// fmt.Printf("#putRow (%2d,%2d) is empty, length=%d, cell=%q, rend=%q - write empty at EOL\n",
+		// 	frameY, frameX-clearCount, clearCount, pcell.contents, pcell.renditions.SGR())
+
+		canUseErase := d.hasBCE || frame.currentRendition == Renditions{}
+		if canUseErase && !wrapThis {
+			frame.append("\x1B[K") // ti.el,  Erase in Line (EL), Erase to Right (default)
+		} else {
+			frame.append(strings.Repeat(" ", clearCount))
+			frame.cursorX = frameX
+			wroteLastCell = true
+		}
+	}
+
+	// util.Log.With("wroteLastCell", wroteLastCell).With("frameY", frameY).Debug("putRow2")
+	if wroteLastCell && frameY < newE.nRows-1 {
+		// fmt.Printf("#putRow wrapThis=%t, wroteLastCell=%t, frameY=%d\n", wrapThis, wroteLastCell, frameY)
+		// To hint that a word-select should group the end of one line with the beginning of the next,
+		// we let the real cursor actually wrap around in cases where it wrapped around for us.
+		if wrapThis {
+			// Update our cursor, and ask for wrap on the next row.
+			frame.cursorX = 0
+			frame.cursorY++
+			return true
+		} else {
+			// Resort to CR/LF and update our cursor.
+			frame.append("\r\n")
+			frame.cursorX = 0
+			frame.cursorY++
+			// fmt.Printf("#putRow display cursor position (%2d,%3d)\n", d.cursorY, d.cursorX)
+		}
+	}
+	return false
+}
+
 func (d *Display) titleChanged(initialized bool, frame *FrameState, oldE, newE *Emulator) {
 	// has icon label or window title changed?
 	if d.supportTitle && newE.isTitleInitialized() && (!initialized ||
@@ -1094,7 +1298,8 @@ func (fs *FrameState) appendMove(y int, x int) {
 	fs.cursorX = x
 	fs.cursorY = y
 
-	// fmt.Printf("#appendMove display change to (%2d,%2d)\n", d.cursorY, d.cursorX)
+	// util.Log.With("cursorY", fs.cursorY).With("y", y).Debug("appendMove")
+
 	// Only optimize if cursor position is known
 	if lastX != -1 && lastY != -1 {
 		// Can we use CR and/or LF?  They're cheap and easier to trace.

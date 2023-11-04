@@ -271,8 +271,6 @@ func TestDiffFrom(t *testing.T) {
 			if !c.EqualTrace(a) {
 				t.Errorf("%s: prepare stage error\n", v.label)
 			}
-			// fmt.Printf("#TestDiffFrom pos=(%d,%d)\n", c.GetEmulator().GetCursorRow(), c.GetEmulator().GetCursorCol())
-			// fmt.Printf("#TestDiffFrom pos=(%d,%d)\n", a.GetEmulator().GetCursorRow(), a.GetEmulator().GetCursorCol())
 
 			// current state changed after :q command
 			t2.Reset()
@@ -294,15 +292,15 @@ func TestDiffFrom(t *testing.T) {
 			n.ApplyString(diff)
 			if !c.EqualTrace(n) {
 				t.Errorf("%s: round-trip Instruction verification failed!", v.label)
-				t.Logf("%s: diff=%q", v.label, diff)
+				// t.Logf("%s: diff=%q", v.label, diff)
 			}
 
 			cd := c.InitDiff()
 			nd := n.InitDiff()
 			if cd != nd {
 				t.Errorf("%s: target state Instruction verification failed!", v.label)
-				t.Logf("current state diff=%q", cd)
-				t.Logf("new     state diff=%q", nd)
+				// t.Logf("current state diff=%q", cd)
+				// t.Logf("new     state diff=%q", nd)
 			}
 		})
 	}
