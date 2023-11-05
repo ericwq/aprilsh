@@ -7,7 +7,6 @@ package statesync
 import (
 	"io"
 	"math"
-	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -15,7 +14,6 @@ import (
 
 	"github.com/ericwq/aprilsh/terminal"
 	"github.com/ericwq/aprilsh/util"
-	"golang.org/x/exp/slog"
 )
 
 func TestCompleteSubtract(t *testing.T) {
@@ -194,17 +192,18 @@ func TestCompleteClone(t *testing.T) {
 // "go 1.19\r\n\r\nuse (\r\n\t./aprilsh\r\n\t./terminfo\r\n)"
 func TestDiffFrom(t *testing.T) {
 	tc := []struct {
-		label string
-		seq1  []string // sequence before action
-		seq2  []string // sequence after action
-		resp  string
+		label        string
+		nCols, nRows int      // screen size
+		seq1         []string // sequence before action
+		seq2         []string // sequence after action
+		resp         string
 	}{
-		{"simple case", []string{},
+		{"simple case", 80, 40, []string{},
 			[]string{
 				"nvide:0.8.9\r\n",
 				"\r\nLua, C/C++ and Golang Integrated Development Environment.\r\nPowered by neovim, luals, gopls and clangd.\r\n", "\x1b]0;aprilsh\a",
 				"ide@openrc-nvide:~/develop $ \x1b[6n"}, "\x1b[5;30R"},
-		{"vi and quit",
+		{"vi and quit", 80, 40,
 			[]string{
 				"\x1b]0;aprilsh\a", // set title to avoid title stack warning
 				/*vi start*/ "\x1b[?1049h\x1b[22;0;0t\x1b[?1h\x1b=\x1b[H\x1b[2J\x1b]11;?\a\x1b[?2004h\x1b[?u\x1b[c\x1b[?25h",
@@ -222,14 +221,14 @@ func TestDiffFrom(t *testing.T) {
 				/*3rd sequence after :q*/ "\x1b[?25l\x1b]112\a\x1b[2 q\x1b[?1002l\x1b[?1006l\x1b(B\x1b[m\x1b[?25h\x1b[?1l\x1b>\x1b[>4;0m\x1b[?1049l\x1b[23;0;0t\x1b[?2004l\x1b[?1004l\x1b[?25h",
 				/*4th sequence after :q*/ "ide@openrc-nvide:~/develop $ \x1b[6n",
 			}, "\x1b[1;30R"},
-		{"screen with content then vi utf-8 file",
+		{"screen with content then vi utf-8 file", 80, 40,
 			[]string{
 				"\x1b]0;aprilsh\a", // set title to avoid title stack warning
 				"ide@openrc-nvide:~/develop $ \x1b[6n"},
 			[]string{
 				"\x1b[?1049h\x1b[22;0;0t\x1b[?1h\x1b=\x1b[H\x1b[2J\x1b]11;?\a\x1b[?2004h\x1b[?u\x1b[c\x1b[?25h",
 			}, "\x1b]11;rgb:0000/0000/0000\x1b\\\x1b[?64;1;9;15;21;22c"},
-		{"cat file larger than screen rows",
+		{"cat file larger than screen rows", 80, 40,
 			[]string{
 				"nvide:0.8.9\r\n\r\nLua, C/C++ and Golang Integrated Development Environment.\r\nPowered by neovim, luals, gopls and clangd.\r\n",
 				"\x1b]0;aprilsh\a",
@@ -240,22 +239,31 @@ func TestDiffFrom(t *testing.T) {
 			},
 			[]string{"111\r\naaa\r\nbbb\r\n\r\nccc\r\nddd\r\n\r\neeee\r\nffff\r\n\r\nggg\r\nhhh#\r\n\r\napp\r\niii\r\n\r\njjj\r\nkkk#\r\n\r\nlll\r\nmmm\r\n\r\n#nnn \r\n\r\nooo.\r\nppp\r\n\r\nqqq\r\nrrr\r\nsss\r\nttt\r\n\r\n隐uuu\r\n方式vvv\r\niwww\r\nxxx\r\n\r\nyyy\r\nzzz\r\n\r\n专用aaa\r\nbbb\r\nccc\r\nddd\r\n\r\neee\r\nfff\r\nggg\r\n"}, // total 48 \n
 			""},
+		{"return on last row", 101, 24,
+			[]string{"nvide:0.8.9\r\n",
+				"\r\nLua, C/C++ and Golang Integrated Development Environment.\r\nPowered by neovim, luals, gopls and clangd.\r\n",
+				"\x1b]0;aprilsh\a",
+				"ide@openrc-nvide:~ $ ls\r\n",
+				"\x1b[1;34mdevelop\x1b[m  \x1b[1;34mproj\x1b[m\r\n",
+				"ide@openrc-nvide:~ $ cd develop\r\n",
+				"ide@openrc-nvide:~/develop $ ls -al\r\n",
+				"total 1696\r\ndrwxr-xr-x   22 ide      develop        704 Oct 26 20:28 \x1b[1;34m.\x1b[m\r\ndrwxr-sr-x    1 ide      develop       4096 Oct 26 21:08 \x1b[1;34m..\x1b[m\r\n-rw-r--r--    1 ide      develop       8196 Sep 15 22:10 \x1b[0;0m.DS_Store\x1b[m\r\ndrwxr-xr-x   19 ide      develop        608 Oct 27 19:13 \x1b[1;34maprilsh\x1b[m\r\ndrwxr-xr-x   14 ide      develop        448 May 26  2022 \x1b[1;34mdocTerminal\x1b[m\r\ndrwxr-xr-x   29 ide      develop        928 Aug  7 22:02 \x1b[1;34mexamples\x1b[m\r\n-rw-r--r--    1 ide      develop         50 May 21 14:35 \x1b[0;0mgo.work\x1b[m\r\n-rw-r--r--    1 ide      develop        694 Aug  5 22:36 \x1b[0;0mgo.work.sum\x1b[m\r\ndrwxr-xr-x   18 ide      develop        576 Jun 24 22:36 \x1b[1;34mgoutmp\x1b[m\r\ndrwxr-xr-x    9 ide      develop        288 Dec 17  2020 \x1b[1;34mgskills\x1b[m\r\n-rwxr-xr-x    1 ide      develop    1484717 Nov 15  2021 \x1b[1;32mgskills.key\x1b[m\r\ndrwxr-xr-x    6 ide      develop        192 Nov 15  2021 \x1b[1;34mimages\x1b[m\r\ndrwxr-sr-x   32 ide      develop       1024 May  9  2021 \x1b[1;34mldd3\x1b[m\r\ndrwxr-xr-x   16 ide      develop        512 Jun 15 21:48 \x1b[1;34mlibutempter\x1b[m\r\ndrwxr-xr-x   51 ide      develop       1632 Apr 30  2022 \x1b[1;34mncurses-6.3\x1b[m\r\ndrwxr-xr-x   14 ide      develop        448 Sep 27 22:01 \x1b[1;34mnvide\x1b[m\r\n-rw-rw-rw-    1 ide      develop        782 Oct 26 20:27 \x1b[0;0mpersonal-access-token.txt\x1b[m\r\ndrwxr-xr-x   10 ide      develop        320 May 30 18:59 \x1b[1;34ms6\x1b[m\r\ndrwxr-xr-x   33 ide      develop       1056 Jun 28 06:17 \x1b[1;34mterminfo\x1b[m\r\ndrwxr-xr-x   82 ide      develop       2624 May 11  2022 \x1b[1;34mvttest-20220215\x1b[m\r\n-rw-r--r--    1 ide      develop     216949 May 11  2022 \x1b[0;0mvttest.tar.gz\x1b[m\r\ndrwxr-xr-x    5 ide      develop        160 May  2  2022 \x1b[1;34mworkspace\x1b[m\r\nide@openrc-nvide:~/develop $ ",
+			},
+			[]string{"\r\n"},
+			""},
 	}
 
-	nCols := 80
-	nRows := 40
-	savedLines := nRows * 3
-
 	defer util.Log.Restore()
-	// util.Log.SetOutput(io.Discard)
-	util.Log.SetLevel(slog.LevelDebug)
-	util.Log.SetOutput(os.Stderr)
+	util.Log.SetOutput(io.Discard)
+	// util.Log.SetLevel(slog.LevelDebug)
+	// util.Log.SetOutput(os.Stderr)
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
+			savedLines := v.nRows * 3
 
-			a, _ := NewComplete(nCols, nRows, savedLines)
-			c, _ := NewComplete(nCols, nRows, savedLines)
+			a, _ := NewComplete(v.nCols, v.nRows, savedLines)
+			c, _ := NewComplete(v.nCols, v.nRows, savedLines)
 
 			// fmt.Printf("#TestDiffFrom point=%d\n", 333)
 			// assumed state prepare
@@ -284,9 +292,9 @@ func TestDiffFrom(t *testing.T) {
 				t.Errorf("%s: terminal response expect %q, got %q\n", v.label, v.resp, t2.String())
 			}
 
-			// fmt.Printf("#TestDiffFrom point=%d\n", 501)
+			util.Log.With("point", 601).Debug("TestDiffFrom")
 			diff := c.DiffFrom(a)
-			// fmt.Printf("#TestDiffFrom point=%d seq=%q\n", 501, diff)
+			util.Log.With("point", 602).Debug("TestDiffFrom")
 
 			n := a.Clone()
 			n.ApplyString(diff)
@@ -295,8 +303,11 @@ func TestDiffFrom(t *testing.T) {
 				// t.Logf("%s: diff=%q", v.label, diff)
 			}
 
+			util.Log.With("point", 603).Debug("TestDiffFrom")
 			cd := c.InitDiff()
+			util.Log.With("point", 604).Debug("TestDiffFrom")
 			nd := n.InitDiff()
+			util.Log.With("point", 605).Debug("TestDiffFrom")
 			if cd != nd {
 				t.Errorf("%s: target state Instruction verification failed!", v.label)
 				// t.Logf("current state diff=%q", cd)

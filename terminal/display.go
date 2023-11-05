@@ -639,7 +639,8 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 
 		wrap := false
 		// prefix := frame.output()
-		for rawY < countRows {
+		// util.Log.With("rawY", rawY).With("frameY", frameY).With("countRows", countRows).Debug("replicateContent")
+		for i := 0; i < countRows; i++ {
 			oldRow = getRawRow(oldE, rawY)
 			wrap = d.putRow2(initialized, frame, newE, rawY, frameY, oldRow, wrap)
 
