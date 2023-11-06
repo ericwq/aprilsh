@@ -638,6 +638,13 @@ func (fb *Framebuffer) invalidateSelection(damage *Rect) {
 	fb.selection.clear()
 }
 
+// return row cells, rowY is tht physical row idex, see getPhysicalRow() for detail
+func (fb *Framebuffer) getRow(rowY int) []Cell {
+	start := fb.nCols * rowY
+	end := start + fb.nCols
+	return fb.cells[start:end]
+}
+
 func (fb *Framebuffer) Equal(x *Framebuffer) bool {
 	return fb.equal(x, false)
 }

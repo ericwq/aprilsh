@@ -32,12 +32,12 @@ func LookupTerminfo(name string) (ti *terminfo.Terminfo, e error) {
 	return
 }
 
-func getRawRow(emu *Emulator, rowY int) (row []Cell) {
-	start := emu.nCols * rowY
-	end := start + emu.nCols
-	row = emu.cf.cells[start:end]
-	return row
-}
+// func getRawRow(emu *Emulator, rowY int) (row []Cell) {
+// 	start := emu.nCols * rowY
+// 	end := start + emu.nCols
+// 	row = emu.cf.cells[start:end]
+// 	return row
+// }
 
 // return the specified row from terminal.
 func getRow(emu *Emulator, posY int) (row []Cell) {
@@ -641,7 +641,7 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 		// prefix := frame.output()
 		// util.Log.With("rawY", rawY).With("frameY", frameY).With("countRows", countRows).Debug("replicateContent")
 		for i := 0; i < countRows; i++ {
-			oldRow = getRawRow(oldE, rawY)
+			oldRow = oldE.cf.getRow(rawY)
 			wrap = d.putRow2(initialized, frame, newE, rawY, frameY, oldRow, wrap)
 
 			// util.Log.With("rawY", rawY).With("frameY", frameY).With("wrap", wrap).
@@ -653,6 +653,7 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 			if rawY == newE.cf.marginBottom {
 				rawY = newE.cf.marginTop
 			}
+			// rawY = oldE.cf.getPhysicalRow(rawY + 1)
 
 			frameY += 1
 			// if frameY >= newE.GetHeight() {
@@ -1017,7 +1018,7 @@ func (d *Display) putRow(initialized bool, frame *FrameState,
 func (d *Display) putRow2(initialized bool, frame *FrameState,
 	newE *Emulator, rawY int, frameY int, oldRow []Cell, wrap bool) bool {
 	frameX := 0
-	newRow := getRawRow(newE, rawY)
+	newRow := newE.cf.getRow(rawY)
 
 	// If we're forced to write the first column because of wrap, go ahead and do so.
 	if wrap {
