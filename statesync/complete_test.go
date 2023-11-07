@@ -7,6 +7,7 @@ package statesync
 import (
 	"io"
 	"math"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/ericwq/aprilsh/terminal"
 	"github.com/ericwq/aprilsh/util"
+	"golang.org/x/exp/slog"
 )
 
 func TestCompleteSubtract(t *testing.T) {
@@ -254,9 +256,9 @@ func TestDiffFrom(t *testing.T) {
 	}
 
 	defer util.Log.Restore()
-	util.Log.SetOutput(io.Discard)
-	// util.Log.SetLevel(slog.LevelDebug)
-	// util.Log.SetOutput(os.Stderr)
+	// util.Log.SetOutput(io.Discard)
+	util.Log.SetLevel(slog.LevelDebug)
+	util.Log.SetOutput(os.Stderr)
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {

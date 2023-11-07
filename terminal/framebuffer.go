@@ -86,6 +86,8 @@ func (fb *Framebuffer) resize(nCols, nRows int) (marginTop, marginBottom int) {
 	// adjust the internal cell storage according to the new size
 	// the defalt constructor of Cell set the contents field to ""
 	newCells := make([]Cell, nCols*(nRows+fb.saveLines))
+	// newSaveLines := nRows * SaveLinesRowsRatio
+	// newCells := make([]Cell, nCols*(nRows+newSaveLines))
 
 	rowLen := Min(fb.nCols, nCols)    // minimal row length
 	nCopyRows := Min(fb.nRows, nRows) // minimal row number
@@ -113,6 +115,7 @@ func (fb *Framebuffer) resize(nCols, nRows int) (marginTop, marginBottom int) {
 	fb.nRows = nRows
 	fb.marginTop = 0
 	fb.scrollHead = fb.marginTop
+	// fb.saveLines = newSaveLines
 	fb.marginBottom = fb.nRows + fb.saveLines // internal marginBottom
 	fb.margin = false
 	fb.viewOffset = 0
@@ -638,7 +641,7 @@ func (fb *Framebuffer) invalidateSelection(damage *Rect) {
 	fb.selection.clear()
 }
 
-// return row cells, rowY is tht physical row idex, see getPhysicalRow() for detail
+// return row cells, rowY is tht physical row index, see getPhysicalRow() for detail
 func (fb *Framebuffer) getRow(rowY int) []Cell {
 	start := fb.nCols * rowY
 	end := start + fb.nCols

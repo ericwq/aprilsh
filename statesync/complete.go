@@ -102,9 +102,9 @@ func (c *Complete) SetEchoAck(now int64) (ret bool) {
 		ret = true
 	}
 
-	// defer util.Log.With("newestEchoAck", newestEchoAck).
-	// 	With("inputHistory", z).With("time", now%10000).
-	// 	With("return", ret).Debug("SetEchoAck")
+	defer util.Log.With("newestEchoAck", newestEchoAck).
+		With("inputHistory", z).With("time", now%10000).
+		With("return", ret).Debug("SetEchoAck")
 
 	c.echoAck = newestEchoAck
 	return
