@@ -638,7 +638,7 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 	// d.printFramebufferInfo(oldE, newE)
 
 	// case: add content more than one screen
-	if newE.cf.scrollHead > 0 {
+	if newE.cf.historyRows > 0 {
 		var countRows int // replicate range
 		var oldRow []Cell
 
