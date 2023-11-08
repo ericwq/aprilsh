@@ -622,6 +622,15 @@ func (d *Display) printFramebufferInfo(oldE, newE *Emulator) {
 		newE.cf.damage.start, newE.cf.damage.end, oldE.cf.damage.start, oldE.cf.damage.end)).Debug("replicateContent")
 }
 
+func countRow(oldE, newE *Emulator) int {
+	if newE.cf.scrollHead > oldE.cf.scrollHead {
+		return newE.nRows + (newE.cf.scrollHead - oldE.cf.scrollHead)
+	} else if newE.cf.scrollHead == oldE.cf.scrollHead {
+		return newE.nRows
+	}
+	return newE.nRows + (newE.cf.marginBottom - oldE.cf.scrollHead) + newE.cf.scrollHead
+}
+
 // https://tomscii.sig7.se/zutty/doc/HACKING.html#Frame
 func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeChanged bool,
 	asbChanged bool, frame *FrameState) {
@@ -629,13 +638,14 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 	// d.printFramebufferInfo(oldE, newE)
 
 	// case: add content more than one screen
-	if newE.cf.historyRows > 0 && newE.cf.historyRows > oldE.cf.historyRows {
+	if newE.cf.scrollHead > 0 {
 		var countRows int // replicate range
 		var oldRow []Cell
 
 		rawY := oldE.cf.getPhysicalRow(oldE.posY) // start row, it's physical row
 		frameY := oldE.posY                       // screen row
-		countRows = newE.nRows + (newE.cf.historyRows - oldE.cf.historyRows)
+		// countRows = newE.nRows + (newE.cf.historyRows - oldE.cf.historyRows)
+		countRows = countRow(oldE, newE)
 
 		wrap := false
 		// prefix := frame.output()
