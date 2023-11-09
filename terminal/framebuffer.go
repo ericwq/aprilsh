@@ -15,7 +15,7 @@ import (
 const (
 	SaveLineUpperLimit  = 50000
 	windowTitleStackMax = 9
-	SaveLinesRowsRatio  = 3
+	SaveLinesRowsOption = 60
 )
 
 // support both (scrollable) normal screen buffer and alternate screen buffer
@@ -77,17 +77,16 @@ func NewFramebuffer3(nCols, nRows, saveLines int) (fb Framebuffer, marginTop int
 func (fb *Framebuffer) resize(nCols, nRows int) (marginTop, marginBottom int) {
 	// marginTop = fb.marginTop
 	// marginBottom = nRows
-	// fmt.Printf("Framebuffer.resize nCols=%d, nRows=%d, saveLines=%d\n", nCols, nRows, fb.saveLines)
+
+	// TestDiffFrom/vi_and_quit need to disable it.
 	// if fb.nCols == nCols && fb.nRows == nRows {
-	// 	fmt.Printf("Framebuffer.resize same cols*rows\n")
+	// 	// fmt.Printf("Framebuffer.resize same cols*rows\n")
 	// 	return
 	// }
 
 	// adjust the internal cell storage according to the new size
 	// the defalt constructor of Cell set the contents field to ""
-	// newCells := make([]Cell, nCols*(nRows+fb.saveLines))
-	newSaveLines := nRows * SaveLinesRowsRatio
-	newCells := make([]Cell, nCols*(nRows+newSaveLines))
+	newCells := make([]Cell, nCols*(nRows+fb.saveLines))
 
 	rowLen := Min(fb.nCols, nCols)    // minimal row length
 	nCopyRows := Min(fb.nRows, nRows) // minimal row number
@@ -115,7 +114,6 @@ func (fb *Framebuffer) resize(nCols, nRows int) (marginTop, marginBottom int) {
 	fb.nRows = nRows
 	fb.marginTop = 0
 	fb.scrollHead = fb.marginTop
-	fb.saveLines = newSaveLines
 	fb.marginBottom = fb.nRows + fb.saveLines // internal marginBottom
 	fb.margin = false
 	fb.viewOffset = 0
@@ -725,9 +723,10 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 		if fb.cells[i] != x.cells[i] {
 			if trace {
 				row := i / fb.nCols
-				col := i % fb.nRows
-				msg := fmt.Sprintf("cells[%d,%d]=(%v,%v) [only show first not equal]", row, col, fb.cells[i], x.cells[i])
-				util.Log.Warn(msg)
+				// col := i % fb.nRows
+				// msg := fmt.Sprintf("cells[%d,%d]=(%v,%v) [only show first not equal]", row, col, fb.cells[i], x.cells[i])
+				util.Log.With("row", printRow(fb.cells, row, fb.nCols)).Warn("equal new")
+				util.Log.With("row", printRow(x.cells, row, x.nCols)).Warn("equal old")
 				ret = false
 				break
 			} else {
@@ -736,4 +735,17 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 		}
 	}
 	return ret
+}
+
+func printRow(cells []Cell, row int, nCols int) string {
+	var b strings.Builder
+	base := row * nCols
+
+	for i := 0; i < nCols; i++ {
+		if cells[base+i].dwidthCont {
+			continue
+		}
+		b.WriteString(cells[base+i].contents)
+	}
+	return b.String()
 }

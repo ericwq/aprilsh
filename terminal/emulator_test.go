@@ -21,7 +21,7 @@ func TestEmulatorResize(t *testing.T) {
 		hMargin, nColsEff int
 	}
 	tc := []struct {
-		name                string
+		label               string
 		nCols, nRows        int
 		altScreenBufferMode bool
 		horizMarginMode     bool
@@ -44,15 +44,18 @@ func TestEmulatorResize(t *testing.T) {
 	emu := NewEmulator3(80, 40, 40) // this is the initialized size.
 
 	for _, v := range tc {
-		emu.altScreenBufferMode = v.altScreenBufferMode
-		emu.horizMarginMode = v.horizMarginMode
-		emu.posY = v.posY
-		emu.resize(v.nCols, v.nRows)
+		t.Run(v.label, func(t *testing.T) {
+			emu.altScreenBufferMode = v.altScreenBufferMode
+			emu.horizMarginMode = v.horizMarginMode
+			emu.posY = v.posY
+			emu.resize(v.nCols, v.nRows)
 
-		if v.expect.nCols != emu.nCols || v.expect.nRows != emu.nRows ||
-			v.expect.hMargin != emu.hMargin || v.expect.nColsEff != emu.nColsEff {
-			t.Errorf("%q expect %v, got (%d,%d,%d,%d)\n", v.name, v.expect, emu.nCols, emu.nRows, emu.hMargin, emu.nColsEff)
-		}
+			if v.expect.nCols != emu.nCols || v.expect.nRows != emu.nRows ||
+				v.expect.hMargin != emu.hMargin || v.expect.nColsEff != emu.nColsEff {
+				t.Errorf("%q expect %v, got (%d,%d,%d,%d)\n",
+					v.label, v.expect, emu.nCols, emu.nRows, emu.hMargin, emu.nColsEff)
+			}
+		})
 	}
 }
 

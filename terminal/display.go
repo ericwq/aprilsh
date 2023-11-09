@@ -71,6 +71,15 @@ func equalSlice[T constraints.Ordered](a, b []T) bool {
 	return true
 }
 
+func countRow(oldE, newE *Emulator) int {
+	if newE.cf.scrollHead > oldE.cf.scrollHead {
+		return newE.nRows + (newE.cf.scrollHead - oldE.cf.scrollHead)
+	} else if newE.cf.scrollHead == oldE.cf.scrollHead {
+		return newE.nRows
+	}
+	return newE.nRows + (newE.cf.marginBottom - oldE.cf.scrollHead) + newE.cf.scrollHead
+}
+
 /*
  *	 The following are some interesting questions I asked several month ago. As I know terminfo
  *	 and terminal better, the answter is more clear and confident than before.
@@ -620,15 +629,6 @@ func (d *Display) printFramebufferInfo(oldE, newE *Emulator) {
 		newE.cf.cursor.posY, newE.cf.cursor.posX, oldE.cf.cursor.posY, oldE.cf.cursor.posX)).Debug("replicateContent")
 	util.Log.With("damage       :", fmt.Sprintf("(%3d,%3d) vs. (%3d,%3d)",
 		newE.cf.damage.start, newE.cf.damage.end, oldE.cf.damage.start, oldE.cf.damage.end)).Debug("replicateContent")
-}
-
-func countRow(oldE, newE *Emulator) int {
-	if newE.cf.scrollHead > oldE.cf.scrollHead {
-		return newE.nRows + (newE.cf.scrollHead - oldE.cf.scrollHead)
-	} else if newE.cf.scrollHead == oldE.cf.scrollHead {
-		return newE.nRows
-	}
-	return newE.nRows + (newE.cf.marginBottom - oldE.cf.scrollHead) + newE.cf.scrollHead
 }
 
 // https://tomscii.sig7.se/zutty/doc/HACKING.html#Frame
