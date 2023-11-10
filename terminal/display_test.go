@@ -16,6 +16,7 @@ import (
 
 	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/util"
+	"golang.org/x/exp/slog"
 )
 
 func TestDisplay(t *testing.T) {
@@ -1118,6 +1119,107 @@ func TestNewFrame_SelectionData(t *testing.T) {
 	}
 }
 
+func TestPutRow(t *testing.T) {
+	tc := []struct {
+		label   string
+		preSeq  []string
+		postSeq []string
+	}{
+		{"",
+			[]string{
+				"nvide:0.8.9\r\n",
+				"\r\n",
+				"Lua, C/C++ and Golang Integrated Development Environment.\r\n",
+				"\r\n",
+				"Powered by neovim, luals, gopls and clangd.\r\n",
+				"\r\n",
+				"\r\n",
+				"ide@openrc-nvide:~ $ ls\r\n",
+				"develop  proj     s.log    s.time\r\n",
+				"ide@openrc-nvide:~ $ cd develop/\r\n",
+				"ide@openrc-nvide:~/develop $ ls -al\r\n",
+				"done\r\n",
+			},
+			[]string{
+				"ide@openrc-nvide:~/develop $ ls -al\r\n",
+				"total 972\r\n",
+				"drwxr-xr-x   19 ide      develop        608 Oct 30 16:13 .\r\n",
+				"drwxr-sr-x    1 ide      develop       4096 Oct 30 13:06 ..\r\n",
+				"-rw-r--r--    1 ide      develop       8196 Nov  3 09:25 .DS_Store\r\n",
+				"drwxr-xr-x    9 ide      develop        288 Jul 21 09:29 NvChad\r\n",
+				"drwxr-xr-x   19 ide      develop        608 Oct 27 13:46 aprilsh\r\n",
+				"-rwx------    1 ide      develop     546473 Oct 30 15:12 demo.key\r\n",
+				"drwxr-xr-x   18 ide      develop        576 Jan 27  2022 dotfiles\r\n",
+				"-rw-r--r--    1 ide      develop        141 Sep 27 17:05 git.md\r\n",
+				"-rw-r--r--    1 ide      develop         40 Oct 12  2022 go.work\r\n",
+				"done\r\n",
+			},
+		},
+	}
+
+	defer util.Log.Restore()
+	// util.Log.SetOutput(io.Discard)
+	util.Log.SetLevel(slog.LevelDebug)
+	util.Log.SetOutput(os.Stderr)
+
+	oldE := NewEmulator3(80, 8, 4)
+	newE := NewEmulator3(80, 8, 4)
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			// init the screen content
+			for _, seq := range v.preSeq {
+				oldE.HandleStream(seq)
+			}
+			for _, seq := range v.postSeq {
+				newE.HandleStream(seq)
+			}
+
+			frame := new(FrameState)
+			frame.cursorX = 0
+			frame.cursorY = 0
+			frame.currentRendition = Renditions{}
+			frame.showCursorMode = oldE.showCursorMode
+			frame.lastFrame = oldE
+			frame.out = &strings.Builder{}
+
+			var oldRow []Cell
+			d, _ := NewDisplay(false)
+			initialized := false
+
+			rawY := oldE.cf.getPhysicalRow(oldE.posY) // start row, it's physical row
+			frameY := oldE.posY                       // screen row
+
+			// prefix := frame.output()
+
+			d.printFramebufferInfo(oldE, newE)
+			for i := 0; i < newE.cf.marginBottom; i++ {
+
+				oldRow = oldE.cf.getRow(rawY)
+				wrap := false
+				wrap = d.putRow2(initialized, frame, newE, rawY, frameY, oldRow, wrap)
+
+				// util.Log.With("rawY", rawY).With("frameY", frameY).With("wrap", wrap).
+				// 	With("output", strings.TrimPrefix(frame.output(), prefix)).Debug("replicateContent")
+				// prefix = frame.output()
+				rawY += 1
+				if rawY == newE.cf.marginBottom {
+					rawY = newE.cf.marginTop
+				}
+
+				frameY += 1
+			}
+
+			oldE.posX = 0
+			oldE.posY = 0
+			oldE.HandleStream(frame.output())
+			if !oldE.Equal(newE) {
+				oldE.EqualTrace(newE)
+				t.Errorf("#TestPutRow Warning, round-trip Instruction verification failed!")
+			}
+		})
+	}
+}
 func buildSelectionDataSequence(raw string) string {
 	Pd := base64.StdEncoding.EncodeToString([]byte(raw))
 	// s := fmt.Sprintf("\x1B]%d;%s;%s\x1B\\", 52, "pc", Pd)

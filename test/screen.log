@@ -1,0 +1,83 @@
+nvide:0.8.9
+
+Lua, C/C++ and Golang Integrated Development Environment.
+Powered by neovim, luals, gopls and clangd.
+ide@openrc-nvide:~ $ ls
+develop     proj        s.log       s.time      screen.log
+ide@openrc-nvide:~ $ cd develop/aprilsh/
+ide@openrc-nvide:~/develop/aprilsh $ ls
+LICENSE    doc        frontend   go.sum     network    statesync  terminal   util
+README.md  encrypt    go.mod     img        protobufs  status.md  test
+ide@openrc-nvide:~/develop/aprilsh $ ls -al
+total 32
+drwxr-xr-x   20 ide      develop        640 Nov 10 14:59 .
+drwxr-xr-x   19 ide      develop        608 Nov 10 14:58 ..
+-rw-r--r--    1 ide      develop       6148 Oct 13 11:08 .DS_Store
+drwxr-xr-x   15 ide      develop        480 Nov 10 16:43 .git
+-rw-r--r--    1 ide      develop        380 Oct 24 11:46 .gitignore
+-rw-r--r--    1 ide      develop       1068 Sep 21 09:40 LICENSE
+-rw-r--r--    1 ide      develop       3452 Oct 10 11:18 README.md
+drwxr-xr-x    6 ide      develop        192 Oct 25 15:39 doc
+drwxr-xr-x    4 ide      develop        128 Sep 21 09:40 encrypt
+drwxr-xr-x   13 ide      develop        416 Oct 23 13:58 frontend
+-rw-r--r--    1 ide      develop        382 Sep 21 09:40 go.mod
+-rw-r--r--    1 ide      develop       2126 Sep 21 09:40 go.sum
+drwxr-xr-x    3 ide      develop         96 Sep 21 09:40 img
+drwxr-xr-x   17 ide      develop        544 Nov 10 14:02 network
+drwxr-xr-x    9 ide      develop        288 Oct  7 10:06 protobufs
+drwxr-xr-x    7 ide      develop        224 Nov  9 13:22 statesync
+-rw-r--r--    1 ide      develop       2291 Oct 27 11:10 status.md
+drwxr-xr-x   26 ide      develop        832 Nov 10 15:54 terminal
+drwxr-xr-x    5 ide      develop        160 Nov 10 16:43 test
+drwxr-xr-x   22 ide      develop        704 Sep 21 09:40 util
+ide@openrc-nvide:~/develop/aprilsh $ cat test/ptest.txt
+github.com
+H
+g
+
+ChinaNet-A7Cm : q
+Management pas
+
+员工计划
+H
+
+docker.com
+H
+
+icbc app
+h
+
+登记注册身份验证
+h
+
+华为账号
+h
+
+# 恒大集团
+
+er
+h
+
+#office
+https://portal.partner.microsoftonline.cn/Home#
+account:w
+pas
+
+隐藏ssid: PXSemic-V
+加密方式：WPA2-Personal
+密码：
+se
+
+PXSemic-Guest
+PX
+
+专用的windows机器
+ip是192.168.68.100；
+用户名w
+密码：
+
+SH-PXSemic
+wa
+Happy
+ide@openrc-nvide:~/develop/aprilsh $ ls
+README.md  encrypt/develop/aprilshm$        protobufs  status.md  test

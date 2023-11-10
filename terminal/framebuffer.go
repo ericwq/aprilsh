@@ -741,6 +741,7 @@ func printRow(cells []Cell, row int, nCols int) string {
 	var b strings.Builder
 	base := row * nCols
 
+	b.WriteString(fmt.Sprintf("[%3d]", row))
 	for i := 0; i < nCols; i++ {
 		if cells[base+i].dwidthCont {
 			continue

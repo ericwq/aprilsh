@@ -1049,6 +1049,13 @@ func (d *Display) putRow2(initialized bool, frame *FrameState,
 		return false
 	}
 
+	// // shortcut for blank row.
+	// var blankRow []Cell = make([]Cell, newE.nCols)
+	// if initialized && equalRow(newRow, blankRow) {
+	// 	frame.append("\x1B[K\r\n")
+	// 	return false
+	// }
+
 	// this row should be wrapped. TODO: need to consider double width cell
 	wrapThis := newRow[len(newRow)-1].wrap
 	// fmt.Printf("#putRow row=%d, wrapThis=%t\n", frameY, wrapThis)
