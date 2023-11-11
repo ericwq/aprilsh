@@ -638,7 +638,7 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 	// d.printFramebufferInfo(oldE, newE)
 
 	// not alternaet screen buffer
-	if !newE.altScrollMode {
+	if !newE.altScrollMode && newE.cf.scrollHead > 0 {
 		var countRows int // replicate range
 		var oldRow []Cell
 		var newRow []Cell
@@ -824,7 +824,8 @@ func (d *Display) replicateContent0(initialized bool, oldE, newE *Emulator, size
 	for ; frameY < newE.GetHeight(); frameY++ {
 		// oldRow = getRowFrom(resizeScreen, frameY, newE.nCols)
 		oldRow = getRow(oldE, frameY+linesScrolled)
-		wrap = d.putRow(initialized, frame, newE, frameY, oldRow, wrap)
+		newRow := getRow(newE, frameY)
+		wrap = d.putRow2(initialized, frame, newE, newRow, frameY, oldRow, wrap)
 		// fmt.Printf("#NewFrame frameY=%2d, seq=%q\n", frameY, strings.Replace(b.String(), seq, "", 1))
 		// seq = b.String()
 	}
@@ -854,9 +855,9 @@ func (d *Display) replicateContent0(initialized bool, oldE, newE *Emulator, size
 //
 // clear or write empty cells at EOL if possible. whether we should wrap
 func (d *Display) putRow(initialized bool, frame *FrameState,
-	newE *Emulator, frameY int, oldRow []Cell, wrap bool) bool {
+	newE *Emulator, newRow []Cell, frameY int, oldRow []Cell, wrap bool) bool {
 	frameX := 0
-	newRow := getRow(newE, frameY)
+	// newRow := getRow(newE, frameY)
 
 	// If we're forced to write the first column because of wrap, go ahead and do so.
 	if wrap {
