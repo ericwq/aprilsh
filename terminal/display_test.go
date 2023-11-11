@@ -1149,13 +1149,16 @@ func TestPutRow(t *testing.T) {
 
 	tc := []struct {
 		label  string
-		row    int
+		row    int // last position
+		col    int
 		expect string
 	}{
-		{"blank old row", 1, "\x1b[?25l\ntotal 972\x1b[K"},
-		{"blank new row", 4, "\x1b[?25l\n\x1b[K"},
-		{"old row is longer than new one", 8, "\x1b[?25l\n-rwx------   demo.key\x1b[K"},
-		{"new row is longer than old one", 9,
+		{"blank old row zero start", 1, 0, "\x1b[?25l\ntotal 972\x1b[K"},
+		{"blank old row", 1, 5, "\x1b[?25l\r\ntotal 972\x1b[K"},
+		{"blank new row zero start", 4, 0, "\x1b[?25l\n\x1b[K"},
+		{"blank new row", 4, 4, "\x1b[?25l\r\n\x1b[K"},
+		{"old row is longer than new one", 8, 0, "\x1b[?25l\n-rwx------   demo.key\x1b[K"},
+		{"new row is longer than old one", 9, 0,
 			"\x1b[?25l\n-rw-r--r--    1 ide\x1b[6X\x1b[6Cdevelop\x1b[8X\x1b[8Cgo.work\x1b[K"},
 	}
 
@@ -1180,26 +1183,36 @@ func TestPutRow(t *testing.T) {
 			// d.printFramebufferInfo(oldE, newE)
 
 			frame := new(FrameState)
-			frame.cursorX = 0
-			frame.cursorY = v.row - 1
+			frame.cursorX = v.col     // last position
+			frame.cursorY = v.row - 1 // last position
 			frame.currentRendition = Renditions{}
 			frame.showCursorMode = oldE.showCursorMode
 			frame.lastFrame = oldE
 			frame.out = &strings.Builder{}
 
 			var oldRow []Cell
+			var newRow []Cell
 
 			rawY := v.row
 			frameY := v.row
 
+			// print info
+			util.Log.With("Before: ", fmt.Sprintf("fs.cursor=(%2d,%2d)", frame.cursorY, frame.cursorX)).Debug("TestPutRow")
 			util.Log.With("OldRow", printRow(oldE.cf.cells, rawY, oldE.nCols)).Debug("TestPutRow")
+			util.Log.With("NewRow", printRow(newE.cf.cells, rawY, newE.nCols)).Debug("TestPutRow")
 
 			oldRow = oldE.cf.getRow(rawY)
+			newRow = newE.cf.getRow(rawY)
 			wrap := false
 
-			util.Log.With("NewRow", printRow(newE.cf.cells, rawY, newE.nCols)).Debug("TestPutRow")
-			wrap = d.putRow2(false, frame, newE, rawY, frameY, oldRow, wrap)
+			// run it
+			wrap = d.putRow2(false, frame, newE, newRow, frameY, oldRow, wrap)
+
+			// print info
+			util.Log.With("After:  ", fmt.Sprintf("fs.cursor=(%2d,%2d)", frame.cursorY, frame.cursorX)).Debug("TestPutRow")
 			util.Log.With("frameY", frameY).With("out", frame.output()).Debug("TestPutRow")
+
+			// validate result
 			if frame.output() != v.expect {
 				t.Errorf("#TestPutRow %q expect %q got %q\n", v.label, v.expect, frame.output())
 			}

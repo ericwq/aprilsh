@@ -637,10 +637,11 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 
 	// d.printFramebufferInfo(oldE, newE)
 
-	// case: add content more than one screen
-	if newE.cf.historyRows > 0 {
+	// not alternaet screen buffer
+	if !newE.altScrollMode {
 		var countRows int // replicate range
 		var oldRow []Cell
+		var newRow []Cell
 
 		rawY := oldE.cf.getPhysicalRow(oldE.posY) // start row, it's physical row
 		frameY := oldE.posY                       // screen row
@@ -649,14 +650,16 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 
 		wrap := false
 		// prefix := frame.output()
-		util.Log.With("rawY", rawY).With("frameY", frameY).With("countRows", countRows).Debug("replicateContent")
+		// util.Log.With("rawY", rawY).With("frameY", frameY).With("countRows", countRows).Debug("replicateContent")
 		for i := 0; i < countRows; i++ {
 			oldRow = oldE.cf.getRow(rawY)
-			wrap = d.putRow2(initialized, frame, newE, rawY, frameY, oldRow, wrap)
+			newRow = newE.cf.getRow(rawY)
+			wrap = d.putRow2(initialized, frame, newE, newRow, frameY, oldRow, wrap)
 
-			// util.Log.With("rawY", rawY).With("frameY", frameY).With("wrap", wrap).
-			// 	With("output", strings.TrimPrefix(frame.output(), prefix)).Debug("replicateContent")
+			// util.Log.With("output", strings.TrimPrefix(frame.output(), prefix)).Debug("replicateContent")
 			// prefix = frame.output()
+			util.Log.Debug(fmt.Sprintf("replicateContent rawY=%2d, frameY=%2d, countRows=%2d, fs.cursor=(%2d,%2d)",
+				rawY, frameY, i, frame.cursorY, frame.cursorX))
 
 			// wrap around the end of the scrolling area
 			rawY += 1
@@ -668,6 +671,7 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 			frameY += 1
 			// if frameY >= newE.GetHeight() {
 			// 	frameY = newE.GetHeight()
+			// 	frame.cursorY = frameY - 1
 			// }
 		}
 	} else {
@@ -1026,9 +1030,9 @@ func (d *Display) putRow(initialized bool, frame *FrameState,
 }
 
 func (d *Display) putRow2(initialized bool, frame *FrameState,
-	newE *Emulator, rawY int, frameY int, oldRow []Cell, wrap bool) bool {
+	newE *Emulator, newRow []Cell, frameY int, oldRow []Cell, wrap bool) bool {
 	frameX := 0
-	newRow := newE.cf.getRow(rawY)
+	// newRow := newE.cf.getRow(rawY)
 
 	// If we're forced to write the first column because of wrap, go ahead and do so.
 	if wrap {
@@ -1052,7 +1056,7 @@ func (d *Display) putRow2(initialized bool, frame *FrameState,
 	// // shortcut for blank row.
 	// var blankRow []Cell = make([]Cell, newE.nCols)
 	// if initialized && equalRow(newRow, blankRow) {
-	// 	frame.append("\x1B[K\r\n")
+	// 	util.Log.Debug("putRow2 blank row")
 	// 	return false
 	// }
 
@@ -1121,10 +1125,10 @@ func (d *Display) putRow2(initialized bool, frame *FrameState,
 				frame.cursorX = frameX
 			}
 
-			pcell := newRow[frameX-clearCount]
-			util.Log.With("fs.cursor", fmt.Sprintf("(%2d,%2d)", frame.cursorY, frame.cursorX)).
-				With("cell", 0x20).With("rend", pcell.renditions.SGR()).With("out", frame.output()).
-				With("length", clearCount).Debug(fmt.Sprintf("putRow2 (%2d,%2d)", frameY, frameX-clearCount))
+			// pcell := newRow[frameX-clearCount]
+			// util.Log.With("fs.cursor", fmt.Sprintf("(%2d,%2d)", frame.cursorY, frame.cursorX)).
+			// 	With("cell", 0x20).With("rend", pcell.renditions.SGR()).With("out", frame.output()).
+			// 	With("length", clearCount).Debug(fmt.Sprintf("putRow2 (%2d,%2d)", frameY, frameX-clearCount))
 
 			// If the current character is *another* empty cell in a different rendition,
 			// we restart counting and continue here
@@ -1158,9 +1162,9 @@ func (d *Display) putRow2(initialized bool, frame *FrameState,
 		frame.updateRendition(cell.GetRenditions(), false)
 		frame.appendCell(cell)
 
-		util.Log.With("fs.cursor", fmt.Sprintf("(%2d,%2d)", frame.cursorY, frame.cursorX)).
-			With("cell", cell.contents).With("rend", cell.renditions.SGR()).With("out", frame.output()).
-			Debug(fmt.Sprintf("putRow2 (%2d,%2d)", frameY, frameX))
+		// util.Log.With("fs.cursor", fmt.Sprintf("(%2d,%2d)", frame.cursorY, frame.cursorX)).
+		// 	With("cell", cell.contents).With("rend", cell.renditions.SGR()).With("out", frame.output()).
+		// 	Debug(fmt.Sprintf("putRow2 (%2d,%2d)", frameY, frameX))
 
 		frameX += cellWidth
 		frame.cursorX += cellWidth
@@ -1185,10 +1189,10 @@ func (d *Display) putRow2(initialized bool, frame *FrameState,
 			wroteLastCell = true
 		}
 
-		pcell := newRow[frameX-clearCount]
-		util.Log.With("fs.cursor", fmt.Sprintf("(%2d,%2d)", frame.cursorY, frame.cursorX)).
-			With("cell", 0x20).With("rend", pcell.renditions.SGR()).With("out", frame.output()).
-			With("length", clearCount).Debug(fmt.Sprintf("putRow2 (%2d,%2d)", frameY, frameX-clearCount))
+		// pcell := newRow[frameX-clearCount]
+		// util.Log.With("fs.cursor", fmt.Sprintf("(%2d,%2d)", frame.cursorY, frame.cursorX)).
+		// 	With("cell", 0x20).With("rend", pcell.renditions.SGR()).With("out", frame.output()).
+		// 	With("length", clearCount).Debug(fmt.Sprintf("putRow2 (%2d,%2d)", frameY, frameX-clearCount))
 	}
 
 	// util.Log.With("wroteLastCell", wroteLastCell).With("frameY", frameY).Debug("putRow2")
@@ -1321,7 +1325,7 @@ func (fs *FrameState) appendMove(y int, x int) {
 	fs.cursorX = x
 	fs.cursorY = y
 
-	util.Log.With("lastY", lastY).With("y", y).Debug("appendMove")
+	// util.Log.With("lastY", lastY).With("y", y).Debug("appendMove")
 
 	// Only optimize if cursor position is known
 	if lastX != -1 && lastY != -1 {

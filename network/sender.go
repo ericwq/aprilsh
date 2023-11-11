@@ -14,6 +14,7 @@ import (
 	pb "github.com/ericwq/aprilsh/protobufs"
 	"github.com/ericwq/aprilsh/terminal"
 	"github.com/ericwq/aprilsh/util"
+	"golang.org/x/exp/slog"
 	// "github.com/ericwq/aprilsh/util"
 )
 
@@ -377,6 +378,7 @@ func (ts *TransportSender[T]) tick() error {
 	// Determine if a new diff or empty ack needs to be sent
 	diff := ts.currentState.DiffFrom(ts.assumedReceiverState.state)
 	// util.Log.With("point", 210).Debug("tick")
+	util.Log.SetLevel(slog.LevelInfo)
 	diff = ts.attemptProspectiveResendOptimization(diff)
 	// util.Log.With("diff", diff).With("length", len(diff)).Debug("send message")
 
@@ -404,6 +406,7 @@ func (ts *TransportSender[T]) tick() error {
 		}
 		// util.Log.With("point", 700).Debug("tick")
 	}
+	util.Log.SetLevel(slog.LevelDebug)
 
 	// fmt.Printf("#tick send %q to receiver %s.\n", diff, ts.connection.getRemoteAddr())
 
