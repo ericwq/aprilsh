@@ -16,7 +16,6 @@ import (
 
 	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/util"
-	"golang.org/x/exp/slog"
 )
 
 func TestDisplay(t *testing.T) {
@@ -108,7 +107,7 @@ func TestNewFrame_PutRow(t *testing.T) {
 		{
 			"new screen with big space gap", ' ', ' ',
 			"\x1B[5;1H1st space\x1B[0K\x1b[5;21H2nd!   \x1B[1;37;40m   3rd\x1b[5;79HEOL  \x1b[0m", true,
-			"\x1b[?25l\n\n\n\n1st\x1b[1Cspace\x1b[5;21H2nd!\x1b[3C\x1b[0;1;37;40m   3rd\x1b[0m\x1b[5;79H\x1b[0;1;37;40mE\x1b[5;80HOL  \x1b[0m\x1b[K\x1b[?25h", 4,
+			"\x1b[?25l\n\n\n\n1st\x1b[1Cspace\x1b[11C2nd!\x1b[3C\x1b[0;1;37;40m   3rd\x1b[0m\x1b[45C\x1b[0;1;37;40mE\x1b[5;80HOL  \x1b[0m\x1b[K\x1b[?25h", 4,
 			"[  4] 1st.space...........2nd!......3rd.............................................EO",
 		},
 		{
@@ -118,12 +117,12 @@ func TestNewFrame_PutRow(t *testing.T) {
 		},
 		{
 			"last chinese cell", ' ', ' ', "\x1B[7;7H左边\x1B[7;77H中文", true,
-			"\x1b[?25l\x1b[7;7H左边\x1b[7;77H中文\r\n\x1b[7;80H\x1b[?25h", 6,
+			"\x1b[?25l\x1b[7;7H左边\x1b[66C中文\r\n\x1b[7;80H\x1b[?25h", 6,
 			"[  6] ......左边..................................................................中文",
 		},
 		{
 			"last chinese cell early wrap", ' ', ' ', "\x1B[8;7H提早\x1B[8;78H换行", true,
-			"\x1b[?25l\x1b[8;7H提早\x1b[8;78H换\r\n行\x1b[?25h", 7,
+			"\x1b[?25l\x1b[8;7H提早\x1b[67C换\r\n行\x1b[?25h", 7,
 			"[  7] ......提早...................................................................换.",
 		},
 		{
@@ -133,7 +132,7 @@ func TestNewFrame_PutRow(t *testing.T) {
 		},
 		{
 			"mix color case", ' ', ' ', "\x1b[10;1H\x1b[1;34mdevelop\x1b[m  \x1b[1;34mproj     \x1b[m", true,
-			"\x1b[?25l\x1b[10;1H\x1b[0;1;34mdevelop\x1b[0m\x1b[2C\x1b[0;1;34mproj\x1b[5X\x1b[10;19H\x1b[0m\x1b[K\x1b[?25h", 9,
+			"\x1b[?25l\x1b[10;1H\x1b[0;1;34mdevelop\x1b[0m\x1b[2C\x1b[0;1;34mproj\x1b[5X\x1b[5C\x1b[0m\x1b[K\x1b[?25h", 9,
 			"[  9] develop..proj...................................................................",
 		},
 		{
@@ -1028,7 +1027,7 @@ func TestNewFrame_TabStops(t *testing.T) {
 			"new has 3 tab stops",
 			"\x1B[1;7H\x1BH\x1B[1;17H\x1BH\x1B[1;27H\x1BH\x1B[8;8H",
 			"\x1B[8;8H",
-			"\x1b[1;7H\x1bH\x1b[1;17H\x1bH\x1b[1;27H\x1bH\x1b[8;8H",
+			"\x1b[1;7H\x1bH\x1b[10C\x1bH\x1b[10C\x1bH\x1b[8;8H",
 		},
 		{
 			"old has 3 tab stops",
@@ -1120,47 +1119,50 @@ func TestNewFrame_SelectionData(t *testing.T) {
 }
 
 func TestPutRow(t *testing.T) {
+	preSeq := []string{
+		"nvide:0.8.9\r\n",
+		"\r\n",
+		"Lua, C/C++ and Golang Integrated Development Environment.\r\n",
+		"\r\n",
+		"Powered by neovim, luals, gopls and clangd.\r\n",
+		"\r\n",
+		"\r\n",
+		"ide@openrc-nvide:~ $ ls\r\n",
+		"develop  proj     s.log    s.time\r\n",
+		"ide@openrc-nvide:~ $ cd develop/\r\n",
+		"ide@openrc-nvide:~/develop $ ls -al\r\n",
+		"done\r\n"}
+	postSeq := []string{
+		"ide@openrc-nvide:~/develop $ ls -al\r\n",
+		"total 972\r\n",
+		"drwxr-xr-x   19 ide      develop\r\n",
+		"drwxr-sr-x    1 ide      develop       4096 Oct 30 13:06 ..\r\n",
+		"\r\n",
+		"drwxr-xr-x    9 ide      develop        288 Jul 21 09:29 NvChad\r\n",
+		"drwxr-xr-x   19 ide      develop        608 Oct 27 13:46 aprilsh\r\n",
+		"drwxr-xr-x   18 ide      develop        576 Jan 27  2022 dotfiles\r\n",
+		"-rwx------   demo.key\r\n",
+		"-rw-r--r--    1 ide      develop        go.work\r\n",
+		"-rw-r--r--    1 ide      develop        141 Sep 27 17:05 git.md\r\n",
+		"\r\n",
+	}
+
 	tc := []struct {
-		label   string
-		preSeq  []string
-		postSeq []string
+		label  string
+		row    int
+		expect string
 	}{
-		{"",
-			[]string{
-				"nvide:0.8.9\r\n",
-				"\r\n",
-				"Lua, C/C++ and Golang Integrated Development Environment.\r\n",
-				"\r\n",
-				"Powered by neovim, luals, gopls and clangd.\r\n",
-				"\r\n",
-				"\r\n",
-				"ide@openrc-nvide:~ $ ls\r\n",
-				"develop  proj     s.log    s.time\r\n",
-				"ide@openrc-nvide:~ $ cd develop/\r\n",
-				"ide@openrc-nvide:~/develop $ ls -al\r\n",
-				"done\r\n",
-			},
-			[]string{
-				"ide@openrc-nvide:~/develop $ ls -al\r\n",
-				"total 972\r\n",
-				"drwxr-xr-x   19 ide      develop        608 Oct 30 16:13 .\r\n",
-				"drwxr-sr-x    1 ide      develop       4096 Oct 30 13:06 ..\r\n",
-				"-rw-r--r--    1 ide      develop       8196 Nov  3 09:25 .DS_Store\r\n",
-				"drwxr-xr-x    9 ide      develop        288 Jul 21 09:29 NvChad\r\n",
-				"drwxr-xr-x   19 ide      develop        608 Oct 27 13:46 aprilsh\r\n",
-				"-rwx------    1 ide      develop     546473 Oct 30 15:12 demo.key\r\n",
-				"drwxr-xr-x   18 ide      develop        576 Jan 27  2022 dotfiles\r\n",
-				"-rw-r--r--    1 ide      develop        141 Sep 27 17:05 git.md\r\n",
-				"-rw-r--r--    1 ide      develop         40 Oct 12  2022 go.work\r\n",
-				"done\r\n",
-			},
-		},
+		{"blank old row", 1, "\x1b[?25l\ntotal 972\x1b[K"},
+		{"blank new row", 4, "\x1b[?25l\n\x1b[K"},
+		{"old row is longer than new one", 8, "\x1b[?25l\n-rwx------   demo.key\x1b[K"},
+		{"new row is longer than old one", 9,
+			"\x1b[?25l\n-rw-r--r--    1 ide\x1b[6X\x1b[6Cdevelop\x1b[8X\x1b[8Cgo.work\x1b[K"},
 	}
 
 	defer util.Log.Restore()
-	// util.Log.SetOutput(io.Discard)
-	util.Log.SetLevel(slog.LevelDebug)
-	util.Log.SetOutput(os.Stderr)
+	util.Log.SetOutput(io.Discard)
+	// util.Log.SetLevel(slog.LevelDebug)
+	// util.Log.SetOutput(os.Stderr)
 
 	oldE := NewEmulator3(80, 8, 4)
 	newE := NewEmulator3(80, 8, 4)
@@ -1168,54 +1170,38 @@ func TestPutRow(t *testing.T) {
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			// init the screen content
-			for _, seq := range v.preSeq {
+			for _, seq := range preSeq {
 				oldE.HandleStream(seq)
 			}
-			for _, seq := range v.postSeq {
+			for _, seq := range postSeq {
 				newE.HandleStream(seq)
 			}
+			d, _ := NewDisplay(false)
+			// d.printFramebufferInfo(oldE, newE)
 
 			frame := new(FrameState)
 			frame.cursorX = 0
-			frame.cursorY = 0
+			frame.cursorY = v.row - 1
 			frame.currentRendition = Renditions{}
 			frame.showCursorMode = oldE.showCursorMode
 			frame.lastFrame = oldE
 			frame.out = &strings.Builder{}
 
 			var oldRow []Cell
-			d, _ := NewDisplay(false)
-			initialized := false
 
-			rawY := oldE.cf.getPhysicalRow(oldE.posY) // start row, it's physical row
-			frameY := oldE.posY                       // screen row
+			rawY := v.row
+			frameY := v.row
 
-			// prefix := frame.output()
+			util.Log.With("OldRow", printRow(oldE.cf.cells, rawY, oldE.nCols)).Debug("TestPutRow")
 
-			d.printFramebufferInfo(oldE, newE)
-			for i := 0; i < newE.cf.marginBottom; i++ {
+			oldRow = oldE.cf.getRow(rawY)
+			wrap := false
 
-				oldRow = oldE.cf.getRow(rawY)
-				wrap := false
-				wrap = d.putRow2(initialized, frame, newE, rawY, frameY, oldRow, wrap)
-
-				// util.Log.With("rawY", rawY).With("frameY", frameY).With("wrap", wrap).
-				// 	With("output", strings.TrimPrefix(frame.output(), prefix)).Debug("replicateContent")
-				// prefix = frame.output()
-				rawY += 1
-				if rawY == newE.cf.marginBottom {
-					rawY = newE.cf.marginTop
-				}
-
-				frameY += 1
-			}
-
-			oldE.posX = 0
-			oldE.posY = 0
-			oldE.HandleStream(frame.output())
-			if !oldE.Equal(newE) {
-				oldE.EqualTrace(newE)
-				t.Errorf("#TestPutRow Warning, round-trip Instruction verification failed!")
+			util.Log.With("NewRow", printRow(newE.cf.cells, rawY, newE.nCols)).Debug("TestPutRow")
+			wrap = d.putRow2(false, frame, newE, rawY, frameY, oldRow, wrap)
+			util.Log.With("frameY", frameY).With("out", frame.output()).Debug("TestPutRow")
+			if frame.output() != v.expect {
+				t.Errorf("#TestPutRow %q expect %q got %q\n", v.label, v.expect, frame.output())
 			}
 		})
 	}

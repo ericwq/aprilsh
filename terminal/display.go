@@ -1111,10 +1111,6 @@ func (d *Display) putRow2(initialized bool, frame *FrameState,
 			frame.appendSilentMove(frameY, frameX-clearCount)
 			frame.updateRendition(blankRenditions, false)
 
-			// pcell := newRow[frameX-clearCount]
-			// fmt.Printf("#putRow (%2d,%2d) is empty, length=%d, cell=%q, rend=%q - write empty\n",
-			// 	frameY, frameX-clearCount, clearCount, pcell.contents, pcell.renditions.SGR())
-
 			canUseErase := d.hasBCE || frame.currentRendition == Renditions{}
 			if canUseErase && d.hasECH && clearCount > 4 {
 				// space is more efficient than ECH, if clearCount > 4
@@ -1124,6 +1120,11 @@ func (d *Display) putRow2(initialized bool, frame *FrameState,
 				frame.append(strings.Repeat(" ", clearCount))
 				frame.cursorX = frameX
 			}
+
+			pcell := newRow[frameX-clearCount]
+			util.Log.With("fs.cursor", fmt.Sprintf("(%2d,%2d)", frame.cursorY, frame.cursorX)).
+				With("cell", 0x20).With("rend", pcell.renditions.SGR()).With("out", frame.output()).
+				With("length", clearCount).Debug(fmt.Sprintf("putRow2 (%2d,%2d)", frameY, frameX-clearCount))
 
 			// If the current character is *another* empty cell in a different rendition,
 			// we restart counting and continue here
@@ -1153,12 +1154,14 @@ func (d *Display) putRow2(initialized bool, frame *FrameState,
 			frame.cursorY = -1
 		}
 
-		// fmt.Printf("#putRow (%2d,%2d) is diff-: contents=%q, renditions=%q - write cell\n",
-		// 	frameY, frameX, cell.contents, cell.renditions.SGR())
-
 		frame.appendSilentMove(frameY, frameX)
 		frame.updateRendition(cell.GetRenditions(), false)
 		frame.appendCell(cell)
+
+		util.Log.With("fs.cursor", fmt.Sprintf("(%2d,%2d)", frame.cursorY, frame.cursorX)).
+			With("cell", cell.contents).With("rend", cell.renditions.SGR()).With("out", frame.output()).
+			Debug(fmt.Sprintf("putRow2 (%2d,%2d)", frameY, frameX))
+
 		frameX += cellWidth
 		frame.cursorX += cellWidth
 		if frameX >= rowWidth {
@@ -1173,10 +1176,6 @@ func (d *Display) putRow2(initialized bool, frame *FrameState,
 		frame.appendSilentMove(frameY, frameX-clearCount)
 		frame.updateRendition(blankRenditions, false)
 
-		// pcell := newRow[frameX-clearCount]
-		// fmt.Printf("#putRow (%2d,%2d) is empty, length=%d, cell=%q, rend=%q - write empty at EOL\n",
-		// 	frameY, frameX-clearCount, clearCount, pcell.contents, pcell.renditions.SGR())
-
 		canUseErase := d.hasBCE || frame.currentRendition == Renditions{}
 		if canUseErase && !wrapThis {
 			frame.append("\x1B[K") // ti.el,  Erase in Line (EL), Erase to Right (default)
@@ -1185,6 +1184,11 @@ func (d *Display) putRow2(initialized bool, frame *FrameState,
 			frame.cursorX = frameX
 			wroteLastCell = true
 		}
+
+		pcell := newRow[frameX-clearCount]
+		util.Log.With("fs.cursor", fmt.Sprintf("(%2d,%2d)", frame.cursorY, frame.cursorX)).
+			With("cell", 0x20).With("rend", pcell.renditions.SGR()).With("out", frame.output()).
+			With("length", clearCount).Debug(fmt.Sprintf("putRow2 (%2d,%2d)", frameY, frameX-clearCount))
 	}
 
 	// util.Log.With("wroteLastCell", wroteLastCell).With("frameY", frameY).Debug("putRow2")
@@ -1317,7 +1321,7 @@ func (fs *FrameState) appendMove(y int, x int) {
 	fs.cursorX = x
 	fs.cursorY = y
 
-	// util.Log.With("cursorY", fs.cursorY).With("y", y).Debug("appendMove")
+	util.Log.With("lastY", lastY).With("y", y).Debug("appendMove")
 
 	// Only optimize if cursor position is known
 	if lastX != -1 && lastY != -1 {
@@ -1336,7 +1340,8 @@ func (fs *FrameState) appendMove(y int, x int) {
 			return
 		}
 		// CUF is shorter than CUP
-		if y == lastY && x-lastX > 0 && x-lastX < 5 {
+		// if y == lastY && x-lastX > 0 && x-lastX < 5 {
+		if y == lastY {
 			fs.append("\x1B[%dC", x-lastX) // CUF
 			// fs.append(strings.Repeat(" ", x-lastX)) // use ' ' to replace CUF
 			return
