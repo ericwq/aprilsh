@@ -636,6 +636,11 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 	asbChanged bool, frame *FrameState) {
 
 	// d.printFramebufferInfo(oldE, newE)
+	mark := "#start"
+
+	prefix := frame.output()
+	util.Log.With("mark", mark).With("fs.cursor", fmt.Sprintf("(%02d,%02d)", frame.cursorY, frame.cursorX)).
+		With("out", prefix).Debug("replicateContent")
 
 	// not alternaet screen buffer
 	if !newE.altScrollMode && newE.cf.scrollHead > 0 {
@@ -649,17 +654,17 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 		countRows = countRow(oldE, newE)
 
 		wrap := false
-		// prefix := frame.output()
-		// util.Log.With("rawY", rawY).With("frameY", frameY).With("countRows", countRows).Debug("replicateContent")
+		pre := frame.output()
 		for i := 0; i < countRows; i++ {
 			oldRow = oldE.cf.getRow(rawY)
 			newRow = newE.cf.getRow(rawY)
 			wrap = d.putRow2(initialized, frame, newE, newRow, frameY, oldRow, wrap)
 
-			// util.Log.With("output", strings.TrimPrefix(frame.output(), prefix)).Debug("replicateContent")
-			// prefix = frame.output()
-			util.Log.Debug(fmt.Sprintf("replicateContent rawY=%2d, frameY=%2d, countRows=%2d, fs.cursor=(%2d,%2d)",
-				rawY, frameY, i, frame.cursorY, frame.cursorX))
+			util.Log.With("fs.cursor", fmt.Sprintf("(%02d,%02d)", frame.cursorY, frame.cursorX)).
+				With("rawY", rawY).With("frameY", frameY).With("count", i).
+				With("output", strings.TrimPrefix(frame.output(), pre)).
+				Debug("replicateContent")
+			pre = frame.output()
 
 			// wrap around the end of the scrolling area
 			rawY += 1
@@ -674,9 +679,14 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 			// 	frame.cursorY = frameY - 1
 			// }
 		}
+		mark = "stream"
 	} else {
+		mark = "screen"
 		d.replicateContent0(initialized, oldE, newE, sizeChanged, asbChanged, frame)
 	}
+
+	util.Log.With("mark", mark).With("fs.cursor", fmt.Sprintf("(%02d,%02d)", frame.cursorY, frame.cursorX)).
+		With("out", strings.TrimPrefix(frame.output(), prefix)).Debug("replicateContent")
 }
 
 func (d *Display) replicateContent0(initialized bool, oldE, newE *Emulator, sizeChanged bool,
@@ -832,28 +842,6 @@ func (d *Display) replicateContent0(initialized bool, oldE, newE *Emulator, size
 
 }
 
-// compare new row with old row to generate the mix stream to rebuild the new row
-// from the old one.
-//
-// if the previous row is wrapped, write the first column.
-//
-// if the two rows are the same (both cell and renditions), just return (false)
-//
-// for each cell:
-//
-// - if the cells are the same, skip it. change renditions if possible.
-//
-// - if the cells are empty, counting it.
-//
-// - output the empty cells with counting number.
-//
-// - re-count empty cell with different rendition.
-//
-// - output the empty cells by count number.
-//
-// - if the cells are not empty cell, output it.
-//
-// clear or write empty cells at EOL if possible. whether we should wrap
 func (d *Display) putRow(initialized bool, frame *FrameState,
 	newE *Emulator, newRow []Cell, frameY int, oldRow []Cell, wrap bool) bool {
 	frameX := 0
@@ -1030,6 +1018,28 @@ func (d *Display) putRow(initialized bool, frame *FrameState,
 	return false
 }
 
+// compare new row with old row to generate the mix stream to rebuild the new row
+// from the old one.
+//
+// if the previous row is wrapped, write the first column.
+//
+// if the two rows are the same (both cell and renditions), just return (false)
+//
+// for each cell:
+//
+// - if the cells are the same, skip it. change renditions if possible.
+//
+// - if the cells are empty, counting it.
+//
+// - output the empty cells with counting number.
+//
+// - re-count empty cell with different rendition.
+//
+// - output the empty cells by count number.
+//
+// - if the cells are not empty cell, output it.
+//
+// clear or write empty cells at EOL if possible. whether we should wrap
 func (d *Display) putRow2(initialized bool, frame *FrameState,
 	newE *Emulator, newRow []Cell, frameY int, oldRow []Cell, wrap bool) bool {
 	frameX := 0

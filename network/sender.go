@@ -288,9 +288,9 @@ func (ts *TransportSender[T]) calculateTimers() {
 
 	if ts.pendingDataAck && ts.nextAckTime > now+ACK_DELAY {
 		ts.nextAckTime = now + ACK_DELAY // got data from remote, send ack message later
-		util.Log.With("status", "pendingDataAck").
-			With("nextAckTime", ts.nextAckTime).
-			Debug("calculateTimers")
+		// util.Log.With("status", "pendingDataAck").
+		// 	With("nextAckTime", ts.nextAckTime).
+		// 	Debug("calculateTimers")
 	}
 
 	if !ts.currentState.Equal(ts.sentStates[back].state) {
