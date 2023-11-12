@@ -1,0 +1,11 @@
+nvide:0.8.9
+
+Lua, C/C++ and Golang Integrated Development Environment.
+Powered by neovim, luals, gopls and clangd.
+ide@openrc-nvide:~ $ ls
+ide@openrc-nvide:~ $ cd develop/aprilsh/test/
+ide@openrc-nvide:~/develop/aprilsh/test $ ls
+ide@openrc-nvide:~/develop/aprilsh/test $ cd ..
+ide@openrc-nvide:~/develop/aprilsh $ ls
+ide@openrc-nvide:~/develop/aprilsh $ ls -al
+ide@openrc-nvide:~/develop/aprilsh $ cat test/regret_poem.txt
