@@ -80,7 +80,7 @@ func countRow(oldE, newE *Emulator) int {
 		return newE.posY + 1
 	}
 	// new screen head  is smaller than old screen head (rewind)
-	return newE.cf.marginBottom - oldE.cf.scrollHead + newE.cf.scrollHead + newE.posY + 1 - oldE.posY
+	return oldE.cf.marginBottom - oldE.cf.scrollHead + newE.cf.scrollHead + newE.posY + 1 - oldE.posY
 }
 
 /*
