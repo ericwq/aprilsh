@@ -256,7 +256,7 @@ func TestCopyRow(t *testing.T) {
 	fb.copyRow(0, 0, 0, 0)
 }
 
-func TestGetPhysicalRow_NoMargin(t *testing.T) {
+func TestPhysicalRow_NoMargin(t *testing.T) {
 	fb, _, _ := NewFramebuffer3(80, 40, 40)
 
 	// move scrollHead to specified row
@@ -285,7 +285,7 @@ func TestGetPhysicalRow_NoMargin(t *testing.T) {
 	}
 }
 
-func TestGetPhysicalRow_Margin(t *testing.T) {
+func TestPhysicalRow_Margin(t *testing.T) {
 	fb, _, _ := NewFramebuffer3(80, 40, 10)
 
 	// set margin top/bottom
@@ -666,4 +666,50 @@ func extractFrom(cells []Cell) string {
 	}
 
 	return b.String()
+}
+
+func TestGetPhysicalRow(t *testing.T) {
+	tc := []struct {
+		label      string
+		screenRow  int // screen row
+		scrollHead int
+		expect     int // physical row
+	}{
+		{"0 scrollHead, row    1", 1, 0, 1},
+		{"0 scrollHead, row   42", 42, 0, 42},
+		{"0 scrollHead, row   81", 81, 0, 81},
+		{"0 scrollHead, row  120", 120, 0, 0},
+		{"0 scrollHead, row  142", 142, 0, 22}, // if the row number is over the max, it's ring buffer
+		{"0 scrollHead, row  -10", -10, 0, 110},
+		{"0 scrollHead, row  -50", -50, 0, 70},
+		{"0 scrollHead, row -120", -120, 0, 0},
+		{"0 scrollHead, row -142", -142, 0, -22}, // if the row number is reverse over the max, it's wrong
+		{"50 scrollHead,  row 12", 12, 50, 62},
+		{"50 scrollHead,  row 90", 90, 50, 20},
+		{"50 scrollHead  row 120", 120, 50, 50},
+		{"50 scrollHead  row 130", 130, 50, 60},
+		{"100 scrollHead, row 30", 30, 100, 10},
+	}
+
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
+	// util.Log.SetLevel(slog.LevelDebug)
+	// util.Log.SetOutput(os.Stderr)
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+
+			// prepare for test
+			fb, _, _ := NewFramebuffer3(80, 40, 80)
+			fb.scrollHead = v.scrollHead
+
+			// test it
+			got := fb.getPhysicalRow(v.screenRow)
+
+			// validate
+			if got != v.expect {
+				t.Errorf("#TestGetPhysicalRow %q expect %d, got %d\n", v.label, v.expect, got)
+			}
+		})
+	}
 }
