@@ -73,11 +73,14 @@ func equalSlice[T constraints.Ordered](a, b []T) bool {
 
 func countRow(oldE, newE *Emulator) int {
 	if newE.cf.scrollHead > oldE.cf.scrollHead {
-		return newE.nRows + (newE.cf.scrollHead - oldE.cf.scrollHead)
+		// new screen head is greater than old screen head
+		return oldE.nRows - oldE.posY + (newE.cf.scrollHead - oldE.cf.scrollHead)
 	} else if newE.cf.scrollHead == oldE.cf.scrollHead {
-		return newE.nRows
+		// new screen head is same as old screen head
+		return newE.posY + 1
 	}
-	return newE.nRows + (newE.cf.marginBottom - oldE.cf.scrollHead) + newE.cf.scrollHead
+	// new screen head  is smaller than old screen head (rewind)
+	return newE.cf.marginBottom - oldE.cf.scrollHead + newE.cf.scrollHead + newE.posY + 1 - oldE.posY
 }
 
 /*
@@ -652,6 +655,9 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 		frameY := oldE.posY                       // screen row
 		// countRows = newE.nRows + (newE.cf.historyRows - oldE.cf.historyRows)
 		countRows = countRow(oldE, newE)
+		util.Log.With("oldHead", oldE.cf.scrollHead).With("newHead", newE.cf.scrollHead).
+			With("oldY", oldE.posY).With("newY", newE.posY).
+			With("countRows", countRows).Debug("replicateContent")
 
 		wrap := false
 		pre := frame.output()
