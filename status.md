@@ -44,3 +44,4 @@
 - 2023/Oct/22: pass client Term to server.
 - 2023/Oct/23: fix uncompress buffer overflow bug.
 - 2023/Oct/27: fix window title bug.
+- 2023/Nov/13: fix stream output mode display bug. #1
