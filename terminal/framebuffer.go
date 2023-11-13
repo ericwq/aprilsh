@@ -738,15 +738,20 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 }
 
 func printRow(cells []Cell, row int, nCols int) string {
-	var b strings.Builder
 	base := row * nCols
+	return outputRow(cells[base:base+nCols], row, nCols)
+}
 
-	b.WriteString(fmt.Sprintf("[%3d]", row))
+func outputRow(row []Cell, rowIdx int, nCols int) string {
+	var b strings.Builder
+	base := 0
+
+	b.WriteString(fmt.Sprintf("[%3d]", rowIdx))
 	for i := 0; i < nCols; i++ {
-		if cells[base+i].dwidthCont {
+		if row[base+i].dwidthCont {
 			continue
 		}
-		b.WriteString(cells[base+i].contents)
+		b.WriteString(row[base+i].contents)
 	}
 	return b.String()
 }
