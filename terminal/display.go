@@ -71,7 +71,7 @@ func equalSlice[T constraints.Ordered](a, b []T) bool {
 	return true
 }
 
-func countRow(oldE, newE *Emulator) int {
+func calculateRows(oldE, newE *Emulator) int {
 	if newE.cf.scrollHead > oldE.cf.scrollHead {
 		// new screen head is greater than old screen head
 		return oldE.nRows - oldE.posY + // old screen remains rows
@@ -648,10 +648,10 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 
 	// d.printFramebufferInfo(oldE, newE)
 
-	// mark := "#start"
-	// prefix := frame.output()
-	// util.Log.With("mark", mark).With("fs.cursor", fmt.Sprintf("(%02d,%02d)", frame.cursorY, frame.cursorX)).
-	// 	With("out", prefix).Debug("replicateContent")
+	mark := "#start"
+	prefix := frame.output()
+	util.Log.With("mark", mark).With("fs.cursor", fmt.Sprintf("(%02d,%02d)", frame.cursorY, frame.cursorX)).
+		With("out", prefix).Debug("replicateContent")
 
 	// not alternaet screen buffer
 	if !newE.altScrollMode && newE.cf.scrollHead > 0 {
@@ -662,12 +662,12 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 
 		rawY := oldE.cf.getPhysicalRow(oldE.posY) // start row, it's physical row
 		frameY := oldE.posY                       // screen row
-		countRows = countRow(oldE, newE)
+		countRows = calculateRows(oldE, newE)
 
-		// util.Log.With("oldHead", oldE.cf.scrollHead).With("newHead", newE.cf.scrollHead).
-		// 	With("oldY", oldE.posY).With("newY", newE.posY).
-		// 	With("countRows", countRows).Debug("replicateContent")
-		// pre := frame.output()
+		util.Log.With("oldHead", oldE.cf.scrollHead).With("newHead", newE.cf.scrollHead).
+			With("oldY", oldE.posY).With("newY", newE.posY).
+			With("countRows", countRows).Debug("replicateContent")
+		pre := frame.output()
 
 		wrap := false
 		for i := 0; i < countRows; i++ {
@@ -675,13 +675,13 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 			newRow = newE.cf.getRow(rawY)
 			wrap = d.putRow2(initialized, frame, newE, newRow, frameY, oldRow, wrap)
 
-			// util.Log.With("old", outputRow(oldRow, rawY, oldE.nCols)).Debug("replicateContent")
-			// util.Log.With("new", outputRow(newRow, rawY, newE.nCols)).Debug("replicateContent")
-			// util.Log.With("fs.cursor", fmt.Sprintf("(%02d,%02d)", frame.cursorY, frame.cursorX)).
-			// 	With("rawY", rawY).With("frameY", frameY).With("count", i).
-			// 	With("output", strings.TrimPrefix(frame.output(), pre)).
-			// 	Debug("replicateContent")
-			// pre = frame.output()
+			util.Log.With("old", outputRow(oldRow, rawY, oldE.nCols)).Debug("replicateContent")
+			util.Log.With("new", outputRow(newRow, rawY, newE.nCols)).Debug("replicateContent")
+			util.Log.With("fs.cursor", fmt.Sprintf("(%02d,%02d)", frame.cursorY, frame.cursorX)).
+				With("rawY", rawY).With("frameY", frameY).With("count", i).
+				With("output", strings.TrimPrefix(frame.output(), pre)).
+				Debug("replicateContent")
+			pre = frame.output()
 
 			// wrap around the end of the scrolling area
 			rawY += 1
@@ -696,14 +696,14 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 			// 	frame.cursorY = frameY - 1
 			// }
 		}
-		// mark = "stream"
+		mark = "stream"
 	} else {
-		// mark = "screen"
+		mark = "screen"
 		d.replicateContent0(initialized, oldE, newE, sizeChanged, asbChanged, frame)
 	}
 
-	// util.Log.With("mark", mark).With("fs.cursor", fmt.Sprintf("(%02d,%02d)", frame.cursorY, frame.cursorX)).
-	// 	With("out", strings.TrimPrefix(frame.output(), prefix)).Debug("replicateContent")
+	util.Log.With("mark", mark).With("fs.cursor", fmt.Sprintf("(%02d,%02d)", frame.cursorY, frame.cursorX)).
+		With("out", strings.TrimPrefix(frame.output(), prefix)).Debug("replicateContent")
 }
 
 func (d *Display) replicateContent0(initialized bool, oldE, newE *Emulator, sizeChanged bool,
