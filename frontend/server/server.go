@@ -732,6 +732,7 @@ func serve(ptmx *os.File, pw *io.PipeWriter, complete *statesync.Complete, waitC
 
 	var timeoutIfNoClient int64 = 60000
 	childReleased := false
+	largeFeed := make(chan string, 1)
 
 mainLoop:
 	for {
@@ -893,7 +894,7 @@ mainLoop:
 						network.StartShutdown()
 					}
 				} else {
-					out := complete.Act(masterMsg.Data)
+					out := complete.ActLarge(masterMsg.Data, largeFeed)
 					terminalToHost.WriteString(out)
 
 					util.Log.With("arise", "master").
