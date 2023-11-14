@@ -888,8 +888,9 @@ mainLoop:
 				// If the pty slave is closed, reading from the master can fail with
 				// EIO (see #264).  So we treat errors on read() like EOF.
 				if masterMsg.Err != nil {
-					// fmt.Println("#readFromMaster report error: ", masterMsg.Err)
-					util.Log.With("error", masterMsg.Err).Warn("read from master")
+					if len(masterMsg.Data) > 0 {
+						util.Log.With("error", masterMsg.Err).Warn("read from master")
+					}
 					if !signals.AnySignal() { // avoid conflict with signal
 						network.StartShutdown()
 					}
