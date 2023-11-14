@@ -737,6 +737,25 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 	return ret
 }
 
+func (fb *Framebuffer) isFullFrame(oldR int, newR int) bool {
+	if fb.getRowsGap(oldR, newR) == fb.marginBottom-1 {
+		return true
+	}
+	return false
+}
+
+func (fb *Framebuffer) getRowsGap(oldR int, newR int) (gap int) {
+	if oldR == newR {
+		gap = 0
+	} else if oldR > newR {
+		gap = fb.marginBottom - oldR + newR
+	} else {
+		// new row > old row
+		gap = newR - oldR
+	}
+	return gap
+}
+
 func printRow(cells []Cell, row int, nCols int) string {
 	base := row * nCols
 	return outputRow(cells[base:base+nCols], row, nCols)

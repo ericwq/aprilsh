@@ -216,6 +216,16 @@ func (h *Handler) GetCh() rune {
 	return h.ch
 }
 
+func restoreSequence(hds []*Handler) string {
+	var b strings.Builder
+
+	for i := range hds {
+		b.WriteString(hds[i].sequence)
+	}
+
+	return b.String()
+}
+
 /*
 func (h *Handler) GetSequence() string {
 	return h.sequence

@@ -576,40 +576,41 @@ func (emu *Emulator) HandleLargeStream(seq string, feed chan string) (hds []*Han
 	hds = emu.parser.processStream(seq, hds)
 	ret = ""
 	for idx, hd := range hds {
-		if start && emu.cf.getPhysicalRow(emu.posY) == pos {
+		// check rewind case
+		// if start && emu.cf.getPhysicalRow(emu.posY) == pos {
+		if start && emu.cf.isFullFrame(pos, emu.cf.getPhysicalRow(emu.posY)) {
 
-			// pause the stream
+			// save over size content (remains) for later opportunity.
 			ret = restoreSequence(hds[:idx])
 			remains := restoreSequence(hds[idx:])
-			util.Log.With("pos", pos).With("posY", emu.posY).
-				With("idx", idx).With("processed", ret).Warn("rewind happens")
-			util.Log.With("pos", pos).With("posY", emu.posY).
-				With("idx", idx).With("remains", remains).Warn("rewind happens")
+			util.Log.With("oldPos", pos).
+				With("posY", emu.posY).With("idx", idx).
+				// With("processed", strings.Split(ret, "。")[0]).
+				With("processed", ret).
+				Warn("rewind check")
+			util.Log.With("newPos", emu.cf.getPhysicalRow(emu.posY)).
+				With("posY", emu.posY).With("idx", idx).
+				// With("remains", strings.Split(remains, "。")[0]).
+				With("remains", remains).
+				Warn("rewind check")
+			util.Log.With("gap", emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))).
+				Debug("rewind check")
 			// hds = hds[:idx]
 			break
 		}
 
 		hd.handle(emu)
 
-		// check the rewind position
+		// start the check
 		if emu.cf.getPhysicalRow(emu.posY) != pos {
 			start = true
 		}
-		// util.Log.With("pos", emu.cf.getPhysicalRow(emu.posY)).With("posY", emu.posY).
+		// util.Log.With("newPos", emu.cf.getPhysicalRow(emu.posY)).
+		// 	With("gap", emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))).
 		// 	With("seq", hd.sequence).Debug("rewind check")
 	}
 
 	return hds, ret
-}
-
-func restoreSequence(hds []*Handler) string {
-	var b strings.Builder
-
-	for i := range hds {
-		b.WriteString(hds[i].sequence)
-	}
-
-	return b.String()
 }
 
 func (emu *Emulator) GetFramebuffer() *Framebuffer {
