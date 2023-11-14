@@ -241,7 +241,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		// first, make sure we don't already have the new state
 		for i := range t.receivedState {
 			if inst.NewNum == t.receivedState[i].num {
-				util.Log.With("quit", "duplicate state").With("NewNum", inst.NewNum).Debug("got message")
+				util.Log.With("quit", "duplicate state").With("NewNum", inst.NewNum).Warn("got message")
 				return nil
 			}
 		}
