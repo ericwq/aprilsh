@@ -242,6 +242,10 @@ func (c *Complete) ResetInput() {
 	c.terminal.GetParser().ResetInput()
 }
 
+func (c *Complete) ResetRows() {
+	c.terminal.ResetRows()
+}
+
 // implements network.State[C any] interface
 func (c *Complete) Clone() *Complete {
 	clone := Complete{}

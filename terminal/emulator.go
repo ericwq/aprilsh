@@ -620,6 +620,11 @@ func (emu *Emulator) HandleLargeStream(seq string, feed chan string) (hds []*Han
 	return hds
 }
 
+func (emu *Emulator) ResetRows() {
+	emu.lastRows = 0
+	util.Log.With("lastRows", emu.lastRows).Debug("ResetRows")
+}
+
 func (emu *Emulator) GetFramebuffer() *Framebuffer {
 	return emu.cf
 }

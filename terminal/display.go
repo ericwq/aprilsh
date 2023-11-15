@@ -74,6 +74,9 @@ func equalSlice[T constraints.Ordered](a, b []T) bool {
 func calculateRows(oldE, newE *Emulator) int {
 	if newE.cf.scrollHead > oldE.cf.scrollHead {
 		// new screen head is greater than old screen head
+		// if newE.lastRows == newE.cf.marginBottom-1 {
+		// 	return newE.lastRows
+		// }
 		gap := oldE.nRows - oldE.posY + // old screen remains rows
 			(newE.cf.scrollHead - oldE.cf.scrollHead) // new screen moves rows
 		// util.Log.With("gap", gap).With("lastRows", newE.lastRows).Debug("calculateRows")
@@ -660,6 +663,7 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 		With("out", prefix).Debug("replicateContent")
 
 	// not alternaet screen buffer
+	// if !newE.altScrollMode { // TODO consider remove the scroll head check
 	if !newE.altScrollMode && newE.cf.scrollHead > 0 {
 		var countRows int // replicate range
 		var oldRow []Cell
@@ -713,9 +717,12 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 		d.replicateContent0(initialized, oldE, newE, sizeChanged, asbChanged, frame)
 	}
 
-	newE.lastRows = 0
-	util.Log.With("mark", mark).With("fs.cursor", fmt.Sprintf("(%02d,%02d)", frame.cursorY, frame.cursorX)).
-		With("out", strings.TrimPrefix(frame.output(), prefix)).Debug("replicateContent")
+	// util.Log.With("oldHead", oldE.cf.scrollHead).
+	// 	With("newHead", newE.cf.scrollHead).
+	// 	With("lastRows", newE.lastRows).Debug("replicateContent")
+	// util.Log.With("mark", mark).
+	// 	With("fs.cursor", fmt.Sprintf("(%02d,%02d)", frame.cursorY, frame.cursorX)).
+	// 	With("out", strings.TrimPrefix(frame.output(), prefix)).Debug("replicateContent")
 }
 
 func (d *Display) replicateContent0(initialized bool, oldE, newE *Emulator, sizeChanged bool,

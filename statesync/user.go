@@ -221,6 +221,7 @@ func (u *UserStream) Equal(x *UserStream) bool {
 
 // implements network.State[C any] interface
 func (u *UserStream) ResetInput() {}
+func (u *UserStream) ResetRows()  {}
 
 // implements network.State[C any] interface
 func (u *UserStream) Clone() *UserStream {
