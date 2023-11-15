@@ -81,6 +81,8 @@ type Emulator struct {
 	bellCount        int      // replicated by NewFrame()
 	titleInitialized bool     // replicated by NewFrame()
 	windowTitleStack []string // for XTWINOPS
+
+	lastRows int // last processed rows
 }
 
 func NewEmulator3(nCols, nRows, saveLines int) *Emulator {
@@ -561,9 +563,9 @@ func (emu *Emulator) HandleStream(seq string) (hds []*Handler) {
 }
 
 // parse and handle the stream together.
-func (emu *Emulator) HandleLargeStream(seq string, feed chan string) (hds []*Handler, ret string) {
+func (emu *Emulator) HandleLargeStream(seq string, feed chan string) (hds []*Handler) {
 	if len(seq) == 0 {
-		return nil, ""
+		return nil
 	}
 
 	// mark the rewind position
@@ -574,14 +576,14 @@ func (emu *Emulator) HandleLargeStream(seq string, feed chan string) (hds []*Han
 
 	hds = make([]*Handler, 0, 16)
 	hds = emu.parser.processStream(seq, hds)
-	ret = ""
+
 	for idx, hd := range hds {
 		// check rewind case
 		// if start && emu.cf.getPhysicalRow(emu.posY) == pos {
 		if start && emu.cf.isFullFrame(pos, emu.cf.getPhysicalRow(emu.posY)) {
 
 			// save over size content (remains) for later opportunity.
-			ret = restoreSequence(hds[:idx])
+			ret := restoreSequence(hds[:idx])
 			remains := restoreSequence(hds[idx:])
 			util.Log.With("oldPos", pos).
 				With("posY", emu.posY).With("idx", idx).
@@ -610,7 +612,12 @@ func (emu *Emulator) HandleLargeStream(seq string, feed chan string) (hds []*Han
 		// 	With("seq", hd.sequence).Debug("rewind check")
 	}
 
-	return hds, ret
+	emu.lastRows += emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))
+	util.Log.With("lastRows", emu.lastRows).
+		With("once", emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))).
+		// With("seq", seq).
+		Debug("HandleLargeStream")
+	return hds
 }
 
 func (emu *Emulator) GetFramebuffer() *Framebuffer {
