@@ -915,7 +915,7 @@ mainLoop:
 				network.StartShutdown()
 			}
 
-			util.Log.With("arise", "merge-").With("data", terminalToHost.String()).Debug("input from combine")
+			util.Log.With("arise", "merge-").With("data", terminalToHost.String()).Debug("input to host")
 		}
 
 		idleShutdown := false

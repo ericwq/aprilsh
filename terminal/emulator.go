@@ -620,8 +620,12 @@ func (emu *Emulator) HandleLargeStream(seq string, feed chan string) (hds []*Han
 	return hds
 }
 
-func (emu *Emulator) ResetRows() {
-	emu.lastRows = 0
+func (emu *Emulator) SetLastRows(x int) {
+	emu.lastRows = x
+}
+
+func (emu *Emulator) GetLastRows() int {
+	return emu.lastRows
 }
 
 func (emu *Emulator) GetFramebuffer() *Framebuffer {

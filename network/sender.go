@@ -14,7 +14,6 @@ import (
 	pb "github.com/ericwq/aprilsh/protobufs"
 	"github.com/ericwq/aprilsh/terminal"
 	"github.com/ericwq/aprilsh/util"
-	"golang.org/x/exp/slog"
 	// "github.com/ericwq/aprilsh/util"
 )
 
@@ -382,9 +381,9 @@ func (ts *TransportSender[T]) tick() error {
 	diff = ts.attemptProspectiveResendOptimization(diff)
 	// util.Log.With("point", 300).Debug("tick")
 	// util.Log.With("point", 300).With("length", len(diff)).With("diff", diff).Debug("tick")
-	util.Log.SetLevel(slog.LevelInfo)
+	// util.Log.SetLevel(slog.LevelInfo)
 
-	if ts.verbose > 0 {
+	if ts.verbose > 0 && len(diff) > 0 {
 		if ts.hookForTick != nil { // hook function for testing
 			ts.hookForTick()
 		}
@@ -402,23 +401,24 @@ func (ts *TransportSender[T]) tick() error {
 		// util.Log.With("point", 500).Debug("tick")
 		currentDiff := ts.currentState.InitDiff()
 		// util.Log.With("point", 600).Debug("tick")
+		// newState.SetLastRows(ts.currentState.GetLastRows())
 		newDiff := newState.InitDiff()
 		if currentDiff != newDiff {
 			util.Log.Warn("#tick Warning, target state Instruction verification failed!")
 		}
 		// util.Log.With("point", 700).Debug("tick")
 	}
-	util.Log.SetLevel(slog.LevelDebug)
-	ts.currentState.ResetRows()
+	// util.Log.SetLevel(slog.LevelDebug)
+	ts.currentState.SetLastRows(0)
 	// util.Log.With("point", 800).With("lastRows", 0).Debug("tick")
 
 	// fmt.Printf("#tick send %q to receiver %s.\n", diff, ts.connection.getRemoteAddr())
 
-	util.Log.With("nextAckTime", ts.nextAckTime).
-		With("nextSendTime", ts.nextSendTime).
-		With("assumedReceiverState", ts.assumedReceiverState.num).
-		With("now", now).
-		Debug("send message")
+	// util.Log.With("nextAckTime", ts.nextAckTime).
+	// 	With("nextSendTime", ts.nextSendTime).
+	// 	With("assumedReceiverState", ts.assumedReceiverState.num).
+	// 	With("now", now).
+	// 	Debug("send message")
 	if len(diff) == 0 {
 		if now >= ts.nextAckTime {
 			if err := ts.sendEmptyAck(); err != nil {
@@ -432,19 +432,20 @@ func (ts *TransportSender[T]) tick() error {
 			ts.mindelayClock = math.MaxInt64
 		}
 	} else if now >= ts.nextSendTime || now >= ts.nextAckTime {
-		util.Log.With(">nextSendTime", now >= ts.nextSendTime).
-			With(">nextAckTime", now >= ts.nextAckTime).
-			Debug("send message")
+		// util.Log.With(">nextSendTime", now >= ts.nextSendTime).
+		// 	With(">nextAckTime", now >= ts.nextAckTime).
+		// 	Debug("send message")
+
 		// send diff or ack
 		if err := ts.sendToReceiver(diff); err != nil {
 			return err
 		}
 		ts.mindelayClock = math.MaxInt64
 	}
-	util.Log.With("nextAckTime", ts.nextAckTime).
-		With("nextSendTime", ts.nextSendTime).
-		With("now", time.Now().UnixMilli()).
-		Debug("send message")
+	// util.Log.With("nextAckTime", ts.nextAckTime).
+	// 	With("nextSendTime", ts.nextSendTime).
+	// 	With("now", time.Now().UnixMilli()).
+	// 	Debug("send message")
 
 	return nil
 }

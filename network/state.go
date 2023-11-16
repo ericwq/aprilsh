@@ -22,7 +22,8 @@ type State[C any] interface {
 
 	// interface from code
 	ResetInput()
-	ResetRows()
+	SetLastRows(x int)
+	GetLastRows() int
 	Clone() C
 }
 
