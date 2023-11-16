@@ -74,15 +74,11 @@ func equalSlice[T constraints.Ordered](a, b []T) bool {
 func calculateRows(oldE, newE *Emulator) int {
 	if newE.cf.scrollHead > oldE.cf.scrollHead {
 		// new screen head is greater than old screen head
-		// if newE.lastRows == newE.cf.marginBottom-1 {
-		// 	return newE.lastRows
-		// }
 		if newE.posY == oldE.posY && newE.posY == newE.nRows-1 {
 			return newE.cf.scrollHead - oldE.cf.scrollHead + 1
 		}
 		gap := oldE.nRows - oldE.posY + // old screen remains rows
 			(newE.cf.scrollHead - oldE.cf.scrollHead) // new screen moves rows
-		// util.Log.With("gap", gap).With("lastRows", newE.lastRows).Debug("calculateRows")
 		return gap
 
 	} else if newE.cf.scrollHead == oldE.cf.scrollHead {
@@ -675,7 +671,6 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 		rawY := oldE.cf.getPhysicalRow(oldE.posY) // start row, it's physical row
 		frameY := oldE.posY                       // screen row
 		countRows = calculateRows(oldE, newE)
-		// countRows = newE.lastRows + 1
 
 		util.Log.With("oldHead", oldE.cf.scrollHead).With("newHead", newE.cf.scrollHead).
 			With("oldY", oldE.posY).With("newY", newE.posY).

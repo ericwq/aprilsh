@@ -1233,8 +1233,9 @@ func TestCalculateRows(t *testing.T) {
 		{"new head = old head, diff high", 50, 9, 0, 50, 19, 0, 10},
 		{"new head = old head, same high", 50, 19, 0, 50, 19, 0, 0},
 		{"new head = old head, diff x   ", 50, 19, 0, 50, 19, 5, 1},
-		{"new head < old head, diff high", 50, 9, 0, 10, 19, 0, 31},  // rewind happens
-		{"new head < old head, same high", 40, 19, 0, 20, 19, 0, 41}, // rewind happens
+		{"new head < old head, diff high", 50, 9, 0, 10, 19, 0, 31},   // rewind happens
+		{"new head < old head, same high", 40, 19, 0, 20, 19, 0, 41},  // rewind happens
+		{"new head < old head, full frame", 40, 19, 0, 39, 19, 0, 60}, // rewind and full frame
 	}
 
 	oldE := NewEmulator3(80, 20, 40)
