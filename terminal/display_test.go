@@ -1219,6 +1219,46 @@ func TestPutRow(t *testing.T) {
 		})
 	}
 }
+
+func TestCalculateRows(t *testing.T) {
+	tc := []struct {
+		label               string
+		oldHead, oldY, oldX int
+		newHead, newY, newX int
+		expect              int
+	}{
+		{"new head > old head, same high", 10, 19, 0, 11, 19, 0, 2},
+		{"new head > old head, diff high", 0, 9, 0, 11, 19, 0, 22},
+		{"new head = old head, diff high", 0, 9, 0, 0, 19, 0, 10},
+		{"new head = old head, diff high", 50, 9, 0, 50, 19, 0, 10},
+		{"new head = old head, same high", 50, 19, 0, 50, 19, 0, 0},
+		{"new head = old head, diff x   ", 50, 19, 0, 50, 19, 5, 1},
+		{"new head < old head, diff high", 50, 9, 0, 10, 19, 0, 31},  // rewind happens
+		{"new head < old head, same high", 40, 19, 0, 20, 19, 0, 41}, // rewind happens
+	}
+
+	oldE := NewEmulator3(80, 20, 40)
+	newE := NewEmulator3(80, 20, 40)
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+
+			// prepare for condition
+			oldE.posY = v.oldY
+			oldE.posX = v.oldX
+			oldE.cf.scrollHead = v.oldHead
+			newE.posY = v.newY
+			newE.posX = v.newX
+			newE.cf.scrollHead = v.newHead
+
+			got := calculateRows(oldE, newE)
+			if got != v.expect {
+				t.Errorf("%q expect %d, got %d\n", v.label, v.expect, got)
+			}
+		})
+	}
+}
+
 func buildSelectionDataSequence(raw string) string {
 	Pd := base64.StdEncoding.EncodeToString([]byte(raw))
 	// s := fmt.Sprintf("\x1B]%d;%s;%s\x1B\\", 52, "pc", Pd)

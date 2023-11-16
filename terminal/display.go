@@ -72,16 +72,13 @@ func equalSlice[T constraints.Ordered](a, b []T) bool {
 }
 
 func calculateRows(oldE, newE *Emulator) int {
-	// if newE.lastRows == 0 {
-	// 	return 0
-	// }
 	if newE.cf.scrollHead > oldE.cf.scrollHead {
 		// new screen head is greater than old screen head
 		// if newE.lastRows == newE.cf.marginBottom-1 {
 		// 	return newE.lastRows
 		// }
 		if newE.posY == oldE.posY && newE.posY == newE.nRows-1 {
-			return newE.cf.scrollHead - oldE.cf.scrollHead
+			return newE.cf.scrollHead - oldE.cf.scrollHead + 1
 		}
 		gap := oldE.nRows - oldE.posY + // old screen remains rows
 			(newE.cf.scrollHead - oldE.cf.scrollHead) // new screen moves rows
@@ -89,16 +86,15 @@ func calculateRows(oldE, newE *Emulator) int {
 		return gap
 
 	} else if newE.cf.scrollHead == oldE.cf.scrollHead {
-		// if newE.cf.scrollHead == oldE.cf.scrollHead &&
-		// 	newE.posY == oldE.posY && newE.cf.historyRows == oldE.cf.historyRows {
-		// 	return newE.cf.marginBottom
-		// }
 		if newE.posY == oldE.posY && newE.posY == newE.nRows-1 {
 			// just one line
+			if newE.posX != oldE.posX {
+				return 1
+			}
 			return 0
 		}
 		// new screen head is same as old screen head
-		return newE.posY + 1
+		return newE.posY - oldE.posY
 	}
 	// new screen head  is smaller than old screen head (rewind)
 	return oldE.cf.marginBottom - oldE.cf.scrollHead + // old screen part
