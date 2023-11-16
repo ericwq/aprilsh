@@ -153,10 +153,10 @@ func resetCharsetState(charsetState *CharsetState) {
 }
 
 func (emu *Emulator) resize(nCols, nRows int) {
-	util.Log.With("cols", nCols).With("rows", nRows).Debug("Emulator.resize")
 	if emu.nCols == nCols && emu.nRows == nRows {
 		return
 	}
+	util.Log.With("cols", nCols).With("rows", nRows).Debug("Emulator.resize")
 
 	emu.hideCursor()
 
@@ -622,7 +622,6 @@ func (emu *Emulator) HandleLargeStream(seq string, feed chan string) (hds []*Han
 
 func (emu *Emulator) ResetRows() {
 	emu.lastRows = 0
-	util.Log.With("lastRows", emu.lastRows).Debug("ResetRows")
 }
 
 func (emu *Emulator) GetFramebuffer() *Framebuffer {

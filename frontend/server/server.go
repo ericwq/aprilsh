@@ -818,13 +818,13 @@ mainLoop:
 							fmt.Printf("#serve ioctl TIOCSWINSZ %s", err)
 							network.StartShutdown()
 						}
-						util.Log.With("col", winSize.Col).With("row", winSize.Row).Debug("input from host")
+						util.Log.With("col", winSize.Col).With("row", winSize.Row).Debug("input from remote")
 					}
 					terminalToHost.WriteString(complete.ActOne(action))
 				}
 
 				if terminalToHost.Len() > 0 {
-					util.Log.With("arise", "socket").With("data", terminalToHost.String()).Debug("input from host")
+					util.Log.With("arise", "socket").With("data", terminalToHost.String()).Debug("input from remote")
 				}
 
 				if !us.Empty() {
@@ -899,8 +899,8 @@ mainLoop:
 					terminalToHost.WriteString(out)
 
 					util.Log.With("arise", "master").
-						With("data", masterMsg.Data).
-						With("out", out).Debug("input from host")
+						With("ouput", masterMsg.Data).
+						With("input", out).Debug("ouput from host")
 
 					// update client with new state of terminal
 					network.SetCurrentState(complete)
@@ -915,7 +915,7 @@ mainLoop:
 				network.StartShutdown()
 			}
 
-			util.Log.With("arise", "merge-").With("data", terminalToHost.String()).Debug("input from host")
+			util.Log.With("arise", "merge-").With("data", terminalToHost.String()).Debug("input from combine")
 		}
 
 		idleShutdown := false

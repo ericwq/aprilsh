@@ -14,6 +14,7 @@ import (
 	pb "github.com/ericwq/aprilsh/protobufs"
 	"github.com/ericwq/aprilsh/terminal"
 	"github.com/ericwq/aprilsh/util"
+	"golang.org/x/exp/slog"
 	// "github.com/ericwq/aprilsh/util"
 )
 
@@ -105,9 +106,9 @@ func (ts *TransportSender[T]) updateAssumedReceiverState() {
 
 // Investigate diff against known receiver state instead
 // return mutated propsedDiff
-func (ts *TransportSender[T]) attemptProspectiveResendOptimization(propsedDiff string) string {
+func (ts *TransportSender[T]) attemptProspectiveResendOptimization(proposedDiff string) string {
 	if ts.assumedReceiverState == &ts.sentStates[0] {
-		return propsedDiff
+		return proposedDiff
 	}
 
 	resendDiff := ts.currentState.DiffFrom(ts.sentStates[0].state)
@@ -116,13 +117,14 @@ func (ts *TransportSender[T]) attemptProspectiveResendOptimization(propsedDiff s
 	// or if it would lengthen it by no more than 100 bytes and still be
 	// less than 1000 bytes.
 	rLen := len(resendDiff)
-	pLen := len(propsedDiff)
+	pLen := len(proposedDiff)
 	if rLen <= pLen || (rLen < 1000 && rLen-pLen < 100) {
 		ts.assumedReceiverState = &ts.sentStates[0]
-		propsedDiff = resendDiff
+		proposedDiff = resendDiff
+		util.Log.With("proposedDiff", proposedDiff).Debug("attemptProspectiveResendOptimization")
 	}
 
-	return propsedDiff
+	return proposedDiff
 }
 
 // clear currentState and sentStates by remove the oldest sent state from them.
@@ -373,14 +375,14 @@ func (ts *TransportSender[T]) tick() error {
 		return nil
 	}
 
-	// util.Log.With("point", 200).With("assumedReceiverState", ts.getAssumedReceiverStateIdx()).Debug("tick")
+	// util.Log.With("point", 100).With("assumedReceiverState", ts.getAssumedReceiverStateIdx()).Debug("tick")
 	// Determine if a new diff or empty ack needs to be sent
 	diff := ts.currentState.DiffFrom(ts.assumedReceiverState.state)
-	// util.Log.With("point", 210).Debug("tick")
-	// util.Log.SetLevel(slog.LevelInfo)
+	// util.Log.With("point", 200).Debug("tick")
 	diff = ts.attemptProspectiveResendOptimization(diff)
 	// util.Log.With("point", 300).Debug("tick")
-	util.Log.With("diff", diff).With("length", len(diff)).Debug("send message")
+	// util.Log.With("point", 300).With("length", len(diff)).With("diff", diff).Debug("tick")
+	util.Log.SetLevel(slog.LevelInfo)
 
 	if ts.verbose > 0 {
 		if ts.hookForTick != nil { // hook function for testing
@@ -406,8 +408,9 @@ func (ts *TransportSender[T]) tick() error {
 		}
 		// util.Log.With("point", 700).Debug("tick")
 	}
-	// util.Log.SetLevel(slog.LevelDebug)
+	util.Log.SetLevel(slog.LevelDebug)
 	ts.currentState.ResetRows()
+	// util.Log.With("point", 800).With("lastRows", 0).Debug("tick")
 
 	// fmt.Printf("#tick send %q to receiver %s.\n", diff, ts.connection.getRemoteAddr())
 

@@ -72,6 +72,9 @@ func equalSlice[T constraints.Ordered](a, b []T) bool {
 }
 
 func calculateRows(oldE, newE *Emulator) int {
+	if newE.lastRows == 0 {
+		return 0
+	}
 	if newE.cf.scrollHead > oldE.cf.scrollHead {
 		// new screen head is greater than old screen head
 		// if newE.lastRows == newE.cf.marginBottom-1 {
@@ -660,7 +663,7 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 	mark := "#start"
 	prefix := frame.output()
 	util.Log.With("mark", mark).With("fs.cursor", fmt.Sprintf("(%02d,%02d)", frame.cursorY, frame.cursorX)).
-		With("out", prefix).Debug("replicateContent")
+		With("diff1", prefix).Debug("replicateContent")
 
 	// not alternaet screen buffer
 	// if !newE.altScrollMode { // TODO consider remove the scroll head check
@@ -717,12 +720,12 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 		d.replicateContent0(initialized, oldE, newE, sizeChanged, asbChanged, frame)
 	}
 
-	// util.Log.With("oldHead", oldE.cf.scrollHead).
-	// 	With("newHead", newE.cf.scrollHead).
-	// 	With("lastRows", newE.lastRows).Debug("replicateContent")
-	// util.Log.With("mark", mark).
-	// 	With("fs.cursor", fmt.Sprintf("(%02d,%02d)", frame.cursorY, frame.cursorX)).
-	// 	With("out", strings.TrimPrefix(frame.output(), prefix)).Debug("replicateContent")
+	util.Log.With("oldHead", oldE.cf.scrollHead).
+		With("newHead", newE.cf.scrollHead).
+		With("lastRows", newE.lastRows).Debug("replicateContent")
+	util.Log.With("mark", mark).
+		With("fs.cursor", fmt.Sprintf("(%02d,%02d)", frame.cursorY, frame.cursorX)).
+		With("diff2", strings.TrimPrefix(frame.output(), prefix)).Debug("replicateContent")
 }
 
 func (d *Display) replicateContent0(initialized bool, oldE, newE *Emulator, sizeChanged bool,
@@ -1270,7 +1273,7 @@ func (d *Display) titleChanged(initialized bool, frame *FrameState, oldE, newE *
 		if newE.GetIconLabel() == newE.GetWindowTitle() {
 			// write combined Icon label and Window Title
 			frame.append("\x1B]0;%s\x07", newE.GetWindowTitle())
-			// ST is more correct, but BEL more widely supported
+			// ST is more correct, but BEL is more widely supported
 		} else {
 			// write Icon label
 			if newE.GetIconLabel() != "" {
