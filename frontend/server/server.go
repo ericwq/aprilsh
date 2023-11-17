@@ -881,6 +881,18 @@ mainLoop:
 					childReleased = true
 				}
 			}
+		case remains := <-largeFeed:
+			if !network.ShutdownInProgress() {
+				out := complete.ActLarge(remains, largeFeed)
+				terminalToHost.WriteString(out)
+
+				util.Log.With("arise", "remains").
+					With("ouput", remains).
+					With("input", out).Debug("ouput from host")
+
+				// update client with new state of terminal
+				network.SetCurrentState(complete)
+			}
 		case masterMsg := <-fileChan:
 			// input from the host needs to be fed to the terminal
 			if !network.ShutdownInProgress() {

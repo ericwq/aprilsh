@@ -737,8 +737,12 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 	return ret
 }
 
-func (fb *Framebuffer) isFullFrame(oldR int, newR int) bool {
-	if fb.getRowsGap(oldR, newR) == fb.marginBottom-1 {
+func (fb *Framebuffer) reachMaxRows(lastRows int) bool {
+	return lastRows >= fb.marginBottom-1
+}
+
+func (fb *Framebuffer) isFullFrame(lastRows int, oldR int, newR int) bool {
+	if fb.getRowsGap(oldR, newR)+lastRows == fb.marginBottom-1 {
 		return true
 	}
 	return false

@@ -7,6 +7,7 @@ package statesync
 import (
 	"fmt"
 	"math"
+	"strings"
 
 	pb "github.com/ericwq/aprilsh/protobufs/host"
 	"github.com/ericwq/aprilsh/terminal"
@@ -29,6 +30,7 @@ type Complete struct {
 	inputHistory []pair // user input history
 	echoAck      uint64 // which user input is echoed?
 	display      *terminal.Display
+	mixBuf       strings.Builder
 }
 
 func NewComplete(nCols, nRows, saveLines int) (*Complete, error) {
@@ -45,8 +47,23 @@ func NewComplete(nCols, nRows, saveLines int) (*Complete, error) {
 
 // let the terminal parse and handle the data stream.
 func (c *Complete) ActLarge(str string, feed chan string) string {
-	// c.terminal.ResetDamage()
-	c.terminal.HandleLargeStream(str, feed)
+
+	// if there is remains, append the new one
+	c.mixBuf.WriteString(str)
+
+	// consume the data stream
+	remains := c.terminal.HandleLargeStream(c.mixBuf.String())
+	c.mixBuf.Reset()
+
+	// save remains if we got
+	if len(remains) > 0 {
+		c.mixBuf.WriteString(remains)
+		util.Log.With("remains", remains).Debug("ActLarge")
+		// go func() {
+		// 	time.Sleep(time.Millisecond * 20) // TODO how long?
+		// 	feed <- ""
+		// }()
+	}
 
 	return c.terminal.ReadOctetsToHost()
 }

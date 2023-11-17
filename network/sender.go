@@ -241,14 +241,14 @@ func (ts *TransportSender[T]) sendFragments(inst *pb.Instruction, newNum uint64)
 				With("OldNum", inst.OldNum).
 				With("AckNum", inst.AckNum).
 				With("ThrowawayNum", inst.ThrowawayNum).
-				// With("length", len(fragments[i].contents)).
 				Debug("send message")
-			// util.Log.With("time", (time.Now().UnixMilli()%100000)).
-			// 	With("fragmentsID", fragments[i].id).
-			// 	With("fragmentNum", fragments[i].fragmentNum).
-			// 	With("frameRate", 1000.0/float64(ts.sendInterval())).
-			// 	With("timeout", ts.connection.timeout()).
-			// 	Debug("send message")
+			util.Log.With("time", (time.Now().UnixMilli()%100000)).
+				With("fragmentsID", fragments[i].id).
+				With("fragmentNum", fragments[i].fragmentNum).
+				With("fragmentLength", len(fragments[i].contents)).
+				With("frameRate", 1000.0/float64(ts.sendInterval())).
+				With("timeout", ts.connection.timeout()).
+				Debug("send message")
 			// util.Log.With("mindelayClock", ts.mindelayClock).
 			// 	With("SEND_MINDELAY", ts.SEND_MINDELAY).
 			// 	With("sendInterval", ts.sendInterval()).
@@ -378,7 +378,7 @@ func (ts *TransportSender[T]) tick() error {
 	// Determine if a new diff or empty ack needs to be sent
 	diff := ts.currentState.DiffFrom(ts.assumedReceiverState.state)
 	// util.Log.With("point", 200).Debug("tick")
-	diff = ts.attemptProspectiveResendOptimization(diff)
+	// diff = ts.attemptProspectiveResendOptimization(diff)
 	// util.Log.With("point", 300).Debug("tick")
 	// util.Log.With("point", 300).With("length", len(diff)).With("diff", diff).Debug("tick")
 	// util.Log.SetLevel(slog.LevelInfo)

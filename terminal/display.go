@@ -624,6 +624,7 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	// TODO do we need to consider cursor selection area.
 	return frame.output()
 }
+
 func (d *Display) printFramebufferInfo(oldE, newE *Emulator) {
 	util.Log.With("columns   [E]:", fmt.Sprintf("%3d vs. %3d",
 		newE.nCols, oldE.nCols)).Debug("replicateContent")
@@ -678,7 +679,7 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 			With("newHistoryRows", newE.cf.historyRows).
 			With("lastRows", newE.lastRows).
 			With("countRows", countRows).Debug("replicateContent")
-		// pre := frame.output()
+		pre := frame.output()
 
 		wrap := false
 		for i := 0; i < countRows; i++ {
@@ -691,13 +692,13 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 			newRow = newE.cf.getRow(rawY)
 			wrap = d.putRow2(initialized, frame, newE, newRow, frameY, oldRow, wrap)
 
-			// util.Log.With("old", outputRow(oldRow, rawY, oldE.nCols)).Debug("replicateContent")
-			// util.Log.With("new", outputRow(newRow, rawY, newE.nCols)).Debug("replicateContent")
-			// util.Log.With("fs.cursor", fmt.Sprintf("(%02d,%02d)", frame.cursorY, frame.cursorX)).
-			// 	With("rawY", rawY).With("frameY", frameY).With("count", i).
-			// 	With("output", strings.TrimPrefix(frame.output(), pre)).
-			// 	Debug("replicateContent")
-			// pre = frame.output()
+			util.Log.With("old", outputRow(oldRow, rawY, oldE.nCols)).Debug("replicateContent")
+			util.Log.With("new", outputRow(newRow, rawY, newE.nCols)).Debug("replicateContent")
+			util.Log.With("fs.cursor", fmt.Sprintf("(%02d,%02d)", frame.cursorY, frame.cursorX)).
+				With("rawY", rawY).With("frameY", frameY).With("count", i).
+				With("output", strings.TrimPrefix(frame.output(), pre)).
+				Debug("replicateContent")
+			pre = frame.output()
 
 			// wrap around the end of the scrolling area
 			rawY += 1

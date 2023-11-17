@@ -562,42 +562,46 @@ func (emu *Emulator) HandleStream(seq string) (hds []*Handler) {
 	return hds
 }
 
-// parse and handle the stream together.
-func (emu *Emulator) HandleLargeStream(seq string, feed chan string) (hds []*Handler) {
+// parse and handle the stream together. counting occupied rows, if
+// ring buffer is full, pause the process and return the remains stream.
+func (emu *Emulator) HandleLargeStream(seq string) (remains string) {
 	if len(seq) == 0 {
-		return nil
+		return
 	}
 
-	// mark the rewind position
+	// if we reach the max rows, just return
+	if emu.cf.reachMaxRows(emu.lastRows) {
+		return seq
+	}
+
+	// prepare to check occupied roes
 	pos := emu.cf.getPhysicalRow(emu.posY)
 	start := false
 	// util.Log.With("pos", emu.cf.getPhysicalRow(emu.posY)).With("posY", emu.posY).
 	// 	Debug("rewind check")
 
-	hds = make([]*Handler, 0, 16)
+	hds := make([]*Handler, 0, 16)
 	hds = emu.parser.processStream(seq, hds)
 
 	for idx, hd := range hds {
 		// check rewind case
-		// if start && emu.cf.getPhysicalRow(emu.posY) == pos {
-		if start && emu.cf.isFullFrame(pos, emu.cf.getPhysicalRow(emu.posY)) {
+		if start && emu.cf.isFullFrame(emu.lastRows, pos, emu.cf.getPhysicalRow(emu.posY)) {
 
 			// save over size content (remains) for later opportunity.
-			ret := restoreSequence(hds[:idx])
+			// ret = restoreSequence(hds[:idx])
 			remains := restoreSequence(hds[idx:])
-			util.Log.With("oldPos", pos).
-				With("posY", emu.posY).With("idx", idx).
-				// With("processed", strings.Split(ret, "。")[0]).
-				With("processed", ret).
-				Warn("rewind check")
+			// util.Log.With("oldPos", pos).
+			// 	With("posY", emu.posY).With("idx", idx).
+			// 	// With("processed", strings.Split(ret, "。")[0]).
+			// 	With("processed", ret).
+			// 	Warn("rewind check")
 			util.Log.With("newPos", emu.cf.getPhysicalRow(emu.posY)).
 				With("posY", emu.posY).With("idx", idx).
 				// With("remains", strings.Split(remains, "。")[0]).
 				With("remains", remains).
 				Warn("rewind check")
-			util.Log.With("gap", emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))).
-				Debug("rewind check")
-			// hds = hds[:idx]
+			// util.Log.With("gap", emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))).
+			// 	Debug("rewind check")
 			break
 		}
 
@@ -611,13 +615,12 @@ func (emu *Emulator) HandleLargeStream(seq string, feed chan string) (hds []*Han
 		// 	With("gap", emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))).
 		// 	With("seq", hd.sequence).Debug("rewind check")
 	}
-
 	emu.lastRows += emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))
+
 	util.Log.With("lastRows", emu.lastRows).
 		With("once", emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))).
-		// With("seq", seq).
 		Debug("HandleLargeStream")
-	return hds
+	return
 }
 
 func (emu *Emulator) SetLastRows(x int) {
