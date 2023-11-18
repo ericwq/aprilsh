@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"time"
 
 	pb "github.com/ericwq/aprilsh/protobufs/host"
 	"github.com/ericwq/aprilsh/terminal"
@@ -59,10 +60,13 @@ func (c *Complete) ActLarge(str string, feed chan string) string {
 	if len(remains) > 0 {
 		c.mixBuf.WriteString(remains)
 		util.Log.With("remains", remains).Debug("ActLarge")
-		// go func() {
-		// 	time.Sleep(time.Millisecond * 20) // TODO how long?
-		// 	feed <- ""
-		// }()
+		go func() {
+			// a little bit late is good enough, the main loop will block
+			// until it send the previous content.
+			time.Sleep(time.Millisecond * 10)
+			feed <- ""
+			util.Log.With("schedule", "send remains").Debug("ActLarge")
+		}()
 	}
 
 	return c.terminal.ReadOctetsToHost()
@@ -209,7 +213,7 @@ func (c *Complete) DiffFrom(existing *Complete) string {
 // get difference between this Complete and a new one.
 func (c *Complete) InitDiff() string {
 	blank, _ := NewComplete(c.terminal.GetWidth(), c.terminal.GetHeight(), c.terminal.GetSaveLines())
-	util.Log.With("lastRow", c.terminal.GetLastRows()).Debug("InitDiff")
+	// util.Log.With("lastRow", c.terminal.GetLastRows()).Debug("InitDiff")
 	return c.DiffFrom(blank)
 }
 

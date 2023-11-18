@@ -588,7 +588,7 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 	}
 
 	if flags&unix.MSG_TRUNC == unix.MSG_TRUNC {
-		return "", errors.New("#recvOne received oversize datagram.")
+		return "", errors.New(fmt.Sprintf("#recvOne received oversize datagram, datagram size %d.", n))
 	}
 
 	// fmt.Printf("#recvOne flags=0x%x, MSG_TRUNC=0x%x, n=%d, oobn=%d, err=%p, raddr=%s\n", flags, unix.MSG_TRUNC, n, oobn, err, raddr)

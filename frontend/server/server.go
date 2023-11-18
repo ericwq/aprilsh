@@ -886,9 +886,7 @@ mainLoop:
 				out := complete.ActLarge(remains, largeFeed)
 				terminalToHost.WriteString(out)
 
-				util.Log.With("arise", "remains").
-					With("ouput", remains).
-					With("input", out).Debug("ouput from host")
+				util.Log.With("arise", "remains").With("input", out).Debug("ouput from host")
 
 				// update client with new state of terminal
 				network.SetCurrentState(complete)

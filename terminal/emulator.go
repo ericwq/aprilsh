@@ -589,17 +589,16 @@ func (emu *Emulator) HandleLargeStream(seq string) (remains string) {
 
 			// save over size content (remains) for later opportunity.
 			// ret = restoreSequence(hds[:idx])
-			remains := restoreSequence(hds[idx:])
+			remains = restoreSequence(hds[idx:])
 			// util.Log.With("oldPos", pos).
 			// 	With("posY", emu.posY).With("idx", idx).
 			// 	// With("processed", strings.Split(ret, "。")[0]).
 			// 	With("processed", ret).
 			// 	Warn("rewind check")
-			util.Log.With("newPos", emu.cf.getPhysicalRow(emu.posY)).
-				With("posY", emu.posY).With("idx", idx).
-				// With("remains", strings.Split(remains, "。")[0]).
-				With("remains", remains).
-				Warn("rewind check")
+			// util.Log.With("newPos", emu.cf.getPhysicalRow(emu.posY)).
+			// 	With("posY", emu.posY).With("idx", idx).
+			// 	With("remains", remains).
+			// 	Debug("rewind check")
 			// util.Log.With("gap", emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))).
 			// 	Debug("rewind check")
 			break

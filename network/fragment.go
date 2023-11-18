@@ -162,8 +162,8 @@ func (f *FragmentAssembly) addFragment(frag *Fragment) bool {
 		f.fragmentsTotal = int(frag.fragmentNum) + 1
 	}
 
-	util.Log.With("fragmentID", frag.id).With("fragmentNum", frag.fragmentNum).
-		With("length", len(frag.contents)).Debug("addFragment")
+	// util.Log.With("fragmentID", frag.id).With("fragmentNum", frag.fragmentNum).
+	// 	With("length", len(frag.contents)).Debug("addFragment")
 
 	// return true means all the fragments is arrived.
 	return f.fragmentsArrived == f.fragmentsTotal
@@ -244,11 +244,11 @@ func (f *Fragmenter) makeFragments(inst *pb.Instruction, mtu int) (ret []*Fragme
 	var fragmentNum uint16 = 0
 	pos := 0
 
-	util.Log.With("mtu", mtu).
-		With("diff", len(inst.Diff)).
-		With("marshal", len(data)).
-		With("compress", len(payload[pos:])).
-		Debug("send message")
+	// util.Log.With("mtu", mtu).
+	// 	With("diff", len(inst.Diff)).
+	// 	With("marshal", len(data)).
+	// 	With("compress", len(payload[pos:])).
+	// 	Debug("send message")
 
 	for payload != nil {
 		final := false

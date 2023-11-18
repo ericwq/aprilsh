@@ -230,7 +230,8 @@ func (ts *TransportSender[T]) sendFragments(inst *pb.Instruction, newNum uint64)
 	}
 
 	// TODO we don't use OCB, so remove the encrypt.ADDED_BYTES ?
-	fragments := ts.fragmenter.makeFragments(inst, ts.connection.getMTU()-ADDED_BYTES-encrypt.ADDED_BYTES)
+	// extract 90 bytes from the MTU, to avoid oversize datagram
+	fragments := ts.fragmenter.makeFragments(inst, ts.connection.getMTU()-ADDED_BYTES-encrypt.ADDED_BYTES-90)
 	for i := range fragments {
 		if err := ts.connection.send(fragments[i].String()); err != nil {
 			return err
@@ -398,7 +399,7 @@ func (ts *TransportSender[T]) tick() error {
 		}
 
 		// Also verify that both the original frame and generated frame have the same initial diff.
-		// util.Log.With("point", 500).Debug("tick")
+		util.Log.With("point", 500).Debug("tick")
 		currentDiff := ts.currentState.InitDiff()
 		// util.Log.With("point", 600).Debug("tick")
 		// newState.SetLastRows(ts.currentState.GetLastRows())
@@ -406,7 +407,7 @@ func (ts *TransportSender[T]) tick() error {
 		if currentDiff != newDiff {
 			util.Log.Warn("#tick Warning, target state Instruction verification failed!")
 		}
-		// util.Log.With("point", 700).Debug("tick")
+		util.Log.With("point", 700).Debug("tick")
 	}
 	// util.Log.SetLevel(slog.LevelDebug)
 	ts.currentState.SetLastRows(0)
