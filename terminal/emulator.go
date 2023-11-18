@@ -566,11 +566,13 @@ func (emu *Emulator) HandleStream(seq string) (hds []*Handler) {
 // ring buffer is full, pause the process and return the remains stream.
 func (emu *Emulator) HandleLargeStream(seq string) (remains string) {
 	if len(seq) == 0 {
+		util.Log.Debug("HandleLargeStream no remains left")
 		return
 	}
 
 	// if we reach the max rows, just return
 	if emu.cf.reachMaxRows(emu.lastRows) {
+		util.Log.Debug("HandleLargeStream reach max rows, wait next time")
 		return seq
 	}
 

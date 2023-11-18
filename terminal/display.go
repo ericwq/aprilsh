@@ -720,12 +720,12 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 		d.replicateContent0(initialized, oldE, newE, sizeChanged, asbChanged, frame)
 	}
 
-	util.Log.With("oldHead", oldE.cf.scrollHead).
-		With("newHead", newE.cf.scrollHead).
-		With("lastRows", newE.lastRows).Debug("replicateContent")
+	// util.Log.With("diff2", strings.TrimPrefix(frame.output(), prefix)).
+	// 	Debug("replicateContent")
 	util.Log.With("mark", mark).
 		With("fs.cursor", fmt.Sprintf("(%02d,%02d)", frame.cursorY, frame.cursorX)).
-		With("diff2", strings.TrimPrefix(frame.output(), prefix)).Debug("replicateContent")
+		With("oldHead", oldE.cf.scrollHead).With("newHead", newE.cf.scrollHead).
+		With("lastRows", newE.lastRows).Debug("replicateContent")
 }
 
 func (d *Display) replicateContent0(initialized bool, oldE, newE *Emulator, sizeChanged bool,
