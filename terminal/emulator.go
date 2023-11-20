@@ -566,7 +566,12 @@ func (emu *Emulator) HandleStream(seq string) (hds []*Handler) {
 // ring buffer is full, pause the process and return the remains stream.
 func (emu *Emulator) HandleLargeStream(seq string) (remains string) {
 	if len(seq) == 0 {
-		util.Log.Debug("HandleLargeStream no remains left")
+		// util.Log.Debug("HandleLargeStream no remains left")
+		return
+	}
+
+	if !emu.altScreenBufferMode {
+		emu.HandleStream(seq)
 		return
 	}
 

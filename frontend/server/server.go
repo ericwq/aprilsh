@@ -92,7 +92,7 @@ Options:
   -l, --locale   key-value pairs (such as LANG=UTF-8, you can have multiple -l options)
   -t, --term     client TERM (such as xterm-256color, or alacritty or xterm-kitty)
       --verbose  verbose output (such as 1)
-     -- command  shell command and options (note the space before command)
+      -- command  shell command and options (note the space before command)
 `
 
 func printUsage(hint, usage string) {
@@ -740,7 +740,7 @@ mainLoop:
 		now := time.Now().UnixMilli()
 
 		timeout = terminal.Min(timeout, network.WaitTime()) // network.WaitTime cost time
-		// w0 := timeout
+		w0 := timeout
 		w1 := complete.WaitTime(now)
 		timeout = terminal.Min(timeout, w1)
 		// timeout = terminal.Min(timeout, complete.WaitTime(now))
@@ -768,8 +768,8 @@ mainLoop:
 		timeSinceRemoteState = now - p.GetTimestamp()
 		terminalToHost.Reset()
 
-		// util.Log.With("point", 200).With("network.WaitTime", w0).
-		// 	With("complete.WaitTime", w1).With("timeout", timeout).Debug("mainLoop")
+		util.Log.With("point", 200).With("network.WaitTime", w0).
+			With("complete.WaitTime", w1).With("timeout", timeout).Debug("mainLoop")
 		timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
 		select {
 		case <-timer.C:

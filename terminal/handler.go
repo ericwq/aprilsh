@@ -1482,7 +1482,8 @@ func hdl_csi_privSM(emu *Emulator, params []int) {
 			hdl_esc_decsc(emu)
 			emu.switchScreenBufferMode(true)
 			emu.altScreen1049 = true
-			// fmt.Printf("privRM:1474 swith screen buffer mode. altScreen1049=%t\n", emu.altScreen1049)
+			// util.Log.With("altScreenBufferMode", emu.altScreenBufferMode).
+			// 	With("altScreen1049", emu.altScreen1049).Debug("privSM")
 		case 2004:
 			// emu.framebuffer.DS.BracketedPaste = true // xterm zutty:bracketedPasteMode
 			emu.bracketedPasteMode = true
