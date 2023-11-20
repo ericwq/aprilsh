@@ -76,7 +76,7 @@ func firstScreen(oldE, newE *Emulator) bool {
 }
 
 func calculateRows(oldE, newE *Emulator) int {
-	// for alternate screen buffer mode
+	// no head scroll
 	if firstScreen(oldE, newE) {
 		if newE.posY == oldE.posY {
 			if newE.posX != oldE.posX {
@@ -84,13 +84,13 @@ func calculateRows(oldE, newE *Emulator) int {
 			}
 			return 0
 		}
-		if oldE.posY == 0 {
-			return newE.posY - oldE.posY + 1
-		}
+		// if oldE.posY == 0 {
+		// 	return newE.posY - oldE.posY + 1
+		// }
 		return newE.posY - oldE.posY + 1
 	}
 
-	// for normal screen buffer mode
+	// head scrolled
 	if newE.cf.scrollHead > oldE.cf.scrollHead {
 		// new screen head is greater than old screen head
 		if newE.posY == oldE.posY && newE.posY == newE.nRows-1 {
@@ -703,7 +703,8 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 		wrap := false
 		for i := 0; i < countRows; i++ {
 			oldRow = blankRow
-			if countRows == 1 || firstScreen(oldE, newE) {
+			// if countRows == 1 || firstScreen(oldE, newE) {
+			if countRows == 1 {
 				oldRow = oldE.cf.getRow(rawY)
 			} else {
 				oldRow = blankRow
