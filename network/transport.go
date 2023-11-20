@@ -358,3 +358,8 @@ func (t *Transport[S, R]) getSentStateList() string {
 	s.WriteString("]")
 	return s.String()
 }
+
+func (t *Transport[S, R]) InitSize(nCols, nRows int) {
+	s := t.sender.sentStates[0].GetState()
+	s.InitSize(nCols, nRows)
+}

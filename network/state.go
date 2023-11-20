@@ -24,6 +24,7 @@ type State[C any] interface {
 	ResetInput()
 	SetLastRows(x int)
 	GetLastRows() int
+	InitSize(y, x int)
 	Clone() C
 }
 

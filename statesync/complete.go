@@ -72,6 +72,11 @@ func (c *Complete) ActLarge(str string, feed chan string) string {
 	return c.terminal.ReadOctetsToHost()
 }
 
+func (c *Complete) InitSize(nCols, nRows int) {
+	newSize := terminal.Resize{Height: nRows, Width: nCols}
+	c.ActOne(newSize)
+}
+
 // let the terminal parse and handle the data stream.
 func (c *Complete) Act(str string) string {
 	// c.terminal.ResetDamage()

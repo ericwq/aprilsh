@@ -220,9 +220,10 @@ func (u *UserStream) Equal(x *UserStream) bool {
 }
 
 // implements network.State[C any] interface
-func (u *UserStream) ResetInput()      {}
-func (u *UserStream) SetLastRows(int)  {}
-func (u *UserStream) GetLastRows() int { return 0 }
+func (u *UserStream) ResetInput()               {}
+func (u *UserStream) SetLastRows(int)           {}
+func (u *UserStream) GetLastRows() int          { return 0 }
+func (u *UserStream) InitSize(nCols, nRows int) {}
 
 // implements network.State[C any] interface
 func (u *UserStream) Clone() *UserStream {

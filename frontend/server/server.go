@@ -819,6 +819,10 @@ mainLoop:
 							network.StartShutdown()
 						}
 						util.Log.With("col", winSize.Col).With("row", winSize.Row).Debug("input from remote")
+						if !childReleased {
+							// network.InitSize(res.Width, res.Height)
+							util.Log.Debug("first message, change window size")
+						}
 					}
 					terminalToHost.WriteString(complete.ActOne(action))
 				}

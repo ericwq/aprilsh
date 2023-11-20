@@ -71,16 +71,23 @@ func equalSlice[T constraints.Ordered](a, b []T) bool {
 	return true
 }
 
+func firstScreen(oldE, newE *Emulator) bool {
+	return newE.cf.scrollHead == 0 && newE.cf.scrollHead == oldE.cf.scrollHead
+}
+
 func calculateRows(oldE, newE *Emulator) int {
 	// for alternate screen buffer mode
-	if newE.cf.scrollHead == 0 && newE.cf.scrollHead == oldE.cf.scrollHead {
-		if newE.posY != oldE.posY {
-			return newE.posY + 1
+	if firstScreen(oldE, newE) {
+		if newE.posY == oldE.posY {
+			if newE.posX != oldE.posX {
+				return 1
+			}
+			return 0
 		}
-		if newE.posX != oldE.posX {
-			return 1
+		if oldE.posY == 0 {
+			return newE.posY - oldE.posY + 1
 		}
-		return 0
+		return newE.posY - oldE.posY + 1
 	}
 
 	// for normal screen buffer mode
@@ -689,16 +696,14 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 
 		util.Log.With("oldHead", oldE.cf.scrollHead).With("newHead", newE.cf.scrollHead).
 			With("oldY", oldE.posY).With("newY", newE.posY).
-			With("oldHistoryRows", oldE.cf.historyRows).
-			With("newHistoryRows", newE.cf.historyRows).
-			With("lastRows", newE.lastRows).
-			With("countRows", countRows).Debug("replicateContent")
+			With("oldX", oldE.posX).With("newX", newE.posX).
+			Debug("replicateContent")
 		pre := frame.output()
 
 		wrap := false
 		for i := 0; i < countRows; i++ {
 			oldRow = blankRow
-			if countRows == 1 {
+			if countRows == 1 || firstScreen(oldE, newE) {
 				oldRow = oldE.cf.getRow(rawY)
 			} else {
 				oldRow = blankRow
@@ -736,7 +741,7 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 	// 	Debug("replicateContent")
 	util.Log.With("mark", mark).
 		With("fs.cursor", fmt.Sprintf("(%02d,%02d)", frame.cursorY, frame.cursorX)).
-		With("oldHead", oldE.cf.scrollHead).With("newHead", newE.cf.scrollHead).
+		// With("oldHead", oldE.cf.scrollHead).With("newHead", newE.cf.scrollHead).
 		With("lastRows", newE.lastRows).With("countRows", countRows).Debug("replicateContent")
 }
 
