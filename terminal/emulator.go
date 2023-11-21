@@ -570,18 +570,13 @@ func (emu *Emulator) HandleLargeStream(seq string) (remains string) {
 		return
 	}
 
-	if !emu.altScreenBufferMode {
-		emu.HandleStream(seq)
-		return
-	}
-
 	// if we reach the max rows, just return
 	if emu.cf.reachMaxRows(emu.lastRows) {
 		util.Log.Debug("HandleLargeStream reach max rows, wait next time")
 		return seq
 	}
 
-	// prepare to check occupied roes
+	// prepare to check occupied rows
 	pos := emu.cf.getPhysicalRow(emu.posY)
 	start := false
 	// util.Log.With("pos", emu.cf.getPhysicalRow(emu.posY)).With("posY", emu.posY).
@@ -592,7 +587,7 @@ func (emu *Emulator) HandleLargeStream(seq string) (remains string) {
 
 	for idx, hd := range hds {
 		// check rewind case
-		if start && emu.cf.isFullFrame(emu.lastRows, pos, emu.cf.getPhysicalRow(emu.posY)) {
+		if !emu.altScreenBufferMode && start && emu.cf.isFullFrame(emu.lastRows, pos, emu.cf.getPhysicalRow(emu.posY)) {
 
 			// save over size content (remains) for later opportunity.
 			// ret = restoreSequence(hds[:idx])
@@ -614,7 +609,7 @@ func (emu *Emulator) HandleLargeStream(seq string) (remains string) {
 		hd.handle(emu)
 
 		// start the check
-		if emu.cf.getPhysicalRow(emu.posY) != pos {
+		if !emu.altScreenBufferMode && emu.cf.getPhysicalRow(emu.posY) != pos {
 			start = true
 		}
 		// util.Log.With("newPos", emu.cf.getPhysicalRow(emu.posY)).
