@@ -32,6 +32,14 @@ func LookupTerminfo(name string) (ti *terminfo.Terminfo, e error) {
 	return
 }
 
+// extract specified row from the resize screen.
+func getRowFrom(from []Cell, posY int, w int) (row []Cell) {
+	start := posY * w
+	end := start + w
+	row = from[start:end]
+	return row
+}
+
 // func getRawRow(emu *Emulator, rowY int) (row []Cell) {
 // 	start := emu.nCols * rowY
 // 	end := start + emu.nCols
@@ -734,7 +742,7 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 		}
 	} else {
 		mark = "screen"
-		d.replicateContent0(initialized, oldE, newE, sizeChanged, asbChanged, frame)
+		d.replicateASB(initialized, oldE, newE, sizeChanged, asbChanged, frame)
 	}
 
 	// util.Log.With("diff2", strings.TrimPrefix(frame.output(), prefix)).
@@ -745,10 +753,12 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 		With("lastRows", newE.lastRows).With("countRows", countRows).Debug("replicateContent")
 }
 
-func (d *Display) replicateContent0(initialized bool, oldE, newE *Emulator, sizeChanged bool,
+func (d *Display) replicateASB(initialized bool, oldE, newE *Emulator, sizeChanged bool,
 	asbChanged bool, frame *FrameState) {
+	util.Log.With("asbChanged", asbChanged).With("sizeChanged", sizeChanged).Debug("replicateASB")
+
 	resizeScreen := oldE.cf.cells
-	if newE.nCols != oldE.nCols || newE.nRows != oldE.nRows {
+	if asbChanged || newE.nCols != oldE.nCols || newE.nRows != oldE.nRows {
 		// TODO resize processing
 		/* resize and copy old screen */
 		// we copy the old screen to avoid changing the same part.
@@ -782,12 +792,13 @@ func (d *Display) replicateContent0(initialized bool, oldE, newE *Emulator, size
 
 	// shortcut -- has display moved up(text up, window down) by a certain number of lines?
 	// NOTE: not availble for alternate screen buffer changed.
-	if initialized && !asbChanged && !newE.altScreenBufferMode {
+	// if initialized && !asbChanged && !newE.altScreenBufferMode {
+	if initialized {
 
 		for row := 0; row < newE.GetHeight(); row++ {
 			newRow = getRow(newE, 0)
-			// oldRow = getRowFrom(resizeScreen, row, newE.nCols)
-			oldRow = getRow(oldE, row)
+			oldRow = getRowFrom(resizeScreen, row, newE.nCols)
+			// oldRow = getRow(oldE, row)
 
 			if equalRow(newRow, oldRow) {
 				// fmt.Printf("new screen row 0 is the same as old screen row %d\n", row)
@@ -804,8 +815,8 @@ func (d *Display) replicateContent0(initialized bool, oldE, newE *Emulator, size
 				// how big is the region that was scrolled?
 				for regionHeight := 1; linesScrolled+regionHeight < newE.GetHeight(); regionHeight++ {
 					newRow = getRow(newE, regionHeight)
-					// oldRow = getRowFrom(resizeScreen, linesScrolled+regionHeight, newE.nCols)
-					oldRow = getRow(oldE, regionHeight+linesScrolled)
+					oldRow = getRowFrom(resizeScreen, linesScrolled+regionHeight, newE.nCols)
+					// oldRow = getRow(oldE, regionHeight+linesScrolled)
 					if equalRow(newRow, oldRow) {
 						// fmt.Printf("new screen row %d is the same as old screen row %d\n",
 						// 	regionHeight, regionHeight+linesScrolled)
@@ -888,8 +899,8 @@ func (d *Display) replicateContent0(initialized bool, oldE, newE *Emulator, size
 	// Now update the display, row by row
 	wrap := false
 	for ; frameY < newE.GetHeight(); frameY++ {
-		// oldRow = getRowFrom(resizeScreen, frameY, newE.nCols)
-		oldRow = getRow(oldE, frameY+linesScrolled)
+		oldRow = getRowFrom(resizeScreen, frameY, newE.nCols)
+		// oldRow = getRow(oldE, frameY+linesScrolled)
 		newRow := getRow(newE, frameY)
 		wrap = d.putRow2(initialized, frame, newE, newRow, frameY, oldRow, wrap)
 		// fmt.Printf("#NewFrame frameY=%2d, seq=%q\n", frameY, strings.Replace(b.String(), seq, "", 1))
