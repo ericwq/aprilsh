@@ -14,6 +14,7 @@ import (
 	pb "github.com/ericwq/aprilsh/protobufs"
 	"github.com/ericwq/aprilsh/terminal"
 	"github.com/ericwq/aprilsh/util"
+	"golang.org/x/exp/slog"
 	// "github.com/ericwq/aprilsh/util"
 )
 
@@ -382,7 +383,7 @@ func (ts *TransportSender[T]) tick() error {
 	// diff = ts.attemptProspectiveResendOptimization(diff)
 	// util.Log.With("point", 300).Debug("tick")
 	// util.Log.With("point", 300).With("length", len(diff)).With("diff", diff).Debug("tick")
-	// util.Log.SetLevel(slog.LevelInfo)
+	util.Log.SetLevel(slog.LevelInfo)
 
 	if ts.verbose > 0 && len(diff) > 0 {
 		if ts.hookForTick != nil { // hook function for testing
@@ -409,7 +410,7 @@ func (ts *TransportSender[T]) tick() error {
 		}
 		util.Log.With("point", 700).Debug("tick")
 	}
-	// util.Log.SetLevel(slog.LevelDebug)
+	util.Log.SetLevel(slog.LevelDebug)
 	ts.currentState.SetLastRows(0)
 	// util.Log.With("point", 800).With("lastRows", 0).Debug("tick")
 

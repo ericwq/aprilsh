@@ -469,10 +469,11 @@ func (sc *STMClient) mainInit() error {
 	// local state
 	savedLines := terminal.SaveLinesRowsOption
 	sc.localFramebuffer = terminal.NewEmulator3(col, row, savedLines)
-	sc.newState = terminal.NewEmulator3(1, 1, savedLines)
+	sc.newState = terminal.NewEmulator3(col, row, savedLines)
 
 	// initialize screen
 	init := sc.display.NewFrame(false, sc.localFramebuffer, sc.localFramebuffer)
+	util.Log.With("init", init).Debug("mainInit")
 	os.Stdout.WriteString(init)
 
 	// open network

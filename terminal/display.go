@@ -703,12 +703,11 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 		wrap := false
 		for i := 0; i < countRows; i++ {
 			oldRow = blankRow
-			// if countRows == 1 || firstScreen(oldE, newE) {
-			if countRows == 1 {
-				oldRow = oldE.cf.getRow(rawY)
-			} else {
-				oldRow = blankRow
-			}
+			// if countRows == 1 {
+			// 	oldRow = oldE.cf.getRow(rawY)
+			// } else {
+			// 	oldRow = blankRow
+			// }
 			newRow = newE.cf.getRow(rawY)
 			wrap = d.putRow2(initialized, frame, newE, newRow, frameY, oldRow, wrap)
 
