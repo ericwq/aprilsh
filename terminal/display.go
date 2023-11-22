@@ -765,8 +765,10 @@ func (d *Display) replicateASB(initialized bool, oldE, newE *Emulator, sizeChang
 	var resizeScreen []Cell
 
 	if asbChanged {
+		// old is normal screen buffer, new is swtiched to alternate screen buffer
 		resizeScreen = oldE.cf.getScreenRef()
 	} else {
+		// both screens are alternate screen buffer
 		resizeScreen = oldE.cf.cells
 		// canMove = true
 	}
@@ -921,7 +923,7 @@ func (d *Display) replicateASB(initialized bool, oldE, newE *Emulator, sizeChang
 	wrap := false
 	for ; frameY < newE.GetHeight(); frameY++ {
 		// for i := 0; i < newE.GetHeight(); i++ {
-		oldRow = getRowFrom(resizeScreen, frameY, newE.nCols)
+		oldRow = getRowFrom(resizeScreen, frameY, oldE.nCols)
 		newRow := getRow(newE, frameY)
 		// newRow := getRow(newE, i)
 		wrap = d.putRow2(initialized, frame, newE, newRow, frameY, oldRow, wrap)
