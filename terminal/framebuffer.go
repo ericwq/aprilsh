@@ -646,6 +646,19 @@ func (fb *Framebuffer) getRow(rowY int) []Cell {
 	return fb.cells[start:end]
 }
 
+// return the active area reference
+func (fb *Framebuffer) getScreenRef() []Cell {
+	startIdx := fb.nCols * fb.getPhysicalRow(0)
+	endIdx := startIdx + (fb.nRows)*fb.nCols
+	maxIdx := len(fb.cells)
+	if endIdx > maxIdx || startIdx > maxIdx {
+		util.Log.With("startIdx", startIdx).With("endIdx", endIdx).
+			With("length", maxIdx).
+			Warn("getScreenRef")
+	}
+	return fb.cells[startIdx:endIdx]
+}
+
 func (fb *Framebuffer) Equal(x *Framebuffer) bool {
 	return fb.equal(x, false)
 }
@@ -725,10 +738,11 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 				row := i / fb.nCols
 				// col := i % fb.nRows
 				// msg := fmt.Sprintf("cells[%d,%d]=(%v,%v) [only show first not equal]", row, col, fb.cells[i], x.cells[i])
-				util.Log.With("row", printRow(fb.cells, row, fb.nCols)).Warn("equal new")
-				util.Log.With("row", printRow(x.cells, row, x.nCols)).Warn("equal old")
+				util.Log.With("newRow", printRow(fb.cells, row, fb.nCols)).Warn("equal")
+				util.Log.With("oldRow", printRow(x.cells, row, x.nCols)).Warn("equal")
 				ret = false
-				break
+				// break
+				i += fb.nCols - 1
 			} else {
 				return false
 			}

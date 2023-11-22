@@ -616,11 +616,12 @@ func (emu *Emulator) HandleLargeStream(seq string) (remains string) {
 		// 	With("gap", emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))).
 		// 	With("seq", hd.sequence).Debug("rewind check")
 	}
-	emu.lastRows += emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))
-
-	util.Log.With("lastRows", emu.lastRows).
-		With("once", emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))).
-		Debug("HandleLargeStream")
+	if !emu.altScreenBufferMode {
+		emu.lastRows += emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))
+		util.Log.With("lastRows", emu.lastRows).
+			With("once", emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))).
+			Debug("HandleLargeStream")
+	}
 	return
 }
 
