@@ -766,7 +766,11 @@ func (d *Display) replicateASB(initialized bool, oldE, newE *Emulator, sizeChang
 
 	if asbChanged {
 		// old is normal screen buffer, new is swtiched to alternate screen buffer
-		resizeScreen = oldE.cf.getScreenRef()
+		// resizeScreen = oldE.cf.getScreenRef()
+		resizeScreen = make([]Cell, newE.nRows*newE.nCols)
+		// newE.posX = 0
+		newE.posY = 0
+		frame.cursorY = 0
 	} else {
 		// both screens are alternate screen buffer
 		resizeScreen = oldE.cf.cells
