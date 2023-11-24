@@ -903,7 +903,7 @@ func hdl_csi_cub(emu *Emulator, num int) {
 func calculateCellNum(emu *Emulator, count int) int {
 	oldX := emu.posX
 	currentX := emu.posX // the start position
-	var cell Cell
+	// var cell Cell
 
 	for i := 0; i < Abs(count); i++ {
 		// fmt.Printf("#calculateCellNum currentX=%d\n", currentX)
@@ -912,23 +912,27 @@ func calculateCellNum(emu *Emulator, count int) int {
 				currentX = emu.nColsEff
 				break
 			}
-			cell = emu.GetCell(emu.posY, currentX+1)
-			if cell.dwidth || cell.dwidthCont {
-				currentX += 2
-			} else {
-				currentX++
-			}
+			// emu.GetCell(emu.posY, currentX+1)
+			// cell = emu.GetCell(emu.posY, currentX+1)
+			// if cell.dwidth || cell.dwidthCont {
+			// 	currentX += 2
+			// } else {
+			// 	currentX++
+			// }
+			currentX++
 		} else { // calculate to the left
 			if currentX <= emu.hMargin {
 				currentX = emu.hMargin
 				break
 			}
-			cell = emu.GetCell(emu.posY, currentX-1)
-			if cell.dwidthCont || cell.dwidth {
-				currentX -= 2
-			} else {
-				currentX--
-			}
+			// emu.GetCell(emu.posY, currentX-1)
+			// cell = emu.GetCell(emu.posY, currentX-1)
+			// if cell.dwidthCont || cell.dwidth {
+			// 	currentX -= 2
+			// } else {
+			// 	currentX--
+			// }
+			currentX--
 		}
 	}
 
