@@ -732,22 +732,38 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 		}
 	}
 
-	for i := 0; i < len(fb.cells); i++ {
-		if fb.cells[i] != x.cells[i] {
-			if trace {
-				row := i / fb.nCols
-				// col := i % fb.nRows
-				// msg := fmt.Sprintf("cells[%d,%d]=(%v,%v) [only show first not equal]", row, col, fb.cells[i], x.cells[i])
-				util.Log.With("newRow", printRow(fb.cells, row, fb.nCols)).Warn("equal")
-				util.Log.With("oldRow", printRow(x.cells, row, x.nCols)).Warn("equal")
+	if fb.saveLines == 0 {
+		for pY := 0; pY < fb.nRows; pY++ {
+			srcStartIdx := fb.getViewRowIdx(pY)
+			srcEndIdx := srcStartIdx + fb.nCols
+			dstStartIdx := x.getViewRowIdx(pY)
+			dstEndIdx := dstStartIdx + x.nCols
+
+			newR := fb.cells[srcStartIdx:srcEndIdx]
+			oldR := x.cells[dstStartIdx:dstEndIdx]
+			if !equalRow(newR, oldR) {
+				util.Log.With("newRow", outputRow(newR, pY, fb.nCols)).Warn("equal")
+				util.Log.With("oldRow", outputRow(oldR, pY, x.nCols)).Warn("equal")
 				ret = false
-				// break
-				i += fb.nCols - 1
-			} else {
-				return false
+			}
+		}
+	} else {
+		for i := 0; i < len(fb.cells); i++ {
+			if fb.cells[i] != x.cells[i] {
+				if trace {
+					row := i / fb.nCols
+					util.Log.With("newRow", printRow(fb.cells, row, fb.nCols)).Warn("equal")
+					util.Log.With("oldRow", printRow(x.cells, row, x.nCols)).Warn("equal")
+					ret = false
+					// break
+					i += fb.nCols - 1
+				} else {
+					return false
+				}
 			}
 		}
 	}
+
 	return ret
 }
 

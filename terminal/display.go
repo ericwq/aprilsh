@@ -713,12 +713,12 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 
 		wrap := false
 		for i := 0; i < countRows; i++ {
-			oldRow = blankRow
-			// if countRows == 1 {
-			// 	oldRow = oldE.cf.getRow(rawY)
-			// } else {
-			// 	oldRow = blankRow
-			// }
+			// oldRow = blankRow
+			if countRows == 1 {
+				oldRow = oldE.cf.getRow(rawY)
+			} else {
+				oldRow = blankRow
+			}
 			newRow = newE.cf.getRow(rawY)
 			wrap = d.putRow2(initialized, frame, newE, newRow, frameY, oldRow, wrap)
 
@@ -761,23 +761,16 @@ func (d *Display) replicateASB(initialized bool, oldE, newE *Emulator, sizeChang
 	asbChanged bool, frame *FrameState) {
 	// util.Log.With("asbChanged", asbChanged).With("sizeChanged", sizeChanged).Debug("replicateASB")
 
-	// var canMove bool
 	var resizeScreen []Cell
 
 	if asbChanged {
-		// old is normal screen buffer, new is swtiched to alternate screen buffer
-		// resizeScreen = oldE.cf.getScreenRef()
+		// old is normal screen buffer, new is alternate screen buffer
 		resizeScreen = make([]Cell, newE.nRows*newE.nCols)
-		// newE.posX = 0
-		newE.posY = 0
-		frame.cursorY = 0
+		newE.cf.unwrapCellStorage()
 	} else {
 		// both screens are alternate screen buffer
 		resizeScreen = oldE.cf.cells
-		// canMove = true
 	}
-
-	util.Log.With("resizeScreen", len(resizeScreen)).Warn("replicateASB")
 
 	if newE.nCols != oldE.nCols || newE.nRows != oldE.nRows {
 		util.Log.With("size", "changed").Warn("replicateASB")
@@ -812,7 +805,6 @@ func (d *Display) replicateASB(initialized bool, oldE, newE *Emulator, sizeChang
 	var linesScrolled int
 	var scrollHeight int
 
-	// frameY = newE.posY
 	// shortcut -- has display moved up(text up, window down) by a certain number of lines?
 	// NOTE: not availble for alternate screen buffer changed.
 	// if initialized && !asbChanged && !newE.altScreenBufferMode {
@@ -918,13 +910,15 @@ func (d *Display) replicateASB(initialized bool, oldE, newE *Emulator, sizeChang
 	}
 
 	util.Log.With("newHead", newE.cf.scrollHead).With("oldHead", oldE.cf.scrollHead).
-		With("newY", newE.posY).With("oldY", oldE.posY).
-		With("newX", newE.posX).With("oldX", oldE.posX).
+		With("new.cursor", fmt.Sprintf("(%02d,%02d)", newE.posY, newE.posX)).
+		With("old.cursor", fmt.Sprintf("(%02d,%02d)", oldE.posY, oldE.posX)).
+		With("fs.cursor", fmt.Sprintf("(%02d,%02d)", frame.cursorY, frame.cursorX)).
 		Debug("replicateASB")
 	pre := frame.output()
 
 	// Now update the display, row by row
 	wrap := false
+	// for i := 0; i < countRows; i++ {
 	for ; frameY < newE.GetHeight(); frameY++ {
 		// for i := 0; i < newE.GetHeight(); i++ {
 		oldRow = getRowFrom(resizeScreen, frameY, oldE.nCols)
