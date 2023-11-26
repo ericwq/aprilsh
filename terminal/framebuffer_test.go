@@ -7,10 +7,12 @@ package terminal
 import (
 	"fmt"
 	"io"
+	"os"
 	"strings"
 	"testing"
 
 	"github.com/ericwq/aprilsh/util"
+	"golang.org/x/exp/slog"
 )
 
 func TestNewFramebuffer3_Oversize(t *testing.T) {
@@ -701,6 +703,49 @@ func TestGetPhysicalRow(t *testing.T) {
 
 			// prepare for test
 			fb, _, _ := NewFramebuffer3(80, 40, 80)
+			fb.scrollHead = v.scrollHead
+
+			// test it
+			got := fb.getPhysicalRow(v.screenRow)
+
+			// validate
+			if got != v.expect {
+				t.Errorf("#TestGetPhysicalRow %q expect %d, got %d\n", v.label, v.expect, got)
+			}
+		})
+	}
+}
+
+func TestASBRow(t *testing.T) {
+	tc := []struct {
+		label      string
+		screenRow  int // screen row
+		scrollHead int
+		expect     int // physical row
+	}{
+		{"0 scrollHead, row    1", 1, 0, 1},
+		{"0 scrollHead, row   10", 10, 0, 10},
+		{"0 scrollHead, row   19", 19, 0, 19},
+		{"0 scrollHead, row   20", 20, 0, 0},
+		{"0 scrollHead, row   30", 30, 0, 10},
+		{"0 scrollHead, row   40", 40, 0, 20},
+		{"19 scrollHead, row   0", 00, 19, 19},
+		{"19 scrollHead, row  19", 19, 19, 18},
+		{"19 scrollHead, row  20", 20, 19, 18},
+		{"19 scrollHead, row  21", 21, 19, 18},
+		{"19 scrollHead, row  22", 22, 19, 18},
+	}
+
+	// defer util.Log.Restore()
+	// util.Log.SetOutput(io.Discard)
+	util.Log.SetLevel(slog.LevelDebug)
+	util.Log.SetOutput(os.Stderr)
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+
+			// prepare for test
+			fb, _, _ := NewFramebuffer3(120, 20, 0)
 			fb.scrollHead = v.scrollHead
 
 			// test it

@@ -1116,8 +1116,9 @@ func (emu *Emulator) getDamageRows() (rows int) {
 	return emu.cf.nRows + emu.cf.saveLines - (row1 - row2)
 }
 
-func (emu *Emulator) getRawRow(posY int) (row []Cell) {
-	start := emu.cf.getPhysRowIdx(posY)
+// support screen row
+func (emu *Emulator) getRowAt(pY int) (row []Cell) {
+	start := emu.cf.getPhysRowIdx(pY)
 	end := start + emu.nCols
 	row = emu.cf.cells[start:end]
 	return row

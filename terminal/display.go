@@ -92,8 +92,8 @@ func calculateRows(oldE, newE *Emulator) int {
 			}
 			return 0
 		}
-		// if oldE.posY == 0 {
-		// 	return newE.posY - oldE.posY + 1
+		// if newE.posY == 0 { // got something like \x1b[H\x1b[2J\x1b[3J
+		// 	return newE.nRows
 		// }
 		return newE.posY - oldE.posY + 1
 	}
@@ -705,11 +705,11 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 		frameY := oldE.posY                       // screen row
 		countRows = calculateRows(oldE, newE)
 
-		// util.Log.With("oldHead", oldE.cf.scrollHead).With("newHead", newE.cf.scrollHead).
-		// 	With("oldY", oldE.posY).With("newY", newE.posY).
-		// 	With("oldX", oldE.posX).With("newX", newE.posX).
-		// 	Debug("replicateContent")
-		// pre := frame.output()
+		util.Log.With("oldHead", oldE.cf.scrollHead).With("newHead", newE.cf.scrollHead).
+			With("oldY", oldE.posY).With("newY", newE.posY).
+			With("oldX", oldE.posX).With("newX", newE.posX).
+			Debug("replicateContent")
+		pre := frame.output()
 
 		wrap := false
 		for i := 0; i < countRows; i++ {
@@ -722,13 +722,13 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 			newRow = newE.cf.getRow(rawY)
 			wrap = d.putRow2(initialized, frame, newE, newRow, frameY, oldRow, wrap)
 
-			// util.Log.With("old", outputRow(oldRow, rawY, oldE.nCols)).Debug("replicateContent")
-			// util.Log.With("new", outputRow(newRow, rawY, newE.nCols)).Debug("replicateContent")
-			// util.Log.With("fs.cursor", fmt.Sprintf("(%02d,%02d)", frame.cursorY, frame.cursorX)).
-			// 	With("rawY", rawY).With("frameY", frameY).With("count", i).
-			// 	With("output", strings.TrimPrefix(frame.output(), pre)).
-			// 	Debug("replicateContent")
-			// pre = frame.output()
+			util.Log.With("old", outputRow(oldRow, rawY, oldE.nCols)).Debug("replicateContent")
+			util.Log.With("new", outputRow(newRow, rawY, newE.nCols)).Debug("replicateContent")
+			util.Log.With("fs.cursor", fmt.Sprintf("(%02d,%02d)", frame.cursorY, frame.cursorX)).
+				With("rawY", rawY).With("frameY", frameY).With("count", i).
+				With("output", strings.TrimPrefix(frame.output(), pre)).
+				Debug("replicateContent")
+			pre = frame.output()
 
 			// wrap around the end of the scrolling area
 			rawY += 1
@@ -761,183 +761,216 @@ func (d *Display) replicateASB(initialized bool, oldE, newE *Emulator, sizeChang
 	asbChanged bool, frame *FrameState) {
 	// util.Log.With("asbChanged", asbChanged).With("sizeChanged", sizeChanged).Debug("replicateASB")
 
-	var resizeScreen []Cell
+	/*
+		var resizeScreen []Cell
 
-	if asbChanged {
-		// old is normal screen buffer, new is alternate screen buffer
-		resizeScreen = make([]Cell, newE.nRows*newE.nCols)
-		newE.cf.unwrapCellStorage()
-	} else {
-		// both screens are alternate screen buffer
-		resizeScreen = oldE.cf.cells
-	}
-
-	if newE.nCols != oldE.nCols || newE.nRows != oldE.nRows {
-		util.Log.With("size", "changed").Warn("replicateASB")
-		// TODO resize processing
-		/* resize and copy old screen */
-		// we copy the old screen to avoid changing the same part.
-
-		// prepare place for the old screen
-		// oldScreen := make([]Cell, oldE.nCols*oldE.nRows)
-		// oldE.cf.fullCopyCells(oldScreen)
-
-		// prepare place for the resized screen
-		resizeScreen = make([]Cell, newE.nCols*newE.nRows)
-
-		nCopyCols := Min(oldE.nCols, newE.nCols) // minimal column length
-		nCopyRows := Min(oldE.nRows, newE.nRows) // minimal row length
-
-		// copy the old screen to the new place
-		for pY := 0; pY < nCopyRows; pY++ {
-			srcStartIdx := pY * nCopyCols
-			srcEndIdx := srcStartIdx + nCopyCols
-			dstStartIdx := pY * nCopyCols
-			copy(resizeScreen[dstStartIdx:], oldE.cf.cells[srcStartIdx:srcEndIdx])
+		if asbChanged {
+			// old is normal screen buffer, new is alternate screen buffer
+			resizeScreen = make([]Cell, newE.nRows*newE.nCols)
+			newE.cf.unwrapCellStorage()
+		} else {
+			// both screens are alternate screen buffer
+			resizeScreen = oldE.cf.cells
+			// newE.cf.unwrapCellStorage()
 		}
-		// oldScreen = nil
-		/* resize and copy old screen */
-	}
 
+		if newE.nCols != oldE.nCols || newE.nRows != oldE.nRows {
+			util.Log.With("size", "changed").Warn("replicateASB")
+			// TODO resize processing
+			// resize and copy old screen
+			// we copy the old screen to avoid changing the same part.
+
+			// prepare place for the old screen
+			// oldScreen := make([]Cell, oldE.nCols*oldE.nRows)
+			// oldE.cf.fullCopyCells(oldScreen)
+
+			// prepare place for the resized screen
+			resizeScreen = make([]Cell, newE.nCols*newE.nRows)
+
+			nCopyCols := Min(oldE.nCols, newE.nCols) // minimal column length
+			nCopyRows := Min(oldE.nRows, newE.nRows) // minimal row length
+
+			// copy the old screen to the new place
+			for pY := 0; pY < nCopyRows; pY++ {
+				srcStartIdx := pY * nCopyCols
+				srcEndIdx := srcStartIdx + nCopyCols
+				dstStartIdx := pY * nCopyCols
+				copy(resizeScreen[dstStartIdx:], oldE.cf.cells[srcStartIdx:srcEndIdx])
+			}
+			// oldScreen = nil
+			// resize and copy old screen
+		}
+	*/
 	var frameY int
 	var oldRow []Cell
 	var newRow []Cell
-	var linesScrolled int
-	var scrollHeight int
 
-	// shortcut -- has display moved up(text up, window down) by a certain number of lines?
-	// NOTE: not availble for alternate screen buffer changed.
-	// if initialized && !asbChanged && !newE.altScreenBufferMode {
-	if initialized {
+	/*
+		var linesScrolled int
+		var scrollHeight int
+		// shortcut -- has display moved up(text up, window down) by a certain number of lines?
+		// NOTE: not availble for alternate screen buffer changed.
+		// if initialized && !asbChanged && !newE.altScreenBufferMode {
+		if initialized {
 
-		for row := 0; row < newE.GetHeight(); row++ {
-			newRow = getRow(newE, 0)
-			oldRow = getRowFrom(resizeScreen, row, newE.nCols)
-			// oldRow = getRow(oldE, row)
+			for row := 0; row < newE.GetHeight(); row++ {
+				newRow = getRow(newE, 0)
+				oldRow = getRowFrom(resizeScreen, row, newE.nCols)
+				// oldRow = getRow(oldE, row)
 
-			if equalRow(newRow, oldRow) {
-				// fmt.Printf("new screen row 0 is the same as old screen row %d\n", row)
+				if equalRow(newRow, oldRow) {
+					// fmt.Printf("new screen row 0 is the same as old screen row %d\n", row)
 
-				// if row 0, we're looking at ourselves and probably didn't scroll
-				if row == 0 {
-					break
-				}
-
-				// found a scroll: text up, window down
-				linesScrolled = row
-				scrollHeight = 1
-
-				// how big is the region that was scrolled?
-				for regionHeight := 1; linesScrolled+regionHeight < newE.GetHeight(); regionHeight++ {
-					newRow = getRow(newE, regionHeight)
-					oldRow = getRowFrom(resizeScreen, linesScrolled+regionHeight, newE.nCols)
-					// oldRow = getRow(oldE, regionHeight+linesScrolled)
-					if equalRow(newRow, oldRow) {
-						// fmt.Printf("new screen row %d is the same as old screen row %d\n",
-						// 	regionHeight, regionHeight+linesScrolled)
-						scrollHeight = regionHeight + 1
-					} else {
+					// if row 0, we're looking at ourselves and probably didn't scroll
+					if row == 0 {
 						break
 					}
-				}
-				// fmt.Printf("new screen has %d same rows with the old screen, start from %d\n",
-				// 	scrollHeight, linesScrolled)
 
-				break
+					// found a scroll: text up, window down
+					linesScrolled = row
+					scrollHeight = 1
+
+					// how big is the region that was scrolled?
+					for regionHeight := 1; linesScrolled+regionHeight < newE.GetHeight(); regionHeight++ {
+						newRow = getRow(newE, regionHeight)
+						oldRow = getRowFrom(resizeScreen, linesScrolled+regionHeight, newE.nCols)
+						// oldRow = getRow(oldE, regionHeight+linesScrolled)
+						if equalRow(newRow, oldRow) {
+							// fmt.Printf("new screen row %d is the same as old screen row %d\n",
+							// 	regionHeight, regionHeight+linesScrolled)
+							scrollHeight = regionHeight + 1
+						} else {
+							break
+						}
+					}
+					// fmt.Printf("new screen has %d same rows with the old screen, start from %d\n",
+					// 	scrollHeight, linesScrolled)
+
+					break
+				}
+			}
+
+			if scrollHeight > 0 {
+				frameY = scrollHeight
+
+				if linesScrolled > 0 {
+					// reset the renditions
+					frame.updateRendition(Renditions{}, true)
+
+					topMargin := 0
+					bottomMargin := topMargin + linesScrolled + scrollHeight - 1
+					// fmt.Printf("#NewFrame scrollHeight=%2d, linesScrolled=%2d, frameY=%2d, bottomMargin=%2d\n",
+					// 	scrollHeight, linesScrolled, frameY, bottomMargin)
+
+					// Common case:  if we're already on the bottom line and we're scrolling the whole
+					// creen, just do a CR and LFs.
+					if scrollHeight+linesScrolled == newE.GetHeight() && frame.cursorY+1 == newE.GetHeight() {
+						frame.append("\r")
+						frame.append("\x1B[%dS", linesScrolled)
+						frame.cursorX = 0
+					} else {
+						// set scrolling region
+						frame.append("\x1B[%d;%dr", topMargin+1, bottomMargin+1)
+
+						// go to bottom of scrolling region
+						frame.cursorY = -1
+						frame.cursorX = -1
+						frame.appendSilentMove(bottomMargin, 0)
+
+						// scroll text up by <linesScrolled>
+						frame.append("\x1B[%dS", linesScrolled)
+
+						// reset scrolling region
+						frame.append("\x1B[r")
+
+						// invalidate cursor position after unsetting scrolling region
+						frame.cursorY = -1
+						frame.cursorX = -1
+					}
+
+					// // Now we need a proper blank row.
+					// blankRow := make([]Cell, newE.nCols)
+					// for i := range blankRow {
+					// 	// set both contents and renditions
+					// 	blankRow[i] = newE.attrs
+					// }
+					//
+					// // do the move in our local new screen
+					// for i := topMargin; i <= bottomMargin; i++ {
+					// 	dstStart := i * newE.nCols
+					//
+					// 	if i+linesScrolled <= bottomMargin {
+					// 		copy(resizeScreen[dstStart:], getRow(oldE, linesScrolled+i))
+					// 		// copy(resizeScreen[dstStart:], getRowFrom(resizeScreen, linesScrolled+i, newE.nCols))
+					// 	} else {
+					// 		copy(resizeScreen[dstStart:], blankRow[:])
+					// 		// fmt.Printf("row %d is blank\n", i)
+					// 	}
+					// }
+					//
+				}
 			}
 		}
-
-		if scrollHeight > 0 {
-			frameY = scrollHeight
-
-			if linesScrolled > 0 {
-				// reset the renditions
-				frame.updateRendition(Renditions{}, true)
-
-				topMargin := 0
-				bottomMargin := topMargin + linesScrolled + scrollHeight - 1
-				// fmt.Printf("#NewFrame scrollHeight=%2d, linesScrolled=%2d, frameY=%2d, bottomMargin=%2d\n",
-				// 	scrollHeight, linesScrolled, frameY, bottomMargin)
-
-				// Common case:  if we're already on the bottom line and we're scrolling the whole
-				// creen, just do a CR and LFs.
-				if scrollHeight+linesScrolled == newE.GetHeight() && frame.cursorY+1 == newE.GetHeight() {
-					frame.append("\r")
-					frame.append("\x1B[%dS", linesScrolled)
-					frame.cursorX = 0
-				} else {
-					// set scrolling region
-					frame.append("\x1B[%d;%dr", topMargin+1, bottomMargin+1)
-
-					// go to bottom of scrolling region
-					frame.cursorY = -1
-					frame.cursorX = -1
-					frame.appendSilentMove(bottomMargin, 0)
-
-					// scroll text up by <linesScrolled>
-					frame.append("\x1B[%dS", linesScrolled)
-
-					// reset scrolling region
-					frame.append("\x1B[r")
-
-					// invalidate cursor position after unsetting scrolling region
-					frame.cursorY = -1
-					frame.cursorX = -1
-				}
-
-				// // Now we need a proper blank row.
-				// blankRow := make([]Cell, newE.nCols)
-				// for i := range blankRow {
-				// 	// set both contents and renditions
-				// 	blankRow[i] = newE.attrs
-				// }
-				//
-				// // do the move in our local new screen
-				// for i := topMargin; i <= bottomMargin; i++ {
-				// 	dstStart := i * newE.nCols
-				//
-				// 	if i+linesScrolled <= bottomMargin {
-				// 		copy(resizeScreen[dstStart:], getRow(oldE, linesScrolled+i))
-				// 		// copy(resizeScreen[dstStart:], getRowFrom(resizeScreen, linesScrolled+i, newE.nCols))
-				// 	} else {
-				// 		copy(resizeScreen[dstStart:], blankRow[:])
-				// 		// fmt.Printf("row %d is blank\n", i)
-				// 	}
-				// }
-				//
-			}
-		}
-	}
-
+	*/
 	util.Log.With("newHead", newE.cf.scrollHead).With("oldHead", oldE.cf.scrollHead).
 		With("new.cursor", fmt.Sprintf("(%02d,%02d)", newE.posY, newE.posX)).
 		With("old.cursor", fmt.Sprintf("(%02d,%02d)", oldE.posY, oldE.posX)).
 		With("fs.cursor", fmt.Sprintf("(%02d,%02d)", frame.cursorY, frame.cursorX)).
+		With("frameY", frameY).
 		Debug("replicateASB")
 	pre := frame.output()
 
-	// Now update the display, row by row
+	/*
+		// Now update the display, row by row
+		wrap := false
+		// for i := 0; i < countRows; i++ {
+		for ; frameY < newE.GetHeight(); frameY++ {
+			// for i := 0; i < newE.GetHeight(); i++ {
+			oldRow = getRowFrom(resizeScreen, frameY, oldE.nCols)
+			// newRow := getRow(newE, frameY)
+			newRow = newE.getRowAt(frameY)
+			wrap = d.putRow2(initialized, frame, newE, newRow, frameY, oldRow, wrap)
+			// fmt.Printf("#NewFrame frameY=%2d, seq=%q\n", frameY, strings.Replace(b.String(), seq, "", 1))
+			// seq = b.String()
+
+			util.Log.With("old", outputRow(oldRow, frameY, oldE.nCols)).Debug("replicateASB")
+			util.Log.With("new", outputRow(newRow, frameY, newE.nCols)).Debug("replicateASB")
+			util.Log.With("fs.cursor", fmt.Sprintf("(%02d,%02d)", frame.cursorY, frame.cursorX)).
+				With("frameY", frameY).With("output", strings.TrimPrefix(frame.output(), pre)).
+				Debug("replicateASB")
+			pre = frame.output()
+
+			// frameY++
+		}
+	*/
+
+	var blankRow []Cell = make([]Cell, oldE.nCols)
+	if asbChanged {
+		frameY = oldE.nRows - 1
+	} else {
+		// frameY = oldE.posY
+		frameY = 0
+	}
 	wrap := false
-	// for i := 0; i < countRows; i++ {
-	for ; frameY < newE.GetHeight(); frameY++ {
-		// for i := 0; i < newE.GetHeight(); i++ {
-		oldRow = getRowFrom(resizeScreen, frameY, oldE.nCols)
-		newRow := getRow(newE, frameY)
-		// newRow := getRow(newE, i)
+	for i := 0; i < newE.nRows; i++ {
+		if asbChanged {
+			oldRow = blankRow
+		} else {
+			oldRow = oldE.getRowAt(i)
+		}
+		newRow = newE.getRowAt(i)
 		wrap = d.putRow2(initialized, frame, newE, newRow, frameY, oldRow, wrap)
-		// fmt.Printf("#NewFrame frameY=%2d, seq=%q\n", frameY, strings.Replace(b.String(), seq, "", 1))
-		// seq = b.String()
 
 		util.Log.With("old", outputRow(oldRow, frameY, oldE.nCols)).Debug("replicateASB")
 		util.Log.With("new", outputRow(newRow, frameY, newE.nCols)).Debug("replicateASB")
 		util.Log.With("fs.cursor", fmt.Sprintf("(%02d,%02d)", frame.cursorY, frame.cursorX)).
-			With("frameY", frameY).With("output", strings.TrimPrefix(frame.output(), pre)).
+			With("frameY", frameY).With("row", i).
+			With("output", strings.TrimPrefix(frame.output(), pre)).
 			Debug("replicateASB")
 		pre = frame.output()
 
-		// frameY++
+		frameY++
 	}
-
 }
 
 func (d *Display) putRow(initialized bool, frame *FrameState,

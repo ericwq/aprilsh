@@ -633,9 +633,9 @@ func (sc *STMClient) outputNewFrame() {
 	sc.overlays.Apply(sc.newState)
 
 	// calculate minimal difference from where we are
-	util.Log.SetLevel(slog.LevelInfo)
+	// util.Log.SetLevel(slog.LevelInfo)
 	diff := sc.display.NewFrame(!sc.repaintRequested, sc.localFramebuffer, sc.newState)
-	util.Log.SetLevel(slog.LevelDebug)
+	// util.Log.SetLevel(slog.LevelDebug)
 	os.Stdout.WriteString(diff)
 	if diff != "" {
 		util.Log.With("diff", diff).Debug("outputNewFrame")
