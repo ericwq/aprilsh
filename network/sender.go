@@ -406,12 +406,14 @@ func (ts *TransportSender[T]) tick() error {
 		// newState.SetLastRows(ts.currentState.GetLastRows())
 		newDiff := newState.InitDiff()
 		if currentDiff != newDiff {
+			util.Log.With("currentDiff", currentDiff).Warn("tick")
+			util.Log.With("newDiff", newDiff).Warn("tick")
 			util.Log.Warn("#tick Warning, target state Instruction verification failed!")
 		}
 		util.Log.With("point", 700).Debug("tick")
 	}
 	util.Log.SetLevel(slog.LevelDebug)
-	ts.currentState.SetLastRows(0)
+	ts.currentState.Reset()
 	// util.Log.With("point", 800).With("lastRows", 0).Debug("tick")
 
 	// fmt.Printf("#tick send %q to receiver %s.\n", diff, ts.connection.getRemoteAddr())

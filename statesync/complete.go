@@ -92,7 +92,7 @@ func (c *Complete) Act(str string) string {
 
 func (c *Complete) GetDiff() string {
 	ret := c.diffBuf.String()
-	c.diffBuf.Reset()
+	c.Reset()
 	return ret
 }
 
@@ -145,11 +145,10 @@ func (c *Complete) SetEchoAck(now int64) (ret bool) {
 
 	if c.echoAck != newestEchoAck {
 		ret = true
+		util.Log.With("newestEchoAck", newestEchoAck).
+			With("inputHistory", z).With("time", now%10000).
+			With("return", ret).Debug("SetEchoAck")
 	}
-
-	// defer util.Log.With("newestEchoAck", newestEchoAck).
-	// 	With("inputHistory", z).With("time", now%10000).
-	// 	With("return", ret).Debug("SetEchoAck")
 
 	c.echoAck = newestEchoAck
 	return
@@ -219,7 +218,8 @@ func (c *Complete) DiffFrom(existing *Complete) string {
 			instBytes := pb.Instruction{Hostbytes: &pb.HostBytes{Hoststring: []byte(update)}}
 			hm.Instruction = append(hm.Instruction, &instBytes)
 		}
-		util.Log.With("diff", c.diffBuf.String()).Debug("DiffFrom")
+		// util.Log.With("diff", c.diffBuf.String()).Debug("DiffFrom")
+		// c.Reset()
 	}
 
 	output, _ := proto.Marshal(&hm)
@@ -281,14 +281,20 @@ func (c *Complete) ResetInput() {
 	c.terminal.GetParser().ResetInput()
 }
 
-func (c *Complete) SetLastRows(x int) {
+func (c *Complete) Reset() {
 	c.diffBuf.Reset()
-	c.terminal.SetLastRows(x)
+	c.remainsBuf.Reset()
+	c.terminal.SetLastRows(0)
 }
 
-func (c *Complete) GetLastRows() int {
-	return c.terminal.GetLastRows()
-}
+// func (c *Complete) SetLastRows(x int) {
+// 	c.diffBuf.Reset()
+// 	c.terminal.SetLastRows(x)
+// }
+//
+// func (c *Complete) GetLastRows() int {
+// 	return c.terminal.GetLastRows()
+// }
 
 // implements network.State[C any] interface
 func (c *Complete) Clone() *Complete {

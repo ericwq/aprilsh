@@ -1189,7 +1189,7 @@ func TestHandle_BEL(t *testing.T) {
 	seq := "\x07"
 	emu := NewEmulator3(8, 4, 4)
 
-	hds := emu.HandleStream(seq)
+	hds, _ := emu.HandleStream(seq)
 
 	if len(hds) == 0 {
 		t.Errorf("BEL got nil for seq=%q\n", seq)

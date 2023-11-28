@@ -512,15 +512,6 @@ func (emu *Emulator) initSelectionStore() {
 	emu.selectionStore['7'] = "" // cut-buffer 7
 }
 
-// func (emu *Emulator) initLog() {
-// 	// init logger
-// 	emu.logT = log.New(os.Stderr, "TRAC: ", log.Ldate|log.Ltime|log.Lshortfile)
-// 	emu.logI = log.New(os.Stderr, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
-// 	emu.logE = log.New(os.Stderr, "ERRO: ", log.Ldate|log.Ltime|log.Lshortfile)
-// 	emu.logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-// 	emu.logU = log.New(os.Stderr, "(Uimplemented): ", log.Ldate|log.Ltime|log.Lshortfile)
-// }
-
 func (emu *Emulator) lookupCharset(p rune) (r rune) {
 	// choose the charset based on instructions before
 	var cs *map[byte]rune
@@ -543,9 +534,23 @@ func (emu *Emulator) GetParser() *Parser {
 	return emu.parser
 }
 
-// func (emu *Emulator) SetLogTraceOutput(w io.Writer) {
-// 	emu.logT.SetOutput(w)
-// }
+// check hander which will generate response. return true if excluded,
+// otherwise false.
+func (emu *Emulator) excludeHandler(hd *Handler, before int, after int) bool {
+	switch hd.id {
+	case CSI_DSR, CSI_priDA, CSI_secDA, DCS_DECRQSS:
+		return true
+	case OSC_4, OSC_10_11_12_17_19:
+		return true
+	case OSC_52: // special case
+		if before != after {
+			return true
+		}
+	case VT52_ID:
+		return true
+	}
+	return false
+}
 
 // parse and handle the stream together.
 func (emu *Emulator) HandleStream(seq string) (hds []*Handler, diff string) {
@@ -554,13 +559,15 @@ func (emu *Emulator) HandleStream(seq string) (hds []*Handler, diff string) {
 	}
 
 	var diffB strings.Builder
+	var respLen int
 
 	hds = make([]*Handler, 0, 16)
 	hds = emu.parser.processStream(seq, hds)
 	for _, hd := range hds {
+		respLen = emu.terminalToHost.Len()
 		hd.handle(emu)
 
-		if !excludeHandlers(hd.GetId()) {
+		if !emu.excludeHandler(hd, respLen, emu.terminalToHost.Len()) {
 			diffB.WriteString(hd.sequence)
 		}
 	}
@@ -593,6 +600,7 @@ func (emu *Emulator) HandleLargeStream(seq string) (diff, remains string) {
 	// util.Log.With("pos", emu.cf.getPhysicalRow(emu.posY)).With("posY", emu.posY).
 	// 	Debug("rewind check")
 	var diffB strings.Builder
+	var respLen int
 
 	hds := make([]*Handler, 0, 16)
 	hds = emu.parser.processStream(seq, hds)
@@ -618,9 +626,10 @@ func (emu *Emulator) HandleLargeStream(seq string) (diff, remains string) {
 			break
 		}
 
+		respLen = emu.terminalToHost.Len()
 		hd.handle(emu)
 
-		if !excludeHandlers(hd.GetId()) {
+		if !emu.excludeHandler(hd, respLen, emu.terminalToHost.Len()) {
 			diffB.WriteString(hd.sequence)
 			// util.Log.With("hd", strHandlerID[hd.GetId()]).Debug("HandleLargeStream")
 		}
@@ -1146,12 +1155,4 @@ func (emu *Emulator) getRowAt(pY int) (row []Cell) {
 
 func cycleSelectSnapTo2(snapTo SelectSnapTo) SelectSnapTo {
 	return SelectSnapTo((int(snapTo) + 1) % int(SelectSnapTo_COUNT))
-}
-
-func excludeHandlers(id int) bool {
-	switch id {
-	case CSI_DSR:
-		return true
-	}
-	return false
 }

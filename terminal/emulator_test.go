@@ -85,7 +85,7 @@ func TestEmulatorReadOctetsToHost(t *testing.T) {
 
 func TestEmulatorHandleStreamEmpty(t *testing.T) {
 	emu := NewEmulator3(80, 40, 0)
-	hds := emu.HandleStream("")
+	hds, _ := emu.HandleStream("")
 	if len(hds) != 0 {
 		t.Errorf("#test HandleStream with empty input should zero result, got %v\n", hds)
 	}
