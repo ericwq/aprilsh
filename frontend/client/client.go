@@ -472,7 +472,8 @@ func (sc *STMClient) mainInit() error {
 	sc.newState = terminal.NewEmulator3(col, row, savedLines)
 
 	// initialize screen
-	init := sc.display.NewFrame(true, sc.localFramebuffer, sc.localFramebuffer)
+	// init := sc.display.NewFrame(true, sc.localFramebuffer, sc.localFramebuffer)
+	init := "\x1B[?1049l\x1B[?1l"
 	util.Log.With("init", init).Debug("mainInit")
 	os.Stdout.WriteString(init)
 
