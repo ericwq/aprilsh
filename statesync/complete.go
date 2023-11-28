@@ -31,7 +31,8 @@ type Complete struct {
 	inputHistory []pair // user input history
 	echoAck      uint64 // which user input is echoed?
 	display      *terminal.Display
-	mixBuf       strings.Builder
+	remainsBuf   strings.Builder
+	diffBuf      strings.Builder
 }
 
 func NewComplete(nCols, nRows, saveLines int) (*Complete, error) {
@@ -50,15 +51,16 @@ func NewComplete(nCols, nRows, saveLines int) (*Complete, error) {
 func (c *Complete) ActLarge(str string, feed chan string) string {
 
 	// if there is remains, append the new one
-	c.mixBuf.WriteString(str)
+	c.remainsBuf.WriteString(str)
 
 	// consume the data stream
-	remains := c.terminal.HandleLargeStream(c.mixBuf.String())
-	c.mixBuf.Reset()
+	diff, remains := c.terminal.HandleLargeStream(c.remainsBuf.String())
+	c.diffBuf.WriteString(diff)
+	c.remainsBuf.Reset()
 
 	// save remains if we got
 	if len(remains) > 0 {
-		c.mixBuf.WriteString(remains)
+		c.remainsBuf.WriteString(remains)
 		util.Log.With("remains", remains).Debug("ActLarge")
 		go func() {
 			// a little bit late is good enough, the main loop will block
@@ -69,6 +71,7 @@ func (c *Complete) ActLarge(str string, feed chan string) string {
 		}()
 	}
 
+	// util.Log.With("diff", c.diffBuf.String()).Debug("ActLarge")
 	return c.terminal.ReadOctetsToHost()
 }
 
@@ -80,9 +83,17 @@ func (c *Complete) InitSize(nCols, nRows int) {
 // let the terminal parse and handle the data stream.
 func (c *Complete) Act(str string) string {
 	// c.terminal.ResetDamage()
-	c.terminal.HandleStream(str)
+	_, diff := c.terminal.HandleStream(str)
+	c.diffBuf.WriteString(diff)
 
+	// util.Log.With("diff", c.diffBuf.String()).Debug("Act")
 	return c.terminal.ReadOctetsToHost()
+}
+
+func (c *Complete) GetDiff() string {
+	ret := c.diffBuf.String()
+	c.diffBuf.Reset()
+	return ret
 }
 
 // run the action in terminal, return the contents in terminalToHost.
@@ -202,12 +213,13 @@ func (c *Complete) DiffFrom(existing *Complete) string {
 		}
 
 		// the following part consider the cursor movement.
-		update := c.display.NewFrame(true, existing.terminal, c.terminal)
+		// update := c.display.NewFrame(true, existing.terminal, c.terminal)
+		update := c.diffBuf.String()
 		if len(update) > 0 {
 			instBytes := pb.Instruction{Hostbytes: &pb.HostBytes{Hoststring: []byte(update)}}
 			hm.Instruction = append(hm.Instruction, &instBytes)
 		}
-		// util.Log.With("update", update).Debug("DiffFrom")
+		util.Log.With("diff", c.diffBuf.String()).Debug("DiffFrom")
 	}
 
 	output, _ := proto.Marshal(&hm)
@@ -270,6 +282,7 @@ func (c *Complete) ResetInput() {
 }
 
 func (c *Complete) SetLastRows(x int) {
+	c.diffBuf.Reset()
 	c.terminal.SetLastRows(x)
 }
 
@@ -284,6 +297,8 @@ func (c *Complete) Clone() *Complete {
 	clone = *c
 	clone.display = c.display.Clone()
 	clone.terminal = c.terminal.Clone()
+	clone.diffBuf.Reset()
+	clone.remainsBuf.Reset()
 
 	clone.inputHistory = make([]pair, len(c.inputHistory))
 	copy(clone.inputHistory, c.inputHistory)

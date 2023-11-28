@@ -472,7 +472,7 @@ func (sc *STMClient) mainInit() error {
 	sc.newState = terminal.NewEmulator3(col, row, savedLines)
 
 	// initialize screen
-	init := sc.display.NewFrame(false, sc.localFramebuffer, sc.localFramebuffer)
+	init := sc.display.NewFrame(true, sc.localFramebuffer, sc.localFramebuffer)
 	util.Log.With("init", init).Debug("mainInit")
 	os.Stdout.WriteString(init)
 
@@ -634,7 +634,9 @@ func (sc *STMClient) outputNewFrame() {
 
 	// calculate minimal difference from where we are
 	// util.Log.SetLevel(slog.LevelInfo)
-	diff := sc.display.NewFrame(!sc.repaintRequested, sc.localFramebuffer, sc.newState)
+	// diff := sc.display.NewFrame(!sc.repaintRequested, sc.localFramebuffer, sc.newState)
+	comp := state.GetState()
+	diff := comp.GetDiff()
 	// util.Log.SetLevel(slog.LevelDebug)
 	os.Stdout.WriteString(diff)
 	if diff != "" {

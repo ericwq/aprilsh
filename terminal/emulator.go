@@ -548,32 +548,43 @@ func (emu *Emulator) GetParser() *Parser {
 // }
 
 // parse and handle the stream together.
-func (emu *Emulator) HandleStream(seq string) (hds []*Handler) {
+func (emu *Emulator) HandleStream(seq string) (hds []*Handler, diff string) {
 	if len(seq) == 0 {
-		return nil
+		return nil, ""
 	}
+
+	var diffB strings.Builder
 
 	hds = make([]*Handler, 0, 16)
 	hds = emu.parser.processStream(seq, hds)
 	for _, hd := range hds {
 		hd.handle(emu)
+
+		if !excludeHandlers(hd.GetId()) {
+			diffB.WriteString(hd.sequence)
+		}
 	}
 
-	return hds
+	diff = diffB.String()
+	return
 }
 
 // parse and handle the stream together. counting occupied rows, if
 // ring buffer is full, pause the process and return the remains stream.
-func (emu *Emulator) HandleLargeStream(seq string) (remains string) {
+func (emu *Emulator) HandleLargeStream(seq string) (diff, remains string) {
 	if len(seq) == 0 {
 		// util.Log.Debug("HandleLargeStream no remains left")
 		return
 	}
 
+	diff = seq
+	remains = ""
+
 	// if we reach the max rows, just return
 	if emu.cf.reachMaxRows(emu.lastRows) {
 		util.Log.Debug("HandleLargeStream reach max rows, wait next time")
-		return seq
+		remains = seq
+		return
 	}
 
 	// prepare to check occupied rows
@@ -581,6 +592,7 @@ func (emu *Emulator) HandleLargeStream(seq string) (remains string) {
 	start := false
 	// util.Log.With("pos", emu.cf.getPhysicalRow(emu.posY)).With("posY", emu.posY).
 	// 	Debug("rewind check")
+	var diffB strings.Builder
 
 	hds := make([]*Handler, 0, 16)
 	hds = emu.parser.processStream(seq, hds)
@@ -590,7 +602,7 @@ func (emu *Emulator) HandleLargeStream(seq string) (remains string) {
 		if !emu.altScreenBufferMode && start && emu.cf.isFullFrame(emu.lastRows, pos, emu.cf.getPhysicalRow(emu.posY)) {
 
 			// save over size content (remains) for later opportunity.
-			// ret = restoreSequence(hds[:idx])
+			// diff = restoreSequence(hds[:idx])
 			remains = restoreSequence(hds[idx:])
 			// util.Log.With("oldPos", pos).
 			// 	With("posY", emu.posY).With("idx", idx).
@@ -608,6 +620,11 @@ func (emu *Emulator) HandleLargeStream(seq string) (remains string) {
 
 		hd.handle(emu)
 
+		if !excludeHandlers(hd.GetId()) {
+			diffB.WriteString(hd.sequence)
+			// util.Log.With("hd", strHandlerID[hd.GetId()]).Debug("HandleLargeStream")
+		}
+
 		// start the check
 		if !emu.altScreenBufferMode && emu.cf.getPhysicalRow(emu.posY) != pos {
 			start = true
@@ -616,6 +633,9 @@ func (emu *Emulator) HandleLargeStream(seq string) (remains string) {
 		// 	With("gap", emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))).
 		// 	With("seq", hd.sequence).Debug("rewind check")
 	}
+
+	diff = diffB.String()
+
 	if !emu.altScreenBufferMode {
 		emu.lastRows += emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))
 		util.Log.With("lastRows", emu.lastRows).
@@ -1126,4 +1146,12 @@ func (emu *Emulator) getRowAt(pY int) (row []Cell) {
 
 func cycleSelectSnapTo2(snapTo SelectSnapTo) SelectSnapTo {
 	return SelectSnapTo((int(snapTo) + 1) % int(SelectSnapTo_COUNT))
+}
+
+func excludeHandlers(id int) bool {
+	switch id {
+	case CSI_DSR:
+		return true
+	}
+	return false
 }

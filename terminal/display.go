@@ -948,8 +948,8 @@ func (d *Display) replicateASB(initialized bool, oldE, newE *Emulator, sizeChang
 	if asbChanged {
 		frameY = oldE.nRows - 1
 	} else {
-		frameY = oldE.posY
-		// frameY = 0
+		// frameY = oldE.posY
+		frameY = 0
 	}
 	wrap := false
 	for i := 0; i < newE.nRows; i++ {
