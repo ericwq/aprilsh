@@ -473,7 +473,10 @@ func (sc *STMClient) mainInit() error {
 
 	// initialize screen
 	// init := sc.display.NewFrame(true, sc.localFramebuffer, sc.localFramebuffer)
-	init := "\x1B[?1049l\x1B[?1l"
+	// CSI ? 1049l Use Normal Screen Buffer and restore cursor as in DECRC, xterm.
+	// CSI ? 1l		Normal Cursor Keys (DECCKM)
+	// CSI ? 1004l Disable FocusIn/FocusOut
+	init := "\x1B[?1049l\x1B[?1l\x1B[?1004l"
 	util.Log.With("init", init).Debug("mainInit")
 	os.Stdout.WriteString(init)
 

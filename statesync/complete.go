@@ -283,7 +283,6 @@ func (c *Complete) ResetInput() {
 
 func (c *Complete) Reset() {
 	c.diffBuf.Reset()
-	c.remainsBuf.Reset()
 	c.terminal.SetLastRows(0)
 }
 

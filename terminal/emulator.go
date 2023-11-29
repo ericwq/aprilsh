@@ -591,6 +591,7 @@ func (emu *Emulator) HandleLargeStream(seq string) (diff, remains string) {
 	if emu.cf.reachMaxRows(emu.lastRows) {
 		util.Log.Debug("HandleLargeStream reach max rows, wait next time")
 		remains = seq
+		diff = "" // don't change diff
 		return
 	}
 

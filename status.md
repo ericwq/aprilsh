@@ -46,3 +46,4 @@
 - 2023/Oct/27: fix window title bug.
 - 2023/Nov/13: fix stream output mode display bug, #1.
 - 2023/Nov/19: enhance stream mode to display over buffer size file, #2.
+- 2023/Nov/29: enhance screen difference with mix sequence, fix bug #6,#7,#8.
