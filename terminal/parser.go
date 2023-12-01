@@ -547,15 +547,20 @@ func (p *Parser) handle_HTS() (hd *Handler) {
 }
 
 // move cursor forward to the N tab stop position
-func (p *Parser) handle_CHT() (hd *Handler) {
-	count := p.getPs(0, 1)
+// or just got focus.
+func (p *Parser) handle_CHT_Focus() (hd *Handler) {
+	if len(p.historyString()) == 3 {
+		// just \x1B[I
+		hd = p.handle_Focus(true)
+	} else {
+		count := p.getPs(0, 1)
 
-	hd = &Handler{id: CSI_CHT, ch: p.ch, sequence: p.historyString()}
-	hd.handle = func(emu *Emulator) {
-		hdl_csi_cht(emu, count)
+		hd = &Handler{id: CSI_CHT, ch: p.ch, sequence: p.historyString()}
+		hd.handle = func(emu *Emulator) {
+			hdl_csi_cht(emu, count)
+		}
+		p.setState(InputState_Normal)
 	}
-
-	p.setState(InputState_Normal)
 	return hd
 }
 
@@ -700,6 +705,22 @@ func (p *Parser) handle_DL() (hd *Handler) {
 		hdl_csi_dl(emu, lines)
 	}
 
+	p.setState(InputState_Normal)
+	return hd
+}
+
+func (p *Parser) handle_Focus(hasFocus bool) (hd *Handler) {
+	var id int
+
+	if hasFocus {
+		id = CSI_FocusIn
+	} else {
+		id = CSI_FocusOut
+	}
+	hd = &Handler{id: id, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *Emulator) {
+		hdl_csi_focus(emu, hasFocus)
+	}
 	p.setState(InputState_Normal)
 	return hd
 }
@@ -1811,7 +1832,7 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 		case 'H':
 			hd = p.handle_CUP()
 		case 'I':
-			hd = p.handle_CHT()
+			hd = p.handle_CHT_Focus()
 		case 'J':
 			hd = p.handle_ED()
 		case 'K':
@@ -1820,6 +1841,8 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_IL()
 		case 'M':
 			hd = p.handle_DL()
+		case 'O':
+			hd = p.handle_Focus(false)
 		case 'P':
 			hd = p.handle_DCH()
 		case 'S':

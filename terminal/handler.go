@@ -55,6 +55,8 @@ const (
 	CSI_DECSTR
 	CSI_ECMA48_SL
 	CSI_ECMA48_SR
+	CSI_FocusIn
+	CSI_FocusOut
 	CSI_DL
 	CSI_DSR
 	CSI_ECH
@@ -141,6 +143,8 @@ var strHandlerID = [...]string{
 	"csi_decstr",
 	"csi_ecma48_SL",
 	"csi_ecma48_SR",
+	"csi_focus_in",
+	"csi_focus_out",
 	"csi_dl",
 	"csi_dsr",
 	"csi_ech",
@@ -739,6 +743,19 @@ func hdl_csi_dl(emu *Emulator, lines int) {
 		lines = Min(lines, emu.marginBottom-emu.posY)
 		emu.deleteRows(emu.posY, lines)
 		hdl_c0_cr(emu)
+	}
+}
+
+// CSI I FocusIn
+// CSI O FocusOut
+func hdl_csi_focus(emu *Emulator, hasFocus bool) {
+	if emu.mouseTrk.focusEventMode {
+		// if hasFocus {
+		// 	emu.writePty("\x1B[I")
+		// } else {
+		// 	emu.writePty("\x1B[O")
+		// }
+		emu.setHasFocus(hasFocus)
 	}
 }
 

@@ -2647,6 +2647,57 @@ func TestHandle_HTS_TBC(t *testing.T) {
 	}
 }
 
+func TestHandle_Focus(t *testing.T) {
+	tc := []struct {
+		label     string
+		hdIDs     []int
+		prevFocus bool
+		hasFocus  bool
+		seq       string
+	}{
+		{"focus enable: out", []int{CSI_privSM, CSI_FocusOut}, true, false, "\x1B[?1004h\x1B[O"},
+		{"focus enable:  in", []int{CSI_privSM, CSI_FocusIn}, false, true, "\x1B[?1004h\x1B[I"},
+		{"focus disable:out", []int{CSI_privRM, CSI_FocusOut}, true, true, "\x1B[?1004l\x1B[O"},
+		{"focus disable: in", []int{CSI_privRM, CSI_FocusIn}, false, false, "\x1B[?1004l\x1B[I"},
+	}
+
+	p := NewParser()
+	emu := NewEmulator3(80, 40, 5)
+
+	var place strings.Builder
+	defer util.Log.Restore()
+	util.Log.SetOutput(&place)
+	// util.Log.SetLevel(slog.LevelDebug)
+	// util.Log.SetOutput(os.Stderr)
+
+	for _, v := range tc {
+
+		t.Run(v.label, func(t *testing.T) {
+			// set previous focus
+			emu.setHasFocus(v.prevFocus)
+
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) != 2 {
+				t.Errorf("%s expect %d handlers, got %d handlers.", v.label, 1, len(hds))
+			}
+
+			// handle the control sequence
+			for j, hd := range hds {
+				hd.handle(emu)
+				if hd.id != v.hdIDs[j] { // validate the control sequences id
+					t.Errorf("%s: seq=%q expect %s, got %s\n", v.label, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+				}
+			}
+
+			// get the result
+			if emu.hasFocus != v.hasFocus {
+				t.Errorf("%s seq=%q expect focus %t, got %t)\n", v.label, v.seq, v.hasFocus, emu.hasFocus)
+			}
+		})
+	}
+}
 func TestHandle_HT_CHT_CBT(t *testing.T) {
 	tc := []struct {
 		name  string
@@ -2657,7 +2708,7 @@ func TestHandle_HT_CHT_CBT(t *testing.T) {
 		{"HT case 1  ", []int{CSI_CUP, C0_HT}, 8, "\x1B[21;6H\x09"},                 // move to the next tab stop
 		{"HT case 2  ", []int{CSI_CUP, C0_HT}, 16, "\x1B[21;10H\x09"},               // move to the next tab stop
 		{"CBT back to the 3 tab", []int{CSI_CUP, CSI_CBT}, 8, "\x1B[21;30H\x1B[3Z"}, // move backward to the previous 3 tab stop
-		{"CHT to the next 1 tab", []int{CSI_CUP, CSI_CHT}, 8, "\x1B[21;3H\x1B[I"},   // move to the next N tab stop
+		{"CHT to the next 2 tab", []int{CSI_CUP, CSI_CHT}, 16, "\x1B[21;3H\x1B[2I"}, // move to the next N tab stop
 		{"CHT to the next 4 tab", []int{CSI_CUP, CSI_CHT}, 32, "\x1B[21;3H\x1B[4I"}, // move to the next N tab stop
 		{"CHT to the right edge", []int{CSI_CUP, CSI_CHT}, 79, "\x1B[21;60H\x1B[4I"},
 		{"CBT rule to left edge", []int{CSI_CUP, CSI_CBT}, 0, "\x1B[21;3H\x1B[3Z"}, // under tab rules
