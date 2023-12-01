@@ -570,7 +570,7 @@ func (emu *Emulator) HandleStream(seq string) (hds []*Handler, diff string) {
 		if !emu.excludeHandler(hd, respLen, emu.terminalToHost.Len()) {
 			diffB.WriteString(hd.sequence)
 		} else {
-			util.Log.With("hd", strHandlerID[hd.GetId()]).With("sequence", hd.sequence).Warn("HandleStream skip")
+			util.Log.With("hd", strHandlerID[hd.GetId()]).With("sequence", hd.sequence).Warn("HandleStream diff skip")
 		}
 	}
 
@@ -635,7 +635,7 @@ func (emu *Emulator) HandleLargeStream(seq string) (diff, remains string) {
 		if !emu.excludeHandler(hd, respLen, emu.terminalToHost.Len()) {
 			diffB.WriteString(hd.sequence)
 		} else {
-			util.Log.With("hd", strHandlerID[hd.GetId()]).With("sequence", hd.sequence).Warn("HandleLargeStream skip")
+			util.Log.With("hd", strHandlerID[hd.GetId()]).With("sequence", hd.sequence).Warn("HandleLargeStream diff skip")
 		}
 
 		// start the check
