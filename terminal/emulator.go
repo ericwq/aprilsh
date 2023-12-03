@@ -608,6 +608,10 @@ func (emu *Emulator) HandleLargeStream(seq string) (diff, remains string) {
 	hds := make([]*Handler, 0, 16)
 	hds = emu.parser.processStream(seq, hds)
 
+	util.Log.With("point", 100).
+		With("scrollHead", emu.cf.scrollHead).With("posY", emu.posY).With("posX", emu.posX).
+		Warn("HandleLargeStream")
+
 	for idx, hd := range hds {
 		// check rewind case
 		if !emu.altScreenBufferMode && start && emu.cf.isFullFrame(emu.lastRows, pos, emu.cf.getPhysicalRow(emu.posY)) {
@@ -655,6 +659,10 @@ func (emu *Emulator) HandleLargeStream(seq string) (diff, remains string) {
 			With("once", emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))).
 			Debug("HandleLargeStream")
 	}
+
+	util.Log.With("point", 200).With("scrollHead", emu.cf.scrollHead).
+		With("posY", emu.posY).With("posX", emu.posX).
+		With("diff", diff).Warn("HandleLargeStream")
 	return
 }
 
