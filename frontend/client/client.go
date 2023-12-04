@@ -860,18 +860,18 @@ func (sc *STMClient) main() error {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGWINCH, syscall.SIGTERM, syscall.SIGINT,
 		syscall.SIGHUP, syscall.SIGPIPE, syscall.SIGCONT)
-	shutdownChan := make(chan bool)
-	eg.Go(func() error {
-		for {
-			select {
-			case s := <-sigChan:
-				util.Log.With("signal", s).Debug("got signal")
-				signals.Handler(s)
-			case <-shutdownChan:
-				return nil
-			}
-		}
-	})
+	// shutdownChan := make(chan bool)
+	// eg.Go(func() error {
+	// 	for {
+	// 		select {
+	// 		case s := <-sigChan:
+	// 			util.Log.With("signal", s).Debug("got signal")
+	// 			signals.Handler(s)
+	// 		case <-shutdownChan:
+	// 			return nil
+	// 		}
+	// 	}
+	// })
 
 	// // set the new title
 	// os.Stdout.WriteString(fmt.Sprintf("\x1B]0;%s@%s\a", _PACKAGE_STRING, sc.ip))
@@ -931,6 +931,9 @@ mainLoop:
 					sc.network.StartShutdown()
 				}
 			}
+		case s := <-sigChan:
+			util.Log.With("signal", s).Debug("got signal")
+			signals.Handler(s)
 		}
 
 		if signals.GotSignal(syscall.SIGWINCH) {
@@ -1006,8 +1009,9 @@ mainLoop:
 		}
 	}
 
+	signal.Stop(sigChan)
 	// shutdown the goroutine
-	shutdownChan <- true
+	// shutdownChan <- true
 	select {
 	case fileDownChan <- "done":
 	default:
