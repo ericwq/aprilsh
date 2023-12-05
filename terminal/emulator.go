@@ -569,8 +569,8 @@ func (emu *Emulator) HandleStream(seq string) (hds []*Handler, diff string) {
 
 		if !emu.excludeHandler(hd, respLen, emu.terminalToHost.Len()) {
 			diffB.WriteString(hd.sequence)
-		} else {
-			util.Log.With("hd", strHandlerID[hd.GetId()]).With("sequence", hd.sequence).Warn("HandleStream diff skip")
+			// } else {
+			// 	util.Log.With("hd", strHandlerID[hd.GetId()]).With("sequence", hd.sequence).Warn("HandleStream diff skip")
 		}
 	}
 
@@ -591,7 +591,7 @@ func (emu *Emulator) HandleLargeStream(seq string) (diff, remains string) {
 
 	// if we reach the max rows, just return
 	if emu.cf.reachMaxRows(emu.lastRows) {
-		util.Log.Debug("HandleLargeStream reach max rows, wait next time")
+		// util.Log.Debug("HandleLargeStream reach max rows, wait next time")
 		remains = seq
 		diff = "" // don't change diff
 		return
@@ -608,9 +608,9 @@ func (emu *Emulator) HandleLargeStream(seq string) (diff, remains string) {
 	hds := make([]*Handler, 0, 16)
 	hds = emu.parser.processStream(seq, hds)
 
-	util.Log.With("point", 100).
-		With("scrollHead", emu.cf.scrollHead).With("posY", emu.posY).With("posX", emu.posX).
-		Debug("HandleLargeStream")
+	// util.Log.With("point", 100).
+	// 	With("scrollHead", emu.cf.scrollHead).With("posY", emu.posY).With("posX", emu.posX).
+	// 	Debug("HandleLargeStream")
 
 	for idx, hd := range hds {
 		// check rewind case
@@ -638,9 +638,9 @@ func (emu *Emulator) HandleLargeStream(seq string) (diff, remains string) {
 
 		if !emu.excludeHandler(hd, respLen, emu.terminalToHost.Len()) {
 			diffB.WriteString(hd.sequence)
-		} else {
-			util.Log.With("hd", strHandlerID[hd.GetId()]).With("sequence", hd.sequence).
-				Debug("HandleLargeStream diff skip")
+			// } else {
+			// 	util.Log.With("hd", strHandlerID[hd.GetId()]).With("sequence", hd.sequence).
+			// 		Debug("HandleLargeStream diff skip")
 		}
 
 		// start the check
@@ -656,14 +656,14 @@ func (emu *Emulator) HandleLargeStream(seq string) (diff, remains string) {
 
 	if !emu.altScreenBufferMode {
 		emu.lastRows += emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))
-		util.Log.With("lastRows", emu.lastRows).
-			With("once", emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))).
-			Debug("HandleLargeStream")
+		// util.Log.With("lastRows", emu.lastRows).
+		// 	With("once", emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))).
+		// 	Debug("HandleLargeStream")
 	}
 
-	util.Log.With("point", 200).With("scrollHead", emu.cf.scrollHead).
-		With("posY", emu.posY).With("posX", emu.posX).
-		With("diff", diff).Debug("HandleLargeStream")
+	// util.Log.With("point", 200).With("scrollHead", emu.cf.scrollHead).
+	// 	With("posY", emu.posY).With("posX", emu.posX).
+	// 	With("diff", diff).Debug("HandleLargeStream")
 	return
 }
 
