@@ -610,7 +610,7 @@ func (emu *Emulator) HandleLargeStream(seq string) (diff, remains string) {
 
 	util.Log.With("point", 100).
 		With("scrollHead", emu.cf.scrollHead).With("posY", emu.posY).With("posX", emu.posX).
-		Warn("HandleLargeStream")
+		Debug("HandleLargeStream")
 
 	for idx, hd := range hds {
 		// check rewind case
@@ -662,7 +662,7 @@ func (emu *Emulator) HandleLargeStream(seq string) (diff, remains string) {
 
 	util.Log.With("point", 200).With("scrollHead", emu.cf.scrollHead).
 		With("posY", emu.posY).With("posX", emu.posX).
-		With("diff", diff).Warn("HandleLargeStream")
+		With("diff", diff).Debug("HandleLargeStream")
 	return
 }
 

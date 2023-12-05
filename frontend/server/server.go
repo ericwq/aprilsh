@@ -718,17 +718,17 @@ func serve(ptmx *os.File, pw *io.PipeWriter, complete *statesync.Complete, waitC
 	// intercept signal
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGUSR1, syscall.SIGINT, syscall.SIGTERM)
-	shutdownChan := make(chan bool)
-	eg.Go(func() error { // TODO how to handle signal for goroutine?
-		for {
-			select {
-			case s := <-sigChan:
-				signals.Handler(s)
-			case <-shutdownChan:
-				return nil
-			}
-		}
-	})
+	// shutdownChan := make(chan bool)
+	// eg.Go(func() error { // TODO how to handle signal for goroutine?
+	// 	for {
+	// 		select {
+	// 		case s := <-sigChan:
+	// 			signals.Handler(s)
+	// 		case <-shutdownChan:
+	// 			return nil
+	// 		}
+	// 	}
+	// })
 
 	var timeoutIfNoClient int64 = 60000
 	childReleased := false
@@ -778,6 +778,8 @@ mainLoop:
 			// 	With("networkSleep", networkSleep).
 			// 	With("timeout", timeout).
 			// 	Debug("mainLoop")
+		case s := <-sigChan:
+			signals.Handler(s)
 		case socketMsg := <-networkChan: // packet received from the network
 			if socketMsg.Err != nil {
 				// fmt.Printf("#readFromSocket receive error:%s\n", socketMsg.Err)
@@ -1007,8 +1009,9 @@ mainLoop:
 		// util.Log.With("point", "d").Debug("mainLoop")
 	}
 
+	signal.Stop(sigChan)
 	// shutdown the goroutine
-	shutdownChan <- true
+	// shutdownChan <- true
 	select {
 	case fileDownChan <- "done":
 	default:
