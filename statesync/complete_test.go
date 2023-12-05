@@ -7,6 +7,7 @@ package statesync
 import (
 	"io"
 	"math"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -14,6 +15,7 @@ import (
 
 	"github.com/ericwq/aprilsh/terminal"
 	"github.com/ericwq/aprilsh/util"
+	"golang.org/x/exp/slog"
 )
 
 func TestCompleteSubtract(t *testing.T) {
@@ -189,7 +191,6 @@ func TestCompleteClone(t *testing.T) {
 	}
 }
 
-// "go 1.19\r\n\r\nuse (\r\n\t./aprilsh\r\n\t./terminfo\r\n)"
 func TestDiffFrom(t *testing.T) {
 	tc := []struct {
 		label        string

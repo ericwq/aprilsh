@@ -14,7 +14,6 @@ import (
 	pb "github.com/ericwq/aprilsh/protobufs"
 	"github.com/ericwq/aprilsh/terminal"
 	"github.com/ericwq/aprilsh/util"
-	"golang.org/x/exp/slog"
 	// "github.com/ericwq/aprilsh/util"
 )
 
@@ -382,8 +381,8 @@ func (ts *TransportSender[T]) tick() error {
 	// util.Log.With("point", 200).Debug("tick")
 	// diff = ts.attemptProspectiveResendOptimization(diff)
 	// util.Log.With("point", 300).With("DiffFrom", ts.assumedReceiverState.num).Debug("tick")
-	// util.Log.With("point", 300).With("length", len(diff)).With("diff", diff).Debug("tick")
-	util.Log.SetLevel(slog.LevelInfo)
+	// util.Log.With("point", 300).Debug("tick")
+	// util.Log.SetLevel(slog.LevelInfo)
 
 	if ts.verbose > 0 && len(diff) > 0 {
 		if ts.hookForTick != nil { // hook function for testing
@@ -400,7 +399,7 @@ func (ts *TransportSender[T]) tick() error {
 		}
 
 		// Also verify that both the original frame and generated frame have the same initial diff.
-		util.Log.With("point", 500).Debug("tick")
+		// util.Log.With("point", 500).Debug("tick")
 		currentDiff := ts.currentState.InitDiff()
 		// util.Log.With("point", 600).Debug("tick")
 		// newState.SetLastRows(ts.currentState.GetLastRows())
@@ -410,9 +409,9 @@ func (ts *TransportSender[T]) tick() error {
 			util.Log.With("newDiff", newDiff).Warn("tick")
 			util.Log.Warn("#tick Warning, target state Instruction verification failed!")
 		}
-		util.Log.With("point", 700).Debug("tick")
+		// util.Log.With("point", 700).Debug("tick")
 	}
-	util.Log.SetLevel(slog.LevelDebug)
+	// util.Log.SetLevel(slog.LevelDebug)
 	ts.currentState.Reset()
 	// util.Log.With("point", 800).With("lastRows", 0).Debug("tick")
 

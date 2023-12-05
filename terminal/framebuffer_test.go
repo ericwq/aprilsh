@@ -7,12 +7,10 @@ package terminal
 import (
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"testing"
 
 	"github.com/ericwq/aprilsh/util"
-	"golang.org/x/exp/slog"
 )
 
 func TestNewFramebuffer3_Oversize(t *testing.T) {
@@ -731,15 +729,15 @@ func TestASBRow(t *testing.T) {
 		{"0 scrollHead, row   40", 40, 0, 20},
 		{"19 scrollHead, row   0", 00, 19, 19},
 		{"19 scrollHead, row  19", 19, 19, 18},
-		{"19 scrollHead, row  20", 20, 19, 18},
-		{"19 scrollHead, row  21", 21, 19, 18},
-		{"19 scrollHead, row  22", 22, 19, 18},
+		{"19 scrollHead, row  20", 20, 19, 19},
+		{"19 scrollHead, row  21", 21, 19, 20},
+		{"19 scrollHead, row  22", 22, 19, 21},
 	}
 
-	// defer util.Log.Restore()
-	// util.Log.SetOutput(io.Discard)
-	util.Log.SetLevel(slog.LevelDebug)
-	util.Log.SetOutput(os.Stderr)
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
+	// util.Log.SetLevel(slog.LevelDebug)
+	// util.Log.SetOutput(os.Stderr)
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {

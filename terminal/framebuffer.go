@@ -742,8 +742,10 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 			newR := fb.cells[srcStartIdx:srcEndIdx]
 			oldR := x.cells[dstStartIdx:dstEndIdx]
 			if !equalRow(newR, oldR) {
-				util.Log.With("newRow", outputRow(newR, pY, fb.nCols)).Warn("equal")
-				util.Log.With("oldRow", outputRow(oldR, pY, x.nCols)).Warn("equal")
+				if trace {
+					util.Log.With("newRow", outputRow(newR, pY, fb.nCols)).Warn("equal")
+					util.Log.With("oldRow", outputRow(oldR, pY, x.nCols)).Warn("equal")
+				}
 				ret = false
 				break
 			}
