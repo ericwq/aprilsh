@@ -278,7 +278,11 @@ func (c *Complete) Equal(x *Complete) bool {
 
 // implements network.State[C any] interface
 func (c *Complete) ResetInput() {
-	c.terminal.GetParser().ResetInput()
+	// c.terminal.GetParser().ResetInput()
+	//
+	// NOTE: to prevent broken control sequence, keep the parser state between
+	// continuously output from host.
+	// such as "\x1b", "H"
 }
 
 func (c *Complete) Reset() {
