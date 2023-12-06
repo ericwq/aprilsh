@@ -829,8 +829,8 @@ func TestRecvFail(t *testing.T) {
 		err   error
 	}{
 		{"receive return EWOULDBLOCK err", 0, unix.EWOULDBLOCK},
-		{"receive return n<0 err", 1, errors.New("#recvOne receive zero or negative length data.")},
-		{"receive return MSG_TRUNC err", 2, errors.New("#recvOne received oversize datagram.")},
+		{"receive return n<0 err", 1, ErrRecvLength},
+		{"receive return MSG_TRUNC err", 2, ErrRecvOversize},
 		{"receive return parse control message erro", 3, errors.New("invalid argument")},
 		{"receive return parser decrypt error", 4, errors.New("cipher: message authentication failed")},
 	}
@@ -851,7 +851,7 @@ func TestRecvFail(t *testing.T) {
 		_, err := client.Recv()
 		if v.err != nil {
 			switch i {
-			case 0:
+			case 0, 1, 2:
 				if !errors.Is(err, v.err) {
 					t.Errorf("%q expect err=%q, got %q\n", v.name, v.err, err)
 				}
@@ -913,9 +913,8 @@ func TestRecvBranchServer(t *testing.T) {
 
 	// perform the receive
 	_, err := server.Recv()
-	got := "#recvOne server direction is wrong."
-	if err.Error() != got {
-		t.Errorf("%q client send\n%q to server, server got \n%q\n", title, msg0, got)
+	if !errors.Is(err, ErrRecvDirection) {
+		t.Errorf("%q client send\n%q to server, server got \n%q\n", title, msg0, err)
 	}
 
 	// restor the logFunc
@@ -970,18 +969,11 @@ func TestRecvBranchClient(t *testing.T) {
 	// mock the session
 	client.session = &mockSession{direction: TO_SERVER, seq: 7}
 
-	// intercept client log
-	// client.logW.SetOutput(&output)
-
 	// perform the receive
 	_, err := client.Recv()
-	expect := "#recvOne client direction is wrong."
-	if err.Error() != expect {
-		t.Errorf("%q client send\n%q to server, server got \n%q\n", title, msg1, expect)
+	if !errors.Is(err, ErrRecvDirection) {
+		t.Errorf("%q client send\n%q to server, server got \n%q\n", title, msg1, err)
 	}
-
-	// restor the logFunc
-	// logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 type mockSession struct {

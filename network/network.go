@@ -570,6 +570,10 @@ func (c *Connection) pruneSockets() {
 	}
 }
 
+var ErrRecvLength = errors.New("#recvOne receive zero or negative length data.")
+var ErrRecvOversize = errors.New("#recvOne received oversize datagram.")
+var ErrRecvDirection = errors.New("#recvOne direction is wrong.")
+
 func (c *Connection) recvOne(conn udpConn) (string, error) {
 	c.Lock()
 	defer c.Unlock()
@@ -584,11 +588,11 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 		return "", err
 	}
 	if n < 0 {
-		return "", errors.New("#recvOne receive zero or negative length data.")
+		return "", fmt.Errorf("length=%d: %w", n, ErrRecvLength)
 	}
 
 	if flags&unix.MSG_TRUNC == unix.MSG_TRUNC {
-		return "", errors.New(fmt.Sprintf("#recvOne received oversize datagram, datagram size %d.", n))
+		return "", fmt.Errorf("datagram size=%d: %w", n, ErrRecvOversize)
 	}
 
 	// fmt.Printf("#recvOne flags=0x%x, MSG_TRUNC=0x%x, n=%d, oobn=%d, err=%p, raddr=%s\n", flags, unix.MSG_TRUNC, n, oobn, err, raddr)
@@ -623,11 +627,13 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 	// prevent malicious playback to sender
 	if c.server {
 		if p.direction != TO_SERVER {
-			return "", errors.New("#recvOne server direction is wrong.")
+			// return "", errors.New("#recvOne server direction is wrong.")
+			return "", fmt.Errorf("to server: %w", ErrRecvDirection)
 		}
 	} else {
 		if p.direction != TO_CLIENT {
-			return "", errors.New("#recvOne client direction is wrong.")
+			// return "", errors.New("#recvOne client direction is wrong.")
+			return "", fmt.Errorf("to client: %w", ErrRecvDirection)
 		}
 	}
 
