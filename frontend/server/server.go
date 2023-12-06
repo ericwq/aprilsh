@@ -1170,7 +1170,7 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 	}
 
 	// set new title
-	fmt.Fprintf(pts, "\x1B]0;%s %s\a", _PACKAGE_STRING, conf.target)
+	fmt.Fprintf(pts, "\x1B]0;%s %s:%s\a", _PACKAGE_STRING, conf.target, conf.desiredPort)
 
 	encrypt.ReenableDumpingCore()
 
