@@ -252,7 +252,8 @@ func TestFetchKey(t *testing.T) {
 	}
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			got := v.conf.fetchKey(v.pwd)
+			v.conf.pwd = v.pwd
+			got := v.conf.fetchKey()
 			if !strings.Contains(got.Error(), v.msg) {
 				t.Errorf("#test %q expect %q contains %q.\n", v.label, got, v.msg)
 			}

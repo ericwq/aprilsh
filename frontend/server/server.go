@@ -92,6 +92,7 @@ Options:
   -l, --locale   key-value pairs (such as LANG=UTF-8, you can have multiple -l options)
   -t, --term     client TERM (such as xterm-256color, or alacritty or xterm-kitty)
       --verbose  verbose output (such as 1)
+      --target   target string, such as user@server
       -- command  shell command and options (note the space before command)
 `
 
@@ -253,6 +254,8 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.StringVar(&conf.term, "term", "", "client TERM")
 	flagSet.StringVar(&conf.term, "t", "", "client TERM")
 
+	flagSet.StringVar(&conf.target, "target", "", "target string")
+
 	flagSet.Var(&conf.locales, "locale", "locale list, key=value pair")
 	flagSet.Var(&conf.locales, "l", "locale list, key=value pair")
 
@@ -282,6 +285,7 @@ type Config struct {
 	term        string     // client TERM
 	autoStop    int        // auto stop after N seconds
 	begin       bool       // begin a client connection
+	target      string     // target string
 
 	commandPath string   // shell command path (absolute path)
 	commandArgv []string // the positional (non-flag) command-line arguments.
@@ -408,7 +412,7 @@ func main() {
 	}
 
 	if conf.begin {
-		beginClientConn(conf.desiredPort, conf.term)
+		beginClientConn(conf)
 		return
 	}
 
@@ -469,7 +473,7 @@ func getShellNameFrom(shellPath string) (shellName string) {
 	return
 }
 
-func beginClientConn(port string, term string) {
+func beginClientConn(conf *Config) { //(port string, term string) {
 	// Unlike Dial, ListenPacket creates a connection without any
 	// association with peers.
 	conn, _ := net.ListenPacket("udp", ":0")
@@ -479,7 +483,7 @@ func beginClientConn(port string, term string) {
 	// }
 	defer conn.Close()
 
-	dest, _ := net.ResolveUDPAddr("udp", "localhost:"+port)
+	dest, _ := net.ResolveUDPAddr("udp", "localhost:"+conf.desiredPort)
 	// dest, err := net.ResolveUDPAddr("udp", "localhost:"+port)
 	// if err != nil {
 	// 	fmt.Println(err)
@@ -487,7 +491,7 @@ func beginClientConn(port string, term string) {
 	// }
 
 	// request from server
-	request := fmt.Sprintf("%s%s", _ASH_OPEN, term)
+	request := fmt.Sprintf("%s%s,%s", _ASH_OPEN, conf.term, conf.target)
 	conn.SetDeadline(time.Now().Add(time.Millisecond * 20))
 	conn.WriteTo([]byte(request), dest)
 	// n, err := conn.WriteTo([]byte(request), dest)
@@ -573,6 +577,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	network := network.NewTransportServer(terminal, blank, conf.desiredIP, conf.desiredPort)
 	network.SetVerbose(uint(conf.verbose))
 	defer network.Close()
+	util.Log.With("target", conf.target).Debug("runWorker")
 
 	/*
 		// If server is run on a pty, then typeahead may echo and break mosh.pl's
@@ -1166,7 +1171,7 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 	}
 
 	// set new title
-	fmt.Fprintf(pts, "\x1B]0;%s\a", _PACKAGE_STRING)
+	fmt.Fprintf(pts, "\x1B]0;%s %s\a", _PACKAGE_STRING, conf.target)
 
 	encrypt.ReenableDumpingCore()
 
@@ -1402,7 +1407,15 @@ func (m *mainSrv) run(conf *Config) {
 				// start the worker
 				conf2 := *conf
 				conf2.desiredPort = fmt.Sprintf("%d", p)
-				conf2.term = strings.TrimPrefix(req, _ASH_OPEN)
+				body := strings.Split(req, ":")
+				content := strings.Split(body[1], ",")
+				if len(content) != 2 {
+					resp := m.writeRespTo(addr, _ASH_OPEN, "malform request")
+					util.Log.With("request", req).With("response", resp).Warn("malform request")
+					continue
+				}
+				conf2.term = content[0]
+				conf2.target = content[1]
 
 				// For security, make sure we don't dump core
 				encrypt.DisableDumpingCore()

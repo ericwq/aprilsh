@@ -169,13 +169,13 @@ func (c *Config) getPassword(in *os.File) (string, error) {
 //
 // For alpine, ssh is provided by openssh package, nc and echo is provided by busybox.
 // % ssh ide@localhost  "echo 'open aprilsh:' | nc localhost 6000 -u -w 1"
-func (c *Config) fetchKey(password string) error {
+func (c *Config) fetchKey() error {
 
 	// https://betterprogramming.pub/a-simple-cross-platform-ssh-client-in-100-lines-of-go-280644d8beea
 	cc := &ssh.ClientConfig{
 		User: c.user,
 		Auth: []ssh.AuthMethod{
-			ssh.Password(password),
+			ssh.Password(c.pwd),
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         time.Duration(1) * time.Second,
@@ -198,7 +198,7 @@ func (c *Config) fetchKey(password string) error {
 	// the remote side using the Run method.
 	var b []byte
 	// cmd := fmt.Sprintf("echo '%s' | nc localhost %d -u -w 1", _ASH_OPEN, c.port)
-	cmd := fmt.Sprintf("~/.local/bin/apshd -b -t %s", os.Getenv("TERM"))
+	cmd := fmt.Sprintf("~/.local/bin/apshd -b -t %s -target %s", os.Getenv("TERM"), c.target[0])
 	// util.Log.With("cmd", cmd).Debug("execute command")
 
 	if b, err = session.Output(cmd); err != nil {
@@ -366,7 +366,7 @@ func main() {
 	}
 
 	// login to remote server and fetch the key
-	if err = conf.fetchKey(conf.pwd); err != nil {
+	if err = conf.fetchKey(); err != nil {
 		printUsage(err.Error())
 		return
 	}
