@@ -7,7 +7,6 @@ package statesync
 import (
 	"io"
 	"math"
-	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -15,7 +14,6 @@ import (
 
 	"github.com/ericwq/aprilsh/terminal"
 	"github.com/ericwq/aprilsh/util"
-	"golang.org/x/exp/slog"
 )
 
 func TestCompleteSubtract(t *testing.T) {
@@ -287,6 +285,8 @@ func TestDiffFrom(t *testing.T) {
 			if !c.EqualTrace(a) {
 				t.Errorf("%s: prepare stage error\n", v.label)
 			}
+			c.Reset()
+			a.Reset()
 
 			// current state changed after :q command
 			t2.Reset()
@@ -300,22 +300,22 @@ func TestDiffFrom(t *testing.T) {
 				t.Errorf("%s: terminal response expect %q, got %q\n", v.label, v.resp, t2.String())
 			}
 
-			util.Log.With("point", 601).Debug("TestDiffFrom")
+			// util.Log.With("point", 601).Debug("TestDiffFrom")
 			diff := c.DiffFrom(a)
-			util.Log.With("point", 602).Debug("TestDiffFrom")
+			// util.Log.With("point", 602).Debug("TestDiffFrom")
 
 			n := a.Clone()
 			n.ApplyString(diff)
 			if !c.EqualTrace(n) {
 				t.Errorf("%s: round-trip Instruction verification failed!", v.label)
-				// t.Logf("%s: diff=%q", v.label, diff)
+				t.Logf("%s: diff=%q", v.label, diff)
 			}
 
-			util.Log.With("point", 603).Debug("TestDiffFrom")
+			// util.Log.With("point", 603).Debug("TestDiffFrom")
 			cd := c.InitDiff()
-			util.Log.With("point", 604).Debug("TestDiffFrom")
+			// util.Log.With("point", 604).Debug("TestDiffFrom")
 			nd := n.InitDiff()
-			util.Log.With("point", 605).Debug("TestDiffFrom")
+			// util.Log.With("point", 605).Debug("TestDiffFrom")
 			if cd != nd {
 				t.Errorf("%s: target state Instruction verification failed!", v.label)
 				// t.Logf("current state diff=%q", cd)

@@ -285,6 +285,7 @@ func (c *Complete) ResetInput() {
 	// such as "\x1b", "H"
 }
 
+// implements network.State[C any] interface
 func (c *Complete) Reset() {
 	c.diffBuf.Reset()
 	c.terminal.SetLastRows(0)
