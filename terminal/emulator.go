@@ -156,7 +156,7 @@ func (emu *Emulator) resize(nCols, nRows int) {
 	if emu.nCols == nCols && emu.nRows == nRows {
 		return
 	}
-	util.Log.With("cols", nCols).With("rows", nRows).Debug("Emulator.resize")
+	// util.Log.With("cols", nCols).With("rows", nRows).Debug("Emulator.resize")
 
 	emu.hideCursor()
 

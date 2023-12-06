@@ -1835,33 +1835,42 @@ func TestGetCurrentUser(t *testing.T) {
 
 func TestGetAvailablePort(t *testing.T) {
 	tc := []struct {
-		label   string
-		expect  int
-		max     int
-		workers map[int]*workhorse
+		label      string
+		max        int // pre-condition before getAvailabePort
+		expectPort int
+		expectMax  int
+		workers    map[int]*workhorse
 	}{
 		{
-			"empty worker list", 6001, 6001,
+			"empty worker list", 6001, 6001, 6002,
 			map[int]*workhorse{},
 		},
 		{
-			"lart gap empty worker", 6001, 6008,
+			"lart gap empty worker", 6008, 6001, 6002,
 			map[int]*workhorse{},
 		},
 		{
-			"right most", 6004, 6004,
+			"add one port", 6002, 6002, 6003,
+			map[int]*workhorse{6001: nil},
+		},
+		{
+			"shrink max", 6013, 6002, 6003,
+			map[int]*workhorse{6001: nil},
+		},
+		{
+			"right most", 6004, 6004, 6005,
 			map[int]*workhorse{6001: nil, 6002: nil, 6003: nil},
 		},
 		{
-			"left most", 6001, 6006,
+			"left most", 6006, 6001, 6006,
 			map[int]*workhorse{6003: nil, 6004: nil, 6005: nil},
 		},
 		{
-			"middle hole", 6004, 6009,
+			"middle hole", 6009, 6004, 6009,
 			map[int]*workhorse{6001: nil, 6002: nil, 6003: nil, 6008: nil},
 		},
 		{
-			"border shape hole", 6002, 6019,
+			"border shape hole", 6019, 6002, 6019,
 			map[int]*workhorse{6001: nil, 6018: nil},
 		},
 	}
@@ -1873,6 +1882,7 @@ func TestGetAvailablePort(t *testing.T) {
 			// intercept log output
 			defer util.Log.Restore()
 			util.Log.SetOutput(io.Discard)
+			// util.Log.SetOutput(os.Stdout)
 
 			srv := newMainSrv(conf, mockRunWorker)
 			srv.workers = v.workers
@@ -1880,8 +1890,12 @@ func TestGetAvailablePort(t *testing.T) {
 
 			got := srv.getAvailabePort()
 
-			if got != v.expect {
-				t.Errorf("#test %s expect %d, got %d\n", v.label, v.expect, got)
+			if got != v.expectPort {
+				t.Errorf("%q expect port=%d, got %d\n", v.label, v.expectPort, got)
+			}
+
+			if srv.maxPort != v.expectMax {
+				t.Errorf("%q expect maxPort=%d, got %d\n", v.label, v.expectMax, srv.maxPort)
 			}
 		})
 	}

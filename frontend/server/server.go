@@ -566,7 +566,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		windowSize.Col = 80
 		windowSize.Row = 24
 	}
-	util.Log.With("cols", windowSize.Col).With("rows", windowSize.Row).Debug("init terminal size")
+	// util.Log.With("cols", windowSize.Col).With("rows", windowSize.Row).Debug("init terminal size")
 
 	// open parser and terminal
 	savedLines := terminal.SaveLinesRowsOption
@@ -577,7 +577,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	network := network.NewTransportServer(terminal, blank, conf.desiredIP, conf.desiredPort)
 	network.SetVerbose(uint(conf.verbose))
 	defer network.Close()
-	util.Log.With("target", conf.target).Debug("runWorker")
+	// util.Log.With("target", conf.target).Debug("runWorker")
 
 	/*
 		// If server is run on a pty, then typeahead may echo and break mosh.pl's
@@ -825,7 +825,7 @@ mainLoop:
 							fmt.Printf("#serve ioctl TIOCSWINSZ %s", err)
 							network.StartShutdown()
 						}
-						util.Log.With("col", winSize.Col).With("row", winSize.Row).Debug("input from remote")
+						// util.Log.With("col", winSize.Col).With("row", winSize.Row).Debug("input from remote")
 						if !childReleased {
 							// only do once
 							network.InitSize(res.Width, res.Height)
@@ -919,8 +919,7 @@ mainLoop:
 					out := complete.ActLarge(masterMsg.Data, largeFeed)
 					terminalToHost.WriteString(out)
 
-					util.Log.With("arise", "master").
-						With("ouput", masterMsg.Data).
+					util.Log.With("arise", "master").With("ouput", masterMsg.Data).
 						With("input", out).Debug("ouput from host")
 
 					// update client with new state of terminal
@@ -1481,11 +1480,14 @@ func (m *mainSrv) getAvailabePort() (port int) {
 			ports = append(ports, k)
 		}
 		sort.Ints(ports)
-		// fmt.Printf("#getAvailabePort got ports=%v\n", ports)
+		// shrink max if possible
+		m.maxPort = ports[len(ports)-1] + 1
+
+		// util.Log.With("ports", ports).With("port", port).With("maxPort", m.maxPort).
+		// 	With("workers", len(m.workers)).Info("getAvailabePort")
 
 		// check minimal available port
-		for i := 0; i < m.maxPort-m.port-1; i++ {
-			// fmt.Printf("#getAvailabePort check port+i+1=%d, ports[i]=%d, i=%d\n", port+i+1, ports[i], i)
+		for i := 0; i < m.maxPort-m.port; i++ {
 			if i < len(ports) && port+i+1 < ports[i] {
 				port = port + i + 1
 				break
@@ -1497,15 +1499,14 @@ func (m *mainSrv) getAvailabePort() (port int) {
 			port = m.maxPort
 			m.maxPort++
 		}
-		// fmt.Printf("#getAvailabePort return port=%d, m.port=%d, maxPort=%d\n",
-		// port, m.port, m.maxPort)
 	} else if len(m.workers) == 0 {
+		// first port
 		port = m.port + 1
+		m.maxPort = port + 1
 	}
 
-	// fmt.Printf("#getAvailabePort got port=%d\n", port)
 	// util.Log.With("port", port).With("maxPort", m.maxPort).
-	// 	With("workers", len(m.workers)).Debug("getAvailabePort")
+	// 	With("workers", len(m.workers)).Info("getAvailabePort")
 	return port
 }
 

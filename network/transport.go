@@ -188,10 +188,6 @@ func (t *Transport[S, R]) GetRemoteAddr() net.Addr {
 	return t.connection.getRemoteAddr()
 }
 
-// func (t *Transport[S, R]) Port() string {
-// 	return t.connection.port()
-// }
-
 func (t *Transport[S, R]) GetKey() string {
 	return t.connection.getKey()
 }
