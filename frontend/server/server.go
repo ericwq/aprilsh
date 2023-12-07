@@ -666,10 +666,11 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		}
 	}
 
-	// fmt.Printf("[%s is exiting.]\n", _COMMAND_NAME)
+	// fmt.Printf("[%s is exiting.]\n", frontend.COMMAND_SERVER_NAME)
 	// https://www.dolthub.com/blog/2022-11-28-go-os-exec-patterns/
 	// https://www.prakharsrivastav.com/posts/golang-context-and-cancellation/
 
+	util.Log.With("port", conf.desiredPort).Warn("runWorker quit")
 	return err
 }
 
@@ -1346,7 +1347,7 @@ func (m *mainSrv) run(conf *Config) {
 		m.conn.Close()
 		m.wg.Done()
 		// fmt.Printf("%s  stop listening on :%d.\n", frontend.COMMAND_SERVER_NAME, m.port)
-		util.Log.With("port", m.port).Info("stop listening")
+		util.Log.With("port", m.port).Info("stop listening on")
 	}()
 
 	buf := make([]byte, 128)
@@ -1366,12 +1367,13 @@ func (m *mainSrv) run(conf *Config) {
 			delete(m.workers, p)
 		case sd := <-m.downChan: // ready to shutdown mainSrv
 			// keep this for TestMainRun
-			util.Log.With("shutdown", sd).Debug("#run got shutdown message")
+			// util.Log.With("shutdown", sd).Debug("#run got shutdown message")
 			shutdown = sd
 		default:
 		}
 
 		if shutdown {
+			// util.Log.With("shutdown", shutdown).Debug("run")
 			if len(m.workers) == 0 {
 				return
 			} else { // kill the workers
@@ -1425,6 +1427,11 @@ func (m *mainSrv) run(conf *Config) {
 				m.eg.Go(func() error {
 					return m.runWorker(&conf2, m.exChan, m.whChan)
 				})
+				// m.wg.Add(1)
+				// go func() {
+				// 	defer m.wg.Done()
+				// 	m.runWorker(&conf2, m.exChan, m.whChan)
+				// }()
 				// fmt.Printf("#run start a worker at %s\n", conf2.desiredPort)
 
 				// blocking read the key from runWorker
@@ -1532,7 +1539,9 @@ func (m *mainSrv) writeRespTo(addr *net.UDPAddr, header, msg string) (resp strin
 }
 
 func (m *mainSrv) wait() {
+	// util.Log.With("point", 100).Debug("wait")
 	m.wg.Wait()
+	// util.Log.With("point", 200).Debug("wait")
 	if err := m.eg.Wait(); err != nil {
 		// logW.Printf("#mainSrv wait() reports %s\n", err.Error())
 		util.Log.With("error", err).Warn("wait failed")
