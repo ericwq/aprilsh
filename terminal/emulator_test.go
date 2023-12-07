@@ -432,11 +432,11 @@ func TestHandleStream_MoveDelete(t *testing.T) {
 		expectY, expectX int    // new cursor position
 	}{
 		{"move cursor and delete one regular graphemes", 0, 70, "abcde\x1B[4D\x1B[P", "acde", 0, 71},
-		{"move cursor and delete one wide graphemes", 1, 60, "abc太学生\x1B[3D\x1B[P", "abc学生", 1, 63},
-		{"move cursor back and forth for wide graphemes", 2, 60, "东部战区\x1B[4D\x1B[C\x1B[P", "东战区", 2, 62},
+		{"move cursor and delete one wide graphemes", 1, 60, "abc太学生\x1B[6D\x1B[2P", "abc学生", 1, 63},
+		{"move cursor back and forth for wide graphemes", 2, 60, "东部战区\x1B[8D\x1B[2C\x1B[2P", "东战区", 2, 62},
 		{"move cursor to right edge", 3, 75, "平潭\x1B[5C", "平潭", 3, 79},
-		{"move cursor to left edge", 4, 0, "三号木\x1B[5D", "三号木", 4, 0},
-		{"move cursor to left edge, delete 2 graphemes", 5, 0, "小鸡腿\x1B[3D\x1B[2P", "腿", 5, 0},
+		{"move cursor to left edge", 4, 0, "三号木\x1B[6D", "三号木", 4, 0},
+		{"move cursor to left edge, delete 2 graphemes", 5, 0, "小鸡腿\x1B[6D\x1B[4P", "腿", 5, 0},
 		{"move cursor and delete 2 graphemes", 6, 74, "gocto\x1B[8C\x1B[4D\x1B[2P", "gto", 6, 75},
 		{"move cursor back and delete 4 regular graphemes", 7, 60, "捉鹰打goto\x1B[4D\x1B[4P鸟", "捉鹰打鸟", 7, 68},
 	}
