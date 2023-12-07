@@ -91,54 +91,54 @@ func TestNewFrame_PutRow(t *testing.T) {
 	}{
 		{
 			"empty screen update one wrap line", ' ', ' ', "\x1B[11;74Houtput for normal wrap line.", true,
-			"\x1b[?25l\x1b[11;74Houtput for\x1b[1Cnormal\x1b[1Cwrap\x1b[1Cline.\x1b[?25h", 11,
+			"\x1b[K\x1b[?25l\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[73X\x1b[73Coutput for normal wrap line.\x1b[K\x1b[?25h", 11,
 			"[ 11] for.normal.wrap.line............................................................",
 		},
 		{
 			"same screen update one wrap line", 'X', 'X', "\x1B[24;74Houtput for normal wrap line.", true,
-			"\x1b[?25l\x1b[24;74Houtput for normal wrap line.\x1b[?25h", 24,
+			"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXoutput for normal wrap line.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\n\x1b[25;22H", 24,
 			"[ 24] for.normal.wrap.line.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
 		},
 		{
 			"new screen with empty line", 'U', 'U', "\x1B[4;4HErase to the end of line\x1B[0K.", true,
-			"\x1b[?25l\x1b[4;4HErase to the end of line.\x1b[K\x1b[?25h", 3,
+			"UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU\r\nUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU\r\nUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU\r\nUUUErase to the end of line.\x1b[K", 3,
 			"[  3] UUUErase.to.the.end.of.line.....................................................",
 		},
 		{
 			"new screen with big space gap", ' ', ' ',
 			"\x1B[5;1H1st space\x1B[0K\x1b[5;21H2nd!   \x1B[1;37;40m   3rd\x1b[5;79HEOL  \x1b[0m", true,
-			"\x1b[?25l\n\n\n\n1st\x1b[1Cspace\x1b[11C2nd!\x1b[3C\x1b[0;1;37;40m   3rd\x1b[0m\x1b[45C\x1b[0;1;37;40mE\x1b[5;80HOL  \x1b[0m\x1b[K\x1b[?25h", 4,
+			"\x1b[K\x1b[?25l\n\x1b[K\n\x1b[K\n\x1b[K\n1st space\x1b[11X\x1b[11C2nd!   \x1b[0;1;37;40m   3rd\x1b[0m\x1b[45X\x1b[45C\x1b[0;1;37;40mE\x1b[5;80HOL  \x1b[0m\x1b[K\x1b[?25h", 4,
 			"[  4] 1st.space...........2nd!......3rd.............................................EO",
 		},
 		{
 			"last cell", 'W', 'W', "\x1B[6;77HLAST", true,
-			"\x1b[?25l\x1b[6;77HLAST\r\n\x1b[6;80H\x1b[?25h", 5,
+			"WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW\r\nWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW\r\nWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW\r\nWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW\r\nWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW\r\nWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWLAST\r\n\x1b[6;80H", 5,
 			"[  5] WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWLAST",
 		},
 		{
 			"last chinese cell", ' ', ' ', "\x1B[7;7H左边\x1B[7;77H中文", true,
-			"\x1b[?25l\x1b[7;7H左边\x1b[66C中文\r\n\x1b[7;80H\x1b[?25h", 6,
+			"\x1b[K\x1b[?25l\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[6X\x1b[6C左边\x1b[66X\x1b[66C中文\r\n\x1b[7;80H\x1b[?25h", 6,
 			"[  6] ......左边..................................................................中文",
 		},
 		{
 			"last chinese cell early wrap", ' ', ' ', "\x1B[8;7H提早\x1B[8;78H换行", true,
-			"\x1b[?25l\x1b[8;7H提早\x1b[67C换\r\n行\x1b[?25h", 7,
+			"\x1b[K\x1b[?25l\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[6X\x1b[6C提早\x1b[67X\x1b[67C换\r\n行\x1b[K\x1b[?25h", 7,
 			"[  7] ......提早...................................................................换.",
 		},
 		{
 			"backspace case", ' ', ' ', "\x1b[9;1Hbackspace case\x1b[9;11H", true,
-			"\x1b[?25l\x1b[9;1Hbackspace\x1b[1Ccase\b\b\b\b\x1b[?25h", 8,
+			"\x1b[K\x1b[?25l\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\nbackspace case\x1b[K\b\b\b\b\x1b[?25h", 8,
 			"[  8] backspace.case..................................................................",
 		},
 		{
 			"mix color case", ' ', ' ', "\x1b[10;1H\x1b[1;34mdevelop\x1b[m  \x1b[1;34mproj     \x1b[m", true,
-			"\x1b[?25l\x1b[10;1H\x1b[0;1;34mdevelop\x1b[0m\x1b[2C\x1b[0;1;34mproj\x1b[5X\x1b[5C\x1b[0m\x1b[K\x1b[?25h", 9,
+			"\x1b[K\x1b[?25l\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[0;1;34mdevelop\x1b[0m  \x1b[0;1;34mproj\x1b[5X\x1b[5C\x1b[0m\x1b[K\x1b[?25h", 9,
 			"[  9] develop..proj...................................................................",
 		},
 		{
 			"mix color, false initialized case", ' ', ' ',
 			"\x1b[10;1H\x1b[1;34mdevelop\x1b[m  \x1b[1;35mproj\x1b[m", false,
-			"\x1b[?5l\x1b[r\x1b[0m\x1b[H\x1b[2J\x1b[?25l\x1b[?1047l\x1b[r\x1b[?69l\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[0;1;34mdevelop\x1b[0m  \x1b[0;1;35mproj\x1b[0m\x1b[K\r\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\x1b[10;14H\x1b[?25h\x1b[1 q\x1b]112\a\x1b[0m\x1b[?2004l\x1b[?1003l\x1b[?1002l\x1b[?1001l\x1b[?1000l\x1b[?1004l\x1b[?1015l\x1b[?1006l\x1b[?1005l\x1b[?7h\x1b[20l\x1b[2l\x1b[4l\x1b[12h\x1b[?67l\x1b[?1036h\x1b[?1007l\x1b[?1l\x1b[?6l\x1b>\x1b[?3l\x1b[3g\x1b[64\"p\x1b[>4;1m", 9,
+			"\x1b[?5l\x1b[r\x1b[0m\x1b[H\x1b[2J\x1b[?25l\x1b[?1047l\x1b[r\x1b[?69l\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[0;1;34mdevelop\x1b[0m  \x1b[0;1;35mproj\x1b[0m\x1b[K\x1b[0C\x1b[?25h\x1b[1 q\x1b]112\a\x1b[0m\x1b[?2004l\x1b[?1003l\x1b[?1002l\x1b[?1001l\x1b[?1000l\x1b[?1004l\x1b[?1015l\x1b[?1006l\x1b[?1005l\x1b[?7h\x1b[20l\x1b[2l\x1b[4l\x1b[12h\x1b[?67l\x1b[?1036h\x1b[?1007l\x1b[?1l\x1b[?6l\x1b>\x1b[?3l\x1b[3g\x1b[64\"p\x1b[>4;1m", 9,
 			"[  9] develop..proj...................................................................",
 		},
 	}
@@ -153,39 +153,41 @@ func TestNewFrame_PutRow(t *testing.T) {
 	}
 
 	for _, v := range tc {
-		oldE := NewEmulator3(80, 40, 40)
-		newE := NewEmulator3(80, 40, 40)
-		// oldE.resetAttrs()
-		// newE.resetAttrs()
-		oldE.cf.fillCells(v.bgRune1, oldE.attrs)
-		newE.cf.fillCells(v.bgRune2, newE.attrs)
+		t.Run(v.label, func(t *testing.T) {
+			oldE := NewEmulator3(80, 40, 40)
+			newE := NewEmulator3(80, 40, 40)
+			// oldE.resetAttrs()
+			// newE.resetAttrs()
+			oldE.cf.fillCells(v.bgRune1, oldE.attrs)
+			newE.cf.fillCells(v.bgRune2, newE.attrs)
 
-		// use mix to create difference in newE
-		// fmt.Printf("#test NewFrame() newE cursor at (%2d,%2d)\n", newE.GetCursorRow(), newE.GetCursorCol())
-		newE.HandleStream(v.mix)
+			// use mix to create difference in newE
+			// fmt.Printf("#test NewFrame() newE cursor at (%2d,%2d)\n", newE.GetCursorRow(), newE.GetCursorCol())
+			newE.HandleStream(v.mix)
 
-		// calculate the difference sequence
-		diff := d.NewFrame(v.initialized, oldE, newE)
-		if diff != v.expectSeq {
-			t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, diff)
-		}
-
-		// apply difference sequence to oldE
-		// fmt.Printf("#test NewFrame() oldE cursor at (%2d,%2d)\n", oldE.GetCursorRow(), oldE.GetCursorCol())
-		oldE.HandleStream(diff)
-		gotRow := printCells(oldE.cf, v.row)
-
-		// check the replicate result.
-		skipHeader := 80 + 7 // rule row + header
-		if !strings.Contains(gotRow, v.expectRow) {
-			for i := range v.expectRow {
-				if v.expectRow[i] != gotRow[skipHeader+i] {
-					t.Logf("%q col=%d expect=%q, got=%q\n", v.label, i-6, v.expectRow[i], gotRow[skipHeader+i])
-
-				}
+			// calculate the difference sequence
+			diff := d.NewFrame(v.initialized, oldE, newE)
+			if diff != v.expectSeq {
+				t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expectSeq, diff)
 			}
-			t.Errorf("%q expect \n%s, got \n%s\n", v.label, v.expectRow, gotRow)
-		}
+
+			// apply difference sequence to oldE
+			// fmt.Printf("#test NewFrame() oldE cursor at (%2d,%2d)\n", oldE.GetCursorRow(), oldE.GetCursorCol())
+			oldE.HandleStream(diff)
+			gotRow := printCells(oldE.cf, v.row)
+
+			// check the replicate result.
+			skipHeader := 80 + 7 // rule row + header
+			if !strings.Contains(gotRow, v.expectRow) {
+				for i := range v.expectRow {
+					if v.expectRow[i] != gotRow[skipHeader+i] {
+						t.Logf("%q col=%d expect=%q, got=%q\n", v.label, i-6, v.expectRow[i], gotRow[skipHeader+i])
+
+					}
+				}
+				t.Errorf("%q expect \n%s, got \n%s\n", v.label, v.expectRow, gotRow)
+			}
+		})
 	}
 }
 
@@ -200,15 +202,16 @@ func TestNewFrame_ScrollUp(t *testing.T) {
 		initialized bool
 		expectSeq   string
 	}{
-		// {
-		// 	"scroll up 5 lines", ' ', ' ', "\x1B[5;1Hscroll\r\ndown\r\nmore\r\nthan\r\n5 lines!",
-		// 	"\r\ndifferent line", "\x1B[4S", true,
-		// 	"\x1b[0m\x1b[?25l\x1b[9;1H\x1b[4S\x1b[6;1Hdifferent\x1b[1Cline\x1b[10;15H\x1b[?25h",
-		// },
+		{
+			"scroll up 5 lines", ' ', ' ', "\x1B[5;1Hscroll\r\ndown\r\nmore\r\nthan\r\n5 lines!",
+			"\r\ndifferent line", "\x1B[4S", true,
+			"\x1b[?25l\r5 lines!\x1b[K\r\ndifferent line\x1b[K\r\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\x1b[10;15H\x1b[?25h",
+		},
 		{
 			"scroll up 6 lines", ' ', ' ', "\x1B[35;1Hscroll\r\ndown\r\nmore\r\nthan\r\n6\r\nlines!",
 			"", "\x1B[34S", true,
-			"\x1b[0m\r\x1b[34S\x1b[40;7H",
+			// "\x1b[0m\r\x1b[34S\x1b[40;7H",
+			"\x1b[?25l\rlines!\x1b[K\r\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\x1b[40;7H\x1b[?25h",
 		},
 	}
 
@@ -591,8 +594,12 @@ func TestNewFrame_Margin(t *testing.T) {
 		seq         string
 		expectSeq   string
 	}{
-		{"already initialized, new has margin", true, true, "\x1B[2;6r", "\x1b[2;6r"},
-		{"already initialized, old has margin", true, false, "\x1B[2;6r", "\x1b[r"},
+		{"already initialized, new has margin", true, true, "\x1B[2;6r",
+			"\x1b[2;6r\x1b[K\x1b[?25l\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\x1b[1;1H\x1b[?25h",
+		},
+		{"already initialized, old has margin", true, false, "\x1B[2;6r",
+			"\x1b[r\x1b[K\x1b[?25l\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\x1b[1;1H\x1b[?25h",
+		},
 	}
 	oldE := NewEmulator3(8, 8, 4)
 	newE := NewEmulator3(8, 8, 4)
