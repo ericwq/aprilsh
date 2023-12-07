@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ericwq/aprilsh/frontend"
 	"github.com/ericwq/aprilsh/util"
 	utmp "github.com/ericwq/goutmp"
 )
@@ -26,10 +27,10 @@ func mockGetUtmpx() *utmp.Utmpx {
 		Host string
 		Line string
 	}{
-		{utmp.USER_PROCESS, "root", _PACKAGE_STRING + " [777]", "pts/1"},
-		{utmp.USER_PROCESS, userName, _PACKAGE_STRING + " [888]", "pts/7"},
-		{utmp.USER_PROCESS, userName, _PACKAGE_STRING + " [666]", "pts/1"},
-		{utmp.USER_PROCESS, userName, _PACKAGE_STRING + " [999]", "pts/0"},
+		{utmp.USER_PROCESS, "root", frontend.COMMAND_SERVER_NAME + " [777]", "pts/1"},
+		{utmp.USER_PROCESS, userName, frontend.COMMAND_SERVER_NAME + " [888]", "pts/7"},
+		{utmp.USER_PROCESS, userName, frontend.COMMAND_SERVER_NAME + " [666]", "pts/1"},
+		{utmp.USER_PROCESS, userName, frontend.COMMAND_SERVER_NAME + " [999]", "pts/0"},
 	}
 	// the test requires the following files in /dev/pts directory
 	// ls /dev/pts
@@ -90,8 +91,8 @@ func TestWarnUnattached(t *testing.T) {
 		ignoreHost string
 		count      int
 	}{
-		{"one match", _PACKAGE_STRING + " [999]", 1},   // 666 pts/1 exist, 888 pts/7 does not exist, only 666 remains
-		{"two matches", _PACKAGE_STRING + " [888]", 2}, // 666 pts1 exist, 999 pts/0 exist, so 666 and 999 remains
+		{"one match", frontend.COMMAND_SERVER_NAME + " [999]", 1},   // 666 pts/1 exist, 888 pts/7 does not exist, only 666 remains
+		{"two matches", frontend.COMMAND_SERVER_NAME + " [888]", 2}, // 666 pts1 exist, 999 pts/0 exist, so 666 and 999 remains
 	}
 
 	for _, v := range tc {

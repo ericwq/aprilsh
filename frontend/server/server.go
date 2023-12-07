@@ -38,7 +38,7 @@ import (
 )
 
 var (
-	BuildVersion    = "0.1.0" // ready for ldflags
+	// BuildVersion    = "0.1.0" // ready for ldflags
 	userCurrentTest = false
 	getShellTest    = false
 	buildConfigTest = false
@@ -51,12 +51,12 @@ var (
 )
 
 const (
-	_PACKAGE_STRING = "aprilsh"
-	_COMMAND_NAME   = "apshd"
-	_PATH_BSHELL    = "/bin/sh"
+	// _PACKAGE_STRING = "aprilsh"
+	// _COMMAND_NAME   = "apshd"
+	_PATH_BSHELL = "/bin/sh"
 
-	_ASH_OPEN  = "open aprilsh:"
-	_ASH_CLOSE = "close aprilsh:"
+	// _ASH_OPEN  = "open aprilsh:"
+	// _ASH_CLOSE = "close aprilsh:"
 
 	_VERBOSE_OPEN_PTS    = 99  // test purpose
 	_VERBOSE_START_SHELL = 100 // test purpose
@@ -69,7 +69,7 @@ func init() {
 }
 
 func printVersion() {
-	fmt.Printf("%s (%s) [build %s]\n\n", _COMMAND_NAME, _PACKAGE_STRING, BuildVersion)
+	fmt.Printf("%s (%s) [build %s]\n\n", frontend.COMMAND_SERVER_NAME, frontend.PACKAGE_STRING, frontend.BuildVersion)
 	fmt.Println("Copyright (c) 2022~2023 wangqi ericwq057@qq.com")
 	fmt.Println("This is free software: you are free to change and redistribute it.")
 	fmt.Printf("There is NO WARRANTY, to the extent permitted by law.\n\n")
@@ -78,9 +78,9 @@ func printVersion() {
 
 // [-s] [-v] [-i LOCALADDR] [-p PORT[:PORT2]] [-c COLORS] [-l NAME=VALUE] [-- COMMAND...]
 var usage = `Usage:
-  ` + _COMMAND_NAME + ` [-v] [-h] [--auto N]
-  ` + _COMMAND_NAME + ` [-b]
-  ` + _COMMAND_NAME + ` [-s] [--verbose V] [-i LOCALADDR] [-p PORT[:PORT2]] [-l NAME=VALUE] [-t TERM] [-- command...]
+  ` + frontend.COMMAND_SERVER_NAME + ` [-v] [-h] [--auto N]
+  ` + frontend.COMMAND_SERVER_NAME + ` [-b]
+  ` + frontend.COMMAND_SERVER_NAME + ` [-s] [--verbose V] [-i LOCALADDR] [-p PORT[:PORT2]] [-l NAME=VALUE] [-t TERM] [-- command...]
 Options:
   -h, --help     print this message
   -v, --version  print version information
@@ -377,7 +377,7 @@ func (conf *Config) buildConfig() (string, bool) {
 		if !util.IsUtf8Locale() || buildConfigTest {
 			clientType := util.GetCtype()
 			clientCharset := util.LocaleCharset()
-			fmt.Printf("%s needs a UTF-8 native locale to run.\n", _COMMAND_NAME)
+			fmt.Printf("%s needs a UTF-8 native locale to run.\n", frontend.COMMAND_SERVER_NAME)
 			fmt.Printf("Unfortunately, the local environment %s specifies "+
 				"the character set \"%s\",\n", nativeType, nativeCharset)
 			fmt.Printf("The client-supplied environment %s specifies "+
@@ -491,7 +491,7 @@ func beginClientConn(conf *Config) { //(port string, term string) {
 	// }
 
 	// request from server
-	request := fmt.Sprintf("%s%s,%s", _ASH_OPEN, conf.term, conf.target)
+	request := fmt.Sprintf("%s%s,%s", frontend.APSH_MSG_OPEN, conf.term, conf.target)
 	conn.SetDeadline(time.Now().Add(time.Millisecond * 20))
 	conn.WriteTo([]byte(request), dest)
 	// n, err := conn.WriteTo([]byte(request), dest)
@@ -618,12 +618,13 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	pr, pw := io.Pipe()
 
 	// prepare host field for utmp record
-	utmpHost := fmt.Sprintf("%s [%d]", _PACKAGE_STRING, os.Getpid())
+	utmpHost := fmt.Sprintf("%s [%d]", frontend.COMMAND_SERVER_NAME, os.Getpid())
 
 	// start the udp server, serve the udp request
 	waitChan := make(chan bool)
 	go conf.serve(ptmx, pw, terminal, waitChan, network, networkTimeout, networkSignaledTimeout)
-	util.Log.With("port", conf.desiredPort).With("clientTERM", conf.term).Info("start listening on")
+	util.Log.With("port", conf.desiredPort).With("clientTERM", conf.term).
+		Info("start listening on")
 
 	// start the shell with pts
 	shell, err := startShell(pts, pr, utmpHost, conf)
@@ -873,7 +874,7 @@ mainLoop:
 					if e == nil {
 						host = hostList[0] // got the host name, use the first one
 					}
-					newHost := fmt.Sprintf("%s via %s [%d]", host, _PACKAGE_STRING, os.Getpid())
+					newHost := fmt.Sprintf("%s via %s [%d]", host, frontend.COMMAND_SERVER_NAME, os.Getpid())
 
 					util.AddUtmpx(ptmx, newHost)
 
@@ -988,7 +989,7 @@ mainLoop:
 		if utmpSupport && connectedUtmp && timeSinceRemoteState > 30000 {
 			util.ClearUtmpx(ptmx)
 
-			newHost := fmt.Sprintf("%s [%d]", _PACKAGE_STRING, os.Getpid())
+			newHost := fmt.Sprintf("%s [%d]", frontend.COMMAND_SERVER_NAME, os.Getpid())
 			util.AddUtmpx(ptmx, newHost)
 
 			connectedUtmp = false
@@ -1061,8 +1062,8 @@ func getTimeFrom(env string, def int64) (ret int64) {
 
 func printWelcome(pid int, port int, tty *os.File) {
 	// fmt.Printf("%s start listening on :%d. build version %s [pid=%d] \n", _COMMAND_NAME, port, BuildVersion, pid)
-	util.Log.With("port", port).With("buildVersion", BuildVersion).With("pid", pid).
-		Info("start listening on")
+	util.Log.With("port", port).With("buildVersion", frontend.BuildVersion).With("pid", pid).
+		Info(frontend.COMMAND_SERVER_NAME + " start listening on")
 	// fmt.Printf("Copyright 2022~2023 wangqi.\n")
 	// fmt.Printf("%s%s", "Use of this source code is governed by a MIT-style",
 	// 	"license that can be found in the LICENSE file.\n")
@@ -1170,7 +1171,7 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 	}
 
 	// set new title
-	fmt.Fprintf(pts, "\x1B]0;%s %s:%s\a", _PACKAGE_STRING, conf.target, conf.desiredPort)
+	fmt.Fprintf(pts, "\x1B]0;%s %s:%s\a", frontend.COMMAND_CLIENT_NAME, conf.target, conf.desiredPort)
 
 	encrypt.ReenableDumpingCore()
 
@@ -1207,7 +1208,7 @@ func warnUnattached(w io.Writer, ignoreHost string) {
 	userName := getCurrentUser()
 
 	// check unattached sessions
-	unatttached := util.CheckUnattachedUtmpx(userName, ignoreHost, _PACKAGE_STRING)
+	unatttached := util.CheckUnattachedUtmpx(userName, ignoreHost, frontend.COMMAND_SERVER_NAME)
 
 	if unatttached == nil || len(unatttached) == 0 {
 		return
@@ -1282,8 +1283,9 @@ func (m *mainSrv) start(conf *Config) {
 	go m.run(conf)
 
 	if conf.autoStop > 0 {
-		time.AfterFunc(time.Duration(5)*time.Second, func() {
+		time.AfterFunc(time.Duration(conf.autoStop)*time.Second, func() {
 			m.downChan <- true
+			// util.Log.Debug("auto stop")
 		})
 	}
 }
@@ -1343,7 +1345,7 @@ func (m *mainSrv) run(conf *Config) {
 	defer func() {
 		m.conn.Close()
 		m.wg.Done()
-		// fmt.Printf("%s  stop listening on :%d.\n", _COMMAND_NAME, m.port)
+		// fmt.Printf("%s  stop listening on :%d.\n", frontend.COMMAND_SERVER_NAME, m.port)
 		util.Log.With("port", m.port).Info("stop listening")
 	}()
 
@@ -1363,7 +1365,8 @@ func (m *mainSrv) run(conf *Config) {
 			// clear worker list
 			delete(m.workers, p)
 		case sd := <-m.downChan: // ready to shutdown mainSrv
-			// fmt.Printf("#run got shutdown message %t\n", sd)
+			// keep this for TestMainRun
+			util.Log.With("shutdown", sd).Debug("#run got shutdown message")
 			shutdown = sd
 		default:
 		}
@@ -1398,7 +1401,7 @@ func (m *mainSrv) run(conf *Config) {
 		req := strings.TrimSpace(string(buf[0:n]))
 		// fmt.Printf("#run receive %q from %s\n", req, addr)
 
-		if strings.HasPrefix(req, _ASH_OPEN) { // 'open aprilsh:'
+		if strings.HasPrefix(req, frontend.APSH_MSG_OPEN) { // 'open aprilsh:'
 			// prepare next port
 			p := m.getAvailabePort() // TODO set limit for port?
 
@@ -1409,7 +1412,7 @@ func (m *mainSrv) run(conf *Config) {
 				body := strings.Split(req, ":")
 				content := strings.Split(body[1], ",")
 				if len(content) != 2 {
-					resp := m.writeRespTo(addr, _ASH_OPEN, "malform request")
+					resp := m.writeRespTo(addr, frontend.APSH_MSG_OPEN, "malform request")
 					util.Log.With("request", req).With("response", resp).Warn("malform request")
 					continue
 				}
@@ -1430,7 +1433,7 @@ func (m *mainSrv) run(conf *Config) {
 
 				// response session key and udp port to client
 				msg := fmt.Sprintf("%d,%s", p, key)
-				m.writeRespTo(addr, _ASH_OPEN, msg)
+				m.writeRespTo(addr, frontend.APSH_MSG_OPEN, msg)
 
 				// blocking read the workhorse from runWorker
 				wh := <-m.whChan
@@ -1439,12 +1442,12 @@ func (m *mainSrv) run(conf *Config) {
 					m.workers[p] = wh
 				}
 			} else {
-				resp := m.writeRespTo(addr, _ASH_OPEN, "duplicate request")
+				resp := m.writeRespTo(addr, frontend.APSH_MSG_OPEN, "duplicate request")
 				util.Log.With("request", req).With("response", resp).Warn("duplicate request")
 			}
-		} else if strings.HasPrefix(req, _ASH_CLOSE) { // 'close aprilsh:[port]'
+		} else if strings.HasPrefix(req, frontend.APSH_MSG_CLOSE) { // 'close aprilsh:[port]'
 			// fmt.Printf("#mainSrv run() receive request %q\n", req)
-			pstr := strings.TrimPrefix(req, _ASH_CLOSE)
+			pstr := strings.TrimPrefix(req, frontend.APSH_MSG_CLOSE)
 			port, err := strconv.Atoi(pstr)
 			if err == nil {
 				// fmt.Printf("#run got request to stop %d\n", port)
@@ -1453,18 +1456,18 @@ func (m *mainSrv) run(conf *Config) {
 					// kill the process, TODO SIGKILL or SIGTERM?
 					wh.shell.Kill()
 
-					m.writeRespTo(addr, _ASH_CLOSE, "done")
+					m.writeRespTo(addr, frontend.APSH_MSG_CLOSE, "done")
 					// fmt.Printf("#mainSrv run() send %q to client\n", resp)
 				} else {
-					resp := m.writeRespTo(addr, _ASH_CLOSE, "port does not exist")
+					resp := m.writeRespTo(addr, frontend.APSH_MSG_CLOSE, "port does not exist")
 					util.Log.With("request", req).With("response", resp).Warn("port does not exit")
 				}
 			} else {
-				resp := m.writeRespTo(addr, _ASH_CLOSE, "wrong port number")
+				resp := m.writeRespTo(addr, frontend.APSH_MSG_CLOSE, "wrong port number")
 				util.Log.With("request", req).With("response", resp).Warn("wrong port number")
 			}
 		} else {
-			resp := m.writeRespTo(addr, _ASH_CLOSE, "unknow request")
+			resp := m.writeRespTo(addr, frontend.APSH_MSG_CLOSE, "unknow request")
 			util.Log.With("request", req).With("response", resp).Warn("unknow request")
 		}
 	}

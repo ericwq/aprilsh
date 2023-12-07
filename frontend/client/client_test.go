@@ -6,12 +6,13 @@ package main
 
 import (
 	"errors"
-	"io/ioutil"
+	"io"
 	"os"
 	"strings"
 	"testing"
 
 	"github.com/creack/pty"
+	"github.com/ericwq/aprilsh/frontend"
 )
 
 func TestPrintColors(t *testing.T) {
@@ -48,7 +49,7 @@ func TestPrintColors(t *testing.T) {
 
 			// restore stdout
 			w.Close()
-			b, _ := ioutil.ReadAll(r)
+			b, _ := io.ReadAll(r)
 			os.Stdout = saveStdout
 			r.Close()
 
@@ -85,70 +86,70 @@ func TestMainRun_Parameters(t *testing.T) {
 	}{
 		{
 			"no parameters",
-			[]string{_COMMAND_NAME},
+			[]string{frontend.COMMAND_CLIENT_NAME},
 			"xterm-256color",
 			[]string{
-				"target parameter (User@Server) is mandatory.", "Usage:", _COMMAND_NAME, "Options:",
+				"target parameter (User@Server) is mandatory.", "Usage:", frontend.COMMAND_CLIENT_NAME, "Options:",
 				"-c, --colors   print the number of colors of terminal",
 			},
 		},
 		{
 			"just version",
-			[]string{_COMMAND_NAME, "-v"},
+			[]string{frontend.COMMAND_CLIENT_NAME, "-v"},
 			"xterm-256color",
 			[]string{
-				_COMMAND_NAME, _PACKAGE_STRING,
+				frontend.COMMAND_CLIENT_NAME, frontend.PACKAGE_STRING,
 				"Copyright (c) 2022~2023 wangqi ericwq057[AT]qq[dot]com", "reborn mosh with aprilsh",
 			},
 		},
 		{
 			"just help",
-			[]string{_COMMAND_NAME, "-h"},
+			[]string{frontend.COMMAND_CLIENT_NAME, "-h"},
 			"xterm-256color",
 			[]string{
-				"Usage:", _COMMAND_NAME, "Options:",
+				"Usage:", frontend.COMMAND_CLIENT_NAME, "Options:",
 				"-c, --colors   print the number of colors of terminal",
 			},
 		},
 		{
 			"just colors",
-			[]string{_COMMAND_NAME, "-c"},
+			[]string{frontend.COMMAND_CLIENT_NAME, "-c"},
 			"xterm-256color",
 			[]string{"xterm-256color", "256"},
 		},
 		{
 			"invalid target parameter",
-			[]string{_COMMAND_NAME, "invalid", "target", "parameter"},
+			[]string{frontend.COMMAND_CLIENT_NAME, "invalid", "target", "parameter"},
 			"xterm-256color",
 			[]string{
-				"only one target parameter (User@Server) is allowed.", "Usage:", _COMMAND_NAME, "Options:",
+				"only one target parameter (User@Server) is allowed.", "Usage:", frontend.COMMAND_CLIENT_NAME, "Options:",
 				"-c, --colors   print the number of colors of terminal",
 			},
 		},
 		{
 			"malform target parameter no second part",
-			[]string{_COMMAND_NAME, "malform@"},
+			[]string{frontend.COMMAND_CLIENT_NAME, "malform@"},
 			"xterm-256color",
 			[]string{
-				"target parameter should be in the form of User@Server", "Usage:", _COMMAND_NAME, "Options:",
+				"target parameter should be in the form of User@Server", "Usage:", frontend.COMMAND_CLIENT_NAME, "Options:",
 				"-c, --colors   print the number of colors of terminal",
 			},
 		},
 		{
 			"malform target parameter no first part",
-			[]string{_COMMAND_NAME, "@malform"},
+			[]string{frontend.COMMAND_CLIENT_NAME, "@malform"},
 			"xterm-256color",
 			[]string{
-				"target parameter should be in the form of User@Server", "Usage:", _COMMAND_NAME, "Options:",
+				"target parameter should be in the form of User@Server", "Usage:", frontend.COMMAND_CLIENT_NAME, "Options:",
 				"-c, --colors   print the number of colors of terminal",
 			},
 		},
 		{
 			"infvalid port number",
-			[]string{_COMMAND_NAME, "-p", "7s"},
+			[]string{frontend.COMMAND_CLIENT_NAME, "-p", "7s"},
 			"xterm-256color",
 			[]string{
-				"invalid value \"7s\" for flag -p: parse error", "Usage:", _COMMAND_NAME, "Options:",
+				"invalid value \"7s\" for flag -p: parse error", "Usage:", frontend.COMMAND_CLIENT_NAME, "Options:",
 				"-c, --colors   print the number of colors of terminal",
 			},
 		},
@@ -169,7 +170,7 @@ func TestMainRun_Parameters(t *testing.T) {
 
 			// restore stdout
 			w.Close()
-			out, _ := ioutil.ReadAll(r)
+			out, _ := io.ReadAll(r)
 			os.Stdout = saveStdout
 			r.Close()
 
@@ -295,7 +296,7 @@ func TestGetPassword(t *testing.T) {
 
 			// restore stdout
 			w.Close()
-			out, _ := ioutil.ReadAll(r)
+			out, _ := io.ReadAll(r)
 			os.Stdout = saveStdout
 			r.Close()
 
@@ -323,7 +324,7 @@ func TestGetPasswordFail(t *testing.T) {
 
 	// restore stdout
 	w.Close()
-	out, _ := ioutil.ReadAll(r)
+	out, _ := io.ReadAll(r)
 	os.Stdout = saveStdout
 	r.Close()
 

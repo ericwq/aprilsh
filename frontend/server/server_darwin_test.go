@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ericwq/aprilsh/frontend"
 	"github.com/ericwq/aprilsh/util"
 )
 
@@ -87,7 +88,7 @@ func TestBuildConfig_Darwin_locale(t *testing.T) {
 			}
 
 			// validate the output
-			expect := []string{_COMMAND_NAME, "needs a UTF-8 native locale to run",
+			expect := []string{frontend.COMMAND_SERVER_NAME, "needs a UTF-8 native locale to run",
 				"Unfortunately, the local environment", "The client-supplied environment"}
 			result := string(out)
 			found := 0

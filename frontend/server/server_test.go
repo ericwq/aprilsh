@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/creack/pty"
+	"github.com/ericwq/aprilsh/frontend"
 	"github.com/ericwq/aprilsh/network"
 	"github.com/ericwq/aprilsh/statesync"
 	"github.com/ericwq/aprilsh/util"
@@ -78,7 +79,7 @@ func TestPrintVersion(t *testing.T) {
 	os.Stdout = w
 	// initLog()
 
-	expect := []string{_COMMAND_NAME, "build", "wangqi ericwq057@qq.com"}
+	expect := []string{frontend.COMMAND_SERVER_NAME, "build", "wangqi ericwq057@qq.com"}
 
 	printVersion()
 
@@ -109,8 +110,8 @@ func TestPrintUsage(t *testing.T) {
 		hints  string
 		expect []string
 	}{
-		{"no hint", "", []string{"Usage:", _COMMAND_NAME, cmdOptions}},
-		{"some hints", "some hints", []string{"Usage:", _COMMAND_NAME, "some hints", cmdOptions}},
+		{"no hint", "", []string{"Usage:", frontend.COMMAND_SERVER_NAME, cmdOptions}},
+		{"some hints", "some hints", []string{"Usage:", frontend.COMMAND_SERVER_NAME, "some hints", cmdOptions}},
 	}
 
 	for _, v := range tc {
@@ -219,7 +220,7 @@ func TestMotdHushed(t *testing.T) {
 func TestMainHelp(t *testing.T) {
 	testHelpFunc := func() {
 		// prepare data
-		os.Args = []string{_COMMAND_NAME, "--help"}
+		os.Args = []string{frontend.COMMAND_SERVER_NAME, "--help"}
 		// test help
 		main()
 	}
@@ -227,7 +228,7 @@ func TestMainHelp(t *testing.T) {
 	out := captureOutputRun(testHelpFunc)
 
 	// validate result
-	expect := []string{"Usage:", _COMMAND_NAME, cmdOptions}
+	expect := []string{"Usage:", frontend.COMMAND_SERVER_NAME, cmdOptions}
 
 	// validate the result
 	result := string(out)
@@ -277,7 +278,7 @@ func TestMainVersion(t *testing.T) {
 
 	testHelpFunc := func() {
 		// prepare data
-		os.Args = []string{_COMMAND_NAME, "--version"}
+		os.Args = []string{frontend.COMMAND_SERVER_NAME, "--version"}
 		// test
 		main()
 
@@ -286,7 +287,7 @@ func TestMainVersion(t *testing.T) {
 	out := captureOutputRun(testHelpFunc)
 
 	// validate result
-	expect := []string{_COMMAND_NAME, "build", "wangqi ericwq057@qq.com", "reborn mosh with aprilsh"}
+	expect := []string{frontend.COMMAND_SERVER_NAME, "build", "wangqi ericwq057@qq.com", "reborn mosh with aprilsh"}
 	result := string(out)
 	found := 0
 	for i := range expect {
@@ -302,7 +303,7 @@ func TestMainVersion(t *testing.T) {
 func TestMainParseFlagsError(t *testing.T) {
 	testFunc := func() {
 		// prepare data
-		os.Args = []string{_COMMAND_NAME, "--foo"}
+		os.Args = []string{frontend.COMMAND_SERVER_NAME, "--foo"}
 		// test
 		main()
 	}
@@ -348,26 +349,27 @@ func TestMainRun(t *testing.T) {
 		expect []string
 	}{
 		{"run main and killed by signal",
-			[]string{_COMMAND_NAME, "-verbose", "1", "-locale",
+			[]string{frontend.COMMAND_SERVER_NAME, "-verbose", "1", "-locale",
 				"LC_ALL=en_US.UTF-8", "-p", "6100", "--", "/bin/sh", "-sh"},
-			[]string{_COMMAND_NAME, "start listening on", "buildVersion",
+			[]string{frontend.COMMAND_SERVER_NAME, "start listening on", "buildVersion",
 				"got signal: SIGHUP", "got signal: SIGTERM or SIGINT",
 				"stop listening", "6100"}},
 		{"run main and killed by -a",
-			[]string{_COMMAND_NAME, "-a=1", "-locale", // auto stop after 1 second
+			[]string{frontend.COMMAND_SERVER_NAME, "-verbose", "1", "-auto", "1", "-locale", // auto stop after 1 second
 				"LC_ALL=en_US.UTF-8", "-p", "6200", "--", "/bin/sh", "-sh"},
-			[]string{_COMMAND_NAME, "start listening on", "buildVersion",
+			[]string{frontend.COMMAND_SERVER_NAME, "start listening on", "buildVersion",
 				"stop listening", "6200"}},
 		{"run main and killeb by -a, write to syslog",
-			[]string{_COMMAND_NAME, "-a=1", "-verbose", "514"}, // auto stop after 1 second
+			[]string{frontend.COMMAND_SERVER_NAME, "-auto", "1", "-verbose", "514"}, // auto stop after 1 second
 			[]string{}},
 	}
 	for i, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 
-			if i < 2 {
+			if i < 1 {
 				// shutdown after 7ms
-				time.AfterFunc(17*time.Millisecond, func() {
+				time.AfterFunc(15*time.Millisecond, func() {
+					util.Log.Debug("#test kill process by signal")
 					// fmt.Printf("#test main buildConfig PID:%d\n", os.Getpid())
 					syscall.Kill(os.Getpid(), syscall.SIGHUP)
 					syscall.Kill(os.Getpid(), syscall.SIGTERM)
@@ -401,7 +403,7 @@ func TestMainRun(t *testing.T) {
 func TestMainBuildConfigFail(t *testing.T) {
 	testFunc := func() {
 		// prepare parameter
-		os.Args = []string{_COMMAND_NAME, "-locale", "LC_ALL=en_US.UTF-8",
+		os.Args = []string{frontend.COMMAND_SERVER_NAME, "-locale", "LC_ALL=en_US.UTF-8",
 			"-p", "6100", "--", "/bin/sh", "-sh"}
 		// test
 		main()
@@ -691,7 +693,7 @@ func TestParseFlagsError(t *testing.T) {
 
 func TestMainServerPortrangeError(t *testing.T) {
 	testFunc := func() {
-		os.Args = []string{_COMMAND_NAME, "-s", "-p=3a"}
+		os.Args = []string{frontend.COMMAND_SERVER_NAME, "-s", "-p=3a"}
 		os.Setenv("SSH_CONNECTION", "172.17.0.1 58774 172.17.0.2 22")
 		main()
 	}
@@ -828,14 +830,14 @@ func TestGetTimeFrom(t *testing.T) {
 
 func TestStart(t *testing.T) {
 	tc := []struct {
-		label  string
-		pause  int    // pause between client send and read
-		resp   string // response client read
-		finish int    // pause before shutdown message
-		conf   Config
+		label    string
+		pause    int    // pause between client send and read
+		resp     string // response client read
+		shutdown int    // pause before shutdown message
+		conf     Config
 	}{
 		{
-			"start normally", 20, _ASH_OPEN + "7101,This is the mock key\n", 50,
+			"start normally", 20, frontend.APSH_MSG_OPEN + "7101,This is the mock key\n", 50,
 			Config{
 				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -858,7 +860,7 @@ func TestStart(t *testing.T) {
 			srv := newMainSrv(&v.conf, mockRunWorker)
 
 			// send shutdown message after some time
-			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
+			timer1 := time.NewTimer(time.Duration(v.shutdown) * time.Millisecond)
 			go func() {
 				<-timer1.C
 				// fmt.Printf("#test start PID:%d\n", os.Getpid())
@@ -874,7 +876,7 @@ func TestStart(t *testing.T) {
 			srv.start(&v.conf)
 
 			// mock client operation
-			resp := mockClient(v.conf.desiredPort, v.pause, _ASH_OPEN)
+			resp := mockClient(v.conf.desiredPort, v.pause, frontend.APSH_MSG_OPEN)
 			if resp != v.resp {
 				t.Errorf("#test run expect %q got %q\n", v.resp, resp)
 			}
@@ -990,20 +992,20 @@ func mockClient(port string, pause int, action string, ex ...string) string {
 	// send handshake message based on action & port
 	var txbuf []byte
 	switch action {
-	case _ASH_OPEN:
-		txbuf = []byte(_ASH_OPEN)
-	case _ASH_CLOSE:
+	case frontend.APSH_MSG_OPEN:
+		txbuf = []byte(frontend.APSH_MSG_OPEN)
+	case frontend.APSH_MSG_CLOSE:
 		p, _ := strconv.Atoi(port)
 		if len(ex) == 0 {
-			txbuf = []byte(fmt.Sprintf("%s%d", _ASH_CLOSE, p+1))
+			txbuf = []byte(fmt.Sprintf("%s%d", frontend.APSH_MSG_CLOSE, p+1))
 		} else if len(ex) == 2 {
 			txbuf = []byte(fmt.Sprintf("%s%d", "unknow header:", p+1)) // 2 parameters: unknow header
 		} else if len(ex) == 1 {
 			p2, err := strconv.Atoi(ex[0])
 			if err == nil {
-				txbuf = []byte(fmt.Sprintf("%s%d", _ASH_CLOSE, p2)) // 1 digital parameter: wrong port
+				txbuf = []byte(fmt.Sprintf("%s%d", frontend.APSH_MSG_CLOSE, p2)) // 1 digital parameter: wrong port
 			} else {
-				txbuf = []byte(fmt.Sprintf("%s%s", _ASH_CLOSE, ex[0])) // 1 str parameter: malform port
+				txbuf = []byte(fmt.Sprintf("%s%s", frontend.APSH_MSG_CLOSE, ex[0])) // 1 str parameter: malform port
 			}
 		}
 	}
@@ -1046,7 +1048,7 @@ func TestPrintWelcome(t *testing.T) {
 		t.Errorf("#test printWelcome master got %t, expect %t\n", flag, false)
 	}
 
-	expect := []string{_COMMAND_NAME, "start listening on",
+	expect := []string{frontend.COMMAND_SERVER_NAME, "start listening on",
 		"buildVersion", "Warning: termios IUTF8 flag not defined.",
 	}
 
@@ -1132,7 +1134,7 @@ func TestRunFail(t *testing.T) {
 		conf   Config
 	}{
 		{
-			"worker failed with wrong port number", 20, _ASH_OPEN + "7101,mock key from mockRunWorker2\n", 30,
+			"worker failed with wrong port number", 20, frontend.APSH_MSG_OPEN + "7101,mock key from mockRunWorker2\n", 30,
 			Config{
 				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -1171,7 +1173,7 @@ func TestRunFail(t *testing.T) {
 			srv.start(&v.conf)
 
 			// mock client operation
-			resp := mockClient(v.conf.desiredPort, v.pause, _ASH_OPEN)
+			resp := mockClient(v.conf.desiredPort, v.pause, frontend.APSH_MSG_OPEN)
 
 			// validate the result.
 			if resp != v.resp {
@@ -1292,7 +1294,7 @@ func TestMainSrvWaitError(t *testing.T) {
 			m.start(&v.conf)
 
 			// mock client operation
-			mockClient(v.conf.desiredPort, v.pause, _ASH_OPEN)
+			mockClient(v.conf.desiredPort, v.pause, frontend.APSH_MSG_OPEN)
 
 			m.wait()
 
@@ -1353,7 +1355,7 @@ func TestRunWorkerKillSignal(t *testing.T) {
 		conf   Config
 	}{
 		{
-			"runWorker stopped by signal kill", 10, _ASH_OPEN + "7101,", 50,
+			"runWorker stopped by signal kill", 10, frontend.APSH_MSG_OPEN + "7101,", 50,
 			Config{
 				version: false, server: true, verbose: _VERBOSE_SKIP_START, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -1395,7 +1397,7 @@ func TestRunWorkerKillSignal(t *testing.T) {
 			srv.start(&v.conf)
 
 			// mock client operation
-			resp := mockClient(v.conf.desiredPort, v.pause, _ASH_OPEN)
+			resp := mockClient(v.conf.desiredPort, v.pause, frontend.APSH_MSG_OPEN)
 			if !strings.HasPrefix(resp, v.resp) {
 				t.Errorf("#test run expect %q got %q\n", v.resp, resp)
 			}
@@ -1506,7 +1508,7 @@ func TestRunCloseFail(t *testing.T) {
 		conf   Config
 	}{
 		{
-			"runWorker stopped by " + _ASH_CLOSE, 20, _ASH_OPEN + "7111,", _ASH_CLOSE + "done",
+			"runWorker stopped by " + frontend.APSH_MSG_CLOSE, 20, frontend.APSH_MSG_OPEN + "7111,", frontend.APSH_MSG_CLOSE + "done",
 			[]string{},
 			50,
 			Config{
@@ -1516,7 +1518,7 @@ func TestRunCloseFail(t *testing.T) {
 			},
 		},
 		{
-			"runWorker stop port not exist", 5, _ASH_OPEN + "7121,", _ASH_CLOSE + "port does not exist",
+			"runWorker stop port not exist", 5, frontend.APSH_MSG_OPEN + "7121,", frontend.APSH_MSG_CLOSE + "port does not exist",
 			[]string{"7100"},
 			50,
 			Config{
@@ -1526,7 +1528,7 @@ func TestRunCloseFail(t *testing.T) {
 			},
 		},
 		{
-			"runWorker stop wrong port number", 5, _ASH_OPEN + "7131,", _ASH_CLOSE + "wrong port number",
+			"runWorker stop wrong port number", 5, frontend.APSH_MSG_OPEN + "7131,", frontend.APSH_MSG_CLOSE + "wrong port number",
 			[]string{"7121x"},
 			50,
 			Config{
@@ -1536,7 +1538,7 @@ func TestRunCloseFail(t *testing.T) {
 			},
 		},
 		{
-			"runWorker stop unknow request", 5, _ASH_OPEN + "7141,", _ASH_CLOSE + "unknow request",
+			"runWorker stop unknow request", 5, frontend.APSH_MSG_OPEN + "7141,", frontend.APSH_MSG_CLOSE + "unknow request",
 			[]string{"two", "params"},
 			50,
 			Config{
@@ -1579,7 +1581,7 @@ func TestRunCloseFail(t *testing.T) {
 			srv.start(&v.conf)
 
 			// start a new connection
-			resp1 := mockClient(v.conf.desiredPort, v.pause, _ASH_OPEN)
+			resp1 := mockClient(v.conf.desiredPort, v.pause, frontend.APSH_MSG_OPEN)
 			if !strings.HasPrefix(resp1, v.resp1) {
 				t.Errorf("#test run expect %q got %q\n", v.resp1, resp1)
 			}
@@ -1588,7 +1590,7 @@ func TestRunCloseFail(t *testing.T) {
 			time.Sleep(30 * time.Millisecond)
 
 			// stop the new connection
-			resp2 := mockClient(v.conf.desiredPort, v.pause, _ASH_CLOSE, v.exp...)
+			resp2 := mockClient(v.conf.desiredPort, v.pause, frontend.APSH_MSG_CLOSE, v.exp...)
 			if !strings.HasPrefix(resp2, v.resp2) {
 				t.Errorf("#test run expect %q got %q\n", v.resp1, resp2)
 			}
@@ -1596,8 +1598,8 @@ func TestRunCloseFail(t *testing.T) {
 			// fmt.Printf("#test got start response %s\n", resp2)
 			// stop the connection
 			if len(v.exp) > 0 {
-				expect := _ASH_CLOSE + "done"
-				resp2 := mockClient(v.conf.desiredPort, v.pause, _ASH_CLOSE)
+				expect := frontend.APSH_MSG_CLOSE + "done"
+				resp2 := mockClient(v.conf.desiredPort, v.pause, frontend.APSH_MSG_CLOSE)
 				if !strings.HasPrefix(resp2, expect) {
 					t.Errorf("#test run stop the connection expect %q got %q\n", v.resp1, resp2)
 				}
@@ -1627,8 +1629,8 @@ func TestRunOpenDuplicate(t *testing.T) {
 		conf   Config
 	}{
 		{
-			"open aprilsh with duplicate request", 20, _ASH_OPEN + "7101,", _ASH_CLOSE + "done",
-			_ASH_OPEN + "duplicate request", []string{}, 50,
+			"open aprilsh with duplicate request", 20, frontend.APSH_MSG_OPEN + "7101,", frontend.APSH_MSG_CLOSE + "done",
+			frontend.APSH_MSG_OPEN + "duplicate request", []string{}, 50,
 			Config{
 				version: false, server: true, verbose: _VERBOSE_SKIP_START, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -1669,21 +1671,21 @@ func TestRunOpenDuplicate(t *testing.T) {
 			srv.start(&v.conf)
 
 			// start a new connection
-			resp1 := mockClient(v.conf.desiredPort, v.pause, _ASH_OPEN)
+			resp1 := mockClient(v.conf.desiredPort, v.pause, frontend.APSH_MSG_OPEN)
 			if !strings.HasPrefix(resp1, v.resp1) {
 				t.Errorf("#test run expect %q got %q\n", v.resp1, resp1)
 			}
 			// fmt.Printf("#test got 1 response %q\n", resp1)
 
 			// start a new connection
-			resp3 := mockClient(v.conf.desiredPort, v.pause, _ASH_OPEN)
+			resp3 := mockClient(v.conf.desiredPort, v.pause, frontend.APSH_MSG_OPEN)
 			if !strings.HasPrefix(resp3, v.resp3) {
 				t.Errorf("#test run expect %q got %q\n", v.resp3, resp3)
 			}
 			// fmt.Printf("#test got 3 response %q\n", resp3)
 
 			// stop the new connection
-			resp2 := mockClient(v.conf.desiredPort, v.pause, _ASH_CLOSE, v.exp...)
+			resp2 := mockClient(v.conf.desiredPort, v.pause, frontend.APSH_MSG_CLOSE, v.exp...)
 			if !strings.HasPrefix(resp2, v.resp2) {
 				t.Errorf("#test run expect %q got %q\n", v.resp1, resp2)
 			}
