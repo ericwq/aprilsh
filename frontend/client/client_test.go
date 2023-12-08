@@ -86,70 +86,70 @@ func TestMainRun_Parameters(t *testing.T) {
 	}{
 		{
 			"no parameters",
-			[]string{frontend.COMMAND_CLIENT_NAME},
+			[]string{frontend.CommandClientName},
 			"xterm-256color",
 			[]string{
-				"target parameter (User@Server) is mandatory.", "Usage:", frontend.COMMAND_CLIENT_NAME, "Options:",
+				"target parameter (User@Server) is mandatory.", "Usage:", frontend.CommandClientName, "Options:",
 				"-c, --colors   print the number of colors of terminal",
 			},
 		},
 		{
 			"just version",
-			[]string{frontend.COMMAND_CLIENT_NAME, "-v"},
+			[]string{frontend.CommandClientName, "-v"},
 			"xterm-256color",
 			[]string{
-				frontend.COMMAND_CLIENT_NAME, frontend.PACKAGE_STRING,
-				"Copyright (c) 2022~2023 wangqi ericwq057[AT]qq[dot]com", "reborn mosh with aprilsh",
+				frontend.CommandClientName, frontend.AprilshPackageName,
+				"Copyright (c) 2022~2023 wangqi ericwq057@qq.com", "reborn mosh with aprilsh",
 			},
 		},
 		{
 			"just help",
-			[]string{frontend.COMMAND_CLIENT_NAME, "-h"},
+			[]string{frontend.CommandClientName, "-h"},
 			"xterm-256color",
 			[]string{
-				"Usage:", frontend.COMMAND_CLIENT_NAME, "Options:",
+				"Usage:", frontend.CommandClientName, "Options:",
 				"-c, --colors   print the number of colors of terminal",
 			},
 		},
 		{
 			"just colors",
-			[]string{frontend.COMMAND_CLIENT_NAME, "-c"},
+			[]string{frontend.CommandClientName, "-c"},
 			"xterm-256color",
 			[]string{"xterm-256color", "256"},
 		},
 		{
 			"invalid target parameter",
-			[]string{frontend.COMMAND_CLIENT_NAME, "invalid", "target", "parameter"},
+			[]string{frontend.CommandClientName, "invalid", "target", "parameter"},
 			"xterm-256color",
 			[]string{
-				"only one target parameter (User@Server) is allowed.", "Usage:", frontend.COMMAND_CLIENT_NAME, "Options:",
+				"only one target parameter (User@Server) is allowed.", "Usage:", frontend.CommandClientName, "Options:",
 				"-c, --colors   print the number of colors of terminal",
 			},
 		},
 		{
 			"malform target parameter no second part",
-			[]string{frontend.COMMAND_CLIENT_NAME, "malform@"},
+			[]string{frontend.CommandClientName, "malform@"},
 			"xterm-256color",
 			[]string{
-				"target parameter should be in the form of User@Server", "Usage:", frontend.COMMAND_CLIENT_NAME, "Options:",
+				"target parameter should be in the form of User@Server", "Usage:", frontend.CommandClientName, "Options:",
 				"-c, --colors   print the number of colors of terminal",
 			},
 		},
 		{
 			"malform target parameter no first part",
-			[]string{frontend.COMMAND_CLIENT_NAME, "@malform"},
+			[]string{frontend.CommandClientName, "@malform"},
 			"xterm-256color",
 			[]string{
-				"target parameter should be in the form of User@Server", "Usage:", frontend.COMMAND_CLIENT_NAME, "Options:",
+				"target parameter should be in the form of User@Server", "Usage:", frontend.CommandClientName, "Options:",
 				"-c, --colors   print the number of colors of terminal",
 			},
 		},
 		{
 			"infvalid port number",
-			[]string{frontend.COMMAND_CLIENT_NAME, "-p", "7s"},
+			[]string{frontend.CommandClientName, "-p", "7s"},
 			"xterm-256color",
 			[]string{
-				"invalid value \"7s\" for flag -p: parse error", "Usage:", frontend.COMMAND_CLIENT_NAME, "Options:",
+				"invalid value \"7s\" for flag -p: parse error", "Usage:", frontend.CommandClientName, "Options:",
 				"-c, --colors   print the number of colors of terminal",
 			},
 		},

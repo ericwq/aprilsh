@@ -5,10 +5,17 @@
 package frontend
 
 const (
-	BuildVersion        = "0.7.0" // ready for ldflags
-	APSH_MSG_OPEN       = "open aprilsh:"
-	APSH_MSG_CLOSE      = "close aprilsh:"
-	PACKAGE_STRING      = "aprilsh"
-	COMMAND_SERVER_NAME = "apshd"
-	COMMAND_CLIENT_NAME = "apsh"
+	BuildVersion       = "0.7.0" // ready for ldflags
+	AprilshMsgOpen     = "open aprilsh:"
+	AprishMsgClose     = "close aprilsh:"
+	AprilshPackageName = "aprilsh"
+	CommandServerName  = "apshd"
+	CommandClientName  = "apsh"
+
+	VersionInfo = `Copyright (c) 2022~2023 wangqi ericwq057@qq.com
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+reborn mosh with aprilsh
+`
 )

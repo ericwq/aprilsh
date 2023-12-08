@@ -31,26 +31,16 @@ import (
 )
 
 const (
-	// _PACKAGE_STRING       = "aprilsh"
-	// _COMMAND_NAME         = "apsh"
 	_APRILSH_KEY          = "APRISH_KEY"
 	_PREDICTION_DISPLAY   = "APRISH_PREDICTION_DISPLAY"
 	_PREDICTION_OVERWRITE = "APRISH_PREDICTION_OVERWRITE"
 	_VERBOSE_LOG_TMPFILE  = 2
 )
 
-// const (
-// 	_ASH_OPEN  = "open aprilsh:"
-// 	_ASH_CLOSE = "close aprilsh:"
-// )
-
 var (
-	// logW         *slog.Logger
-	// BuildVersion = "0.1.0" // ready for ldflags
-
 	usage = `Usage:
-  ` + frontend.COMMAND_CLIENT_NAME + ` [--version] [--help] [--colors]
-  ` + frontend.COMMAND_CLIENT_NAME + ` [--verbose] [--port PORT]  User@Server
+  ` + frontend.CommandClientName + ` [--version] [--help] [--colors]
+  ` + frontend.CommandClientName + ` [--verbose] [--port PORT]  user@server.domain
 Options:
   -h, --help     print this message
   -v, --version  print version information
@@ -60,18 +50,12 @@ Options:
       --pwd      ssh password
 `
 	predictionValues = []string{"always", "never", "adaptive", "experimental"}
-
-	signals frontend.Signals
+	signals          frontend.Signals
 )
 
 func printVersion() {
-	fmt.Printf("%s (%s) [build %s]\n\n", frontend.COMMAND_CLIENT_NAME, frontend.PACKAGE_STRING, frontend.BuildVersion)
-	fmt.Printf(`Copyright (c) 2022~2023 wangqi ericwq057[AT]qq[dot]com
-This is free software: you are free to change and redistribute it.
-There is NO WARRANTY, to the extent permitted by law.
-
-reborn mosh with aprilsh
-`)
+	fmt.Printf("%s (%s) [build %s]\n\n", frontend.CommandClientName, frontend.AprilshPackageName, frontend.BuildVersion)
+	fmt.Printf(frontend.VersionInfo)
 }
 
 func printColors() {
@@ -221,7 +205,7 @@ func (c *Config) fetchKey() error {
 	// open aprilsh:60001,31kR3xgfmNxhDESXQ8VIQw==
 	// util.Log.With("out", out).Debug("fetchKey")
 	body := strings.Split(out, ":")
-	if len(body) != 2 || !strings.HasPrefix(frontend.APSH_MSG_OPEN, body[0]) {
+	if len(body) != 2 || !strings.HasPrefix(frontend.AprilshMsgOpen, body[0]) {
 		resp := fmt.Sprintf("no response, please make sure the server is running.")
 		return errors.New(resp)
 	}
@@ -348,7 +332,7 @@ func main() {
 	}
 	util.Log.SetOutput(os.Stderr)
 	if conf.verbose == _VERBOSE_LOG_TMPFILE { //TODO consider remove this.
-		logf, err := util.Log.CreateLogFile(frontend.COMMAND_CLIENT_NAME)
+		logf, err := util.Log.CreateLogFile(frontend.CommandClientName)
 		if err != nil {
 			fmt.Printf("can't create log file %s.\n", logf.Name())
 			return
@@ -376,7 +360,7 @@ func main() {
 	util.SetNativeLocale()
 	client := newSTMClient(conf)
 	if err := client.init(); err != nil {
-		fmt.Printf("%s init error:%s\n", frontend.COMMAND_CLIENT_NAME, err)
+		fmt.Printf("%s init error:%s\n", frontend.CommandClientName, err)
 		return
 	}
 	client.main()
@@ -557,7 +541,7 @@ func (sc *STMClient) processUserInput(buf string) bool {
 					return false
 				}
 
-				fmt.Printf("\n\033[37;44m[%s is suspended.]\033[m\n", frontend.COMMAND_CLIENT_NAME)
+				fmt.Printf("\n\033[37;44m[%s is suspended.]\033[m\n", frontend.CommandClientName)
 
 				// fflush(NULL)
 				//
@@ -673,10 +657,10 @@ func (sc *STMClient) init() error {
 		nativeType := util.GetCtype()
 		nativeCharset := util.LocaleCharset()
 
-		fmt.Printf("%s needs a UTF-8 native locale to run.\n\n", frontend.COMMAND_CLIENT_NAME)
+		fmt.Printf("%s needs a UTF-8 native locale to run.\n\n", frontend.CommandClientName)
 		fmt.Printf("Unfortunately, the client's environment (%s) specifies\nthe character set %q.\n\n",
 			nativeType, nativeCharset)
-		return errors.New(frontend.COMMAND_CLIENT_NAME + " requires UTF-8 environment.")
+		return errors.New(frontend.CommandClientName + " requires UTF-8 environment.")
 	}
 
 	var err error
@@ -804,15 +788,15 @@ func (sc *STMClient) shutdown() error {
 
 	if sc.stillConnecting() {
 		fmt.Fprintf(os.Stderr, "%s did not make a successful connection to %s:%d.\n",
-			frontend.COMMAND_CLIENT_NAME, sc.ip, sc.port)
+			frontend.CommandClientName, sc.ip, sc.port)
 		fmt.Fprintf(os.Stderr, "Please verify that UDP port %d is not firewalled and can reach the server.\n\n",
 			sc.port)
 		fmt.Fprintf(os.Stderr, "By default, %s uses a UDP port between 60000 and 61000. The -p option\n%s",
-			frontend.COMMAND_CLIENT_NAME, "selects a specific UDP port number.)")
+			frontend.CommandClientName, "selects a specific UDP port number.)")
 	} else if sc.network != nil {
 		if !sc.cleanShutdown {
 			fmt.Fprintf(os.Stderr, "\n\n%s did not shut down cleanly. Please note that the\n%s",
-				frontend.COMMAND_CLIENT_NAME, "aprilsh-server process may still be running on the server.\n")
+				frontend.CommandClientName, "aprilsh-server process may still be running on the server.\n")
 		}
 	}
 	return nil
