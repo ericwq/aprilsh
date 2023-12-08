@@ -47,3 +47,4 @@
 - 2023/Nov/13: fix stream output mode display bug, #1.
 - 2023/Nov/19: enhance stream mode to display over buffer size file, #2.
 - 2023/Nov/29: enhance screen difference with mix sequence, fix bug #6,#7,#8.
+- 2023/Dec/08: enhance tilte #14, limit concurrent user #17, fix bug #9,#10,#11,#12,#14,#15,#16.
