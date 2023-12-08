@@ -1895,34 +1895,34 @@ func TestGetAvailablePort(t *testing.T) {
 	}
 }
 
-func TestIsPortExist(t *testing.T) {
-	tc := []struct {
-		label string
-		port  int
-		ret   bool
-	}{
-		{"port exist", 101, true},
-		{"port does not exist", 10, false},
-	}
-
-	// prepare workers data
-	conf := &Config{desiredPort: "6000"}
-
-	srv := newMainSrv(conf, mockRunWorker)
-	srv.workers[100] = &workhorse{nil, os.Stderr}
-	srv.workers[101] = &workhorse{nil, os.Stdout}
-	srv.workers[111] = &workhorse{nil, os.Stdin}
-
-	for _, v := range tc {
-		t.Run(v.label, func(t *testing.T) {
-			got := srv.isPortExist(v.port)
-			if got != v.ret {
-				t.Errorf("%q port %d: expect %t, got %t\n", v.label, v.port, v.ret, got)
-			}
-
-		})
-	}
-}
+// func TestIsPortExist(t *testing.T) {
+// 	tc := []struct {
+// 		label string
+// 		port  int
+// 		ret   bool
+// 	}{
+// 		{"port exist", 101, true},
+// 		{"port does not exist", 10, false},
+// 	}
+//
+// 	// prepare workers data
+// 	conf := &Config{desiredPort: "6000"}
+//
+// 	srv := newMainSrv(conf, mockRunWorker)
+// 	srv.workers[100] = &workhorse{nil, os.Stderr}
+// 	srv.workers[101] = &workhorse{nil, os.Stdout}
+// 	srv.workers[111] = &workhorse{nil, os.Stdin}
+//
+// 	for _, v := range tc {
+// 		t.Run(v.label, func(t *testing.T) {
+// 			got := srv.isPortExist(v.port)
+// 			if got != v.ret {
+// 				t.Errorf("%q port %d: expect %t, got %t\n", v.label, v.port, v.ret, got)
+// 			}
+//
+// 		})
+// 	}
+// }
 
 func BenchmarkGetAvailablePort(b *testing.B) {
 

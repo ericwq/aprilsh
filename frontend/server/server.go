@@ -48,6 +48,7 @@ var (
 	utmpSupport   bool
 	syslogSupport bool
 	signals       frontend.Signals
+	portLimit     = 50 // assume 5 concurrent user, each has 10 connections
 )
 
 const (
@@ -486,6 +487,7 @@ func beginClientConn(conf *Config) { //(port string, term string) {
 	// }
 
 	// request from server
+	// open aprilsh:TERM,user@server.domain
 	request := fmt.Sprintf("%s%s,%s", frontend.APSH_MSG_OPEN, conf.term, conf.target)
 	conn.SetDeadline(time.Now().Add(time.Millisecond * 20))
 	conn.WriteTo([]byte(request), dest)
@@ -1422,70 +1424,59 @@ func (m *mainSrv) run(conf *Config) {
 		}
 
 		req := strings.TrimSpace(string(buf[0:n]))
-		// fmt.Printf("#run receive %q from %s\n", req, addr)
-
 		if strings.HasPrefix(req, frontend.APSH_MSG_OPEN) { // 'open aprilsh:'
+			if len(m.workers) >= portLimit {
+				resp := m.writeRespTo(addr, frontend.APSH_MSG_CLOSE, "port over limit")
+				util.Log.With("request", req).With("response", resp).Warn("port over limit")
+				continue
+			}
 			// prepare next port
 			p := m.getAvailabePort() // TODO set limit for port?
 
-			if !m.isPortExist(p) { // check exist port
-				// start the worker
-				conf2 := *conf
-				conf2.desiredPort = fmt.Sprintf("%d", p)
-				body := strings.Split(req, ":")
-				content := strings.Split(body[1], ",")
-				if len(content) != 2 {
-					resp := m.writeRespTo(addr, frontend.APSH_MSG_OPEN, "malform request")
-					util.Log.With("request", req).With("response", resp).Warn("malform request")
-					continue
-				}
-				conf2.term = content[0]
-				conf2.target = content[1]
+			// open aprilsh:TERM,user@server.domain
+			// prepare configuration
+			conf2 := *conf
+			conf2.desiredPort = fmt.Sprintf("%d", p)
+			body := strings.Split(req, ":")
+			content := strings.Split(body[1], ",")
+			if len(content) != 2 {
+				resp := m.writeRespTo(addr, frontend.APSH_MSG_OPEN, "malform request")
+				util.Log.With("request", req).With("response", resp).Warn("malform request")
+				continue
+			}
+			conf2.term = content[0]
+			conf2.target = content[1]
 
-				// For security, make sure we don't dump core
-				encrypt.DisableDumpingCore()
+			// For security, make sure we don't dump core
+			encrypt.DisableDumpingCore()
 
-				m.eg.Go(func() error {
-					return m.runWorker(&conf2, m.exChan, m.whChan)
-				})
-				// m.wg.Add(1)
-				// go func() {
-				// 	defer m.wg.Done()
-				// 	m.runWorker(&conf2, m.exChan, m.whChan)
-				// }()
-				// fmt.Printf("#run start a worker at %s\n", conf2.desiredPort)
+			// start the worker
+			m.eg.Go(func() error {
+				return m.runWorker(&conf2, m.exChan, m.whChan)
+			})
 
-				// blocking read the key from runWorker
-				key := <-m.exChan
-				// fmt.Printf("#run got key %q\n", key)
+			// blocking read the key from worker
+			key := <-m.exChan
 
-				// response session key and udp port to client
-				msg := fmt.Sprintf("%d,%s", p, key)
-				m.writeRespTo(addr, frontend.APSH_MSG_OPEN, msg)
+			// response session key and udp port to client
+			msg := fmt.Sprintf("%d,%s", p, key)
+			m.writeRespTo(addr, frontend.APSH_MSG_OPEN, msg)
 
-				// blocking read the workhorse from runWorker
-				wh := <-m.whChan
-				// fmt.Printf("#run got workhorse %p %v\n", wh.shell, wh.shell)
-				if wh.shell != nil {
-					m.workers[p] = wh
-				}
-			} else {
-				resp := m.writeRespTo(addr, frontend.APSH_MSG_OPEN, "duplicate request")
-				util.Log.With("request", req).With("response", resp).Warn("duplicate request")
+			// blocking read the workhorse from runWorker
+			wh := <-m.whChan
+			if wh.shell != nil {
+				m.workers[p] = wh
 			}
 		} else if strings.HasPrefix(req, frontend.APSH_MSG_CLOSE) { // 'close aprilsh:[port]'
-			// fmt.Printf("#mainSrv run() receive request %q\n", req)
 			pstr := strings.TrimPrefix(req, frontend.APSH_MSG_CLOSE)
 			port, err := strconv.Atoi(pstr)
 			if err == nil {
-				// fmt.Printf("#run got request to stop %d\n", port)
 				// find workhorse
 				if wh, ok := m.workers[port]; ok {
 					// kill the process, TODO SIGKILL or SIGTERM?
 					wh.shell.Kill()
 
 					m.writeRespTo(addr, frontend.APSH_MSG_CLOSE, "done")
-					// fmt.Printf("#mainSrv run() send %q to client\n", resp)
 				} else {
 					resp := m.writeRespTo(addr, frontend.APSH_MSG_CLOSE, "port does not exist")
 					util.Log.With("request", req).With("response", resp).Warn("port does not exit")
@@ -1539,15 +1530,6 @@ func (m *mainSrv) getAvailabePort() (port int) {
 	// util.Log.With("port", port).With("maxPort", m.maxPort).
 	// 	With("workers", len(m.workers)).Info("getAvailabePort")
 	return port
-}
-
-func (m *mainSrv) isPortExist(port int) bool {
-	for p := range m.workers {
-		if port == p {
-			return true
-		}
-	}
-	return false
 }
 
 // write header and message to addr

@@ -222,7 +222,7 @@ func (c *Config) fetchKey() error {
 	// util.Log.With("out", out).Debug("fetchKey")
 	body := strings.Split(out, ":")
 	if len(body) != 2 || !strings.HasPrefix(frontend.APSH_MSG_OPEN, body[0]) {
-		resp := fmt.Sprintf("no response, please make sure the server is running. %s", out)
+		resp := fmt.Sprintf("no response, please make sure the server is running.")
 		return errors.New(resp)
 	}
 
