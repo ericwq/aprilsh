@@ -58,10 +58,10 @@ const (
 	// _ASH_OPEN  = "open aprilsh:"
 	// _ASH_CLOSE = "close aprilsh:"
 
-	_VERBOSE_OPEN_PTS    = 99  // test purpose
-	_VERBOSE_START_SHELL = 100 // test purpose
-	_VERBOSE_SKIP_START  = 101 // skip start shell message
-	_VERBOSE_LOG_SYSLOG  = 514 // log to syslog
+	_VERBOSE_OPEN_PTS_FAIL    = 99  // test purpose
+	_VERBOSE_SKIP_START_SHELL = 100 // test purpose
+	_VERBOSE_SKIP_READ_PIPE   = 101 // skip start shell message
+	_VERBOSE_LOG_TO_SYSLOG    = 514 // log to syslog
 )
 
 func init() {
@@ -424,7 +424,7 @@ func main() {
 	}
 	util.Log.SetOutput(os.Stderr)
 	syslogSupport = false
-	if conf.verbose == _VERBOSE_LOG_SYSLOG {
+	if conf.verbose == _VERBOSE_LOG_TO_SYSLOG {
 		if util.Log.SetupSyslog("udp", "localhost:514") == nil {
 			// util.Log.With("verbose", conf.verbose).Debug("log to syslog")
 			syslogSupport = true
@@ -596,7 +596,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	// printWelcome(os.Stdout, os.Getpid(), os.Stdin)
 
 	// prepare for openPTS fail
-	if conf.verbose == _VERBOSE_OPEN_PTS {
+	if conf.verbose == _VERBOSE_OPEN_PTS_FAIL {
 		windowSize = nil
 	}
 
@@ -655,7 +655,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		}
 
 		// wait serve to finish
-		util.Log.With("ptmx", ptmx.Name()).Debug("wait serve to finish")
+		// util.Log.With("ptmx", ptmx.Name()).Debug("wait serve to finish")
 		<-waitChan
 		// logI.Printf("#runWorker stop listening on :%s\n", conf.desiredPort)
 		util.Log.With("port", conf.desiredPort).Info("stop listening on")
@@ -670,7 +670,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	// https://www.dolthub.com/blog/2022-11-28-go-os-exec-patterns/
 	// https://www.prakharsrivastav.com/posts/golang-context-and-cancellation/
 
-	util.Log.With("port", conf.desiredPort).Warn("runWorker quit")
+	// util.Log.With("port", conf.desiredPort).Debug("runWorker quit")
 	return err
 }
 
@@ -1111,7 +1111,7 @@ var failToStartShell = errors.New("fail to start shell")
 
 // set IUTF8 flag for pts file. start shell process according to Config.
 func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) (*os.Process, error) {
-	if conf.verbose == _VERBOSE_START_SHELL {
+	if conf.verbose == _VERBOSE_SKIP_START_SHELL {
 		return nil, failToStartShell
 	}
 	// set IUTF8 if available
@@ -1181,7 +1181,7 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 	*/
 
 	// wait for serve() to release us
-	if pr != nil && conf.verbose != _VERBOSE_SKIP_START {
+	if pr != nil && conf.verbose != _VERBOSE_SKIP_READ_PIPE {
 		// util.Log.With("action", "wait").Debug("start shell message")
 		buf := make([]byte, 81)
 		for {
@@ -1270,7 +1270,8 @@ func (m *mainSrv) start(conf *Config) {
 	// init udp server
 
 	// handle signal: SIGTERM, SIGHUP
-	go m.handler()
+	// m.wg.Add(1)
+	// go m.handler()
 
 	// start udp server upon receive the shake hands message.
 	if err := m.listen(conf); err != nil {
@@ -1291,24 +1292,27 @@ func (m *mainSrv) start(conf *Config) {
 	}
 }
 
-func (m *mainSrv) handler() {
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
-	defer signal.Stop(sig)
-
-	for s := range sig {
-		switch s {
-		case syscall.SIGHUP: // TODO:reload the config?
-			// logI.Println("got message SIGHUP.")
-			util.Log.Info("got signal: SIGHUP")
-		case syscall.SIGTERM, syscall.SIGINT:
-			// logI.Println("got message SIGTERM.")
-			util.Log.Info("got signal: SIGTERM or SIGINT")
-			m.downChan <- true
-			return
-		}
-	}
-}
+// func (m *mainSrv) handler() {
+// 	sig := make(chan os.Signal, 1)
+// 	signal.Notify(sig, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
+// 	defer func() {
+// 		signal.Stop(sig)
+// 		// m.wg.Done()
+// 	}()
+//
+// 	for s := range sig {
+// 		switch s {
+// 		case syscall.SIGHUP: // TODO:reload the config?
+// 			// logI.Println("got message SIGHUP.")
+// 			util.Log.Info("got signal: SIGHUP")
+// 		case syscall.SIGTERM, syscall.SIGINT:
+// 			// logI.Println("got message SIGTERM.")
+// 			util.Log.Info("got signal: SIGTERM or SIGINT")
+// 			m.downChan <- true
+// 			return
+// 		}
+// 	}
+// }
 
 // to support multiple clients, mainServer listen on the specified port.
 // start udp server for each new client.
@@ -1342,11 +1346,15 @@ func (m *mainSrv) run(conf *Config) {
 	if m.conn == nil {
 		return
 	}
+	// prepare to receive the signal
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
 
+	// clean up
 	defer func() {
+		signal.Stop(sig)
 		m.conn.Close()
 		m.wg.Done()
-		// fmt.Printf("%s  stop listening on :%d.\n", frontend.COMMAND_SERVER_NAME, m.port)
 		util.Log.With("port", m.port).Info("stop listening on")
 	}()
 
@@ -1356,18 +1364,25 @@ func (m *mainSrv) run(conf *Config) {
 	printWelcome(os.Getpid(), m.port, nil)
 	for {
 		select {
-		case portStr := <-m.exChan: // some worker is done
-			p, err := strconv.Atoi(portStr)
-			if err != nil {
-				// fmt.Printf("#run got %s from workDone channel. error: %s\n", portStr, err)
-				break
+		// case portStr := <-m.exChan: // some worker is done
+		// 	p, err := strconv.Atoi(portStr)
+		// 	if err != nil {
+		// 		// fmt.Printf("#run got %s from workDone channel. error: %s\n", portStr, err)
+		// 		break
+		// 	}
+		// 	// util.Log.With("port", p).With("maxPort", m.maxPort).Debug("worker is done")
+		// 	// clear worker list
+		// 	delete(m.workers, p)
+		case ss := <-sig:
+			switch ss {
+			case syscall.SIGHUP: // TODO:reload the config?
+				util.Log.Info("got signal: SIGHUP")
+			case syscall.SIGTERM, syscall.SIGINT:
+				util.Log.Info("got signal: SIGTERM or SIGINT")
+				shutdown = true
 			}
-			// util.Log.With("port", p).With("maxPort", m.maxPort).Debug("worker is done")
-			// clear worker list
-			delete(m.workers, p)
-		case sd := <-m.downChan: // ready to shutdown mainSrv
-			// keep this for TestMainRun
-			// util.Log.With("shutdown", sd).Debug("#run got shutdown message")
+		case sd := <-m.downChan:
+			// another way to shutdown besides signal
 			shutdown = sd
 		default:
 		}
@@ -1376,10 +1391,22 @@ func (m *mainSrv) run(conf *Config) {
 			// util.Log.With("shutdown", shutdown).Debug("run")
 			if len(m.workers) == 0 {
 				return
-			} else { // kill the workers
+			} else {
+				// send kill message to the workers
 				for i := range m.workers {
 					m.workers[i].shell.Kill()
 					util.Log.With("port", i).Debug("stop shell")
+				}
+				// wait for workers to finish
+				for len(m.workers) > 0 {
+					select {
+					case portStr := <-m.exChan: // some worker is done
+						p, err := strconv.Atoi(portStr)
+						if err != nil {
+							break
+						}
+						delete(m.workers, p)
+					}
 				}
 				return
 			}
@@ -1541,9 +1568,7 @@ func (m *mainSrv) writeRespTo(addr *net.UDPAddr, header, msg string) (resp strin
 func (m *mainSrv) wait() {
 	// util.Log.With("point", 100).Debug("wait")
 	m.wg.Wait()
-	// util.Log.With("point", 200).Debug("wait")
 	if err := m.eg.Wait(); err != nil {
-		// logW.Printf("#mainSrv wait() reports %s\n", err.Error())
 		util.Log.With("error", err).Warn("wait failed")
 	}
 }

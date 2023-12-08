@@ -1358,7 +1358,7 @@ func TestRunWorkerKillSignal(t *testing.T) {
 		{
 			"runWorker stopped by signal kill", 10, frontend.APSH_MSG_OPEN + "7101,", 50,
 			Config{
-				version: false, server: true, verbose: _VERBOSE_SKIP_START, desiredIP: "", desiredPort: "7100",
+				version: false, server: true, verbose: _VERBOSE_SKIP_READ_PIPE, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
@@ -1421,21 +1421,21 @@ func TestRunWorkerFail(t *testing.T) {
 	}{
 		{
 			"openPTS fail", Config{
-				version: false, server: true, verbose: _VERBOSE_OPEN_PTS, desiredIP: "", desiredPort: "7100",
+				version: false, server: true, verbose: _VERBOSE_OPEN_PTS_FAIL, desiredIP: "", desiredPort: "7100",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, term: "kitty",
 				commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false,
 			},
 		},
 		{
 			"startShell fail", Config{
-				version: false, server: true, verbose: _VERBOSE_START_SHELL, desiredIP: "", desiredPort: "7200",
+				version: false, server: true, verbose: _VERBOSE_SKIP_START_SHELL, desiredIP: "", desiredPort: "7200",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, term: "kitty",
 				commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false,
 			},
 		},
 		{
 			"shell.Wait fail", Config{
-				version: false, server: true, verbose: _VERBOSE_SKIP_START, desiredIP: "", desiredPort: "7300",
+				version: false, server: true, verbose: _VERBOSE_SKIP_READ_PIPE, desiredIP: "", desiredPort: "7300",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, term: "kitty",
 				commandPath: "echo", commandArgv: []string{"2"}, withMotd: false,
 			},
@@ -1513,7 +1513,7 @@ func TestRunCloseFail(t *testing.T) {
 			[]string{},
 			50,
 			Config{
-				version: false, server: true, verbose: _VERBOSE_SKIP_START, desiredIP: "", desiredPort: "7110",
+				version: false, server: true, verbose: _VERBOSE_SKIP_READ_PIPE, desiredIP: "", desiredPort: "7110",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
@@ -1523,7 +1523,7 @@ func TestRunCloseFail(t *testing.T) {
 			[]string{"7100"},
 			50,
 			Config{
-				version: false, server: true, verbose: _VERBOSE_SKIP_START, desiredIP: "", desiredPort: "7120",
+				version: false, server: true, verbose: _VERBOSE_SKIP_READ_PIPE, desiredIP: "", desiredPort: "7120",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
@@ -1533,7 +1533,7 @@ func TestRunCloseFail(t *testing.T) {
 			[]string{"7121x"},
 			50,
 			Config{
-				version: false, server: true, verbose: _VERBOSE_SKIP_START, desiredIP: "", desiredPort: "7130",
+				version: false, server: true, verbose: _VERBOSE_SKIP_READ_PIPE, desiredIP: "", desiredPort: "7130",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
@@ -1543,7 +1543,7 @@ func TestRunCloseFail(t *testing.T) {
 			[]string{"two", "params"},
 			50,
 			Config{
-				version: false, server: true, verbose: _VERBOSE_SKIP_START, desiredIP: "", desiredPort: "7140",
+				version: false, server: true, verbose: _VERBOSE_SKIP_READ_PIPE, desiredIP: "", desiredPort: "7140",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
@@ -1618,7 +1618,7 @@ func TestRunCloseFail(t *testing.T) {
 	}
 }
 
-func TestRunOpenDuplicate(t *testing.T) {
+func TestRunWith2Clients(t *testing.T) {
 	tc := []struct {
 		label  string
 		pause  int      // pause between client send and read
@@ -1633,7 +1633,7 @@ func TestRunOpenDuplicate(t *testing.T) {
 			"open aprilsh with duplicate request", 20, frontend.APSH_MSG_OPEN + "7101,", frontend.APSH_MSG_CLOSE + "done",
 			frontend.APSH_MSG_OPEN + "duplicate request", []string{}, 50,
 			Config{
-				version: false, server: true, verbose: _VERBOSE_SKIP_START, desiredIP: "", desiredPort: "7100",
+				version: false, server: true, verbose: _VERBOSE_SKIP_READ_PIPE, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
@@ -1662,35 +1662,35 @@ func TestRunOpenDuplicate(t *testing.T) {
 			v.conf.commandPath = os.Getenv("SHELL")
 			v.conf.commandArgv = []string{getShellNameFrom(v.conf.commandPath)}
 
-			// send shutdown message after some time (finish ms)
-			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
-			go func() {
-				<-timer1.C
-				srv.downChan <- true
-			}()
-
 			srv.start(&v.conf)
 
 			// start a new connection
 			resp1 := mockClient(v.conf.desiredPort, v.pause, frontend.APSH_MSG_OPEN)
 			if !strings.HasPrefix(resp1, v.resp1) {
-				t.Errorf("#test run expect %q got %q\n", v.resp1, resp1)
+				t.Errorf("#test first client start expect %q got %q\n", v.resp1, resp1)
 			}
 			// fmt.Printf("#test got 1 response %q\n", resp1)
 
 			// start a new connection
 			resp3 := mockClient(v.conf.desiredPort, v.pause, frontend.APSH_MSG_OPEN)
 			if !strings.HasPrefix(resp3, v.resp3) {
-				t.Errorf("#test run expect %q got %q\n", v.resp3, resp3)
+				t.Errorf("#test second client start expect %q got %q\n", v.resp3, resp3)
 			}
 			// fmt.Printf("#test got 3 response %q\n", resp3)
 
 			// stop the new connection
 			resp2 := mockClient(v.conf.desiredPort, v.pause, frontend.APSH_MSG_CLOSE, v.exp...)
 			if !strings.HasPrefix(resp2, v.resp2) {
-				t.Errorf("#test run expect %q got %q\n", v.resp1, resp2)
+				t.Errorf("#test firt client stop expect %q got %q\n", v.resp1, resp2)
 			}
 			// fmt.Printf("#test got 2 response %q\n", resp2)
+
+			// send shutdown message after some time (finish ms)
+			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
+			go func() {
+				<-timer1.C
+				srv.downChan <- true
+			}()
 
 			srv.wait()
 
@@ -1714,7 +1714,7 @@ func testStartShellFail(t *testing.T) {
 		conf     Config
 	}{
 		{"first error return", "fail to start shell", nil, nil, "",
-			Config{verbose: _VERBOSE_START_SHELL},
+			Config{verbose: _VERBOSE_SKIP_START_SHELL},
 		},
 		{"IUTF8 error return", strENOTTY, os.Stdin, nil, "",
 			Config{verbose: 0},
