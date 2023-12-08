@@ -51,12 +51,7 @@ var (
 )
 
 const (
-	// _PACKAGE_STRING = "aprilsh"
-	// _COMMAND_NAME   = "apshd"
 	_PATH_BSHELL = "/bin/sh"
-
-	// _ASH_OPEN  = "open aprilsh:"
-	// _ASH_CLOSE = "close aprilsh:"
 
 	_VERBOSE_OPEN_PTS_FAIL    = 99  // test purpose
 	_VERBOSE_SKIP_START_SHELL = 100 // test purpose
@@ -1275,12 +1270,10 @@ func (m *mainSrv) start(conf *Config) {
 
 	// start udp server upon receive the shake hands message.
 	if err := m.listen(conf); err != nil {
-		// logW.Printf("%s: %s\n", _COMMAND_NAME, err.Error())
 		util.Log.With("error", err).Warn("listen failed")
 		return
 	}
 
-	// fmt.Printf("#start listening on %s, next port is %d\n", conf.desiredPort, m.nextWorkerPort+1)
 	m.wg.Add(1)
 	go m.run(conf)
 
@@ -1331,6 +1324,17 @@ func (m *mainSrv) listen(conf *Config) error {
 	return nil
 }
 
+func (m *mainSrv) cleanWorkers(portStr string) {
+	p, err := strconv.Atoi(portStr)
+	if err != nil {
+		// fmt.Printf("#run got %s from workDone channel. error: %s\n", portStr, err)
+		util.Log.With("portStr", portStr).With("err", err).Warn("cleanWorkers receive wrong portStr")
+	}
+	// util.Log.With("port", p).With("maxPort", m.maxPort).Debug("worker is done")
+	// clear worker list
+	delete(m.workers, p)
+}
+
 /*
 in aprilsh: we can use nc client to get the key and send it back to client.
 we don't print it to the stdout as mosh did.
@@ -1364,15 +1368,9 @@ func (m *mainSrv) run(conf *Config) {
 	printWelcome(os.Getpid(), m.port, nil)
 	for {
 		select {
-		// case portStr := <-m.exChan: // some worker is done
-		// 	p, err := strconv.Atoi(portStr)
-		// 	if err != nil {
-		// 		// fmt.Printf("#run got %s from workDone channel. error: %s\n", portStr, err)
-		// 		break
-		// 	}
-		// 	// util.Log.With("port", p).With("maxPort", m.maxPort).Debug("worker is done")
-		// 	// clear worker list
-		// 	delete(m.workers, p)
+		case portStr := <-m.exChan:
+			// some worker is done
+			m.cleanWorkers(portStr)
 		case ss := <-sig:
 			switch ss {
 			case syscall.SIGHUP: // TODO:reload the config?
@@ -1381,9 +1379,9 @@ func (m *mainSrv) run(conf *Config) {
 				util.Log.Info("got signal: SIGTERM or SIGINT")
 				shutdown = true
 			}
-		case sd := <-m.downChan:
+		case <-m.downChan:
 			// another way to shutdown besides signal
-			shutdown = sd
+			shutdown = true
 		default:
 		}
 
@@ -1401,11 +1399,7 @@ func (m *mainSrv) run(conf *Config) {
 				for len(m.workers) > 0 {
 					select {
 					case portStr := <-m.exChan: // some worker is done
-						p, err := strconv.Atoi(portStr)
-						if err != nil {
-							break
-						}
-						delete(m.workers, p)
+						m.cleanWorkers(portStr)
 					}
 				}
 				return
@@ -1566,7 +1560,6 @@ func (m *mainSrv) writeRespTo(addr *net.UDPAddr, header, msg string) (resp strin
 }
 
 func (m *mainSrv) wait() {
-	// util.Log.With("point", 100).Debug("wait")
 	m.wg.Wait()
 	if err := m.eg.Wait(); err != nil {
 		util.Log.With("error", err).Warn("wait failed")

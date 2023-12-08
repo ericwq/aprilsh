@@ -352,51 +352,50 @@ func TestMainRun(t *testing.T) {
 			[]string{frontend.COMMAND_SERVER_NAME, "-verbose", "1", "-locale",
 				"LC_ALL=en_US.UTF-8", "-p", "6100", "--", "/bin/sh", "-sh"},
 			[]string{frontend.COMMAND_SERVER_NAME, "start listening on", "buildVersion",
-				"got signal: SIGHUP", "got signal: SIGTERM or SIGINT",
-				/* "stop listening", "6100" */}},
-		{"run main and killed by -a",
-			[]string{frontend.COMMAND_SERVER_NAME, "-verbose", "1", "-auto", "1", "-locale", // auto stop after 1 second
+				/* "got signal: SIGHUP",  */ "got signal: SIGTERM or SIGINT",
+				"stop listening", "6100"}},
+		{"main killed by -a", // auto stop after 1 second
+			[]string{frontend.COMMAND_SERVER_NAME, "-verbose", "1", "-auto", "1", "-locale",
 				"LC_ALL=en_US.UTF-8", "-p", "6200", "--", "/bin/sh", "-sh"},
 			[]string{frontend.COMMAND_SERVER_NAME, "start listening on", "buildVersion",
 				"stop listening", "6200"}},
-		{"run main and killeb by -a, write to syslog",
-			[]string{frontend.COMMAND_SERVER_NAME, "-auto", "1", "-verbose", "514"}, // auto stop after 1 second
-			[]string{}},
+		{"main killed by -a, write to syslog", // auto stop after 1 second
+			[]string{frontend.COMMAND_SERVER_NAME, "-verbose", "514", "-auto", "1", "-locale",
+				"LC_ALL=en_US.UTF-8", "-p", "6300", "--", "/bin/sh", "-sh"},
+			[]string{}}, // log write to syslog, we can't get anything
 	}
-	for i, v := range tc {
-		t.Run(v.label, func(t *testing.T) {
 
-			if i < 1 {
-				// shutdown after 7ms
-				time.AfterFunc(15*time.Millisecond, func() {
-					util.Log.Debug("#test kill process by signal")
-					// fmt.Printf("#test main buildConfig PID:%d\n", os.Getpid())
-					syscall.Kill(os.Getpid(), syscall.SIGHUP)
-					syscall.Kill(os.Getpid(), syscall.SIGTERM)
-				})
-			}
+	for _, v := range tc {
 
-			testFunc := func() {
-				os.Args = v.args
-				main()
-			}
+		if strings.Contains(v.label, "by signal") {
+			// shutdown after 15ms
+			time.AfterFunc(time.Duration(15)*time.Millisecond, func() {
+				util.Log.Debug("#test kill process by signal")
+				syscall.Kill(os.Getpid(), syscall.SIGTERM)
+				// syscall.Kill(os.Getpid(), syscall.SIGHUP)
+			})
+		}
 
-			out := captureOutputRun(testFunc)
-			// fmt.Printf("###\n%s\n###\n", string(out))
+		testFunc := func() {
+			os.Args = v.args
+			main()
+		}
 
-			// validate the result from printWelcome
-			result := string(out)
-			found := 0
-			for i := range v.expect {
-				if strings.Contains(result, v.expect[i]) {
-					// fmt.Printf("found %s\n", expect[i])
-					found++
-				}
+		out := captureOutputRun(testFunc)
+
+		// validate the result from printWelcome
+		result := string(out)
+		found := 0
+		for i := range v.expect {
+			if strings.Contains(result, v.expect[i]) {
+				// fmt.Printf("found %s\n", expect[i])
+				found++
 			}
-			if found != len(v.expect) {
-				t.Errorf("#test expect %q, got %s\n", v.expect, result)
-			}
-		})
+		}
+		if found != len(v.expect) {
+			t.Errorf("#test expect %q, got %s\n", v.expect, result)
+		}
+		// fmt.Printf("###\n%s\n###\n", string(out))
 	}
 }
 
@@ -1631,7 +1630,7 @@ func TestRunWith2Clients(t *testing.T) {
 	}{
 		{
 			"open aprilsh with duplicate request", 20, frontend.APSH_MSG_OPEN + "7101,", frontend.APSH_MSG_CLOSE + "done",
-			frontend.APSH_MSG_OPEN + "duplicate request", []string{}, 50,
+			frontend.APSH_MSG_OPEN + "7102", []string{}, 50,
 			Config{
 				version: false, server: true, verbose: _VERBOSE_SKIP_READ_PIPE, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -1647,12 +1646,9 @@ func TestRunWith2Clients(t *testing.T) {
 			util.Log.SetOutput(os.Stdout)
 
 			// intercept stdout
-			// saveStdout := os.Stdout
-			// r, w, _ := os.Pipe()
-			// os.Stdout = w
-			// defer util.Log.Restore()
-			// util.Log.SetOutput(w)
-			// util.Log.SetLevel(slog.LevelDebug)
+			defer util.Log.Restore()
+			util.Log.SetLevel(slog.LevelDebug)
+			util.Log.SetOutput(io.Discard)
 
 			// set serve func and runWorker func
 			v.conf.serve = mockServe
@@ -1693,13 +1689,6 @@ func TestRunWith2Clients(t *testing.T) {
 			}()
 
 			srv.wait()
-
-			fmt.Printf("#test shutdown\n")
-			// restore stdout
-			// w.Close()
-			// io.ReadAll(r)
-			// os.Stdout = saveStdout
-			// r.Close()
 		})
 	}
 }
