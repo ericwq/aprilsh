@@ -1693,7 +1693,7 @@ func TestRunWith2Clients(t *testing.T) {
 	}
 }
 
-func testStartShellFail(t *testing.T) {
+func TestStartShellFail(t *testing.T) {
 	tc := []struct {
 		label    string
 		errStr   string
@@ -1720,7 +1720,8 @@ func testStartShellFail(t *testing.T) {
 		}, // term is empty, withMotd is true, startShell should failed.
 	}
 
-	// defer util.Log.Restore()
+	defer util.Log.Restore()
+	util.Log.SetOutput(io.Discard)
 	// util.Log.SetOutput(os.Stdout)
 	// util.Log.SetLevel(slog.LevelDebug)
 
