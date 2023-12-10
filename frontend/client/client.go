@@ -40,7 +40,7 @@ const (
 var (
 	usage = `Usage:
   ` + frontend.CommandClientName + ` [--version] [--help] [--colors]
-  ` + frontend.CommandClientName + ` [--verbose] [--port PORT]  user@server.domain
+  ` + frontend.CommandClientName + ` [--verbose] [--port PORT] [--pwd PASSWORD] user@server.domain
 Options:
   -h, --help     print this message
   -v, --version  print version information
