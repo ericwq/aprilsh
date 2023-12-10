@@ -1230,7 +1230,7 @@ type mainSrv struct {
 	port      int                                               // main listen port
 	conn      *net.UDPConn                                      // mainSrv listen port
 	wg        sync.WaitGroup
-	eg        errgroup.Group
+	// eg        errgroup.Group
 }
 
 type workhorse struct {
@@ -1248,7 +1248,7 @@ func newMainSrv(conf *Config, runWorker func(*Config, chan string, chan *workhor
 	m.exChan = make(chan string, 1)
 	m.whChan = make(chan *workhorse, 1)
 	m.timeout = 20
-	m.eg = errgroup.Group{}
+	// m.eg = errgroup.Group{}
 
 	return &m
 }
@@ -1446,9 +1446,13 @@ func (m *mainSrv) run(conf *Config) {
 			encrypt.DisableDumpingCore()
 
 			// start the worker
-			m.eg.Go(func() error {
-				return m.runWorker(&conf2, m.exChan, m.whChan)
-			})
+			m.wg.Add(1)
+			go func() {
+				runWorker(&conf2, m.exChan, m.whChan)
+				m.wg.Done()
+			}()
+			// m.eg.Go(func() error { return m.runWorker(&conf2, m.exChan, m.whChan)
+			// })
 
 			// blocking read the key from worker
 			key := <-m.exChan
@@ -1539,7 +1543,7 @@ func (m *mainSrv) writeRespTo(addr *net.UDPAddr, header, msg string) (resp strin
 
 func (m *mainSrv) wait() {
 	m.wg.Wait()
-	if err := m.eg.Wait(); err != nil {
-		util.Log.With("error", err).Warn("wait failed")
-	}
+	// if err := m.eg.Wait(); err != nil {
+	// 	util.Log.With("error", err).Warn("wait failed")
+	// }
 }
