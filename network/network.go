@@ -230,7 +230,7 @@ type Connection struct {
 
 	lastHeard            int64 // last packet receive time
 	lastPortChoice       int64 // last change port time
-	lastRoundtripSuccess int64 // transport layer needs to tell us this
+	lastRoundtripSuccess int64 // last acked send state timestamp
 
 	RTTHit bool
 	SRTT   float64 // smoothed round-trip time
@@ -545,14 +545,12 @@ func (c *Connection) hopPort() {
 	c.pruneSockets()
 
 	// print socks
-	var b strings.Builder
 	for i := range c.socks {
 		var x net.Conn
 
 		x = c.socks[i].(net.Conn)
-		b.WriteString(fmt.Sprintf("sock[%d] localAddr=%s remoteAddr=%s", i, x.LocalAddr(), x.RemoteAddr()))
+		util.Log.With("socks", i).With("localAddr", x.LocalAddr()).With("remoteAddr", x.RemoteAddr()).Warn("hopPort")
 	}
-	util.Log.With("socks", b.String()).Warn("hopPort")
 }
 
 // return the our udp connection
