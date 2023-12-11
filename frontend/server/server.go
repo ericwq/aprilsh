@@ -1230,7 +1230,6 @@ type mainSrv struct {
 	port      int                                               // main listen port
 	conn      *net.UDPConn                                      // mainSrv listen port
 	wg        sync.WaitGroup
-	// eg        errgroup.Group
 }
 
 type workhorse struct {
@@ -1248,7 +1247,6 @@ func newMainSrv(conf *Config, runWorker func(*Config, chan string, chan *workhor
 	m.exChan = make(chan string, 1)
 	m.whChan = make(chan *workhorse, 1)
 	m.timeout = 20
-	// m.eg = errgroup.Group{}
 
 	return &m
 }
@@ -1259,21 +1257,20 @@ func newMainSrv(conf *Config, runWorker func(*Config, chan string, chan *workhor
 // mainSrv is shutdown by SIGTERM and all sessions must be done.
 // otherwise mainSrv will wait for the live session.
 func (m *mainSrv) start(conf *Config) {
-	// init udp server
-
-	// handle signal: SIGTERM, SIGHUP
-	// m.wg.Add(1)
-	// go m.handler()
-
-	// start udp server upon receive the shake hands message.
+	// listen the port
 	if err := m.listen(conf); err != nil {
 		util.Log.With("error", err).Warn("listen failed")
 		return
 	}
 
+	// start main server waiting for open message.
 	m.wg.Add(1)
-	go m.run(conf)
+	go func() {
+		m.run(conf)
+		m.wg.Done()
+	}()
 
+	// shutdown if the auto stop flag is set
 	if conf.autoStop > 0 {
 		time.AfterFunc(time.Duration(conf.autoStop)*time.Second, func() {
 			m.downChan <- true
@@ -1282,32 +1279,9 @@ func (m *mainSrv) start(conf *Config) {
 	}
 }
 
-// func (m *mainSrv) handler() {
-// 	sig := make(chan os.Signal, 1)
-// 	signal.Notify(sig, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
-// 	defer func() {
-// 		signal.Stop(sig)
-// 		// m.wg.Done()
-// 	}()
-//
-// 	for s := range sig {
-// 		switch s {
-// 		case syscall.SIGHUP: // TODO:reload the config?
-// 			// logI.Println("got message SIGHUP.")
-// 			util.Log.Info("got signal: SIGHUP")
-// 		case syscall.SIGTERM, syscall.SIGINT:
-// 			// logI.Println("got message SIGTERM.")
-// 			util.Log.Info("got signal: SIGTERM or SIGINT")
-// 			m.downChan <- true
-// 			return
-// 		}
-// 	}
-// }
-
 // to support multiple clients, mainServer listen on the specified port.
 // start udp server for each new client.
 func (m *mainSrv) listen(conf *Config) error {
-	// fmt.Println("#start ResolveUDPAddr.")
 	local_addr, err := net.ResolveUDPAddr("udp", ":"+conf.desiredPort)
 	if err != nil {
 		return err
@@ -1332,17 +1306,24 @@ func (m *mainSrv) cleanWorkers(portStr string) {
 	delete(m.workers, p)
 }
 
-/*
-in aprilsh: we can use nc client to get the key and send it back to client.
-we don't print it to the stdout as mosh did.
-
-send udp request and read reply
-% echo "open aprilsh:" | nc localhost 6000 -u -w 1
-% echo "close aprilsh:6001" | nc localhost 6000 -u -w 1
-
-send udp request to remote host
-% ssh ide@localhost  "echo 'open aprilsh:' | nc localhost 6000 -u -w 1"
-*/
+// upon receive frontend.AprilshMsgOpen message, run() stat a new worker
+// to serve the client, response to the client with choosen port number
+// and session key.
+//
+// sample request  : open aprilsh:TERM,user@server.domain
+//
+// sample response : open aprilsh:60001,31kR3xgfmNxhDESXQ8VIQw==
+//
+// upon receive frontend.AprishMsgClose message, run() stop the worker
+// specified by port number.
+//
+// sample request  : close aprilsh:60001
+//
+// sample response : close aprilsh:done
+//
+// when shutdown message is received (via SIGTERM or SIGINT), run() will send
+// sutdown message to all workers and wait for the workers to finish. when
+// -auto flag is set, run() will shutdown after specified seconds.
 func (m *mainSrv) run(conf *Config) {
 	if m.conn == nil {
 		return
@@ -1355,7 +1336,6 @@ func (m *mainSrv) run(conf *Config) {
 	defer func() {
 		signal.Stop(sig)
 		m.conn.Close()
-		m.wg.Done()
 		util.Log.With("port", m.port).Info("stop listening on")
 	}()
 
@@ -1489,6 +1469,19 @@ func (m *mainSrv) run(conf *Config) {
 			util.Log.With("request", req).With("response", resp).Warn("unknow request")
 		}
 	}
+	/*
+	   just for test purpose:
+
+	   in aprilsh: we can use nc client to get the key and send it back to client.
+	   we don't print it to the stdout as mosh did.
+
+	   send udp request and read reply
+	   % echo "open aprilsh:" | nc localhost 6000 -u -w 1
+	   % echo "close aprilsh:6001" | nc localhost 6000 -u -w 1
+
+	   send udp request to remote host
+	   % ssh ide@localhost  "echo 'open aprilsh:' | nc localhost 6000 -u -w 1"
+	*/
 }
 
 // return the minimal available port and increase the maxWorkerPort if necessary.
@@ -1543,7 +1536,4 @@ func (m *mainSrv) writeRespTo(addr *net.UDPAddr, header, msg string) (resp strin
 
 func (m *mainSrv) wait() {
 	m.wg.Wait()
-	// if err := m.eg.Wait(); err != nil {
-	// 	util.Log.With("error", err).Warn("wait failed")
-	// }
 }
