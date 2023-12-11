@@ -778,6 +778,7 @@ func (c *Connection) Recv() (payload string, err error) {
 			} else if errors.Is(err, unix.EWOULDBLOCK) {
 				// EAGAIN is processed by go netpoll
 				// util.Log.With("error", err).Warn("#recv")
+				util.Log.With("error", err).Warn("#recv")
 				continue
 			} else {
 				// c.logW.Printf("#recv %s\n", err)
