@@ -565,7 +565,6 @@ func (c *Connection) pruneSockets() {
 		now := time.Now().UnixMilli()
 		if now-c.lastPortChoice > MAX_OLD_SOCKET_AGE {
 			numToKill := len(c.socks) - 1
-			// TODO need to consider race condition
 			c.socks = c.socks[numToKill:]
 		}
 	} else {
@@ -574,7 +573,6 @@ func (c *Connection) pruneSockets() {
 
 	// make sure we don't have too many receive sockets open
 	if len(c.socks) > MAX_PORTS_OPEN {
-		// TODO need to consider race condition
 		c.socks = c.socks[MAX_PORTS_OPEN:]
 	}
 }
@@ -584,8 +582,6 @@ var ErrRecvOversize = errors.New("#recvOne received oversize datagram.")
 var ErrRecvDirection = errors.New("#recvOne direction is wrong.")
 
 func (c *Connection) recvOne(conn udpConn) (string, error) {
-	c.Lock()
-	defer c.Unlock()
 	data := make([]byte, c.mtu)
 	oob := make([]byte, 40)
 
@@ -771,6 +767,9 @@ func (c *Connection) send(s string) (sendError error) {
 
 // receive packet from remote
 func (c *Connection) Recv() (payload string, err error) {
+	c.Lock()
+	defer c.Unlock()
+
 	for i := range c.socks {
 		payload, err = c.recvOne(c.socks[i].(udpConn))
 		if err != nil {
