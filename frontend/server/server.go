@@ -518,26 +518,24 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 
 	/*
 		If this variable is set to a positive integer number, it specifies how
-		long (in seconds) aprilsh-server will wait to receive an update from the
+		long (in seconds) apshd will wait to receive an update from the
 		client before exiting.  Since aprilsh is very useful for mobile
 		clients with intermittent operation and connectivity, we suggest
 		setting this variable to a high value, such as 604800 (one week) or
-		2592000 (30 days).  Otherwise, aprilsh-server will wait
-		indefinitely for a client to reappear.  This variable is somewhat
-		similar to the TMOUT variable found in many Bourne shells.
-		However, it is not a login-session inactivity timeout; it only applies
-		to network connectivity.
-
+		2592000 (30 days).  Otherwise, apshd will wait indefinitely for a
+		client to reappear.  This variable is somewhat similar to the TMOUT
+		variable found in many Bourne shells. However, it is not a login-session
+		inactivity timeout; it only applies to network connectivity.
 	*/
 	networkTimeout := getTimeFrom("APRILSH_SERVER_NETWORK_TMOUT", 0)
 
 	/*
 		If this variable is set to a positive integer number, it specifies how
-		long (in seconds) aprilsh-server will ignore SIGUSR1 while waiting
-		to receive an update from the client.  Otherwise, SIGUSR1 will
-		always terminate aprilsh-server.  Users and administrators may
-		implement scripts to clean up disconnected aprilsh sessions.  With this
-		variable set, a user or administrator can issue
+		long (in seconds) apshd will ignore SIGUSR1 while waiting to receive
+		an update from the client.  Otherwise, SIGUSR1 will always terminate
+		apshd. Users and administrators may implement scripts to clean up
+		disconnected aprilsh sessions. With this variable set, a user or
+		administrator can issue
 
 		$ pkill -SIGUSR1 aprilsh-server
 
@@ -680,8 +678,6 @@ func getCurrentUser() string {
 func serve(ptmx *os.File, pw *io.PipeWriter, complete *statesync.Complete, waitChan chan bool,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
 	networkTimeout int64, networkSignaledTimeout int64) error {
-	// TODO consider timeout according to mosh 1.4
-
 	// scale timeouts
 	networkTimeoutMs := networkTimeout * 1000
 	networkSignaledTimeoutMs := networkSignaledTimeout * 1000
@@ -717,17 +713,6 @@ func serve(ptmx *os.File, pw *io.PipeWriter, complete *statesync.Complete, waitC
 	// intercept signal
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGUSR1, syscall.SIGINT, syscall.SIGTERM)
-	// shutdownChan := make(chan bool)
-	// eg.Go(func() error { // TODO how to handle signal for goroutine?
-	// 	for {
-	// 		select {
-	// 		case s := <-sigChan:
-	// 			signals.Handler(s)
-	// 		case <-shutdownChan:
-	// 			return nil
-	// 		}
-	// 	}
-	// })
 
 	var timeoutIfNoClient int64 = 60000
 	childReleased := false
@@ -793,9 +778,6 @@ mainLoop:
 
 				us := &statesync.UserStream{}
 				us.ApplyString(network.GetRemoteDiff())
-				// rd := network.GetRemoteDiff()
-				// us.ApplyString(rd)
-				// util.Log.With("remoteDiff", rd).Debug("got from client")
 
 				// apply userstream to terminal
 				for i := 0; i < us.Size(); i++ {
@@ -936,13 +918,16 @@ mainLoop:
 		if networkTimeoutMs > 0 && networkTimeoutMs <= timeSinceRemoteState {
 			// if network timeout is set and over networkTimeoutMs quit this session.
 			idleShutdown = true
-			fmt.Printf("Network idle for %d seconds.\n", timeSinceRemoteState/1000)
+			// fmt.Printf("Network idle for %d seconds.\n", timeSinceRemoteState/1000)
+			util.Log.With("seconds", timeSinceRemoteState/1000).Info("Network idle for x seconds")
 		}
 
 		if signals.GotSignal(syscall.SIGUSR1) {
 			if networkSignaledTimeoutMs == 0 || networkSignaledTimeoutMs <= timeSinceRemoteState {
 				idleShutdown = true
-				fmt.Printf("Network idle for %d seconds when SIGUSR1 received.\n", timeSinceRemoteState/1000)
+				// fmt.Printf("Network idle for %d seconds when SIGUSR1 received.\n", timeSinceRemoteState/1000)
+				util.Log.With("seconds", timeSinceRemoteState/1000).
+					Info("Network idle for x seconds when SIGUSR1 received")
 			}
 		}
 
@@ -1008,8 +993,6 @@ mainLoop:
 	}
 
 	signal.Stop(sigChan)
-	// shutdown the goroutine
-	// shutdownChan <- true
 	select {
 	case fileDownChan <- "done":
 	default:
@@ -1263,7 +1246,7 @@ func (m *mainSrv) start(conf *Config) {
 		return
 	}
 
-	// start main server waiting for open message.
+	// start main server waiting for open/close message.
 	m.wg.Add(1)
 	go func() {
 		m.run(conf)
@@ -1274,7 +1257,6 @@ func (m *mainSrv) start(conf *Config) {
 	if conf.autoStop > 0 {
 		time.AfterFunc(time.Duration(conf.autoStop)*time.Second, func() {
 			m.downChan <- true
-			// util.Log.Debug("auto stop")
 		})
 	}
 }
@@ -1298,32 +1280,33 @@ func (m *mainSrv) listen(conf *Config) error {
 func (m *mainSrv) cleanWorkers(portStr string) {
 	p, err := strconv.Atoi(portStr)
 	if err != nil {
-		// fmt.Printf("#run got %s from workDone channel. error: %s\n", portStr, err)
 		util.Log.With("portStr", portStr).With("err", err).Warn("cleanWorkers receive wrong portStr")
 	}
-	// util.Log.With("port", p).With("maxPort", m.maxPort).Debug("worker is done")
+
 	// clear worker list
 	delete(m.workers, p)
 }
 
-// upon receive frontend.AprilshMsgOpen message, run() stat a new worker
-// to serve the client, response to the client with choosen port number
-// and session key.
-//
-// sample request  : open aprilsh:TERM,user@server.domain
-//
-// sample response : open aprilsh:60001,31kR3xgfmNxhDESXQ8VIQw==
-//
-// upon receive frontend.AprishMsgClose message, run() stop the worker
-// specified by port number.
-//
-// sample request  : close aprilsh:60001
-//
-// sample response : close aprilsh:done
-//
-// when shutdown message is received (via SIGTERM or SIGINT), run() will send
-// sutdown message to all workers and wait for the workers to finish. when
-// -auto flag is set, run() will shutdown after specified seconds.
+/*
+upon receive frontend.AprilshMsgOpen message, run() stat a new worker
+to serve the client, response to the client with choosen port number
+and session key.
+
+sample request  : open aprilsh:TERM,user@server.domain
+
+sample response : open aprilsh:60001,31kR3xgfmNxhDESXQ8VIQw==
+
+upon receive frontend.AprishMsgClose message, run() stop the worker
+specified by port number.
+
+sample request  : close aprilsh:60001
+
+sample response : close aprilsh:done
+
+when shutdown message is received (via SIGTERM or SIGINT), run() will send
+sutdown message to all workers and wait for the workers to finish. when
+-auto flag is set, run() will shutdown after specified seconds.
+*/
 func (m *mainSrv) run(conf *Config) {
 	if m.conn == nil {
 		return
@@ -1431,8 +1414,6 @@ func (m *mainSrv) run(conf *Config) {
 				runWorker(&conf2, m.exChan, m.whChan)
 				m.wg.Done()
 			}()
-			// m.eg.Go(func() error { return m.runWorker(&conf2, m.exChan, m.whChan)
-			// })
 
 			// blocking read the key from worker
 			key := <-m.exChan
