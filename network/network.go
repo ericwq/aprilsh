@@ -172,7 +172,7 @@ const (
 
 	CONGESTION_TIMESTAMP_PENALTY = 500 // ms
 
-	NETWORK = "udp4"
+	NETWORK = "udp" // IPv6 is only supported on Docker daemons running on Linux hosts.
 
 	// Network transport overhead.
 	ADDED_BYTES = 8 /* seqno/nonce */ + 4 /* timestamps */
@@ -253,11 +253,11 @@ func NewConnection(desiredIp string, desiredPort string) *Connection { // server
 	c.session, _ = encrypt.NewSession(*c.key)
 
 	c.direction = TO_CLIENT
-	c.savedTimestamp = -1
+	c.savedTimestamp = math.MaxInt16
 
-	c.lastHeard = -1
-	c.lastPortChoice = -1
-	c.lastRoundtripSuccess = -1
+	c.lastHeard = math.MaxInt64
+	c.lastPortChoice = math.MaxInt64
+	c.lastRoundtripSuccess = math.MaxInt64
 
 	c.RTTHit = false
 	c.SRTT = 1000
@@ -320,11 +320,11 @@ func NewConnectionClient(keyStr string, ip, port string) *Connection { // client
 	// }
 
 	c.direction = TO_SERVER
-	c.savedTimestamp = -1
+	c.savedTimestamp = math.MaxInt16
 
-	c.lastHeard = -1
-	c.lastPortChoice = -1
-	c.lastRoundtripSuccess = -1
+	c.lastHeard = math.MaxInt64
+	c.lastPortChoice = math.MaxInt64
+	c.lastRoundtripSuccess = math.MaxInt64
 
 	c.RTTHit = false
 	c.SRTT = 1000
@@ -456,7 +456,6 @@ func (c *Connection) dialUDP(ip, port string) bool {
 
 	conn, err := d.Dial(NETWORK, net.JoinHostPort(ip, port))
 	if err != nil {
-		// c.logW.Printf("#dialUDP %s\n", err)
 		util.Log.With("error", err).Warn("#dialUDP dial fail")
 		return false
 	}
@@ -465,7 +464,9 @@ func (c *Connection) dialUDP(ip, port string) bool {
 	c.socks = append(c.socks, conn.(udpConn))
 	c.hasRemoteAddr = true
 
-	// c.logW.Printf("#dialUDP successfully connect to %q\n", net.JoinHostPort(ip, port))
+	util.Log.With("ip", ip).With("port", port).
+		With("localAddr", conn.LocalAddr()).
+		With("remoteAddr", conn.RemoteAddr()).Warn("dialUDP")
 	return true
 }
 
@@ -524,7 +525,7 @@ func (c *Connection) newPacket(payload string) *Packet {
 	if now-c.savedTimestampReceivedAt < 1000 { // we have a recent received timestamp
 		// send "corrected" timestamp advanced by how long we held it
 		outgoingTimestampReply = uint16(c.savedTimestamp) + uint16(now-c.savedTimestampReceivedAt)
-		c.savedTimestamp = -1
+		c.savedTimestamp = math.MaxInt16
 		c.savedTimestampReceivedAt = 0
 	}
 	return NewPacket(c.direction, timestamp16(), outgoingTimestampReply, []byte(payload))
@@ -542,6 +543,16 @@ func (c *Connection) hopPort() {
 	}
 
 	c.pruneSockets()
+
+	// print socks
+	var b strings.Builder
+	for i := range c.socks {
+		var x net.Conn
+
+		x = c.socks[i].(net.Conn)
+		b.WriteString(fmt.Sprintf("sock[%d] localAddr=%s remoteAddr=%s", i, x.LocalAddr(), x.RemoteAddr()))
+	}
+	util.Log.With("socks", b.String()).Warn("hopPort")
 }
 
 // return the our udp connection
@@ -642,7 +653,7 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 		c.expectedReceiverSeq = p.seq + 1
 
 		// fmt.Printf("#recvOne seq=%d, timestamp=%d, timestampReply=%d\n", p.seq, p.timestamp, p.timestampReply)
-		if p.timestamp != 0 {
+		if p.timestamp != math.MaxInt16 {
 			c.savedTimestamp = int16(p.timestamp)
 			c.savedTimestampReceivedAt = time.Now().UnixMilli()
 
