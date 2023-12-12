@@ -543,19 +543,22 @@ func (c *Connection) hopPort() {
 	}
 
 	c.pruneSockets()
+}
 
+func (c *Connection) printSocks() {
 	// print socks
 	for i := range c.socks {
 		var x net.Conn
 
 		x = c.socks[i].(net.Conn)
-		util.Log.With("socks", i).With("localAddr", x.LocalAddr()).With("remoteAddr", x.RemoteAddr()).Warn("hopPort")
+		util.Log.With("socks", i).With("localAddr", x.LocalAddr()).
+			With("remoteAddr", x.RemoteAddr()).Warn("pruneSockets")
 	}
 }
 
 // return the our udp connection
 func (c *Connection) sock() udpConn {
-	return c.socks[len(c.socks)-1].(udpConn)
+	return c.socks[len(c.socks)-1]
 }
 
 // clear the old and over size sockets
@@ -568,6 +571,7 @@ func (c *Connection) pruneSockets() {
 			c.socks = c.socks[numToKill:]
 		}
 	} else {
+		c.printSocks()
 		return
 	}
 
@@ -575,6 +579,7 @@ func (c *Connection) pruneSockets() {
 	if len(c.socks) > MAX_PORTS_OPEN {
 		c.socks = c.socks[MAX_PORTS_OPEN:]
 	}
+	c.printSocks()
 }
 
 var ErrRecvLength = errors.New("#recvOne receive zero or negative length data.")
@@ -690,10 +695,12 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 		if c.server { // only client can roam
 			if !reflect.DeepEqual(raddr, c.remoteAddr) {
 				c.remoteAddr = raddr
-				// c.logW.Printf("#recvOne server now attached to client at %s\n", c.remoteAddr)
 				util.Log.With("remoteAddr", c.remoteAddr).Info("server now attached to client")
 			}
 		}
+
+		util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
+			With("remoteAddr", c.remoteAddr).Debug("recvOne")
 	}
 
 	return string(p.payload), nil // we do return out-of-order or duplicated packets to caller
@@ -731,8 +738,12 @@ func (c *Connection) send(s string) (sendError error) {
 	)
 	if c.server {
 		bytesSent, err = conn.WriteTo(p, c.remoteAddr)
+		util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
+			With("remoteAddr", c.remoteAddr).Debug("send")
 	} else {
 		bytesSent, err = conn.Write(p) // only client connection is connected.
+		util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
+			With("remoteAddr", conn.(net.Conn).RemoteAddr()).Debug("send")
 	}
 
 	if err != nil {
@@ -761,7 +772,7 @@ func (c *Connection) send(s string) (sendError error) {
 			c.hopPort()
 		}
 	}
-	// fmt.Printf("#send %q from %q to %q\n", p, conn.LocalAddr(), conn.RemoteAddr())
+
 	return
 }
 
@@ -771,7 +782,7 @@ func (c *Connection) Recv() (payload string, err error) {
 	defer c.Unlock()
 
 	for i := range c.socks {
-		payload, err = c.recvOne(c.socks[i].(udpConn))
+		payload, err = c.recvOne(c.socks[i])
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
 				return "", err
@@ -787,7 +798,9 @@ func (c *Connection) Recv() (payload string, err error) {
 			}
 		}
 
-		// util.Log.With("payload", len(payload)).Debug("Recv")
+		util.Log.With("payload", len(payload)).
+			With("localAddr", c.socks[i].(net.Conn).LocalAddr()).
+			With("remoteAddr", c.remoteAddr).Debug("Recv")
 		c.pruneSockets()
 		return
 	}

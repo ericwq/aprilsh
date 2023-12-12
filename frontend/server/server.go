@@ -544,7 +544,8 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	*/
 	networkSignaledTimeout := getTimeFrom("APRILSH_SERVER_SIGNAL_TMOUT", 0)
 
-	util.Log.With("networkTimeout", networkTimeout).With("networkSignaledTimeout", networkSignaledTimeout).Debug("runWorker")
+	// util.Log.With("networkTimeout", networkTimeout).
+	// 	With("networkSignaledTimeout", networkSignaledTimeout).Debug("runWorker")
 
 	// get initial window size
 	var windowSize *unix.Winsize
