@@ -785,7 +785,7 @@ func (c *Connection) Recv() (payload string, err error) {
 		payload, err = c.recvOne(c.socks[i])
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
-				return "", err
+				continue
 			} else if errors.Is(err, unix.EWOULDBLOCK) {
 				// EAGAIN is processed by go netpoll
 				// util.Log.With("error", err).Warn("#recv")
