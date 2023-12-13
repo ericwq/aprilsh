@@ -88,7 +88,7 @@ func TestBuildConfig_Darwin_locale(t *testing.T) {
 			}
 
 			// validate the output
-			expect := []string{frontend.COMMAND_SERVER_NAME, "needs a UTF-8 native locale to run",
+			expect := []string{frontend.CommandServerName, "needs a UTF-8 native locale to run",
 				"Unfortunately, the local environment", "The client-supplied environment"}
 			result := string(out)
 			found := 0

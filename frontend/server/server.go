@@ -1412,7 +1412,7 @@ func (m *mainSrv) run(conf *Config) {
 			// start the worker
 			m.wg.Add(1)
 			go func() {
-				runWorker(&conf2, m.exChan, m.whChan)
+				m.runWorker(&conf2, m.exChan, m.whChan)
 				m.wg.Done()
 			}()
 
