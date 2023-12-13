@@ -179,8 +179,6 @@ const (
 )
 
 var (
-	// logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-
 	// set socket options
 	controlFunc = func(network, address string, raw syscall.RawConn) (err error) {
 		// err got value from different positions, they are not conflict with each other
@@ -470,9 +468,9 @@ func (c *Connection) dialUDP(ip, port string) bool {
 	c.socks = append(c.socks, conn.(udpConn))
 	c.hasRemoteAddr = true
 
-	// util.Log.With("ip", ip).With("port", port).
-	// 	With("localAddr", conn.LocalAddr()).
-	// 	With("remoteAddr", conn.RemoteAddr()).Warn("dialUDP")
+	util.Log.With("ip", ip).With("port", port).
+		With("localAddr", conn.LocalAddr()).
+		With("remoteAddr", conn.RemoteAddr()).Warn("dialUDP")
 	return true
 }
 
@@ -505,7 +503,6 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 		conn, err := lc.ListenPacket(context.Background(), NETWORK, localAddr.String())
 		if err != nil {
 			if i == searchHigh { // last port to search
-				// c.logW.Printf("#tryBind error=%s address=%s\n", err, address)
 				util.Log.With("address", c.remoteAddr).With("error", err).Warn("#tryBind listen")
 			}
 		} else {
@@ -551,20 +548,27 @@ func (c *Connection) hopPort() {
 	c.pruneSockets()
 }
 
-func (c *Connection) printSocks() {
-	// print socks
-	for i := range c.socks {
-		var x net.Conn
-
-		x = c.socks[i].(net.Conn)
-		util.Log.With("socks", i).With("localAddr", x.LocalAddr()).
-			With("remoteAddr", x.RemoteAddr()).Warn("pruneSockets")
-	}
-}
+// func (c *Connection) printSocks() {
+// 	// print socks
+// 	for i := range c.socks {
+// 		var x net.Conn
+//
+// 		x = c.socks[i].(net.Conn)
+// 		util.Log.With("socks", i).With("localAddr", x.LocalAddr()).
+// 			With("remoteAddr", x.RemoteAddr()).Warn("pruneSockets")
+// 	}
+// }
 
 // return the our udp connection
 func (c *Connection) sock() udpConn {
 	return c.socks[len(c.socks)-1]
+}
+
+func (c *Connection) cleanSocks(numToKill int) {
+	for i := 0; i < numToKill; i++ {
+		c.socks[i].(net.Conn).Close()
+	}
+	c.socks = c.socks[numToKill:]
 }
 
 // clear the old and over size sockets
@@ -574,7 +578,8 @@ func (c *Connection) pruneSockets() {
 		now := time.Now().UnixMilli()
 		if now-c.lastPortChoice > MAX_OLD_SOCKET_AGE {
 			numToKill := len(c.socks) - 1
-			c.socks = c.socks[numToKill:]
+			// c.socks = c.socks[numToKill:]
+			c.cleanSocks(numToKill)
 			// util.Log.With("socks length", len(c.socks)).Debug("pruneSockets")
 		}
 	} else {
@@ -584,7 +589,8 @@ func (c *Connection) pruneSockets() {
 
 	// make sure we don't have too many receive sockets open
 	if len(c.socks) > MAX_PORTS_OPEN {
-		c.socks = c.socks[MAX_PORTS_OPEN:]
+		// c.socks = c.socks[MAX_PORTS_OPEN:]
+		c.cleanSocks(MAX_PORTS_OPEN)
 	}
 	// c.printSocks()
 }
@@ -785,6 +791,9 @@ func (c *Connection) Recv() (payload string, err error) {
 	defer c.Unlock()
 
 	for i := len(c.socks) - 1; i >= 0; i-- {
+		// there is posssible that Recv() did not receive data from the previous port
+		// that may result udp message get lost.
+
 		// for i := range c.socks {
 		payload, err = c.recvOne(c.socks[i])
 		if err != nil {
