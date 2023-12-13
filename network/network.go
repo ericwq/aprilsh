@@ -470,7 +470,7 @@ func (c *Connection) dialUDP(ip, port string) bool {
 
 	util.Log.With("ip", ip).With("port", port).
 		With("localAddr", conn.LocalAddr()).
-		With("remoteAddr", conn.RemoteAddr()).Warn("dialUDP")
+		With("remoteAddr", conn.RemoteAddr()).Debug("dialUDP")
 	return true
 }
 
