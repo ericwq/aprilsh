@@ -673,6 +673,14 @@ type mockUdpConn struct {
 	data  string
 }
 
+func (mc *mockUdpConn) LocalAddr() net.Addr {
+	return nil
+}
+
+func (mc *mockUdpConn) RemoteAddr() net.Addr {
+	return nil
+}
+
 func (mc *mockUdpConn) Write(b []byte) (int, error) {
 	// fmt.Printf("#Write mockUdpConn len=%d\n", len(b))
 	if len(b) == 48 {

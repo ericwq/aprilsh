@@ -196,6 +196,12 @@ var (
 	}
 )
 
+var (
+	ErrRecvLength    = errors.New("#recvOne receive zero or negative length data.")
+	ErrRecvOversize  = errors.New("#recvOne received oversize datagram.")
+	ErrRecvDirection = errors.New("#recvOne direction is wrong.")
+)
+
 // internal conneciton for testability.
 type udpConn interface {
 	Write(b []byte) (int, error)
@@ -464,9 +470,9 @@ func (c *Connection) dialUDP(ip, port string) bool {
 	c.socks = append(c.socks, conn.(udpConn))
 	c.hasRemoteAddr = true
 
-	util.Log.With("ip", ip).With("port", port).
-		With("localAddr", conn.LocalAddr()).
-		With("remoteAddr", conn.RemoteAddr()).Warn("dialUDP")
+	// util.Log.With("ip", ip).With("port", port).
+	// 	With("localAddr", conn.LocalAddr()).
+	// 	With("remoteAddr", conn.RemoteAddr()).Warn("dialUDP")
 	return true
 }
 
@@ -569,9 +575,10 @@ func (c *Connection) pruneSockets() {
 		if now-c.lastPortChoice > MAX_OLD_SOCKET_AGE {
 			numToKill := len(c.socks) - 1
 			c.socks = c.socks[numToKill:]
+			// util.Log.With("socks length", len(c.socks)).Debug("pruneSockets")
 		}
 	} else {
-		c.printSocks()
+		// c.printSocks()
 		return
 	}
 
@@ -579,12 +586,8 @@ func (c *Connection) pruneSockets() {
 	if len(c.socks) > MAX_PORTS_OPEN {
 		c.socks = c.socks[MAX_PORTS_OPEN:]
 	}
-	c.printSocks()
+	// c.printSocks()
 }
-
-var ErrRecvLength = errors.New("#recvOne receive zero or negative length data.")
-var ErrRecvOversize = errors.New("#recvOne received oversize datagram.")
-var ErrRecvDirection = errors.New("#recvOne direction is wrong.")
 
 func (c *Connection) recvOne(conn udpConn) (string, error) {
 	data := make([]byte, c.mtu)
@@ -699,8 +702,8 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 			}
 		}
 
-		util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
-			With("remoteAddr", c.remoteAddr).Debug("recvOne")
+		// util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
+		// 	With("remoteAddr", c.remoteAddr).Debug("recvOne")
 	}
 
 	return string(p.payload), nil // we do return out-of-order or duplicated packets to caller
@@ -738,12 +741,12 @@ func (c *Connection) send(s string) (sendError error) {
 	)
 	if c.server {
 		bytesSent, err = conn.WriteTo(p, c.remoteAddr)
-		util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
-			With("remoteAddr", c.remoteAddr).Debug("send")
+		// util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
+		// 	With("remoteAddr", c.remoteAddr).Debug("send")
 	} else {
 		bytesSent, err = conn.Write(p) // only client connection is connected.
-		util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
-			With("remoteAddr", conn.(net.Conn).RemoteAddr()).Debug("send")
+		// util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
+		// 	With("remoteAddr", conn.(net.Conn).RemoteAddr()).Debug("send")
 	}
 
 	if err != nil {
@@ -781,7 +784,8 @@ func (c *Connection) Recv() (payload string, err error) {
 	c.Lock()
 	defer c.Unlock()
 
-	for i := range c.socks {
+	for i := len(c.socks) - 1; i >= 0; i-- {
+		// for i := range c.socks {
 		payload, err = c.recvOne(c.socks[i])
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
@@ -789,18 +793,18 @@ func (c *Connection) Recv() (payload string, err error) {
 			} else if errors.Is(err, unix.EWOULDBLOCK) {
 				// EAGAIN is processed by go netpoll
 				// util.Log.With("error", err).Warn("#recv")
-				util.Log.With("error", err).Warn("#recv")
+				util.Log.With("error", err).Warn("#Recv")
 				continue
 			} else {
 				// c.logW.Printf("#recv %s\n", err)
-				util.Log.With("error", err).Warn("#recv")
+				util.Log.With("error", err).Warn("#Recv")
 				break
 			}
 		}
 
-		util.Log.With("payload", len(payload)).
-			With("localAddr", c.socks[i].(net.Conn).LocalAddr()).
-			With("remoteAddr", c.remoteAddr).Debug("Recv")
+		// util.Log.With("payload", len(payload)).
+		// 	With("localAddr", c.socks[i].(net.Conn).LocalAddr()).
+		// 	With("remoteAddr", c.remoteAddr).Debug("#Recv")
 		c.pruneSockets()
 		return
 	}
