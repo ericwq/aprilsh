@@ -349,7 +349,7 @@ func TestMainRun(t *testing.T) {
 		expect []string
 	}{
 		{"run main and killed by signal",
-			[]string{frontend.CommandServerName, "-verbose", "1", "-locale",
+			[]string{frontend.CommandServerName, "-verbose", "0", "-locale",
 				"LC_ALL=en_US.UTF-8", "-p", "6100", "--", "/bin/sh", "-sh"},
 			[]string{frontend.CommandServerName, "start listening on", "buildVersion",
 				/* "got signal: SIGHUP",  */ "got signal: SIGTERM or SIGINT",
@@ -995,7 +995,13 @@ func mockClient(port string, pause int, action string, ex ...string) string {
 	var txbuf []byte
 	switch action {
 	case frontend.AprilshMsgOpen:
-		txbuf = []byte(frontend.AprilshMsgOpen + "xterm,mock@client")
+		switch len(ex) {
+		case 0:
+			txbuf = []byte(frontend.AprilshMsgOpen + "xterm,mock@client")
+		case 1:
+			// the request missing the ','
+			txbuf = []byte(fmt.Sprintf("%s%s", frontend.AprilshMsgOpen, ex[0]))
+		}
 	case frontend.AprishMsgClose:
 		p, _ := strconv.Atoi(port)
 		if len(ex) == 0 {
@@ -1254,18 +1260,19 @@ func TestRunFail2(t *testing.T) {
 	}
 }
 
-func testMainSrvWaitError(t *testing.T) {
+func TestMaxPortLimit(t *testing.T) {
 	tc := []struct {
-		label  string
-		pause  int    // pause between client send and read
-		resp   string // response client read
-		finish int    // pause before shutdown message
-		conf   Config
+		label        string
+		maxPortLimit int
+		pause        int    // pause between client send and read
+		resp         string // response client read
+		shutdownTime int    // pause before shutdown message
+		conf         Config
 	}{
 		{
-			"wait error", 20, "", 50,
+			"run() over max port", 0, 20, "over max port limit", 50,
 			Config{
-				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7000",
+				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7700",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 			},
@@ -1275,18 +1282,20 @@ func testMainSrvWaitError(t *testing.T) {
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			// intercept stdout
-			saveStdout := os.Stdout
-			r, w, _ := os.Pipe()
-			os.Stdout = w
-			// initLog()
 			defer util.Log.Restore()
-			util.Log.SetOutput(w)
 			util.Log.SetLevel(slog.LevelDebug)
+			// util.Log.SetOutput(os.Stderr)
+			util.Log.SetOutput(io.Discard)
 
-			m := newMainSrv(&v.conf, failRunWorker)
+			// init mainSrv and workers
+			m := newMainSrv(&v.conf, runWorker)
+
+			// save maxPortLimit
+			old := maxPortLimit
+			maxPortLimit = v.maxPortLimit
 
 			// send shutdown message after some time
-			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
+			timer1 := time.NewTimer(time.Duration(v.shutdownTime) * time.Millisecond)
 			go func() {
 				<-timer1.C
 				m.downChan <- true
@@ -1296,29 +1305,68 @@ func testMainSrvWaitError(t *testing.T) {
 			m.start(&v.conf)
 
 			// mock client operation
-			mockClient(v.conf.desiredPort, v.pause, frontend.AprilshMsgOpen)
+			resp := mockClient(v.conf.desiredPort, v.pause, frontend.AprilshMsgOpen)
 
 			m.wait()
 
-			// restore stdout
-			w.Close()
-			out, _ := io.ReadAll(r)
-			os.Stdout = saveStdout
-			r.Close()
+			if !strings.Contains(resp, v.resp) {
+				t.Errorf("%q expect response %q, got %q\n ", v.label, v.resp, resp)
+			}
 
-			// validate result
-			expect := []string{"wait failed"}
-			result := string(out)
-			found := 0
-			for i := range expect {
-				if strings.Contains(result, expect[i]) {
-					found++
-				}
-			}
-			if found != len(expect) {
-				t.Errorf("#test start() expect %q, got %q\n", expect, result)
-			}
+			// restore maxPortLimit
+			maxPortLimit = old
 		})
+	}
+}
+
+func TestMalformRequest(t *testing.T) {
+	tc := []struct {
+		label        string
+		pause        int    // pause between client send and read
+		resp         string // response client read
+		shutdownTime int    // pause before shutdown message
+		conf         Config
+	}{
+		{
+			"run() malform request", 20, "malform request", 50,
+			Config{
+				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7700",
+				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
+				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
+			},
+		},
+	}
+
+	for _, v := range tc {
+		// intercept stdout
+		defer util.Log.Restore()
+		util.Log.SetLevel(slog.LevelDebug)
+		// util.Log.SetOutput(os.Stderr)
+		util.Log.SetOutput(io.Discard)
+
+		// init mainSrv and workers
+		m := newMainSrv(&v.conf, runWorker)
+
+		// send shutdown message after some time
+		timer1 := time.NewTimer(time.Duration(v.shutdownTime) * time.Millisecond)
+		go func() {
+			<-timer1.C
+			syscall.Kill(os.Getpid(), syscall.SIGHUP) // add SIGHUP test condition
+			time.Sleep(5 * time.Millisecond)
+			m.downChan <- true
+		}()
+
+		// start mainserver
+		m.start(&v.conf)
+
+		// mock client operation
+		resp := mockClient(v.conf.desiredPort, v.pause, frontend.AprilshMsgOpen, "extraParam")
+
+		m.wait()
+
+		if !strings.Contains(resp, v.resp) {
+			t.Errorf("%q expect response %q, got %q\n ", v.label, v.resp, resp)
+		}
 	}
 }
 
