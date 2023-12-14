@@ -1004,17 +1004,18 @@ func mockClient(port string, pause int, action string, ex ...string) string {
 		}
 	case frontend.AprishMsgClose:
 		p, _ := strconv.Atoi(port)
-		if len(ex) == 0 {
+		switch len(ex) {
+		case 0:
 			txbuf = []byte(fmt.Sprintf("%s%d", frontend.AprishMsgClose, p+1))
-		} else if len(ex) == 2 {
-			txbuf = []byte(fmt.Sprintf("%s%d", "unknow header:", p+1)) // 2 parameters: unknow header
-		} else if len(ex) == 1 {
+		case 1:
 			p2, err := strconv.Atoi(ex[0])
 			if err == nil {
 				txbuf = []byte(fmt.Sprintf("%s%d", frontend.AprishMsgClose, p2)) // 1 digital parameter: wrong port
 			} else {
 				txbuf = []byte(fmt.Sprintf("%s%s", frontend.AprishMsgClose, ex[0])) // 1 str parameter: malform port
 			}
+		case 2:
+			txbuf = []byte(fmt.Sprintf("%s%d", "unknow header:", p+1)) // 2 parameters: unknow header
 		}
 	}
 
@@ -1352,7 +1353,7 @@ func TestMalformRequest(t *testing.T) {
 		go func() {
 			<-timer1.C
 			syscall.Kill(os.Getpid(), syscall.SIGHUP) // add SIGHUP test condition
-			time.Sleep(5 * time.Millisecond)
+			time.Sleep(time.Duration(v.shutdownTime+5) * time.Millisecond)
 			m.downChan <- true
 		}()
 
