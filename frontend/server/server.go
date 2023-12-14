@@ -1361,6 +1361,7 @@ func (m *mainSrv) run(conf *Config) {
 					select {
 					case portStr := <-m.exChan: // some worker is done
 						m.cleanWorkers(portStr)
+					default:
 					}
 				}
 				return

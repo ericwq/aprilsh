@@ -811,9 +811,9 @@ func (c *Connection) Recv() (payload string, err error) {
 			}
 		}
 
-		// util.Log.With("payload", len(payload)).
-		// 	With("localAddr", c.socks[i].(net.Conn).LocalAddr()).
-		// 	With("remoteAddr", c.remoteAddr).Debug("#Recv")
+		util.Log.With("payload", len(payload)).
+			With("localAddr", c.socks[i].(net.Conn).LocalAddr()).
+			With("remoteAddr", c.remoteAddr).Debug("#Recv")
 		c.pruneSockets()
 		return
 	}
@@ -821,6 +821,8 @@ func (c *Connection) Recv() (payload string, err error) {
 }
 
 func (c *Connection) getMTU() int {
+	c.RLock()
+	defer c.RUnlock()
 	return c.mtu
 }
 
@@ -861,10 +863,14 @@ func (c *Connection) getSRTT() float64 {
 }
 
 func (c *Connection) getRemoteAddr() net.Addr {
+	c.RLock()
+	defer c.RUnlock()
 	return c.remoteAddr
 }
 
 func (c *Connection) setLastRoundtripSuccess(success int64) {
+	c.Lock()
+	defer c.Unlock()
 	c.lastRoundtripSuccess = success
 }
 
