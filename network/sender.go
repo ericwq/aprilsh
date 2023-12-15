@@ -208,20 +208,24 @@ func (ts *TransportSender[T]) sendInFragments(diff string, newNum uint64) error 
 	err = ts.sendFragments(&inst, newNum)
 
 	if ts.verbose > 0 {
-		var s strings.Builder
-		s.WriteString("[")
-		for i := range ts.sentStates {
-			fmt.Fprintf(&s, "%d,", ts.sentStates[i].num)
-		}
-		s.WriteString("]")
-
-		util.Log.With("sentStates", s.String()).
+		util.Log.With("sentStates", ts.getSentStateList()).
 			With("diffLength", len(diff)).
 			With("SRTT", ts.connection.getSRTT()).
 			Debug("send message")
 		// return ts.sendFragments(&inst, newNum)
 	}
 	return err
+}
+
+func (ts *TransportSender[T]) getSentStateList() string {
+	var s strings.Builder
+	s.WriteString("[")
+	for i := range ts.sentStates {
+		fmt.Fprintf(&s, "%d,", ts.sentStates[i].num)
+	}
+	s.WriteString("]")
+
+	return s.String()
 }
 
 func (ts *TransportSender[T]) sendFragments(inst *pb.Instruction, newNum uint64) error {
