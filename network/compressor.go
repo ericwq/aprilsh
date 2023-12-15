@@ -59,7 +59,10 @@ func (c *Compressor) Uncompress(input []byte) ([]byte, error) {
 
 	n, err := r.Read(c.buf)
 	if err == io.EOF && n < c.bufSize {
-		return c.buf[:n], nil
+		// c.buf is a global var, so we return a copy to protect it.
+		ret := make([]byte, len(c.buf[:n]))
+		copy(ret, c.buf[:n])
+		return ret, nil
 	}
 
 	return nil, err
