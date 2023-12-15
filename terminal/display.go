@@ -33,12 +33,12 @@ func LookupTerminfo(name string) (ti *terminfo.Terminfo, e error) {
 }
 
 // extract specified row from the resize screen.
-func getRowFrom(from []Cell, posY int, w int) (row []Cell) {
-	start := posY * w
-	end := start + w
-	row = from[start:end]
-	return row
-}
+// func getRowFrom(from []Cell, posY int, w int) (row []Cell) {
+// 	start := posY * w
+// 	end := start + w
+// 	row = from[start:end]
+// 	return row
+// }
 
 // func getRawRow(emu *Emulator, rowY int) (row []Cell) {
 // 	start := emu.nCols * rowY
@@ -652,30 +652,30 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 	return frame.output()
 }
 
-func (d *Display) printFramebufferInfo(oldE, newE *Emulator) {
-	util.Log.With("columns   [E]:", fmt.Sprintf("%3d vs. %3d",
-		newE.nCols, oldE.nCols)).Debug("replicateContent")
-	util.Log.With("rows      [E]:", fmt.Sprintf("%3d vs. %3d",
-		newE.nRows, oldE.nRows)).Debug("replicateContent")
-	util.Log.With("position  [E]:", fmt.Sprintf("(%3d,%3d) vs. (%3d,%3d)",
-		newE.posY, newE.posX, oldE.posY, oldE.posX)).Debug("replicateContent")
-	util.Log.With("saveLines    :", fmt.Sprintf("%3d vs. %3d",
-		newE.cf.saveLines, oldE.cf.saveLines)).Debug("replicateContent")
-	util.Log.With("scrollHead   :", fmt.Sprintf("%3d vs. %3d",
-		newE.cf.scrollHead, oldE.cf.scrollHead)).Debug("replicateContent")
-	util.Log.With("marginTop    :", fmt.Sprintf("%3d vs. %3d",
-		newE.cf.marginTop, oldE.cf.marginTop)).Debug("replicateContent")
-	util.Log.With("marginBottom :", fmt.Sprintf("%3d vs. %3d",
-		newE.cf.marginBottom, oldE.cf.marginBottom)).Debug("replicateContent")
-	util.Log.With("historyRows  :", fmt.Sprintf("%3d vs. %3d",
-		newE.cf.historyRows, oldE.cf.historyRows)).Debug("replicateContent")
-	util.Log.With("viewOffset   :", fmt.Sprintf("%3d vs. %3d",
-		newE.cf.viewOffset, oldE.cf.viewOffset)).Debug("replicateContent")
-	util.Log.With("cursor       :", fmt.Sprintf("(%3d,%3d) vs. (%3d,%3d)",
-		newE.cf.cursor.posY, newE.cf.cursor.posX, oldE.cf.cursor.posY, oldE.cf.cursor.posX)).Debug("replicateContent")
-	util.Log.With("damage       :", fmt.Sprintf("(%3d,%3d) vs. (%3d,%3d)",
-		newE.cf.damage.start, newE.cf.damage.end, oldE.cf.damage.start, oldE.cf.damage.end)).Debug("replicateContent")
-}
+// func (d *Display) printFramebufferInfo(oldE, newE *Emulator) {
+// 	util.Log.With("columns   [E]:", fmt.Sprintf("%3d vs. %3d",
+// 		newE.nCols, oldE.nCols)).Debug("replicateContent")
+// 	util.Log.With("rows      [E]:", fmt.Sprintf("%3d vs. %3d",
+// 		newE.nRows, oldE.nRows)).Debug("replicateContent")
+// 	util.Log.With("position  [E]:", fmt.Sprintf("(%3d,%3d) vs. (%3d,%3d)",
+// 		newE.posY, newE.posX, oldE.posY, oldE.posX)).Debug("replicateContent")
+// 	util.Log.With("saveLines    :", fmt.Sprintf("%3d vs. %3d",
+// 		newE.cf.saveLines, oldE.cf.saveLines)).Debug("replicateContent")
+// 	util.Log.With("scrollHead   :", fmt.Sprintf("%3d vs. %3d",
+// 		newE.cf.scrollHead, oldE.cf.scrollHead)).Debug("replicateContent")
+// 	util.Log.With("marginTop    :", fmt.Sprintf("%3d vs. %3d",
+// 		newE.cf.marginTop, oldE.cf.marginTop)).Debug("replicateContent")
+// 	util.Log.With("marginBottom :", fmt.Sprintf("%3d vs. %3d",
+// 		newE.cf.marginBottom, oldE.cf.marginBottom)).Debug("replicateContent")
+// 	util.Log.With("historyRows  :", fmt.Sprintf("%3d vs. %3d",
+// 		newE.cf.historyRows, oldE.cf.historyRows)).Debug("replicateContent")
+// 	util.Log.With("viewOffset   :", fmt.Sprintf("%3d vs. %3d",
+// 		newE.cf.viewOffset, oldE.cf.viewOffset)).Debug("replicateContent")
+// 	util.Log.With("cursor       :", fmt.Sprintf("(%3d,%3d) vs. (%3d,%3d)",
+// 		newE.cf.cursor.posY, newE.cf.cursor.posX, oldE.cf.cursor.posY, oldE.cf.cursor.posX)).Debug("replicateContent")
+// 	util.Log.With("damage       :", fmt.Sprintf("(%3d,%3d) vs. (%3d,%3d)",
+// 		newE.cf.damage.start, newE.cf.damage.end, oldE.cf.damage.start, oldE.cf.damage.end)).Debug("replicateContent")
+// }
 
 // https://tomscii.sig7.se/zutty/doc/HACKING.html#Frame
 func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeChanged bool,
@@ -973,6 +973,7 @@ func (d *Display) replicateASB(initialized bool, oldE, newE *Emulator, sizeChang
 	}
 }
 
+/*
 func (d *Display) putRow(initialized bool, frame *FrameState,
 	newE *Emulator, newRow []Cell, frameY int, oldRow []Cell, wrap bool) bool {
 	frameX := 0
@@ -1081,15 +1082,15 @@ func (d *Display) putRow(initialized bool, frame *FrameState,
 		// Now draw a character cell.
 		// Move to the right position.
 		cellWidth := cell.GetWidth()
-		/*
-			If we are about to print the last character in a wrapping row,
-			trash the cursor position to force explicit positioning.  We do
-			this because our input terminal state may have the cursor on
-			the autowrap column ("column 81"), but our output terminal
-			states always snap the cursor to the true last column ("column
-			80"), and we want to be able to apply the diff to either, for
-			verification.
-		*/
+
+		// If we are about to print the last character in a wrapping row,
+		// trash the cursor position to force explicit positioning.  We do
+		// this because our input terminal state may have the cursor on
+		// the autowrap column ("column 81"), but our output terminal
+		// states always snap the cursor to the true last column ("column
+		// 80"), and we want to be able to apply the diff to either, for
+		// verification.
+
 		if wrapThis && frameX+cellWidth >= rowWidth {
 			frame.cursorX = -1
 			frame.cursorY = -1
@@ -1107,7 +1108,7 @@ func (d *Display) putRow(initialized bool, frame *FrameState,
 			wroteLastCell = true
 		}
 	}
-	/* End of line. */
+	// End of line.
 
 	// Clear or write empty cells at EOL.
 	if clearCount > 0 {
@@ -1148,6 +1149,7 @@ func (d *Display) putRow(initialized bool, frame *FrameState,
 	}
 	return false
 }
+*/
 
 // compare new row with old row to generate the mix stream to rebuild the new row
 // from the old one.
