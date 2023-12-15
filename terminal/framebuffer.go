@@ -751,17 +751,26 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 			}
 		}
 	} else {
-		for i := 0; i < len(fb.cells); i++ {
-			if fb.cells[i] != x.cells[i] {
-				if trace {
-					row := i / fb.nCols
-					util.Log.With("newRow", printRow(fb.cells, row, fb.nCols)).Warn("equal")
-					util.Log.With("oldRow", printRow(x.cells, row, x.nCols)).Warn("equal")
-					ret = false
-					// break
-					i += fb.nCols - 1
-				} else {
-					return false
+		if len(fb.cells) != len(x.cells) {
+			if trace {
+				util.Log.With("new cells length", len(fb.cells)).
+					With("old cells length", len(x.cells)).
+					Warn("equal")
+			}
+			ret = false
+		} else {
+			for i := 0; i < len(fb.cells); i++ {
+				if fb.cells[i] != x.cells[i] {
+					if trace {
+						row := i / fb.nCols
+						util.Log.With("newRow", printRow(fb.cells, row, fb.nCols)).Warn("equal")
+						util.Log.With("oldRow", printRow(x.cells, row, x.nCols)).Warn("equal")
+						ret = false
+						// break
+						i += fb.nCols - 1
+					} else {
+						return false
+					}
 				}
 			}
 		}

@@ -1001,15 +1001,15 @@ func (emu *Emulator) equal(x *Emulator, trace bool) bool {
 		} else {
 			return false
 		}
-	}
-
-	for i := range emu.tabStops {
-		if emu.tabStops[i] != x.tabStops[i] {
-			if trace {
-				msg := fmt.Sprintf("tabStops[%d]=(%d,%d)", i, emu.tabStops[i], x.tabStops[i])
-				util.Log.Warn(msg)
-			} else {
-				return false
+	} else if len(emu.tabStops) != 0 {
+		for i := range emu.tabStops {
+			if emu.tabStops[i] != x.tabStops[i] {
+				if trace {
+					msg := fmt.Sprintf("tabStops[%d]=(%d,%d)", i, emu.tabStops[i], x.tabStops[i])
+					util.Log.Warn(msg)
+				} else {
+					return false
+				}
 			}
 		}
 	}
@@ -1128,17 +1128,19 @@ func (emu *Emulator) equal(x *Emulator, trace bool) bool {
 		} else {
 			return false
 		}
-	}
-	for i := range emu.windowTitleStack {
-		if emu.windowTitleStack[i] != x.windowTitleStack[i] {
-			if trace {
-				msg := fmt.Sprintf("windowTitleStack[%d]=(%s,%s)", i, emu.windowTitleStack[i], x.windowTitleStack[i])
-				util.Log.Warn(msg)
-			} else {
-				return false
+	} else if len(emu.windowTitleStack) != 0 {
+		for i := range emu.windowTitleStack {
+			if emu.windowTitleStack[i] != x.windowTitleStack[i] {
+				if trace {
+					msg := fmt.Sprintf("windowTitleStack[%d]=(%s,%s)", i, emu.windowTitleStack[i], x.windowTitleStack[i])
+					util.Log.Warn(msg)
+				} else {
+					return false
+				}
 			}
 		}
 	}
+
 	// return emu.frame_pri.Equal(&x.frame_pri) && emu.frame_alt.Equal(&x.frame_alt)
 	return emu.cf.equal(x.cf, trace)
 }

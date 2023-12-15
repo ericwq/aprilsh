@@ -21,15 +21,13 @@ var combo struct {
 	sync.Mutex
 }
 
-func GetCompressor() *Compressor {
-	combo.Lock()
-	defer combo.Unlock()
+func init() {
+	combo.compressor = &Compressor{}
+	combo.compressor.bufSize = 2048 * 2048
+	combo.compressor.buf = make([]byte, combo.compressor.bufSize)
+}
 
-	if combo.compressor == nil {
-		combo.compressor = &Compressor{}
-		combo.compressor.bufSize = 2048 * 2048
-		combo.compressor.buf = make([]byte, combo.compressor.bufSize)
-	}
+func GetCompressor() *Compressor {
 	return combo.compressor
 }
 
@@ -48,6 +46,9 @@ func (c *Compressor) Compress(input []byte) ([]byte, error) {
 }
 
 func (c *Compressor) Uncompress(input []byte) ([]byte, error) {
+	combo.Lock()
+	defer combo.Unlock()
+
 	b := bytes.NewReader(input)
 
 	r, err := zlib.NewReader(b)

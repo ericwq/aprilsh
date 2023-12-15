@@ -129,7 +129,7 @@ var counter uint64
 
 func Unique() uint64 {
 	atomic.AddUint64(&counter, 1)
-	return counter
+	return atomic.LoadUint64(&counter)
 }
 
 type Message struct {
