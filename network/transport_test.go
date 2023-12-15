@@ -689,3 +689,32 @@ func TestTransportGetXXX(t *testing.T) {
 	// test Close
 	s.Close()
 }
+
+func TestInitSize(t *testing.T) {
+	tc := []struct {
+		label string
+		nCols int
+		nRows int
+	}{
+		{"", 80, 40},
+	}
+
+	for _, v := range tc {
+		completeTerminal, _ := statesync.NewComplete(8, 5, 0)
+		blank := &statesync.UserStream{}
+		desiredIp := "localhost"
+		desiredPort := "60200"
+		server := NewTransportServer(completeTerminal, blank, desiredIp, desiredPort)
+
+		server.InitSize(v.nCols, v.nRows)
+
+		s := server.sender.sentStates[0].GetState()
+		w := s.GetEmulator().GetWidth()
+		h := s.GetEmulator().GetHeight()
+		if w != v.nCols || h != v.nRows {
+			t.Errorf("%q expect (%2d,%2d), got (%2d,%2d)", v.label, v.nCols, v.nRows, w, h)
+		}
+
+		server.connection.sock().Close()
+	}
+}
