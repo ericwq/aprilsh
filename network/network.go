@@ -747,12 +747,12 @@ func (c *Connection) send(s string) (sendError error) {
 	)
 	if c.server {
 		bytesSent, err = conn.WriteTo(p, c.remoteAddr)
-		// util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
-		// 	With("remoteAddr", c.remoteAddr).Debug("send")
+		util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
+			With("remoteAddr", c.remoteAddr).Debug("send")
 	} else {
 		bytesSent, err = conn.Write(p) // only client connection is connected.
-		// util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
-		// 	With("remoteAddr", conn.(net.Conn).RemoteAddr()).Debug("send")
+		util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
+			With("remoteAddr", conn.(net.Conn).RemoteAddr()).Debug("send")
 	}
 
 	if err != nil {
@@ -811,7 +811,7 @@ func (c *Connection) Recv() (payload string, err error) {
 			}
 		}
 
-		util.Log.With("payload", len(payload)).
+		util.Log.With("payload", len(payload)).With("i", i).
 			With("localAddr", c.socks[i].(net.Conn).LocalAddr()).
 			With("remoteAddr", c.remoteAddr).Debug("#Recv")
 		c.pruneSockets()
