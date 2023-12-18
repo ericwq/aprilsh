@@ -80,6 +80,7 @@ GOCOVERDIR=./coverage/int ~/.local/bin/apshd -verbose 1 2>> /tmp/apshd.log
 docker exec -u ide -it nvide ash
 cd develop/aprilsh/frontend/client
 go build -o apsh .
+go build -race -o apsh .
 ./apsh -verbose 1  -pwd password ide@localhost 2>> /tmp/apsh.log
 ./apsh -verbose 1 -pwd password ide@172.17.0.3 2>> /tmp/apsh.log
 ```
