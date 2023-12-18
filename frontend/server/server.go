@@ -32,9 +32,9 @@ import (
 	"github.com/ericwq/aprilsh/terminal"
 	"github.com/ericwq/aprilsh/util"
 	utmp "github.com/ericwq/goutmp"
-	"golang.org/x/exp/slog"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
+	"log/slog"
 )
 
 var (
@@ -642,6 +642,8 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		if err != nil || state.Exited() {
 			if err != nil {
 				util.Log.With("error", err).With("state", state).Warn("shell.Wait fail")
+				// } else {
+				// 	util.Log.With("state.exited", state.Exited()).Debug("shell.Wait quit")
 			}
 		}
 
@@ -724,14 +726,14 @@ mainLoop:
 		timeout := math.MaxInt16
 		now := time.Now().UnixMilli()
 
-		timeout = terminal.Min(timeout, network.WaitTime()) // network.WaitTime cost time
+		timeout = min(timeout, network.WaitTime()) // network.WaitTime cost time
 		w0 := timeout
 		w1 := complete.WaitTime(now)
-		timeout = terminal.Min(timeout, w1)
+		timeout = min(timeout, w1)
 		// timeout = terminal.Min(timeout, complete.WaitTime(now))
 
 		if network.GetRemoteStateNum() > 0 || network.ShutdownInProgress() {
-			timeout = terminal.Min(timeout, 5000)
+			timeout = min(timeout, 5000)
 		}
 
 		// The server goes completely asleep if it has no remote peer.
@@ -745,7 +747,7 @@ mainLoop:
 			} else if networkSleep > math.MaxInt16 {
 				networkSleep = math.MaxInt16
 			}
-			timeout = terminal.Min(timeout, int(networkSleep))
+			timeout = min(timeout, int(networkSleep))
 		}
 
 		now = time.Now().UnixMilli()
@@ -897,7 +899,7 @@ mainLoop:
 					terminalToHost.WriteString(out)
 
 					util.Log.With("arise", "master").With("ouput", masterMsg.Data).
-						With("input", out).Debug("ouput from host")
+						With("input", out).Debug("output from host")
 
 					// update client with new state of terminal
 					network.SetCurrentState(complete)
@@ -1354,7 +1356,7 @@ func (m *mainSrv) run(conf *Config) {
 				// send kill message to the workers
 				for i := range m.workers {
 					m.workers[i].shell.Kill()
-					util.Log.With("port", i).Debug("stop shell")
+					// util.Log.With("port", i).Debug("stop shell")
 				}
 				// wait for workers to finish
 				for len(m.workers) > 0 {

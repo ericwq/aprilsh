@@ -6,6 +6,7 @@ package terminal
 
 import "testing"
 
+/*
 func TestMinMax(t *testing.T) {
 	tc := []struct {
 		name   string
@@ -35,6 +36,7 @@ func TestMinMax(t *testing.T) {
 		}
 	}
 }
+*/
 
 func TestRectAll(t *testing.T) {
 	r := NewRect()

@@ -735,6 +735,18 @@ func (mc *mockUdpConn) SetReadDeadline(t time.Time) error {
 	return nil
 }
 
+func (mc *mockUdpConn) Read(b []byte) (n int, err error) {
+	return 0, nil
+}
+
+func (mc *mockUdpConn) SetDeadline(t time.Time) error {
+	return nil
+}
+
+func (mc *mockUdpConn) SetWriteDeadline(t time.Time) error {
+	return nil
+}
+
 func TestSendBranch(t *testing.T) {
 	// prepare the client and server connection for the test
 	title := "detect server detached from client"

@@ -28,8 +28,8 @@ import (
 	"github.com/ericwq/aprilsh/network"
 	"github.com/ericwq/aprilsh/statesync"
 	"github.com/ericwq/aprilsh/util"
-	"golang.org/x/exp/slog"
 	"golang.org/x/sys/unix"
+	"log/slog"
 )
 
 func TestPrintMotd(t *testing.T) {

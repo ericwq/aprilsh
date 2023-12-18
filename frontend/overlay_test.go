@@ -1006,7 +1006,7 @@ func TestNotificationEngine_adjustMessage(t *testing.T) {
 		}
 	}
 
-	if terminal.Min(7, 8) == 8 {
+	if min(7, 8) == 8 {
 		t.Errorf("min should return %d, for min(7,8), got %d\n", 7, 8)
 	}
 }

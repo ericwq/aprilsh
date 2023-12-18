@@ -12,9 +12,7 @@ import (
 
 	"github.com/ericwq/aprilsh/encrypt"
 	pb "github.com/ericwq/aprilsh/protobufs"
-	"github.com/ericwq/aprilsh/terminal"
 	"github.com/ericwq/aprilsh/util"
-	// "github.com/ericwq/aprilsh/util"
 )
 
 const (
@@ -305,7 +303,7 @@ func (ts *TransportSender[T]) calculateTimers() {
 		}
 
 		// current state changed and not sent, send current state later
-		ts.nextSendTime = terminal.Min(ts.mindelayClock+int64(ts.SEND_MINDELAY),
+		ts.nextSendTime = min(ts.mindelayClock+int64(ts.SEND_MINDELAY),
 			ts.sentStates[back].timestamp+int64(ts.sendInterval()))
 		// we change from Max to Min to avoid duplicat message
 		// util.Log.With("status", "currentState!=lastSendStates").
@@ -315,7 +313,7 @@ func (ts *TransportSender[T]) calculateTimers() {
 		// currentState is last sent state but not the assumed receiver state
 		ts.nextSendTime = ts.sentStates[back].timestamp + int64(ts.sendInterval())
 		if ts.mindelayClock != math.MaxInt64 {
-			ts.nextSendTime = terminal.Max(ts.nextSendTime, ts.mindelayClock+int64(ts.SEND_MINDELAY))
+			ts.nextSendTime = max(ts.nextSendTime, ts.mindelayClock+int64(ts.SEND_MINDELAY))
 		}
 		// util.Log.With("status", "currentState==lastSendStates!=AssumedState").
 		// 	With("nextSendTime", ts.nextSendTime).

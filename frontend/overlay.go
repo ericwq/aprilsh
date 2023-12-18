@@ -473,7 +473,7 @@ func (ne *NotificationEngine) ServerAcked(ts int64) {
 func (ne *NotificationEngine) waitTime() int {
 	var nextExpiry int64 = math.MaxInt64
 	now := time.Now().UnixMilli()
-	nextExpiry = terminal.Min(nextExpiry, ne.messageExpiration-now)
+	nextExpiry = min(nextExpiry, ne.messageExpiration-now)
 
 	if ne.needCountup(now) {
 		var countupInterval int64 = 1000
@@ -482,7 +482,7 @@ func (ne *NotificationEngine) waitTime() int {
 			// the display less often.
 			countupInterval = ACK_INTERVAL
 		}
-		nextExpiry = terminal.Min(nextExpiry, countupInterval)
+		nextExpiry = min(nextExpiry, countupInterval)
 	}
 
 	return int(nextExpiry)
@@ -514,7 +514,7 @@ func (ne *NotificationEngine) SetNetworkError(str string) {
 func (ne *NotificationEngine) ClearNetworkError() {
 	// fmt.Printf("clearNetworkError #debug messageIsNetworkError=%t\n", ne.messageIsNetworkError)
 	if ne.messageIsNetworkError {
-		ne.messageExpiration = terminal.Min(ne.messageExpiration, time.Now().UnixMilli()+1000)
+		ne.messageExpiration = min(ne.messageExpiration, time.Now().UnixMilli()+1000)
 	}
 }
 
@@ -1336,7 +1336,7 @@ func (om *OverlayManager) WaitTime() int {
 	w1 := om.notifications.waitTime()
 	w2 := om.predictions.waitTime()
 	// util.Log.With("predictions", w2).With("notifications", w1).Debug("waitTime")
-	return terminal.Min(w1, w2)
+	return min(w1, w2)
 
 	// return terminal.Min(om.notifications.waitTime(), om.predictions.waitTime())
 }

@@ -24,10 +24,10 @@ import (
 	"github.com/ericwq/aprilsh/util"
 	"github.com/rivo/uniseg"
 	"golang.org/x/crypto/ssh"
-	"golang.org/x/exp/slog"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
+	"log/slog"
 )
 
 const (
@@ -866,12 +866,12 @@ mainLoop:
 
 		w0 := sc.network.WaitTime()
 		w1 := sc.overlays.WaitTime()
-		waitTime := terminal.Min(w0, w1)
+		waitTime := min(w0, w1)
 		// waitTime := terminal.Min(sc.network.WaitTime(), sc.overlays.WaitTime())
 
 		// Handle startup "Connecting..." message
 		if sc.stillConnecting() {
-			waitTime = terminal.Min(250, waitTime)
+			waitTime = min(250, waitTime)
 		}
 
 		timer := time.NewTimer(time.Duration(waitTime) * time.Millisecond)

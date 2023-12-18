@@ -175,7 +175,7 @@ func (emu *Emulator) resize(nCols, nRows int) {
 
 		// adjust the cursor position if the nRow expanded
 		if emu.nRows < nRows {
-			nScroll := Min(nRows-emu.nRows, emu.cf.getHistroryRows())
+			nScroll := min(nRows-emu.nRows, emu.cf.getHistroryRows())
 			emu.cf.scrollDown(nScroll)
 			emu.posY += nScroll
 		}
@@ -187,8 +187,8 @@ func (emu *Emulator) resize(nCols, nRows int) {
 	emu.nRows = nRows
 
 	if emu.horizMarginMode {
-		emu.nColsEff = Min(emu.nColsEff, emu.nCols)
-		emu.hMargin = Max(0, Min(emu.hMargin, emu.nColsEff-2))
+		emu.nColsEff = min(emu.nColsEff, emu.nCols)
+		emu.hMargin = max(0, min(emu.hMargin, emu.nColsEff-2))
 	} else {
 		emu.nColsEff = emu.nCols
 		emu.hMargin = 0
@@ -420,7 +420,7 @@ func (emu *Emulator) jumpToNextTabStop() {
 		for ok := true; ok; ok = emu.posX < margin {
 			emu.posX = ((emu.posX / 8) + 1) * 8
 		}
-		emu.posX = Min(emu.posX, emu.nColsEff-1)
+		emu.posX = min(emu.posX, emu.nColsEff-1)
 	} else {
 		// Next tabstop column set, or the right margin
 		nextTabIdx := LowerBound(emu.tabStops, emu.posX)
@@ -753,16 +753,16 @@ func (emu *Emulator) regulatePos(posY, posX int) (posY2, posX2 int) {
 
 	switch emu.originMode {
 	case OriginMode_Absolute:
-		posY = Max(0, Min(posY, emu.nRows-1))
+		posY = max(0, min(posY, emu.nRows-1))
 	case OriginMode_ScrollingRegion:
-		posY = Max(0, Min(posY, emu.marginBottom-1))
+		posY = max(0, min(posY, emu.marginBottom-1))
 		posY += emu.marginTop
 	}
 
 	if emu.horizMarginMode {
-		posX = Max(emu.hMargin, Min(posX, emu.nColsEff-1))
+		posX = max(emu.hMargin, min(posX, emu.nColsEff-1))
 	} else {
-		posX = Max(0, Min(posX, emu.nCols-1))
+		posX = max(0, min(posX, emu.nCols-1))
 	}
 
 	posX2 = posX

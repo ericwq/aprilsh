@@ -14,7 +14,7 @@ import (
 
 	"github.com/ericwq/aprilsh/util"
 	"github.com/rivo/uniseg"
-	"golang.org/x/exp/slog"
+	"log/slog"
 )
 
 // https://www.redhat.com/sysadmin/linux-script-command

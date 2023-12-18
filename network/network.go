@@ -311,7 +311,7 @@ func NewConnectionClient(keyStr string, ip, port string) *Connection { // client
 	// var err error
 	if c.key == nil {
 		util.Log.With("keyStr", keyStr).
-			With("error").Warn("#NeNewConnectionClient build key failed")
+			With("error", nil).Warn("#NeNewConnectionClient build key failed")
 		return nil
 
 	}
@@ -599,7 +599,7 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 	data := make([]byte, c.mtu)
 	oob := make([]byte, 40)
 
-	// read from the socket
+	// read from the socket,TODO does this method support read deadline?
 	// in golang, the flags parameters for recvfrom system call is always 0.
 	// that means it's always blocking read. which means unix.MSG_DONTWAIT can't be applied here.
 	n, oobn, flags, raddr, err := conn.ReadMsgUDP(data, oob)
@@ -748,11 +748,11 @@ func (c *Connection) send(s string) (sendError error) {
 	if c.server {
 		bytesSent, err = conn.WriteTo(p, c.remoteAddr)
 		util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
-			With("remoteAddr", c.remoteAddr).Debug("send")
+			With("remoteAddr", c.remoteAddr).Debug("send message")
 	} else {
 		bytesSent, err = conn.Write(p) // only client connection is connected.
 		util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
-			With("remoteAddr", conn.(net.Conn).RemoteAddr()).Debug("send")
+			With("remoteAddr", conn.(net.Conn).RemoteAddr()).Debug("send message")
 	}
 
 	if err != nil {
@@ -811,9 +811,8 @@ func (c *Connection) Recv() (payload string, err error) {
 			}
 		}
 
-		util.Log.With("payload", len(payload)).With("i", i).
-			With("localAddr", c.socks[i].(net.Conn).LocalAddr()).
-			With("remoteAddr", c.remoteAddr).Debug("#Recv")
+		util.Log.With("i", i).With("localAddr", c.socks[i].(net.Conn).LocalAddr()).
+			With("remoteAddr", c.remoteAddr).With("payload", len(payload)).Debug("got message")
 		c.pruneSockets()
 		return
 	}

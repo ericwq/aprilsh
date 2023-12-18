@@ -112,12 +112,13 @@ func (dmg *Damage) add(start, end int) {
 		dmg.start = start
 		dmg.end = end
 	} else {
-		dmg.start = Min(dmg.start, start)
-		dmg.end = Max(dmg.end, end)
+		dmg.start = min(dmg.start, start)
+		dmg.end = max(dmg.end, end)
 	}
 	// fmt.Printf("Damage.add start=%d, end=%d\n", dmg.start, dmg.end)
 }
 
+/*
 func Min[T constraints.Ordered](x, y T) T {
 	if x < y {
 		return x
@@ -131,6 +132,7 @@ func Max[T constraints.Ordered](x, y T) T {
 	}
 	return y
 }
+*/
 
 func Abs[T constraints.Signed | constraints.Float](x T) T {
 	if x < 0 {

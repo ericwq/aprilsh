@@ -10,7 +10,7 @@ import (
 	"net"
 	"os"
 
-	"golang.org/x/exp/slog"
+	"log/slog"
 )
 
 // var Log *slog.Logger
