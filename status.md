@@ -2,6 +2,7 @@
 
 ## Status
 
+- 2022/Apr/01: start terminal emulator.
 - 2022/Jul/31: finish the terminal emulator:
   - add scroll buffer support,
   - add color palette support,

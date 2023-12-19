@@ -5,7 +5,7 @@
 package frontend
 
 const (
-	BuildVersion       = "0.7.0" // ready for ldflags
+	BuildVersion       = "0.5.0" // ready for ldflags
 	AprilshMsgOpen     = "open aprilsh:"
 	AprishMsgClose     = "close aprilsh:"
 	AprilshPackageName = "aprilsh"
