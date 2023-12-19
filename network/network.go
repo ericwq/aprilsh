@@ -565,10 +565,12 @@ func (c *Connection) sock() udpConn {
 }
 
 func (c *Connection) cleanSocks(numToKill int) {
+	// util.Log.With("socks length", len(c.socks)).With("numToKill", numToKill).Debug("cleanSocks")
 	for i := 0; i < numToKill; i++ {
 		c.socks[i].(net.Conn).Close()
 	}
 	c.socks = c.socks[numToKill:]
+	// util.Log.With("socks length", len(c.socks)).With("numToKill", numToKill).Debug("cleanSocks")
 }
 
 // clear the old and over size sockets
@@ -580,7 +582,6 @@ func (c *Connection) pruneSockets() {
 			numToKill := len(c.socks) - 1
 			// c.socks = c.socks[numToKill:]
 			c.cleanSocks(numToKill)
-			// util.Log.With("socks length", len(c.socks)).Debug("pruneSockets")
 		}
 	} else {
 		// c.printSocks()
@@ -795,6 +796,7 @@ func (c *Connection) Recv() (payload string, err error) {
 		// that may result udp message get lost.
 
 		// for i := range c.socks {
+		// ??? compare with the above loop, this one doesn't work for hibernate case
 		payload, err = c.recvOne(c.socks[i])
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
@@ -815,6 +817,11 @@ func (c *Connection) Recv() (payload string, err error) {
 			With("remoteAddr", c.remoteAddr).With("payload", len(payload)).Debug("got message")
 		c.pruneSockets()
 		return
+	}
+
+	// return timeout if it's the case
+	if errors.Is(err, os.ErrDeadlineExceeded) {
+		return "", os.ErrDeadlineExceeded
 	}
 	return
 }

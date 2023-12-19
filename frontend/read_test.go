@@ -275,6 +275,8 @@ func TestReadFromNetwork(t *testing.T) {
 			}
 		}
 	}
+	//shutdown the reader
+	doneChan <- "done"
 
 	// consume last message to release the reader
 	select {

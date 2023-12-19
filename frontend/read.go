@@ -9,8 +9,6 @@ import (
 	"io"
 	"os"
 	"time"
-
-	"github.com/ericwq/aprilsh/util"
 )
 
 // communication the read result with the others
@@ -100,17 +98,16 @@ func ReadFromNetwork(timeout int, msgChan chan Message, doneChan chan any, netwo
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
 				// read timeout
-				// msgChan <- Message{err, ""}
 				continue
 			} else {
-				// EOF goes here
+				// EOF goes here, in case of error retry it.
 				msgChan <- Message{err, ""}
-				break
+				continue
 			}
 		} else {
 			// normal read
 			msgChan <- Message{nil, payload}
 		}
 	}
-	util.Log.With("quit", true).With("err", err).Debug("ReadFromNetwork")
+	// util.Log.With("quit", true).With("err", err).Debug("ReadFromNetwork")
 }
