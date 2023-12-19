@@ -1371,11 +1371,11 @@ func TestMalformRequest(t *testing.T) {
 	}
 }
 
-func mockServe(ptmx *os.File, pw *io.PipeWriter, terminal *statesync.Complete, x chan bool,
+func mockServe(ptmx *os.File, pw *io.PipeWriter, terminal *statesync.Complete, // x chan bool,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
 	networkTimeout int64, networkSignaledTimeout int64) error {
 	time.Sleep(20 * time.Millisecond)
-	x <- true
+	// x <- true
 	return nil
 }
 

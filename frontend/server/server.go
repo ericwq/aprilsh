@@ -283,7 +283,7 @@ type Config struct {
 	withMotd    bool
 
 	// the serve func
-	serve func(*os.File, *io.PipeWriter, *statesync.Complete, chan bool,
+	serve func(*os.File, *io.PipeWriter, *statesync.Complete, // chan bool,
 		*network.Transport[*statesync.Complete, *statesync.UserStream], int64, int64) error
 }
 
@@ -612,8 +612,15 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	utmpHost := fmt.Sprintf("%s [%d]", frontend.CommandServerName, os.Getpid())
 
 	// start the udp server, serve the udp request
-	waitChan := make(chan bool)
-	go conf.serve(ptmx, pw, terminal, waitChan, network, networkTimeout, networkSignaledTimeout)
+	var wg sync.WaitGroup
+	// waitChan := make(chan bool)
+	// go conf.serve(ptmx, pw, terminal, waitChan, network, networkTimeout, networkSignaledTimeout)
+	wg.Add(1)
+	go func() {
+		// conf.serve(ptmx, pw, terminal, waitChan, network, networkTimeout, networkSignaledTimeout)
+		conf.serve(ptmx, pw, terminal, network, networkTimeout, networkSignaledTimeout)
+		wg.Done()
+	}()
 	util.Log.With("port", conf.desiredPort).With("clientTERM", conf.term).
 		Info("start listening on")
 
@@ -649,7 +656,8 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 
 		// wait serve to finish
 		// util.Log.With("ptmx", ptmx.Name()).Debug("wait serve to finish")
-		<-waitChan
+		// <-waitChan
+		wg.Wait()
 		// logI.Printf("#runWorker stop listening on :%s\n", conf.desiredPort)
 		util.Log.With("port", conf.desiredPort).Info("stop listening on")
 
@@ -678,7 +686,7 @@ func getCurrentUser() string {
 	return user.Username
 }
 
-func serve(ptmx *os.File, pw *io.PipeWriter, complete *statesync.Complete, waitChan chan bool,
+func serve(ptmx *os.File, pw *io.PipeWriter, complete *statesync.Complete, // waitChan chan bool,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
 	networkTimeout int64, networkSignaledTimeout int64) error {
 	// scale timeouts
@@ -1017,7 +1025,7 @@ mainLoop:
 	eg.Wait()
 
 	// notify the runWorker
-	waitChan <- true
+	// waitChan <- true
 
 	return nil
 }
@@ -1334,6 +1342,7 @@ func (m *mainSrv) run(conf *Config) {
 		case portStr := <-m.exChan:
 			// some worker is done
 			m.cleanWorkers(portStr)
+			// util.Log.With("port", portStr).Info("run some worker is done")
 		case ss := <-sig:
 			switch ss {
 			case syscall.SIGHUP: // TODO:reload the config?
