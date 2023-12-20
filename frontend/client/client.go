@@ -826,7 +826,7 @@ func (sc *STMClient) main() error {
 	// read from network
 	eg.Go(func() error {
 		// if we have 2 client ip, 5 ms for each client
-		frontend.ReadFromNetwork(1, networkChan, networkDownChan, sc.network.GetConnection())
+		frontend.ReadFromNetwork(5, networkChan, networkDownChan, sc.network.GetConnection())
 		return nil
 	})
 

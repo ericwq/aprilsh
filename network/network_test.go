@@ -292,12 +292,13 @@ func TestConnectionReadWrite(t *testing.T) {
 		defer server.sock().Close()
 		for i := range message {
 			output.Reset()
+			fmt.Printf("#test recv \n")
 			payload, _ := server.Recv()
-			// fmt.Printf("#test recv payload=%q\n", payload)
+			fmt.Printf("#test recv payload=%q\n", payload)
 			if len(payload) == 0 || message[i] != payload {
 				t.Errorf("%q expect %q, got %q\n", title, message[i], payload)
 			} else {
-				// t.Logf("%q expect %q, got %q\n", title, message[i], payload)
+				t.Logf("%q expect %q, got %q\n", title, message[i], payload)
 				if i == 0 {
 					got := output.String()
 					expect := "server now attached to client"
@@ -681,13 +682,27 @@ func (mc *mockUdpConn) RemoteAddr() net.Addr {
 	return nil
 }
 
-func (mc *mockUdpConn) Write(b []byte) (int, error) {
-	// fmt.Printf("#Write mockUdpConn len=%d\n", len(b))
+// func (c *mockUdpConn) WriteToUDP(b []byte, addr *net.UDPAddr) (int, error) {
+// 	if len(b) == 48 {
+// 		return 0, errors.New("mock by len = 48.")
+// 	}
+// 	return 5, nil
+// }
+
+func (mc *mockUdpConn) WriteMsgUDP(b, oob []byte, addr *net.UDPAddr) (n, oobn int, err error) {
 	if len(b) == 48 {
-		return 0, errors.New("mock by len = 48.")
+		return 0, 0, errors.New("mock by len = 48.")
 	}
-	return 5, nil
+	return 5, 0, nil
 }
+
+// func (mc *mockUdpConn) Write(b []byte) (int, error) {
+// 	// fmt.Printf("#Write mockUdpConn len=%d\n", len(b))
+// 	if len(b) == 48 {
+// 		return 0, errors.New("mock by len = 48.")
+// 	}
+// 	return 5, nil
+// }
 
 func (mc *mockUdpConn) ReadMsgUDP(b, oob []byte) (n, oobn, flags int, addr *net.UDPAddr, err error) {
 	// fmt.Printf("#mockUdpConn ReadMsgUDP() round=%d\n", mc.round)

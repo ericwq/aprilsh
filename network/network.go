@@ -202,8 +202,9 @@ var (
 
 // internal conneciton for testability.
 type udpConn interface {
-	Write(b []byte) (int, error)
-	WriteTo(b []byte, addr net.Addr) (int, error)
+	// Write(b []byte) (int, error)
+	// WriteToUDP(b []byte, addr *net.UDPAddr) (int, error)
+	WriteMsgUDP(b, oob []byte, addr *net.UDPAddr) (n, oobn int, err error)
 	ReadMsgUDP(b, oob []byte) (n, oobn, flags int, addr *net.UDPAddr, err error)
 	SetReadDeadline(t time.Time) error
 	Close() error
@@ -465,7 +466,7 @@ func (c *Connection) dialUDP(ip, port string) bool {
 	}
 
 	c.remoteAddr = conn.RemoteAddr()
-	c.socks = append(c.socks, conn.(udpConn))
+	c.socks = append(c.socks, conn.(*net.UDPConn))
 	c.hasRemoteAddr = true
 
 	util.Log.With("ip", ip).With("port", port).
@@ -554,8 +555,8 @@ func (c *Connection) hopPort() {
 // 		var x net.Conn
 //
 // 		x = c.socks[i].(net.Conn)
-// 		util.Log.With("socks", i).With("localAddr", x.LocalAddr()).
-// 			With("remoteAddr", x.RemoteAddr()).Warn("pruneSockets")
+// 		util.Log.With("i", i).With("localAddr", x.LocalAddr()).
+// 			With("remoteAddr", x.RemoteAddr()).Debug("printSocks")
 // 	}
 // }
 
@@ -593,7 +594,6 @@ func (c *Connection) pruneSockets() {
 		// c.socks = c.socks[MAX_PORTS_OPEN:]
 		c.cleanSocks(MAX_PORTS_OPEN)
 	}
-	// c.printSocks()
 }
 
 func (c *Connection) recvOne(conn udpConn) (string, error) {
@@ -746,14 +746,20 @@ func (c *Connection) send(s string) (sendError error) {
 		bytesSent int
 		err       error
 	)
+	// oob := make([]byte, 40)
+	// if c.server {
+	// 	bytesSent, err = conn.WriteToUDP(p, c.remoteAddr.(*net.UDPAddr))
+	// 	util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
+	// 		With("remoteAddr", c.remoteAddr).Debug("send message")
+	// } else {
+	// 	bytesSent, err = conn.Write(p) // only client connection is connected.
+	// 	util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
+	// 		With("remoteAddr", conn.(net.Conn).RemoteAddr()).Debug("send message")
+	// }
 	if c.server {
-		bytesSent, err = conn.WriteTo(p, c.remoteAddr)
-		util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
-			With("remoteAddr", c.remoteAddr).Debug("send message")
+		bytesSent, _, err = conn.WriteMsgUDP(p, nil, c.remoteAddr.(*net.UDPAddr)) // server
 	} else {
-		bytesSent, err = conn.Write(p) // only client connection is connected.
-		util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
-			With("remoteAddr", conn.(net.Conn).RemoteAddr()).Debug("send message")
+		bytesSent, _, err = conn.WriteMsgUDP(p, nil, nil) // client
 	}
 
 	if err != nil {
@@ -787,6 +793,7 @@ func (c *Connection) send(s string) (sendError error) {
 }
 
 // receive packet from remote
+// func (c *Connection) Recv(timeout int) (payload string, err error) {
 func (c *Connection) Recv() (payload string, err error) {
 	c.Lock()
 	defer c.Unlock()
@@ -796,14 +803,17 @@ func (c *Connection) Recv() (payload string, err error) {
 		// that may result udp message get lost.
 
 		// for i := range c.socks {
+		// for i := 0; i < len(c.socks); i++ {
 		// ??? compare with the above loop, this one doesn't work for hibernate case
+		// c.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
+
 		payload, err = c.recvOne(c.socks[i])
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
+				// util.Log.With("i", i).With("error", err).Warn("#recv")
 				continue
 			} else if errors.Is(err, unix.EWOULDBLOCK) {
 				// EAGAIN is processed by go netpoll
-				// util.Log.With("error", err).Warn("#recv")
 				util.Log.With("error", err).Warn("#Recv")
 				continue
 			} else {
@@ -815,7 +825,7 @@ func (c *Connection) Recv() (payload string, err error) {
 
 		util.Log.With("i", i).With("localAddr", c.socks[i].(net.Conn).LocalAddr()).
 			With("remoteAddr", c.remoteAddr).With("payload", len(payload)).Debug("got message")
-		c.pruneSockets()
+		// c.pruneSockets()
 		return
 	}
 
