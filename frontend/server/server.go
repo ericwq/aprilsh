@@ -1367,11 +1367,15 @@ func (m *mainSrv) run(conf *Config) {
 					m.workers[i].shell.Kill()
 					// util.Log.With("port", i).Debug("stop shell")
 				}
-				// wait for workers to finish
+				// wait for workers to finish, set time out to prevent dead lock
+				timeout := time.NewTimer(time.Duration(200) * time.Millisecond)
 				for len(m.workers) > 0 {
 					select {
 					case portStr := <-m.exChan: // some worker is done
 						m.cleanWorkers(portStr)
+					case t := <-timeout.C:
+						util.Log.With("timeout", t).Warn("run quit with timeout")
+						return
 					default:
 					}
 				}
