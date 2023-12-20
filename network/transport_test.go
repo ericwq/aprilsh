@@ -559,7 +559,7 @@ func TestClientShutdown(t *testing.T) {
 	}
 
 	// fmt.Printf("#test --- server receive.\n")
-	server.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(5)))
+	server.connection.sock().SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(5)))
 	server.Recv()
 	time.Sleep(time.Millisecond * 10)
 	// printServerStates(server, label)
@@ -597,7 +597,7 @@ func TestClientShutdown(t *testing.T) {
 	// printServerStates(server, label)
 
 	// fmt.Printf("#test --- client receive.\n")
-	client.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(5)))
+	client.connection.sock().SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(5)))
 	e23 := client.Recv()
 	time.Sleep(time.Millisecond * 10)
 	if e23 != nil {

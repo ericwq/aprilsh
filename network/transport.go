@@ -86,7 +86,7 @@ func (t *Transport[S, R]) WaitTime() int {
 
 // Blocks waiting for a packet.
 func (t *Transport[S, R]) Recv() error {
-	s, err := t.connection.Recv()
+	s, err := t.connection.Recv(1)
 	if err != nil {
 		return err
 	}
@@ -108,9 +108,9 @@ func (t *Transport[S, R]) GetRemoteDiff() string {
 	return ret
 }
 
-func (t *Transport[S, R]) SetReadDeadline(ti time.Time) error {
-	return t.connection.SetReadDeadline(ti)
-}
+// func (t *Transport[S, R]) SetReadDeadline(ti time.Time) error {
+// 	return t.connection.sock().SetReadDeadline(ti)
+// }
 
 // Other side has requested shutdown and we have sent one ACK
 //

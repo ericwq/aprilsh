@@ -195,7 +195,7 @@ func (m *mockDeadLineReceiver) SetReadDeadline(t time.Time) error {
 	return nil
 }
 
-func (m *mockDeadLineReceiver) Recv() (payload string, err error) {
+func (m *mockDeadLineReceiver) Recv(timeout int) (payload string, err error) {
 	// func (m *mockDeadLineReceiver) Recv() (err error) {
 	if m.round >= 0 && m.round < len(m.err) {
 		// make sure we increase round

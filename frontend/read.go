@@ -30,9 +30,8 @@ type DeadLineReader interface {
 
 // for easy mock
 type DeadLineReceiver interface {
-	// Recv(timeout int) (payload string, err error)
-	Recv() (payload string, err error)
-	DeadLiner
+	Recv(timeout int) (payload string, err error)
+	// DeadLiner
 }
 
 // Read from the file reader, set read time out before every read. The read result will be sent
@@ -91,11 +90,8 @@ func ReadFromNetwork(timeout int, msgChan chan Message, doneChan chan any, netwo
 			return
 		default:
 		}
-		// set read time out
-		// network.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
 		// packet received from the network
-		// payload, err = network.Recv(timeout)
-		payload, err = network.Recv()
+		payload, err = network.Recv(timeout)
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
 				// read timeout
@@ -110,5 +106,4 @@ func ReadFromNetwork(timeout int, msgChan chan Message, doneChan chan any, netwo
 			msgChan <- Message{nil, payload}
 		}
 	}
-	// util.Log.With("quit", true).With("err", err).Debug("ReadFromNetwork")
 }
