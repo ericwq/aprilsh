@@ -751,12 +751,12 @@ func (c *Connection) send(s string) (sendError error) {
 	// }
 	if c.server {
 		bytesSent, _, err = conn.WriteMsgUDP(p, nil, c.remoteAddr.(*net.UDPAddr)) // server
-		util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
-			With("remoteAddr", c.remoteAddr).Debug("send message")
+		// util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
+		// 	With("remoteAddr", c.remoteAddr).Debug("send message")
 	} else {
 		bytesSent, _, err = conn.WriteMsgUDP(p, nil, nil) // client connection is connected
-		util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
-			With("remoteAddr", conn.(net.Conn).RemoteAddr()).Debug("send message")
+		// util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
+		// 	With("remoteAddr", conn.(net.Conn).RemoteAddr()).Debug("send message")
 	}
 
 	if err != nil {
@@ -814,8 +814,8 @@ func (c *Connection) Recv(timeout int) (payload string, err error) {
 			}
 		}
 
-		util.Log.With("i", i).With("localAddr", c.socks[i].(net.Conn).LocalAddr()).
-			With("remoteAddr", c.remoteAddr).With("payload", len(payload)).Debug("got message")
+		// util.Log.With("i", i).With("localAddr", c.socks[i].(net.Conn).LocalAddr()).
+		// 	With("remoteAddr", c.remoteAddr).With("payload", len(payload)).Debug("got message")
 		c.pruneSockets()
 		return
 	}
