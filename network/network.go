@@ -798,14 +798,14 @@ func (c *Connection) Recv() (payload string, err error) {
 	c.Lock()
 	defer c.Unlock()
 
-	for i := len(c.socks) - 1; i >= 0; i-- {
-		// there is posssible that Recv() did not receive data from the previous port
-		// that may result udp message get lost.
+	// for i := len(c.socks) - 1; i >= 0; i-- {
+	// there is posssible that Recv() did not receive data from the previous port
+	// that may result udp message get lost.
 
-		// for i := range c.socks {
+	for i := range c.socks {
 		// for i := 0; i < len(c.socks); i++ {
 		// ??? compare with the above loop, this one doesn't work for hibernate case
-		// c.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
+		c.socks[i].SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(1)))
 
 		payload, err = c.recvOne(c.socks[i])
 		if err != nil {
@@ -825,7 +825,7 @@ func (c *Connection) Recv() (payload string, err error) {
 
 		util.Log.With("i", i).With("localAddr", c.socks[i].(net.Conn).LocalAddr()).
 			With("remoteAddr", c.remoteAddr).With("payload", len(payload)).Debug("got message")
-		// c.pruneSockets()
+		c.pruneSockets()
 		return
 	}
 

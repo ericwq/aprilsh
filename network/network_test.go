@@ -292,13 +292,13 @@ func TestConnectionReadWrite(t *testing.T) {
 		defer server.sock().Close()
 		for i := range message {
 			output.Reset()
-			fmt.Printf("#test recv \n")
+			// fmt.Printf("#test recv \n")
 			payload, _ := server.Recv()
-			fmt.Printf("#test recv payload=%q\n", payload)
+			// fmt.Printf("#test recv payload=%q\n", payload)
 			if len(payload) == 0 || message[i] != payload {
 				t.Errorf("%q expect %q, got %q\n", title, message[i], payload)
 			} else {
-				t.Logf("%q expect %q, got %q\n", title, message[i], payload)
+				// t.Logf("%q expect %q, got %q\n", title, message[i], payload)
 				if i == 0 {
 					got := output.String()
 					expect := "server now attached to client"

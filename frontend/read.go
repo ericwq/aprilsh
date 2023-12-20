@@ -92,7 +92,7 @@ func ReadFromNetwork(timeout int, msgChan chan Message, doneChan chan any, netwo
 		default:
 		}
 		// set read time out
-		network.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
+		// network.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
 		// packet received from the network
 		// payload, err = network.Recv(timeout)
 		payload, err = network.Recv()
