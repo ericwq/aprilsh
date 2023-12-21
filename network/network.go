@@ -558,7 +558,7 @@ func (c *Connection) hopPort() {
 // 	}
 // }
 
-// return the our udp connection
+// return the last udp connection
 func (c *Connection) sock() udpConn {
 	return c.socks[len(c.socks)-1]
 }
@@ -566,7 +566,7 @@ func (c *Connection) sock() udpConn {
 func (c *Connection) cleanSocks(numToKill int) {
 	// util.Log.With("socks length", len(c.socks)).With("numToKill", numToKill).Debug("cleanSocks")
 	for i := 0; i < numToKill; i++ {
-		c.socks[i].(net.Conn).Close()
+		c.socks[i].Close()
 	}
 	c.socks = c.socks[numToKill:]
 	// util.Log.With("socks length", len(c.socks)).With("numToKill", numToKill).Debug("cleanSocks")
@@ -806,10 +806,8 @@ func (c *Connection) Recv(timeout int) (payload string, err error) {
 				continue
 			} else if errors.Is(err, unix.EWOULDBLOCK) {
 				// EAGAIN is processed by go netpoll
-				util.Log.With("error", err).Warn("#Recv")
 				continue
 			} else {
-				util.Log.With("error", err).Warn("#Recv")
 				break
 			}
 		}
