@@ -245,13 +245,13 @@ func (ts *TransportSender[T]) sendFragments(inst *pb.Instruction, newNum uint64)
 				With("AckNum", inst.AckNum).
 				With("ThrowawayNum", inst.ThrowawayNum).
 				Debug("send message")
-			util.Log.With("time", (time.Now().UnixMilli()%100000)).
-				With("fragmentsID", fragments[i].id).
-				With("fragmentNum", fragments[i].fragmentNum).
-				With("fragmentLength", len(fragments[i].contents)).
-				With("frameRate", 1000.0/float64(ts.sendInterval())).
-				With("timeout", ts.connection.timeout()).
-				Debug("send message")
+			// util.Log.With("time", (time.Now().UnixMilli()%100000)).
+			// 	With("fragmentsID", fragments[i].id).
+			// 	With("fragmentNum", fragments[i].fragmentNum).
+			// 	With("fragmentLength", len(fragments[i].contents)).
+			// 	With("frameRate", 1000.0/float64(ts.sendInterval())).
+			// 	With("timeout", ts.connection.timeout()).
+			// 	Debug("send message")
 			// util.Log.With("mindelayClock", ts.mindelayClock).
 			// 	With("SEND_MINDELAY", ts.SEND_MINDELAY).
 			// 	With("sendInterval", ts.sendInterval()).

@@ -703,7 +703,7 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 		if c.server { // only client can roam
 			if !reflect.DeepEqual(raddr, c.remoteAddr) {
 				c.remoteAddr = raddr
-				util.Log.With("remoteAddr", c.remoteAddr).Info("server now attached to client")
+				util.Log.With("remoteAddr", c.remoteAddr).Info("#recvOne server now attached to client")
 			}
 		}
 
@@ -751,12 +751,12 @@ func (c *Connection) send(s string) (sendError error) {
 	// }
 	if c.server {
 		bytesSent, _, err = conn.WriteMsgUDP(p, nil, c.remoteAddr.(*net.UDPAddr)) // server
-		// util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
-		// 	With("remoteAddr", c.remoteAddr).Debug("send message")
+		util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
+			With("remoteAddr", c.remoteAddr).Debug("send message")
 	} else {
 		bytesSent, _, err = conn.WriteMsgUDP(p, nil, nil) // client connection is connected
-		// util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
-		// 	With("remoteAddr", conn.(net.Conn).RemoteAddr()).Debug("send message")
+		util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
+			With("remoteAddr", conn.(net.Conn).RemoteAddr()).Debug("send message")
 	}
 
 	if err != nil {
@@ -777,8 +777,8 @@ func (c *Connection) send(s string) (sendError error) {
 	if c.server {
 		if now-c.lastHeard > SERVER_ASSOCIATION_TIMEOUT {
 			c.hasRemoteAddr = false
-			// c.logW.Printf("#send server now detached from client: [%s]\n", c.remoteAddr)
-			util.Log.With("remote addr", c.remoteAddr).Warn("#send server now detached from client")
+			util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
+				With("remote addr", c.remoteAddr).Warn("#send server now detached from client")
 		}
 	} else {
 		if now-c.lastPortChoice > PORT_HOP_INTERVAL && now-c.lastRoundtripSuccess > PORT_HOP_INTERVAL {
@@ -814,8 +814,8 @@ func (c *Connection) Recv(timeout int) (payload string, err error) {
 			}
 		}
 
-		// util.Log.With("i", i).With("localAddr", c.socks[i].(net.Conn).LocalAddr()).
-		// 	With("remoteAddr", c.remoteAddr).With("payload", len(payload)).Debug("got message")
+		util.Log.With("i", i).With("localAddr", c.socks[i].(net.Conn).LocalAddr()).
+			With("remoteAddr", c.remoteAddr).With("payload", len(payload)).Debug("got message")
 		c.pruneSockets()
 		return
 	}
