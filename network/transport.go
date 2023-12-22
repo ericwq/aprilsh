@@ -333,6 +333,8 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		// 	With("nextSendTime", t.sender.nextSendTime).
 		// 	With("time", newState.GetTimestamp()%10000).
 		// 	Debug("got message")
+	} else {
+		util.Log.Debug("addFragment return false")
 	}
 	return nil
 }

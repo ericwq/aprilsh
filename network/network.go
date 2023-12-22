@@ -731,6 +731,7 @@ func (c *Connection) send(s string) (sendError error) {
 	c.Lock()
 	defer c.Unlock()
 
+	// check hibernate case
 	if !c.hasRemoteAddr {
 		return
 	}
@@ -760,8 +761,7 @@ func (c *Connection) send(s string) (sendError error) {
 	}
 
 	if err != nil {
-		sendError = fmt.Errorf("#send write: %s", err)
-		return
+		return fmt.Errorf("#send write: %w", err)
 	}
 	if bytesSent != len(p) {
 		// Make sendto() failure available to the frontend.
@@ -778,14 +778,14 @@ func (c *Connection) send(s string) (sendError error) {
 		if now-c.lastHeard > SERVER_ASSOCIATION_TIMEOUT {
 			c.hasRemoteAddr = false
 			util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
-				With("remote addr", c.remoteAddr).Warn("#send server now detached from client")
+				With("remoteAddr", c.remoteAddr).Warn("#send server now detached from client")
 		}
 	} else {
 		if now-c.lastPortChoice > PORT_HOP_INTERVAL && now-c.lastRoundtripSuccess > PORT_HOP_INTERVAL {
 			c.hopPort()
+			// conn = c.sock() // use the new connection
 		}
 	}
-
 	return
 }
 
@@ -813,7 +813,8 @@ func (c *Connection) Recv(timeout int) (payload string, err error) {
 		}
 
 		util.Log.With("i", i).With("localAddr", c.socks[i].(net.Conn).LocalAddr()).
-			With("remoteAddr", c.remoteAddr).With("payload", len(payload)).Debug("got message")
+			With("remoteAddr", c.remoteAddr).With("payload", len(payload)).
+			With("hasRemoteAddr", c.hasRemoteAddr).With("err", err).Debug("got message")
 		c.pruneSockets()
 		return
 	}
