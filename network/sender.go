@@ -202,17 +202,13 @@ func (ts *TransportSender[T]) sendInFragments(diff string, newNum uint64) error 
 	inst.Diff = []byte(diff)
 	inst.Chaff = []byte(ts.makeChaff())
 
-	var err error
-	err = ts.sendFragments(&inst, newNum)
-
-	if ts.verbose > 0 {
-		util.Log.With("sentStates", ts.getSentStateList()).
-			With("diffLength", len(diff)).
-			With("SRTT", ts.connection.getSRTT()).
-			Debug("send message")
-		// return ts.sendFragments(&inst, newNum)
-	}
-	return err
+	// var err error
+	// err = ts.sendFragments(&inst, newNum)
+	//
+	// if ts.verbose > 0 {
+	// }
+	// return err
+	return ts.sendFragments(&inst, newNum)
 }
 
 func (ts *TransportSender[T]) getSentStateList() string {
@@ -244,6 +240,10 @@ func (ts *TransportSender[T]) sendFragments(inst *pb.Instruction, newNum uint64)
 				With("OldNum", inst.OldNum).
 				With("AckNum", inst.AckNum).
 				With("ThrowawayNum", inst.ThrowawayNum).
+				Debug("send message")
+			util.Log.With("sentStates", ts.getSentStateList()).
+				With("diffLength", len(inst.Diff)).
+				With("SRTT", ts.connection.getSRTT()).
 				Debug("send message")
 			// util.Log.With("time", (time.Now().UnixMilli()%100000)).
 			// 	With("fragmentsID", fragments[i].id).
