@@ -745,11 +745,7 @@ func (c *Connection) send(s string) (sendError error) {
 		bytesSent int
 		err       error
 	)
-	// if c.server {
-	// 	bytesSent, err = conn.WriteToUDP(p, c.remoteAddr.(*net.UDPAddr))
-	// } else {
-	// 	bytesSent, err = conn.Write(p) // only client connection is connected.
-	// }
+
 	if c.server {
 		bytesSent, _, err = conn.WriteMsgUDP(p, nil, c.remoteAddr.(*net.UDPAddr)) // server
 		util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
@@ -783,7 +779,6 @@ func (c *Connection) send(s string) (sendError error) {
 	} else {
 		if now-c.lastPortChoice > PORT_HOP_INTERVAL && now-c.lastRoundtripSuccess > PORT_HOP_INTERVAL {
 			c.hopPort()
-			// conn = c.sock() // use the new connection
 		}
 	}
 	return
