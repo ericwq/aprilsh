@@ -659,63 +659,68 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 		}
 	}
 
-	if p.seq >= c.expectedReceiverSeq { // don't use out-of-order packets for timestamp or targeting
-		// this is security-sensitive because a replay attack could otherwise screw up the timestamp and targeting
-		c.expectedReceiverSeq = p.seq + 1
-
-		// fmt.Printf("#recvOne seq=%d, timestamp=%d, timestampReply=%d\n", p.seq, p.timestamp, p.timestampReply)
-		if p.timestamp != math.MaxInt16 {
-			c.savedTimestamp = int16(p.timestamp)
-			c.savedTimestampReceivedAt = time.Now().UnixMilli()
-
-			// fmt.Printf("#recvOne savedTimestamp=%d, savedTimestampReceivedAt=%d\n", c.savedTimestamp, c.savedTimestampReceivedAt)
-			if congestionExperienced {
-				// signal counterparty to slow down
-				// this will gradually slow the counterparty down to the minimum frame rate
-				c.savedTimestamp -= CONGESTION_TIMESTAMP_PENALTY
-				if c.server {
-					// c.logW.Println("#recvOne received explicit congestion notification.")
-					util.Log.Warn("#recvOne received explicit congestion notification")
-				}
-			}
-		}
-
-		if p.timestampReply != 0 { // -1 in c++
-			now16 := timestamp16()
-			R := float64(timestampDiff(now16, p.timestampReply))
-
-			if R < 5000 { // ignore large values, e.g. server was Ctrl-Zed
-				// see https://datatracker.ietf.org/doc/html/rfc2988 for the algorithm
-				if !c.RTTHit { // first measurement
-					c.SRTT = R
-					c.RTTVAR = R / 2
-					c.RTTHit = true
-				} else {
-					alpha := 1.0 / 8.0
-					beta := 1.0 / 4.0
-
-					c.RTTVAR = (1-beta)*c.RTTVAR + (beta * math.Abs(c.SRTT-R))
-					c.SRTT = (1-alpha)*c.SRTT + (alpha * R)
-				}
-			}
-		}
-
-		// auto-adjust to remote host
+	if p.seq < c.expectedReceiverSeq {
+		// don't use (but do return) out-of-order packets for timestamp or targeting
 		c.hasRemoteAddr = true
-		c.lastHeard = time.Now().UnixMilli()
+		util.Log.With("expectedReceiverSeq", c.expectedReceiverSeq).With("got", p.seq).
+			Warn("#recvOne received explicit out-of-order packets")
+		return string(p.payload), nil
+	}
+	// this is security-sensitive because a replay attack could otherwise screw up the timestamp and targeting
+	c.expectedReceiverSeq = p.seq + 1
 
-		if c.server { // only client can roam
-			if !reflect.DeepEqual(raddr, c.remoteAddr) {
-				c.remoteAddr = raddr
-				util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
-					With("remoteAddr", c.remoteAddr).With("hasRemoteAddr", c.hasRemoteAddr).
-					Info("#recvOne server now attached to client")
+	// fmt.Printf("#recvOne seq=%d, timestamp=%d, timestampReply=%d\n", p.seq, p.timestamp, p.timestampReply)
+	if p.timestamp != math.MaxUint16 {
+		c.savedTimestamp = int16(p.timestamp)
+		c.savedTimestampReceivedAt = time.Now().UnixMilli()
+
+		// fmt.Printf("#recvOne savedTimestamp=%d, savedTimestampReceivedAt=%d\n", c.savedTimestamp, c.savedTimestampReceivedAt)
+		if congestionExperienced {
+			// signal counterparty to slow down
+			// this will gradually slow the counterparty down to the minimum frame rate
+			c.savedTimestamp -= CONGESTION_TIMESTAMP_PENALTY
+			if c.server {
+				// c.logW.Println("#recvOne received explicit congestion notification.")
+				util.Log.Warn("#recvOne received explicit congestion notification")
 			}
 		}
-
-		// util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
-		// 	With("remoteAddr", c.remoteAddr).Debug("recvOne")
 	}
+
+	if p.timestampReply != math.MaxUint16 { // -1 in c++
+		now16 := timestamp16()
+		R := float64(timestampDiff(now16, p.timestampReply))
+
+		if R < 5000 { // ignore large values, e.g. server was Ctrl-Zed
+			// see https://datatracker.ietf.org/doc/html/rfc2988 for the algorithm
+			if !c.RTTHit { // first measurement
+				c.SRTT = R
+				c.RTTVAR = R / 2
+				c.RTTHit = true
+			} else {
+				alpha := 1.0 / 8.0
+				beta := 1.0 / 4.0
+
+				c.RTTVAR = (1-beta)*c.RTTVAR + (beta * math.Abs(c.SRTT-R))
+				c.SRTT = (1-alpha)*c.SRTT + (alpha * R)
+			}
+		}
+	}
+
+	// auto-adjust to remote host
+	c.hasRemoteAddr = true
+	c.lastHeard = time.Now().UnixMilli()
+
+	if c.server { // only client can roam
+		if !reflect.DeepEqual(raddr, c.remoteAddr) {
+			c.remoteAddr = raddr
+			util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
+				With("remoteAddr", c.remoteAddr).With("hasRemoteAddr", c.hasRemoteAddr).
+				Info("#recvOne server now attached to client")
+		}
+	}
+
+	// util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
+	// 	With("remoteAddr", c.remoteAddr).Debug("recvOne")
 
 	return string(p.payload), nil // we do return out-of-order or duplicated packets to caller
 }
