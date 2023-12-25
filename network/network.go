@@ -707,7 +707,9 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 		if c.server { // only client can roam
 			if !reflect.DeepEqual(raddr, c.remoteAddr) {
 				c.remoteAddr = raddr
-				util.Log.With("remoteAddr", c.remoteAddr).Info("#recvOne server now attached to client")
+				util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
+					With("remoteAddr", c.remoteAddr).With("hasRemoteAddr", c.hasRemoteAddr).
+					Info("#recvOne server now attached to client")
 			}
 		}
 
@@ -735,8 +737,11 @@ func (c *Connection) send(s string) (sendError error) {
 	c.Lock()
 	defer c.Unlock()
 
+	conn := c.sock()
 	// check hibernate case
 	if !c.hasRemoteAddr {
+		util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
+			With("remoteAddr", c.remoteAddr).With("hasRemoteAddr", c.hasRemoteAddr).Debug("send message")
 		return
 	}
 
@@ -744,7 +749,6 @@ func (c *Connection) send(s string) (sendError error) {
 	p := c.session.Encrypt(px.toMessage())
 
 	// write data back to remote
-	conn := c.sock()
 	var (
 		bytesSent int
 		err       error
