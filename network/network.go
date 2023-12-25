@@ -535,6 +535,7 @@ func (c *Connection) newPacket(payload string) *Packet {
 
 // reconnect server with new local address
 func (c *Connection) hopPort() {
+	c.printSocks("before hopPort")
 	c.setup()
 
 	host, port, _ := net.SplitHostPort(c.remoteAddr.String())
@@ -545,18 +546,21 @@ func (c *Connection) hopPort() {
 	}
 
 	c.pruneSockets()
+	c.printSocks("after hopPort")
 }
 
-// func (c *Connection) printSocks() {
-// 	// print socks
-// 	for i := range c.socks {
-// 		var x net.Conn
-//
-// 		x = c.socks[i].(net.Conn)
-// 		util.Log.With("i", i).With("localAddr", x.LocalAddr()).
-// 			With("remoteAddr", x.RemoteAddr()).Debug("printSocks")
-// 	}
-// }
+func (c *Connection) printSocks(postfix string) {
+	// print socks
+
+	str := fmt.Sprintf("printSocks %s", postfix)
+	for i := range c.socks {
+		var x net.Conn
+
+		x = c.socks[i].(net.Conn)
+		util.Log.With("i", i).With("localAddr", x.LocalAddr()).
+			With("remoteAddr", x.RemoteAddr()).Debug(str)
+	}
+}
 
 // return the last udp connection
 func (c *Connection) sock() udpConn {
