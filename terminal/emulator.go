@@ -534,8 +534,13 @@ func (emu *Emulator) GetParser() *Parser {
 	return emu.parser
 }
 
-// check hander which will generate response. return true if excluded,
-// otherwise false.
+// check hander which will generate response. return true if excluded, otherwise false.
+//
+// hd: control sequence handler
+//
+// before: the response length before handler.
+//
+// after: the response length after handler.
 func (emu *Emulator) excludeHandler(hd *Handler, before int, after int) bool {
 	switch hd.id {
 	case CSI_DSR, CSI_priDA, CSI_secDA, DCS_DECRQSS:
