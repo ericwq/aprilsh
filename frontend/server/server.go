@@ -510,7 +510,7 @@ func beginClientConn(conf *Config) { //(port string, term string) {
 // worker started by mainSrv.run(). worker will listen on specified port and
 // forward user input to shell (started by runWorker. the output is forward
 // to the network.
-func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err error) {
+func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err error) {
 	defer func() {
 		// notify this worker is done
 		exChan <- conf.desiredPort
@@ -595,7 +595,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	if err != nil {
 		// logW.Printf("#runWorker openPTS fail: %s\n", err)
 		util.Log.With("error", err).Warn("openPTS fail")
-		whChan <- &workhorse{}
+		whChan <- workhorse{}
 		return err
 	}
 	defer func() {
@@ -630,7 +630,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 	if err != nil {
 		// logW.Printf("#runWorker startShell fail: %s\n", err)
 		util.Log.With("error", err).Warn("startShell fail")
-		whChan <- &workhorse{}
+		whChan <- workhorse{}
 	} else {
 		// add utmp entry
 		ptmxName := ptmx.Name() // TODO remove it?
@@ -641,7 +641,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan *workhorse) (err er
 		// update last log
 		util.UpdateLastLog(ptmxName, getCurrentUser(), utmpHost) // TODO use pts.Name() or ptmx name?
 
-		whChan <- &workhorse{shell, ptmx}
+		whChan <- workhorse{shell, ptmx}
 
 		// wait for the shell to finish.
 		var state *os.ProcessState
@@ -1214,15 +1214,15 @@ func warnUnattached(w io.Writer, ignoreHost string) {
 }
 
 type mainSrv struct {
-	workers   map[int]*workhorse
-	runWorker func(*Config, chan string, chan *workhorse) error // worker
-	exChan    chan string                                       // worker done or passing key
-	whChan    chan *workhorse                                   // workhorse
-	downChan  chan bool                                         // shutdown mainSrv
-	maxPort   int                                               // max worker port
-	timeout   int                                               // read udp time out,
-	port      int                                               // main listen port
-	conn      *net.UDPConn                                      // mainSrv listen port
+	workers   map[int]workhorse
+	runWorker func(*Config, chan string, chan workhorse) error // worker
+	exChan    chan string                                      // worker done or passing key
+	whChan    chan workhorse                                   // workhorse
+	downChan  chan bool                                        // shutdown mainSrv
+	maxPort   int                                              // max worker port
+	timeout   int                                              // read udp time out,
+	port      int                                              // main listen port
+	conn      *net.UDPConn                                     // mainSrv listen port
 	wg        sync.WaitGroup
 }
 
@@ -1231,15 +1231,15 @@ type workhorse struct {
 	ptmx  *os.File
 }
 
-func newMainSrv(conf *Config, runWorker func(*Config, chan string, chan *workhorse) error) *mainSrv {
+func newMainSrv(conf *Config, runWorker func(*Config, chan string, chan workhorse) error) *mainSrv {
 	m := mainSrv{}
 	m.runWorker = runWorker
 	m.port, _ = strconv.Atoi(conf.desiredPort)
 	m.maxPort = m.port + 1
-	m.workers = make(map[int]*workhorse)
+	m.workers = make(map[int]workhorse)
 	m.downChan = make(chan bool, 1)
 	m.exChan = make(chan string, 1)
-	m.whChan = make(chan *workhorse, 1)
+	m.whChan = make(chan workhorse, 1)
 	m.timeout = 20
 
 	return &m
@@ -1427,10 +1427,10 @@ func (m *mainSrv) run(conf *Config) {
 
 			// start the worker
 			m.wg.Add(1)
-			go func() {
-				m.runWorker(&conf2, m.exChan, m.whChan)
+			go func(conf *Config, exChan chan string, whChan chan workhorse) {
+				m.runWorker(conf, exChan, whChan)
 				m.wg.Done()
-			}()
+			}(&conf2, m.exChan, m.whChan)
 
 			// blocking read the key from worker
 			key := <-m.exChan

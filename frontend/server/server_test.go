@@ -949,7 +949,7 @@ func TestStartFail(t *testing.T) {
 
 // the mock runWorker send the key, pause some time and close the
 // worker by send finish message
-func mockRunWorker(conf *Config, exChan chan string, whChan chan *workhorse) error {
+func mockRunWorker(conf *Config, exChan chan string, whChan chan workhorse) error {
 	// send the mock key
 	// fmt.Println("#mockRunWorker send mock key to run().")
 	exChan <- "This is the mock key"
@@ -957,7 +957,7 @@ func mockRunWorker(conf *Config, exChan chan string, whChan chan *workhorse) err
 	// pause some time
 	time.Sleep(time.Duration(2) * time.Millisecond)
 
-	whChan <- &workhorse{}
+	whChan <- workhorse{}
 
 	// notify the server
 	// fmt.Println("#mockRunWorker finish run().")
@@ -967,7 +967,7 @@ func mockRunWorker(conf *Config, exChan chan string, whChan chan *workhorse) err
 
 // the mock runWorker send the key, pause some time and try to close the
 // worker by send wrong finish message: port+"x"
-func mockRunWorker2(conf *Config, exChan chan string, whChan chan *workhorse) error {
+func mockRunWorker2(conf *Config, exChan chan string, whChan chan workhorse) error {
 	// send the mock key
 	exChan <- "mock key from mockRunWorker2"
 
@@ -977,7 +977,7 @@ func mockRunWorker2(conf *Config, exChan chan string, whChan chan *workhorse) er
 	// fail to stop the worker on purpose
 	exChan <- conf.desiredPort + "x"
 
-	whChan <- &workhorse{}
+	whChan <- workhorse{}
 
 	return nil
 }
@@ -1493,7 +1493,7 @@ func TestRunWorkerFail(t *testing.T) {
 	}
 
 	exChan := make(chan string, 1)
-	whChan := make(chan *workhorse, 1)
+	whChan := make(chan workhorse, 1)
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
@@ -1884,39 +1884,39 @@ func TestGetAvailablePort(t *testing.T) {
 		max        int // pre-condition before getAvailabePort
 		expectPort int
 		expectMax  int
-		workers    map[int]*workhorse
+		workers    map[int]workhorse
 	}{
 		{
 			"empty worker list", 6001, 6001, 6002,
-			map[int]*workhorse{},
+			map[int]workhorse{},
 		},
 		{
 			"lart gap empty worker", 6008, 6001, 6002,
-			map[int]*workhorse{},
+			map[int]workhorse{},
 		},
 		{
 			"add one port", 6002, 6002, 6003,
-			map[int]*workhorse{6001: nil},
+			map[int]workhorse{6001: {}},
 		},
 		{
 			"shrink max", 6013, 6002, 6003,
-			map[int]*workhorse{6001: nil},
+			map[int]workhorse{6001: {}},
 		},
 		{
 			"right most", 6004, 6004, 6005,
-			map[int]*workhorse{6001: nil, 6002: nil, 6003: nil},
+			map[int]workhorse{6001: {}, 6002: {}, 6003: {}},
 		},
 		{
 			"left most", 6006, 6001, 6006,
-			map[int]*workhorse{6003: nil, 6004: nil, 6005: nil},
+			map[int]workhorse{6003: {}, 6004: {}, 6005: {}},
 		},
 		{
 			"middle hole", 6009, 6004, 6009,
-			map[int]*workhorse{6001: nil, 6002: nil, 6003: nil, 6008: nil},
+			map[int]workhorse{6001: {}, 6002: {}, 6003: {}, 6008: {}},
 		},
 		{
 			"border shape hole", 6019, 6002, 6019,
-			map[int]*workhorse{6001: nil, 6018: nil},
+			map[int]workhorse{6001: {}, 6018: {}},
 		},
 	}
 
@@ -1979,9 +1979,9 @@ func BenchmarkGetAvailablePort(b *testing.B) {
 
 	conf := &Config{desiredPort: "100"}
 	srv := newMainSrv(conf, mockRunWorker)
-	srv.workers[100] = &workhorse{nil, os.Stderr}
-	srv.workers[101] = &workhorse{nil, os.Stdout}
-	srv.workers[102] = &workhorse{nil, os.Stdin}
+	srv.workers[100] = workhorse{nil, os.Stderr}
+	srv.workers[101] = workhorse{nil, os.Stdout}
+	srv.workers[102] = workhorse{nil, os.Stdin}
 
 	srv.maxPort = 102
 
