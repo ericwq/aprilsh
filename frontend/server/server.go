@@ -974,14 +974,17 @@ mainLoop:
 			break
 		}
 
+		// update utmp if has been more than 16 minutes since heard from client
+		// if utmpSupport && connectedUtmp && timeSinceRemoteState > 30000 {
 		// update utmp if has been more than 30 seconds since heard from client
-		if utmpSupport && connectedUtmp && timeSinceRemoteState > 30000 {
+		if utmpSupport && connectedUtmp && timeSinceRemoteState > 960000 {
 			util.ClearUtmpx(ptmx)
 
 			newHost := fmt.Sprintf("%s [%d]", frontend.CommandServerName, os.Getpid())
 			util.AddUtmpx(ptmx, newHost)
 
 			connectedUtmp = false
+			util.Log.Info("serve doesn't heard from client over 16 minutes.")
 		}
 
 		if complete.SetEchoAck(now) && !network.ShutdownInProgress() {

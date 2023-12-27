@@ -661,7 +661,7 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 
 	if p.seq < c.expectedReceiverSeq {
 		// don't use (but do return) out-of-order packets for timestamp or targeting
-		c.hasRemoteAddr = true
+		// c.hasRemoteAddr = true
 		util.Log.With("expectedReceiverSeq", c.expectedReceiverSeq).With("got", p.seq).
 			Warn("#recvOne received explicit out-of-order packets")
 		return string(p.payload), nil
