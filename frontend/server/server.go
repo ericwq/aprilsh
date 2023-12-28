@@ -698,6 +698,12 @@ func serve(ptmx *os.File, pw *io.PipeWriter, complete *statesync.Complete, // wa
 	var forceConnectionChangEvt bool
 	var savedAddr net.Addr
 
+	var userName string
+	if syslogSupport {
+		userName = getCurrentUser()
+		util.Log.With("user", userName).Info("user session begin")
+	}
+
 	var terminalToHost strings.Builder
 	var timeSinceRemoteState int64
 
@@ -835,39 +841,43 @@ mainLoop:
 					network.SetCurrentState(complete)
 				}
 
-				if utmpSupport {
-					if !connectedUtmp {
-						forceConnectionChangEvt = true
+				if utmpSupport || syslogSupport {
+					if utmpSupport {
+						if !connectedUtmp {
+							forceConnectionChangEvt = true
+						} else {
+							forceConnectionChangEvt = false
+						}
 					} else {
 						forceConnectionChangEvt = false
 					}
-				} else {
-					forceConnectionChangEvt = false
-				}
 
-				// HAVE_UTEMPTER - update utmp entry if we have become "connected"
-				// HAVE_SYSLOG - log connection information to syslog
-				//
-				// update utmp entry if we have become "connected"
-				if forceConnectionChangEvt || !reflect.DeepEqual(savedAddr, network.GetRemoteAddr()) {
+					// HAVE_UTEMPTER - update utmp entry if we have become "connected"
+					// HAVE_SYSLOG - log connect to syslog
+					//
+					// update utmp entry if we have become "connected"
+					var host string
+					if forceConnectionChangEvt || !reflect.DeepEqual(savedAddr, network.GetRemoteAddr()) {
+						savedAddr = network.GetRemoteAddr()
+						// convert savedAddr to host name
+						host = savedAddr.String() // default host name is ip string
+						hostList, e := net.LookupAddr(host)
+						if e == nil {
+							host = hostList[0] // got the host name, use the first one
+						}
 
-					util.ClearUtmpx(ptmx)
+						if utmpSupport {
+							util.ClearUtmpx(ptmx)
+							newHost := fmt.Sprintf("%s via %s [%d]", host, frontend.CommandServerName, os.Getpid())
+							util.AddUtmpx(ptmx, newHost)
 
-					// convert savedAddr to host name
-					savedAddr = network.GetRemoteAddr()
-					host := savedAddr.String() // default host name is ip string
-					hostList, e := net.LookupAddr(host)
-					if e == nil {
-						host = hostList[0] // got the host name, use the first one
+							connectedUtmp = true
+						}
+						if syslogSupport {
+							util.Log.With("user", userName).With("host", host).Info("connected from remote host")
+						}
 					}
-					newHost := fmt.Sprintf("%s via %s [%d]", host, frontend.CommandServerName, os.Getpid())
-
-					util.AddUtmpx(ptmx, newHost)
-
-					connectedUtmp = true
 				}
-
-				// TODO syslog?
 
 				// upon receive network message, perform the following one time action,
 				// release startShell() to start login session
@@ -974,17 +984,14 @@ mainLoop:
 			break
 		}
 
-		// update utmp if has been more than 16 minutes since heard from client
-		// if utmpSupport && connectedUtmp && timeSinceRemoteState > 30000 {
 		// update utmp if has been more than 30 seconds since heard from client
-		if utmpSupport && connectedUtmp && timeSinceRemoteState > 960000 {
+		if utmpSupport && connectedUtmp && timeSinceRemoteState > 30000 {
 			util.ClearUtmpx(ptmx)
-
 			newHost := fmt.Sprintf("%s [%d]", frontend.CommandServerName, os.Getpid())
 			util.AddUtmpx(ptmx, newHost)
 
 			connectedUtmp = false
-			util.Log.Info("serve doesn't heard from client over 16 minutes.")
+			// util.Log.Info("serve doesn't heard from client over 16 minutes.")
 		}
 
 		if complete.SetEchoAck(now) && !network.ShutdownInProgress() {
@@ -1029,6 +1036,9 @@ mainLoop:
 
 	// notify the runWorker
 	// waitChan <- true
+	if syslogSupport {
+		util.Log.With("user", userName).Info("user session end")
+	}
 
 	return nil
 }
