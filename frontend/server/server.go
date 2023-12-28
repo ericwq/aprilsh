@@ -633,9 +633,12 @@ func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err err
 		whChan <- workhorse{}
 	} else {
 		// add utmp entry
-		ptmxName := ptmx.Name() // TODO remove it?
+		ptmxName := ptmx.Name()
 		if utmpSupport {
-			util.AddUtmpx(ptmx, utmpHost)
+			ok := util.AddUtmpx(ptmx, utmpHost)
+			if !ok {
+				utmpSupport = false
+			}
 		}
 
 		// update last log
@@ -867,11 +870,16 @@ mainLoop:
 						}
 
 						if utmpSupport {
-							util.ClearUtmpx(ptmx)
-							newHost := fmt.Sprintf("%s via %s [%d]", host, frontend.CommandServerName, os.Getpid())
-							util.AddUtmpx(ptmx, newHost)
+							ok := util.ClearUtmpx(ptmx)
+							if !ok {
+								utmpSupport = false
+								util.Log.Warn("#serve can't update utmp")
+							} else {
+								newHost := fmt.Sprintf("%s via %s [%d]", host, frontend.CommandServerName, os.Getpid())
+								util.AddUtmpx(ptmx, newHost)
 
-							connectedUtmp = true
+								connectedUtmp = true
+							}
 						}
 						if syslogSupport {
 							util.Log.With("user", userName).With("host", host).Info("connected from remote host")
