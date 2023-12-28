@@ -37,19 +37,6 @@ import (
 	"log/slog"
 )
 
-var (
-	userCurrentTest = false
-	getShellTest    = false
-	buildConfigTest = false
-)
-
-var (
-	utmpSupport   bool
-	syslogSupport bool
-	signals       frontend.Signals
-	maxPortLimit  = 100 // assume 10 concurrent users, each owns 10 connections
-)
-
 const (
 	_PATH_BSHELL = "/bin/sh"
 
@@ -58,15 +45,6 @@ const (
 	_VERBOSE_SKIP_READ_PIPE   = 101 // skip start shell message
 	_VERBOSE_LOG_TO_SYSLOG    = 514 // log to syslog
 )
-
-func init() {
-	utmpSupport = utmp.HasUtmpSupport()
-}
-
-func printVersion() {
-	fmt.Printf("%s (%s) [build %s]\n\n", frontend.CommandServerName, frontend.AprilshPackageName, frontend.BuildVersion)
-	fmt.Printf(frontend.VersionInfo)
-}
 
 var usage = `Usage:
   ` + frontend.CommandServerName + ` [-v] [-h] [--auto N]
@@ -87,103 +65,20 @@ Options:
       -- command  shell command and options (note the space before command)
 `
 
-func printUsage(hint, usage string) {
-	if hint != "" {
-		fmt.Printf("Hints: %s\n%s", hint, usage)
-	} else {
-		fmt.Printf("%s", usage)
-	}
-}
+var failToStartShell = errors.New("fail to start shell")
 
-// Print the motd from a given file, if available
-func printMotd(w io.Writer, filename string) bool {
-	// fmt.Printf("#printMotd print %q\n", filename)
-	// https://zetcode.com/golang/readfile/
+var (
+	userCurrentTest = false
+	getShellTest    = false
+	buildConfigTest = false
+)
 
-	motd, err := os.Open(filename)
-	if err != nil {
-		return false
-	}
-	defer motd.Close()
-
-	// read line by line, print each line to writer
-	scanner := bufio.NewScanner(motd)
-	for scanner.Scan() {
-		fmt.Fprintf(w, "%s\n", scanner.Text())
-	}
-
-	if err := scanner.Err(); err != nil {
-		return false
-	}
-
-	return true
-}
-
-func chdirHomedir(home string) bool {
-	var err error
-	if home == "" {
-		home, err = os.UserHomeDir()
-		if err != nil {
-			return false
-		}
-	}
-
-	err = os.Chdir(home)
-	if err != nil {
-		return false
-	}
-	os.Setenv("PWD", home)
-
-	return true
-}
-
-// get current user home directory
-func getHomeDir() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-
-	return home
-}
-
-func motdHushed() bool {
-	// must be in home directory already
-	_, err := os.Lstat(".hushlogin")
-	if err != nil {
-		return false
-	}
-
-	return true
-}
-
-// extract server ip addresss from SSH_CONNECTION
-func getSSHip() (string, bool) {
-	env := os.Getenv("SSH_CONNECTION")
-	if len(env) == 0 { // Older sshds don't set this
-		return fmt.Sprintf("Warning: SSH_CONNECTION not found; binding to any interface."), false
-	}
-
-	// SSH_CONNECTION' Identifies the client and server ends of the connection.
-	// The variable contains four space-separated values: client IP address,
-	// client port number, server IP address, and server port number.
-	//
-	// ipv4 sample: SSH_CONNECTION=172.17.0.1 58774 172.17.0.2 22
-	sshConn := strings.Split(env, " ")
-	if len(sshConn) != 4 {
-		return fmt.Sprintf("Warning: Could not parse SSH_CONNECTION; binding to any interface."), false
-	}
-
-	localInterfaceIP := strings.ToLower(sshConn[2])
-	prefixIPv6 := "::ffff:"
-
-	// fmt.Printf("#getSSHip localInterfaceIP=%q, prefixIPv6=%q\n", localInterfaceIP, prefixIPv6)
-	if len(localInterfaceIP) > len(prefixIPv6) && strings.HasPrefix(localInterfaceIP, prefixIPv6) {
-		return localInterfaceIP[len(prefixIPv6):], true
-	}
-
-	return localInterfaceIP, true
-}
+var (
+	utmpSupport   bool
+	syslogSupport bool
+	signals       frontend.Signals
+	maxPortLimit  = 100 // assume 10 concurrent users, each owns 10 connections
+)
 
 // https://www.antoniojgutierrez.com/posts/2021-05-14-short-and-long-options-in-go-flags-pkg/
 type localeFlag map[string]string
@@ -204,66 +99,6 @@ func (lv *localeFlag) Set(value string) error {
 
 func (lv *localeFlag) IsBoolFlag() bool {
 	return false
-}
-
-// parseFlags parses the command-line arguments provided to the program.
-// Typically os.Args[0] is provided as 'progname' and os.args[1:] as 'args'.
-// Returns the Config in case parsing succeeded, or an error. In any case, the
-// output of the flag.Parse is returned in output.
-// A special case is usage requests with -h or -help: then the error
-// flag.ErrHelp is returned and output will contain the usage message.
-func parseFlags(progname string, args []string) (config *Config, output string, err error) {
-	// https://eli.thegreenplace.net/2020/testing-flag-parsing-in-go-programs/
-	flagSet := flag.NewFlagSet(progname, flag.ContinueOnError)
-	var buf bytes.Buffer
-	flagSet.SetOutput(&buf)
-
-	var conf Config
-	conf.locales = make(localeFlag)
-	conf.commandArgv = []string{}
-
-	flagSet.IntVar(&conf.verbose, "verbose", 0, "verbose output")
-
-	flagSet.IntVar(&conf.autoStop, "auto", 0, "auto stop after N seconds")
-	flagSet.IntVar(&conf.autoStop, "a", 0, "auto stop after N seconds")
-
-	flagSet.BoolVar(&conf.version, "version", false, "print version information")
-	flagSet.BoolVar(&conf.version, "v", false, "print version information")
-
-	flagSet.BoolVar(&conf.begin, "begin", false, "begin a client connection")
-	flagSet.BoolVar(&conf.begin, "b", false, "begin a client connection")
-
-	flagSet.BoolVar(&conf.server, "server", false, "listen with SSH ip")
-	flagSet.BoolVar(&conf.server, "s", false, "listen with SSH ip")
-
-	flagSet.StringVar(&conf.desiredIP, "ip", "", "listen ip")
-	flagSet.StringVar(&conf.desiredIP, "i", "", "listen ip")
-
-	flagSet.StringVar(&conf.desiredPort, "port", "60000", "listen port range")
-	flagSet.StringVar(&conf.desiredPort, "p", "60000", "listen port range")
-
-	flagSet.StringVar(&conf.term, "term", "", "client TERM")
-	flagSet.StringVar(&conf.term, "t", "", "client TERM")
-
-	flagSet.StringVar(&conf.target, "target", "", "target string")
-
-	flagSet.Var(&conf.locales, "locale", "locale list, key=value pair")
-	flagSet.Var(&conf.locales, "l", "locale list, key=value pair")
-
-	err = flagSet.Parse(args)
-	if err != nil {
-		return nil, buf.String(), err
-	}
-
-	// check the format of desiredPort
-	// _, err = strconv.Atoi(conf.desiredPort)
-	// if err != nil {
-	// 	return nil, buf.String(), err
-	// }
-
-	// get the non-flag command-line arguments.
-	conf.commandArgv = flagSet.Args()
-	return &conf, buf.String(), nil
 }
 
 type Config struct {
@@ -380,6 +215,10 @@ func (conf *Config) buildConfig() (string, bool) {
 	return "", true
 }
 
+func init() {
+	utmpSupport = utmp.HasUtmpSupport()
+}
+
 // parse the flag first, print help or version based on flag
 // then run the main listening server
 // aprilsh-server should be installed under $HOME/.local/bin
@@ -449,6 +288,169 @@ func main() {
 	srv.wait()
 }
 
+func printVersion() {
+	fmt.Printf("%s (%s) [build %s]\n\n", frontend.CommandServerName, frontend.AprilshPackageName, frontend.BuildVersion)
+	fmt.Printf(frontend.VersionInfo)
+}
+
+func printUsage(hint, usage string) {
+	if hint != "" {
+		fmt.Printf("Hints: %s\n%s", hint, usage)
+	} else {
+		fmt.Printf("%s", usage)
+	}
+}
+
+// Print the motd from a given file, if available
+func printMotd(w io.Writer, filename string) bool {
+	// fmt.Printf("#printMotd print %q\n", filename)
+	// https://zetcode.com/golang/readfile/
+
+	motd, err := os.Open(filename)
+	if err != nil {
+		return false
+	}
+	defer motd.Close()
+
+	// read line by line, print each line to writer
+	scanner := bufio.NewScanner(motd)
+	for scanner.Scan() {
+		fmt.Fprintf(w, "%s\n", scanner.Text())
+	}
+
+	if err := scanner.Err(); err != nil {
+		return false
+	}
+
+	return true
+}
+
+func chdirHomedir(home string) bool {
+	var err error
+	if home == "" {
+		home, err = os.UserHomeDir()
+		if err != nil {
+			return false
+		}
+	}
+
+	err = os.Chdir(home)
+	if err != nil {
+		return false
+	}
+	os.Setenv("PWD", home)
+
+	return true
+}
+
+// get current user home directory
+func getHomeDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ""
+	}
+
+	return home
+}
+
+func motdHushed() bool {
+	// must be in home directory already
+	_, err := os.Lstat(".hushlogin")
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
+// extract server ip addresss from SSH_CONNECTION
+func getSSHip() (string, bool) {
+	env := os.Getenv("SSH_CONNECTION")
+	if len(env) == 0 { // Older sshds don't set this
+		return fmt.Sprintf("Warning: SSH_CONNECTION not found; binding to any interface."), false
+	}
+
+	// SSH_CONNECTION' Identifies the client and server ends of the connection.
+	// The variable contains four space-separated values: client IP address,
+	// client port number, server IP address, and server port number.
+	//
+	// ipv4 sample: SSH_CONNECTION=172.17.0.1 58774 172.17.0.2 22
+	sshConn := strings.Split(env, " ")
+	if len(sshConn) != 4 {
+		return fmt.Sprintf("Warning: Could not parse SSH_CONNECTION; binding to any interface."), false
+	}
+
+	localInterfaceIP := strings.ToLower(sshConn[2])
+	prefixIPv6 := "::ffff:"
+
+	// fmt.Printf("#getSSHip localInterfaceIP=%q, prefixIPv6=%q\n", localInterfaceIP, prefixIPv6)
+	if len(localInterfaceIP) > len(prefixIPv6) && strings.HasPrefix(localInterfaceIP, prefixIPv6) {
+		return localInterfaceIP[len(prefixIPv6):], true
+	}
+
+	return localInterfaceIP, true
+}
+
+// parseFlags parses the command-line arguments provided to the program.
+// Typically os.Args[0] is provided as 'progname' and os.args[1:] as 'args'.
+// Returns the Config in case parsing succeeded, or an error. In any case, the
+// output of the flag.Parse is returned in output.
+// A special case is usage requests with -h or -help: then the error
+// flag.ErrHelp is returned and output will contain the usage message.
+func parseFlags(progname string, args []string) (config *Config, output string, err error) {
+	// https://eli.thegreenplace.net/2020/testing-flag-parsing-in-go-programs/
+	flagSet := flag.NewFlagSet(progname, flag.ContinueOnError)
+	var buf bytes.Buffer
+	flagSet.SetOutput(&buf)
+
+	var conf Config
+	conf.locales = make(localeFlag)
+	conf.commandArgv = []string{}
+
+	flagSet.IntVar(&conf.verbose, "verbose", 0, "verbose output")
+
+	flagSet.IntVar(&conf.autoStop, "auto", 0, "auto stop after N seconds")
+	flagSet.IntVar(&conf.autoStop, "a", 0, "auto stop after N seconds")
+
+	flagSet.BoolVar(&conf.version, "version", false, "print version information")
+	flagSet.BoolVar(&conf.version, "v", false, "print version information")
+
+	flagSet.BoolVar(&conf.begin, "begin", false, "begin a client connection")
+	flagSet.BoolVar(&conf.begin, "b", false, "begin a client connection")
+
+	flagSet.BoolVar(&conf.server, "server", false, "listen with SSH ip")
+	flagSet.BoolVar(&conf.server, "s", false, "listen with SSH ip")
+
+	flagSet.StringVar(&conf.desiredIP, "ip", "", "listen ip")
+	flagSet.StringVar(&conf.desiredIP, "i", "", "listen ip")
+
+	flagSet.StringVar(&conf.desiredPort, "port", "60000", "listen port range")
+	flagSet.StringVar(&conf.desiredPort, "p", "60000", "listen port range")
+
+	flagSet.StringVar(&conf.term, "term", "", "client TERM")
+	flagSet.StringVar(&conf.term, "t", "", "client TERM")
+
+	flagSet.StringVar(&conf.target, "target", "", "target string")
+
+	flagSet.Var(&conf.locales, "locale", "locale list, key=value pair")
+	flagSet.Var(&conf.locales, "l", "locale list, key=value pair")
+
+	err = flagSet.Parse(args)
+	if err != nil {
+		return nil, buf.String(), err
+	}
+
+	// check the format of desiredPort
+	// _, err = strconv.Atoi(conf.desiredPort)
+	// if err != nil {
+	// 	return nil, buf.String(), err
+	// }
+
+	// get the non-flag command-line arguments.
+	conf.commandArgv = flagSet.Args()
+	return &conf, buf.String(), nil
+}
+
 // extract shell name from shellPath and prepend '-' to the returned shell name
 func getShellNameFrom(shellPath string) (shellName string) {
 	shellSplash := strings.LastIndex(shellPath, "/")
@@ -505,6 +507,198 @@ func beginClientConn(conf *Config) { //(port string, term string) {
 	}
 
 	fmt.Printf("%s", string(response[:m]))
+}
+
+func getTimeFrom(env string, def int64) (ret int64) {
+	ret = def
+
+	v, exist := os.LookupEnv(env)
+	if exist {
+		var err error
+		ret, err = strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			fmt.Fprintf(os.Stdout, "%s not a valid integer, ignoring\n", env)
+		} else if ret < 0 {
+			fmt.Fprintf(os.Stdout, "%s is negative, ignoring\n", env)
+			ret = 0
+		}
+	}
+	return
+}
+
+func printWelcome(pid int, port int, tty *os.File) {
+	// fmt.Printf("%s start listening on :%d. build version %s [pid=%d] \n", _COMMAND_NAME, port, BuildVersion, pid)
+	util.Log.With("port", port).With("buildVersion", frontend.BuildVersion).With("pid", pid).
+		Info(frontend.CommandServerName + " start listening on")
+	// fmt.Printf("Copyright 2022~2023 wangqi.\n")
+	// fmt.Printf("%s%s", "Use of this source code is governed by a MIT-style",
+	// 	"license that can be found in the LICENSE file.\n")
+	// logI.Printf("[%s detached, pid=%d]\n", COMMAND_NAME, pid)
+
+	if tty != nil {
+		inputUTF8, err := util.CheckIUTF8(int(tty.Fd()))
+		if err != nil {
+			// fmt.Printf("Warning: %s\n", err)
+			util.Log.Warn(err.Error())
+		}
+
+		if !inputUTF8 {
+			// Input is UTF-8 (since Linux 2.6.4)
+			// fmt.Printf("%s %s %s", "Warning: termios IUTF8 flag not defined.",
+			// 	"Character-erase of multibyte character sequence",
+			// 	"probably does not work properly on this platform.\n")
+
+			msg := fmt.Sprintf("%s %s %s", "Warning: termios IUTF8 flag not defined.",
+				"Character-erase of multibyte character sequence",
+				"probably does not work properly on this platform.")
+			util.Log.Warn(msg)
+		}
+	}
+}
+
+func getCurrentUser() string {
+	user, err := user.Current()
+	if err != nil || userCurrentTest {
+		// logW.Printf("#getCurrentUser report: %s\n", err)
+		util.Log.With("error", err).Warn("Get current user")
+		return ""
+	}
+
+	return user.Username
+}
+
+// open pts master and slave, set terminal size according to window size.
+func openPTS(wsize *unix.Winsize) (ptmx *os.File, pts *os.File, err error) {
+	// open pts master and slave
+	ptmx, pts, err = pty.Open()
+	if wsize == nil {
+		err = errors.New("invalid parameter")
+	}
+	if err == nil {
+		sz := util.ConvertWinsize(wsize)
+		// fmt.Printf("#openPTS sz=%v\n", sz)
+
+		err = pty.Setsize(ptmx, sz) // set terminal size
+	}
+	return
+}
+
+// set IUTF8 flag for pts file. start shell process according to Config.
+func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) (*os.Process, error) {
+	if conf.verbose == _VERBOSE_SKIP_START_SHELL {
+		return nil, failToStartShell
+	}
+	// set IUTF8 if available
+	if err := util.SetIUTF8(int(pts.Fd())); err != nil {
+		return nil, err
+	}
+
+	// set TERM based on client TERM
+	if conf.term != "" {
+		// util.Log.With("term", conf.term).Debug("start shell message")
+		os.Setenv("TERM", conf.term)
+	} else {
+		os.Setenv("TERM", "xterm-256color") // default TERM
+	}
+
+	// clear STY environment variable so GNU screen regards us as top level
+	os.Unsetenv("STY")
+
+	// the following function will set PWD environment variable
+	// chdirHomedir("")
+
+	// ask ncurses to send UTF-8 instead of ISO 2022 for line-drawing chars
+	ncursesEnv := "NCURSES_NO_UTF8_ACS=1"
+	// should be the last statement related to environment variable
+	env := append(os.Environ(), ncursesEnv)
+
+	// set working directory
+	// cmd.Dir = getHomeDir()
+
+	sysProcAttr := &syscall.SysProcAttr{}
+	sysProcAttr.Setsid = true  // start a new session
+	sysProcAttr.Setctty = true // set controlling terminal
+
+	procAttr := os.ProcAttr{
+		Files: []*os.File{pts, pts, pts}, // use pts as stdin, stdout, stderr
+		Dir:   getHomeDir(),
+		Sys:   sysProcAttr,
+		Env:   env,
+	}
+
+	// // open terminal
+	// fmt.Fprintf(pts, "\x1b[?1049h\x1b[22;0;0t\x1b[?1h")
+	//
+	if conf.withMotd && !motdHushed() {
+		// For Ubuntu, try and print one of {,/var}/run/motd.dynamic.
+		// This file is only updated when pam_motd is run, but when
+		// mosh-server is run in the usual way with ssh via the script,
+		// this always happens.
+		// XXX Hackish knowledge of Ubuntu PAM configuration.
+		// But this seems less awful than build-time detection with autoconf.
+		if !printMotd(pts, "/run/motd.dynamic") {
+			printMotd(pts, "/var/run/motd.dynamic")
+		}
+		// Always print traditional /etc/motd.
+		printMotd(pts, "/etc/motd")
+
+		warnUnattached(pts, utmpHost)
+	}
+
+	// set new title
+	fmt.Fprintf(pts, "\x1B]0;%s %s:%s\a", frontend.CommandClientName, conf.target, conf.desiredPort)
+
+	encrypt.ReenableDumpingCore()
+
+	/*
+		additional logic for pty.StartWithAttrs() end
+	*/
+
+	// wait for serve() to release us
+	if pr != nil && conf.verbose != _VERBOSE_SKIP_READ_PIPE {
+		// util.Log.With("action", "wait").Debug("start shell message")
+		buf := make([]byte, 81)
+		for {
+			_, err := pr.Read(buf)
+			if err != nil && errors.Is(err, io.EOF) {
+				// util.Log.With("error", err).Debug("start shell message")
+				break
+			}
+		}
+		pr.Close()
+		// util.Log.With("action", "receive").Debug("start shell message")
+		util.Log.With("pty", pts.Name()).Info("start shell at")
+	}
+
+	proc, err := os.StartProcess(conf.commandPath, conf.commandArgv, &procAttr)
+	if err != nil {
+		return nil, err
+	}
+	return proc, nil
+}
+
+// check unattached session and print warning message if there is any
+// ignore current session
+func warnUnattached(w io.Writer, ignoreHost string) {
+	userName := getCurrentUser()
+
+	// check unattached sessions
+	unatttached := util.CheckUnattachedUtmpx(userName, ignoreHost, frontend.CommandServerName)
+
+	if unatttached == nil || len(unatttached) == 0 {
+		return
+	} else if len(unatttached) == 1 {
+		fmt.Fprintf(w, "\033[37;44mAprilsh: You have a detached session on this server (%s).\033[m\n\n",
+			unatttached[0])
+	} else {
+		var sb strings.Builder
+		for _, v := range unatttached {
+			fmt.Fprintf(&sb, "- %s\n", v)
+		}
+
+		fmt.Fprintf(w, "\033[37;44mAprilsh: You have %d detached sessions on this server, with PIDs:\n%s\033[m\n",
+			len(unatttached), sb.String())
+	}
 }
 
 // worker started by mainSrv.run(). worker will listen on specified port and
@@ -676,17 +870,6 @@ func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err err
 
 	// util.Log.With("port", conf.desiredPort).Debug("runWorker quit")
 	return err
-}
-
-func getCurrentUser() string {
-	user, err := user.Current()
-	if err != nil || userCurrentTest {
-		// logW.Printf("#getCurrentUser report: %s\n", err)
-		util.Log.With("error", err).Warn("Get current user")
-		return ""
-	}
-
-	return user.Username
 }
 
 func serve(ptmx *os.File, pw *io.PipeWriter, complete *statesync.Complete, // waitChan chan bool,
@@ -1049,189 +1232,6 @@ mainLoop:
 	}
 
 	return nil
-}
-
-func getTimeFrom(env string, def int64) (ret int64) {
-	ret = def
-
-	v, exist := os.LookupEnv(env)
-	if exist {
-		var err error
-		ret, err = strconv.ParseInt(v, 10, 64)
-		if err != nil {
-			fmt.Fprintf(os.Stdout, "%s not a valid integer, ignoring\n", env)
-		} else if ret < 0 {
-			fmt.Fprintf(os.Stdout, "%s is negative, ignoring\n", env)
-			ret = 0
-		}
-	}
-	return
-}
-
-func printWelcome(pid int, port int, tty *os.File) {
-	// fmt.Printf("%s start listening on :%d. build version %s [pid=%d] \n", _COMMAND_NAME, port, BuildVersion, pid)
-	util.Log.With("port", port).With("buildVersion", frontend.BuildVersion).With("pid", pid).
-		Info(frontend.CommandServerName + " start listening on")
-	// fmt.Printf("Copyright 2022~2023 wangqi.\n")
-	// fmt.Printf("%s%s", "Use of this source code is governed by a MIT-style",
-	// 	"license that can be found in the LICENSE file.\n")
-	// logI.Printf("[%s detached, pid=%d]\n", COMMAND_NAME, pid)
-
-	if tty != nil {
-		inputUTF8, err := util.CheckIUTF8(int(tty.Fd()))
-		if err != nil {
-			// fmt.Printf("Warning: %s\n", err)
-			util.Log.Warn(err.Error())
-		}
-
-		if !inputUTF8 {
-			// Input is UTF-8 (since Linux 2.6.4)
-			// fmt.Printf("%s %s %s", "Warning: termios IUTF8 flag not defined.",
-			// 	"Character-erase of multibyte character sequence",
-			// 	"probably does not work properly on this platform.\n")
-
-			msg := fmt.Sprintf("%s %s %s", "Warning: termios IUTF8 flag not defined.",
-				"Character-erase of multibyte character sequence",
-				"probably does not work properly on this platform.")
-			util.Log.Warn(msg)
-		}
-	}
-}
-
-// open pts master and slave, set terminal size according to window size.
-func openPTS(wsize *unix.Winsize) (ptmx *os.File, pts *os.File, err error) {
-	// open pts master and slave
-	ptmx, pts, err = pty.Open()
-	if wsize == nil {
-		err = errors.New("invalid parameter")
-	}
-	if err == nil {
-		sz := util.ConvertWinsize(wsize)
-		// fmt.Printf("#openPTS sz=%v\n", sz)
-
-		err = pty.Setsize(ptmx, sz) // set terminal size
-	}
-	return
-}
-
-var failToStartShell = errors.New("fail to start shell")
-
-// set IUTF8 flag for pts file. start shell process according to Config.
-func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) (*os.Process, error) {
-	if conf.verbose == _VERBOSE_SKIP_START_SHELL {
-		return nil, failToStartShell
-	}
-	// set IUTF8 if available
-	if err := util.SetIUTF8(int(pts.Fd())); err != nil {
-		return nil, err
-	}
-
-	// set TERM based on client TERM
-	if conf.term != "" {
-		// util.Log.With("term", conf.term).Debug("start shell message")
-		os.Setenv("TERM", conf.term)
-	} else {
-		os.Setenv("TERM", "xterm-256color") // default TERM
-	}
-
-	// clear STY environment variable so GNU screen regards us as top level
-	os.Unsetenv("STY")
-
-	// the following function will set PWD environment variable
-	// chdirHomedir("")
-
-	// ask ncurses to send UTF-8 instead of ISO 2022 for line-drawing chars
-	ncursesEnv := "NCURSES_NO_UTF8_ACS=1"
-	// should be the last statement related to environment variable
-	env := append(os.Environ(), ncursesEnv)
-
-	// set working directory
-	// cmd.Dir = getHomeDir()
-
-	sysProcAttr := &syscall.SysProcAttr{}
-	sysProcAttr.Setsid = true  // start a new session
-	sysProcAttr.Setctty = true // set controlling terminal
-
-	procAttr := os.ProcAttr{
-		Files: []*os.File{pts, pts, pts}, // use pts as stdin, stdout, stderr
-		Dir:   getHomeDir(),
-		Sys:   sysProcAttr,
-		Env:   env,
-	}
-
-	// // open terminal
-	// fmt.Fprintf(pts, "\x1b[?1049h\x1b[22;0;0t\x1b[?1h")
-	//
-	if conf.withMotd && !motdHushed() {
-		// For Ubuntu, try and print one of {,/var}/run/motd.dynamic.
-		// This file is only updated when pam_motd is run, but when
-		// mosh-server is run in the usual way with ssh via the script,
-		// this always happens.
-		// XXX Hackish knowledge of Ubuntu PAM configuration.
-		// But this seems less awful than build-time detection with autoconf.
-		if !printMotd(pts, "/run/motd.dynamic") {
-			printMotd(pts, "/var/run/motd.dynamic")
-		}
-		// Always print traditional /etc/motd.
-		printMotd(pts, "/etc/motd")
-
-		warnUnattached(pts, utmpHost)
-	}
-
-	// set new title
-	fmt.Fprintf(pts, "\x1B]0;%s %s:%s\a", frontend.CommandClientName, conf.target, conf.desiredPort)
-
-	encrypt.ReenableDumpingCore()
-
-	/*
-		additional logic for pty.StartWithAttrs() end
-	*/
-
-	// wait for serve() to release us
-	if pr != nil && conf.verbose != _VERBOSE_SKIP_READ_PIPE {
-		// util.Log.With("action", "wait").Debug("start shell message")
-		buf := make([]byte, 81)
-		for {
-			_, err := pr.Read(buf)
-			if err != nil && errors.Is(err, io.EOF) {
-				// util.Log.With("error", err).Debug("start shell message")
-				break
-			}
-		}
-		pr.Close()
-		// util.Log.With("action", "receive").Debug("start shell message")
-		util.Log.With("pty", pts.Name()).Info("start shell at")
-	}
-
-	proc, err := os.StartProcess(conf.commandPath, conf.commandArgv, &procAttr)
-	if err != nil {
-		return nil, err
-	}
-	return proc, nil
-}
-
-// check unattached session and print warning message if there is any
-// ignore current session
-func warnUnattached(w io.Writer, ignoreHost string) {
-	userName := getCurrentUser()
-
-	// check unattached sessions
-	unatttached := util.CheckUnattachedUtmpx(userName, ignoreHost, frontend.CommandServerName)
-
-	if unatttached == nil || len(unatttached) == 0 {
-		return
-	} else if len(unatttached) == 1 {
-		fmt.Fprintf(w, "\033[37;44mAprilsh: You have a detached session on this server (%s).\033[m\n\n",
-			unatttached[0])
-	} else {
-		var sb strings.Builder
-		for _, v := range unatttached {
-			fmt.Fprintf(&sb, "- %s\n", v)
-		}
-
-		fmt.Fprintf(w, "\033[37;44mAprilsh: You have %d detached sessions on this server, with PIDs:\n%s\033[m\n",
-			len(unatttached), sb.String())
-	}
 }
 
 type mainSrv struct {
