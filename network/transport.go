@@ -28,6 +28,8 @@ type Transport[S State[S], R State[R]] struct {
 	lastReceiverState   R // the state we were in when user last queried state
 	fragments           *FragmentAssembly
 	verbose             uint
+
+	remoteAddr net.Addr // each time got a message, the remoteAddr is updated
 }
 
 func NewTransportServer[S State[S], R State[R]](initialState S, initialRemote R,
@@ -86,11 +88,12 @@ func (t *Transport[S, R]) WaitTime() int {
 
 // Blocks waiting for a packet.
 func (t *Transport[S, R]) Recv() error {
-	s, err := t.connection.Recv(1)
+	s, rAddr, err := t.connection.Recv(1)
 	if err != nil {
 		return err
 	}
 
+	t.remoteAddr = rAddr
 	return t.ProcessPayload(s)
 }
 
@@ -187,7 +190,8 @@ func (t *Transport[S, R]) SentInterval() uint {
 }
 
 func (t *Transport[S, R]) GetRemoteAddr() net.Addr {
-	return t.connection.getRemoteAddr()
+	return t.remoteAddr
+	// return t.connection.getRemoteAddr()
 }
 
 func (t *Transport[S, R]) GetKey() string {

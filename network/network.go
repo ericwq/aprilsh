@@ -239,8 +239,6 @@ type Connection struct {
 	SRTT   float64 // smoothed round-trip time
 	RTTVAR float64 // round-trip time variation
 
-	// sendError string
-	// logW *log.Logger
 	sync.RWMutex
 }
 
@@ -800,7 +798,7 @@ func (c *Connection) send(s string) (sendError error) {
 // receive packet from remote side, for client, there might be sevral connections
 // to the server, Recv() will iterate every connection in order and read from the
 // connection with the specified timeout (millisecond) value.
-func (c *Connection) Recv(timeout int) (payload string, err error) {
+func (c *Connection) Recv(timeout int) (payload string, remoteAddr net.Addr, err error) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -820,6 +818,7 @@ func (c *Connection) Recv(timeout int) (payload string, err error) {
 			}
 		}
 
+		remoteAddr = c.remoteAddr
 		util.Log.With("i", i).With("localAddr", c.socks[i].(net.Conn).LocalAddr()).
 			With("remoteAddr", c.remoteAddr).With("payload", len(payload)).
 			With("hasRemoteAddr", c.hasRemoteAddr).With("err", err).Debug("got message")
@@ -829,7 +828,7 @@ func (c *Connection) Recv(timeout int) (payload string, err error) {
 
 	// return timeout if it's the case
 	if errors.Is(err, os.ErrDeadlineExceeded) {
-		return "", os.ErrDeadlineExceeded
+		return "", nil, os.ErrDeadlineExceeded
 	}
 	return
 }

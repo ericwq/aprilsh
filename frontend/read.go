@@ -7,6 +7,7 @@ package frontend
 import (
 	"errors"
 	"io"
+	"net"
 	"os"
 	"time"
 )
@@ -30,7 +31,7 @@ type DeadLineReader interface {
 
 // for easy mock
 type DeadLineReceiver interface {
-	Recv(timeout int) (payload string, err error)
+	Recv(timeout int) (payload string, rAddr net.Addr, err error)
 	// DeadLiner
 }
 
@@ -91,7 +92,7 @@ func ReadFromNetwork(timeout int, msgChan chan Message, doneChan chan any, netwo
 		default:
 		}
 		// packet received from the network
-		payload, err = network.Recv(timeout)
+		payload, _, err = network.Recv(timeout)
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
 				// read timeout

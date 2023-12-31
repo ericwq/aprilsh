@@ -118,7 +118,7 @@ type Config struct {
 	withMotd    bool
 
 	// the serve func
-	serve func(*os.File, *io.PipeWriter, *statesync.Complete, // chan bool,
+	serve func(*os.File, *os.File, *io.PipeWriter, *statesync.Complete, // chan bool,
 		*network.Transport[*statesync.Complete, *statesync.UserStream], int64, int64) error
 }
 
@@ -805,16 +805,35 @@ func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err err
 	// prepare host field for utmp record
 	utmpHost := fmt.Sprintf("%s [%d]", frontend.CommandServerName, os.Getpid())
 
+	// add utmp entry
+	if utmpSupport {
+		ok := util.AddUtmpx(pts, utmpHost)
+		if !ok {
+			utmpSupport = false
+			util.Log.Warn("#runWorker can't update utmp")
+		}
+	}
+
 	// start the udp server, serve the udp request
 	var wg sync.WaitGroup
+	wg.Add(1)
 	// waitChan := make(chan bool)
 	// go conf.serve(ptmx, pw, terminal, waitChan, network, networkTimeout, networkSignaledTimeout)
-	wg.Add(1)
 	go func() {
 		// conf.serve(ptmx, pw, terminal, waitChan, network, networkTimeout, networkSignaledTimeout)
-		conf.serve(ptmx, pw, terminal, network, networkTimeout, networkSignaledTimeout)
+		conf.serve(ptmx, pts, pw, terminal, network, networkTimeout, networkSignaledTimeout)
 		wg.Done()
 	}()
+
+	// TODO update last log ?
+	// util.UpdateLastLog(ptmxName, getCurrentUser(), utmpHost)
+
+	defer func() { // clear utmp entry
+		if utmpSupport {
+			util.ClearUtmpx(pts)
+		}
+	}()
+
 	util.Log.With("port", conf.desiredPort).With("clientTERM", conf.term).
 		Info("start listening on")
 
@@ -822,21 +841,9 @@ func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err err
 	shell, err := startShell(pts, pr, utmpHost, conf)
 	pts.Close() // it's copied by shell process, it's safe to close it here.
 	if err != nil {
-		// logW.Printf("#runWorker startShell fail: %s\n", err)
 		util.Log.With("error", err).Warn("startShell fail")
 		whChan <- workhorse{}
 	} else {
-		// add utmp entry
-		ptmxName := ptmx.Name()
-		if utmpSupport {
-			ok := util.AddUtmpx(ptmx, utmpHost)
-			if !ok {
-				utmpSupport = false
-			}
-		}
-
-		// update last log
-		util.UpdateLastLog(ptmxName, getCurrentUser(), utmpHost) // TODO use pts.Name() or ptmx name?
 
 		whChan <- workhorse{shell, ptmx}
 
@@ -852,16 +859,10 @@ func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err err
 		}
 
 		// wait serve to finish
-		// util.Log.With("ptmx", ptmx.Name()).Debug("wait serve to finish")
 		// <-waitChan
 		wg.Wait()
-		// logI.Printf("#runWorker stop listening on :%s\n", conf.desiredPort)
 		util.Log.With("port", conf.desiredPort).Info("stop listening on")
 
-		// clear utmp entry
-		if utmpSupport {
-			util.ClearUtmpx(ptmx)
-		}
 	}
 
 	// fmt.Printf("[%s is exiting.]\n", frontend.COMMAND_SERVER_NAME)
@@ -872,7 +873,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err err
 	return err
 }
 
-func serve(ptmx *os.File, pw *io.PipeWriter, complete *statesync.Complete, // waitChan chan bool,
+func serve(ptmx *os.File, pts *os.File, pw *io.PipeWriter, complete *statesync.Complete, // waitChan chan bool,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
 	networkTimeout int64, networkSignaledTimeout int64) error {
 	// scale timeouts
@@ -1053,13 +1054,12 @@ mainLoop:
 						}
 
 						if utmpSupport {
-							ok := util.ClearUtmpx(ptmx)
+							ok := util.ClearUtmpx(pts)
 							if !ok {
 								utmpSupport = false
-								util.Log.Warn("#serve can't update utmp")
 							} else {
-								newHost := fmt.Sprintf("%s via %s [%d]", host, frontend.CommandServerName, os.Getpid())
-								util.AddUtmpx(ptmx, newHost)
+								utmpHost := fmt.Sprintf("%s via %s [%d]", host, frontend.CommandServerName, os.Getpid())
+								util.AddUtmpx(pts, utmpHost)
 
 								connectedUtmp = true
 							}
@@ -1177,9 +1177,9 @@ mainLoop:
 
 		// update utmp if has been more than 30 seconds since heard from client
 		if utmpSupport && connectedUtmp && timeSinceRemoteState > 30000 {
-			util.ClearUtmpx(ptmx)
-			newHost := fmt.Sprintf("%s [%d]", frontend.CommandServerName, os.Getpid())
-			util.AddUtmpx(ptmx, newHost)
+			util.ClearUtmpx(pts)
+			utmpHost := fmt.Sprintf("%s [%d]", frontend.CommandServerName, os.Getpid())
+			util.AddUtmpx(pts, utmpHost)
 
 			connectedUtmp = false
 			// util.Log.Info("serve doesn't heard from client over 16 minutes.")

@@ -293,7 +293,7 @@ func TestConnectionReadWrite(t *testing.T) {
 		for i := range message {
 			output.Reset()
 			// fmt.Printf("#test recv \n")
-			payload, _ := server.Recv(1)
+			payload, _, _ := server.Recv(1)
 			// fmt.Printf("#test recv payload=%q\n", payload)
 			if len(payload) == 0 || message[i] != payload {
 				t.Errorf("%q expect %q, got %q\n", title, message[i], payload)
@@ -795,7 +795,7 @@ func TestSendBranch(t *testing.T) {
 	defer util.Log.Restore()
 	util.Log.SetOutput(&output)
 
-	msg, _ := server.Recv(1)
+	msg, _, _ := server.Recv(1)
 	if msg != title {
 		t.Errorf("%q client send\n%q to server, server got \n%q\n", title, title, msg)
 	}
@@ -817,7 +817,7 @@ func TestSendBranch(t *testing.T) {
 	}
 
 	time.Sleep(time.Millisecond * 20)
-	msg, _ = client.Recv(1) // the msg is still the old title
+	msg, _, _ = client.Recv(1) // the msg is still the old title
 	if msg != title {
 		t.Errorf("%q client receive\n%q from server, client got \n%q\n", title, title, msg)
 	}
@@ -883,7 +883,7 @@ func TestRecvFail(t *testing.T) {
 
 	// validate the failure case with mockUdpConn
 	for i, v := range tc {
-		_, err := client.Recv(1)
+		_, _, err := client.Recv(1)
 		if v.err != nil {
 			switch i {
 			case 0, 1, 2:
@@ -947,7 +947,7 @@ func TestRecvBranchServer(t *testing.T) {
 	util.Log.SetOutput(&output)
 
 	// perform the receive
-	_, err := server.Recv(1)
+	_, _, err := server.Recv(1)
 	if !errors.Is(err, ErrRecvDirection) {
 		t.Errorf("%q client send\n%q to server, server got \n%q\n", title, msg0, err)
 	}
@@ -1005,7 +1005,7 @@ func TestRecvBranchClient(t *testing.T) {
 	client.session = &mockSession{direction: TO_SERVER, seq: 7}
 
 	// perform the receive
-	_, err := client.Recv(1)
+	_, _, err := client.Recv(1)
 	if !errors.Is(err, ErrRecvDirection) {
 		t.Errorf("%q client send\n%q to server, server got \n%q\n", title, msg1, err)
 	}
@@ -1145,7 +1145,7 @@ func TestRecvSRTT(t *testing.T) {
 
 		server.send(toClient)
 		time.Sleep(time.Millisecond * 10)
-		got, _ = client.Recv(1)
+		got, _, _ = client.Recv(1)
 
 		if got != toClient {
 			t.Errorf("%q expect %q, got %q\n", title, toClient, got)
@@ -1197,7 +1197,7 @@ func TestServerRecvTimeout(t *testing.T) {
 		t.Errorf("#test setReadDeadline() expect err, got nil\n") // see mockUdpConn.SetReadDeadline
 	}
 	// validate the read time out case
-	_, e2 := server.Recv(1)
+	_, _, e2 := server.Recv(1)
 	if !errors.Is(e2, os.ErrDeadlineExceeded) {
 		t.Errorf("#test recv() expect err, got %s\n", e2) // see mockUdpConn.SetReadDeadline
 	}
