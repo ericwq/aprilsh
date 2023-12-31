@@ -1054,15 +1054,10 @@ mainLoop:
 						}
 
 						if utmpSupport {
-							ok := util.ClearUtmpx(pts)
-							if !ok {
-								utmpSupport = false
-							} else {
-								utmpHost := fmt.Sprintf("%s via %s [%d]", host, frontend.CommandServerName, os.Getpid())
-								util.AddUtmpx(pts, utmpHost)
-
-								connectedUtmp = true
-							}
+							util.ClearUtmpx(pts)
+							utmpHost := fmt.Sprintf("%s via %s [%d]", host, frontend.CommandServerName, os.Getpid())
+							util.AddUtmpx(pts, utmpHost)
+							connectedUtmp = true
 						}
 						if syslogSupport {
 							util.Log.With("user", userName).With("host", host).Info("connected from remote host")
@@ -1180,7 +1175,6 @@ mainLoop:
 			util.ClearUtmpx(pts)
 			utmpHost := fmt.Sprintf("%s [%d]", frontend.CommandServerName, os.Getpid())
 			util.AddUtmpx(pts, utmpHost)
-
 			connectedUtmp = false
 			// util.Log.Info("serve doesn't heard from client over 16 minutes.")
 		}
