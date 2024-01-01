@@ -803,7 +803,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err err
 	pr, pw := io.Pipe()
 
 	// prepare host field for utmp record
-	utmpHost := fmt.Sprintf("%s [%d]", frontend.CommandServerName, os.Getpid())
+	utmpHost := fmt.Sprintf("%s:%s", frontend.CommandServerName, network.GetServerPort())
 
 	// add utmp entry
 	if utmpSupport {
@@ -1055,7 +1055,7 @@ mainLoop:
 
 						if utmpSupport {
 							util.ClearUtmpx(pts)
-							utmpHost := fmt.Sprintf("%s via %s [%d]", host, frontend.CommandServerName, os.Getpid())
+							utmpHost := fmt.Sprintf("%s via %s:%s", host, frontend.CommandServerName, network.GetServerPort())
 							util.AddUtmpx(pts, utmpHost)
 							connectedUtmp = true
 						}
@@ -1173,7 +1173,7 @@ mainLoop:
 		// update utmp if has been more than 30 seconds since heard from client
 		if utmpSupport && connectedUtmp && timeSinceRemoteState > 30000 {
 			util.ClearUtmpx(pts)
-			utmpHost := fmt.Sprintf("%s [%d]", frontend.CommandServerName, os.Getpid())
+			utmpHost := fmt.Sprintf("%s:%s", frontend.CommandServerName, network.GetServerPort())
 			util.AddUtmpx(pts, utmpHost)
 			connectedUtmp = false
 			// util.Log.Info("serve doesn't heard from client over 16 minutes.")

@@ -30,6 +30,7 @@ type Transport[S State[S], R State[R]] struct {
 	verbose             uint
 
 	remoteAddr net.Addr // each time got a message, the remoteAddr is updated
+	port       string   // server port
 }
 
 func NewTransportServer[S State[S], R State[R]](initialState S, initialRemote R,
@@ -37,6 +38,7 @@ func NewTransportServer[S State[S], R State[R]](initialState S, initialRemote R,
 	ts := &Transport[S, R]{}
 	ts.connection = NewConnection(desiredIp, desiredPort)
 	ts.sender = NewTransportSender(ts.connection, initialState)
+	ts.port = desiredPort
 
 	ts.receivedState = make([]TimestampedState[R], 0)
 	ts.receivedState = append(ts.receivedState,
@@ -204,6 +206,10 @@ func (t *Transport[S, R]) Close() {
 
 func (t *Transport[S, R]) GetConnection() *Connection {
 	return t.connection
+}
+
+func (t *Transport[S, R]) GetServerPort() string {
+	return t.port
 }
 
 func (t *Transport[S, R]) ProcessPayload(s string) error {
