@@ -595,7 +595,6 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 
 	// set TERM based on client TERM
 	if conf.term != "" {
-		// util.Log.With("term", conf.term).Debug("start shell message")
 		os.Setenv("TERM", conf.term)
 	} else {
 		os.Setenv("TERM", "xterm-256color") // default TERM
@@ -656,17 +655,38 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 
 	// wait for serve() to release us
 	if pr != nil && conf.verbose != _VERBOSE_SKIP_READ_PIPE {
-		// util.Log.With("action", "wait").Debug("start shell message")
-		buf := make([]byte, 81)
-		for {
-			_, err := pr.Read(buf)
-			if err != nil && errors.Is(err, io.EOF) {
-				// util.Log.With("error", err).Debug("start shell message")
-				break
+		ch := make(chan bool, 0)
+		timer := time.NewTimer(time.Duration(frontend.TimeoutIfNoConnect) * time.Millisecond)
+
+		util.Log.With("action", "wait").Debug("start shell message")
+		// add timeout for pipe read
+		go func(pr *io.PipeReader, ch chan bool) {
+			buf := make([]byte, 81)
+
+			// TODO there is go routine memory leak problem
+			for {
+				_, err := pr.Read(buf)
+				if err != nil && errors.Is(err, io.EOF) {
+					// util.Log.With("error", err).Debug("start shell message")
+					ch <- true
+					break
+				}
 			}
-		}
-		pr.Close()
+			util.Log.With("pr", pr).Debug("start shell message")
+		}(pr, ch)
+
+		// waiting for time out or get the pipe reader send message
+		select {
+		case <-ch:
 		// util.Log.With("action", "receive").Debug("start shell message")
+		case <-timer.C:
+			pr.Close()
+			util.Log.With("pr", "timeout").Debug("start shell message")
+			return nil, fmt.Errorf("pipe read: %w", os.ErrDeadlineExceeded)
+		}
+		timer.Stop()
+
+		pr.Close()
 		util.Log.With("pty", pts.Name()).Info("start shell at")
 	}
 
@@ -846,7 +866,6 @@ func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err err
 	} else {
 
 		whChan <- workhorse{shell, ptmx}
-
 		// wait for the shell to finish.
 		var state *os.ProcessState
 		state, err = shell.Wait()
@@ -857,13 +876,11 @@ func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err err
 				// 	util.Log.With("state.exited", state.Exited()).Debug("shell.Wait quit")
 			}
 		}
-
-		// wait serve to finish
-		// <-waitChan
-		wg.Wait()
-		util.Log.With("port", conf.desiredPort).Info("stop listening on")
-
 	}
+
+	// wait serve to finish
+	wg.Wait()
+	util.Log.With("port", conf.desiredPort).Info("stop listening on")
 
 	// fmt.Printf("[%s is exiting.]\n", frontend.COMMAND_SERVER_NAME)
 	// https://www.dolthub.com/blog/2022-11-28-go-os-exec-patterns/
@@ -1187,12 +1204,15 @@ mainLoop:
 		if network.GetRemoteStateNum() == 0 && timeSinceRemoteState >= frontend.TimeoutIfNoClient {
 			util.Log.With("seconds", frontend.TimeoutIfNoClient/1000).Warn("No connection within x seconds")
 			break
+		} else if network.GetRemoteStateNum() != 0 && timeSinceRemoteState >= frontend.TimeoutIfNoClient {
+			util.Log.With("seconds", frontend.TimeoutIfNoClient/1000).Warn("Time out for no client request")
+			break
 		}
 
 		// util.Log.With("point", 500).Debug("mainLoop")
 		err := network.Tick()
 		if err != nil {
-			util.Log.With("error", err).Warn("tick send failed")
+			util.Log.With("error", err).Warn("#serve send failed")
 		}
 		// util.Log.With("point", "d").Debug("mainLoop")
 	}

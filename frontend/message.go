@@ -13,6 +13,7 @@ const (
 	CommandClientName  = "apsh"
 	TimeoutIfNoClient  = 60000
 	TimeoutIfNoServer  = 10000
+	TimeoutIfNoConnect = 15000
 
 	VersionInfo = `Copyright (c) 2022~2023 wangqi ericwq057@qq.com
 This is free software: you are free to change and redistribute it.

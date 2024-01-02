@@ -965,7 +965,7 @@ mainLoop:
 		now := time.Now().UnixMilli()
 		remoteState := sc.network.GetLatestRemoteState()
 		if sc.stillConnecting() && !sc.network.ShutdownInProgress() && now-remoteState.GetTimestamp() > 250 {
-			if now-remoteState.GetTimestamp() > 15000 {
+			if now-remoteState.GetTimestamp() > frontend.TimeoutIfNoConnect {
 				if !sc.network.ShutdownInProgress() {
 					sc.overlays.GetNotificationEngine().SetNotificationString(
 						"Timed out waiting for server...", true, true)
@@ -978,7 +978,8 @@ mainLoop:
 		} else if sc.network.GetRemoteStateNum() != 0 &&
 			sc.overlays.GetNotificationEngine().GetNotificationString() == sc.connectingNotification {
 			sc.overlays.GetNotificationEngine().SetNotificationString("", false, true)
-		} else if now-remoteState.GetTimestamp() > frontend.TimeoutIfNoServer {
+		} else if sc.network.GetRemoteStateNum() != 0 &&
+			now-remoteState.GetTimestamp() > frontend.TimeoutIfNoServer {
 			// no server response over x seconds
 			if now-sc.network.GetSentStateLastTimestamp() < frontend.TimeoutIfNoServer {
 				// while we keep sending packet to server
