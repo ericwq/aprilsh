@@ -11,8 +11,7 @@ const (
 	AprilshPackageName = "aprilsh"
 	CommandServerName  = "apshd"
 	CommandClientName  = "apsh"
-	TimeoutIfNoClient  = 60000
-	TimeoutIfNoServer  = 10000
+	TimeoutIfNoResp    = 60000
 	TimeoutIfNoConnect = 15000
 
 	VersionInfo = `Copyright (c) 2022~2023 wangqi ericwq057@qq.com

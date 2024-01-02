@@ -971,7 +971,7 @@ mainLoop:
 					sc.overlays.GetNotificationEngine().SetNotificationString(
 						"Timed out waiting for server...", true, true)
 					sc.network.StartShutdown()
-					util.Log.With("seconds", frontend.TimeoutIfNoClient/1000).Warn("No connection within x seconds")
+					util.Log.With("seconds", frontend.TimeoutIfNoConnect/1000).Warn("No connection within x seconds")
 				}
 			} else {
 				sc.overlays.GetNotificationEngine().SetNotificationString(
@@ -980,11 +980,11 @@ mainLoop:
 		} else if sc.network.GetRemoteStateNum() != 0 &&
 			sc.overlays.GetNotificationEngine().GetNotificationString() == sc.connectingNotification {
 			sc.overlays.GetNotificationEngine().SetNotificationString("", false, true)
-		} else if sc.network.GetRemoteStateNum() != 0 && sinceLastResponse > frontend.TimeoutIfNoServer {
+		} else if sc.network.GetRemoteStateNum() != 0 && sinceLastResponse > frontend.TimeoutIfNoResp {
 			// no server response over x seconds
-			if now-sc.network.GetSentStateLastTimestamp() < frontend.TimeoutIfNoServer {
+			if now-sc.network.GetSentStateLastTimestamp() < frontend.TimeoutIfNoResp {
 				// while we keep sending packet to server
-				util.Log.With("seconds", frontend.TimeoutIfNoServer).Warn("No server response over x seconds")
+				util.Log.With("seconds", frontend.TimeoutIfNoResp).Warn("No server response over x seconds")
 				break
 			}
 		}

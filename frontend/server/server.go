@@ -1201,11 +1201,11 @@ mainLoop:
 		}
 
 		// abort if no connection over 60 seconds
-		if network.GetRemoteStateNum() == 0 && timeSinceRemoteState >= frontend.TimeoutIfNoClient {
-			util.Log.With("seconds", frontend.TimeoutIfNoClient/1000).Warn("No connection within x seconds")
+		if network.GetRemoteStateNum() == 0 && timeSinceRemoteState >= frontend.TimeoutIfNoResp {
+			util.Log.With("seconds", frontend.TimeoutIfNoResp/1000).Warn("No connection within x seconds")
 			break
-		} else if network.GetRemoteStateNum() != 0 && timeSinceRemoteState >= frontend.TimeoutIfNoClient {
-			util.Log.With("seconds", frontend.TimeoutIfNoClient/1000).Warn("Time out for no client request")
+		} else if network.GetRemoteStateNum() != 0 && timeSinceRemoteState >= frontend.TimeoutIfNoResp {
+			util.Log.With("seconds", frontend.TimeoutIfNoResp/1000).Warn("Time out for no client request")
 			break
 		}
 
