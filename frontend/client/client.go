@@ -978,6 +978,13 @@ mainLoop:
 		} else if sc.network.GetRemoteStateNum() != 0 &&
 			sc.overlays.GetNotificationEngine().GetNotificationString() == sc.connectingNotification {
 			sc.overlays.GetNotificationEngine().SetNotificationString("", false, true)
+		} else if now-remoteState.GetTimestamp() > frontend.TimeoutIfNoServer {
+			// no server response over x seconds
+			if now-sc.network.GetSentStateLastTimestamp() < frontend.TimeoutIfNoServer {
+				// while we keep sending packet to server
+				util.Log.With("seconds", frontend.TimeoutIfNoServer).Warn("No server response over x seconds")
+				break
+			}
 		}
 
 		// util.Log.With("before", "tick").Warn("mainLoop")

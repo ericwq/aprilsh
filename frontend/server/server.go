@@ -918,7 +918,7 @@ func serve(ptmx *os.File, pts *os.File, pw *io.PipeWriter, complete *statesync.C
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGUSR1, syscall.SIGINT, syscall.SIGTERM)
 
-	var timeoutIfNoClient int64 = 60000
+	// var timeoutIfNoClient int64 = 60000
 	childReleased := false
 	largeFeed := make(chan string, 1)
 
@@ -1045,8 +1045,8 @@ mainLoop:
 					// update utmp entry if we have become "connected"
 					if forceConnectionChangEvt || !reflect.DeepEqual(savedAddr, socketMsg.RAddr) {
 						savedAddr = socketMsg.RAddr
-						// convert savedAddr to host name
 						host := savedAddr.(*net.UDPAddr).IP.String() // default host name is ip string
+						// convert savedAddr to host name
 						// hostList, e := net.LookupAddr(host)
 						// if e == nil {
 						// 	host = hostList[0] // got the host name, use the first one
@@ -1184,8 +1184,8 @@ mainLoop:
 		}
 
 		// abort if no connection over 60 seconds
-		if network.GetRemoteStateNum() == 0 && timeSinceRemoteState >= timeoutIfNoClient {
-			util.Log.With("seconds", timeoutIfNoClient/1000).Warn("No connection within x seconds")
+		if network.GetRemoteStateNum() == 0 && timeSinceRemoteState >= frontend.TimeoutIfNoClient {
+			util.Log.With("seconds", frontend.TimeoutIfNoClient/1000).Warn("No connection within x seconds")
 			break
 		}
 

@@ -185,6 +185,10 @@ func (t *Transport[S, R]) GetSentStateLast() uint64 {
 	return t.sender.getSentStateLast()
 }
 
+func (t *Transport[S, R]) GetSentStateLastTimestamp() int64 {
+	return t.sender.getSentStateLastTimestamp()
+}
+
 func (t *Transport[S, R]) SentInterval() uint {
 	return t.sender.sendInterval()
 }

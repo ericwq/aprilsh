@@ -570,6 +570,11 @@ func (ts *TransportSender[T]) getSentStateLast() uint64 {
 	return ts.sentStates[len(ts.sentStates)-1].num
 }
 
+// get the last sent state timestamp
+func (ts *TransportSender[T]) getSentStateLastTimestamp() int64 {
+	return ts.sentStates[len(ts.sentStates)-1].timestamp
+}
+
 func (ts *TransportSender[T]) shutdonwAckTimedout() bool {
 	if ts.shutdownInProgress {
 		if ts.shutdownTries > SHUTDOWN_RETRIES {
