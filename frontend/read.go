@@ -14,8 +14,9 @@ import (
 
 // communication the read result with the others
 type Message struct {
-	Err  error
-	Data string
+	Data  string   // payload data
+	RAddr net.Addr // if the message is from network, it's the remote address
+	Err   error    // error if it happens
 }
 
 // for easy mock
@@ -61,14 +62,14 @@ func ReadFromFile(timeout int, msgChan chan Message, doneChan chan any, fReader 
 		bytesRead, err = fReader.Read(buf[:])
 
 		if bytesRead > 0 {
-			msgChan <- Message{nil, string(buf[:bytesRead])}
+			msgChan <- Message{string(buf[:bytesRead]), nil, nil}
 		} else if errors.Is(err, os.ErrDeadlineExceeded) {
 			// timeout
 			// msgChan <- Message{err, ""}
 			continue
 		} else {
 			// EOF goes here
-			msgChan <- Message{err, ""}
+			msgChan <- Message{"", nil, err}
 			break
 		}
 	}
@@ -84,6 +85,7 @@ func ReadFromFile(timeout int, msgChan chan Message, doneChan chan any, fReader 
 func ReadFromNetwork(timeout int, msgChan chan Message, doneChan chan any, network DeadLineReceiver) {
 	var err error
 	var payload string
+	var rAddr net.Addr
 
 	for {
 		select {
@@ -92,19 +94,19 @@ func ReadFromNetwork(timeout int, msgChan chan Message, doneChan chan any, netwo
 		default:
 		}
 		// packet received from the network
-		payload, _, err = network.Recv(timeout)
+		payload, rAddr, err = network.Recv(timeout)
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
 				// read timeout
 				continue
 			} else {
 				// EOF goes here, in case of error retry it.
-				msgChan <- Message{err, ""}
+				msgChan <- Message{"", nil, err}
 				continue
 			}
 		} else {
 			// normal read
-			msgChan <- Message{nil, payload}
+			msgChan <- Message{payload, rAddr, nil}
 		}
 	}
 }

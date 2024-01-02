@@ -1044,8 +1044,8 @@ mainLoop:
 					//
 					// update utmp entry if we have become "connected"
 					var host string
-					if forceConnectionChangEvt || !reflect.DeepEqual(savedAddr, network.GetRemoteAddr()) {
-						savedAddr = network.GetRemoteAddr()
+					if forceConnectionChangEvt || !reflect.DeepEqual(savedAddr, socketMsg.RAddr) {
+						savedAddr = socketMsg.RAddr
 						// convert savedAddr to host name
 						host = savedAddr.String() // default host name is ip string
 						hostList, e := net.LookupAddr(host)
