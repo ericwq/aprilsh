@@ -237,6 +237,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 			With("OldNum", inst.OldNum).
 			With("AckNum", inst.AckNum).
 			With("throwawayNum", inst.ThrowawayNum).
+			With("port", t.port).
 			Debug("got message")
 
 		// remove send state for which num < AckNum

@@ -658,7 +658,7 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 		ch := make(chan bool, 0)
 		timer := time.NewTimer(time.Duration(frontend.TimeoutIfNoConnect) * time.Millisecond)
 
-		util.Log.With("action", "wait").Debug("start shell message")
+		util.Log.With("action", "wait").With("port", conf.desiredPort).Debug("start shell message")
 		// add timeout for pipe read
 		go func(pr *io.PipeReader, ch chan bool) {
 			buf := make([]byte, 81)
@@ -672,7 +672,7 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 					break
 				}
 			}
-			util.Log.With("pr", pr).Debug("start shell message")
+			util.Log.With("action", "received").With("port", conf.desiredPort).Debug("start shell message")
 		}(pr, ch)
 
 		// waiting for time out or get the pipe reader send message
@@ -681,7 +681,7 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 		// util.Log.With("action", "receive").Debug("start shell message")
 		case <-timer.C:
 			pr.Close()
-			util.Log.With("pr", "timeout").Debug("start shell message")
+			util.Log.With("action", "timeout").With("port", conf.desiredPort).Debug("start shell message")
 			return nil, fmt.Errorf("pipe read: %w", os.ErrDeadlineExceeded)
 		}
 		timer.Stop()
@@ -973,7 +973,7 @@ mainLoop:
 		timeSinceRemoteState = now - p.GetTimestamp()
 		terminalToHost.Reset()
 
-		util.Log.With("point", 200).With("network.WaitTime", w0).
+		util.Log.With("port", network.GetServerPort()).With("network.WaitTime", w0).
 			With("complete.WaitTime", w1).With("timeout", timeout).Debug("mainLoop")
 		timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
 		select {
