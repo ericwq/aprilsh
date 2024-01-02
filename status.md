@@ -49,4 +49,6 @@
 - 2023/Nov/19: enhance stream mode to display over buffer size file, #2.
 - 2023/Nov/29: enhance screen difference with mix sequence, fix bug #6,#7,#8.
 - 2023/Dec/08: enhance tilte #14, limit concurrent user #17, fix bug #9,#10,#12,#14,#15,#16.
-- 2023/Dec/13: fix bug #11, solve computer hibernate problem.
+- 2023/Dec/13: fix bug #11, solve computer hibernate problem partly.
+- 2023/Dec/28: enhance utmp access problem #17. fix read dead line problem #18.
+- 2024/Jan/02: refine utmp access #22.

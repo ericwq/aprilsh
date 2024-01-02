@@ -1043,15 +1043,14 @@ mainLoop:
 					// HAVE_SYSLOG - log connect to syslog
 					//
 					// update utmp entry if we have become "connected"
-					var host string
 					if forceConnectionChangEvt || !reflect.DeepEqual(savedAddr, socketMsg.RAddr) {
 						savedAddr = socketMsg.RAddr
 						// convert savedAddr to host name
-						host = savedAddr.String() // default host name is ip string
-						hostList, e := net.LookupAddr(host)
-						if e == nil {
-							host = hostList[0] // got the host name, use the first one
-						}
+						host := savedAddr.(*net.UDPAddr).IP.String() // default host name is ip string
+						// hostList, e := net.LookupAddr(host)
+						// if e == nil {
+						// 	host = hostList[0] // got the host name, use the first one
+						// }
 
 						if utmpSupport {
 							util.ClearUtmpx(pts)
