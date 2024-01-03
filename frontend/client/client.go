@@ -787,12 +787,12 @@ func (sc *STMClient) shutdown() error {
 	}
 
 	if sc.stillConnecting() {
-		fmt.Fprintf(os.Stderr, "%s did not make a successful connection to %s:%d.\n",
+		fmt.Fprintf(os.Stdout, "%s did not make a successful connection to %s:%d.\n",
 			frontend.CommandClientName, sc.ip, sc.port)
-		fmt.Fprintf(os.Stderr, "Please verify that UDP port %d is not firewalled and can reach the server.\n\n",
+		fmt.Fprintf(os.Stdout, "Please verify that UDP port %d is not firewalled and can reach the server.\n\n",
 			sc.port)
-		fmt.Fprintf(os.Stderr, "By default, %s uses a UDP port between 60000 and 61000. The -p option\n%s",
-			frontend.CommandClientName, "selects a specific UDP port number.)")
+		fmt.Fprintf(os.Stdout, "By default, %s uses a UDP port between 60000 and 61000. The -p option\n%s",
+			frontend.CommandClientName, "selects a initial UDP port number.)")
 	} else if sc.network != nil {
 		if !sc.cleanShutdown {
 			fmt.Fprintf(os.Stderr, "\n\n%s did not shut down cleanly. Please note that the\n%s",
