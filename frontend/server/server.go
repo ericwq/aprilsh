@@ -663,22 +663,18 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 		go func(pr *io.PipeReader, ch chan bool) {
 			buf := make([]byte, 81)
 
-			// TODO there is go routine memory leak problem
-			for {
-				_, err := pr.Read(buf)
-				if err != nil && errors.Is(err, io.EOF) {
-					// util.Log.With("error", err).Debug("start shell message")
-					ch <- true
-					break
-				}
+			_, err := pr.Read(buf)
+			if err != nil && errors.Is(err, io.EOF) {
+				ch <- true
+				util.Log.With("action", "received").With("port", conf.desiredPort).Debug("start shell message")
+			} else {
+				util.Log.With("action", "readFailed").With("port", conf.desiredPort).Debug("start shell message")
 			}
-			util.Log.With("action", "received").With("port", conf.desiredPort).Debug("start shell message")
 		}(pr, ch)
 
 		// waiting for time out or get the pipe reader send message
 		select {
 		case <-ch:
-		// util.Log.With("action", "receive").Debug("start shell message")
 		case <-timer.C:
 			pr.Close()
 			util.Log.With("action", "timeout").With("port", conf.desiredPort).Debug("start shell message")
@@ -1112,6 +1108,7 @@ mainLoop:
 						util.Log.With("error", masterMsg.Err).Warn("read from master")
 					}
 					if !signals.AnySignal() { // avoid conflict with signal
+						util.Log.With("from", "read file failed").With("port", network.GetServerPort()).Warn("shutdown")
 						network.StartShutdown()
 					}
 				} else {
@@ -1172,17 +1169,19 @@ mainLoop:
 
 		// quit if our shutdown has been acknowledged
 		if network.ShutdownInProgress() && network.ShutdownAcknowledged() {
-			// util.Log.Debug("shutdown break")
+			util.Log.With("from", "acked").With("port", network.GetServerPort()).Warn("shutdown")
 			break
 		}
 
 		// quit after shutdown acknowledgement timeout
 		if network.ShutdownInProgress() && network.ShutdownAckTimedout() {
+			util.Log.With("from", "act timeout").With("port", network.GetServerPort()).Warn("shutdown")
 			break
 		}
 
 		// quit if we received and acknowledged a shutdown request
 		if network.CounterpartyShutdownAckSent() {
+			util.Log.With("from", "peer acked").With("port", network.GetServerPort()).Warn("shutdown")
 			break
 		}
 
@@ -1201,8 +1200,8 @@ mainLoop:
 		}
 
 		// abort if no connection over 60 seconds
-		if network.GetRemoteStateNum() == 0 && timeSinceRemoteState >= frontend.TimeoutIfNoResp {
-			util.Log.With("seconds", frontend.TimeoutIfNoResp/1000).Warn("No connection within x seconds")
+		if network.GetRemoteStateNum() == 0 && timeSinceRemoteState >= frontend.TimeoutIfNoConnect {
+			util.Log.With("seconds", frontend.TimeoutIfNoConnect/1000).Warn("No connection within x seconds")
 			break
 		} else if network.GetRemoteStateNum() != 0 && timeSinceRemoteState >= frontend.TimeoutIfNoResp {
 			util.Log.With("seconds", frontend.TimeoutIfNoResp/1000).Warn("Time out for no client request")

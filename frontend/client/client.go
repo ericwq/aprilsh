@@ -970,8 +970,9 @@ mainLoop:
 				if !sc.network.ShutdownInProgress() {
 					sc.overlays.GetNotificationEngine().SetNotificationString(
 						"Timed out waiting for server...", true, true)
-					sc.network.StartShutdown()
+					// sc.network.StartShutdown()
 					util.Log.With("seconds", frontend.TimeoutIfNoConnect/1000).Warn("No connection within x seconds")
+					break
 				}
 			} else {
 				sc.overlays.GetNotificationEngine().SetNotificationString(
