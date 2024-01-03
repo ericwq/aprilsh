@@ -676,7 +676,7 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 		select {
 		case <-ch:
 		case <-timer.C:
-			pr.Close()
+			pr.Close() // close pipe read will stop the Read operation
 			util.Log.With("action", "timeout").With("port", conf.desiredPort).Debug("start shell message")
 			return nil, fmt.Errorf("pipe read: %w", os.ErrDeadlineExceeded)
 		}
