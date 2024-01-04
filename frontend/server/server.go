@@ -986,6 +986,8 @@ mainLoop:
 				util.Log.With("error", socketMsg.Err).Warn("read from network")
 				continue mainLoop
 			}
+			p = network.GetLatestRemoteState()
+			timeSinceRemoteState = now - p.GetTimestamp()
 			network.ProcessPayload(socketMsg.Data)
 
 			// is new user input available for the terminal?
@@ -1205,10 +1207,14 @@ mainLoop:
 			// 	With("port", network.GetServerPort()).Warn("No connection within x seconds")
 			break
 		} else if network.GetRemoteStateNum() != 0 && timeSinceRemoteState >= frontend.TimeoutIfNoResp {
-			// abort if no response from server over TimeoutIfNoResp seconds
-			util.Log.With("seconds", frontend.TimeoutIfNoResp/1000).
-				With("port", network.GetServerPort()).Warn("Time out for no client request")
-			break
+			now = time.Now().UnixMilli()
+
+			// abort if no response from client over TimeoutIfNoResp seconds
+			if now-network.GetSentStateLastTimestamp() < frontend.TimeoutIfNoResp {
+				util.Log.With("seconds", frontend.TimeoutIfNoResp/1000).
+					With("port", network.GetServerPort()).Warn("Time out for no client request")
+				break
+			}
 		}
 
 		// util.Log.With("point", 500).Debug("mainLoop")
