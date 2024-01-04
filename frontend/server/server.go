@@ -658,7 +658,7 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 		ch := make(chan bool, 0)
 		timer := time.NewTimer(time.Duration(frontend.TimeoutIfNoConnect) * time.Millisecond)
 
-		util.Log.With("action", "wait").With("port", conf.desiredPort).Debug("start shell message")
+		// util.Log.With("action", "wait").With("port", conf.desiredPort).Debug("start shell message")
 		// add timeout for pipe read
 		go func(pr *io.PipeReader, ch chan bool) {
 			buf := make([]byte, 81)
@@ -666,9 +666,9 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 			_, err := pr.Read(buf)
 			if err != nil && errors.Is(err, io.EOF) {
 				ch <- true
-				util.Log.With("action", "received").With("port", conf.desiredPort).Debug("start shell message")
+				// util.Log.With("action", "received").With("port", conf.desiredPort).Debug("start shell message")
 			} else {
-				util.Log.With("action", "readFailed").With("port", conf.desiredPort).Debug("start shell message")
+				// util.Log.With("action", "readFailed").With("port", conf.desiredPort).Debug("start shell message")
 			}
 		}(pr, ch)
 
@@ -676,8 +676,8 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 		select {
 		case <-ch:
 		case <-timer.C:
-			pr.Close() // close pipe read will stop the Read operation
-			util.Log.With("action", "timeout").With("port", conf.desiredPort).Debug("start shell message")
+			pr.Close() // close pipe will stop the Read operation
+			// util.Log.With("action", "timeout").With("port", conf.desiredPort).Debug("start shell message")
 			return nil, fmt.Errorf("pipe read: %w", os.ErrDeadlineExceeded)
 		}
 		timer.Stop()
@@ -931,7 +931,6 @@ func serve(ptmx *os.File, pts *os.File, pw *io.PipeWriter, complete *statesync.C
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGUSR1, syscall.SIGINT, syscall.SIGTERM)
 
-	// var timeoutIfNoClient int64 = 60000
 	childReleased := false
 	largeFeed := make(chan string, 1)
 
@@ -1199,12 +1198,16 @@ mainLoop:
 			network.SetCurrentState(complete)
 		}
 
-		// abort if no connection over 60 seconds
-		if network.GetRemoteStateNum() == 0 && timeSinceRemoteState >= frontend.TimeoutIfNoConnect {
-			util.Log.With("seconds", frontend.TimeoutIfNoConnect/1000).Warn("No connection within x seconds")
+		if network.GetRemoteStateNum() == 0 && network.ShutdownInProgress() {
+			// abort if no connection over TimeoutIfNoConnect seconds
+
+			// util.Log.With("seconds", frontend.TimeoutIfNoConnect/1000).With("timeout", "shutdown").
+			// 	With("port", network.GetServerPort()).Warn("No connection within x seconds")
 			break
 		} else if network.GetRemoteStateNum() != 0 && timeSinceRemoteState >= frontend.TimeoutIfNoResp {
-			util.Log.With("seconds", frontend.TimeoutIfNoResp/1000).Warn("Time out for no client request")
+			// abort if no response from server over TimeoutIfNoResp seconds
+			util.Log.With("seconds", frontend.TimeoutIfNoResp/1000).
+				With("port", network.GetServerPort()).Warn("Time out for no client request")
 			break
 		}
 

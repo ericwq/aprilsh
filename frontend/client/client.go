@@ -364,7 +364,7 @@ func main() {
 		return
 	}
 	client.main()
-	client.shutdown(conf.host)
+	client.shutdown()
 }
 
 type STMClient struct {
@@ -767,7 +767,7 @@ func (sc *STMClient) init() error {
 	return nil
 }
 
-func (sc *STMClient) shutdown(host string) error {
+func (sc *STMClient) shutdown() error {
 	// Restore screen state
 	sc.overlays.GetNotificationEngine().SetNotificationString("", false, true)
 	sc.overlays.GetNotificationEngine().ServerHeard(time.Now().UnixMilli())
@@ -793,12 +793,11 @@ func (sc *STMClient) shutdown(host string) error {
 			frontend.CommandClientName, "selects a initial UDP port number.")
 	} else if sc.network != nil {
 		if !sc.cleanShutdown {
-			fmt.Printf("\n\n%s did not shut down cleanly. Please note that the\n%s %s",
-				frontend.CommandClientName,
-				frontend.CommandServerName,
-				"process may still be running on the server.\n")
+			fmt.Printf("\n%s did not shut down cleanly.\n", frontend.CommandClientName)
+			fmt.Printf("Please verify that UDP port %d is not firewalled and can reach the server.\n",
+				sc.port)
 		} else {
-			fmt.Printf("Connection to %s closed.\n", host)
+			fmt.Printf("Connection to %s:%d closed.\n", sc.ip, sc.port)
 		}
 	}
 	return nil
@@ -968,7 +967,7 @@ mainLoop:
 		remoteState := sc.network.GetLatestRemoteState()
 		sinceLastResponse := now - remoteState.GetTimestamp()
 		if sc.stillConnecting() && !sc.network.ShutdownInProgress() && sinceLastResponse > 250 {
-			if now-remoteState.GetTimestamp() > frontend.TimeoutIfNoConnect {
+			if sinceLastResponse > frontend.TimeoutIfNoConnect {
 				if !sc.network.ShutdownInProgress() {
 					sc.overlays.GetNotificationEngine().SetNotificationString(
 						"Timed out waiting for server...", true, true)
