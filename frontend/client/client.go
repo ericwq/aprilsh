@@ -364,9 +364,7 @@ func main() {
 		return
 	}
 	client.main()
-	client.shutdown()
-
-	fmt.Printf("Connection to %s closed.\n", conf.host)
+	client.shutdown(conf.host)
 }
 
 type STMClient struct {
@@ -769,7 +767,7 @@ func (sc *STMClient) init() error {
 	return nil
 }
 
-func (sc *STMClient) shutdown() error {
+func (sc *STMClient) shutdown(host string) error {
 	// Restore screen state
 	sc.overlays.GetNotificationEngine().SetNotificationString("", false, true)
 	sc.overlays.GetNotificationEngine().ServerHeard(time.Now().UnixMilli())
@@ -787,16 +785,20 @@ func (sc *STMClient) shutdown() error {
 	}
 
 	if sc.stillConnecting() {
-		fmt.Fprintf(os.Stdout, "%s did not make a successful connection to %s:%d.\n",
+		fmt.Printf("%s did not make a successful connection to %s:%d.\n",
 			frontend.CommandClientName, sc.ip, sc.port)
-		fmt.Fprintf(os.Stdout, "Please verify that UDP port %d is not firewalled and can reach the server.\n\n",
+		fmt.Printf("Please verify that UDP port %d is not firewalled and can reach the server.\n\n",
 			sc.port)
-		fmt.Fprintf(os.Stdout, "By default, %s uses a UDP port between 60000 and 61000. The -p option\n%s",
-			frontend.CommandClientName, "selects a initial UDP port number.)")
+		fmt.Printf("By default, %s uses a UDP port between 60000 and 61000. The -p option\n%s\n",
+			frontend.CommandClientName, "selects a initial UDP port number.")
 	} else if sc.network != nil {
 		if !sc.cleanShutdown {
-			fmt.Fprintf(os.Stderr, "\n\n%s did not shut down cleanly. Please note that the\n%s",
-				frontend.CommandClientName, "aprilsh-server process may still be running on the server.\n")
+			fmt.Printf("\n\n%s did not shut down cleanly. Please note that the\n%s %s",
+				frontend.CommandClientName,
+				frontend.CommandServerName,
+				"process may still be running on the server.\n")
+		} else {
+			fmt.Printf("Connection to %s closed.\n", host)
 		}
 	}
 	return nil
