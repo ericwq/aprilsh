@@ -1207,12 +1207,14 @@ mainLoop:
 			// 	With("port", network.GetServerPort()).Warn("No connection within x seconds")
 			break
 		} else if network.GetRemoteStateNum() != 0 && timeSinceRemoteState >= frontend.TimeoutIfNoResp {
+			// if no response from client over TimeoutIfNoResp seconds
 			now = time.Now().UnixMilli()
-
-			// abort if no response from client over TimeoutIfNoResp seconds
-			if now-network.GetSentStateLastTimestamp() < frontend.TimeoutIfNoResp {
+			if now-network.GetSentStateLastTimestamp() >= frontend.TimeoutIfNoResp {
+				// abort if no request send over TimeoutIfNoResp seconds
 				util.Log.With("seconds", frontend.TimeoutIfNoResp/1000).
-					With("port", network.GetServerPort()).Warn("Time out for no client request")
+					With("port", network.GetServerPort()).
+					With("timeSinceRemoteState", timeSinceRemoteState).
+					Warn("Time out for no client request")
 				break
 			}
 		}
