@@ -10,8 +10,6 @@ import (
 	"net"
 	"os"
 	"time"
-
-	"github.com/ericwq/aprilsh/util"
 )
 
 // communication the read result with the others
@@ -45,37 +43,62 @@ type DeadLineReceiver interface {
 // Note the caller must consume the last read message after it send the shutdown message. EOF
 // can also stop the file reader.
 func ReadFromFile(timeout int, msgChan chan Message, doneChan chan any, fReader DeadLineReader) {
-	var buf [16384]byte
-	var err error
-	var bytesRead int
+	// var buf [16384]byte
+	// var err error
+	// var bytesRead int
+	reading := false
 
 	for {
-		// fmt.Println("#ReadFromFile wait for shutdown message.")
+		// // fmt.Println("#ReadFromFile wait for shutdown message.")
+		// select {
+		// case <-doneChan:
+		// 	// fmt.Println("#ReadFromFile got shutdown message.")
+		// 	return
+		// default:
+		// }
+		// util.Log.With("action", "satrt").Debug("#read")
+		// // set read time out
+		// fReader.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
+		//
+		// // fill buffer if possible
+		// bytesRead, err = fReader.Read(buf[:])
+		//
+		// if bytesRead > 0 {
+		// 	util.Log.With("action", "got").Debug("#read")
+		// 	msgChan <- Message{string(buf[:bytesRead]), nil, nil}
+		// } else if errors.Is(err, os.ErrDeadlineExceeded) {
+		// 	// timeout
+		// 	// msgChan <- Message{err, ""}
+		// 	util.Log.With("error", err).Debug("#read")
+		// 	continue
+		// } else {
+		// 	// EOF goes here
+		// 	msgChan <- Message{"", nil, err}
+		// 	break
+		// }
+
+		timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
+		if !reading {
+			reading = true
+			go func(pr DeadLineReader, ch chan Message) {
+				buf := make([]byte, 16384)
+
+				bytesRead, err := pr.Read(buf)
+				if err != nil && errors.Is(err, io.EOF) {
+					ch <- Message{string(buf[:bytesRead]), nil, nil}
+					reading = false
+				} else {
+					ch <- Message{"", nil, err}
+				}
+			}(fReader, msgChan)
+		}
+
+		// waiting for time out or get the pipe reader send message
 		select {
 		case <-doneChan:
-			// fmt.Println("#ReadFromFile got shutdown message.")
+			timer.Stop()
 			return
-		default:
-		}
-		util.Log.With("action", "satrt").Debug("#read")
-		// set read time out
-		fReader.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
-
-		// fill buffer if possible
-		bytesRead, err = fReader.Read(buf[:])
-
-		if bytesRead > 0 {
-			util.Log.With("action", "got").Debug("#read")
-			msgChan <- Message{string(buf[:bytesRead]), nil, nil}
-		} else if errors.Is(err, os.ErrDeadlineExceeded) {
-			// timeout
-			// msgChan <- Message{err, ""}
-			util.Log.With("error", err).Debug("#read")
-			continue
-		} else {
-			// EOF goes here
-			msgChan <- Message{"", nil, err}
-			break
+		case <-timer.C:
 		}
 	}
 	// fmt.Println("#ReadFromFile exit.")
