@@ -775,9 +775,9 @@ func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err err
 
 	// open network
 	blank := &statesync.UserStream{}
-	network := network.NewTransportServer(terminal, blank, conf.desiredIP, conf.desiredPort)
-	network.SetVerbose(uint(conf.verbose))
-	defer network.Close()
+	server := network.NewTransportServer(terminal, blank, conf.desiredIP, conf.desiredPort)
+	server.SetVerbose(uint(conf.verbose))
+	defer server.Close()
 	// util.Log.With("target", conf.target).Debug("runWorker")
 
 	/*
@@ -790,7 +790,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err err
 		}
 	*/
 
-	exChan <- network.GetKey() // send the key to run()
+	exChan <- server.GetKey() // send the key to run()
 
 	// in mosh: the parent print this to stderr.
 	// fmt.Printf("#runWorker %s CONNECT %s %s\n", COMMAND_NAME, network.Port(), network.GetKey())
@@ -819,7 +819,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err err
 	pr, pw := io.Pipe()
 
 	// prepare host field for utmp record
-	utmpHost := fmt.Sprintf("%s:%s", frontend.CommandServerName, network.GetServerPort())
+	utmpHost := fmt.Sprintf("%s:%s", frontend.CommandServerName, server.GetServerPort())
 
 	// add utmp entry
 	if utmpSupport {
@@ -837,7 +837,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err err
 	// go conf.serve(ptmx, pw, terminal, waitChan, network, networkTimeout, networkSignaledTimeout)
 	go func() {
 		// conf.serve(ptmx, pw, terminal, waitChan, network, networkTimeout, networkSignaledTimeout)
-		conf.serve(ptmx, pts, pw, terminal, network, networkTimeout, networkSignaledTimeout)
+		conf.serve(ptmx, pts, pw, terminal, server, networkTimeout, networkSignaledTimeout)
 		wg.Done()
 	}()
 
@@ -887,13 +887,13 @@ func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err err
 }
 
 func serve(ptmx *os.File, pts *os.File, pw *io.PipeWriter, complete *statesync.Complete, // waitChan chan bool,
-	network *network.Transport[*statesync.Complete, *statesync.UserStream],
+	server *network.Transport[*statesync.Complete, *statesync.UserStream],
 	networkTimeout int64, networkSignaledTimeout int64) error {
 	// scale timeouts
 	networkTimeoutMs := networkTimeout * 1000
 	networkSignaledTimeoutMs := networkSignaledTimeout * 1000
 
-	lastRemoteNum := network.GetRemoteStateNum()
+	lastRemoteNum := server.GetRemoteStateNum()
 	var connectedUtmp bool
 	var forceConnectionChangEvt bool
 	var savedAddr net.Addr
@@ -908,16 +908,15 @@ func serve(ptmx *os.File, pts *os.File, pw *io.PipeWriter, complete *statesync.C
 	var timeSinceRemoteState int64
 
 	// var networkChan chan frontend.Message
-	var fileChan chan frontend.Message
 	networkChan := make(chan frontend.Message, 1)
-	fileChan = make(chan frontend.Message, 1)
+	fileChan := make(chan frontend.Message, 1)
 	fileDownChan := make(chan any, 1)
 	networkDownChan := make(chan any, 1)
 
 	eg := errgroup.Group{}
 	// read from socket
 	eg.Go(func() error {
-		frontend.ReadFromNetwork(1, networkChan, networkDownChan, network.GetConnection())
+		frontend.ReadFromNetwork(1, networkChan, networkDownChan, server.GetConnection())
 		return nil
 	})
 
@@ -939,13 +938,13 @@ mainLoop:
 		timeout := math.MaxInt16
 		now := time.Now().UnixMilli()
 
-		timeout = min(timeout, network.WaitTime()) // network.WaitTime cost time
+		timeout = min(timeout, server.WaitTime()) // network.WaitTime cost time
 		w0 := timeout
 		w1 := complete.WaitTime(now)
 		timeout = min(timeout, w1)
 		// timeout = terminal.Min(timeout, complete.WaitTime(now))
 
-		if network.GetRemoteStateNum() > 0 || network.ShutdownInProgress() {
+		if server.GetRemoteStateNum() > 0 || server.ShutdownInProgress() {
 			timeout = min(timeout, 5000)
 		}
 
@@ -953,7 +952,7 @@ mainLoop:
 		// We may want to wake up sooner.
 		var networkSleep int64
 		if networkTimeoutMs > 0 {
-			rs := network.GetLatestRemoteState()
+			rs := server.GetLatestRemoteState()
 			networkSleep = networkTimeoutMs - (now - rs.GetTimestamp())
 			if networkSleep < 0 {
 				networkSleep = 0
@@ -964,11 +963,11 @@ mainLoop:
 		}
 
 		now = time.Now().UnixMilli()
-		p := network.GetLatestRemoteState()
+		p := server.GetLatestRemoteState()
 		timeSinceRemoteState = now - p.GetTimestamp()
 		terminalToHost.Reset()
 
-		util.Log.With("port", network.GetServerPort()).With("network.WaitTime", w0).
+		util.Log.With("port", server.GetServerPort()).With("network.WaitTime", w0).
 			With("complete.WaitTime", w1).With("timeout", timeout).Debug("mainLoop")
 		timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
 		select {
@@ -986,16 +985,16 @@ mainLoop:
 				util.Log.With("error", socketMsg.Err).Warn("read from network")
 				continue mainLoop
 			}
-			p = network.GetLatestRemoteState()
+			p = server.GetLatestRemoteState()
 			timeSinceRemoteState = now - p.GetTimestamp()
-			network.ProcessPayload(socketMsg.Data)
+			server.ProcessPayload(socketMsg.Data)
 
 			// is new user input available for the terminal?
-			if network.GetRemoteStateNum() != lastRemoteNum {
-				lastRemoteNum = network.GetRemoteStateNum()
+			if server.GetRemoteStateNum() != lastRemoteNum {
+				lastRemoteNum = server.GetRemoteStateNum()
 
 				us := &statesync.UserStream{}
-				us.ApplyString(network.GetRemoteDiff())
+				us.ApplyString(server.GetRemoteDiff())
 
 				// apply userstream to terminal
 				for i := 0; i < us.Size(); i++ {
@@ -1011,18 +1010,18 @@ mainLoop:
 						winSize, err := unix.IoctlGetWinsize(int(ptmx.Fd()), unix.TIOCGWINSZ)
 						if err != nil {
 							fmt.Printf("#serve ioctl TIOCGWINSZ %s", err)
-							network.StartShutdown()
+							server.StartShutdown()
 						}
 						winSize.Col = uint16(res.Width)
 						winSize.Row = uint16(res.Height)
 						if err = unix.IoctlSetWinsize(int(ptmx.Fd()), unix.TIOCSWINSZ, winSize); err != nil {
 							fmt.Printf("#serve ioctl TIOCSWINSZ %s", err)
-							network.StartShutdown()
+							server.StartShutdown()
 						}
 						// util.Log.With("col", winSize.Col).With("row", winSize.Row).Debug("input from remote")
 						if !childReleased {
 							// only do once
-							network.InitSize(res.Width, res.Height)
+							server.InitSize(res.Width, res.Height)
 						}
 					}
 					terminalToHost.WriteString(complete.ActOne(action))
@@ -1038,8 +1037,8 @@ mainLoop:
 				}
 
 				// update client with new state of terminal
-				if !network.ShutdownInProgress() {
-					network.SetCurrentState(complete)
+				if !server.ShutdownInProgress() {
+					server.SetCurrentState(complete)
 				}
 
 				if utmpSupport || syslogSupport {
@@ -1068,7 +1067,7 @@ mainLoop:
 
 						if utmpSupport {
 							util.ClearUtmpx(pts)
-							utmpHost := fmt.Sprintf("%s via %s:%s", host, frontend.CommandServerName, network.GetServerPort())
+							utmpHost := fmt.Sprintf("%s via %s:%s", host, frontend.CommandServerName, server.GetServerPort())
 							util.AddUtmpx(pts, utmpHost)
 							connectedUtmp = true
 						}
@@ -1089,18 +1088,18 @@ mainLoop:
 				}
 			}
 		case remains := <-largeFeed:
-			if !network.ShutdownInProgress() {
+			if !server.ShutdownInProgress() {
 				out := complete.ActLarge(remains, largeFeed)
 				terminalToHost.WriteString(out)
 
 				util.Log.With("arise", "remains").With("input", out).Debug("ouput from host")
 
 				// update client with new state of terminal
-				network.SetCurrentState(complete)
+				server.SetCurrentState(complete)
 			}
 		case masterMsg := <-fileChan:
 			// input from the host needs to be fed to the terminal
-			if !network.ShutdownInProgress() {
+			if !server.ShutdownInProgress() {
 
 				// If the pty slave is closed, reading from the master can fail with
 				// EIO (see #264).  So we treat errors on read() like EOF.
@@ -1109,8 +1108,8 @@ mainLoop:
 						util.Log.With("error", masterMsg.Err).Warn("read from master")
 					}
 					if !signals.AnySignal() { // avoid conflict with signal
-						util.Log.With("from", "read file failed").With("port", network.GetServerPort()).Warn("shutdown")
-						network.StartShutdown()
+						util.Log.With("from", "read file failed").With("port", server.GetServerPort()).Warn("shutdown")
+						server.StartShutdown()
 					}
 				} else {
 					out := complete.ActLarge(masterMsg.Data, largeFeed)
@@ -1120,7 +1119,7 @@ mainLoop:
 						With("input", out).Debug("output from host")
 
 					// update client with new state of terminal
-					network.SetCurrentState(complete)
+					server.SetCurrentState(complete)
 				}
 			}
 		}
@@ -1129,7 +1128,7 @@ mainLoop:
 		if terminalToHost.Len() > 0 {
 			_, err := ptmx.WriteString(terminalToHost.String())
 			if err != nil && !signals.AnySignal() { // avoid conflict with signal
-				network.StartShutdown()
+				server.StartShutdown()
 			}
 
 			util.Log.With("arise", "merge-").With("data", terminalToHost.String()).Debug("input to host")
@@ -1153,66 +1152,66 @@ mainLoop:
 		}
 
 		if signals.AnySignal() || idleShutdown {
-			util.Log.With("HasRemoteAddr", network.HasRemoteAddr()).
-				With("ShutdownInProgress", network.ShutdownInProgress()).
+			util.Log.With("HasRemoteAddr", server.HasRemoteAddr()).
+				With("ShutdownInProgress", server.ShutdownInProgress()).
 				Debug("got signal: start shutdown")
 			signals.Clear()
 			// shutdown signal
-			if network.HasRemoteAddr() && !network.ShutdownInProgress() {
-				network.StartShutdown()
+			if server.HasRemoteAddr() && !server.ShutdownInProgress() {
+				server.StartShutdown()
 			} else {
-				util.Log.With("HasRemoteAddr", network.HasRemoteAddr()).
-					With("ShutdownInProgress", network.ShutdownInProgress()).
+				util.Log.With("HasRemoteAddr", server.HasRemoteAddr()).
+					With("ShutdownInProgress", server.ShutdownInProgress()).
 					Debug("got signal: break loop")
 				break
 			}
 		}
 
 		// quit if our shutdown has been acknowledged
-		if network.ShutdownInProgress() && network.ShutdownAcknowledged() {
-			util.Log.With("from", "acked").With("port", network.GetServerPort()).Warn("shutdown")
+		if server.ShutdownInProgress() && server.ShutdownAcknowledged() {
+			util.Log.With("from", "acked").With("port", server.GetServerPort()).Warn("shutdown")
 			break
 		}
 
 		// quit after shutdown acknowledgement timeout
-		if network.ShutdownInProgress() && network.ShutdownAckTimedout() {
-			util.Log.With("from", "act timeout").With("port", network.GetServerPort()).Warn("shutdown")
+		if server.ShutdownInProgress() && server.ShutdownAckTimedout() {
+			util.Log.With("from", "act timeout").With("port", server.GetServerPort()).Warn("shutdown")
 			break
 		}
 
 		// quit if we received and acknowledged a shutdown request
-		if network.CounterpartyShutdownAckSent() {
-			util.Log.With("from", "peer acked").With("port", network.GetServerPort()).Warn("shutdown")
+		if server.CounterpartyShutdownAckSent() {
+			util.Log.With("from", "peer acked").With("port", server.GetServerPort()).Warn("shutdown")
 			break
 		}
 
 		// update utmp if has been more than 30 seconds since heard from client
 		if utmpSupport && connectedUtmp && timeSinceRemoteState > 30000 {
 			util.ClearUtmpx(pts)
-			utmpHost := fmt.Sprintf("%s:%s", frontend.CommandServerName, network.GetServerPort())
+			utmpHost := fmt.Sprintf("%s:%s", frontend.CommandServerName, server.GetServerPort())
 			util.AddUtmpx(pts, utmpHost)
 			connectedUtmp = false
 			// util.Log.Info("serve doesn't heard from client over 16 minutes.")
 		}
 
-		if complete.SetEchoAck(now) && !network.ShutdownInProgress() {
+		if complete.SetEchoAck(now) && !server.ShutdownInProgress() {
 			// update client with new echo ack
-			network.SetCurrentState(complete)
+			server.SetCurrentState(complete)
 		}
 
-		if network.GetRemoteStateNum() == 0 && network.ShutdownInProgress() {
+		if server.GetRemoteStateNum() == 0 && server.ShutdownInProgress() {
 			// abort if no connection over TimeoutIfNoConnect seconds
 
-			// util.Log.With("seconds", frontend.TimeoutIfNoConnect/1000).With("timeout", "shutdown").
-			// 	With("port", network.GetServerPort()).Warn("No connection within x seconds")
+			util.Log.With("seconds", frontend.TimeoutIfNoConnect/1000).With("timeout", "shutdown").
+				With("port", server.GetServerPort()).Warn("No connection within x seconds")
 			break
-		} else if network.GetRemoteStateNum() != 0 && timeSinceRemoteState >= frontend.TimeoutIfNoResp {
+		} else if server.GetRemoteStateNum() != 0 && timeSinceRemoteState >= frontend.TimeoutIfNoResp {
 			// if no response from client over TimeoutIfNoResp seconds
 			now = time.Now().UnixMilli()
-			if now-network.GetSentStateLastTimestamp() >= frontend.TimeoutIfNoResp {
+			if now-server.GetSentStateLastTimestamp() >= frontend.TimeoutIfNoResp-network.SERVER_ASSOCIATION_TIMEOUT {
 				// abort if no request send over TimeoutIfNoResp seconds
 				util.Log.With("seconds", frontend.TimeoutIfNoResp/1000).
-					With("port", network.GetServerPort()).
+					With("port", server.GetServerPort()).
 					With("timeSinceRemoteState", timeSinceRemoteState).
 					Warn("Time out for no client request")
 				break
@@ -1220,7 +1219,7 @@ mainLoop:
 		}
 
 		// util.Log.With("point", 500).Debug("mainLoop")
-		err := network.Tick()
+		err := server.Tick()
 		if err != nil {
 			util.Log.With("error", err).Warn("#serve send failed")
 		}
@@ -1237,6 +1236,7 @@ mainLoop:
 	default:
 	}
 
+	util.Log.With("point", 400).With("port", server.GetServerPort()).Debug("mainLoop")
 	// consume last message to free reader if possible
 	select {
 	case <-fileChan:
@@ -1248,6 +1248,7 @@ mainLoop:
 	}
 	eg.Wait()
 
+	util.Log.With("point", 500).With("port", server.GetServerPort()).Debug("mainLoop")
 	// notify the runWorker
 	// waitChan <- true
 	if syslogSupport {
