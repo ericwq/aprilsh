@@ -10,6 +10,8 @@ import (
 	"net"
 	"os"
 	"time"
+
+	"github.com/ericwq/aprilsh/util"
 )
 
 // communication the read result with the others
@@ -55,6 +57,7 @@ func ReadFromFile(timeout int, msgChan chan Message, doneChan chan any, fReader 
 			return
 		default:
 		}
+		util.Log.With("action", "satrt").Debug("#read")
 		// set read time out
 		fReader.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
 
@@ -62,10 +65,12 @@ func ReadFromFile(timeout int, msgChan chan Message, doneChan chan any, fReader 
 		bytesRead, err = fReader.Read(buf[:])
 
 		if bytesRead > 0 {
+			util.Log.With("action", "got").Debug("#read")
 			msgChan <- Message{string(buf[:bytesRead]), nil, nil}
 		} else if errors.Is(err, os.ErrDeadlineExceeded) {
 			// timeout
 			// msgChan <- Message{err, ""}
+			util.Log.With("error", err).Debug("#read")
 			continue
 		} else {
 			// EOF goes here
