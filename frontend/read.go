@@ -120,10 +120,12 @@ func ReadFromNetwork(timeout int, msgChan chan Message, doneChan chan any, netwo
 	var rAddr net.Addr
 
 	for {
+		timer := time.NewTimer(time.Duration(timeout*5) * time.Millisecond)
 		select {
 		case <-doneChan:
+			timer.Stop()
 			return
-		default:
+		case <-timer.C:
 		}
 		// packet received from the network
 		payload, rAddr, err = network.Recv(timeout)

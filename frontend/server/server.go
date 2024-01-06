@@ -925,7 +925,7 @@ func serve(ptmx *os.File, pts *os.File, pw *io.PipeWriter, complete *statesync.C
 	// is reset back to blocking IO mode.
 	// syscall.SetNonblock(int(ptmx.Fd()), true)
 	eg.Go(func() error {
-		frontend.ReadFromFile(2, fileChan, fileDownChan, ptmx)
+		frontend.ReadFromFile(10, fileChan, fileDownChan, ptmx)
 		return nil
 	})
 

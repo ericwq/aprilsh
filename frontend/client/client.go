@@ -835,11 +835,11 @@ func (sc *STMClient) main() error {
 	//
 	// os.Stdin will always block on the Read operation. The simple
 	// fix is we dont' wait the goroutine to quit.
-	go frontend.ReadFromFile(1, fileChan, fileDownChan, os.Stdin)
-	// eg.Go(func() error {
-	// 	frontend.ReadFromFile(10, fileChan, fileDownChan, os.Stdin)
-	// 	return nil
-	// })
+	// go frontend.ReadFromFile(10, fileChan, fileDownChan, os.Stdin)
+	eg.Go(func() error {
+		frontend.ReadFromFile(10, fileChan, fileDownChan, os.Stdin)
+		return nil
+	})
 
 	// intercept signal
 	sigChan := make(chan os.Signal, 1)
