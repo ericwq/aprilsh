@@ -836,8 +836,8 @@ func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err err
 	// waitChan := make(chan bool)
 	// go conf.serve(ptmx, pw, terminal, waitChan, network, networkTimeout, networkSignaledTimeout)
 	go func() {
-		// conf.serve(ptmx, pw, terminal, waitChan, network, networkTimeout, networkSignaledTimeout)
 		conf.serve(ptmx, pts, pw, terminal, server, networkTimeout, networkSignaledTimeout)
+		exChan <- fmt.Sprintf("%s:shutdown", conf.desiredPort)
 		wg.Done()
 	}()
 
@@ -921,8 +921,11 @@ func serve(ptmx *os.File, pts *os.File, pw *io.PipeWriter, complete *statesync.C
 	})
 
 	// read from pty master file
+	// the following doesn't work for terminal, when the shell start, the file
+	// is reset back to blocking IO mode.
+	// syscall.SetNonblock(int(ptmx.Fd()), true)
 	eg.Go(func() error {
-		frontend.ReadFromFile(1, fileChan, fileDownChan, ptmx)
+		frontend.ReadFromFile(2, fileChan, fileDownChan, ptmx)
 		return nil
 	})
 
@@ -1236,7 +1239,7 @@ mainLoop:
 	default:
 	}
 
-	util.Log.With("point", 400).With("port", server.GetServerPort()).Debug("mainLoop")
+	// util.Log.With("point", 400).With("port", server.GetServerPort()).Debug("mainLoop")
 	// consume last message to free reader if possible
 	select {
 	case <-fileChan:
@@ -1248,7 +1251,7 @@ mainLoop:
 	}
 	eg.Wait()
 
-	util.Log.With("point", 500).With("port", server.GetServerPort()).Debug("mainLoop")
+	// util.Log.With("point", 500).With("port", server.GetServerPort()).Debug("mainLoop")
 	// notify the runWorker
 	// waitChan <- true
 	if syslogSupport {
@@ -1333,14 +1336,30 @@ func (m *mainSrv) listen(conf *Config) error {
 	return nil
 }
 
-func (m *mainSrv) cleanWorkers(portStr string) {
-	p, err := strconv.Atoi(portStr)
-	if err != nil {
-		util.Log.With("portStr", portStr).With("err", err).Warn("cleanWorkers receive wrong portStr")
-	}
+// two kind of cmd: 60002 or 60002:shutdown.
+// the latter is used to stop the specified shell.
+// the former is used to clean the worker list.
+func (m *mainSrv) cleanWorkers(cmd string) {
+	ps := strings.Split(cmd, ":")
+	if len(ps) == 1 {
+		p, err := strconv.Atoi(cmd)
+		if err != nil {
+			// util.Log.With("portStr", portStr).With("err", err).Debug("cleanWorkers receive wrong portStr")
+		}
 
-	// clear worker list
-	delete(m.workers, p)
+		// clean worker list
+		delete(m.workers, p)
+		// util.Log.With("worker", ps[0]).Warn("#run clean worker")
+	} else if ps[1] == "shutdown" {
+		idx, err := strconv.Atoi(ps[0])
+		if err != nil {
+			util.Log.With("portStr", cmd).Warn("#run receive malform message")
+		} else if _, ok := m.workers[idx]; ok {
+			// stop the specified shell
+			m.workers[idx].shell.Kill()
+			// util.Log.With("shell", idx).Debug("#run kill shell")
+		}
+	}
 }
 
 /*
@@ -1385,7 +1404,6 @@ func (m *mainSrv) run(conf *Config) {
 	for {
 		select {
 		case portStr := <-m.exChan:
-			// some worker is done
 			m.cleanWorkers(portStr)
 			// util.Log.With("port", portStr).Info("run some worker is done")
 		case ss := <-sig:
