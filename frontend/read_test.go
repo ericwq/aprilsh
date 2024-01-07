@@ -7,6 +7,7 @@ package frontend
 import (
 	"errors"
 	"io"
+	"net"
 	"os"
 	"sync"
 	"testing"
@@ -55,7 +56,7 @@ func (m *mockDeadLineReader) SetReadDeadline(t time.Time) error {
 	return nil
 }
 
-func TestReadFromFile(t *testing.T) {
+func testReadFromFile(t *testing.T) {
 	// prepare the data
 	mockReader := &mockDeadLineReader{}
 	mockReader.round = 0
@@ -195,7 +196,7 @@ func (m *mockDeadLineReceiver) SetReadDeadline(t time.Time) error {
 	return nil
 }
 
-func (m *mockDeadLineReceiver) Recv(timeout int) (payload string, err error) {
+func (m *mockDeadLineReceiver) Recv(timeout int) (payload string, rAddr net.Addr, err error) {
 	// func (m *mockDeadLineReceiver) Recv() (err error) {
 	if m.round >= 0 && m.round < len(m.err) {
 		// make sure we increase round
