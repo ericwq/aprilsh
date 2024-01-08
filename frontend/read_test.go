@@ -6,7 +6,6 @@ package frontend
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"os"
@@ -193,24 +192,24 @@ func (m *mockConnection) Recv(timeout int) (payload string, rAddr net.Addr, err 
 		time.Sleep(time.Duration(m.timeout[m.round]) * time.Millisecond)
 		if m.timeout[m.round] > m.limit {
 			err = os.ErrDeadlineExceeded
-			fmt.Printf("#mockConnection Read round=%d, data=%s, err=%s\n", m.round, payload, err)
+			// fmt.Printf("#mockConnection Read round=%d, data=%s, err=%s\n", m.round, payload, err)
 			return
 		} else if m.timeout[m.round] == m.limit {
 			err = os.ErrPermission
-			fmt.Printf("#mockConnection Read round=%d, data=%s, err=%s\n", m.round, payload, err)
+			// fmt.Printf("#mockConnection Read round=%d, data=%s, err=%s\n", m.round, payload, err)
 			return
 		}
 		// normal read
 		payload = m.data[m.round]
 		err = nil
-		fmt.Printf("#mockConnection Read round=%d, data=%s, err=%s\n", m.round, payload, err)
+		// fmt.Printf("#mockConnection Read round=%d, data=%s, err=%s\n", m.round, payload, err)
 		return
 	}
 
 	m.round = 0
 	// err = net.ErrClosed
 	err = net.ErrClosed
-	fmt.Printf("#mockConnection* Read round=%d, data=%s, err=%s\n", m.round, payload, err)
+	// fmt.Printf("#mockConnection* Read round=%d, data=%s, err=%s\n", m.round, payload, err)
 	return
 }
 
@@ -250,7 +249,7 @@ func TestReadFromNetwork(t *testing.T) {
 
 		// got message from reader channel
 		netMsg := <-networkChan
-		fmt.Printf("#TestReadFromNetwork got %s,%s\n", netMsg.Data, netMsg.Err)
+		// fmt.Printf("#TestReadFromNetwork got %s,%s\n", netMsg.Data, netMsg.Err)
 
 		if mr.err[i] != nil {
 			if !errors.Is(netMsg.Err, mr.err[i]) {
@@ -284,7 +283,7 @@ func TestReadFromNetwork_ErrClosed(t *testing.T) {
 	mr.limit = 10
 	mr.timeout = []int{5, 5, 7, 3, 8, 10}
 	mr.data = []string{"zero*", "one*", "two*", "tree*", "four*", "five*"}
-	mr.err = []error{nil, nil, nil, nil, nil, net.ErrClosed}
+	mr.err = []error{nil, nil, nil, nil, nil, os.ErrPermission}
 
 	var networkChan chan Message
 	var doneChan chan any
@@ -310,14 +309,11 @@ func TestReadFromNetwork_ErrClosed(t *testing.T) {
 		if mr.err[i] == os.ErrDeadlineExceeded {
 			continue
 		}
-		if mr.err[i] == net.ErrClosed {
-			break
-		}
 
 		// got message from reader channel
 		netMsg := <-networkChan
 
-		fmt.Printf("got %s,%s\n", netMsg.Data, netMsg.Err)
+		// fmt.Printf("got %s,%s\n", netMsg.Data, netMsg.Err)
 		if mr.err[i] != nil {
 			if !errors.Is(netMsg.Err, mr.err[i]) {
 				t.Errorf("#test ReadFromFile expect %s, got %s\n", mr.err[i], netMsg.Err)
