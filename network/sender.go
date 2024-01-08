@@ -231,10 +231,6 @@ func (ts *TransportSender[T]) sendFragments(inst *pb.Instruction, newNum uint64)
 	// extract 90 bytes from the MTU, to avoid oversize datagram
 	fragments := ts.fragmenter.makeFragments(inst, ts.connection.getMTU()-ADDED_BYTES-encrypt.ADDED_BYTES-90)
 	for i := range fragments {
-		if err := ts.connection.send(fragments[i].String()); err != nil {
-			return err
-		}
-
 		if ts.verbose > 0 {
 			util.Log.With("NewNum", inst.NewNum).
 				With("OldNum", inst.OldNum).
@@ -257,6 +253,9 @@ func (ts *TransportSender[T]) sendFragments(inst *pb.Instruction, newNum uint64)
 			// 	With("sendInterval", ts.sendInterval()).
 			// 	With("timeout", ts.connection.timeout()).
 			// 	Debug("send message")
+		}
+		if err := ts.connection.send(fragments[i].String()); err != nil {
+			return err
 		}
 	}
 

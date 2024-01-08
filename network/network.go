@@ -802,6 +802,8 @@ func (c *Connection) Recv(timeout int) (payload string, remoteAddr net.Addr, err
 	c.Lock()
 	defer c.Unlock()
 
+	// util.Log.With("remoteAddr", c.remoteAddr).
+	// 	With("hasRemoteAddr", c.hasRemoteAddr).Debug("got message")
 	for i := range c.socks {
 		c.socks[i].SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
 
