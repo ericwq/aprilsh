@@ -52,3 +52,4 @@
 - 2023/Dec/13: fix bug #11, solve computer hibernate problem partly.
 - 2023/Dec/28: enhance utmp access problem #17. fix read dead line problem #18.
 - 2024/Jan/02: refine utmp access #22.
+- 2024/Jan/09: refine for no connection shutdown #20, refine for no request time out. fix bug #19, #21, #23, #24.
