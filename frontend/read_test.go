@@ -6,6 +6,7 @@ package frontend
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"os"
@@ -14,7 +15,7 @@ import (
 	"time"
 )
 
-type mockDeadLineReader struct {
+type mockFile struct {
 	round   int
 	timeout []int
 	data    []string
@@ -22,7 +23,7 @@ type mockDeadLineReader struct {
 	limit   int
 }
 
-func (m *mockDeadLineReader) Read(p []byte) (n int, err error) {
+func (m *mockFile) Read(p []byte) (n int, err error) {
 	if m.round >= 0 && m.round < len(m.data) {
 
 		// make sure we increase round
@@ -32,10 +33,11 @@ func (m *mockDeadLineReader) Read(p []byte) (n int, err error) {
 		time.Sleep(time.Duration(m.timeout[m.round]) * time.Millisecond)
 		if m.timeout[m.round] > m.limit {
 			err = os.ErrDeadlineExceeded
+			// fmt.Printf("#mockFile Read round=%d, n=%d, err=%s\n", m.round, n, err)
 			return
 		} else if m.timeout[m.round] == m.limit {
 			err = os.ErrPermission
-			// fmt.Printf("#mockDeadLineReader Read round=%d, n=%d, err=%S\n", m.round, n, err)
+			// fmt.Printf("#mockFile Read round=%d, n=%d, err=%s\n", m.round, n, err)
 			return
 		}
 
@@ -43,31 +45,28 @@ func (m *mockDeadLineReader) Read(p []byte) (n int, err error) {
 		copy(p, []byte(m.data[m.round]))
 		n = len(m.data[m.round])
 		err = nil
+		// fmt.Printf("#mockFile Read round=%d, n=%d, err=%s\n", m.round, n, err)
 		return
 	}
 	m.round = 0
 	n = 0
 	err = io.EOF
-	// fmt.Printf("#mockDeadLineReader Read p=%s, n=%d, err=%s\n", p, n, err)
+	// fmt.Printf("#mockFile Read round=%d, n=%d, err=%s\n", m.round, n, err)
 	return
 }
 
-func (m *mockDeadLineReader) SetReadDeadline(t time.Time) error {
-	return nil
-}
-
-func testReadFromFile(t *testing.T) {
+func TestReadFromFile(t *testing.T) {
 	// prepare the data
-	mockReader := &mockDeadLineReader{}
+	mockReader := &mockFile{}
 	mockReader.round = 0
 	mockReader.limit = 10
-	mockReader.timeout = []int{5, 15, 7, 3, 8, 10}
+	mockReader.timeout = []int{5, 5, 7, 3, 8, 15}
 	mockReader.data = []string{"zero", "one", "two", "tree", "four", "five"}
-	mockReader.err = []error{nil, os.ErrDeadlineExceeded, nil, nil, nil, os.ErrPermission}
+	mockReader.err = []error{nil, nil, nil, nil, nil, os.ErrDeadlineExceeded}
 
 	var fileChan chan Message
 	var doneChan chan any
-	fileChan = make(chan Message, 1)
+	fileChan = make(chan Message, 0)
 	doneChan = make(chan any, 1)
 
 	// start the deal line reader
@@ -86,30 +85,24 @@ func testReadFromFile(t *testing.T) {
 
 	// consume the data from reader
 	for i := range mockReader.err {
-		if mockReader.err[i] == os.ErrDeadlineExceeded {
-			// fmt.Println("skip ErrDeadlineExceeded")
-			continue
-		}
-
 		// got message from reader channel
 		fileMsg := <-fileChan
 		// fmt.Printf("got %s,%s\n", fileMsg.Data, fileMsg.Err)
-		if fileMsg.Err != nil {
-			// validate the error case
-			if !errors.Is(fileMsg.Err, os.ErrPermission) {
+		if mockReader.err[i] != nil {
+			if !errors.Is(fileMsg.Err, mockReader.err[i]) {
 				t.Errorf("#test ReadFromFile expect %s, got %s\n", mockReader.err[i], fileMsg.Err)
 			}
-			// fmt.Printf("#test ReadFromFile round=%d read error:%s\n", i, fileMsg.Err)
+			if "" != fileMsg.Data {
+				t.Errorf("#test ReadFromFile expect %q, got %s\n", "", fileMsg.Data)
+			}
 		} else {
-			// fmt.Printf("#test ReadFromFile round=%d read %s\n", i, fileMsg.Data)
-
-			// validate the data field of message
 			if mockReader.data[i] != fileMsg.Data {
 				t.Errorf("#test ReadFromFile expect %s, got %s\n", mockReader.data[i], fileMsg.Data)
 			}
 		}
 	}
 
+	doneChan <- "done"
 	// consume EOF message
 	select {
 	case <-fileChan:
@@ -120,12 +113,12 @@ func testReadFromFile(t *testing.T) {
 
 func TestReadFromFile_DoneChan(t *testing.T) {
 	// prepare the data
-	mockReader := &mockDeadLineReader{}
+	mockReader := &mockFile{}
 	mockReader.round = 0
 	mockReader.limit = 10
-	mockReader.timeout = []int{5, 15, 7, 3, 8, 10}
+	mockReader.timeout = []int{5, 5, 7, 3, 8, 10}
 	mockReader.data = []string{"zero+", "one+", "two+", "tree+", "four+", "five+"}
-	mockReader.err = []error{nil, os.ErrDeadlineExceeded, nil, nil, nil, os.ErrPermission}
+	mockReader.err = []error{nil, nil, nil, nil, nil, os.ErrPermission}
 
 	var fileChan chan Message
 	var doneChan chan any
@@ -148,22 +141,16 @@ func TestReadFromFile_DoneChan(t *testing.T) {
 
 	// consume the data from reader
 	for i := range mockReader.data {
-		if mockReader.err[i] == os.ErrDeadlineExceeded {
-			continue
-		}
-
 		// got message from reader channel
 		fileMsg := <-fileChan
-		if fileMsg.Err != nil {
-			// validate the error case
-			if !errors.Is(fileMsg.Err, os.ErrPermission) {
+		if mockReader.err[i] != nil {
+			if !errors.Is(fileMsg.Err, mockReader.err[i]) {
 				t.Errorf("#test ReadFromFile expect %s, got %s\n", mockReader.err[i], fileMsg.Err)
 			}
-			// fmt.Printf("#test ReadFromFile round=%d read error:%s\n", i, fileMsg.Err)
+			if "" != fileMsg.Data {
+				t.Errorf("#test ReadFromFile expect %q, got %s\n", "", fileMsg.Data)
+			}
 		} else {
-			// fmt.Printf("#test ReadFromFile round=%d read %s\n", i, fileMsg.Data)
-
-			// validate the data field of message
 			if mockReader.data[i] != fileMsg.Data {
 				t.Errorf("#test ReadFromFile expect %s, got %s\n", mockReader.data[i], fileMsg.Data)
 			}
@@ -184,7 +171,7 @@ func TestReadFromFile_DoneChan(t *testing.T) {
 	wg.Wait()
 }
 
-type mockDeadLineReceiver struct {
+type mockConnection struct {
 	round   int
 	timeout []int
 	data    []string
@@ -192,11 +179,11 @@ type mockDeadLineReceiver struct {
 	limit   int
 }
 
-func (m *mockDeadLineReceiver) SetReadDeadline(t time.Time) error {
-	return nil
-}
+// func (m *mockDeadLineReceiver) SetReadDeadline(t time.Time) error {
+// 	return nil
+// }
 
-func (m *mockDeadLineReceiver) Recv(timeout int) (payload string, rAddr net.Addr, err error) {
+func (m *mockConnection) Recv(timeout int) (payload string, rAddr net.Addr, err error) {
 	// func (m *mockDeadLineReceiver) Recv() (err error) {
 	if m.round >= 0 && m.round < len(m.err) {
 		// make sure we increase round
@@ -206,26 +193,30 @@ func (m *mockDeadLineReceiver) Recv(timeout int) (payload string, rAddr net.Addr
 		time.Sleep(time.Duration(m.timeout[m.round]) * time.Millisecond)
 		if m.timeout[m.round] > m.limit {
 			err = os.ErrDeadlineExceeded
+			fmt.Printf("#mockConnection Read round=%d, data=%s, err=%s\n", m.round, payload, err)
 			return
 		} else if m.timeout[m.round] == m.limit {
 			err = os.ErrPermission
-			// fmt.Printf("#mockDeadLineReceiver Read round=%d, n=%d, err=%S\n", m.round, n, err)
+			fmt.Printf("#mockConnection Read round=%d, data=%s, err=%s\n", m.round, payload, err)
 			return
 		}
 		// normal read
 		payload = m.data[m.round]
 		err = nil
+		fmt.Printf("#mockConnection Read round=%d, data=%s, err=%s\n", m.round, payload, err)
 		return
 	}
 
 	m.round = 0
-	err = io.EOF
+	// err = net.ErrClosed
+	err = net.ErrClosed
+	fmt.Printf("#mockConnection* Read round=%d, data=%s, err=%s\n", m.round, payload, err)
 	return
 }
 
 func TestReadFromNetwork(t *testing.T) {
 	// prepare the data
-	mr := &mockDeadLineReceiver{}
+	mr := &mockConnection{}
 	mr.round = 0
 	mr.limit = 10
 	mr.timeout = []int{5, 15, 7, 3, 8, 10}
@@ -256,26 +247,25 @@ func TestReadFromNetwork(t *testing.T) {
 		if mr.err[i] == os.ErrDeadlineExceeded {
 			continue
 		}
+
 		// got message from reader channel
 		netMsg := <-networkChan
-		if netMsg.Err != nil {
-			// validate the error case
-			if !errors.Is(netMsg.Err, os.ErrPermission) {
-				t.Errorf("#test ReadFromNetwork expect %s, got %s\n", mr.err[i], netMsg.Err)
-			}
-			// fmt.Printf("#test ReadFromNetwork round=%d read error:%s\n", i, fileMsg.Err)
-		} else {
-			// fmt.Printf("#test ReadFromNetwork round=%d read %q\n", i, fileMsg.Data)
+		fmt.Printf("#TestReadFromNetwork got %s,%s\n", netMsg.Data, netMsg.Err)
 
-			// validate the data field of message
-			if mr.err[i] != netMsg.Err {
-				t.Errorf("#test ReadFromNetwork expect %s, got %s\n", mr.err[i], netMsg.Err)
+		if mr.err[i] != nil {
+			if !errors.Is(netMsg.Err, mr.err[i]) {
+				t.Errorf("#test ReadFromFile expect %s, got %s\n", mr.err[i], netMsg.Err)
 			}
+			if "" != netMsg.Data {
+				t.Errorf("#test ReadFromFile expect %q, got %s\n", "", netMsg.Data)
+			}
+		} else {
 			if mr.data[i] != netMsg.Data {
 				t.Errorf("#test ReadFromFile expect %s, got %s\n", mr.data[i], netMsg.Data)
 			}
 		}
 	}
+
 	//shutdown the reader
 	doneChan <- "done"
 
@@ -287,14 +277,14 @@ func TestReadFromNetwork(t *testing.T) {
 	wg.Wait()
 }
 
-func TestReadFromNetwork_DownChan(t *testing.T) {
+func TestReadFromNetwork_ErrClosed(t *testing.T) {
 	// prepare the data
-	mr := &mockDeadLineReceiver{}
+	mr := &mockConnection{}
 	mr.round = 0
 	mr.limit = 10
-	mr.timeout = []int{5, 15, 7, 3, 8, 10}
+	mr.timeout = []int{5, 5, 7, 3, 8, 10}
 	mr.data = []string{"zero*", "one*", "two*", "tree*", "four*", "five*"}
-	mr.err = []error{nil, os.ErrDeadlineExceeded, nil, nil, nil, os.ErrPermission}
+	mr.err = []error{nil, nil, nil, nil, nil, net.ErrClosed}
 
 	var networkChan chan Message
 	var doneChan chan any
@@ -320,37 +310,27 @@ func TestReadFromNetwork_DownChan(t *testing.T) {
 		if mr.err[i] == os.ErrDeadlineExceeded {
 			continue
 		}
+		if mr.err[i] == net.ErrClosed {
+			break
+		}
+
 		// got message from reader channel
 		netMsg := <-networkChan
-		if netMsg.Err != nil {
-			// validate the error case
-			if !errors.Is(netMsg.Err, os.ErrDeadlineExceeded) {
-				t.Errorf("#test ReadFromNetwork expect %s, got %s\n", mr.err[i], netMsg.Err)
-			}
-			// fmt.Printf("#test ReadFromNetwork round=%d read error:%s\n", i, netMsg.Err)
-		} else {
-			// fmt.Printf("#test ReadFromNetwork round=%d read %q\n", i, netMsg.Data)
 
-			// validate the data field of message
-			if mr.err[i] != netMsg.Err {
-				t.Errorf("#test ReadFromNetwork expect %s, got %s\n", mr.err[i], netMsg.Err)
+		fmt.Printf("got %s,%s\n", netMsg.Data, netMsg.Err)
+		if mr.err[i] != nil {
+			if !errors.Is(netMsg.Err, mr.err[i]) {
+				t.Errorf("#test ReadFromFile expect %s, got %s\n", mr.err[i], netMsg.Err)
 			}
+			if "" != netMsg.Data {
+				t.Errorf("#test ReadFromFile expect %q, got %s\n", "", netMsg.Data)
+			}
+		} else {
 			if mr.data[i] != netMsg.Data {
 				t.Errorf("#test ReadFromFile expect %s, got %s\n", mr.data[i], netMsg.Data)
 			}
 		}
-
-		// early shutdown
-		if i == 2 {
-			doneChan <- "done"
-			break
-		}
 	}
 
-	// consume last message to release the reader
-	select {
-	case <-networkChan:
-	default:
-	}
 	wg.Wait()
 }
