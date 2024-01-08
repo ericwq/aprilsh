@@ -777,7 +777,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err err
 	blank := &statesync.UserStream{}
 	server := network.NewTransportServer(terminal, blank, conf.desiredIP, conf.desiredPort)
 	server.SetVerbose(uint(conf.verbose))
-	defer server.Close()
+	// defer server.Close()
 	// util.Log.With("target", conf.target).Debug("runWorker")
 
 	/*
@@ -984,7 +984,7 @@ mainLoop:
 			signals.Handler(s)
 		case socketMsg := <-networkChan: // packet received from the network
 			if socketMsg.Err != nil {
-				// fmt.Printf("#readFromSocket receive error:%s\n", socketMsg.Err)
+				// TODO handle "use of closed network connection" error?
 				util.Log.With("error", socketMsg.Err).Warn("read from network")
 				continue mainLoop
 			}
@@ -1229,7 +1229,11 @@ mainLoop:
 		// util.Log.With("point", "d").Debug("mainLoop")
 	}
 
+	// stop signal and network
 	signal.Stop(sigChan)
+	server.Close()
+
+	// shutdown the goroutines: file reader and network reader
 	select {
 	case fileDownChan <- "done":
 	default:
@@ -1239,7 +1243,6 @@ mainLoop:
 	default:
 	}
 
-	// util.Log.With("point", 400).With("port", server.GetServerPort()).Debug("mainLoop")
 	// consume last message to free reader if possible
 	select {
 	case <-fileChan:
@@ -1251,9 +1254,6 @@ mainLoop:
 	}
 	eg.Wait()
 
-	// util.Log.With("point", 500).With("port", server.GetServerPort()).Debug("mainLoop")
-	// notify the runWorker
-	// waitChan <- true
 	if syslogSupport {
 		util.Log.With("user", userName).Info("user session end")
 	}

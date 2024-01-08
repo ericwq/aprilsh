@@ -894,6 +894,7 @@ mainLoop:
 				if !sc.network.ShutdownInProgress() {
 					sc.overlays.GetNotificationEngine().SetNetworkError(networkMsg.Err.Error())
 				}
+				// TODO handle "use of closed network connection" error?
 				time.Sleep(time.Duration(200) * time.Millisecond)
 				continue mainLoop
 			}
@@ -1004,9 +1005,11 @@ mainLoop:
 		}
 	}
 
+	// stop signal and network
 	signal.Stop(sigChan)
-	// shutdown the goroutine
-	// shutdownChan <- true
+	sc.network.Close()
+
+	// shutdown the goroutines: file reader and network reader
 	select {
 	case fileDownChan <- "done":
 	default:

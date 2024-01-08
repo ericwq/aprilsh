@@ -1,5 +1,3 @@
-// Copyright 2022~2023 wangqi. All rights reserved.
-// Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
 package frontend
@@ -9,6 +7,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -120,28 +119,32 @@ func ReadFromNetwork(timeout int, msgChan chan Message, doneChan chan any, netwo
 	var rAddr net.Addr
 
 	for {
-		timer := time.NewTimer(time.Duration(timeout*4) * time.Millisecond)
-		select {
-		case <-doneChan:
-			timer.Stop()
-			return
-		case <-timer.C:
-		}
-
-		// packet received from the network
+		// packet received from remote
 		payload, rAddr, err = network.Recv(timeout)
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
 				// read timeout
 				continue
 			} else {
-				// EOF goes here, in case of error retry it.
+				if strings.Contains(err.Error(), "use of closed network connection") {
+					// EOF goes here, in case of error retry it.
+					// util.Log.With("error", err).With("is", errors.Is(err, os.ErrClosed)).Debug("#ReadFromNetwork")
+					return
+				}
 				msgChan <- Message{"", nil, err}
-				continue
 			}
 		} else {
 			// normal read
 			msgChan <- Message{payload, rAddr, nil}
+		}
+
+		// waiting for time out or get the shutdown message
+		timer := time.NewTimer(time.Duration(timeout*4) * time.Millisecond)
+		select {
+		case <-doneChan:
+			timer.Stop()
+			return
+		case <-timer.C:
 		}
 	}
 }
