@@ -795,6 +795,12 @@ func (c *Connection) send(s string) (sendError error) {
 	return
 }
 
+func (c *Connection) Close() {
+	for i := range c.socks {
+		c.socks[i].Close()
+	}
+}
+
 // receive packet from remote side, for client, there might be sevral connections
 // to the server, Recv() will iterate every connection in order and read from the
 // connection with the specified timeout (millisecond) value.

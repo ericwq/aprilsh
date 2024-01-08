@@ -202,7 +202,7 @@ func (t *Transport[S, R]) GetKey() string {
 }
 
 func (t *Transport[S, R]) Close() {
-	t.connection.sock().Close()
+	t.connection.Close()
 }
 
 func (t *Transport[S, R]) GetConnection() *Connection {
