@@ -265,14 +265,14 @@ func TestReadFromNetwork(t *testing.T) {
 		}
 	}
 
-	//shutdown the reader
+	// before the last read operation, we send shutdown message to the reader
 	doneChan <- "done"
 
 	// consume last message to release the reader
-	select {
-	case <-networkChan:
-	default:
-	}
+	// select {
+	// case <-networkChan:
+	// default:
+	// }
 	wg.Wait()
 }
 
@@ -328,5 +328,6 @@ func TestReadFromNetwork_ErrClosed(t *testing.T) {
 		}
 	}
 
+	// the last read will get net.ErrClosed error, which will stop the ReadFromNetwork goroutine.
 	wg.Wait()
 }
