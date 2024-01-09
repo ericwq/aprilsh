@@ -898,6 +898,7 @@ func hdl_csi_cuf(emu *Emulator, num int) {
 
 // CSI Ps D  Cursor Backward Ps Times (default = 1) (CUB).
 func hdl_csi_cub(emu *Emulator, num int) {
+	// fmt.Printf("hdl_csi_cub num=%d, posX=%d, hMargin=%d\n", num, emu.posX, emu.hMargin)
 	if emu.posX >= emu.hMargin {
 		num = min(num, emu.posX-emu.hMargin)
 	} else {
@@ -907,6 +908,7 @@ func hdl_csi_cub(emu *Emulator, num int) {
 		num = min(num+1, emu.posX)
 	}
 	// emu.posX -= num
+	// fmt.Printf("hdl_csi_cub -num=%d\n", -num)
 	emu.posX += calculateCellNum(emu, -num)
 	emu.lastCol = false
 }
@@ -938,10 +940,11 @@ func calculateCellNum(emu *Emulator, count int) int {
 			// }
 			currentX++
 		} else { // calculate to the left
-			if currentX <= emu.hMargin {
-				currentX = emu.hMargin
-				break
-			}
+			// fmt.Printf("#calculateCellNum currentX=%d, count=%d, emu.hMargin=%d\n", currentX, count, emu.hMargin)
+			// if currentX <= emu.hMargin {
+			// 	currentX = emu.hMargin
+			// 	break
+			// }
 			// emu.GetCell(emu.posY, currentX-1)
 			// cell = emu.GetCell(emu.posY, currentX-1)
 			// if cell.dwidthCont || cell.dwidth {

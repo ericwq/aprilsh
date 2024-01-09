@@ -2474,6 +2474,7 @@ func TestHandle_CUU_CUD_CUF_CUB_CUP_FI_BI(t *testing.T) {
 		{"CSI Ps D  ", []int{CSI_CUP, CSI_CUB}, 10, 12, "\x1B[11;21H\x1B[8D"},
 		{"BS        ", []int{CSI_CUP, CSI_CUB}, 12, 11, "\x1B[13;13H\x08"}, // \x08 calls CUB
 		{"CUB       ", []int{CSI_CUP, CSI_CUB}, 12, 11, "\x1B[13;13H\x1B[1D"},
+		{"CUB left  ", []int{CSI_CUP, CSI_CUB}, 20, 0, "\x1B[21;3H\x1B[4D"},
 		{"BS agin   ", []int{CSI_CUP, CSI_CUB}, 12, 10, "\x1B[13;12H\x08"}, // \x08 calls CUB
 		{"DECFI     ", []int{CSI_CUP, ESC_FI}, 12, 22, "\x1B[13;22H\x1b9"},
 		{"DECBI     ", []int{CSI_CUP, ESC_BI}, 12, 20, "\x1B[13;22H\x1b6"},
@@ -2697,6 +2698,7 @@ func TestHandle_Focus(t *testing.T) {
 		})
 	}
 }
+
 func TestHandle_HT_CHT_CBT(t *testing.T) {
 	tc := []struct {
 		name  string
@@ -2707,7 +2709,7 @@ func TestHandle_HT_CHT_CBT(t *testing.T) {
 		{"HT case 1  ", []int{CSI_CUP, C0_HT}, 8, "\x1B[21;6H\x09"},                 // move to the next tab stop
 		{"HT case 2  ", []int{CSI_CUP, C0_HT}, 16, "\x1B[21;10H\x09"},               // move to the next tab stop
 		{"CBT back to the 3 tab", []int{CSI_CUP, CSI_CBT}, 8, "\x1B[21;30H\x1B[3Z"}, // move backward to the previous 3 tab stop
-		{"CHT to the next 2 tab", []int{CSI_CUP, CSI_CHT}, 16, "\x1B[21;3H\x1B[2I"}, // move to the next N tab stop
+		{"CHT to the next 2 tab", []int{CSI_CUP, CSI_CHT}, 8, "\x1B[21;3H\x1B[1I"},  // move to the next N tab stop
 		{"CHT to the next 4 tab", []int{CSI_CUP, CSI_CHT}, 32, "\x1B[21;3H\x1B[4I"}, // move to the next N tab stop
 		{"CHT to the right edge", []int{CSI_CUP, CSI_CHT}, 79, "\x1B[21;60H\x1B[4I"},
 		{"CBT rule to left edge", []int{CSI_CUP, CSI_CBT}, 0, "\x1B[21;3H\x1B[3Z"}, // under tab rules
@@ -4744,6 +4746,29 @@ func TestHandle_VT52_EGM_ID(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestRestoreSequence(t *testing.T) {
+	tc := []struct {
+		label  string
+		raw    string
+		expect string
+	}{
+		{"normal sequence", "\x1b[?1049h\x1b[?2004h\x1b[?1h\x1b=", "\x1b[?1049h\x1b[?2004h\x1b[?1h\x1b="},
+	}
+
+	p := NewParser()
+	for _, v := range tc {
+		p.ResetInput()
+
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.raw, hds)
+
+		got := restoreSequence(hds)
+		if got != v.expect {
+			t.Errorf("%s expect %q, got %q\n", v.label, v.expect, got)
+		}
 	}
 }
 
