@@ -764,7 +764,7 @@ func hdl_csi_dch(emu *Emulator, arg int) {
 	if emu.isCursorInsideMargins() {
 		length := emu.nColsEff - emu.posX
 		arg = min(arg, length)
-		arg = calculateCellNum(emu, arg)
+		// arg = calculateCellNum(emu, arg)
 		length -= arg
 
 		// fmt.Printf("#hdl_csi_dch posX=%d, arg=%d\n", emu.posX, arg)
@@ -891,8 +891,8 @@ func hdl_csi_cud(emu *Emulator, num int) {
 // CSI Ps C  Cursor Forward Ps Times (default = 1) (CUF).
 func hdl_csi_cuf(emu *Emulator, num int) {
 	num = min(num, emu.nColsEff-emu.posX-1)
-	// emu.posX += num
-	emu.posX += calculateCellNum(emu, num)
+	emu.posX += num
+	// emu.posX += calculateCellNum(emu, num)
 	emu.lastCol = false
 }
 
@@ -907,12 +907,13 @@ func hdl_csi_cub(emu *Emulator, num int) {
 	if emu.posX == emu.nColsEff {
 		num = min(num+1, emu.posX)
 	}
-	// emu.posX -= num
+	emu.posX -= num
 	// fmt.Printf("hdl_csi_cub -num=%d\n", -num)
-	emu.posX += calculateCellNum(emu, -num)
+	// emu.posX += calculateCellNum(emu, -num)
 	emu.lastCol = false
 }
 
+/*
 // calculate raw cell number with the consideration of wide grapheme and
 // regular grapheme. one wide grapheme takes two raw cells. one regular
 // grapheme takes one cell, count is the number of graphemes.
@@ -958,6 +959,7 @@ func calculateCellNum(emu *Emulator, count int) int {
 
 	return currentX - oldX
 }
+*/
 
 // CSI Ps ; Ps H Cursor Position [row;column] (default = [1,1]) (CUP).
 func hdl_csi_cup(emu *Emulator, row int, col int) {

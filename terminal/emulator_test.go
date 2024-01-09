@@ -483,6 +483,7 @@ func printEmulatorCell(emu *Emulator, row, col int, sample string, prefix string
 	}
 }
 
+/*
 func testCalculateCellNum(t *testing.T) {
 	emu := NewEmulator3(80, 40, 40) // TODO why we can't init emulator outside of for loop
 	emu.MoveCursor(0, 79)
@@ -493,6 +494,7 @@ func testCalculateCellNum(t *testing.T) {
 		t.Errorf("#test calculateCellNum() expect 0, got %d\n", got)
 	}
 }
+*/
 
 func TestIconNameWindowTitle(t *testing.T) {
 	tc := []struct {
