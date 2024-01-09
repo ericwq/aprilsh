@@ -508,6 +508,7 @@ func TestIconNameWindowTitle(t *testing.T) {
 		{"chinese same string", "中文窗口标题", "中文窗口标题", "Aprish:", "Aprish:中文窗口标题"},
 	}
 	emu := NewEmulator3(80, 40, 40)
+
 	for _, v := range tc {
 		emu.setWindowTitle(v.windowTitle)
 		emu.setIconLabel(v.iconName)
@@ -535,6 +536,27 @@ func TestIconNameWindowTitle(t *testing.T) {
 func TestSaveWindowTitleOnStack(t *testing.T) {
 	emu := NewEmulator3(80, 40, 40)
 
+	var out strings.Builder
+	defer util.Log.Restore()
+	util.Log.SetOutput(&out)
+
+	// no title, check save stack
+	emu.saveWindowTitleOnStack()
+	expect := "no title exist"
+	if !strings.Contains(out.String(), expect) {
+		t.Errorf("TestSaveWindowTitleOnStack expect %s, got %s\n", expect, out.String())
+	}
+
+	// no title, check restore stack
+	out.Reset()
+	emu.restoreWindowTitleOnStack()
+	expect = "empty stack"
+	if !strings.Contains(out.String(), expect) {
+		t.Errorf("TestSaveWindowTitleOnStack expect %s, got %s\n", expect, out.String())
+	}
+	out.Reset()
+
+	// set title
 	title := "our title prefix "
 	emu.setWindowTitle(title)
 
@@ -548,9 +570,12 @@ func TestSaveWindowTitleOnStack(t *testing.T) {
 
 	// always got the last pushed result
 	emu.restoreWindowTitleOnStack()
-	expect := fmt.Sprintf("%s%d", title, 9)
+	expect = fmt.Sprintf("%s%d", title, 9)
 	got := emu.GetWindowTitle()
 	if got != expect {
 		t.Errorf("windowTitle stack expect %s, got %s\n", expect, got)
 	}
+}
+
+func TestEmulatorEqual(t *testing.T) {
 }
