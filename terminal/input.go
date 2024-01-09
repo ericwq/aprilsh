@@ -1,4 +1,4 @@
-// Copyright 2022 wangqi. All rights reserved.
+// Copyright 2022~2024 wangqi. All rights reserved.
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
@@ -43,7 +43,7 @@ type UserInput struct {
 // The user will always be in application mode. If client is not in
 // application mode, convert user's cursor control function to an
 // ANSI cursor control sequence */
-func (u *UserInput) parse(x UserByte, cursorKeyMode CursorKeyMode) string {
+func (u *UserInput) parse(x UserByte, cursorKeyMode CursorKeyMode) (ret string) {
 	// We need to look ahead one byte in the SS3 state to see if
 	// the next byte will be A, B, C, or D (cursor control keys).
 
@@ -57,15 +57,15 @@ func (u *UserInput) parse(x UserByte, cursorKeyMode CursorKeyMode) string {
 		if r == '\x1B' {
 			u.state = USER_INPUT_ESC
 		}
-		return string(r)
+		ret = string(r)
 
 	case USER_INPUT_ESC:
 		if r == 'O' { // ESC O = 7-bit SS3
 			u.state = USER_INPUT_SS3
-			return ""
+			ret = ""
 		} else {
 			u.state = USER_INPUT_GROUND
-			return string(r)
+			ret = string(r)
 		}
 
 		// The cursor keys transmit the following escape sequences depending on the
@@ -81,13 +81,14 @@ func (u *UserInput) parse(x UserByte, cursorKeyMode CursorKeyMode) string {
 	case USER_INPUT_SS3:
 		u.state = USER_INPUT_GROUND
 		if cursorKeyMode == CursorKeyMode_ANSI && 'A' <= r && r <= 'D' {
-			return fmt.Sprintf("[%c", r) // CSI
+			ret = fmt.Sprintf("[%c", r) // CSI
 		} else {
-			return fmt.Sprintf("O%c", r) // SS3
+			ret = fmt.Sprintf("O%c", r) // SS3
 		}
+	default:
+		// This doesn't handle the 8-bit SS3 C1 control, which would be
+		// two octets in UTF-8. Fortunately nobody seems to send this. */
 	}
 
-	// This doesn't handle the 8-bit SS3 C1 control, which would be
-	// two octets in UTF-8. Fortunately nobody seems to send this. */
-	return ""
+	return
 }
