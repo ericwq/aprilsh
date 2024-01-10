@@ -729,8 +729,8 @@ func TestHibernate(t *testing.T) {
 	}{
 		{"first send/recv ", []int64{3100}, []int64{3220}, 3225, false},
 		{"normal send/recv", []int64{3100, 6100, 9100}, []int64{3120, 6120, 9120}, 9125, false},
-		{"hibernate send  ", []int64{3100, 6100, 9100, 909100}, []int64{3120, 6120, 9120}, 909125, true},
-		{"hibernate recv  ", []int64{3100, 6100, 9100}, []int64{3120, 6120, 909120}, 909125, true},
+		{"recent send     ", []int64{20171, 23172, 961216}, []int64{18175, 20180, 24186}, 961216, true},
+		{"recent recv     ", []int64{3100, 6100, 9100}, []int64{3120, 6120, 909120}, 909125, true},
 		{"only send       ", []int64{903100, 906100, 909100}, []int64{3120, 6120, 9120}, 909125, false},
 	}
 
