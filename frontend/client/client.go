@@ -858,9 +858,6 @@ func (sc *STMClient) main() error {
 	// 	}
 	// })
 
-	// // set the new title
-	// os.Stdout.WriteString(fmt.Sprintf("\x1B]0;%s@%s\a", _PACKAGE_STRING, sc.ip))
-
 mainLoop:
 	for {
 		sc.outputNewFrame()
