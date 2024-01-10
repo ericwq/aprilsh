@@ -1,4 +1,4 @@
-// Copyright 2022~2023 wangqi. All rights reserved.
+// Copyright 2022~2024 wangqi. All rights reserved.
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
@@ -12,6 +12,10 @@ import (
 	"time"
 
 	"github.com/ericwq/aprilsh/util"
+)
+
+const (
+	_ACTIVE_GAP = 3050
 )
 
 // type S or R that must implement the State[T] interface - that is, for itself.
@@ -364,4 +368,39 @@ func (t *Transport[S, R]) getReceivedStateList() string {
 func (t *Transport[S, R]) InitSize(nCols, nRows int) {
 	s := t.sender.sentStates[0].GetState()
 	s.InitSize(nCols, nRows)
+}
+
+// detect computer hibernate based on receivedState and sentStates.
+func (t *Transport[S, R]) Hibernate(now int64) bool {
+	// // fmt.Println("checkStatesHibernate check recv")
+	// r := checkHibernateFor(t.receivedState, now)
+	// // fmt.Printf("checkStatesHibernate recv return %t\n\n", r)
+	// // fmt.Println("checkStatesHibernate check send")
+	// s := checkHibernateFor(t.sender.sentStates, now)
+	// // fmt.Printf("checkStatesHibernate send return %t\n\n", s)
+	// return r && s
+	return checkHibernateFor(t.receivedState, now) && checkHibernateFor(t.sender.sentStates, now)
+}
+
+// if the last state is resent, check the previous state, if the previous state
+// is not recent, found hibernate.
+// if the last state is not resent, found hibernate.
+// otherwise no hibernate
+func checkHibernateFor[R State[R]](states []TimestampedState[R], now int64) bool {
+	i := len(states) - 1
+	// fmt.Printf("checkStatesHibernate last     timestamp=%d, now=%d\n", states[i].GetTimestamp(), now)
+	// access recently?
+	if now-states[i].GetTimestamp() < _ACTIVE_GAP {
+		if len(states) > 2 {
+			// check the previous state (before the last)
+			i = len(states) - 2
+			// fmt.Printf("checkStatesHibernate previous timestamp=%d, now=%d\n", states[i].GetTimestamp(), now)
+			if now-states[i].GetTimestamp() > _ACTIVE_GAP*2 {
+				// previous state is not recent, found hibernate
+				return true
+			}
+		}
+		return false
+	}
+	return true // last state is not recent, found hibernate
 }

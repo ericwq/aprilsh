@@ -1,4 +1,4 @@
-// Copyright 2022 wangqi. All rights reserved.
+// Copyright 2022~2024 wangqi. All rights reserved.
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
@@ -717,4 +717,46 @@ func TestInitSize(t *testing.T) {
 
 		server.connection.sock().Close()
 	}
+}
+
+func TestHibernate(t *testing.T) {
+	tc := []struct {
+		label  string
+		sent   []int64
+		recv   []int64
+		now    int64
+		expect bool
+	}{
+		{"first send/recv ", []int64{3100}, []int64{3220}, 3225, false},
+		{"normal send/recv", []int64{3100, 6100, 9100}, []int64{3120, 6120, 9120}, 9125, false},
+		{"hibernate send  ", []int64{3100, 6100, 9100, 909100}, []int64{3120, 6120, 9120}, 909125, true},
+		{"hibernate recv  ", []int64{3100, 6100, 9100}, []int64{3120, 6120, 909120}, 909125, true},
+		{"only send       ", []int64{903100, 906100, 909100}, []int64{3120, 6120, 9120}, 909125, false},
+	}
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			completeTerminal, _ := statesync.NewComplete(80, 5, 0)
+			blank := &statesync.UserStream{}
+			desiredIp := "localhost"
+			desiredPort := "60300"
+			server := NewTransportServer(completeTerminal, blank, desiredIp, desiredPort)
+
+			server.receivedState = prepareStates[*statesync.UserStream](v.recv)
+			server.sender.sentStates = prepareStates[*statesync.Complete](v.sent)
+
+			got := server.Hibernate(v.now)
+			if v.expect != got {
+				t.Errorf("%q expect %t, got %t\n", v.label, v.expect, got)
+			}
+			server.Close()
+		})
+	}
+}
+func prepareStates[R State[R]](source []int64) (target []TimestampedState[R]) {
+	target = make([]TimestampedState[R], 0)
+	for i := range source {
+		target = append(target, TimestampedState[R]{timestamp: source[i]})
+	}
+	return target
 }

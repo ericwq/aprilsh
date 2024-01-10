@@ -1,4 +1,4 @@
-// Copyright 2022~2023 wangqi. All rights reserved.
+// Copyright 2022~2024 wangqi. All rights reserved.
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
@@ -980,13 +980,6 @@ mainLoop:
 		} else if sc.network.GetRemoteStateNum() != 0 &&
 			sc.overlays.GetNotificationEngine().GetNotificationString() == sc.connectingNotification {
 			sc.overlays.GetNotificationEngine().SetNotificationString("", false, true)
-		} else if sc.network.GetRemoteStateNum() != 0 && sinceLastResponse > frontend.TimeoutIfNoResp {
-			// no server response over x seconds
-			if now-sc.network.GetSentStateLastTimestamp() < frontend.TimeoutIfNoResp {
-				// while we keep sending packet to server
-				util.Log.With("seconds", frontend.TimeoutIfNoResp).Warn("No server response over x seconds")
-				break
-			}
 		}
 
 		// util.Log.With("before", "tick").Warn("mainLoop")
@@ -999,6 +992,15 @@ mainLoop:
 			util.Log.Debug("start shutting down.")
 		} else {
 			sc.overlays.GetNotificationEngine().ClearNetworkError()
+		}
+
+		// if connected and no hibernate and no response ov TimeoutIfNoResp quit
+		if sc.network.GetRemoteStateNum() != 0 && sinceLastResponse > frontend.TimeoutIfNoResp {
+			// no server response over x seconds, no hibernate
+			if !sc.network.Hibernate(now) {
+				util.Log.With("seconds", frontend.TimeoutIfNoResp).Warn("No server response over x seconds")
+				break
+			}
 		}
 	}
 
