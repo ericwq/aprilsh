@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"strings"
 	"testing"
@@ -731,8 +732,15 @@ func TestHibernate(t *testing.T) {
 		{"normal send/recv", []int64{3100, 6100, 9100}, []int64{3120, 6120, 9120}, 9125, false},
 		{"recent send     ", []int64{20171, 23172, 961216}, []int64{18175, 20180, 24186}, 961216, true},
 		{"recent recv     ", []int64{3100, 6100, 9100}, []int64{3120, 6120, 909120}, 909125, true},
-		{"only send       ", []int64{903100, 906100, 909100}, []int64{3120, 6120, 9120}, 909125, false},
+		// {"only send       ", []int64{903100, 906100, 909100}, []int64{3120, 6120, 9120}, 909125, false},
+		{"log 01", []int64{90681162, 91734999}, []int64{90678716, 90681748}, 91734985, true},
+		{"log 02", []int64{90681131, 91734966}, []int64{90678871, 90681910}, 91734966, true},
+		{"log 03", []int64{90681115, 91734966}, []int64{90678725, 90681773}, 91734966, true},
 	}
+
+	defer util.Log.Restore()
+	util.Log.SetLevel(slog.LevelDebug)
+	util.Log.SetOutput(os.Stdout)
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {

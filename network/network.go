@@ -829,7 +829,7 @@ func (c *Connection) Recv(timeout int) (payload string, remoteAddr net.Addr, err
 		remoteAddr = c.remoteAddr
 		util.Log.With("i", i).With("localAddr", c.socks[i].(net.Conn).LocalAddr()).
 			With("remoteAddr", c.remoteAddr).With("payload", len(payload)).
-			With("hasRemoteAddr", c.hasRemoteAddr).With("err", err).Debug("got message")
+			With("hasRemoteAddr", c.hasRemoteAddr)
 		c.pruneSockets()
 		return
 	}
