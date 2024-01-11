@@ -736,6 +736,8 @@ func TestAwaken(t *testing.T) {
 		{"log 01", []int64{90681162, 91734999}, []int64{90678716, 90681748}, 91734985, true},
 		{"log 02", []int64{90681131, 91734966}, []int64{90678871, 90681910}, 91734966, true},
 		{"log 03", []int64{90681115, 91734966}, []int64{90678725, 90681773}, 91734966, true},
+		{"send one/recv alive", []int64{10172, 26216}, []int64{26175, 26375}, 26217, false},
+		{"send just/recv alive", []int64{20172, 20216}, []int64{26175, 26375}, 26217, false},
 	}
 
 	defer util.Log.Restore()
@@ -762,10 +764,52 @@ func TestAwaken(t *testing.T) {
 		})
 	}
 }
+
 func prepareStates[R State[R]](source []int64) (target []TimestampedState[R]) {
 	target = make([]TimestampedState[R], 0)
 	for i := range source {
 		target = append(target, TimestampedState[R]{timestamp: source[i]})
 	}
 	return target
+}
+
+func TestGetServerPort(t *testing.T) {
+	completeTerminal, _ := statesync.NewComplete(80, 5, 0)
+	blank := &statesync.UserStream{}
+	desiredIp := "localhost"
+	desiredPort := "60310"
+	server := NewTransportServer(completeTerminal, blank, desiredIp, desiredPort)
+
+	got := server.GetServerPort()
+	if got != desiredPort {
+
+		t.Errorf("#TestGetServerPort expect %s, got %s\n", desiredPort, got)
+	}
+	server.Close()
+
+}
+
+func TestGetSentStateLastTimestamp(t *testing.T) {
+
+	defer util.Log.Restore()
+	util.Log.SetLevel(slog.LevelDebug)
+	util.Log.SetOutput(os.Stdout)
+	// util.Log.SetOutput(io.Discard)
+
+	completeTerminal, _ := statesync.NewComplete(80, 5, 0)
+	blank := &statesync.UserStream{}
+	desiredIp := "localhost"
+	desiredPort := "60300"
+	server := NewTransportServer(completeTerminal, blank, desiredIp, desiredPort)
+
+	const expect = 3100
+	sent := []int64{expect}
+
+	server.sender.sentStates = prepareStates[*statesync.Complete](sent)
+
+	got := server.GetSentStateLastTimestamp()
+	if expect != got {
+		t.Errorf("%q expect %d, got %d\n", "TestGetSentStateLastTimestamp", expect, got)
+	}
+	server.Close()
 }
