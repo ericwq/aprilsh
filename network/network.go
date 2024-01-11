@@ -736,7 +736,7 @@ func (c *Connection) setMTU(addr net.Addr) {
 }
 
 // use the latest connection to send the message to remote
-func (c *Connection) send(s string) (sendError error) {
+func (c *Connection) send(s string, awaken bool) (sendError error) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -782,13 +782,14 @@ func (c *Connection) send(s string) (sendError error) {
 
 	now := time.Now().UnixMilli()
 	if c.server {
-		if now-c.lastHeard > SERVER_ASSOCIATION_TIMEOUT {
+		if !awaken && now-c.lastHeard > SERVER_ASSOCIATION_TIMEOUT {
 			c.hasRemoteAddr = false
 			util.Log.With("localAddr", conn.(net.Conn).LocalAddr()).
 				With("remoteAddr", c.remoteAddr).Warn("#send server now detached from client")
 		}
 	} else {
-		if now-c.lastPortChoice > PORT_HOP_INTERVAL && now-c.lastRoundtripSuccess > PORT_HOP_INTERVAL {
+		if !awaken && now-c.lastPortChoice > PORT_HOP_INTERVAL &&
+			now-c.lastRoundtripSuccess > PORT_HOP_INTERVAL {
 			c.hopPort()
 		}
 	}

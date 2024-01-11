@@ -254,13 +254,19 @@ func (ts *TransportSender[T]) sendFragments(inst *pb.Instruction, newNum uint64)
 			// 	With("timeout", ts.connection.timeout()).
 			// 	Debug("send message")
 		}
-		if err := ts.connection.send(fragments[i].String()); err != nil {
+		ak, _ := ts.Awaken(time.Now().UnixMilli())
+		err := ts.connection.send(fragments[i].String(), ak)
+		if err != nil {
 			return err
 		}
 	}
 
 	ts.pendingDataAck = false
 	return nil
+}
+
+func (ts *TransportSender[T]) Awaken(now int64) (bool, int) {
+	return awaken(ts.sentStates, now)
 }
 
 // add state into the send states list.

@@ -280,7 +280,7 @@ func TestConnectionReadWrite(t *testing.T) {
 	// fmt.Printf("#test client=%s\n", client.sock().LocalAddr())
 
 	for i := range message {
-		sendErr := client.send(message[i])
+		sendErr := client.send(message[i], false)
 		if sendErr != nil {
 			t.Errorf("%q send error: %q\n", title, sendErr)
 		}
@@ -647,20 +647,20 @@ func TestSendFail(t *testing.T) {
 	for _, v := range tc {
 		if !v.hasRemoteAddr {
 			client.hasRemoteAddr = false
-			client.send(v.name)
+			client.send(v.name, false)
 			// there is no aciton, no error, so no validation
 		} else if v.writeErr != nil {
 			client.hasRemoteAddr = true
 			var mock mockUdpConn
 			client.socks = append(client.socks, &mock)
-			err := client.send(v.name)
+			err := client.send(v.name, false)
 			if !strings.Contains(err.Error(), v.writeErr.Error()) {
 				t.Errorf("%q expect %q, got %q\n", v.name, v.writeErr, err)
 			}
 		} else if v.byteSend != 0 {
 			var mock mockUdpConn
 			client.socks = append(client.socks, &mock)
-			err := client.send(v.name)
+			err := client.send(v.name, false)
 			expect := "doesn't match expected data"
 			if !strings.Contains(err.Error(), expect) {
 				t.Errorf("%q expect %q, got %q\n", v.name, expect, err)
@@ -784,7 +784,7 @@ func TestSendBranch(t *testing.T) {
 
 	// client send a message to server, server receive it.
 	// this will initialize server data.
-	client.send(title)
+	client.send(title, false)
 
 	// we need the delay to receive the packet on server side.
 	time.Sleep(time.Millisecond * 20)
@@ -803,7 +803,7 @@ func TestSendBranch(t *testing.T) {
 	// fake the lastHeard to meet the detach condition
 	server.lastHeard = time.Now().UnixMilli() - SERVER_ASSOCIATION_TIMEOUT - 10
 
-	err := server.send(title)
+	err := server.send(title, false)
 
 	// validate the send server branch
 	gotLog := output.String()
@@ -827,7 +827,7 @@ func TestSendBranch(t *testing.T) {
 	client.lastPortChoice = time.Now().UnixMilli() - PORT_HOP_INTERVAL - 2
 	client.setLastRoundtripSuccess(time.Now().UnixMilli() - PORT_HOP_INTERVAL - 2)
 
-	client.send(msg)
+	client.send(msg, false)
 	// hopPort will add a new socket to the list.
 	if len(client.socks) != 2 {
 		t.Errorf("%q expect %d socket, got %d\n", msg, 2, len(client.socks))
@@ -925,7 +925,7 @@ func TestRecvBranchServer(t *testing.T) {
 	msg0 := "from client to server"
 	// client send a message to server, server receive it.
 	// this will initialize server data.
-	client.send(msg0)
+	client.send(msg0, false)
 
 	// we need the delay to receive the packet on server side.
 	time.Sleep(time.Millisecond * 20)
@@ -985,13 +985,13 @@ func TestRecvBranchClient(t *testing.T) {
 	msg0 := "from client to server"
 	// client send a message to server, server receive it.
 	// this will initialize server remote address.
-	client.send(msg0)
+	client.send(msg0, false)
 	time.Sleep(time.Millisecond * 20)
 	server.Recv(1)
 
 	// server send message to client
 	msg1 := "from server to client"
-	server.send(msg1)
+	server.send(msg1, false)
 	time.Sleep(time.Millisecond * 20)
 
 	// mock the connection: guarantee to return the msg0
@@ -1059,7 +1059,7 @@ func TestRecvCongestionPacket(t *testing.T) {
 	msg0 := "from client to server"
 	// client send a message to server, server receive it.
 	// this will initialize server remote address.
-	client.send(msg0)
+	client.send(msg0, false)
 	time.Sleep(time.Millisecond * 20)
 
 	// intercept server log
@@ -1139,11 +1139,11 @@ func TestRecvSRTT(t *testing.T) {
 		toServer := fmt.Sprintf("%d round from client to server", i)
 		toClient := fmt.Sprintf("%d round from server to client", i)
 
-		client.send(toServer)
+		client.send(toServer, false)
 		time.Sleep(time.Millisecond * 10)
 		server.Recv(1)
 
-		server.send(toClient)
+		server.send(toClient, false)
 		time.Sleep(time.Millisecond * 10)
 		got, _, _ = client.Recv(1)
 

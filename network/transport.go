@@ -370,54 +370,89 @@ func (t *Transport[S, R]) InitSize(nCols, nRows int) {
 	s.InitSize(nCols, nRows)
 }
 
-// detect computer hibernate based on receivedState and sentStates.
-func (t *Transport[S, R]) Hibernate(now int64) bool {
-	// fmt.Println("checkStatesHibernate check recv")
-	r := checkHibernateFor(t.receivedState, now)
-	// fmt.Printf("checkStatesHibernate recv return %t\n\n", r)
-	// fmt.Println("checkStatesHibernate check send")
-	s := checkHibernateFor(t.sender.sentStates, now)
-	// fmt.Printf("checkStatesHibernate send return %t\n\n", s)
+// detect computer awaken from hibernate based on receivedState and sentStates.
+func (t *Transport[S, R]) Awaken(now int64) (ret bool) {
+	_, recvStatus := awaken(t.receivedState, now)
+	_, sendStatus := t.sender.Awaken(now)
+
+	if sendStatus == _KEEP_ALIVE {
+		ret = false
+	} else if (sendStatus == _ONE_AWAKEN || sendStatus == _JUST_AWAKEN) &&
+		(recvStatus == _ONE_AWAKEN || recvStatus == _JUST_AWAKEN) {
+		ret = true
+	} else if sendStatus == _LACK_STATE || recvStatus == _LACK_STATE {
+		ret = false
+	} else {
+		ret = false
+	}
+
+	/*
+	              | keep live | just awaken | one awaken | lack state | send status
+	   keep live  | false     | x (false)   | (x) false  | false      |
+	   just awaken| false     | true        | true       | false      |
+	   one awaken | false     | true        | true       | false      |
+	   lack state | false     | false       | false      | false      |
+	   recv status
+	*/
 
 	defer func() {
-		util.Log.With("r", r).With("s", s).With("now", now).Debug("Hibernate")
+		util.Log.With("rak", recvStatus).With("sak", sendStatus).With("ret", ret).With("now", now).Debug("Awaken")
 		back := len(t.receivedState)
 		if back >= 2 {
 			util.Log.With("recvPrev", t.receivedState[back-2].GetTimestamp()).
-				With("recvLast", t.receivedState[back-1].GetTimestamp()).Debug("Hibernate")
+				With("recvLast", t.receivedState[back-1].GetTimestamp()).Debug("Awaken")
 		}
 		back = len(t.sender.sentStates)
 		if back >= 2 {
 			util.Log.With("sendPrev", t.sender.sentStates[back-2].GetTimestamp()).
-				With("sendLast", t.sender.sentStates[back-1].GetTimestamp()).Debug("Hibernate")
+				With("sendLast", t.sender.sentStates[back-1].GetTimestamp()).Debug("Awaken")
 		}
 	}()
-	// if r && !s {
-	// 	return true
-	// }
-	return r || s
-	// return checkHibernateFor(t.receivedState, now) || checkHibernateFor(t.sender.sentStates, now)
+
+	return
 }
 
+const (
+	_KEEP_ALIVE  = 0 // keep send, no awaken
+	_JUST_AWAKEN = 1 // just awaken, not finish send/recv
+	_ONE_AWAKEN  = 2 // awaken, finish one send/recv
+	_LACK_STATE  = 3 // only one state available
+)
+
+// return wake up status and awaken result
 // if the last state is resent, check the previous state, if the previous state
-// is not recent, found hibernate.
-// if the last state is not resent, found hibernate.
+// is not recent, found awaken.
+// if the last state is not resent, found awaken.
 // otherwise no hibernate
-func checkHibernateFor[R State[R]](states []TimestampedState[R], now int64) bool {
+func awaken[R State[R]](states []TimestampedState[R], now int64) (ret bool, ak int) {
 	i := len(states) - 1
-	// fmt.Printf("checkStatesHibernate last     timestamp=%d, now=%d\n", states[i].GetTimestamp(), now)
-	// access recently?
+	// is last state recent?
 	if now-states[i].GetTimestamp() < _ACTIVE_GAP {
-		if len(states) > 2 {
+		if len(states) >= 2 {
 			// check the previous state (before the last)
 			i = len(states) - 2
-			// fmt.Printf("checkStatesHibernate previous timestamp=%d, now=%d\n", states[i].GetTimestamp(), now)
 			if now-states[i].GetTimestamp() > _ACTIVE_GAP*2 {
-				// previous state is not recent, found hibernate
-				return true
+				ak = _ONE_AWAKEN
+			} else {
+				// the previous state is recent
+				ak = _KEEP_ALIVE
 			}
+		} else {
+			ak = _LACK_STATE
 		}
-		return false
+	} else {
+		ak = _JUST_AWAKEN
 	}
-	return true // last state is not recent, found hibernate
+
+	switch ak {
+	case _KEEP_ALIVE:
+		ret = false
+	case _JUST_AWAKEN:
+		ret = true
+	case _ONE_AWAKEN:
+		ret = true
+	case _LACK_STATE:
+		ret = false
+	}
+	return
 }

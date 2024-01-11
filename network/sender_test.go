@@ -682,11 +682,11 @@ func TestSenderSendInterval(t *testing.T) {
 		toServer := fmt.Sprintf("%d round from client to server", i)
 		toClient := fmt.Sprintf("%d round from server to client", i)
 
-		client.connection.send(toServer)
+		client.connection.send(toServer, false)
 		time.Sleep(time.Millisecond * 5)
 		server.Recv()
 
-		server.connection.send(toClient)
+		server.connection.send(toClient, false)
 		time.Sleep(time.Millisecond * 5)
 		got, _, _ = client.connection.Recv(1)
 

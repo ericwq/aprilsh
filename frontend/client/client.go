@@ -997,7 +997,7 @@ mainLoop:
 		// if connected and no hibernate and no response ov TimeoutIfNoResp quit
 		if sc.network.GetRemoteStateNum() != 0 && sinceLastResponse > frontend.TimeoutIfNoResp {
 			// no server response over x seconds, no hibernate
-			if !sc.network.Hibernate(now) {
+			if !sc.network.Awaken(now) {
 				util.Log.With("seconds", frontend.TimeoutIfNoResp).Warn("No server response over x seconds")
 				break
 			}
