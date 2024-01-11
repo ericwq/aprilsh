@@ -1202,15 +1202,23 @@ mainLoop:
 			server.SetCurrentState(complete)
 		}
 
+		// util.Log.With("point", 500).Debug("mainLoop")
+		err := server.Tick()
+		if err != nil {
+			util.Log.With("error", err).Warn("#serve send failed")
+		}
+		// util.Log.With("point", "d").Debug("mainLoop")
+
+		now = time.Now().UnixMilli()
 		if server.GetRemoteStateNum() == 0 && server.ShutdownInProgress() {
 			// abort if no connection over TimeoutIfNoConnect seconds
 
 			util.Log.With("seconds", frontend.TimeoutIfNoConnect/1000).With("timeout", "shutdown").
 				With("port", server.GetServerPort()).Warn("No connection within x seconds")
 			break
-		} else if server.GetRemoteStateNum() != 0 && timeSinceRemoteState >= frontend.TimeoutIfNoResp {
+		} else if server.GetRemoteStateNum() != 0 && timeSinceRemoteState >= frontend.TimeoutIfNoResp &&
+			!server.Awaken(now) {
 			// if no response from client over TimeoutIfNoResp seconds
-			now = time.Now().UnixMilli()
 			if now-server.GetSentStateLastTimestamp() >= frontend.TimeoutIfNoResp-network.SERVER_ASSOCIATION_TIMEOUT {
 				// abort if no request send over TimeoutIfNoResp seconds
 				util.Log.With("seconds", frontend.TimeoutIfNoResp/1000).
@@ -1220,13 +1228,6 @@ mainLoop:
 				break
 			}
 		}
-
-		// util.Log.With("point", 500).Debug("mainLoop")
-		err := server.Tick()
-		if err != nil {
-			util.Log.With("error", err).Warn("#serve send failed")
-		}
-		// util.Log.With("point", "d").Debug("mainLoop")
 	}
 
 	// stop signal and network
