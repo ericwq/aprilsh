@@ -396,7 +396,8 @@ func (t *Transport[S, R]) Awaken(now int64) (ret bool) {
 	*/
 
 	defer func() {
-		util.Log.With("rak", recvStatus).With("sak", sendStatus).With("ret", ret).With("now", now).Debug("Awaken")
+		util.Log.With("recvStatus", recvStatus).With("sendStatus", sendStatus).
+			With("ret", ret).With("now", now).Debug("Awaken")
 		back := len(t.receivedState)
 		if back >= 2 {
 			util.Log.With("recvPrev", t.receivedState[back-2].GetTimestamp()).
