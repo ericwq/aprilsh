@@ -596,6 +596,46 @@ func (c *Connection) pruneSockets() {
 	}
 }
 
+// receive packet from remote side, for client, there might be sevral connections
+// to the server, Recv() will iterate every connection in order and read from the
+// connection with the specified timeout (millisecond) value.
+func (c *Connection) Recv(timeout int) (payload string, remoteAddr net.Addr, err error) {
+	c.Lock()
+	defer c.Unlock()
+
+	// util.Log.With("remoteAddr", c.remoteAddr).
+	// 	With("hasRemoteAddr", c.hasRemoteAddr).Debug("got message")
+	for i := range c.socks {
+		c.socks[i].SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
+
+		payload, err = c.recvOne(c.socks[i])
+		if err != nil {
+			if errors.Is(err, os.ErrDeadlineExceeded) {
+				// util.Log.With("i", i).With("error", err).Warn("#recv")
+				continue
+			} else if errors.Is(err, unix.EWOULDBLOCK) {
+				// EAGAIN is processed by go netpoll
+				continue
+			} else {
+				break
+			}
+		}
+
+		remoteAddr = c.remoteAddr
+		util.Log.With("i", i).With("localAddr", c.socks[i].(net.Conn).LocalAddr()).
+			With("remoteAddr", c.remoteAddr).With("payload", len(payload)).
+			With("hasRemoteAddr", c.hasRemoteAddr).Debug("go messsage")
+		c.pruneSockets()
+		return
+	}
+
+	// return timeout if it's the case
+	if errors.Is(err, os.ErrDeadlineExceeded) {
+		return "", nil, os.ErrDeadlineExceeded
+	}
+	return
+}
+
 func (c *Connection) recvOne(conn udpConn) (string, error) {
 	data := make([]byte, c.mtu)
 	oob := make([]byte, 40)
@@ -723,18 +763,6 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 	return string(p.payload), nil // we do return out-of-order or duplicated packets to caller
 }
 
-func (c *Connection) setMTU(addr net.Addr) {
-	if addr, ok := addr.(*net.UDPAddr); ok {
-		if addr, ok := netip.AddrFromSlice(addr.IP); ok {
-			if addr.Is6() {
-				c.mtu = DEFAULT_IPV6_MTU - IPV6_HEADER_LEN
-				return
-			}
-		}
-	}
-	c.mtu = DEFAULT_IPV4_MTU - IPV4_HEADER_LEN
-}
-
 // use the latest connection to send the message to remote
 func (c *Connection) send(s string, awaken bool) (sendError error) {
 	c.Lock()
@@ -802,44 +830,16 @@ func (c *Connection) Close() {
 	}
 }
 
-// receive packet from remote side, for client, there might be sevral connections
-// to the server, Recv() will iterate every connection in order and read from the
-// connection with the specified timeout (millisecond) value.
-func (c *Connection) Recv(timeout int) (payload string, remoteAddr net.Addr, err error) {
-	c.Lock()
-	defer c.Unlock()
-
-	// util.Log.With("remoteAddr", c.remoteAddr).
-	// 	With("hasRemoteAddr", c.hasRemoteAddr).Debug("got message")
-	for i := range c.socks {
-		c.socks[i].SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
-
-		payload, err = c.recvOne(c.socks[i])
-		if err != nil {
-			if errors.Is(err, os.ErrDeadlineExceeded) {
-				// util.Log.With("i", i).With("error", err).Warn("#recv")
-				continue
-			} else if errors.Is(err, unix.EWOULDBLOCK) {
-				// EAGAIN is processed by go netpoll
-				continue
-			} else {
-				break
+func (c *Connection) setMTU(addr net.Addr) {
+	if addr, ok := addr.(*net.UDPAddr); ok {
+		if addr, ok := netip.AddrFromSlice(addr.IP); ok {
+			if addr.Is6() {
+				c.mtu = DEFAULT_IPV6_MTU - IPV6_HEADER_LEN
+				return
 			}
 		}
-
-		remoteAddr = c.remoteAddr
-		util.Log.With("i", i).With("localAddr", c.socks[i].(net.Conn).LocalAddr()).
-			With("remoteAddr", c.remoteAddr).With("payload", len(payload)).
-			With("hasRemoteAddr", c.hasRemoteAddr).Debug("go messsage")
-		c.pruneSockets()
-		return
 	}
-
-	// return timeout if it's the case
-	if errors.Is(err, os.ErrDeadlineExceeded) {
-		return "", nil, os.ErrDeadlineExceeded
-	}
-	return
+	c.mtu = DEFAULT_IPV4_MTU - IPV4_HEADER_LEN
 }
 
 func (c *Connection) getMTU() int {
