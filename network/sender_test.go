@@ -7,6 +7,7 @@ package network
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"math"
 	"os"
 	"strings"
@@ -601,21 +602,23 @@ func TestSenderTickVerify(t *testing.T) {
 	// set verbose
 	server.SetVerbose(1)
 
-	// disable log
-	// server.connection.logW.SetOutput(io.Discard)
 	defer util.Log.Restore()
-	util.Log.SetOutput(io.Discard)
+	util.Log.SetLevel(slog.LevelDebug)
+	util.Log.SetOutput(os.Stdout)
+	// util.Log.SetOutput(io.Discard)
 
 	// intercept stderr
 	// swallow the tick() output to stderr
-	saveStderr := os.Stderr
-	r, w, _ := os.Pipe()
-	os.Stderr = w
+	// saveStderr := os.Stderr
+	// r, w, _ := os.Pipe()
+	// os.Stderr = w
 
 	// send user stream to server
 	client.Tick()
+	fmt.Printf("client firt send\n")
 	time.Sleep(time.Millisecond * 20)
 	server.Recv()
+	fmt.Printf("server firt recv\n")
 	time.Sleep(time.Millisecond * 20)
 
 	// prepare hook func to change assumedReceiverState
@@ -633,16 +636,18 @@ func TestSenderTickVerify(t *testing.T) {
 
 	// send complete to client
 	server.Tick()
+	fmt.Printf("server first send\n")
 	time.Sleep(time.Millisecond * 20)
 	client.Recv()
+	fmt.Printf("client first recv\n")
 	time.Sleep(time.Millisecond * 20)
 
 	// restore stderr
-	w.Close()
-	io.ReadAll(r) // discard the output of stderr
-	// b, _ := ioutil.ReadAll(r)
-	os.Stderr = saveStderr
-	r.Close()
+	// w.Close()
+	// io.ReadAll(r) // discard the output of stderr
+	// // b, _ := ioutil.ReadAll(r)
+	// os.Stderr = saveStderr
+	// r.Close()
 
 	// validate the result
 	// result := string(b)
@@ -655,8 +660,8 @@ func TestSenderTickVerify(t *testing.T) {
 			client.GetCurrentState(), server.GetLatestRemoteState().state)
 	}
 
-	server.connection.sock().Close()
-	client.connection.sock().Close()
+	server.Close()
+	client.Close()
 }
 
 func TestSenderSendInterval(t *testing.T) {

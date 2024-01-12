@@ -390,6 +390,8 @@ func (ts *TransportSender[T]) tick() error {
 	// util.Log.With("point", 300).With("DiffFrom", ts.assumedReceiverState.num).Debug("tick")
 	// util.Log.With("point", 300).Debug("tick")
 	// util.Log.SetLevel(slog.LevelInfo)
+	util.Log.With("diff", diff).Debug(fmt.Sprintf("currentState=%p, assumedReceiverState=%p",
+		&ts.currentState, &ts.assumedReceiverState.state))
 
 	if ts.verbose > 0 && len(diff) > 0 {
 		if ts.hookForTick != nil { // hook function for testing
