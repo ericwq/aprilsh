@@ -826,16 +826,11 @@ func (sc *STMClient) main() error {
 	eg := errgroup.Group{}
 	// read from network
 	eg.Go(func() error {
-		// if we have 2 client ip, 5 ms for each client
 		frontend.ReadFromNetwork(1, networkChan, networkDownChan, sc.network.GetConnection())
 		return nil
 	})
 
 	// read from pty master file
-	//
-	// os.Stdin will always block on the Read operation. The simple
-	// fix is we dont' wait the goroutine to quit.
-	// go frontend.ReadFromFile(10, fileChan, fileDownChan, os.Stdin)
 	eg.Go(func() error {
 		frontend.ReadFromFile(10, fileChan, fileDownChan, os.Stdin)
 		return nil
@@ -994,9 +989,9 @@ mainLoop:
 			sc.overlays.GetNotificationEngine().ClearNetworkError()
 		}
 
-		// if connected and no hibernate and no response ov TimeoutIfNoResp quit
+		// if connected and no response over TimeoutIfNoResp
 		if sc.network.GetRemoteStateNum() != 0 && sinceLastResponse > frontend.TimeoutIfNoResp {
-			// no server response over x seconds, no hibernate
+			// if no awaken
 			if !sc.network.Awaken(now) {
 				util.Log.With("seconds", frontend.TimeoutIfNoResp).Warn("No server response over x seconds")
 				break

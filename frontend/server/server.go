@@ -1216,16 +1216,17 @@ mainLoop:
 			util.Log.With("seconds", frontend.TimeoutIfNoConnect/1000).With("timeout", "shutdown").
 				With("port", server.GetServerPort()).Warn("No connection within x seconds")
 			break
-		} else if server.GetRemoteStateNum() != 0 && timeSinceRemoteState >= frontend.TimeoutIfNoResp &&
-			!server.Awaken(now) {
+		} else if server.GetRemoteStateNum() != 0 && timeSinceRemoteState >= frontend.TimeoutIfNoResp {
 			// if no response from client over TimeoutIfNoResp seconds
 			if now-server.GetSentStateLastTimestamp() >= frontend.TimeoutIfNoResp-network.SERVER_ASSOCIATION_TIMEOUT {
-				// abort if no request send over TimeoutIfNoResp seconds
-				util.Log.With("seconds", frontend.TimeoutIfNoResp/1000).
-					With("port", server.GetServerPort()).
-					With("timeSinceRemoteState", timeSinceRemoteState).
-					Warn("Time out for no client request")
-				break
+				if !server.Awaken(now) {
+					// abort if no request send over TimeoutIfNoResp seconds
+					util.Log.With("seconds", frontend.TimeoutIfNoResp/1000).
+						With("port", server.GetServerPort()).
+						With("timeSinceRemoteState", timeSinceRemoteState).
+						Warn("Time out for no client request")
+					break
+				}
 			}
 		}
 	}
