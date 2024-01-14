@@ -1190,11 +1190,13 @@ mainLoop:
 
 		// update utmp if has been more than 30 seconds since heard from client
 		if utmpSupport && connectedUtmp && timeSinceRemoteState > 30000 {
-			util.ClearUtmpx(pts)
-			utmpHost := fmt.Sprintf("%s:%s", frontend.CommandServerName, server.GetServerPort())
-			util.AddUtmpx(pts, utmpHost)
-			connectedUtmp = false
-			// util.Log.Info("serve doesn't heard from client over 16 minutes.")
+			if !server.Awaken(now) {
+				util.ClearUtmpx(pts)
+				utmpHost := fmt.Sprintf("%s:%s", frontend.CommandServerName, server.GetServerPort())
+				util.AddUtmpx(pts, utmpHost)
+				connectedUtmp = false
+				// util.Log.Info("serve doesn't heard from client over 16 minutes.")
+			}
 		}
 
 		if complete.SetEchoAck(now) && !server.ShutdownInProgress() {
