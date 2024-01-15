@@ -601,17 +601,12 @@ func TestSenderTickVerify(t *testing.T) {
 
 	// set verbose
 	server.SetVerbose(1)
+	client.SetVerbose(1)
 
 	defer util.Log.Restore()
 	util.Log.SetLevel(slog.LevelDebug)
 	util.Log.SetOutput(os.Stdout)
 	// util.Log.SetOutput(io.Discard)
-
-	// intercept stderr
-	// swallow the tick() output to stderr
-	// saveStderr := os.Stderr
-	// r, w, _ := os.Pipe()
-	// os.Stderr = w
 
 	// send user stream to server
 	client.Tick()
@@ -621,6 +616,8 @@ func TestSenderTickVerify(t *testing.T) {
 	fmt.Printf("server firt recv\n")
 	time.Sleep(time.Millisecond * 20)
 
+	// change current state: the result is to change the diff
+	server.sender.currentState.Act("change current first")
 	// prepare hook func to change assumedReceiverState
 	server.sender.hookForTick = func() {
 		// create a fake state
@@ -632,6 +629,8 @@ func TestSenderTickVerify(t *testing.T) {
 		// change the assumedReceiverState
 		back := len(server.sender.sentStates) - 1
 		server.sender.assumedReceiverState = &server.sender.sentStates[back]
+
+		fmt.Println("in hookForTick")
 	}
 
 	// send complete to client
@@ -641,18 +640,6 @@ func TestSenderTickVerify(t *testing.T) {
 	client.Recv()
 	fmt.Printf("client first recv\n")
 	time.Sleep(time.Millisecond * 20)
-
-	// restore stderr
-	// w.Close()
-	// io.ReadAll(r) // discard the output of stderr
-	// // b, _ := ioutil.ReadAll(r)
-	// os.Stderr = saveStderr
-	// r.Close()
-
-	// validate the result
-	// result := string(b)
-
-	// check the stderr output to validate the result.
 
 	// validate client sent and server received contents
 	if !server.GetLatestRemoteState().state.Equal(client.GetCurrentState()) {
