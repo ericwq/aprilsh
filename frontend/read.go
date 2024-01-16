@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"sync/atomic"
 	"time"
 )
 
@@ -33,18 +34,22 @@ func ReadFromFile(timeout int, msgChan chan Message, doneChan chan any, fReader 
 	var buf [16384]byte
 	var err error
 	var bytesRead int
-	var reading bool
+	// var reading bool
+	var reading int64
 
 	for {
 		timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
-		if !reading {
+		// if !reading {
+		if atomic.LoadInt64(&reading) == 0 {
 			go func(fr io.Reader, buf []byte, ch chan Message) {
-				reading = true
+				atomic.StoreInt64(&reading, 1)
+				// reading = true
 				// util.Log.With("action", "satrt").Debug("#read")
 				bytesRead, err = fr.Read(buf)
 				if bytesRead > 0 {
 					ch <- Message{string(buf[:bytesRead]), nil, nil}
-					reading = false
+					atomic.StoreInt64(&reading, 0)
+					// reading = false
 					// util.Log.With("action", "got").Debug("#read")
 				} else {
 					ch <- Message{"", nil, err}
