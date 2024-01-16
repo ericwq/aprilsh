@@ -9,7 +9,6 @@ import (
 	"io"
 	"log/slog"
 	"math"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -604,20 +603,21 @@ func TestSenderTickVerify(t *testing.T) {
 	client.SetVerbose(1)
 
 	defer util.Log.Restore()
+	var b strings.Builder
 	util.Log.SetLevel(slog.LevelDebug)
-	util.Log.SetOutput(os.Stdout)
-	// util.Log.SetOutput(io.Discard)
+	// util.Log.SetOutput(os.Stdout)
+	util.Log.SetOutput(&b)
 
 	// send user stream to server
 	client.Tick()
-	fmt.Printf("client firt send\n")
+	// fmt.Printf("client firt send\n")
 	time.Sleep(time.Millisecond * 20)
 	server.Recv()
-	fmt.Printf("server firt recv\n")
+	// fmt.Printf("server firt recv\n")
 	time.Sleep(time.Millisecond * 20)
 
 	// change current state: the result is to change the diff
-	server.sender.currentState.Act("change current first")
+	server.sender.currentState.Act("server")
 	// prepare hook func to change assumedReceiverState
 	server.sender.hookForTick = func() {
 		// create a fake state
@@ -630,21 +630,30 @@ func TestSenderTickVerify(t *testing.T) {
 		back := len(server.sender.sentStates) - 1
 		server.sender.assumedReceiverState = &server.sender.sentStates[back]
 
-		fmt.Println("in hookForTick")
+		// fmt.Println("in hookForTick")
 	}
 
 	// send complete to client
 	server.Tick()
-	fmt.Printf("server first send\n")
+	// fmt.Printf("server first send\n")
 	time.Sleep(time.Millisecond * 20)
 	client.Recv()
-	fmt.Printf("client first recv\n")
+	// fmt.Printf("client first recv\n")
 	time.Sleep(time.Millisecond * 20)
 
 	// validate client sent and server received contents
 	if !server.GetLatestRemoteState().state.Equal(client.GetCurrentState()) {
 		t.Errorf("#test client send %q to server, server receive %q from client\n",
 			client.GetCurrentState(), server.GetLatestRemoteState().state)
+	}
+
+	expect := []string{"tick Warning, round-trip Instruction verification failed",
+		"tick Warning, target state Instruction verification failed"}
+	got := b.String()
+	for i := range expect {
+		if !strings.Contains(got, expect[i]) {
+			t.Errorf("#TestSenderTickVerify expect contains %q, can't find it\n", expect[i])
+		}
 	}
 
 	server.Close()

@@ -192,6 +192,18 @@ func (c *Complete) Subtract(prefix *Complete) {
 // implements network.State[C any] interface
 // compare two Complete value and build the seralized HostMessage: difference content.
 func (c *Complete) DiffFrom(existing *Complete) string {
+	return c.diffFrom(existing, true)
+}
+
+// implements network.State[C any] interface
+// get difference between this Complete and a new one.
+func (c *Complete) InitDiff() string {
+	blank, _ := NewComplete(c.terminal.GetWidth(), c.terminal.GetHeight(), c.terminal.GetSaveLines())
+	// util.Log.With("lastRow", c.terminal.GetLastRows()).Debug("InitDiff")
+	return c.diffFrom(blank, false)
+}
+
+func (c *Complete) diffFrom(existing *Complete, diffBuf bool) string {
 	hm := pb.HostMessage{}
 
 	if existing.GetEchoAck() != c.GetEchoAck() {
@@ -213,7 +225,12 @@ func (c *Complete) DiffFrom(existing *Complete) string {
 
 		// the following part consider the cursor movement.
 		// update := c.display.NewFrame(true, existing.terminal, c.terminal)
-		update := c.diffBuf.String()
+		var update string
+		if diffBuf {
+			update = c.diffBuf.String()
+		} else {
+			update = c.display.NewFrame(true, existing.terminal, c.terminal)
+		}
 		if len(update) > 0 {
 			instBytes := pb.Instruction{Hostbytes: &pb.HostBytes{Hoststring: []byte(update)}}
 			hm.Instruction = append(hm.Instruction, &instBytes)
@@ -224,14 +241,6 @@ func (c *Complete) DiffFrom(existing *Complete) string {
 
 	output, _ := proto.Marshal(&hm)
 	return string(output)
-}
-
-// implements network.State[C any] interface
-// get difference between this Complete and a new one.
-func (c *Complete) InitDiff() string {
-	blank, _ := NewComplete(c.terminal.GetWidth(), c.terminal.GetHeight(), c.terminal.GetSaveLines())
-	// util.Log.With("lastRow", c.terminal.GetLastRows()).Debug("InitDiff")
-	return c.DiffFrom(blank)
 }
 
 // implements network.State[C any] interface
