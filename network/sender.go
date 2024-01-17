@@ -436,7 +436,8 @@ func (ts *TransportSender[T]) tick() error {
 			}
 			ts.mindelayClock = math.MaxInt64
 		}
-
+		// fmt.Printf("ts.nextSendTime=%d, now> ts.nextSendTime=%t\n", ts.nextSendTime, now >= ts.nextSendTime)
+		// for diff==0, there is no chance for now>= ts.nextSendTime?
 		if now >= ts.nextSendTime {
 			ts.nextSendTime = math.MaxInt64
 			ts.mindelayClock = math.MaxInt64

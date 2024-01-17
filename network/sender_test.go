@@ -9,6 +9,7 @@ import (
 	"io"
 	"log/slog"
 	"math"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -747,4 +748,73 @@ func TestSenderShutdonwAckTimedout(t *testing.T) {
 	if ts.HasRemoteAddr() {
 		t.Errorf("test HasRemoteAddr() expect false, got %t\n", ts.HasRemoteAddr())
 	}
+}
+
+// for diff==0, there is no chance for now>= ts.nextSendTime
+func testSenderTickNextSendTime(t *testing.T) {
+	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
+	initialRemoteSrv := &statesync.UserStream{}
+	desiredIp := "localhost"
+	desiredPort := "6007"
+	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
+
+	initialState := &statesync.UserStream{}
+	initialRemote, _ := statesync.NewComplete(80, 40, 40)
+	keyStr := server.connection.getKey() // get the key from server
+	client := NewTransportClient(initialState, initialRemote, keyStr, desiredIp, desiredPort)
+
+	pushUserBytesTo(client.GetCurrentState(), "mock input.")
+
+	// set verbose
+	server.SetVerbose(1)
+	client.SetVerbose(1)
+
+	defer util.Log.Restore()
+	// var b strings.Builder
+	util.Log.SetLevel(slog.LevelDebug)
+	util.Log.SetOutput(os.Stdout)
+	// util.Log.SetOutput(&b)
+
+	// send user stream to server
+	client.Tick()
+	// fmt.Printf("client firt send\n")
+	time.Sleep(time.Millisecond * 5)
+	server.Recv()
+	// fmt.Printf("server firt recv\n")
+	time.Sleep(time.Millisecond * 5)
+
+	// fmt.Printf("sendStates=%s\n", server.sender.getSentStateList())
+	// send complete to client
+	server.Tick()
+	// fmt.Printf("server first send\n")
+	time.Sleep(time.Millisecond * 5)
+	client.Recv()
+	// fmt.Printf("client first recv\n")
+	time.Sleep(time.Millisecond * 3005)
+
+	pushUserBytesTo(client.sender.sentStates[0].state, "x")
+	client.sender.nextSendTime = time.Now().UnixMilli() - 15
+	client.Tick()
+	// fmt.Printf("server first send\n")
+	time.Sleep(time.Millisecond * 5)
+	server.Recv()
+	// fmt.Printf("client first recv\n")
+	time.Sleep(time.Millisecond * 5)
+	// validate client sent and server received contents
+	if !server.GetLatestRemoteState().state.Equal(client.GetCurrentState()) {
+		t.Errorf("#test client send %q to server, server receive %q from client\n",
+			client.GetCurrentState(), server.GetLatestRemoteState().state)
+	}
+
+	// expect := []string{"tick Warning, round-trip Instruction verification failed",
+	// 	"tick Warning, target state Instruction verification failed"}
+	// got := b.String()
+	// for i := range expect {
+	// 	if !strings.Contains(got, expect[i]) {
+	// 		t.Errorf("#TestSenderTickVerify expect contains %q, can't find it\n", expect[i])
+	// 	}
+	// }
+
+	server.Close()
+	client.Close()
 }
