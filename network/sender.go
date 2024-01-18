@@ -391,10 +391,10 @@ func (ts *TransportSender[T]) tick() error {
 	// util.Log.With("point", 300).Debug("tick")
 	// util.Log.SetLevel(slog.LevelInfo)
 
+	if ts.hookForTick != nil { // hook function for testing
+		ts.hookForTick()
+	}
 	if ts.verbose > 0 && len(diff) > 0 {
-		if ts.hookForTick != nil { // hook function for testing
-			ts.hookForTick()
-		}
 		// verify diff has round-trip identity (modulo Unicode fallback rendering)
 		newState := ts.assumedReceiverState.state.Clone()
 		// util.Log.With("point", 410).Debug("tick")
@@ -436,7 +436,6 @@ func (ts *TransportSender[T]) tick() error {
 			}
 			ts.mindelayClock = math.MaxInt64
 		}
-		// fmt.Printf("ts.nextSendTime=%d, now> ts.nextSendTime=%t\n", ts.nextSendTime, now >= ts.nextSendTime)
 		// for diff==0, there is no chance for now>= ts.nextSendTime?
 		if now >= ts.nextSendTime {
 			ts.nextSendTime = math.MaxInt64

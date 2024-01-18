@@ -9,7 +9,6 @@ import (
 	"io"
 	"log/slog"
 	"math"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -751,7 +750,7 @@ func TestSenderShutdonwAckTimedout(t *testing.T) {
 }
 
 // for diff==0, there is no chance for now>= ts.nextSendTime
-func testSenderTickNextSendTime(t *testing.T) {
+func TestSenderTickNextSendTime(t *testing.T) {
 	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
 	initialRemoteSrv := &statesync.UserStream{}
 	desiredIp := "localhost"
@@ -770,10 +769,10 @@ func testSenderTickNextSendTime(t *testing.T) {
 	client.SetVerbose(1)
 
 	defer util.Log.Restore()
-	// var b strings.Builder
+	var b strings.Builder
 	util.Log.SetLevel(slog.LevelDebug)
-	util.Log.SetOutput(os.Stdout)
-	// util.Log.SetOutput(&b)
+	// util.Log.SetOutput(os.Stdout)
+	util.Log.SetOutput(&b)
 
 	// send user stream to server
 	client.Tick()
@@ -784,36 +783,18 @@ func testSenderTickNextSendTime(t *testing.T) {
 	time.Sleep(time.Millisecond * 5)
 
 	// fmt.Printf("sendStates=%s\n", server.sender.getSentStateList())
+	server.sender.hookForTick = func() {
+		server.sender.nextSendTime = time.Now().UnixMilli() - 15
+		server.sender.nextAckTime = time.Now().UnixMilli() + 2
+	}
 	// send complete to client
 	server.Tick()
-	// fmt.Printf("server first send\n")
-	time.Sleep(time.Millisecond * 5)
-	client.Recv()
-	// fmt.Printf("client first recv\n")
-	time.Sleep(time.Millisecond * 3005)
 
-	pushUserBytesTo(client.sender.sentStates[0].state, "x")
-	client.sender.nextSendTime = time.Now().UnixMilli() - 15
-	client.Tick()
-	// fmt.Printf("server first send\n")
-	time.Sleep(time.Millisecond * 5)
-	server.Recv()
-	// fmt.Printf("client first recv\n")
-	time.Sleep(time.Millisecond * 5)
 	// validate client sent and server received contents
-	if !server.GetLatestRemoteState().state.Equal(client.GetCurrentState()) {
-		t.Errorf("#test client send %q to server, server receive %q from client\n",
-			client.GetCurrentState(), server.GetLatestRemoteState().state)
+	if server.sender.nextSendTime != math.MaxInt64 || server.sender.mindelayClock != math.MaxInt64 {
+		t.Errorf("#test server expect nextSendTime and mindelayClock to be %d, got %d,%d\n",
+			math.MaxInt64, server.sender.nextSendTime, server.sender.mindelayClock)
 	}
-
-	// expect := []string{"tick Warning, round-trip Instruction verification failed",
-	// 	"tick Warning, target state Instruction verification failed"}
-	// got := b.String()
-	// for i := range expect {
-	// 	if !strings.Contains(got, expect[i]) {
-	// 		t.Errorf("#TestSenderTickVerify expect contains %q, can't find it\n", expect[i])
-	// 	}
-	// }
 
 	server.Close()
 	client.Close()
