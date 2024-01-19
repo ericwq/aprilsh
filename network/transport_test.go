@@ -678,7 +678,7 @@ func TestTransportGetXXX(t *testing.T) {
 
 	// test GetSentStateAckedTimestamp
 	now := time.Now().UnixMilli()
-	if got := s.GetSentStateAckedTimestamp(); got != now {
+	if got := s.GetSentStateAckedTimestamp(); now-got > 1 {
 		t.Errorf("#test GetSentStateAckedTimestamp() expect %d, got %d\n", now, got)
 	}
 

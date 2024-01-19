@@ -7,6 +7,7 @@ package network
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
 	"reflect"
@@ -1201,4 +1202,62 @@ func TestServerRecvTimeout(t *testing.T) {
 	if !errors.Is(e2, os.ErrDeadlineExceeded) {
 		t.Errorf("#test recv() expect err, got %s\n", e2) // see mockUdpConn.SetReadDeadline
 	}
+}
+
+func TestConnectionRecvSeqFail(t *testing.T) {
+	title := "connection recv seq fail"
+	ip := "localhost"
+	port := "60800"
+
+	message := []string{"first message."}
+
+	var wg sync.WaitGroup
+	server := NewConnection(ip, port)
+
+	defer util.Log.Restore()
+	var output strings.Builder
+	util.Log.SetLevel(slog.LevelDebug)
+	// util.Log.SetOutput(os.Stdout)
+	util.Log.SetOutput(&output)
+
+	if server == nil {
+		t.Errorf("%q server should not return nil.\n", title)
+		return
+	}
+
+	key := server.key
+	client := NewConnectionClient(key.String(), ip, port)
+
+	for i := range message {
+		sendErr := client.send(message[i], false)
+		if sendErr != nil {
+			t.Errorf("%q send error: %q\n", title, sendErr)
+		}
+	}
+	defer client.Close()
+
+	wg.Add(1)
+	go func() {
+		defer server.Close()
+		for i := range message {
+			// create the error condition
+			server.expectedReceiverSeq = 75
+
+			payload, _, _ := server.Recv(1)
+			// fmt.Printf("#test recv i=%d payload=%q, expectedReceiverSeq=%d\n",
+			// 	i, payload, server.expectedReceiverSeq)
+			if message[i] != payload {
+				t.Errorf("%q expect %q, got %q\n", title, message[i], payload)
+			}
+
+			got := output.String()
+			expect := "received explicit out-of-order packets"
+			if !strings.Contains(got, expect) {
+				t.Errorf("%q expect \n%s, got \n%s\n", title, expect, got)
+			}
+		}
+		wg.Done()
+	}()
+
+	wg.Wait()
 }
