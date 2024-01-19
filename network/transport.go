@@ -387,11 +387,12 @@ func (t *Transport[S, R]) Awaken(now int64) (ret bool) {
 	}
 
 	/*
-	              | keep live | just awaken | one awaken | lack state | send status
-	   keep live  | false     | x (false)   | (x) false  | false      |
-	   just awaken| false     | true        | true       | false      |
-	   one awaken | false     | true        | true       | false      |
-	   lack state | false     | false       | false      | false      |
+	              | keep live | just awaken | one awaken | lack state | no response | send status
+	   keep live  | false     | x (false)   | (x) false  | false      | x           |
+	   just awaken| false     | true        | true       | false      | false       |
+	   one awaken | false     | true        | true       | false      | x			  |
+	   lack state | false     | false       | false      | false      | x		     |
+	  no response | x         | x           | x          | x          | x           |
 	   recv status
 	*/
 
@@ -418,6 +419,7 @@ const (
 	_JUST_AWAKEN = 1 // just awaken, not finish send/recv
 	_ONE_AWAKEN  = 2 // awaken, finish one send/recv
 	_LACK_STATE  = 3 // only one state available
+	_NO_RESPONSE = 4 // no response for a long time
 )
 
 // return wake up status and awaken result
@@ -443,10 +445,13 @@ func awaken[R State[R]](states []TimestampedState[R], now int64) (ret bool, ak i
 		}
 	} else {
 		ak = _JUST_AWAKEN
+		if len(states) > 15 {
+			ak = _NO_RESPONSE
+		}
 	}
 
 	switch ak {
-	case _KEEP_ALIVE:
+	case _KEEP_ALIVE, _NO_RESPONSE:
 		ret = false
 	case _JUST_AWAKEN:
 		ret = true
