@@ -398,7 +398,7 @@ func (t *Transport[S, R]) Awaken(now int64) (ret bool) {
 
 	defer func() {
 		util.Log.With("recvStatus", recvStatus).With("sendStatus", sendStatus).
-			With("ret", ret).With("now", now).Debug("Awaken")
+			With("ret", ret).With("now", now).With("port", t.GetServerPort()).Debug("Awaken")
 		back := len(t.receivedState)
 		if back >= 2 {
 			util.Log.With("recvPrev", t.receivedState[back-2].GetTimestamp()).
@@ -445,7 +445,7 @@ func awaken[R State[R]](states []TimestampedState[R], now int64) (ret bool, ak i
 		}
 	} else {
 		ak = _JUST_AWAKEN
-		if len(states) > 15 {
+		if len(states) >= 14 {
 			ak = _NO_RESPONSE
 		}
 	}

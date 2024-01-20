@@ -988,9 +988,9 @@ mainLoop:
 				util.Log.With("error", socketMsg.Err).Warn("read from network")
 				continue mainLoop
 			}
+			server.ProcessPayload(socketMsg.Data)
 			p = server.GetLatestRemoteState()
 			timeSinceRemoteState = now - p.GetTimestamp()
-			server.ProcessPayload(socketMsg.Data)
 
 			// is new user input available for the terminal?
 			if server.GetRemoteStateNum() != lastRemoteNum {
@@ -1220,16 +1220,16 @@ mainLoop:
 			break
 		} else if server.GetRemoteStateNum() != 0 && timeSinceRemoteState >= frontend.TimeoutIfNoResp {
 			// if no response from client over TimeoutIfNoResp seconds
-			if now-server.GetSentStateLastTimestamp() >= frontend.TimeoutIfNoResp-network.SERVER_ASSOCIATION_TIMEOUT {
-				if !server.Awaken(now) {
-					// abort if no request send over TimeoutIfNoResp seconds
-					util.Log.With("seconds", frontend.TimeoutIfNoResp/1000).
-						With("port", server.GetServerPort()).
-						With("timeSinceRemoteState", timeSinceRemoteState).
-						Warn("Time out for no client request")
-					break
-				}
+			// if now-server.GetSentStateLastTimestamp() >= frontend.TimeoutIfNoResp-network.SERVER_ASSOCIATION_TIMEOUT {
+			if !server.Awaken(now) {
+				// abort if no request send over TimeoutIfNoResp seconds
+				util.Log.With("seconds", frontend.TimeoutIfNoResp/1000).
+					With("port", server.GetServerPort()).
+					With("timeSinceRemoteState", timeSinceRemoteState).
+					Warn("Time out for no client request")
+				break
 			}
+			// }
 		}
 	}
 

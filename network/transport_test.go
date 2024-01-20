@@ -738,6 +738,8 @@ func TestAwaken(t *testing.T) {
 		{"log 03", []int64{90681115, 91734966}, []int64{90678725, 90681773}, 91734966, true},
 		{"send one/recv alive", []int64{10172, 26216}, []int64{26175, 26375}, 26217, false},
 		{"send just/recv alive", []int64{20172, 20216}, []int64{26175, 26375}, 26217, false},
+		{"time out if no client", []int64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 312950, 315954},
+			[]int64{270993, 273994}, 340981, false},
 	}
 
 	defer util.Log.Restore()
