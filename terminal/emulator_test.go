@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -584,27 +583,39 @@ func TestEmulatorEqual(t *testing.T) {
 		label      string
 		seq1, seq2 string
 		expect     bool
-		expectStr  string
+		expectStr  []string
 	}{
-		{"normal", "Hello world", "Hello world", true, ""},
+		{"same content", "Hello world", "Hello world", true, []string{}},
+		{"diff cursor", "Hello world", "Hello world\x1b[7;24H", false, []string{"posX=", "posY="}},
 	}
 
+	var output strings.Builder
 	defer util.Log.Restore()
 	util.Log.SetLevel(slog.LevelDebug)
-	util.Log.SetOutput(os.Stdout)
+	util.Log.SetOutput(&output)
+	// util.Log.SetOutput(os.Stdout)
 	// util.Log.SetOutput(io.Discard)
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			emu1 := NewEmulator3(80, 40, 40)
 			emu2 := NewEmulator3(80, 40, 40)
+			output.Reset()
 
 			emu1.HandleStream(v.seq1)
 			emu2.HandleStream(v.seq2)
 
-			got := emu1.EqualTrace(emu2)
+			got := emu1.Equal(emu2)
 			if got != v.expect {
 				t.Errorf("%q expect %t, got %t\n", v.label, v.expect, got)
+			}
+
+			emu1.EqualTrace(emu2)
+			trace := output.String()
+			for i := range v.expectStr {
+				if !strings.Contains(trace, v.expectStr[i]) {
+					t.Errorf("%q EqualTrace() expect \n%s, \ngot \n%s\n", v.label, v.expectStr[i], trace)
+				}
 			}
 		})
 	}
