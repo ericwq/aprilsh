@@ -7,6 +7,8 @@ package terminal
 import (
 	"fmt"
 	"io"
+	"log/slog"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -578,4 +580,32 @@ func TestSaveWindowTitleOnStack(t *testing.T) {
 }
 
 func TestEmulatorEqual(t *testing.T) {
+	tc := []struct {
+		label      string
+		seq1, seq2 string
+		expect     bool
+		expectStr  string
+	}{
+		{"normal", "Hello world", "Hello world", true, ""},
+	}
+
+	defer util.Log.Restore()
+	util.Log.SetLevel(slog.LevelDebug)
+	util.Log.SetOutput(os.Stdout)
+	// util.Log.SetOutput(io.Discard)
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			emu1 := NewEmulator3(80, 40, 40)
+			emu2 := NewEmulator3(80, 40, 40)
+
+			emu1.HandleStream(v.seq1)
+			emu2.HandleStream(v.seq2)
+
+			got := emu1.EqualTrace(emu2)
+			if got != v.expect {
+				t.Errorf("%q expect %t, got %t\n", v.label, v.expect, got)
+			}
+		})
+	}
 }
