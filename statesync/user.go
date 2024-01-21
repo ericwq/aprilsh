@@ -224,9 +224,6 @@ func (u *UserStream) ResetInput()               {}
 func (u *UserStream) Reset()                    {}
 func (u *UserStream) InitSize(nCols, nRows int) {}
 
-// func (u *UserStream) GetLastRows() int          { return 0 }
-// func (u *UserStream) SetLastRows(int) {}
-
 // implements network.State[C any] interface
 func (u *UserStream) Clone() *UserStream {
 	clone := UserStream{}

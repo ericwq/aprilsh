@@ -676,10 +676,6 @@ func (emu *Emulator) SetLastRows(x int) {
 	emu.lastRows = x
 }
 
-func (emu *Emulator) GetLastRows() int {
-	return emu.lastRows
-}
-
 func (emu *Emulator) GetFramebuffer() *Framebuffer {
 	return emu.cf
 }
@@ -1154,16 +1150,16 @@ func (emu *Emulator) equal(x *Emulator, trace bool) bool {
 // 	emu.cf.resetDamage()
 // }
 
-func (emu *Emulator) getDamageRows() (rows int) {
-	row1 := emu.cf.damage.start / emu.nCols
-	row2 := emu.cf.damage.end / emu.nCols
-
-	if row2 > row1 {
-		return row2 - row1
-	}
-
-	return emu.cf.nRows + emu.cf.saveLines - (row1 - row2)
-}
+// func (emu *Emulator) getDamageRows() (rows int) {
+// 	row1 := emu.cf.damage.start / emu.nCols
+// 	row2 := emu.cf.damage.end / emu.nCols
+//
+// 	if row2 > row1 {
+// 		return row2 - row1
+// 	}
+//
+// 	return emu.cf.nRows + emu.cf.saveLines - (row1 - row2)
+// }
 
 // support screen row
 func (emu *Emulator) getRowAt(pY int) (row []Cell) {

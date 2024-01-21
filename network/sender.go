@@ -409,7 +409,6 @@ func (ts *TransportSender[T]) tick() error {
 		// util.Log.With("point", 500).Debug("tick")
 		currentDiff := ts.currentState.InitDiff()
 		// util.Log.With("point", 600).Debug("tick")
-		// newState.SetLastRows(ts.currentState.GetLastRows())
 		newDiff := newState.InitDiff()
 		if currentDiff != newDiff {
 			util.Log.With("currentDiff", currentDiff).Warn("tick")

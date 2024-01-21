@@ -199,7 +199,6 @@ func (c *Complete) DiffFrom(existing *Complete) string {
 // get difference between this Complete and a new one.
 func (c *Complete) InitDiff() string {
 	blank, _ := NewComplete(c.terminal.GetWidth(), c.terminal.GetHeight(), c.terminal.GetSaveLines())
-	// util.Log.With("lastRow", c.terminal.GetLastRows()).Debug("InitDiff")
 	return c.diffFrom(blank, false)
 }
 
@@ -299,15 +298,6 @@ func (c *Complete) Reset() {
 	c.diffBuf.Reset()
 	c.terminal.SetLastRows(0)
 }
-
-// func (c *Complete) SetLastRows(x int) {
-// 	c.diffBuf.Reset()
-// 	c.terminal.SetLastRows(x)
-// }
-//
-// func (c *Complete) GetLastRows() int {
-// 	return c.terminal.GetLastRows()
-// }
 
 // implements network.State[C any] interface
 func (c *Complete) Clone() *Complete {
