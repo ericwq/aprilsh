@@ -973,11 +973,20 @@ func (emu *Emulator) equal(x *Emulator, trace bool) bool {
 		}
 	}
 
-	if emu.altSendsEscape != x.altSendsEscape || emu.modifyOtherKeys != x.modifyOtherKeys ||
-		emu.horizMarginMode != x.horizMarginMode {
+	if emu.altSendsEscape != x.altSendsEscape || emu.modifyOtherKeys != x.modifyOtherKeys {
 		if trace {
-			msg := fmt.Sprintf("altSendsEscape=(%t,%t), modifyOtherKeys=(%d,%d), horizMarginMode=(%t,%t) ",
-				emu.altSendsEscape, x.altSendsEscape, emu.modifyOtherKeys, x.modifyOtherKeys,
+			msg := fmt.Sprintf("altSendsEscape=(%t,%t), modifyOtherKeys=(%d,%d), ",
+				emu.altSendsEscape, x.altSendsEscape, emu.modifyOtherKeys, x.modifyOtherKeys)
+			util.Log.Warn(msg)
+		} else {
+			return false
+		}
+	}
+
+	if emu.nColsEff != x.nColsEff || emu.hMargin != x.hMargin || emu.horizMarginMode != x.horizMarginMode {
+		if trace {
+			msg := fmt.Sprintf("nColsEff=(%d,%d), hMargin=(%d,%d) horizMarginMode=(%t,%t)",
+				emu.nColsEff, x.nColsEff, emu.hMargin, x.hMargin,
 				emu.horizMarginMode, x.horizMarginMode)
 			util.Log.Warn(msg)
 		} else {
@@ -985,17 +994,7 @@ func (emu *Emulator) equal(x *Emulator, trace bool) bool {
 		}
 	}
 
-	if emu.nColsEff != x.nColsEff || emu.hMargin != x.hMargin {
-		if trace {
-			msg := fmt.Sprintf("nColsEff=(%d,%d), hMargin=(%d,%d)",
-				emu.nColsEff, x.nColsEff, emu.hMargin, x.hMargin)
-			util.Log.Warn(msg)
-		} else {
-			return false
-		}
-	}
-
-	if len(emu.tabStops) != len(x.tabStops) {
+	if len(emu.tabStops) != len(x.tabStops) { // different tabStops number
 		if trace {
 			msg := fmt.Sprintf("tabStops length=(%d,%d)", len(emu.tabStops), len(x.tabStops))
 			util.Log.Warn(msg)
@@ -1005,6 +1004,7 @@ func (emu *Emulator) equal(x *Emulator, trace bool) bool {
 	} else if len(emu.tabStops) != 0 {
 		for i := range emu.tabStops {
 			if emu.tabStops[i] != x.tabStops[i] {
+				// same tabStops number, different tabStops value
 				if trace {
 					msg := fmt.Sprintf("tabStops[%d]=(%d,%d)", i, emu.tabStops[i], x.tabStops[i])
 					util.Log.Warn(msg)

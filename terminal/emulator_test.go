@@ -585,8 +585,25 @@ func TestEmulatorEqual(t *testing.T) {
 		expect     bool
 		expectStr  []string
 	}{
+		{"size", "", "", false, []string{"nRows=", "nCols="}},
 		{"same content", "Hello world", "Hello world", true, []string{}},
 		{"diff cursor", "Hello world", "Hello world\x1b[7;24H", false, []string{"posX=", "posY="}},
+		{"lastCol", "\x1b[4;76Hworld", "\x1b[4;80H",
+			false, []string{"lastCol=", "attrs="}},
+		{"has focus", "Hello world\x1B[?1004h\x1B[I", "Hello world\x1B[?1004h\x1B[O",
+			false, []string{"hasFocus=", "reverseVideo="}},
+		{"insert mode", "Hello world\x1B[4h", "Hello world\x1B[4l",
+			false, []string{"autoWrapMode=", "insertMode="}},
+		{"bracketedPasteMode", "Hello world\x1B[?2004h", "Hello world\x1B[?2004l",
+			false, []string{"bracketedPasteMode=", "altScrollMode="}},
+		{"altSendsEscape", "Hello world\x1B[?1036h", "Hello world\x1B[?1039l",
+			false, []string{"altSendsEscape=", "modifyOtherKeys="}},
+		{"hMargin", "\x1B[?69h\x1B[2;38sworld", "world",
+			false, []string{"hMargin=", "nColsEff="}},
+		{"diff tabStops", "world\x1BH", "world",
+			false, []string{"tabStops length="}},
+		{"diff tabStops position", "\x1B[1;5H\x1BH", "\x1B[1;13H\x1BH\x1B[1;5H",
+			false, []string{"tabStops[0]="}},
 	}
 
 	var output strings.Builder
@@ -598,8 +615,14 @@ func TestEmulatorEqual(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			emu1 := NewEmulator3(80, 40, 40)
-			emu2 := NewEmulator3(80, 40, 40)
+			var emu1, emu2 *Emulator
+			if v.label == "size" {
+				emu1 = NewEmulator3(80, 45, 0)
+				emu2 = NewEmulator3(80, 40, 0)
+			} else {
+				emu1 = NewEmulator3(80, 40, 40)
+				emu2 = NewEmulator3(80, 40, 40)
+			}
 			output.Reset()
 
 			emu1.HandleStream(v.seq1)

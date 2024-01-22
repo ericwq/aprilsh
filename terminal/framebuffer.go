@@ -647,21 +647,21 @@ func (fb *Framebuffer) getRow(rowY int) []Cell {
 }
 
 // return the active area reference
-func (fb *Framebuffer) getScreenRef() []Cell {
-	startIdx := fb.nCols * fb.getPhysicalRow(0)
-	endIdx := startIdx + (fb.nRows)*fb.nCols
-	maxIdx := len(fb.cells)
-	if endIdx > maxIdx || startIdx > maxIdx {
-		util.Log.With("startIdx", startIdx).With("endIdx", endIdx).
-			With("length", maxIdx).
-			Warn("getScreenRef")
-	}
-	return fb.cells[startIdx:endIdx]
-}
+// func (fb *Framebuffer) getScreenRef() []Cell {
+// 	startIdx := fb.nCols * fb.getPhysicalRow(0)
+// 	endIdx := startIdx + (fb.nRows)*fb.nCols
+// 	maxIdx := len(fb.cells)
+// 	if endIdx > maxIdx || startIdx > maxIdx {
+// 		util.Log.With("startIdx", startIdx).With("endIdx", endIdx).
+// 			With("length", maxIdx).
+// 			Warn("getScreenRef")
+// 	}
+// 	return fb.cells[startIdx:endIdx]
+// }
 
-func (fb *Framebuffer) Equal(x *Framebuffer) bool {
-	return fb.equal(x, false)
-}
+// func (fb *Framebuffer) Equal(x *Framebuffer) bool {
+// 	return fb.equal(x, false)
+// }
 
 func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 	ret = true
