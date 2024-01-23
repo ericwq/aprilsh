@@ -661,7 +661,7 @@ func TestEmulatorEqual(t *testing.T) {
 				if !strings.Contains(trace, v.expectStr[i]) {
 					t.Errorf("%q EqualTrace() expect \n%s, \ngot \n%s\n", v.label, v.expectStr[i], trace)
 				}
-				t.Logf("%s\n", trace)
+				// t.Logf("%s\n", trace)
 			}
 		})
 	}
@@ -697,10 +697,18 @@ func TestLargeStream(t *testing.T) {
 	// util.Log.SetOutput(&output)
 	util.Log.SetOutput(os.Stdout)
 
+	emu := NewEmulator3(80, 40, 40)
+
+	// test empty input
+	diff, remains := emu.HandleLargeStream("")
+	if diff != "" || remains != "" {
+		t.Errorf("%s expect empty string result, got %s,%s\n", "HandleLargeStream", diff, remains)
+	}
+
+	// test large input
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			emu := NewEmulator3(80, 40, 40)
-			diff, remains := emu.HandleLargeStream(v.seq)
+			diff, remains = emu.HandleLargeStream(v.seq)
 			if !strings.HasSuffix(diff, v.diffSuffix) {
 				t.Errorf("%q expect diff %q, got %q\n", v.label, v.diffSuffix, diff)
 			}
@@ -708,5 +716,11 @@ func TestLargeStream(t *testing.T) {
 				t.Errorf("%q expect remains %q, got %q\n", v.label, v.remainsSuffix, remains)
 			}
 		})
+	}
+
+	// test previous input reach max rows
+	d2, r2 := emu.HandleLargeStream(remains)
+	if d2 != "" || remains != r2 {
+		t.Errorf("%s reach max rows, expect diff %s, got %s\n", "HandleLargeStream", "", d2)
 	}
 }
