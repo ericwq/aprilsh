@@ -604,6 +604,28 @@ func TestEmulatorEqual(t *testing.T) {
 			false, []string{"tabStops length="}},
 		{"diff tabStops position", "\x1B[1;5H\x1BH", "\x1B[1;13H\x1BH\x1B[1;5H",
 			false, []string{"tabStops[0]="}},
+		{"set charset ss", "\x1B[1;5H\x1BN", "\x1B[1;5H",
+			false, []string{"charsetState.ss="}},
+		{"set application cursor", "\x1B[1;5H\x1B[?1h", "\x1B[1;5H",
+			false, []string{"cursorKeyMode="}},
+		{"set application keypad", "\x1B[1;5H\x1B=", "\x1B[1;5H",
+			false, []string{"keypadMode="}},
+		{"set cursor SCO", "\x1B[1;5H\x1B[s", "\x1B[1;5H",
+			false, []string{"savedCursor_SCO="}},
+		{"set save cursor", "\x1B[1;5H\x1B7", "\x1B[1;5H",
+			false, []string{"savedCursor_DEC .SavedCursor_SCO="}},
+		{"set save cursor charsetState", "\x1B[1;5H\x1BN\x1B7", "\x1B[1;5H",
+			false, []string{"savedCursor_DEC .charsetState .vtMode="}},
+		{"set mouse tracking", "\x1B[1;5H\x1B[?1000h\x1B[?1005h", "\x1B[1;5H",
+			false, []string{"mouseTrk="}},
+		{"set select data", "\x1B[1;5H\x1B]52;c;YXByaWxzaAo=\x1B\\", "\x1B[1;5H",
+			false, []string{"selectionData length="}},
+		{"set window title", "\x1B[1;5H\x1B]1;adas\x1B\\", "\x1B[1;5H",
+			false, []string{"windowTitle="}},
+		{"save window title on stack", "\x1B[1;5H\x1B]0;adas\x1B\\\x1B[22;2t", "\x1B[1;5H\x1B]0;adas\x1B\\",
+			false, []string{"windowTitleStack length="}},
+		{"diff window title value on stack", "\x1B[1;5H\x1B]0;adas\x1B\\\x1B[22;2t", "\x1B[1;5H\x1B]0;addas\x1B\\\x1B[22;2t\x1B]0;adas\x1B\\",
+			false, []string{"windowTitleStack[0]="}},
 	}
 
 	var output strings.Builder
@@ -639,6 +661,7 @@ func TestEmulatorEqual(t *testing.T) {
 				if !strings.Contains(trace, v.expectStr[i]) {
 					t.Errorf("%q EqualTrace() expect \n%s, \ngot \n%s\n", v.label, v.expectStr[i], trace)
 				}
+				t.Logf("%s\n", trace)
 			}
 		})
 	}

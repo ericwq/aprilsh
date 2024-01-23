@@ -1091,7 +1091,8 @@ func (emu *Emulator) equal(x *Emulator, trace bool) bool {
 
 	if emu.selectionData != x.selectionData {
 		if trace {
-			msg := fmt.Sprintf("selectionData=(%q,%q)", len(emu.selectionData), len(x.selectionData))
+			msg := fmt.Sprintf("selectionData length=(%d,%d), data=(%q,%q)",
+				len(emu.selectionData), len(x.selectionData), emu.selectionData, x.selectionData)
 			util.Log.Warn(msg)
 		} else {
 			return false
@@ -1123,6 +1124,7 @@ func (emu *Emulator) equal(x *Emulator, trace bool) bool {
 	}
 
 	if len(emu.windowTitleStack) != len(x.windowTitleStack) {
+		// different title stack number
 		if trace {
 			msg := fmt.Sprintf("windowTitleStack length=(%d,%d)", len(emu.windowTitleStack), len(x.windowTitleStack))
 			util.Log.Warn(msg)
@@ -1132,6 +1134,7 @@ func (emu *Emulator) equal(x *Emulator, trace bool) bool {
 	} else if len(emu.windowTitleStack) != 0 {
 		for i := range emu.windowTitleStack {
 			if emu.windowTitleStack[i] != x.windowTitleStack[i] {
+				// same title stack number, different stack value
 				if trace {
 					msg := fmt.Sprintf("windowTitleStack[%d]=(%s,%s)", i, emu.windowTitleStack[i], x.windowTitleStack[i])
 					util.Log.Warn(msg)
