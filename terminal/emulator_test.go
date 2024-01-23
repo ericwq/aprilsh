@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -633,7 +634,6 @@ func TestEmulatorEqual(t *testing.T) {
 	util.Log.SetLevel(slog.LevelDebug)
 	util.Log.SetOutput(&output)
 	// util.Log.SetOutput(os.Stdout)
-	// util.Log.SetOutput(io.Discard)
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
@@ -662,6 +662,50 @@ func TestEmulatorEqual(t *testing.T) {
 					t.Errorf("%q EqualTrace() expect \n%s, \ngot \n%s\n", v.label, v.expectStr[i], trace)
 				}
 				t.Logf("%s\n", trace)
+			}
+		})
+	}
+}
+
+func TestLargeStream(t *testing.T) {
+
+	// 读取文件内容
+	file, err := os.Open("../data/regret_poem.txt")
+	if err != nil {
+		panic(err)
+	}
+
+	data, err := io.ReadAll(file)
+	if err != nil {
+		panic(err)
+	}
+
+	// fmt.Println(string(data))
+
+	tc := []struct {
+		label         string
+		seq           string
+		diffSuffix    string
+		remainsSuffix string
+	}{
+		{"normal", string(data), "梨园弟子白发新，椒房阿监青娥老。\n\n", "天长地久有时尽，此恨绵绵无绝期。\n"},
+	}
+
+	// var output strings.Builder
+	defer util.Log.Restore()
+	util.Log.SetLevel(slog.LevelDebug)
+	// util.Log.SetOutput(&output)
+	util.Log.SetOutput(os.Stdout)
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			emu := NewEmulator3(80, 40, 40)
+			diff, remains := emu.HandleLargeStream(v.seq)
+			if !strings.HasSuffix(diff, v.diffSuffix) {
+				t.Errorf("%q expect diff %q, got %q\n", v.label, v.diffSuffix, diff)
+			}
+			if !strings.HasSuffix(remains, v.remainsSuffix) {
+				t.Errorf("%q expect remains %q, got %q\n", v.label, v.remainsSuffix, remains)
 			}
 		})
 	}
