@@ -724,3 +724,49 @@ func TestLargeStream(t *testing.T) {
 		t.Errorf("%s reach max rows, expect diff %s, got %s\n", "HandleLargeStream", "", d2)
 	}
 }
+
+func TestExcludeHandler(t *testing.T) {
+
+	tc := []struct {
+		label   string
+		seq     string
+		hdsSize int
+		diff    string
+	}{}
+
+	// var output strings.Builder
+	defer util.Log.Restore()
+	util.Log.SetLevel(slog.LevelDebug)
+	// util.Log.SetOutput(&output)
+	util.Log.SetOutput(os.Stdout)
+
+	emu := NewEmulator3(80, 40, 40)
+
+	// test  SetLastRows
+	expect := 51
+	emu.SetLastRows(expect)
+	if emu.lastRows != expect {
+		t.Errorf("%q expect lastRows %d, got %d\n", "SetLastRows", expect, emu.lastRows)
+	}
+	emu.SetLastRows(0)
+
+	// test GetHeight
+	expect = 40
+	got := emu.GetHeight()
+	if got != expect {
+		t.Errorf("%s expect %d, got %d\n", "GetHeight", expect, got)
+	}
+
+	// test large input
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			hds, diff := emu.HandleStream(v.seq)
+			if len(hds) != v.hdsSize {
+				t.Errorf("%q expct hds size %d, got %d\n", v.label, v.hdsSize, len(hds))
+			}
+			if diff != v.diff {
+				t.Errorf("%q expct diff %s, got %s\n", v.label, v.diff, diff)
+			}
+		})
+	}
+}
