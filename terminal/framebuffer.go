@@ -667,8 +667,8 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 	ret = true
 	if fb.nCols != x.nCols || fb.nRows != x.nRows || fb.saveLines != x.saveLines {
 		if trace {
-			msg := fmt.Sprintf("nCols=(%d,%d), nRows=(%d,%d), saveLines=(%d,%d)",
-				fb.nCols, x.nCols, fb.nRows, x.nRows, fb.saveLines, x.saveLines)
+			msg := fmt.Sprintf("nCols=(%d,%d), nRows=(%d,%d), saveLines=(%d,%d), cells length=(%d,%d)",
+				fb.nCols, x.nCols, fb.nRows, x.nRows, fb.saveLines, x.saveLines, len(fb.cells), len(x.cells))
 			util.Log.Warn(msg)
 			ret = false
 		} else {
@@ -722,16 +722,7 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 		}
 	}
 
-	if len(fb.cells) != len(x.cells) {
-		if trace {
-			msg := fmt.Sprintf("cells length=(%d,%d)", len(fb.cells), len(x.cells))
-			util.Log.Warn(msg)
-			ret = false
-		} else {
-			return false
-		}
-	}
-
+	// same terminal size, check different content?
 	if fb.saveLines == 0 {
 		for pY := 0; pY < fb.nRows; pY++ {
 			srcStartIdx := fb.getViewRowIdx(pY)
@@ -751,26 +742,17 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 			}
 		}
 	} else {
-		if len(fb.cells) != len(x.cells) {
-			if trace {
-				util.Log.With("new cells length", len(fb.cells)).
-					With("old cells length", len(x.cells)).
-					Warn("equal")
-			}
-			ret = false
-		} else {
-			for i := 0; i < len(fb.cells); i++ {
-				if fb.cells[i] != x.cells[i] {
-					if trace {
-						row := i / fb.nCols
-						util.Log.With("newRow", printRow(fb.cells, row, fb.nCols)).Warn("equal")
-						util.Log.With("oldRow", printRow(x.cells, row, x.nCols)).Warn("equal")
-						ret = false
-						// break
-						i += fb.nCols - 1
-					} else {
-						return false
-					}
+		for i := 0; i < len(fb.cells); i++ {
+			if fb.cells[i] != x.cells[i] {
+				if trace {
+					row := i / fb.nCols
+					util.Log.With("newRow", printRow(fb.cells, row, fb.nCols)).Warn("equal")
+					util.Log.With("oldRow", printRow(x.cells, row, x.nCols)).Warn("equal")
+					ret = false
+					// break
+					i += fb.nCols - 1
+				} else {
+					return false
 				}
 			}
 		}

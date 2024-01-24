@@ -661,7 +661,7 @@ func TestEmulatorEqual(t *testing.T) {
 				if !strings.Contains(trace, v.expectStr[i]) {
 					t.Errorf("%q EqualTrace() expect \n%s, \ngot \n%s\n", v.label, v.expectStr[i], trace)
 				}
-				// t.Logf("%s\n", trace)
+				t.Logf("%s\n", trace)
 			}
 		})
 	}

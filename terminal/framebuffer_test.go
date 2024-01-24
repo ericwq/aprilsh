@@ -7,6 +7,7 @@ package terminal
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"strings"
 	"testing"
 
@@ -752,6 +753,68 @@ func TestASBRow(t *testing.T) {
 			// validate
 			if got != v.expect {
 				t.Errorf("#TestGetPhysicalRow %q expect %d, got %d\n", v.label, v.expect, got)
+			}
+		})
+	}
+}
+
+func TestFramebufferEqual(t *testing.T) {
+	tc := []struct {
+		label      string
+		seq1, seq2 string
+		expect     bool
+		expectStr  []string
+	}{
+		{"size", "", "", false, []string{"saveLines="}},
+		{"scroll up 5", "\x1B[5S", "", false, []string{"scrollHead="}},
+		{"set cursor blink style", "\x1B[5 q", "", false, []string{"cursor.showStyle="}},
+		{"change viewOffset", "", "", false, []string{"viewOffset="}},
+		{"diff content", "world", "w0rld", false, []string{"newRow", "oldRow"}},
+		{"diff content 0 saveLines", "world", "w0rld", false, []string{"newRow", "oldRow"}},
+	}
+
+	var output strings.Builder
+	defer util.Log.Restore()
+	util.Log.SetLevel(slog.LevelDebug)
+	util.Log.SetOutput(&output)
+	// util.Log.SetOutput(os.Stdout)
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			var emu1, emu2 *Emulator
+			if v.label == "size" {
+				emu1 = NewEmulator3(80, 40, 0)
+				emu2 = NewEmulator3(80, 40, 10)
+			} else if strings.Contains(v.label, "0 saveLines") {
+				emu1 = NewEmulator3(80, 40, 0)
+				emu2 = NewEmulator3(80, 40, 0)
+			} else {
+				emu1 = NewEmulator3(80, 40, 40)
+				emu2 = NewEmulator3(80, 40, 40)
+			}
+			output.Reset()
+
+			emu1.HandleStream(v.seq1)
+			emu2.HandleStream(v.seq2)
+
+			if strings.Contains(v.label, "viewOffset") {
+				emu1.cf.scrollUp(8)
+				emu1.cf.pageUp(8)
+				fmt.Printf("viewOffset=%d\n", emu1.cf.viewOffset)
+			}
+
+			got := emu1.GetFramebuffer().equal(emu2.GetFramebuffer(), false)
+			if got != v.expect {
+				t.Errorf("%q expect %t, got %t\n", v.label, v.expect, got)
+			}
+
+			emu1.GetFramebuffer().equal(emu2.GetFramebuffer(), true)
+			trace := output.String()
+			for i := range v.expectStr {
+				if !strings.Contains(trace, v.expectStr[i]) {
+					t.Errorf("%q EqualTrace() expect \n%s, \ngot \n%s\n", v.label, v.expectStr[i], trace)
+				}
+				t.Logf("%s\n", trace)
 			}
 		})
 	}
