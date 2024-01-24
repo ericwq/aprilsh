@@ -732,7 +732,12 @@ func TestExcludeHandler(t *testing.T) {
 		seq     string
 		hdsSize int
 		diff    string
-	}{}
+	}{
+		{"DSR", "\x1B[6nworld", 6, "world"},
+		{"OSC 10x", "\x1B]10;?\x1B\\world", 6, "world"},
+		{"VT52_ID", "\x1B[?2l\x1BZ", 2, "\x1B[?2l"},
+		{"OSC 52 query selection", "\x1B]52;c0;5Zub5aeR5aiY5bGxCg==\x1B\\\x1B]52;c0;?\x1B\\", 2, "\x1b]52;c0;5Zub5aeR5aiY5bGxCg==\x1b\\"},
+	}
 
 	// var output strings.Builder
 	defer util.Log.Restore()
@@ -760,12 +765,13 @@ func TestExcludeHandler(t *testing.T) {
 	// test large input
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
+			emu = NewEmulator3(80, 40, 40)
 			hds, diff := emu.HandleStream(v.seq)
 			if len(hds) != v.hdsSize {
 				t.Errorf("%q expct hds size %d, got %d\n", v.label, v.hdsSize, len(hds))
 			}
 			if diff != v.diff {
-				t.Errorf("%q expct diff %s, got %s\n", v.label, v.diff, diff)
+				t.Errorf("%q expct diff %q, got %q\n", v.label, v.diff, diff)
 			}
 		})
 	}

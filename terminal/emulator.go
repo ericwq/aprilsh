@@ -547,7 +547,7 @@ func (emu *Emulator) excludeHandler(hd *Handler, before int, after int) bool {
 		return true
 	case OSC_4, OSC_10_11_12_17_19:
 		return true
-	case OSC_52: // special case
+	case OSC_52: // special case: set OSC 52 data, then query it, the response will be updated.
 		if before != after {
 			return true
 		}
