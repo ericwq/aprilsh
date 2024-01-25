@@ -1,4 +1,4 @@
-// Copyright 2022~2023 wangqi. All rights reserved.
+// Copyright 2022~2024 wangqi. All rights reserved.
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
@@ -99,7 +99,7 @@ func TestMainRun_Parameters(t *testing.T) {
 			"xterm-256color",
 			[]string{
 				frontend.CommandClientName, frontend.AprilshPackageName,
-				"Copyright (c) 2022~2023 wangqi ericwq057@qq.com", "reborn mosh with aprilsh",
+				"Copyright (c) 2022~2024 wangqi ericwq057@qq.com", "reborn mosh with aprilsh",
 			},
 		},
 		{

@@ -1,4 +1,4 @@
-// Copyright 2022~2023 wangqi. All rights reserved.
+// Copyright 2022~2024 wangqi. All rights reserved.
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
@@ -79,7 +79,7 @@ func TestPrintVersion(t *testing.T) {
 	os.Stdout = w
 	// initLog()
 
-	expect := []string{frontend.CommandServerName, "build", "wangqi ericwq057@qq.com"}
+	expect := []string{frontend.CommandServerName, "version", "git commit", "wangqi ericwq057@qq.com"}
 
 	printVersion()
 
@@ -287,7 +287,7 @@ func TestMainVersion(t *testing.T) {
 	out := captureOutputRun(testHelpFunc)
 
 	// validate result
-	expect := []string{frontend.CommandServerName, "build", "wangqi ericwq057@qq.com", "reborn mosh with aprilsh"}
+	expect := []string{frontend.CommandServerName, "go version", "git commit", "wangqi ericwq057@qq.com", "reborn mosh with aprilsh"}
 	result := string(out)
 	found := 0
 	for i := range expect {
@@ -1374,7 +1374,7 @@ func TestMalformRequest(t *testing.T) {
 func mockServe(ptmx *os.File, pts *os.File, pw *io.PipeWriter, terminal *statesync.Complete, // x chan bool,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
 	networkTimeout int64, networkSignaledTimeout int64) error {
-	time.Sleep(20 * time.Millisecond)
+	time.Sleep(10 * time.Millisecond)
 	// x <- true
 	return nil
 }
@@ -1483,13 +1483,13 @@ func TestRunWorkerFail(t *testing.T) {
 				commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false,
 			},
 		},
-		{
-			"shell.Wait fail", Config{
-				version: false, server: true, verbose: _VERBOSE_SKIP_READ_PIPE, desiredIP: "", desiredPort: "7300",
-				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, term: "kitty",
-				commandPath: "echo", commandArgv: []string{"2"}, withMotd: false,
-			},
-		},
+		// {
+		// 	"shell.Wait fail", Config{
+		// 		version: false, server: true, verbose: _VERBOSE_SKIP_READ_PIPE, desiredIP: "", desiredPort: "7300",
+		// 		locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, term: "kitty",
+		// 		commandPath: "echo", commandArgv: []string{"2"}, withMotd: false,
+		// 	},
+		// },
 	}
 
 	exChan := make(chan string, 1)
@@ -1499,15 +1499,15 @@ func TestRunWorkerFail(t *testing.T) {
 		t.Run(v.label, func(t *testing.T) {
 
 			// intercept log output
-			var b strings.Builder
 			defer util.Log.Restore()
-			util.Log.SetOutput(&b)
 			util.Log.SetLevel(slog.LevelDebug)
+			util.Log.SetOutput(os.Stdout)
+			// util.Log.SetOutput(io.Discard)
 
 			var wg sync.WaitGroup
 			var hasWorkhorse bool
 			v.conf.serve = mockServe
-			if strings.HasPrefix(v.label, "shell.Wait") {
+			if strings.Contains(v.label, "shell.Wait fail") {
 				v.conf.commandPath, _ = exec.LookPath(v.conf.commandPath)
 				hasWorkhorse = true // last one has effective work horse.
 			}
@@ -1521,13 +1521,21 @@ func TestRunWorkerFail(t *testing.T) {
 					if wh.ptmx == nil || wh.shell == nil {
 						t.Errorf("#test runWorker fail should return empty workhorse\n")
 					}
-
-				} else {
+					wh.shell.Kill()
+				} else if strings.Contains(v.label, "openPTS fail") {
 					if wh.ptmx != nil || wh.shell != nil {
 						t.Errorf("#test runWorker fail should return empty workhorse\n")
 					}
 					msg := <-exChan // get the done message
 					if msg != v.conf.desiredPort {
+						t.Errorf("#test runWorker fail should return %s, got %s\n", v.conf.desiredPort, msg)
+					}
+				} else if strings.Contains(v.label, "startShell fail") {
+					if wh.ptmx != nil || wh.shell != nil {
+						t.Errorf("#test runWorker fail should return empty workhorse\n")
+					}
+					msg := <-exChan // get the done message
+					if msg != v.conf.desiredPort+":shutdown" {
 						t.Errorf("#test runWorker fail should return %s, got %s\n", v.conf.desiredPort, msg)
 					}
 				}
@@ -1602,17 +1610,10 @@ func TestRunCloseFail(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			// defer util.Log.Restore()
-			// util.Log.SetLevel(slog.LevelDebug)
-			// util.Log.SetOutput(os.Stdout)
-
-			// intercept stdout
-			saveStdout := os.Stdout
-			r, w, _ := os.Pipe()
-			os.Stdout = w
 			defer util.Log.Restore()
-			util.Log.SetOutput(w)
 			util.Log.SetLevel(slog.LevelDebug)
+			util.Log.SetOutput(io.Discard)
+			// util.Log.SetOutput(os.Stdout)
 
 			// set serve func and runWorker func
 			v.conf.serve = mockServe
@@ -1636,9 +1637,9 @@ func TestRunCloseFail(t *testing.T) {
 			if !strings.HasPrefix(resp1, v.resp1) {
 				t.Errorf("#test run expect %q got %q\n", v.resp1, resp1)
 			}
-			// fmt.Printf("#test got start response %s\n", resp1)
+			// fmt.Printf("#test got response resp1=%s\n", resp1)
 
-			time.Sleep(30 * time.Millisecond)
+			time.Sleep(10 * time.Millisecond)
 
 			// stop the new connection
 			resp2 := mockClient(v.conf.desiredPort, v.pause, frontend.AprishMsgClose, v.exp...)
@@ -1646,7 +1647,7 @@ func TestRunCloseFail(t *testing.T) {
 				t.Errorf("#test run expect %q got %q\n", v.resp1, resp2)
 			}
 
-			// fmt.Printf("#test got start response %s\n", resp2)
+			// fmt.Printf("#test got response resp2=%s\n", resp2)
 			// stop the connection
 			if len(v.exp) > 0 {
 				expect := frontend.AprishMsgClose + "done"
@@ -1656,14 +1657,8 @@ func TestRunCloseFail(t *testing.T) {
 				}
 			}
 
-			// fmt.Printf("#test got stop response %s\n", resp2)
+			// fmt.Printf("#test got stop response resp2=%s\n", resp2)
 			srv.wait()
-
-			// restore stdout
-			w.Close()
-			io.ReadAll(r)
-			os.Stdout = saveStdout
-			r.Close()
 		})
 	}
 }

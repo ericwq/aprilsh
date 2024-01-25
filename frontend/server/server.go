@@ -1524,7 +1524,7 @@ func (m *mainSrv) run(conf *Config) {
 					m.writeRespTo(addr, frontend.AprishMsgClose, "done")
 				} else {
 					resp := m.writeRespTo(addr, frontend.AprishMsgClose, "port does not exist")
-					util.Log.With("request", req).With("response", resp).Warn("port does not exit")
+					util.Log.With("request", req).With("response", resp).Warn("port does not exist")
 				}
 			} else {
 				resp := m.writeRespTo(addr, frontend.AprishMsgClose, "wrong port number")
