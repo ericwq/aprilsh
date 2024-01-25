@@ -54,3 +54,4 @@
 - 2024/Jan/02: refine utmp access #22.
 - 2024/Jan/09: refine for no connection shutdown #20, refine for no request time out. fix bug #19, #21, #23, #24.
 - 2024/Jan/13: attacked by a terrible fever, the fever last more than 7 days, the cough last more than 10 days.
+- 2024/Jan/25: finish unit test for Framebuffer and Emulator. fix bug #23, #27, #26.
