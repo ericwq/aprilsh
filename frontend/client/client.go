@@ -54,8 +54,9 @@ Options:
 )
 
 func printVersion() {
-	fmt.Printf("%s (%s) [build %s]\n\n", frontend.CommandClientName, frontend.AprilshPackageName, frontend.BuildVersion)
-	fmt.Printf(frontend.VersionInfo)
+	fmt.Printf("%s\t\t: %s client, %s\n", frontend.AprilshPackageName,
+		frontend.AprilshPackageName, frontend.CommandClientName)
+	frontend.PrintVersion()
 }
 
 func printColors() {

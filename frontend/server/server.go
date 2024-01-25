@@ -289,8 +289,9 @@ func main() {
 }
 
 func printVersion() {
-	fmt.Printf("%s (%s) [build %s]\n\n", frontend.CommandServerName, frontend.AprilshPackageName, frontend.BuildVersion)
-	fmt.Printf(frontend.VersionInfo)
+	fmt.Printf("%s\t\t: %s server, %s\n", frontend.AprilshPackageName,
+		frontend.AprilshPackageName, frontend.CommandServerName)
+	frontend.PrintVersion()
 }
 
 func printUsage(hint, usage string) {
