@@ -10,25 +10,22 @@ rm -rf coverage
 mkdir -p coverage/unit 
 mkdir -p coverage/int
 
-BuildVersion=`git for-each-ref --count=1 --sort=-taggerdate --format '%(tag)' refs/tags`
-
+# BuildVersion=`git for-each-ref --count=1 --sort=-taggerdate --format '%(tag)' refs/tags`
+BuildVersion=`git describe --tags`
 echo "Build Start: "$(date "+%F %T.")
-
 #
 # selecting package to cover
 PKGS="github.com/ericwq/aprilsh/frontend/server"
-
-# 获取 go.mod 项目名,用来指定注入变量位置及输出可以执行程序名称
+# get go module name
 ModuleName=`head ../../go.mod | grep "^module" | awk '{print $2}'`
-# 获取构建时间
+# get build time
 BuildTime=$(date "+%F %T")
-# 获取构建时 Go 环境信息
+# get go version
 GoVersion=`go version`
-# 获取构建时 Commit ID
+# get git commit ID
 GitCommit=`git rev-parse HEAD`
-# 获取构建时的 Git 分支
+# get git branch
 GitBranch=`git rev-parse --abbrev-ref HEAD`
-
 #
 # build server for test
 go build -cover -coverpkg=$PKGS -ldflags="-s -w
