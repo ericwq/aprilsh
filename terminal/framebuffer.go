@@ -659,9 +659,9 @@ func (fb *Framebuffer) getRow(rowY int) []Cell {
 // 	return fb.cells[startIdx:endIdx]
 // }
 
-// func (fb *Framebuffer) Equal(x *Framebuffer) bool {
-// 	return fb.equal(x, false)
-// }
+func (fb *Framebuffer) Equal(x *Framebuffer) bool {
+	return fb.equal(x, false)
+}
 
 func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 	ret = true

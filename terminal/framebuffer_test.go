@@ -807,7 +807,8 @@ func TestFramebufferEqual(t *testing.T) {
 				// fmt.Printf("selection=%v\n", emu1.cf.selection)
 			}
 
-			got := emu1.GetFramebuffer().equal(emu2.GetFramebuffer(), false)
+			// got := emu1.GetFramebuffer().equal(emu2.GetFramebuffer(), false)
+			got := emu1.cf.Equal(emu2.GetFramebuffer())
 			if got != v.expect {
 				t.Errorf("%q expect %t, got %t\n", v.label, v.expect, got)
 			}
