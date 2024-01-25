@@ -289,8 +289,7 @@ func main() {
 }
 
 func printVersion() {
-	fmt.Printf("%s\t\t: %s server, %s\n", frontend.AprilshPackageName,
-		frontend.AprilshPackageName, frontend.CommandServerName)
+	fmt.Printf("aprilsh   \t: %s server, %s\n", frontend.AprilshPackageName, frontend.CommandServerName)
 	frontend.PrintVersion()
 }
 
