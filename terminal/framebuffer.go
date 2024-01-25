@@ -665,10 +665,14 @@ func (fb *Framebuffer) getRow(rowY int) []Cell {
 
 func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 	ret = true
-	if fb.nCols != x.nCols || fb.nRows != x.nRows || fb.saveLines != x.saveLines {
+	if fb.nCols != x.nCols || fb.nRows != x.nRows || fb.saveLines != x.saveLines ||
+		fb.marginTop != x.marginTop || fb.marginBottom != x.marginBottom || fb.margin != x.margin {
 		if trace {
-			msg := fmt.Sprintf("nCols=(%d,%d), nRows=(%d,%d), saveLines=(%d,%d), cells length=(%d,%d)",
-				fb.nCols, x.nCols, fb.nRows, x.nRows, fb.saveLines, x.saveLines, len(fb.cells), len(x.cells))
+			msg := fmt.Sprintf("nCols=(%d,%d), nRows=(%d,%d), saveLines=(%d,%d)",
+				fb.nCols, x.nCols, fb.nRows, x.nRows, fb.saveLines, x.saveLines)
+			util.Log.Warn(msg)
+			msg = fmt.Sprintf("marginTop=(%d,%d), marginBottom=(%d,%d), cells length=(%d,%d)",
+				fb.marginTop, x.marginTop, fb.marginBottom, x.marginBottom, len(fb.cells), len(x.cells))
 			util.Log.Warn(msg)
 			ret = false
 		} else {
@@ -676,23 +680,11 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 		}
 	}
 
-	if fb.scrollHead != x.scrollHead || fb.marginTop != x.marginTop ||
-		fb.marginBottom != x.marginBottom {
+	if fb.scrollHead != x.scrollHead || fb.historyRows != x.historyRows ||
+		fb.viewOffset != x.viewOffset {
 		if trace {
-			msg := fmt.Sprintf("scrollHead=(%d,%d), marginTop=(%d,%d), marginBottom=(%d,%d)",
-				fb.scrollHead, x.scrollHead, fb.marginTop, x.marginTop, fb.marginBottom, x.marginBottom)
-			util.Log.Warn(msg)
-			ret = false
-		} else {
-			return false
-		}
-	}
-
-	if fb.historyRows != x.historyRows || fb.viewOffset != x.viewOffset ||
-		fb.margin != x.margin {
-		if trace {
-			msg := fmt.Sprintf("historyRows=(%d,%d), viewOffset=(%d,%d)",
-				fb.historyRows, x.historyRows, fb.viewOffset, x.viewOffset)
+			msg := fmt.Sprintf("scrollHead=(%d,%d), historyRows=(%d,%d), viewOffset=(%d,%d)",
+				fb.scrollHead, x.scrollHead, fb.historyRows, x.historyRows, fb.viewOffset, x.viewOffset)
 			util.Log.Warn(msg)
 			ret = false
 		} else {
@@ -722,8 +714,8 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 		}
 	}
 
-	// same terminal size, check different content?
-	if fb.saveLines == 0 {
+	// same terminal size, check different content
+	if fb.saveLines == 0 { // no saveLines
 		for pY := 0; pY < fb.nRows; pY++ {
 			srcStartIdx := fb.getViewRowIdx(pY)
 			srcEndIdx := srcStartIdx + fb.nCols
@@ -741,7 +733,7 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 				break
 			}
 		}
-	} else {
+	} else { // has saveLines
 		for i := 0; i < len(fb.cells); i++ {
 			if fb.cells[i] != x.cells[i] {
 				if trace {

@@ -765,12 +765,13 @@ func TestFramebufferEqual(t *testing.T) {
 		expect     bool
 		expectStr  []string
 	}{
-		{"size", "", "", false, []string{"saveLines="}},
+		{"diff size", "", "", false, []string{"saveLines="}},
 		{"scroll up 5", "\x1B[5S", "", false, []string{"scrollHead="}},
 		{"set cursor blink style", "\x1B[5 q", "", false, []string{"cursor.showStyle="}},
 		{"change viewOffset", "", "", false, []string{"viewOffset="}},
 		{"diff content", "world", "w0rld", false, []string{"newRow", "oldRow"}},
 		{"diff content 0 saveLines", "world", "w0rld", false, []string{"newRow", "oldRow"}},
+		{"set diff selection", "", "", false, []string{"selection="}},
 	}
 
 	var output strings.Builder
@@ -782,7 +783,7 @@ func TestFramebufferEqual(t *testing.T) {
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			var emu1, emu2 *Emulator
-			if v.label == "size" {
+			if strings.Contains(v.label, "diff size") {
 				emu1 = NewEmulator3(80, 40, 0)
 				emu2 = NewEmulator3(80, 40, 10)
 			} else if strings.Contains(v.label, "0 saveLines") {
@@ -800,7 +801,10 @@ func TestFramebufferEqual(t *testing.T) {
 			if strings.Contains(v.label, "viewOffset") {
 				emu1.cf.scrollUp(8)
 				emu1.cf.pageUp(8)
-				fmt.Printf("viewOffset=%d\n", emu1.cf.viewOffset)
+				// fmt.Printf("viewOffset=%d\n", emu1.cf.viewOffset)
+			} else if strings.Contains(v.label, "diff selection") {
+				emu1.cf.selection = Rect{Point{1, 1}, Point{40, 40}, true}
+				// fmt.Printf("selection=%v\n", emu1.cf.selection)
 			}
 
 			got := emu1.GetFramebuffer().equal(emu2.GetFramebuffer(), false)
@@ -815,6 +819,68 @@ func TestFramebufferEqual(t *testing.T) {
 					t.Errorf("%q EqualTrace() expect \n%s, \ngot \n%s\n", v.label, v.expectStr[i], trace)
 				}
 				t.Logf("%s\n", trace)
+			}
+		})
+	}
+}
+
+func TestGetRowsGap(t *testing.T) {
+	tc := []struct {
+		label string
+		oldR  int
+		newR  int
+		gap   int
+	}{
+		{"oldR == newR", 7, 7, 0},
+		{"oldR > newR", 8, 7, 79},
+		{"oldR < newR", 7, 9, 2},
+	}
+
+	var output strings.Builder
+	defer util.Log.Restore()
+	util.Log.SetLevel(slog.LevelDebug)
+	util.Log.SetOutput(&output)
+	// util.Log.SetOutput(os.Stdout)
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			fb, _, _ := NewFramebuffer3(80, 40, 40)
+			gap := fb.getRowsGap(v.oldR, v.newR)
+			if gap != v.gap {
+				t.Errorf("%q expect %d, got %d\n", v.label, v.gap, gap)
+			}
+		})
+	}
+}
+
+func TestOutputRow(t *testing.T) {
+	tc := []struct {
+		label  string
+		seq    string
+		rowIdx int
+		nCols  int
+		expect string
+	}{
+		{"chinese row", "中文输出", 0, 80,
+			"[  0]中文输出                                                                        "},
+	}
+
+	var output strings.Builder
+	defer util.Log.Restore()
+	util.Log.SetLevel(slog.LevelDebug)
+	util.Log.SetOutput(&output)
+	// util.Log.SetOutput(os.Stdout)
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			emu := NewEmulator3(80, 40, 0)
+			emu.HandleStream(v.seq)
+
+			row := emu.cf.getRow(v.rowIdx)
+			got := outputRow(row, v.rowIdx, v.nCols)
+
+			if got != v.expect {
+				t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.expect, got)
 			}
 		})
 	}
