@@ -26,7 +26,7 @@ ModuleName=`head ../../go.mod | grep "^module" | awk '{print $2}'`
 # get build time
 BuildTime=$(date "+%F %T")
 # get go version
-GoVersion=`go version`
+GoVersion=`go version | grep "version" | awk '{print $3,$4}'`
 # get git commit ID
 GitCommit=`git rev-parse HEAD`
 # get git branch
@@ -41,4 +41,5 @@ go build -cover -coverpkg=$PKGS -ldflags="-s -w
       -X '${ModuleName}/frontend.BuildTime=${BuildTime}'" -o ~/.local/bin/apsh .
 # go build -race -cover -coverpkg=$PKGS -o ~/.local/bin/apshd .
 echo "Build End  : "$(date "+%F %T")
-echo "Output to  : GOCOVERDIR=./coverage/int  ~/.local/bin/apsh -verbose 1 -pwd password ide@localhost 2>> /tmp/apsh00.log"
+echo "Output to  : ~/.local/bin/apsh"
+echo "Run with   : GOCOVERDIR=./coverage/int  ~/.local/bin/apsh -verbose 1 -pwd password ide@localhost 2>> /tmp/apsh00.log"
