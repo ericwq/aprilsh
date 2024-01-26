@@ -99,8 +99,8 @@ func ReadFromNetwork(timeout int, msgChan chan Message, doneChan chan any, conne
 		}
 
 		// waiting for time out or get the shutdown message
-		// 5 times timeout is a experience value from debug info
-		timer := time.NewTimer(time.Duration(timeout*5) * time.Millisecond)
+		// 2 times timeout is a experience value from trace info
+		timer := time.NewTimer(time.Duration(timeout*2) * time.Millisecond)
 		select {
 		case <-doneChan:
 			timer.Stop()
