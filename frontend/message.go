@@ -25,7 +25,7 @@ reborn mosh with aprilsh
 )
 
 var (
-	BuildVersion string // version
+	BuildVersion string // build version
 	GoVersion    string // Go version
 	BuildTime    string // build time
 	GitCommit    string // git commit id

@@ -54,7 +54,8 @@ Options:
 )
 
 func printVersion() {
-	fmt.Printf("aprilsh   \t: %s client, %s\n", frontend.AprilshPackageName, frontend.CommandClientName)
+	fmt.Printf("%s package : %s client, %s\n",
+		frontend.AprilshPackageName, frontend.AprilshPackageName, frontend.CommandClientName)
 	frontend.PrintVersion()
 }
 
