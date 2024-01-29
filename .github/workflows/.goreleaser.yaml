@@ -1,0 +1,4 @@
+# .goreleaser.yaml
+builds:
+- main: ./frontend/server/
+- main: ./frontend/client/
