@@ -6,20 +6,122 @@ on:
     tags:
       - "*" # triggers only if push new tag version, like `0.8.4` or else
 
+env:
+  PROJECT: aprilsh
+  BIN_DIR: bin
+
 permissions:
   contents: write
-  packages: write
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  compile:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-22.04,   target: linux,   platform: linux-x64,   container: 'alpine:latest', libc: musl }
+          # - { os: ubuntu-20.04,   target: linux,   platform: linux-x64,   container: 'ubuntu:18.04' }
+          # - { os: ubuntu-20.04,   target: linux,   platform: linux-arm64, container: 'ubuntu:18.04' }
+          # - { os: macos-11,       target: darwin,  platform: darwin-x64   }
+          # - { os: macos-11,       target: darwin,  platform: darwin-arm64 }
+          # - { os: windows-latest, target: windows, platform: win32-ia32   }
+          # - { os: windows-latest, target: windows, platform: win32-x64    }
+    runs-on: ${{ matrix.os }}
+    container:
+      image: ${{ matrix.container }}
     steps:
+      - name: Prepare container for musl
+        if: ${{ matrix.target == 'linux' && matrix.libc == 'musl' }}
+        run: |
+          apk update
+          apk add git go
+
       - name: "Checkout"
         uses: actions/checkout@v4
 
-      - name: "Upload Release"
+      - name: Setting up workflow variables
+        id: vars
+        shell: bash
+        run: |
+          # Package version
+          if [[ $GITHUB_REF = refs/tags/* ]]; then
+            PKG_VERSION=${GITHUB_REF##*/}
+          else
+            PKG_VERSION=${GITHUB_SHA:0:7}
+          fi
+
+          # Package suffix relative to the platform
+          if [[ "${{ matrix.target }}" = windows ]]; then
+            PKG_SUFFIX="zip"
+          else
+            PKG_SUFFIX="tar.gz"
+          fi
+
+          # Package name w/ version
+          PKG_BASENAME="${{ env.PROJECT }}-${PKG_VERSION}-${{ matrix.platform }}"
+          if [[ "${{ matrix.libc }}" = musl ]]; then
+            PKG_BASENAME="${PKG_BASENAME}-${{matrix.libc}}"
+          fi
+
+          # Full name of the tarball asset
+          PKG_NAME="${PKG_BASENAME}.${PKG_SUFFIX}"
+
+          # Staging area for tarballs
+          PKG_STAGING="ci_staging/$PKG_BASENAME"
+
+          echo PKG_VERSION=${PKG_VERSION}             >> $GITHUB_OUTPUT
+          echo PKG_BASENAME=${PKG_BASENAME}           >> $GITHUB_OUTPUT
+          echo PKG_NAME=${PKG_NAME}                   >> $GITHUB_OUTPUT
+          echo PKG_PATH="${PKG_STAGING}/${PKG_NAME}"  >> $GITHUB_OUTPUT
+          echo PKG_STAGING=${PKG_STAGING}             >> $GITHUB_OUTPUT
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: ${{ steps.vars.outputs.PKG_BASENAME }}
+          path: |
+            ${{ env.BIN_DIR }}
+            LICENSE
+            README.md
+            data
+            doc
+            encrypt
+            frontend
+            go.mod
+            go.sum
+            img
+            network
+            protobufs
+            statesync
+            terminal
+            util
+      - name: Package tarballs
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          STAGING=${{ steps.vars.outputs.PKG_STAGING }}
+          NAME=${{ steps.vars.outputs.PKG_NAME }}
+
+          # Making the staging area
+          mkdir -p ${STAGING}
+
+          # Copying binary and runtime files to staging area
+          # cp -r LICENSE README.md data doc encrypt frontend go.mod go.sum img network protobufs statesync terminal util ${{ env.BIN_DIR }} ${STAGING}
+          cp -r LICENSE README.md data doc encrypt frontend go.mod go.sum img network protobufs statesync terminal util
+          printf "${NAME}\n"
+
+          # Creating release assets
+          pushd "${STAGING}/" >/dev/null
+          if [[ "${{ matrix.target }}" = windows ]]; then
+            7z -y a ${NAME} * | tail -2
+          else
+            tar czf ${NAME} *
+          fi
+          popd >/dev/null
+      - name: Publish release assets
         uses: softprops/action-gh-release@v1
         if: startsWith(github.ref, 'refs/tags/')
         with:
+          generate_release_notes: true
           files: |
-            *.tar.gz
+            ${{ steps.vars.outputs.PKG_PATH }}
+            ${{ steps.submodules.outputs.PKG_SUBMOD_PATH }}
