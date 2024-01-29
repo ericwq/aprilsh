@@ -7,9 +7,9 @@ pkgdesc="Remote shell support intermittent or mobile network"
 url="https://github.com/ericwq/aprilsh"
 arch="all"
 license="MIT"
-depends=""
-depends_dev="go"
-makedepends="$depends_dev"
+depends="musl-locales utmps"
+depends_dev="go protoc"
+makedepends="$depends_dev utmps-dev musl-locales"
 checkdepends=""
 install=""
 subpackages="$pkgname-dev $pkgname-doc"
@@ -38,26 +38,34 @@ snapshot() {
 
 prepare() {
 	default_prepare
+	# go protocol buffers plugin
+	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+	# install depends go module
 	go mod tidy
+	# use the following command to generate protocol buffer code
+	cd ./protobufs
+	protoc --go_out=. -I . ./protobufs/transportInstruction.proto
+	protoc --go_out=. -I . ./hostInput.proto
+	protoc --go_out=. -I . ./protobufs/userInput.proto
 }
 
 build() {
-	./configure \
-		--build=$CBUILD \
-		--host=$CHOST \
-		--prefix=/usr \
-		--sysconfdir=/etc \
-		--mandir=/usr/share/man \
-		--localstatedir=/var
-	make
+	# ./configure \
+	# 	--build=$CBUILD \
+	# 	--host=$CHOST \
+	# 	--prefix=/usr \
+	# 	--sysconfdir=/etc \
+	# 	--mandir=/usr/share/man \
+	# 	--localstatedir=/var
+	# make
 }
 
 check() {
-	make check
+	# make check
 }
 
 package() {
-	make DESTDIR="$pkgdir" install
+	# make DESTDIR="$pkgdir" install
 }
 
 sha512sums="
