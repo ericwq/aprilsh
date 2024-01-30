@@ -42,13 +42,13 @@ build() {
 	protoc --go_out=. -I . ./protobufs/userInput.proto
 	ls -al
 
-	BuildVersion=`git describe --tags`
+	BuildVersion=`head build.txt | grep "version:" | awk '{print $2}'`
 	# printf "$PATH\n"
-   ModuleName=`head ../../go.mod | grep "^module" | awk '{print $2}'`
-   BuildTime=$(date "+%F %T")
+   ModuleName=`head ./go.mod | grep "^module" | awk '{print $2}'`
+   BuildTime=`date "+%F %T"`
    GoVersion=`go version | grep "version" | awk '{print $3,$4}'`
-   GitCommit=`git rev-parse HEAD`
-   GitBranch=`git rev-parse --abbrev-ref HEAD`
+   GitCommit=`head build.txt | grep "commit:" | awk '{print $2}'`
+   GitBranch=`head build.txt | grep "branch:" | awk '{print $2}'`
 
    echo "build server start: "$(date "+%F %T.")
 	cd "$builddir"/frontend/server
