@@ -1,6 +1,9 @@
 ## prepare docker environment
 ```sh
-% docker run --rm -ti alpine:3.19
+% docker run --rm -ti --privileged -h abuild --env TZ=Asia/Shanghai --name abuild \
+        --mount source=proj-vol,target=/home/ide/proj \
+        --mount type=bind,source=/Users/qiwang/dev,target=/home/ide/develop \
+        alpine:3.19
 ```
 
 ## setup your system and account
