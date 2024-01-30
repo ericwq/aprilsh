@@ -45,17 +45,6 @@ jobs:
       #   with:
       #     go-version: 1.21
 
-      - name: collect build info
-        id: collect
-        shell: bash
-        run: |
-          echo "tag: `git describe --tags`" > build.info
-          echo "commit: `git rev-parse HEAD`" >> build.info
-          echo "branch: `git rev-parse --abbrev-ref HEAD`" >> build.info
-        # head build.info
-        # echo "time: `date "+%F %T"`" >> build.txt
-        # echo "version: `go version | grep "version" | awk '{print $3,$4}'`" >> build.txt
-
       - name: setting up workflow variables
         id: vars
         shell: bash
@@ -96,8 +85,12 @@ jobs:
         id: packaging
         shell: bash
         run: |
+          echo "tag: `git describe --tags`" > build.info
+          echo "commit: `git rev-parse HEAD`" >> build.info
+          echo "branch: `git rev-parse --abbrev-ref HEAD`" >> build.info
+
           mkdir -p ${{ steps.vars.outputs.PKG_STAGING }}
-          tar czf ${{ steps.vars.outputs.PKG_PATH }} \
+          tar cvzf ${{ steps.vars.outputs.PKG_PATH }} \
             build.info \
             LICENSE \
             README.md \

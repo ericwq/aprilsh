@@ -1,7 +1,7 @@
 # Contributor: Wang Qi <ericwq057@qq.com>
 # Maintainer: Wang Qi <ericwq057@qq.com>
 pkgname=aprilsh
-pkgver=0.5.7
+pkgver=0.5.9
 pkgrel=0
 pkgdesc="Remote shell support intermittent or mobile network"
 url="https://github.com/ericwq/aprilsh"
@@ -43,7 +43,6 @@ build() {
 	ls -al
 
 	BuildVersion=`head build.txt | grep "version:" | awk '{print $2}'`
-	# printf "$PATH\n"
    ModuleName=`head ./go.mod | grep "^module" | awk '{print $2}'`
    BuildTime=`date "+%F %T"`
    GoVersion=`go version | grep "version" | awk '{print $3,$4}'`
@@ -99,5 +98,5 @@ package() {
 # }
 
 sha512sums="
-51499e579b92a51b4096893b9a2ec3f7c6af7d0ef232725d14176348abcecdd12b5bc3ed2beec510b7e18ee26eb856cd3c7ed05c255a7478ee1c1b63cd4e4494  aprilsh-0.5.6.tar.gz
+36ef95b5925dcc1f56da8c1d417110127a754eb93ccd7d62875de454798952eb1e9b410a272452ba72ffb1b5c5043c98ce986b1442c243f59af32f0eef8a53c0  aprilsh-0.5.8.tar.gz
 "
