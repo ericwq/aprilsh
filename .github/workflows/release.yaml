@@ -87,6 +87,7 @@ jobs:
         run: |
           mkdir -p ${{ steps.vars.outputs.PKG_STAGING }}
           tar czf ${{ steps.vars.outputs.PKG_PATH }} \
+            .git \
             LICENSE \
             README.md \
             data \
