@@ -1,5 +1,5 @@
 # .github/workflows/release.yaml
-name: upload release source tarball
+name: new release
 
 on:
   push:
