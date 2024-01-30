@@ -1,7 +1,7 @@
 # Contributor: Wang Qi <ericwq057@qq.com>
 # Maintainer: Wang Qi <ericwq057@qq.com>
 pkgname=aprilsh
-pkgver=0.5.1
+pkgver=0.5.6
 pkgrel=0
 pkgdesc="Remote shell support intermittent or mobile network"
 url="https://github.com/ericwq/aprilsh"
@@ -13,28 +13,28 @@ makedepends="$depends_dev utmps-dev musl-locales"
 checkdepends=""
 install=""
 subpackages="$pkgname-dev $pkgname-doc"
-source="https://github.com/ericwq/aprilsh/archive/refs/tags/$pkgname-$pkgver.tar.gz"
+source="https://github.com/ericwq/aprilsh/archive/refs/tags/$pkgver.tar.gz"
 builddir="$srcdir/$pkgname-$pkgver"
 
-_giturl="https://github.com/ericwq/aprilsh"
-_gittag="$pkgver"
-disturl="https://github.com/ericwq/aprilsh/archive/refs/tags/"
-
-snapshot() {
-	mkdir -p "$srcdir"
-#	printf "path: ${SRCDEST:-$srcdir}\n"
-	cd "${SRCDEST:-$srcdir}"
-	if ! [ -d $pkgname.git ]; then
-		git clone --bare  $_giturl || return 1
-		cd $pkgname.git
-	else
-		cd $pkgname.git
-		git fetch || return 1
-	fi
-	
-	git archive --prefix=$pkgname/ -o "$SRCDEST"/$pkgname-$pkgver.tar.gz $_gittag
-#	scp "$SRCDEST"/$pkgname-$pkgver.tar.gz dev.alpinelinux.org:/archive/$pkgname/
-}
+# _giturl="https://github.com/ericwq/aprilsh"
+# _gittag="$pkgver"
+# disturl="https://github.com/ericwq/aprilsh/archive/refs/tags/"
+#
+# snapshot() {
+# 	mkdir -p "$srcdir"
+# #	printf "path: ${SRCDEST:-$srcdir}\n"
+# 	cd "${SRCDEST:-$srcdir}"
+# 	if ! [ -d $pkgname.git ]; then
+# 		git clone --bare  $_giturl || return 1
+# 		cd $pkgname.git
+# 	else
+# 		cd $pkgname.git
+# 		git fetch || return 1
+# 	fi
+#
+# 	git archive --prefix=$pkgname/ -o "$SRCDEST"/$pkgname-$pkgver.tar.gz $_gittag
+# #	scp "$SRCDEST"/$pkgname-$pkgver.tar.gz dev.alpinelinux.org:/archive/$pkgname/
+# }
 
 prepare() {
 	default_prepare

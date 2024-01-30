@@ -1,14 +1,16 @@
 ## prepare docker environment
-
+```sh
+% docker run --rm -ti alpine:3.19
+```
 
 ## setup your system and account
 ```sh 
-#apk add alpine-sdk sudo mandoc abuild-doc
-#adduser -D packager
-#addgroup packager abuild
-#echo 'packager ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/packager
-#sudo -u packager sh
-%abuild-keygen -n --append --install
+# apk add alpine-sdk sudo mandoc abuild-doc
+# adduser -D packager
+# addgroup packager abuild
+# echo 'packager ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/packager
+# sudo -u packager sh
+% abuild-keygen -n --append --install
 ```
 
 ## generating a new apkbuild file
@@ -18,8 +20,7 @@
     -d "Remote shell support intermittent or mobile network" \
     -l "MIT" \
     -a \
-    "https://skarnet.org/software/utmps/utmps-0.1.2.2.tar.gz"
-    && "https://github.com/ericwq/aprilsh/archive/refs/tags/aprilsh-0.5.2.tar.xz"
+    "https://github.com/ericwq/aprilsh/archive/refs/tags/0.5.6.tar.gz"
 ```
 
 ## reference
