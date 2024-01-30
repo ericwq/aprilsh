@@ -32,6 +32,7 @@
 % cd ~/aports/main/aprilsh/
 % ln -s /home/ide/develop/aprilsh/APKBUILD  APKBUILD
 % export PATH=$PATH:~/go/bin
+% abuild checksum
 % REPODEST=~/packages/3.19 abuild -r
 ```
 ## reference

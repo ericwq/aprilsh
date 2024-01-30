@@ -1,7 +1,7 @@
 # Contributor: Wang Qi <ericwq057@qq.com>
 # Maintainer: Wang Qi <ericwq057@qq.com>
 pkgname=aprilsh
-pkgver=0.5.9
+pkgver=0.5.13
 pkgrel=0
 pkgdesc="Remote shell support intermittent or mobile network"
 url="https://github.com/ericwq/aprilsh"
@@ -16,65 +16,79 @@ makedepends="
 	"
 install=""
 subpackages="$pkgname-client $pkgname-server"
-source="$pkgname-$pkgver.tar.gz::https://github.com/ericwq/aprilsh/archive/refs/tags/$pkgver.tar.gz"
-# srcdir="~/aprilsh"
+# source="$pkgname-$pkgver.tar.gz::https://github.com/ericwq/aprilsh/archive/refs/tags/$pkgver.tar.gz"
+source="$pkgname-$pkgver.tar.gz::https://github.com/ericwq/aprilsh/releases/download/$pkgver/$pkgname-$pkgver-linux-x64-musl.tar.gz"
+# srcdir="/home/packager/aprilsh"
 builddir="$srcdir"/$pkgname-$pkgver
 
+export PATH=$PATH:~/go/bin
+# export GOCACHE="${GOCACHE:-"$srcdir/go-cache"}"
+# export GOTMPDIR="${GOTMPDIR:-"$srcdir"}"
+# export GOMODCACHE="${GOMODCACHE:-"$srcdir/go"}"
+
 prepare() {
+   # startdir="/home/packager/aports/main/aprilsh"
+   # pkgdir="/home/packager/packages/"
+	# mkdir -p "./packages"
+	# mkdir -p "./aprilsh"
+	printf "srcdir  =${srcdir}\nstartdir=${startdir}\npkgdir  =${pkgdir}\nbuilddir=${builddir}\n"
 	default_prepare
-   # startdir="~/aports/main/aprilsh"
-   # pkgdir="~/pkg/"
-	printf "srcdir=${srcdir}\nstartdir=${startdir}\npkgdir=${pkgdir}\nbuilddir=${builddir}\n"
 }
 
 build() {
-	# ls -al
+	cd ${srcdir}
 	# go protocol buffers plugin
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 	# install depends go module
 	go mod tidy
 	# use the following command to generate protocol buffer code
-	# printf "***** start protoc build\n"
-	# printf "$PATH\n"
-	# printf "***** start protoc build\n"
 	protoc --go_out=. -I . ./protobufs/transportInstruction.proto
 	protoc --go_out=. -I . ./protobufs/hostInput.proto
 	protoc --go_out=. -I . ./protobufs/userInput.proto
-	ls -al
 
-	BuildVersion=`head build.txt | grep "version:" | awk '{print $2}'`
-   ModuleName=`head ./go.mod | grep "^module" | awk '{print $2}'`
-   BuildTime=`date "+%F %T"`
-   GoVersion=`go version | grep "version" | awk '{print $3,$4}'`
-   GitCommit=`head build.txt | grep "commit:" | awk '{print $2}'`
-   GitBranch=`head build.txt | grep "branch:" | awk '{print $2}'`
+	_BuildVersion=`head build.info | grep "tag:" | awk '{print $2}'`
+   _ModuleName=`head ./go.mod | grep "^module" | awk '{print $2}'`
+   _BuildTime=`date "+%F %T"`
+   _GoVersion=`go version | grep "version" | awk '{print $3,$4}'`
+   _GitCommit=`head build.info | grep "commit:" | awk '{print $2}'`
+   _GitBranch=`head build.info | grep "branch:" | awk '{print $2}'`
 
-   echo "build server start: "$(date "+%F %T.")
-	cd "$builddir"/frontend/server
+   echo "build server start: `date '+%F %T'`"
    go build -ldflags="-s -w
-      -X '${ModuleName}/frontend.BuildVersion=${BuildVersion}'
-      -X '${ModuleName}/frontend.GoVersion=${GoVersion}'
-      -X '${ModuleName}/frontend.GitCommit=${GitCommit}'
-      -X '${ModuleName}/frontend.GitBranch=${GitBranch}'
-      -X '${ModuleName}/frontend.BuildTime=${BuildTime}'" -o "$builddir"/bin/apshd .
-   echo "build server end  : "$(date "+%F %T.")
-   echo "output server to  : ~/.local/bin/apshd"
+      -X '${_ModuleName}/frontend.BuildVersion=${_BuildVersion}'
+      -X '${_ModuleName}/frontend.GoVersion=${_GoVersion}'
+      -X '${_ModuleName}/frontend.GitCommit=${_GitCommit}'
+      -X '${_ModuleName}/frontend.GitBranch=${_GitBranch}'
+      -X '${_ModuleName}/frontend.BuildTime=${_BuildTime}'" -o "$builddir"/bin/apshd ./frontend/server/*.go
+   echo "build server end  : `date '+%F %T'`"
+   echo "output server to  : ${builddir}/bin/apshd"
 
-   echo "build client start: "$(date "+%F %T.")
-	cd "$builddir"/frontend/client
+   echo "build client start: `date '+%F %T'`"
+	# cd "$builddir"/frontend/client
    go build -ldflags="-s -w
-      -X '${ModuleName}/frontend.BuildVersion=${BuildVersion}'
-      -X '${ModuleName}/frontend.GoVersion=${GoVersion}'
-      -X '${ModuleName}/frontend.GitCommit=${GitCommit}'
-      -X '${ModuleName}/frontend.GitBranch=${GitBranch}'
-      -X '${ModuleName}/frontend.BuildTime=${BuildTime}'" -o "$builddir"/bin/apsh .
-   echo "build client end  : "$(date "+%F %T.")
-   echo "output client to  : ~/.local/bin/apsh"
+      -X '${_ModuleName}/frontend.BuildVersion=${_BuildVersion}'
+      -X '${_ModuleName}/frontend.GoVersion=${_GoVersion}'
+      -X '${_ModuleName}/frontend.GitCommit=${_GitCommit}'
+      -X '${_ModuleName}/frontend.GitBranch=${_GitBranch}'
+      -X '${_ModuleName}/frontend.BuildTime=${_BuildTime}'" -o "$builddir"/bin/apsh ./frontend/client/*.go
+   echo "build client end  : `date '+%F %T'`"
+   echo "output client to  : ${builddir}/bin/apsh"
+}
+
+check() {
+	cd ${srcdir}
+	go test ./encrypt/...
+	go test ./frontend/...
+	go test ./network/...
+	go test ./statesync/...
+	# go test ./terminal/...
+	# go test ./util/...
 }
 
 package() {
-	install -Dm755 "$builddir"/bin/apshd "$pkgdir"/usr/bin
-	install -Dm755 "$builddir"/bin/apsh  "$pkgdir"/usr/bin
+	mkdir -p "$pkgdir"/usr/bin/
+	install -Dm755 "$builddir"/bin/apshd "$pkgdir"/usr/bin/
+	install -Dm755 "$builddir"/bin/apsh  "$pkgdir"/usr/bin/
 }
 
 # _giturl="https://github.com/ericwq/aprilsh"
@@ -98,5 +112,5 @@ package() {
 # }
 
 sha512sums="
-36ef95b5925dcc1f56da8c1d417110127a754eb93ccd7d62875de454798952eb1e9b410a272452ba72ffb1b5c5043c98ce986b1442c243f59af32f0eef8a53c0  aprilsh-0.5.8.tar.gz
+c82e4a6893c21ecf798629cdb525c55b70eec8c56e2ec1b4f23800ecba1832cf2b916901e5e0f12d9d195b34d424fbd8867b9c24ae2cb889095233da6fb22acc  aprilsh-0.5.13.tar.gz
 "
