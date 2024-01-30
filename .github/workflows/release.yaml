@@ -86,7 +86,8 @@ jobs:
         shell: bash
         run: |
           git config --global --add safe.directory /__w/aprilsh/aprilsh
-          echo "tag: `git describe --tags`" > build.info
+          touch build.info
+          echo "tag: `git describe --tags`" >> build.info
           echo "commit: `git rev-parse HEAD`" >> build.info
           echo "branch: `git rev-parse --abbrev-ref HEAD`" >> build.info
           echo "*****"
