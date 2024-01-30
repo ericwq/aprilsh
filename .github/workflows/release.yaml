@@ -102,14 +102,23 @@ jobs:
             terminal \
             util
 
-      - name: uploading assets...
+      - name: publish release assets
         if: ${{ !env.ACT }}
-        id: upload-release-asset
-        uses: actions/upload-release-asset@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: softprops/action-gh-release@master
+        if: startsWith(github.ref, 'refs/tags/')
         with:
-          upload_url: ${{ github.event.release.upload_url }}
-          asset_path: ${{ steps.vars.outputs.PKG_PATH }}
-          asset_name: ${{ steps.vars.outputs.PKG_NAME }}
-        asset_content_type: application/gzip
+          generate_release_notes: true
+          files: |
+            ${{ steps.vars.outputs.PKG_PATH }}
+
+      # - name: uploading assets...
+      #   if: ${{ !env.ACT }}
+      #   id: upload-release-asset
+      #   uses: actions/upload-release-asset@master
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     upload_url: ${{ github.event.release.upload_url }}
+      #     asset_path: ${{ steps.vars.outputs.PKG_PATH }}
+      #     asset_name: ${{ steps.vars.outputs.PKG_NAME }}
+      #     asset_content_type: application/gzip
