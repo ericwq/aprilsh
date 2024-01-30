@@ -85,10 +85,13 @@ jobs:
         id: packaging
         shell: bash
         run: |
-          git config --global --add safe.directory
+          git config --global --add safe.directory /__w/aprilsh/aprilsh
           echo "tag: `git describe --tags`" > build.info
           echo "commit: `git rev-parse HEAD`" >> build.info
           echo "branch: `git rev-parse --abbrev-ref HEAD`" >> build.info
+        # echo "*****"
+        # cat build.info
+        # echo "*****"
 
           mkdir -p ${{ steps.vars.outputs.PKG_STAGING }}
           tar cvzf ${{ steps.vars.outputs.PKG_PATH }} \
