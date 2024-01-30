@@ -16,30 +16,34 @@ makedepends="
 	"
 install=""
 subpackages="$pkgname-client $pkgname-server"
-source="https://github.com/ericwq/aprilsh/archive/refs/tags/$pkgver.tar.gz"
-startdir="/home/packager/"
-builddir="$srcdir"/$pkgname-$pkgname-$pkgver
+source="$pkgname-$pkgver.tar.gz::https://github.com/ericwq/aprilsh/archive/refs/tags/$pkgver.tar.gz"
+# srcdir="~/aprilsh"
+builddir="$srcdir"/$pkgname-$pkgver
 
 prepare() {
 	default_prepare
+   # startdir="~/aports/main/aprilsh"
+   # pkgdir="~/pkg/"
 	printf "srcdir=${srcdir}\nstartdir=${startdir}\npkgdir=${pkgdir}\nbuilddir=${builddir}\n"
 }
 
 build() {
+	# ls -al
 	# go protocol buffers plugin
-	printf "download protoc-gen-go\n"
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 	# install depends go module
 	go mod tidy
-	ls -al
 	# use the following command to generate protocol buffer code
-	printf "download protoc-gen-go\n"
-	cd "$builddir"/protobufs
-	protoc --go_out=. -I . "$builddir"/protobufs/transportInstruction.proto
-	protoc --go_out=. -I . "$builddir"/hostInput.proto
-	protoc --go_out=. -I . "$builddir"/protobufs/userInput.proto
+	# printf "***** start protoc build\n"
+	# printf "$PATH\n"
+	# printf "***** start protoc build\n"
+	protoc --go_out=. -I . ./protobufs/transportInstruction.proto
+	protoc --go_out=. -I . ./protobufs/hostInput.proto
+	protoc --go_out=. -I . ./protobufs/userInput.proto
+	ls -al
 
 	BuildVersion=`git describe --tags`
+	# printf "$PATH\n"
    ModuleName=`head ../../go.mod | grep "^module" | awk '{print $2}'`
    BuildTime=$(date "+%F %T")
    GoVersion=`go version | grep "version" | awk '{print $3,$4}'`
@@ -95,5 +99,5 @@ package() {
 # }
 
 sha512sums="
-51499e579b92a51b4096893b9a2ec3f7c6af7d0ef232725d14176348abcecdd12b5bc3ed2beec510b7e18ee26eb856cd3c7ed05c255a7478ee1c1b63cd4e4494  0.5.6.tar.gz
+51499e579b92a51b4096893b9a2ec3f7c6af7d0ef232725d14176348abcecdd12b5bc3ed2beec510b7e18ee26eb856cd3c7ed05c255a7478ee1c1b63cd4e4494  aprilsh-0.5.6.tar.gz
 "

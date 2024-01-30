@@ -16,7 +16,7 @@
 % abuild-keygen -n --append --install
 ```
 
-## generating a new apkbuild file
+## generating a new apkbuild file with newapkbuild
 ```sh
 % newapkbuild \
     -n aprilsh \
@@ -25,7 +25,15 @@
     -a \
     "https://github.com/ericwq/aprilsh/archive/refs/tags/0.5.6.tar.gz"
 ```
-
+## create the package
+```shell
+% cd
+% mkdir -p aports/main/aprilsh
+% cd ~/aports/main/aprilsh/
+% ln -s /home/ide/develop/aprilsh/APKBUILD  APKBUILD
+% export PATH=$PATH:~/go/bin
+% REPODEST=~/packages/3.19 abuild -r
+```
 ## reference
 
 - [How to build and install Alpine Linux package with newapkbuild](https://www.educative.io/answers/how-to-build-and-install-alpine-linux-package-with-newapkbuild)
