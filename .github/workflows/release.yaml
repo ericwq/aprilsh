@@ -30,16 +30,22 @@ jobs:
     container:
       image: ${{ matrix.container }}
     steps:
-      - name: Prepare container for musl
+      - name: prepare alpine container
         if: ${{ matrix.target == 'linux' && matrix.libc == 'musl' }}
         run: |
           apk update
-          apk add git go
+          apk add git bash
+          # apk add git nodejs
 
-      - name: "Checkout"
-        uses: actions/checkout@v4
+      - name: checkout
+        uses: actions/checkout@master
 
-      - name: Setting up workflow variables
+      # - name: Set up Go
+      #   uses: actions/setup-go@master
+      #   with:
+      #     go-version: 1.21
+
+      - name: setting up workflow variables
         id: vars
         shell: bash
         run: |
@@ -75,53 +81,35 @@ jobs:
           echo PKG_PATH="${PKG_STAGING}/${PKG_NAME}"  >> $GITHUB_OUTPUT
           echo PKG_STAGING=${PKG_STAGING}             >> $GITHUB_OUTPUT
 
-      - uses: actions/upload-artifact@v3
-        with:
-          name: ${{ steps.vars.outputs.PKG_BASENAME }}
-          path: |
-            ${{ env.BIN_DIR }}
-            LICENSE
-            README.md
-            data
-            doc
-            encrypt
-            frontend
-            go.mod
-            go.sum
-            img
-            network
-            protobufs
-            statesync
-            terminal
-            util
-      - name: Package tarballs
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: packaging...
+        id: packaging
         shell: bash
         run: |
-          STAGING=${{ steps.vars.outputs.PKG_STAGING }}
-          NAME=${{ steps.vars.outputs.PKG_NAME }}
+          mkdir -p ${{ steps.vars.outputs.PKG_STAGING }}
+          tar czf ${{ steps.vars.outputs.PKG_PATH }} \
+            LICENSE \
+            README.md \
+            data \
+            doc \
+            encrypt \
+            frontend \
+            go.mod \
+            go.sum \
+            img \
+            network \
+            protobufs \
+            statesync \
+            terminal \
+            util
 
-          # Making the staging area
-          mkdir -p ${STAGING}
-
-          # Copying binary and runtime files to staging area
-          # cp -r LICENSE README.md data doc encrypt frontend go.mod go.sum img network protobufs statesync terminal util ${{ env.BIN_DIR }} ${STAGING}
-          cp -r LICENSE README.md data doc encrypt frontend go.mod go.sum img network protobufs statesync terminal util
-          printf "${NAME}\n"
-
-          # Creating release assets
-          pushd "${STAGING}/" >/dev/null
-          if [[ "${{ matrix.target }}" = windows ]]; then
-            7z -y a ${NAME} * | tail -2
-          else
-            tar czf ${NAME} *
-          fi
-          popd >/dev/null
-      - name: Publish release assets
-        uses: softprops/action-gh-release@v1
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: uploading assets...
+        if: ${{ !env.ACT }}
+        id: upload-release-asset
+        uses: actions/upload-release-asset@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          generate_release_notes: true
-          files: |
-            ${{ steps.vars.outputs.PKG_PATH }}
-            ${{ steps.submodules.outputs.PKG_SUBMOD_PATH }}
+          upload_url: ${{ github.event.release.upload_url }}
+          asset_path: ${{ steps.vars.outputs.PKG_PATH }}
+          asset_name: ${{ steps.vars.outputs.PKG_NAME }}
+        asset_content_type: application/gzip
