@@ -103,7 +103,6 @@ jobs:
             util
 
       - name: publish release assets
-        if: ${{ !env.ACT }}
         uses: softprops/action-gh-release@master
         if: startsWith(github.ref, 'refs/tags/')
         with:
