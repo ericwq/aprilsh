@@ -12,32 +12,36 @@ makedepends="
 	go
 	protoc
 	utmps-dev
-	musl-locales
 	"
 install=""
-subpackages="$pkgname-client $pkgname-server"
+subpackages=""
+# subpackages="$pkgname-client $pkgname-server"
 # source="$pkgname-$pkgver.tar.gz::https://github.com/ericwq/aprilsh/archive/refs/tags/$pkgver.tar.gz"
 source="$pkgname-$pkgver.tar.gz::https://github.com/ericwq/aprilsh/releases/download/$pkgver/$pkgname-$pkgver-linux-x64-musl.tar.gz"
 # srcdir="/home/packager/aprilsh"
 builddir="$srcdir"/$pkgname-$pkgver
 
 export PATH=$PATH:~/go/bin
-# export GOCACHE="${GOCACHE:-"$srcdir/go-cache"}"
-# export GOTMPDIR="${GOTMPDIR:-"$srcdir"}"
-# export GOMODCACHE="${GOMODCACHE:-"$srcdir/go"}"
+export GOCACHE="${GOCACHE:-"$srcdir/go-cache"}"
+export GOTMPDIR="${GOTMPDIR:-"$srcdir"}"
+export GOMODCACHE="${GOMODCACHE:-"$srcdir/go"}"
 
 prepare() {
    # startdir="/home/packager/aports/main/aprilsh"
    # pkgdir="/home/packager/packages/"
 	# mkdir -p "./packages"
 	# mkdir -p "./aprilsh"
-	printf "srcdir  =${srcdir}\nstartdir=${startdir}\npkgdir  =${pkgdir}\nbuilddir=${builddir}\n"
+	printf "startdir=${startdir}\n"
+	printf "srcdir  =${srcdir}\n"
+	printf "builddir=${builddir}\n"
+	printf "pkgdir  =${pkgdir}\n"
+	printf "PATH=$PATH\n"
 	default_prepare
 }
 
 build() {
-	cd ${srcdir}
-	# go protocol buffers plugin
+	# cd ${srcdir}
+	# install go protocol buffers plugin
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 	# install depends go module
 	go mod tidy
@@ -46,6 +50,7 @@ build() {
 	protoc --go_out=. -I . ./protobufs/hostInput.proto
 	protoc --go_out=. -I . ./protobufs/userInput.proto
 
+	# prepare build info
 	_BuildVersion=`head build.info | grep "tag:" | awk '{print $2}'`
    _ModuleName=`head ./go.mod | grep "^module" | awk '{print $2}'`
    _BuildTime=`date "+%F %T"`
@@ -86,9 +91,9 @@ check() {
 }
 
 package() {
-	mkdir -p "$pkgdir"/usr/bin/
-	install -Dm755 "$builddir"/bin/apshd "$pkgdir"/usr/bin/
-	install -Dm755 "$builddir"/bin/apsh  "$pkgdir"/usr/bin/
+	# mkdir -p "$pkgdir"/usr/bin/
+	install -Dm755 "$builddir"/bin/apshd "$pkgdir"/usr/bin/apshd
+	install -Dm755 "$builddir"/bin/apsh  "$pkgdir"/usr/bin/apsh
 }
 
 # _giturl="https://github.com/ericwq/aprilsh"
