@@ -14,7 +14,7 @@ permissions:
   contents: write
 
 jobs:
-  compile:
+  release:
     strategy:
       fail-fast: false
       matrix:
@@ -45,48 +45,48 @@ jobs:
       #   with:
       #     go-version: 1.21
 
-      - name: setting up workflow variables
-        id: vars
-        shell: bash
-        run: |
-          # Package version
-          if [[ $GITHUB_REF = refs/tags/* ]]; then
-            PKG_VERSION=${GITHUB_REF##*/}
-          else
-            PKG_VERSION=${GITHUB_SHA:0:7}
-          fi
-
-          # Package suffix relative to the platform
-          if [[ "${{ matrix.target }}" = windows ]]; then
-            PKG_SUFFIX="zip"
-          else
-            PKG_SUFFIX="tar.gz"
-          fi
-
-          # Package name w/ version
-          PKG_BASENAME="${{ env.PROJECT }}-${PKG_VERSION}-${{ matrix.platform }}"
-          if [[ "${{ matrix.libc }}" = musl ]]; then
-            PKG_BASENAME="${PKG_BASENAME}-${{matrix.libc}}"
-          fi
-
-          # Full name of the tarball asset
-          PKG_NAME="${PKG_BASENAME}.${PKG_SUFFIX}"
-
-          # Staging area for tarballs
-          PKG_STAGING="ci_staging/$PKG_BASENAME"
-
-          echo PKG_VERSION=${PKG_VERSION}             >> $GITHUB_OUTPUT
-          echo PKG_BASENAME=${PKG_BASENAME}           >> $GITHUB_OUTPUT
-          echo PKG_NAME=${PKG_NAME}                   >> $GITHUB_OUTPUT
-          echo PKG_PATH="${PKG_STAGING}/${PKG_NAME}"  >> $GITHUB_OUTPUT
-          echo PKG_STAGING=${PKG_STAGING}             >> $GITHUB_OUTPUT
-
-      - name: packaging...
-        id: packaging
+      # - name: setting up workflow variables
+      #   id: vars
+      #   shell: bash
+      #   run: |
+      #     # Package version
+      #     if [[ $GITHUB_REF = refs/tags/* ]]; then
+      #       PKG_VERSION=${GITHUB_REF##*/}
+      #     else
+      #       PKG_VERSION=${GITHUB_SHA:0:7}
+      #     fi
+      #
+      #     # Package suffix relative to the platform
+      #     if [[ "${{ matrix.target }}" = windows ]]; then
+      #       PKG_SUFFIX="zip"
+      #     else
+      #       PKG_SUFFIX="tar.gz"
+      #     fi
+      #
+      #     # Package name w/ version
+      #     PKG_BASENAME="${{ env.PROJECT }}-${PKG_VERSION}-${{ matrix.platform }}"
+      #     if [[ "${{ matrix.libc }}" = musl ]]; then
+      #       PKG_BASENAME="${PKG_BASENAME}-${{matrix.libc}}"
+      #     fi
+      #
+      #     # Full name of the tarball asset
+      #     PKG_NAME="${PKG_BASENAME}.${PKG_SUFFIX}"
+      #
+      #     # Staging area for tarballs
+      #     PKG_STAGING="ci_staging/$PKG_BASENAME"
+      #
+      #     echo PKG_VERSION=${PKG_VERSION}             >> $GITHUB_OUTPUT
+      #     echo PKG_BASENAME=${PKG_BASENAME}           >> $GITHUB_OUTPUT
+      #     echo PKG_NAME=${PKG_NAME}                   >> $GITHUB_OUTPUT
+      #     echo PKG_PATH="${PKG_STAGING}/${PKG_NAME}"  >> $GITHUB_OUTPUT
+      #     echo PKG_STAGING=${PKG_STAGING}             >> $GITHUB_OUTPUT
+      #
+      - name: collect build info
+        id: collect
         shell: bash
         run: |
           git config --global --add safe.directory /__w/aprilsh/aprilsh
-          touch build.info
+          # touch build.info
           echo "tag: `git describe --tags`" >> build.info
           echo "commit: `git rev-parse HEAD`" >> build.info
           echo "branch: `git rev-parse --abbrev-ref HEAD`" >> build.info
@@ -94,23 +94,23 @@ jobs:
           head build.info
           echo "*****"
 
-          mkdir -p ${{ steps.vars.outputs.PKG_STAGING }}
-          tar cvzf ${{ steps.vars.outputs.PKG_PATH }} \
-            build.info \
-            LICENSE \
-            README.md \
-            data \
-            doc \
-            encrypt \
-            frontend \
-            go.mod \
-            go.sum \
-            img \
-            network \
-            protobufs \
-            statesync \
-            terminal \
-            util
+          # mkdir -p ${{ steps.vars.outputs.PKG_STAGING }}
+          # tar cvzf ${{ steps.vars.outputs.PKG_PATH }} \
+          #   build.info \
+          #   LICENSE \
+          #   README.md \
+          #   data \
+          #   doc \
+          #   encrypt \
+          #   frontend \
+          #   go.mod \
+          #   go.sum \
+          #   img \
+          #   network \
+          #   protobufs \
+          #   statesync \
+          #   terminal \
+          #   util
 
       - name: publish release assets
         uses: softprops/action-gh-release@master
