@@ -36,6 +36,11 @@
 % REPODEST=~/packages/3.19 abuild -r
 % tar tvvf packages/main/x86_64/aprilsh-0.5.13-r0.apk
 ```
+## install the package
+```shell
+% exit
+# apk add /home/packager/packages/main/x86_64/aprilsh-server-0.5.13-r0.apk
+```
 ## reference
 
 - [How to build and install Alpine Linux package with newapkbuild](https://www.educative.io/answers/how-to-build-and-install-alpine-linux-package-with-newapkbuild)
