@@ -1,7 +1,7 @@
 # Contributor: Wang Qi <ericwq057@qq.com>
 # Maintainer: Wang Qi <ericwq057@qq.com>
 pkgname=aprilsh
-pkgver=0.5.13
+pkgver=0.5.14
 pkgrel=0
 pkgdesc="Remote shell support intermittent or mobile network"
 url="https://github.com/ericwq/aprilsh"
@@ -16,8 +16,7 @@ makedepends="
 install=""
 subpackages=""
 subpackages="$pkgname-client $pkgname-server"
-# source="$pkgname-$pkgver.tar.gz::https://github.com/ericwq/aprilsh/archive/refs/tags/$pkgver.tar.gz"
-source="$pkgname-$pkgver.tar.gz::https://github.com/ericwq/aprilsh/releases/download/$pkgver/$pkgname-$pkgver-linux-x64-musl.tar.gz"
+source="$pkgname-$pkgver.tar.gz::https://github.com/ericwq/aprilsh/archive/refs/tags/$pkgver.tar.gz"
 builddir="$srcdir"/$pkgname-$pkgver
 
 export PATH=$PATH:~/go/bin
@@ -79,7 +78,7 @@ build() {
 }
 
 check() {
-	cd ${srcdir}
+	# cd ${srcdir}
 	go test ./encrypt/...
 	go test ./frontend/...
 	go test ./network/...
@@ -110,5 +109,5 @@ server() {
 }
 
 sha512sums="
-c82e4a6893c21ecf798629cdb525c55b70eec8c56e2ec1b4f23800ecba1832cf2b916901e5e0f12d9d195b34d424fbd8867b9c24ae2cb889095233da6fb22acc  aprilsh-0.5.13.tar.gz
+d934ee2dcdb46dbd8793ba89661c7de0369af4c6845d0d5acb7c3f609a4be9d87561a79e681b41c6ee4bdf31715620071100c400a13cc1f8bd06a8c0563450a3  aprilsh-0.5.14.tar.gz
 "
