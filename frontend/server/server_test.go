@@ -79,7 +79,7 @@ func TestPrintVersion(t *testing.T) {
 	os.Stdout = w
 	// initLog()
 
-	expect := []string{frontend.CommandServerName, "version", "git commit", "wangqi ericwq057@qq.com"}
+	expect := []string{frontend.CommandServerName, "version", "git commit", "wangqi <ericwq057@qq.com>"}
 
 	printVersion()
 
@@ -287,7 +287,8 @@ func TestMainVersion(t *testing.T) {
 	out := captureOutputRun(testHelpFunc)
 
 	// validate result
-	expect := []string{frontend.CommandServerName, "go version", "git commit", "wangqi ericwq057@qq.com", "reborn mosh with aprilsh"}
+	expect := []string{frontend.CommandServerName, "go version", "git commit", "wangqi <ericwq057@qq.com>",
+		"remote shell support intermittent or mobile network."}
 	result := string(out)
 	found := 0
 	for i := range expect {

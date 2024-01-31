@@ -99,7 +99,7 @@ func TestMainRun_Parameters(t *testing.T) {
 			"xterm-256color",
 			[]string{
 				frontend.CommandClientName, frontend.AprilshPackageName,
-				"Copyright (c) 2022~2024 wangqi ericwq057@qq.com", "reborn mosh with aprilsh",
+				"Copyright (c) 2022~2024 wangqi <ericwq057@qq.com>", "remote shell support intermittent or mobile network.",
 			},
 		},
 		{

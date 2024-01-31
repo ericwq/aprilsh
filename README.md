@@ -1,6 +1,6 @@
 # Aprilsh
 
-Reborn [mosh](https://mosh.org/) with go.
+remote shell support intermittent or mobile network. (reborn [mosh](https://mosh.org/) with go)
 
 ## Motivation
 
