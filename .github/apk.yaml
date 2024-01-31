@@ -1,0 +1,45 @@
+name: release apk
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  compile:
+    strategy:
+      fail-fast: false
+    runs-on: ubuntu-22.04
+    container:
+      image: alpine:latest
+    steps:
+      - name: prepare alpine container
+        run: |
+          #  alpine-sdk 
+          apk add sudo mandoc abuild-doc
+          adduser -D packager
+          addgroup packager abuild
+          echo 'packager ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/packager
+          echo "***** cat packager sudo list"
+          cat /etc/sudoers.d/packager
+
+      - name: generate key
+        run: |
+          echo "***** sudo packager user `whoami`"
+          sudo -u packager sh
+          echo "***** sudo generate key"
+          abuild-keygen -n --append --install
+          echo "***** done"
+
+      - name: checkout
+        uses: actions/checkout@master
+
+      - name: build package
+        run: |
+          ls -al
+          cd 
+          mkdir -p aports/main/aprilsh
+          cd ~/aports/main/aprilsh/
+          ln -s /home/ide/develop/aprilsh/APKBUILD  APKBUILD
+          abuild checksum
+          abuild -r
+

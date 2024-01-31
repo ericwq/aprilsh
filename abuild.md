@@ -52,6 +52,7 @@
 - [Alpine Linux in a chroot](https://wiki.alpinelinux.org/wiki/Alpine_Linux_in_a_chroot)
 - [How to Build an Alpine Linux Package](https://www.matthewparris.org/build-an-alpine-package/)
 - [How to create a Bash completion script](https://opensource.com/article/18/3/creating-bash-completion-script)
+- [Alpine Linux: New APKBUILD Workflow](https://thiagowfx.github.io/2022/01/alpine-linux-new-apkbuild-workflow/)
 
 ## git source
 ```
