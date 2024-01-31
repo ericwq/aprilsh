@@ -32,7 +32,9 @@
 % cd ~/aports/main/aprilsh/
 % ln -s /home/ide/develop/aprilsh/APKBUILD  APKBUILD
 % abuild checksum
+% abuild -r
 % REPODEST=~/packages/3.19 abuild -r
+% tar tvvf packages/main/x86_64/aprilsh-0.5.13-r0.apk
 ```
 ## reference
 
