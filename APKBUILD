@@ -15,10 +15,9 @@ makedepends="
 	"
 install=""
 subpackages=""
-# subpackages="$pkgname-client $pkgname-server"
+subpackages="$pkgname-client $pkgname-server"
 # source="$pkgname-$pkgver.tar.gz::https://github.com/ericwq/aprilsh/archive/refs/tags/$pkgver.tar.gz"
 source="$pkgname-$pkgver.tar.gz::https://github.com/ericwq/aprilsh/releases/download/$pkgver/$pkgname-$pkgver-linux-x64-musl.tar.gz"
-# srcdir="/home/packager/aprilsh"
 builddir="$srcdir"/$pkgname-$pkgver
 
 export PATH=$PATH:~/go/bin
@@ -35,7 +34,7 @@ prepare() {
 	printf "srcdir  =${srcdir}\n"
 	printf "builddir=${builddir}\n"
 	printf "pkgdir  =${pkgdir}\n"
-	printf "PATH=$PATH\n"
+	# printf "PATH=$PATH\n"
 	default_prepare
 }
 
@@ -64,18 +63,17 @@ build() {
       -X '${_ModuleName}/frontend.GoVersion=${_GoVersion}'
       -X '${_ModuleName}/frontend.GitCommit=${_GitCommit}'
       -X '${_ModuleName}/frontend.GitBranch=${_GitBranch}'
-      -X '${_ModuleName}/frontend.BuildTime=${_BuildTime}'" -o "$builddir"/bin/apshd ./frontend/server/*.go
+      -X '${_ModuleName}/frontend.BuildTime=${_BuildTime}'" -o "${builddir}/bin/apshd" ./frontend/server/*.go
    echo "build server end  : `date '+%F %T'`"
    echo "output server to  : ${builddir}/bin/apshd"
 
    echo "build client start: `date '+%F %T'`"
-	# cd "$builddir"/frontend/client
    go build -ldflags="-s -w
       -X '${_ModuleName}/frontend.BuildVersion=${_BuildVersion}'
       -X '${_ModuleName}/frontend.GoVersion=${_GoVersion}'
       -X '${_ModuleName}/frontend.GitCommit=${_GitCommit}'
       -X '${_ModuleName}/frontend.GitBranch=${_GitBranch}'
-      -X '${_ModuleName}/frontend.BuildTime=${_BuildTime}'" -o "$builddir"/bin/apsh ./frontend/client/*.go
+      -X '${_ModuleName}/frontend.BuildTime=${_BuildTime}'" -o "${builddir}/bin/apsh" ./frontend/client/*.go
    echo "build client end  : `date '+%F %T'`"
    echo "output client to  : ${builddir}/bin/apsh"
 }
@@ -91,30 +89,25 @@ check() {
 }
 
 package() {
-	# mkdir -p "$pkgdir"/usr/bin/
-	install -Dm755 "$builddir"/bin/apshd "$pkgdir"/usr/bin/apshd
-	install -Dm755 "$builddir"/bin/apsh  "$pkgdir"/usr/bin/apsh
+	install -Dm755 "$builddir/bin/apshd" "$pkgdir/usr/bin/apshd"
+	install -Dm755 "$builddir/bin/apsh"  "$pkgdir/usr/bin/apsh"
 }
 
-# _giturl="https://github.com/ericwq/aprilsh"
-# _gittag="$pkgver"
-# disturl="https://github.com/ericwq/aprilsh/archive/refs/tags/"
-#
-# snapshot() {
-# 	mkdir -p "$srcdir"
-# #	printf "path: ${SRCDEST:-$srcdir}\n"
-# 	cd "${SRCDEST:-$srcdir}"
-# 	if ! [ -d $pkgname.git ]; then
-# 		git clone --bare  $_giturl || return 1
-# 		cd $pkgname.git
-# 	else
-# 		cd $pkgname.git
-# 		git fetch || return 1
-# 	fi
-#
-# 	git archive --prefix=$pkgname/ -o "$SRCDEST"/$pkgname-$pkgver.tar.gz $_gittag
-# #	scp "$SRCDEST"/$pkgname-$pkgver.tar.gz dev.alpinelinux.org:/archive/$pkgname/
-# }
+client() {
+	replaces="$pkgname"
+	pkgdesc="$pkgname server"
+	depends="musl-locales"
+	mkdir -p "$subpkgdir/usr/bin"
+	cp "$pkgdir/usr/bin/apsh" "$subpkgdir/usr/bin/"
+}
+
+server() {
+	replaces="$pkgname"
+	pkgdesc="$pkgname server"
+	depends="musl-locales utmps"
+	mkdir -p "$subpkgdir/usr/bin"
+	cp "$pkgdir/usr/bin/apshd" "$subpkgdir/usr/bin/"
+}
 
 sha512sums="
 c82e4a6893c21ecf798629cdb525c55b70eec8c56e2ec1b4f23800ecba1832cf2b916901e5e0f12d9d195b34d424fbd8867b9c24ae2cb889095233da6fb22acc  aprilsh-0.5.13.tar.gz

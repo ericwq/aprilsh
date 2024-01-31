@@ -31,7 +31,6 @@
 % mkdir -p aports/main/aprilsh
 % cd ~/aports/main/aprilsh/
 % ln -s /home/ide/develop/aprilsh/APKBUILD  APKBUILD
-% export PATH=$PATH:~/go/bin
 % abuild checksum
 % REPODEST=~/packages/3.19 abuild -r
 ```
@@ -46,3 +45,25 @@
 - [Alpine Linux in a chroot](https://wiki.alpinelinux.org/wiki/Alpine_Linux_in_a_chroot)
 - [How to Build an Alpine Linux Package](https://www.matthewparris.org/build-an-alpine-package/)
 - [How to create a Bash completion script](https://opensource.com/article/18/3/creating-bash-completion-script)
+
+## git source
+```
+_giturl="https://github.com/ericwq/aprilsh"
+_gittag="$pkgver"
+disturl="https://github.com/ericwq/aprilsh/archive/refs/tags/"
+
+snapshot() {
+	mkdir -p "$srcdir"
+	cd "${SRCDEST:-$srcdir}"
+	if ! [ -d $pkgname.git ]; then
+		git clone --bare  $_giturl || return 1
+		cd $pkgname.git
+	else
+		cd $pkgname.git
+		git fetch || return 1
+	fi
+
+	git archive --prefix=$pkgname/ -o "$SRCDEST"/$pkgname-$pkgver.tar.gz $_gittag
+	scp "$SRCDEST"/$pkgname-$pkgver.tar.gz dev.alpinelinux.org:/archive/$pkgname/
+}
+```
