@@ -183,7 +183,7 @@ func (c *Config) fetchKey() error {
 	// the remote side using the Run method.
 	var b []byte
 	// cmd := fmt.Sprintf("echo '%s' | nc localhost %d -u -w 1", _ASH_OPEN, c.port)
-	cmd := fmt.Sprintf("~/.local/bin/apshd -b -t %s -target %s", os.Getenv("TERM"), c.target[0])
+	cmd := fmt.Sprintf("/usr/bin/apshd -b -t %s -target %s", os.Getenv("TERM"), c.target[0])
 	// util.Log.With("cmd", cmd).Debug("execute command")
 
 	if b, err = session.Output(cmd); err != nil {
