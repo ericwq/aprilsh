@@ -47,6 +47,13 @@ $ apk update
 - [How to create a Bash completion script](https://opensource.com/article/18/3/creating-bash-completion-script)
 - [Alpine Linux: New APKBUILD Workflow](https://thiagowfx.github.io/2022/01/alpine-linux-new-apkbuild-workflow/)
 
+## update content in github action
+
+- [Can GitHub actions directly edit files in a repository?](https://github.com/orgs/community/discussions/25234)
+- [todo_updater](https://github.com/logankilpatrick/TODO-List-Updater/blob/master/.github/workflows/todo_updater.yml)
+- [github-push-action](https://github.com/ad-m/github-push-action)
+- [workflow permission](https://github.com/ericwq/aprilsh/settings/actions)
+
 ## git source
 ```
 _giturl="https://github.com/ericwq/aprilsh"
