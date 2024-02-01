@@ -4,6 +4,7 @@
 
 <details>
 <summary>2022</summary>
+  
 - 2022/Apr/01: start terminal emulator.
 - 2022/Jul/31: finish the terminal emulator:
   - add scroll buffer support,
@@ -22,9 +23,11 @@
 - 2022/Nov/08: finish Complete testing.
 - 2022/Nov/27: finish Transport and TransportSender.
 - 2022/Dec/28: finish command-line parameter parsing and locale validation.
+  
 </details>
 <details>
 <summary>2023</summary>
+  
 - 2023/Mar/24: solve the locale problem in alpine.
 - 2023/Apr/07: support concurrent UDP server.
 - 2023/Apr/21: finish server start/stop part.
@@ -56,11 +59,13 @@
 - 2023/Dec/08: enhance tilte #14, limit concurrent user #17, fix bug #9,#10,#12,#14,#15,#16.
 - 2023/Dec/13: fix bug #11, solve computer hibernate problem partly.
 - 2023/Dec/28: enhance utmp access problem #17. fix read dead line problem #18.
+
 </details>
-<!-- <details> -->
+<details>
 <summary>2024</summary>
+</details> 
+
 - 2024/Jan/02: refine utmp access #22.
 - 2024/Jan/09: refine for no connection shutdown #20, refine for no request time out. fix bug #19, #21, #23, #24.
 - 2024/Jan/13: attacked by a terrible fever, the fever last more than 7 days, the cough last more than 10 days.
 - 2024/Jan/25: finish unit test for Framebuffer and Emulator. fix bug #23, #27, #26.
-<!-- </details> -->
