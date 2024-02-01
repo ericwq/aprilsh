@@ -20,7 +20,7 @@ $ apk update
 % cd
 % mkdir -p aports/main/aprilsh
 % cd ~/aports/main/aprilsh/
-% cp /home/ide/develop/aprilsh/build/APKBUILD .
+% cp /home/ide/develop/aprilsh/build/* .
 % abuild checksum
 % abuild -r
 % REPODEST=~/packages/3.19 abuild -r

@@ -11,9 +11,14 @@ depends="musl-locales utmps ncurses-terminfo wezterm-extra-terminfo"
 makedepends="go protoc utmps-dev"
 install=""
 subpackages=""
-subpackages="$pkgname-client $pkgname-server"
-source="$pkgname-$pkgver.tar.gz::https://github.com/ericwq/aprilsh/archive/refs/tags/$pkgver.tar.gz"
+subpackages="$pkgname-client $pkgname-server $pkgname-openrc"
+source="$pkgname-$pkgver.tar.gz::https://github.com/ericwq/aprilsh/archive/refs/tags/$pkgver.tar.gz
+		  apshd.initd"
 builddir="$srcdir"/$pkgname-$pkgver
+
+#_GitVersion=0.5.14-5-gd95ff55
+#_GitCommit=d95ff55cb86eea8d91a360e9b62924e5813855ba
+#_GitBranch=main
 
 export PATH=$PATH:~/go/bin
 export GOCACHE="${GOCACHE:-"$srcdir/go-cache"}"
@@ -45,16 +50,13 @@ build() {
 	protoc --go_out=. -I . ./protobufs/userInput.proto
 
 	# prepare build info
-	_BuildVersion=`head build.info | grep "tag:" | awk '{print $2}'`
    _ModuleName=`head ./go.mod | grep "^module" | awk '{print $2}'`
    _BuildTime=`date "+%F %T"`
    _GoVersion=`go version | grep "version" | awk '{print $3,$4}'`
-   _GitCommit=`head build.info | grep "commit:" | awk '{print $2}'`
-   _GitBranch=`head build.info | grep "branch:" | awk '{print $2}'`
 
    echo "build server start: `date '+%F %T'`"
    go build -ldflags="-s -w
-      -X '${_ModuleName}/frontend.BuildVersion=${_BuildVersion}'
+      -X '${_ModuleName}/frontend.BuildVersion=${_GitVersion}'
       -X '${_ModuleName}/frontend.GoVersion=${_GoVersion}'
       -X '${_ModuleName}/frontend.GitCommit=${_GitCommit}'
       -X '${_ModuleName}/frontend.GitBranch=${_GitBranch}'
@@ -64,7 +66,7 @@ build() {
 
    echo "build client start: `date '+%F %T'`"
    go build -ldflags="-s -w
-      -X '${_ModuleName}/frontend.BuildVersion=${_BuildVersion}'
+      -X '${_ModuleName}/frontend.BuildVersion=${_GitVersion}'
       -X '${_ModuleName}/frontend.GoVersion=${_GoVersion}'
       -X '${_ModuleName}/frontend.GitCommit=${_GitCommit}'
       -X '${_ModuleName}/frontend.GitBranch=${_GitBranch}'
@@ -86,6 +88,7 @@ check() {
 package() {
 	install -Dm755 "$builddir/bin/apshd" "$pkgdir/usr/bin/apshd"
 	install -Dm755 "$builddir/bin/apsh"  "$pkgdir/usr/bin/apsh"
+	install -Dm755 "$srcdir/apshd.initd" "$pkgdir/etc/init.d/apshd"
 }
 
 client() {

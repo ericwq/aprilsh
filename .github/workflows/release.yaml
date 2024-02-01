@@ -35,7 +35,6 @@ jobs:
         run: |
           apk update
           apk add git bash
-          # apk add git nodejs
 
       - name: checkout
         uses: actions/checkout@master
@@ -86,12 +85,11 @@ jobs:
         shell: bash
         run: |
           git config --global --add safe.directory /__w/aprilsh/aprilsh
-          # touch build.info
-          echo "tag: `git describe --tags`" >> build.info
-          echo "commit: `git rev-parse HEAD`" >> build.info
-          echo "branch: `git rev-parse --abbrev-ref HEAD`" >> build.info
+          sed -i -e "s/.*_GitVersion=.*/_GitVersion=`git describe --tags`/g" -- "./build/APKBUILD"
+          sed -i -e "s/.*_GitCommit=.*/_GitCommit=`git rev-parse HEAD`/g" -- "./build/APKBUILD"
+          sed -i -e "s/.*_GitBranch=.*/_GitBranch=`git rev-parse --abbrev-ref HEAD`/g" -- "./build/APKBUILD"
           echo "*****"
-          head build.info
+          head -n 21 "./build/APKBUILD"
           echo "*****"
 
           # mkdir -p ${{ steps.vars.outputs.PKG_STAGING }}
