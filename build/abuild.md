@@ -12,6 +12,7 @@
 ```
 
 ## create the package
+`apk update` unlock the permission problem for abuild.
 
 ```shell
 $ apk update
