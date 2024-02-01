@@ -1,46 +1,38 @@
-## prepare docker environment
+## build and run container
+
 ```sh
-% docker run --rm -ti --privileged -h abuild --env TZ=Asia/Shanghai --name abuild \
+% docker build -t abuild:0.1.0 -f abuild.dockerfile .
+% docker build --no-cache --progress plain -t abuild:0.1.0 -f abuild.dockerfile .
+% docker run -u root --rm -ti -h abuild --env TZ=Asia/Shanghai --name abuild --privileged \
         --mount source=proj-vol,target=/home/ide/proj \
         --mount type=bind,source=/Users/qiwang/dev,target=/home/ide/develop \
-        alpine:3.19
+        abuild:0.1.0
+% docker exec -ti --privileged abuild:0.1.0
+% docker exec -u root -it abuild ash
 ```
 
-## setup your system and account
-```sh 
-# apk add alpine-sdk sudo mandoc abuild-doc
-# adduser -D packager
-# addgroup packager abuild
-# echo 'packager ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/packager
-# sudo -u packager sh
-% abuild-keygen -n --append --install
-```
-
-## generating a new apkbuild file with newapkbuild
-```sh
-% newapkbuild \
-    -n aprilsh \
-    -d "Remote shell support intermittent or mobile network" \
-    -l "MIT" \
-    -a \
-    "https://github.com/ericwq/aprilsh/archive/refs/tags/0.5.6.tar.gz"
-```
 ## create the package
+
 ```shell
+$ apk update
+# sudo -u packager sh
 % cd
 % mkdir -p aports/main/aprilsh
 % cd ~/aports/main/aprilsh/
-% ln -s /home/ide/develop/aprilsh/APKBUILD  APKBUILD
+% cp /home/ide/develop/aprilsh/build/APKBUILD .
 % abuild checksum
 % abuild -r
 % REPODEST=~/packages/3.19 abuild -r
 % tar tvvf packages/main/x86_64/aprilsh-0.5.13-r0.apk
 ```
+
 ## install the package
+
 ```shell
 % exit
 # apk add /home/packager/packages/main/x86_64/aprilsh-server-0.5.13-r0.apk
 ```
+
 ## reference
 
 - [How to build and install Alpine Linux package with newapkbuild](https://www.educative.io/answers/how-to-build-and-install-alpine-linux-package-with-newapkbuild)
@@ -74,4 +66,32 @@ snapshot() {
 	git archive --prefix=$pkgname/ -o "$SRCDEST"/$pkgname-$pkgver.tar.gz $_gittag
 	scp "$SRCDEST"/$pkgname-$pkgver.tar.gz dev.alpinelinux.org:/archive/$pkgname/
 }
+```
+
+## prepare docker environment
+```sh
+% docker run --rm -ti --privileged -h abuild --env TZ=Asia/Shanghai --name abuild \
+        --mount source=proj-vol,target=/home/ide/proj \
+        --mount type=bind,source=/Users/qiwang/dev,target=/home/ide/develop \
+        alpine:3.19 
+```
+
+## setup your system and account
+```sh 
+# apk add alpine-sdk sudo mandoc abuild-doc
+# adduser -D packager
+# addgroup packager abuild
+# echo 'packager ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/packager
+# sudo -u packager sh
+% abuild-keygen -n --append --install
+```
+
+## generating a new apkbuild file with newapkbuild
+```sh
+% newapkbuild \
+    -n aprilsh \
+    -d "Remote shell support intermittent or mobile network" \
+    -l "MIT" \
+    -a \
+    "https://github.com/ericwq/aprilsh/archive/refs/tags/0.5.6.tar.gz"
 ```

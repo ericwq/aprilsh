@@ -7,12 +7,8 @@ pkgdesc="Remote shell support intermittent or mobile network"
 url="https://github.com/ericwq/aprilsh"
 arch="all"
 license="MIT"
-depends="musl-locales utmps"
-makedepends="
-	go
-	protoc
-	utmps-dev
-	"
+depends="musl-locales utmps ncurses-terminfo wezterm-extra-terminfo"
+makedepends="go protoc utmps-dev"
 install=""
 subpackages=""
 subpackages="$pkgname-client $pkgname-server"
