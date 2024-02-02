@@ -51,15 +51,18 @@ jobs:
           if ! git diff --exit-code; then
             git add build/APKBUILD
             git commit -m "GH Action update files"
-            git push
-            echo "commit_hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
           fi
-      #
-      # - name: push changes
-      #   uses: ad-m/github-push-action@master
-      #   with:
-      #     github_token: ${{ secrets.GITHUB_TOKEN }}
-      #     force: true
+
+      - name: push changes
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          force: true
+
+      - name: output value
+        run: |
+          echo "commit_hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
 
   release:
     needs: change_build_info
