@@ -35,7 +35,7 @@ jobs:
         shell: bash
         run: |
           git config --global --add safe.directory /__w/aprilsh/aprilsh
-          sed -i -e "s/pkgver=.*/pkgver=`git describe --abbrev=0`/g" ./build/APKBUILD
+          sed -i -e "s/pkgver=.*/pkgver=`git describe --tags --abbrev=0`/g" ./build/APKBUILD
           sed -i -e "s/.*_GitVersion=.*/_GitVersion=`git describe --tags`/g" ./build/APKBUILD
           sed -i -e "s/.*_GitCommit=.*/_GitCommit=`git rev-parse HEAD`/g" ./build/APKBUILD
           sed -i -e "s/.*_GitBranch=.*/_GitBranch=`git rev-parse --abbrev-ref HEAD`/g" ./build/APKBUILD
