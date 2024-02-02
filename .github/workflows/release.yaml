@@ -81,7 +81,7 @@ jobs:
           echo "env.release_tag=${{ env.release_tag }}"
           echo "github.ref=${{ github.ref }}"
           echo "github.sha=${{ github.sha }}"
-          echo "commit_hash=${{ ${{ needs.change_build_info.outputs.commit_hash }}"
+          echo "commit_hash=${{ needs.change_build_info.outputs.commit_hash }}"
 
       - name: publish release assets
         uses: softprops/action-gh-release@master
