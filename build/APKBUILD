@@ -16,8 +16,8 @@ source="$pkgname-$pkgver.tar.gz::https://github.com/ericwq/aprilsh/archive/refs/
 		  apshd.initd"
 builddir="$srcdir"/$pkgname-$pkgver
 
-_GitVersion=0.5.18
-_GitCommit=2d6ec834e613b0c732aef02526d01cc941ccb796
+_GitVersion=0.5.19
+_GitCommit=6e4135e8a597ce2ec39e2c2c3b9515153403d784
 _GitBranch=HEAD
 
 export PATH=$PATH:~/go/bin
