@@ -20,7 +20,11 @@ jobs:
       fail-fast: false
     runs-on: ubuntu-latest
     outputs:
-      commit_hash: ${{ steps.commit-hash.outputs.commit_hash }}
+      commit_hash: ${{ steps.commit-and-push.outputs.commit_hash }}
+    permissions:
+      # Give the default GITHUB_TOKEN write permission to commit and push the
+      # added or changed files to the repository.
+      contents: write
     steps:
       - name: checkout
         uses: actions/checkout@master
@@ -53,17 +57,21 @@ jobs:
             git commit -m "GH Action update files"
           fi
 
-      - name: push changes
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          force: true
+      - name: Commit and Push Changes
+        id: commit-and-push
+        uses: stefanzweifel/git-auto-commit-action@v5
 
-      - name: output value
-        id: commit-hash
-        run: |
-          echo "commit_hash=$(git rev-parse HEAD)"
-          echo "commit_hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+      # - name: push changes
+      #   uses: ad-m/github-push-action@master
+      #   with:
+      #     github_token: ${{ secrets.GITHUB_TOKEN }}
+      #     force: true
+      #
+      # - name: output value
+      #   id: commit-hash
+      #   run: |
+      #     echo "commit_hash=$(git rev-parse HEAD)"
+      #     echo "commit_hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
 
   release:
@@ -78,15 +86,15 @@ jobs:
       - name: print value
         id: print
         run: |
-          echo "env.release_tag=${{ env.release_tag }}"
           echo "github.ref=${{ github.ref }}"
           echo "github.sha=${{ github.sha }}"
           echo "commit_hash=${{ needs.change_build_info.outputs.commit_hash }}"
+          head -n 21 build/APKBUILD
 
       - name: publish release assets
         uses: softprops/action-gh-release@master
         with:
-          generate_release_notes: true
+          generate_release_notes: false
           target_commitish: ${{ needs.change_build_info.outputs.commit_hash }}
           # files: |
           #   ${{ steps.vars.outputs.PKG_PATH }}
