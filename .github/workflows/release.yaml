@@ -93,7 +93,7 @@ jobs:
 
       - name: generate tar ball
         run: |
-          tar cvzf ${{ env.PROJECT }}-$(git describe --tags).tar.gz \
+          tar cvzf ${{ env.PROJECT }}-$(git describe --tags --abbrev=0).tar.gz \
             LICENSE \
             README.md \
             build \
