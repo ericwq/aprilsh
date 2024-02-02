@@ -94,7 +94,7 @@ jobs:
       - name: publish release assets
         uses: softprops/action-gh-release@master
         with:
-          generate_release_notes: false
+          generate_release_notes: true
           target_commitish: ${{ needs.change_build_info.outputs.commit_hash }}
-          # files: |
-          #   ${{ steps.vars.outputs.PKG_PATH }}
+          files: |
+            ${{ env.PROJECT }}-*.tar.gz
