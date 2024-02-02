@@ -92,8 +92,10 @@ jobs:
           head -n 21 build/APKBUILD
 
       - name: generate tar ball
+        id: tar-ball
         run: |
-          tar cvzf ${{ env.PROJECT }}-$(git describe --tags --abbrev=0).tar.gz \
+          TAR_VERSION=$(git describe --tags)
+          tar cvzf ${{ env.PROJECT }}-${ TAR_VERSION }.tar.gz \
             LICENSE \
             README.md \
             build \
