@@ -29,7 +29,7 @@ jobs:
       - name: checkout
         uses: actions/checkout@v4
         # with:
-        #   ref: ${{ github.ref }}
+        #   ref: ${{ github.head_ref }}
 
       # - name: Set up Go
       #   uses: actions/setup-go@master
@@ -50,7 +50,7 @@ jobs:
         id: commit-and-push
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          branch: master
+          branch: main
 
       # - name: commit files
       #   run: |
