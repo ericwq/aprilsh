@@ -1,7 +1,7 @@
 # Contributor: Wang Qi <ericwq057@qq.com>
 # Maintainer: Wang Qi <ericwq057@qq.com>
 pkgname=aprilsh
-pkgver=0.5.25
+pkgver=
 pkgrel=0
 pkgdesc="Remote shell support intermittent or mobile network"
 url="https://github.com/ericwq/aprilsh"
@@ -17,8 +17,8 @@ source="$pkgname-$pkgver.tar.gz::https://github.com/ericwq/aprilsh/archive/refs/
 		  apshd.initd"
 builddir="$srcdir"/$pkgname-$pkgver
 
-_GitVersion=0.5.24
-_GitCommit=7e3fa7005394f43802ddd40d750ed87cd1a58c9b
+_GitVersion=0.5.25
+_GitCommit=470cd7359a5a947143251be1d480f922e0f20e5a
 _GitBranch=HEAD
 
 export PATH=$PATH:~/go/bin
