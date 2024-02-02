@@ -12,6 +12,7 @@ env:
 
 permissions:
   contents: write
+  pull-requests: write
 
 jobs:
   release:
@@ -33,98 +34,47 @@ jobs:
       - name: prepare alpine container
         if: ${{ matrix.target == 'linux' && matrix.libc == 'musl' }}
         run: |
-          apk update
-          apk add git bash
+          apk add --no-cache --update git bash nodejs
 
       - name: checkout
         uses: actions/checkout@master
+        # with:
+        #  ref: ${{ github.head_ref }}
+        #  fetch-depth: 0
 
       # - name: Set up Go
       #   uses: actions/setup-go@master
       #   with:
       #     go-version: 1.21
 
-      # - name: setting up workflow variables
-      #   id: vars
-      #   shell: bash
-      #   run: |
-      #     # Package version
-      #     if [[ $GITHUB_REF = refs/tags/* ]]; then
-      #       PKG_VERSION=${GITHUB_REF##*/}
-      #     else
-      #       PKG_VERSION=${GITHUB_SHA:0:7}
-      #     fi
-      #
-      #     # Package suffix relative to the platform
-      #     if [[ "${{ matrix.target }}" = windows ]]; then
-      #       PKG_SUFFIX="zip"
-      #     else
-      #       PKG_SUFFIX="tar.gz"
-      #     fi
-      #
-      #     # Package name w/ version
-      #     PKG_BASENAME="${{ env.PROJECT }}-${PKG_VERSION}-${{ matrix.platform }}"
-      #     if [[ "${{ matrix.libc }}" = musl ]]; then
-      #       PKG_BASENAME="${PKG_BASENAME}-${{matrix.libc}}"
-      #     fi
-      #
-      #     # Full name of the tarball asset
-      #     PKG_NAME="${PKG_BASENAME}.${PKG_SUFFIX}"
-      #
-      #     # Staging area for tarballs
-      #     PKG_STAGING="ci_staging/$PKG_BASENAME"
-      #
-      #     echo PKG_VERSION=${PKG_VERSION}             >> $GITHUB_OUTPUT
-      #     echo PKG_BASENAME=${PKG_BASENAME}           >> $GITHUB_OUTPUT
-      #     echo PKG_NAME=${PKG_NAME}                   >> $GITHUB_OUTPUT
-      #     echo PKG_PATH="${PKG_STAGING}/${PKG_NAME}"  >> $GITHUB_OUTPUT
-      #     echo PKG_STAGING=${PKG_STAGING}             >> $GITHUB_OUTPUT
-      #
       - name: collect build info
         id: collect
         shell: bash
         run: |
           git config --global --add safe.directory /__w/aprilsh/aprilsh
-          sed -i -e "s/.*_GitVersion=.*/_GitVersion=`git describe --tags`/g" -- "./build/APKBUILD"
-          sed -i -e "s/.*_GitCommit=.*/_GitCommit=`git rev-parse HEAD`/g" -- "./build/APKBUILD"
-          sed -i -e "s/.*_GitBranch=.*/_GitBranch=`git rev-parse --abbrev-ref HEAD`/g" -- "./build/APKBUILD"
-          # echo "*****"
-          # git diff
-          # echo "*****"
-          #
-          # head -n 21 "./build/APKBUILD"
-          # mkdir -p ${{ steps.vars.outputs.PKG_STAGING }}
-          # tar cvzf ${{ steps.vars.outputs.PKG_PATH }} \
-          #   build.info \
-          #   LICENSE \
-          #   README.md \
-          #   data \
-          #   doc \
-          #   encrypt \
-          #   frontend \
-          #   go.mod \
-          #   go.sum \
-          #   img \
-          #   network \
-          #   protobufs \
-          #   statesync \
-          #   terminal \
-          #   util
+          sed -i -e "s/.*_GitVersion=.*/_GitVersion=`git describe --tags`/g" ./build/APKBUILD
+          sed -i -e "s/.*_GitCommit=.*/_GitCommit=`git rev-parse HEAD`/g" ./build/APKBUILD
+          sed -i -e "s/.*_GitBranch=.*/_GitBranch=`git rev-parse --abbrev-ref HEAD`/g" ./build/APKBUILD
 
-      - name: Commit files # transfer the new html files back into the repository
+      - name: commit files
         run: |
           git config --local user.name "github-actions[bot]"
-          git commit -a -m "Add changes"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          if ! git diff --exit-code; then
+              git add build/APKBUILD
+              git commit -am "GH Action Files added $(date)"
+          fi
 
-      - name: Push changes # push the output folder to your repo
+      - name: push changes
         uses: ad-m/github-push-action@master
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           force: true
+          # branch: ${{ github.ref }}
+          # force_with_lease: true
 
       - name: publish release assets
         uses: softprops/action-gh-release@master
-        if: startsWith(github.ref, 'refs/tags/')
         with:
           generate_release_notes: true
           files: |
