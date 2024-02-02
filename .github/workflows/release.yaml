@@ -88,10 +88,11 @@ jobs:
           sed -i -e "s/.*_GitVersion=.*/_GitVersion=`git describe --tags`/g" -- "./build/APKBUILD"
           sed -i -e "s/.*_GitCommit=.*/_GitCommit=`git rev-parse HEAD`/g" -- "./build/APKBUILD"
           sed -i -e "s/.*_GitBranch=.*/_GitBranch=`git rev-parse --abbrev-ref HEAD`/g" -- "./build/APKBUILD"
-          echo "*****"
-          head -n 21 "./build/APKBUILD"
-          echo "*****"
-
+          # echo "*****"
+          # git diff
+          # echo "*****"
+          #
+          # head -n 21 "./build/APKBUILD"
           # mkdir -p ${{ steps.vars.outputs.PKG_STAGING }}
           # tar cvzf ${{ steps.vars.outputs.PKG_PATH }} \
           #   build.info \
@@ -109,6 +110,17 @@ jobs:
           #   statesync \
           #   terminal \
           #   util
+
+      - name: Commit files # transfer the new html files back into the repository
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git commit -a -m "Add changes"
+
+      - name: Push changes # push the output folder to your repo
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          force: true
 
       - name: publish release assets
         uses: softprops/action-gh-release@master

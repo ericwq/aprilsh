@@ -16,9 +16,9 @@ source="$pkgname-$pkgver.tar.gz::https://github.com/ericwq/aprilsh/archive/refs/
 		  apshd.initd"
 builddir="$srcdir"/$pkgname-$pkgver
 
-#_GitVersion=0.5.14-5-gd95ff55
-#_GitCommit=d95ff55cb86eea8d91a360e9b62924e5813855ba
-#_GitBranch=main
+#_GitVersion=
+#_GitCommit=
+#_GitBranch=
 
 export PATH=$PATH:~/go/bin
 export GOCACHE="${GOCACHE:-"$srcdir/go-cache"}"
