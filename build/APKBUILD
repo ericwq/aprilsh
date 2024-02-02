@@ -8,11 +8,12 @@ url="https://github.com/ericwq/aprilsh"
 arch="all"
 license="MIT"
 depends="musl-locales utmps ncurses-terminfo wezterm-extra-terminfo"
-depends_openrc="$pkgname-server"
+# depends_openrc="$pkgname-server"
 makedepends="go protoc utmps-dev"
 install=""
 subpackages=""
-subpackages="$pkgname-client $pkgname-server $pkgname-openrc"
+# subpackages="$pkgname-client $pkgname-server $pkgname-openrc"
+subpackages="$pkgname-client $pkgname-openrc"
 source="$pkgname-$pkgver.tar.gz::https://github.com/ericwq/aprilsh/archive/refs/tags/$pkgver.tar.gz
 		  apshd.initd"
 builddir="$srcdir"/$pkgname-$pkgver
@@ -100,14 +101,12 @@ client() {
 	cp "$pkgdir/usr/bin/apsh" "$subpkgdir/usr/bin/"
 }
 
-server() {
-	replaces="$pkgname"
-	pkgdesc="$pkgname server"
-	depends="musl-locales utmps"
-	mkdir -p "$subpkgdir/usr/bin"
-	cp "$pkgdir/usr/bin/apshd" "$subpkgdir/usr/bin/"
-}
+# server() {
+# 	replaces="$pkgname"
+# 	pkgdesc="$pkgname server"
+# 	depends="musl-locales utmps"
+# 	mkdir -p "$subpkgdir/usr/bin"
+# 	cp "$pkgdir/usr/bin/apshd" "$subpkgdir/usr/bin/"
+# }
 
-sha512sums="
-d934ee2dcdb46dbd8793ba89661c7de0369af4c6845d0d5acb7c3f609a4be9d87561a79e681b41c6ee4bdf31715620071100c400a13cc1f8bd06a8c0563450a3  aprilsh-0.5.14.tar.gz
-"
+sha512sums=
