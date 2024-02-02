@@ -91,6 +91,25 @@ jobs:
           echo "commit_hash=${{ needs.change_build_info.outputs.commit_hash }}"
           head -n 21 build/APKBUILD
 
+      - name: generate tar ball
+        run: |
+          tar cvzf ${{ env.PROJECT }}-${{ github.ref }}.tar.gz \
+            LICENSE \
+            README.md \
+            build \
+            data \
+            doc \
+            encrypt \
+            frontend \
+            go.mod \
+            go.sum \
+            img \
+            network \
+            protobufs \
+            statesync \
+            terminal \
+            util
+
       - name: publish release assets
         uses: softprops/action-gh-release@master
         with:
