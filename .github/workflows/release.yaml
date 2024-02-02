@@ -44,23 +44,23 @@ jobs:
           sed -i -e "s/.*_GitCommit=.*/_GitCommit=`git rev-parse HEAD`/g" ./build/APKBUILD
           sed -i -e "s/.*_GitBranch=.*/_GitBranch=`git rev-parse --abbrev-ref HEAD`/g" ./build/APKBUILD
 
-      # - name: Commit and Push Changes
-      #   id: commit-and-push
-      #   uses: stefanzweifel/git-auto-commit-action@v4
-
-      - name: commit files
-        run: |
-          git config --local user.name "github-actions[bot]"
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          if ! git diff --exit-code; then
-            git add build/APKBUILD
-            git commit -m "GH Action update files"
-          fi
-
       - name: Commit and Push Changes
         id: commit-and-push
         uses: stefanzweifel/git-auto-commit-action@v5
 
+      # - name: commit files
+      #   run: |
+      #     git config --local user.name "github-actions[bot]"
+      #     git config --local user.email "github-actions[bot]@users.noreply.github.com"
+      #     if ! git diff --exit-code; then
+      #       git add build/APKBUILD
+      #       git commit -m "GH Action update files"
+      #     fi
+      #
+      # - name: Commit and Push Changes
+      #   id: commit-and-push
+      #   uses: stefanzweifel/git-auto-commit-action@v5
+      #
       # - name: push changes
       #   uses: ad-m/github-push-action@master
       #   with:
