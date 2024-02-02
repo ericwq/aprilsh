@@ -75,9 +75,17 @@ jobs:
         with:
           ref: ${{ needs.change_build_info.outputs.commit_hash }}
 
+      - name: print value
+        id: print
+        run: |
+          echo "env.release_tag=${{ env.release_tag }}"
+          echo "github.ref=${{ github.ref }}"
+          echo "github.sha=${{ github.sha }}"
+
       - name: publish release assets
         uses: softprops/action-gh-release@master
         with:
           generate_release_notes: true
-          files: |
-            ${{ steps.vars.outputs.PKG_PATH }}
+          target_commitish: main
+          # files: |
+          #   ${{ steps.vars.outputs.PKG_PATH }}
