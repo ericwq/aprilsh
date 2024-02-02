@@ -20,7 +20,7 @@ jobs:
       fail-fast: false
     runs-on: ubuntu-latest
     outputs:
-      commit_hash: ${{ steps.commit-and-push.outputs.commit_hash }}
+      commit_hash: ${{ steps.commit-hash.outputs.commit_hash }}
     steps:
       - name: checkout
         uses: actions/checkout@master
@@ -44,7 +44,6 @@ jobs:
       #   uses: stefanzweifel/git-auto-commit-action@v4
 
       - name: commit files
-        id: commit-and-push
         run: |
           git config --local user.name "github-actions[bot]"
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
@@ -60,7 +59,9 @@ jobs:
           force: true
 
       - name: output value
+        id: commit-hash
         run: |
+          echo "commit_hash=$(git rev-parse HEAD)"
           echo "commit_hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
 
 
