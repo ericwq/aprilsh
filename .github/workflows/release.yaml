@@ -58,11 +58,11 @@ jobs:
 
       - name: commit files
         run: |
-          git config --local user.name "github-actions[bot]"
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name ${{ github.actor }}
+          git config --local user.email "${{ github.actor }}@users.noreply.github.com"
           if ! git diff --exit-code; then
-              git add build/APKBUILD
-              git commit -am "GH Action Files added $(date)"
+            git add build/APKBUILD
+            git commit -m "GH Action update files"
           fi
 
       - name: push changes
@@ -72,6 +72,9 @@ jobs:
           force: true
           # branch: ${{ github.ref }}
           # force_with_lease: true
+
+      - name: checkout
+        uses: actions/checkout@master
 
       - name: publish release assets
         uses: softprops/action-gh-release@master
