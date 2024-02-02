@@ -15,40 +15,23 @@ permissions:
   pull-requests: write
 
 jobs:
-  change_content:
+  change_build_info:
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - { os: ubuntu-22.04,   target: linux,   platform: linux-x64,   container: 'alpine:latest', libc: musl }
-          # - { os: ubuntu-20.04,   target: linux,   platform: linux-x64,   container: 'ubuntu:18.04' }
-          # - { os: ubuntu-20.04,   target: linux,   platform: linux-arm64, container: 'ubuntu:18.04' }
-          # - { os: macos-11,       target: darwin,  platform: darwin-x64   }
-          # - { os: macos-11,       target: darwin,  platform: darwin-arm64 }
-          # - { os: windows-latest, target: windows, platform: win32-ia32   }
-          # - { os: windows-latest, target: windows, platform: win32-x64    }
-    runs-on: ${{ matrix.os }}
-    container:
-      image: ${{ matrix.container }}
+    runs-on: ubuntu-latest
+    outputs:
+      commit_hash: ${{ steps.commit-and-push.outputs.commit_hash }}
     steps:
-      - name: prepare alpine container
-        if: ${{ matrix.target == 'linux' && matrix.libc == 'musl' }}
-        run: |
-          apk add --no-cache --update git bash nodejs
-
       - name: checkout
         uses: actions/checkout@master
-        # with:
-        #  ref: ${{ github.head_ref }}
-        #  fetch-depth: 0
 
       # - name: Set up Go
       #   uses: actions/setup-go@master
       #   with:
       #     go-version: 1.21
 
-      - name: collect build info
-        id: collect
+      - name: change build info
+        id: change
         shell: bash
         run: |
           git config --global --add safe.directory /__w/aprilsh/aprilsh
@@ -56,47 +39,35 @@ jobs:
           sed -i -e "s/.*_GitCommit=.*/_GitCommit=`git rev-parse HEAD`/g" ./build/APKBUILD
           sed -i -e "s/.*_GitBranch=.*/_GitBranch=`git rev-parse --abbrev-ref HEAD`/g" ./build/APKBUILD
 
-      - name: commit files
-        run: |
-          git config --local user.name "github-actions[bot]"
-          git config --local user.email "github-actions[bot]@users.noreply.github.com"
-          if ! git diff --exit-code; then
-            git add build/APKBUILD
-            git commit -m "GH Action update files"
-          fi
+      - name: Commit and Push Changes
+        id: commit-and-push
+        uses: stefanzweifel/git-auto-commit-action@v4
 
-      - name: push changes
-        uses: ad-m/github-push-action@master
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          force: true
-          # branch: ${{ github.ref }}
-          # force_with_lease: true
+      # - name: commit files
+      #   run: |
+      #     git config --local user.name "github-actions[bot]"
+      #     git config --local user.email "github-actions[bot]@users.noreply.github.com"
+      #     if ! git diff --exit-code; then
+      #       git add build/APKBUILD
+      #       git commit -m "GH Action update files"
+      #       git push
+      #       echo "commit_hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+      #     fi
+      #
+      # - name: push changes
+      #   uses: ad-m/github-push-action@master
+      #   with:
+      #     github_token: ${{ secrets.GITHUB_TOKEN }}
+      #     force: true
 
   release:
-    needs: change_content
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { os: ubuntu-22.04,   target: linux,   platform: linux-x64,   container: 'alpine:3.18', libc: musl }
-          # - { os: ubuntu-20.04,   target: linux,   platform: linux-x64,   container: 'ubuntu:18.04' }
-          # - { os: ubuntu-20.04,   target: linux,   platform: linux-arm64, container: 'ubuntu:18.04' }
-          # - { os: macos-11,       target: darwin,  platform: darwin-x64   }
-          # - { os: macos-11,       target: darwin,  platform: darwin-arm64 }
-          # - { os: windows-latest, target: windows, platform: win32-ia32   }
-          # - { os: windows-latest, target: windows, platform: win32-x64    }
-    runs-on: ${{ matrix.os }}
-    container:
-      image: ${{ matrix.container }}
+    needs: change_build_info
+    runs-on: ubuntu-latest
     steps:
-      - name: prepare alpine container
-        if: ${{ matrix.target == 'linux' && matrix.libc == 'musl' }}
-        run: |
-          apk add --no-cache --update git bash nodejs
-
-      - name: checkout
+      - name: checkout repo again
         uses: actions/checkout@master
+        with:
+          ref: ${{ needs.change_build_info.outputs.commit_hash }}
 
       - name: publish release assets
         uses: softprops/action-gh-release@master
