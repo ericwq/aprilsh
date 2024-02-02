@@ -81,11 +81,12 @@ jobs:
           echo "env.release_tag=${{ env.release_tag }}"
           echo "github.ref=${{ github.ref }}"
           echo "github.sha=${{ github.sha }}"
+          echo "commit_hash=${{ ${{ needs.change_build_info.outputs.commit_hash }}"
 
       - name: publish release assets
         uses: softprops/action-gh-release@master
         with:
           generate_release_notes: true
-          target_commitish: main
+          target_commitish: ${{ needs.change_build_info.outputs.commit_hash }}
           # files: |
           #   ${{ steps.vars.outputs.PKG_PATH }}
