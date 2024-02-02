@@ -28,8 +28,8 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@master
-        with:
-          ref: ${{ github.head_ref }}
+        # with:
+        #   ref: ${{ github.ref }}
 
       # - name: Set up Go
       #   uses: actions/setup-go@master
