@@ -21,6 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       commit_hash: ${{ steps.commit-and-push.outputs.commit_hash }}
+      tar_version: ${{ steps.change.outputs.tar_version }}
     permissions:
       # Give the default GITHUB_TOKEN write permission to commit and push the
       # added or changed files to the repository.
@@ -45,6 +46,7 @@ jobs:
           sed -i -e "s/.*_GitVersion=.*/_GitVersion=`git describe --tags`/g" ./build/APKBUILD
           sed -i -e "s/.*_GitCommit=.*/_GitCommit=`git rev-parse HEAD`/g" ./build/APKBUILD
           sed -i -e "s/.*_GitBranch=.*/_GitBranch=`git rev-parse --abbrev-ref HEAD`/g" ./build/APKBUILD
+          echo "tar_version=$(git describe --tags)" >> $GITHUB_OUTPUT
 
       - name: commit and push changes
         id: commit-and-push
@@ -95,8 +97,7 @@ jobs:
         id: vars
         shell: bash
         run: |
-          TAR_VERSION=$(git describe --tags)
-          tar cvzf ${{ env.PROJECT }}-${ TAR_VERSION }.tar.gz \
+          tar cvzf ${{ env.PROJECT }}-${{ needs.change_build_info.outputs.tar_version }}.tar.gz \
             LICENSE \
             README.md \
             build \
