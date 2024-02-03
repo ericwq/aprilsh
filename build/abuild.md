@@ -1,4 +1,4 @@
-## build and run container
+## prepare docker environment for apk building
 
 ```sh
 % docker build -t abuild:0.1.0 -f abuild.dockerfile .
@@ -11,27 +11,76 @@
 % docker exec -u root -it abuild ash
 ```
 
-## create the package
+## build alpine apk file
+
 `apk update` unlock the permission problem for abuild.
 
 ```shell
 $ apk update
+```
+
+switch to user packager and prepare the environment.
+```shell
 # sudo -u packager sh
 % cd
 % mkdir -p aports/main/aprilsh
 % cd ~/aports/main/aprilsh/
+```
+
+get the APKBUILD and local file from mount point.
+```shell
 % cp /home/ide/develop/aprilsh/build/* .
 % abuild checksum
+```
+
+build the apk.
+```shell
 % abuild -r
 % REPODEST=~/packages/3.19 abuild -r
+```
+
+validate the tarball.
+```shell
+% cd /var/cache/distfiles
+% tar tvvf aprilsh-0.5.48.tar.gz
+```
+
+copy keys and apk to mount point, validate the apk content
+```shell
+% cd .abuild/
+% cp packager-65bd9c2a.rsa.pub /home/ide/proj/apk
+% cd ~/packages/main/x86_64
+% cp *.apk /home/ide/proj/apk
 % tar tvvf packages/main/x86_64/aprilsh-0.5.13-r0.apk
 ```
 
-## install the package
+## prepare docker environment for apk testing
+
+start a new container.
+
+```sh
+% docker run --rm -ti --privileged -h abuild-test --env TZ=Asia/Shanghai --name abuild-test \
+        --mount source=proj-vol,target=/home/ide/proj \
+        --mount type=bind,source=/Users/qiwang/dev,target=/home/ide/develop \
+        alpine:3.19
+```
+
+install the key from mount point.
 
 ```shell
-% exit
-# apk add /home/packager/packages/main/x86_64/aprilsh-server-0.5.13-r0.apk
+# apk update
+# apk add tzdata
+# cp /home/ide/proj/apk/packager-65bd9c2a.rsa.pub /etc/apk/keys
+```
+
+## test alpine apk file
+install the package and validate the program.
+
+```shell
+# cd /home/ide/proj/apk
+# apk add aprilsh-0.5.48-r0.apk
+# apsh -v
+# apshd -v
 ```
 
 ## reference
@@ -46,9 +95,6 @@ $ apk update
 - [How to Build an Alpine Linux Package](https://www.matthewparris.org/build-an-alpine-package/)
 - [How to create a Bash completion script](https://opensource.com/article/18/3/creating-bash-completion-script)
 - [Alpine Linux: New APKBUILD Workflow](https://thiagowfx.github.io/2022/01/alpine-linux-new-apkbuild-workflow/)
-
-## update content in github action
-
 - [Can GitHub actions directly edit files in a repository?](https://github.com/orgs/community/discussions/25234)
 - [todo_updater](https://github.com/logankilpatrick/TODO-List-Updater/blob/master/.github/workflows/todo_updater.yml)
 - [github-push-action](https://github.com/ad-m/github-push-action)
@@ -76,15 +122,7 @@ snapshot() {
 }
 ```
 
-## prepare docker environment
-```sh
-% docker run --rm -ti --privileged -h abuild-test --env TZ=Asia/Shanghai --name abuild-test \
-        --mount source=proj-vol,target=/home/ide/proj \
-        --mount type=bind,source=/Users/qiwang/dev,target=/home/ide/develop \
-        alpine:3.19 
-```
-
-## setup your system and account
+## manually setup your system and account
 ```sh 
 # apk add alpine-sdk sudo mandoc abuild-doc
 # adduser -D packager
@@ -94,7 +132,7 @@ snapshot() {
 % abuild-keygen -n --append --install
 ```
 
-## generating a new apkbuild file with newapkbuild
+generating a new apkbuild file with newapkbuild
 ```sh
 % newapkbuild \
     -n aprilsh \
