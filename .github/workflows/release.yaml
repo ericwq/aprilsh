@@ -98,22 +98,7 @@ jobs:
         shell: bash
         run: |
           tar cvzf ${{ env.PROJECT }}-${{ needs.change_build_info.outputs.tar_version }}.tar.gz \
-            --transform 's,^,${{ env.PROJECT }}-${{ needs.change_build_info.outputs.tar_version }}/,' \
-            LICENSE \
-            README.md \
-            build \
-            data \
-            doc \
-            encrypt \
-            frontend \
-            go.mod \
-            go.sum \
-            img \
-            network \
-            protobufs \
-            statesync \
-            terminal \
-            util
+            --transform 's,^,${{ env.PROJECT }}-${{ needs.change_build_info.outputs.tar_version }}/,' *
 
       - name: publish release assets
         uses: softprops/action-gh-release@master
