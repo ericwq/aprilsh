@@ -7,15 +7,29 @@ description="apshd daemon for the aprilsh service"
 
 command=/usr/bin/apshd
 command_args="-verbose 1 2>> /tmp/apshd.log"
+# If your daemon doesn't know how to change its own user or group,
+# then you can tell start-stop-daemon to launch it as an unprivileged
+# user with
 command_user=utmp
-command_background=yes
-directory=/run/utmps
-pidfile=/run/utmps/utmpd.pid
+# if your service doesn't background itself and to create a pidfile
+# use the following option to let openrc do it for you
+command_background=true
+# The special RC_SVCNAME variable contains the name of this service.
+# If the daemon backgrounds itself and creates its own PID file, use pidfile.
+pidfile="/run/${RC_SVCNAME}.pid"
+
+# # Reloading your daemon's configuration
+# extra_started_commands="reload"
+# reload() {
+#   ebegin "Reloading ${RC_SVCNAME}"
+#   start-stop-daemon --signal HUP --pidfile "${pidfile}"
+#   eend $?
+# }
 
 depend() {
 	need net # declares a hard dependency
 }
 
 start_pre() {
-	checkpath -d -o utmp:utmp -m 0755 /run/utmps
+	# checkpath -d -o utmp:utmp -m 0755 /run/utmps
 }
