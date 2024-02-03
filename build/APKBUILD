@@ -47,27 +47,27 @@ build() {
 
 	# prepare build info
    _ModuleName=`head ./go.mod | grep "^module" | awk '{print $2}'`
-   _BuildTime=`date "+%F %T"`
+   _BuildTime=`TZ='Asia/Shanghai' date "+%F %T"`
    _GoVersion=`go version | grep "version" | awk '{print $3,$4}'`
 
-   echo "build server start: `date '+%F %T'`"
+   echo "build server start: `TZ='Asia/Shanghai' date '+%F %T'`"
    go build -ldflags="-s -w
       -X '${_ModuleName}/frontend.BuildVersion=${_GitVersion}'
       -X '${_ModuleName}/frontend.GoVersion=${_GoVersion}'
       -X '${_ModuleName}/frontend.GitCommit=${_GitCommit}'
       -X '${_ModuleName}/frontend.GitBranch=${_GitBranch}'
       -X '${_ModuleName}/frontend.BuildTime=${_BuildTime}'" -o "${builddir}/bin/apshd" ./frontend/server/*.go
-   echo "build server end  : `date '+%F %T'`"
+   echo "build server end  : `TZ='Asia/Shanghai' date '+%F %T'`"
    echo "output server to  : ${builddir}/bin/apshd"
 
-   echo "build client start: `date '+%F %T'`"
+   echo "build client start: `TZ='Asia/Shanghai' date '+%F %T'`"
    go build -ldflags="-s -w
       -X '${_ModuleName}/frontend.BuildVersion=${_GitVersion}'
       -X '${_ModuleName}/frontend.GoVersion=${_GoVersion}'
       -X '${_ModuleName}/frontend.GitCommit=${_GitCommit}'
       -X '${_ModuleName}/frontend.GitBranch=${_GitBranch}'
       -X '${_ModuleName}/frontend.BuildTime=${_BuildTime}'" -o "${builddir}/bin/apsh" ./frontend/client/*.go
-   echo "build client end  : `date '+%F %T'`"
+   echo "build client end  : `TZ='Asia/Shanghai' date '+%F %T'`"
    echo "output client to  : ${builddir}/bin/apsh"
 }
 
