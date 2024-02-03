@@ -91,7 +91,7 @@ jobs:
           echo "github.ref=${{ github.ref }}"
           echo "github.sha=${{ github.sha }}"
           echo "commit_hash=${{ needs.change_build_info.outputs.commit_hash }}"
-          head -n 21 build/APKBUILD
+          head -n 22 build/APKBUILD
 
       - name: generate tar ball
         id: vars

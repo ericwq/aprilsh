@@ -8,13 +8,12 @@ url="https://github.com/ericwq/aprilsh"
 arch="all"
 license="MIT"
 depends="musl-locales utmps ncurses-terminfo wezterm-extra-terminfo"
-# depends_openrc="$pkgname-server"
 makedepends="go protoc utmps-dev"
 install=""
 subpackages=""
-# subpackages="$pkgname-client $pkgname-server $pkgname-openrc"
 subpackages="$pkgname-client $pkgname-openrc"
-source="$pkgname-$pkgver.tar.gz::https://github.com/ericwq/aprilsh/archive/refs/tags/$pkgver.tar.gz
+# source="$pkgname-$pkgver.tar.gz::https://github.com/ericwq/aprilsh/archive/refs/tags/$pkgver.tar.gz
+source="https://github.com/ericwq/aprilsh/releases/download/$pkgver/$pkgname-$pkgver.tar.gz
 		  apshd.initd"
 builddir="$srcdir"/$pkgname-$pkgver
 
@@ -28,10 +27,6 @@ export GOTMPDIR="${GOTMPDIR:-"$srcdir"}"
 export GOMODCACHE="${GOMODCACHE:-"$srcdir/go"}"
 
 prepare() {
-   # startdir="/home/packager/aports/main/aprilsh"
-   # pkgdir="/home/packager/packages/"
-	# mkdir -p "./packages"
-	# mkdir -p "./aprilsh"
 	printf "startdir=${startdir}\n"
 	printf "srcdir  =${srcdir}\n"
 	printf "builddir=${builddir}\n"
@@ -41,7 +36,6 @@ prepare() {
 }
 
 build() {
-	# cd ${srcdir}
 	# install go protocol buffers plugin
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 	# install depends go module
@@ -78,7 +72,6 @@ build() {
 }
 
 check() {
-	# cd ${srcdir}
 	go test ./encrypt/...
 	go test ./frontend/...
 	go test ./network/...
