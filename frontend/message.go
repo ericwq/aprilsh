@@ -7,7 +7,6 @@ package frontend
 import "fmt"
 
 const (
-	// BuildVersion       = "0.5.0" // ready for ldflags
 	AprilshMsgOpen     = "open aprilsh:"
 	AprishMsgClose     = "close aprilsh:"
 	AprilshPackageName = "aprilsh"
@@ -26,17 +25,17 @@ remote shell support intermittent or mobile network.
 )
 
 var (
-	BuildVersion string // build version
-	GoVersion    string // Go version
-	BuildTime    string // build time
-	GitCommit    string // git commit id
-	GitBranch    string // git branch name
+	GitTag    string // build version
+	GoVersion string // Go version
+	BuildTime string // build time
+	GitCommit string // git commit id
+	GitBranch string // git branch name
 )
 
 func PrintVersion() {
-	fmt.Printf("version   \t: %s\n", BuildVersion)
 	fmt.Printf("go version\t: %s\n", GoVersion)
 	fmt.Printf("build time\t: %s\n", BuildTime)
+	fmt.Printf("git tag   \t: %s\n", GitTag)
 	fmt.Printf("git commit\t: %s\n", GitCommit)
 	fmt.Printf("git branch\t: %s\n\n", GitBranch)
 	fmt.Printf(VersionInfo)

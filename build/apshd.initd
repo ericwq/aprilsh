@@ -1,9 +1,9 @@
 #!/sbin/openrc-run
-# Copyright 2020-2021 Laurent Bercot for Alpine Linux
-# Distributed under the terms of the ISC License.
+# Copyright (c) 2022~2024 wangqi <ericwq057@qq.com>
+# Distributed under the terms of the MIT License.
 #
 name="apshd"
-description="server daemon for the apshd service"
+description="apshd daemon for the aprilsh service"
 
 command=/usr/bin/apshd
 command_args="-verbose 1 2>> /tmp/apshd.log"
@@ -13,9 +13,7 @@ directory=/run/utmps
 pidfile=/run/utmps/utmpd.pid
 
 depend() {
-	need utmp-prepare
-	after bootmisc
-	before networking
+	need net # declares a hard dependency
 }
 
 start_pre() {

@@ -14,8 +14,7 @@ mkdir -p coverage/int
 # if [ "$1" != "" ]; then Version=$1;else
 #     read -p "Input Build Version: " Version; if [ "$Version" = "" ]; then echo "The input cannot be empty";exit;fi
 # fi
-# BuildVersion=`git for-each-ref --count=1 --sort=-taggerdate --format '%(tag)' refs/tags`
-BuildVersion=`git describe --tags`
+GitTag=`git describe --tags`
 echo "build client start: `date '+%F %T'`"
 #
 # selecting package to cover
@@ -34,7 +33,7 @@ GitBranch=`git rev-parse --abbrev-ref HEAD`
 #
 # build server for test
 go build -cover -coverpkg=$PKGS -ldflags="-s -w
-      -X '${ModuleName}/frontend.BuildVersion=${BuildVersion}'
+      -X '${ModuleName}/frontend.GitTag=${GitTag}'
       -X '${ModuleName}/frontend.GoVersion=${GoVersion}'
       -X '${ModuleName}/frontend.GitCommit=${GitCommit}'
       -X '${ModuleName}/frontend.GitBranch=${GitBranch}'

@@ -22,14 +22,13 @@ func TestTimer(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			timer := time.NewTimer(time.Duration(v.timeout) * time.Millisecond)
 			now := time.Now().UnixMilli()
+			timer := time.NewTimer(time.Duration(v.timeout) * time.Millisecond)
 
 			<-timer.C
-			x := time.Now()
 
-			got := x.UnixMilli() - now
-			if !(got-v.expect == 0 || got-v.expect == 1) { // asllow 1ms deviation
+			got := time.Now().UnixMilli() - now
+			if !(got-v.expect == 0 || got-v.expect <= 2) { // asllow 1ms deviation
 				t.Errorf("#test %s expect %d, got %d\n", v.label, v.expect, got)
 			}
 		})

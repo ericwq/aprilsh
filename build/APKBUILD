@@ -17,7 +17,7 @@ source="https://github.com/ericwq/aprilsh/releases/download/$pkgver/$pkgname-$pk
 		  apshd.initd"
 builddir="$srcdir"/$pkgname-$pkgver
 
-_GitVersion=0.5.48
+_GitTag=0.5.48
 _GitCommit=a26af0c57f49ad30c22dd58033d1debfedd55183
 _GitBranch=HEAD
 
@@ -52,7 +52,7 @@ build() {
 
    echo "build server start: `TZ='Asia/Shanghai' date '+%F %T'`"
    go build -ldflags="-s -w
-      -X '${_ModuleName}/frontend.BuildVersion=${_GitVersion}'
+      -X '${_ModuleName}/frontend.GitTag=${_GitTag}'
       -X '${_ModuleName}/frontend.GoVersion=${_GoVersion}'
       -X '${_ModuleName}/frontend.GitCommit=${_GitCommit}'
       -X '${_ModuleName}/frontend.GitBranch=${_GitBranch}'
@@ -62,7 +62,7 @@ build() {
 
    echo "build client start: `TZ='Asia/Shanghai' date '+%F %T'`"
    go build -ldflags="-s -w
-      -X '${_ModuleName}/frontend.BuildVersion=${_GitVersion}'
+      -X '${_ModuleName}/frontend.GitTag=${_GitTag}'
       -X '${_ModuleName}/frontend.GoVersion=${_GoVersion}'
       -X '${_ModuleName}/frontend.GitCommit=${_GitCommit}'
       -X '${_ModuleName}/frontend.GitBranch=${_GitBranch}'

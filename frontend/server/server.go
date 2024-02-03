@@ -528,8 +528,7 @@ func getTimeFrom(env string, def int64) (ret int64) {
 }
 
 func printWelcome(pid int, port int, tty *os.File) {
-	// fmt.Printf("%s start listening on :%d. build version %s [pid=%d] \n", _COMMAND_NAME, port, BuildVersion, pid)
-	util.Log.With("port", port).With("buildVersion", frontend.BuildVersion).With("pid", pid).
+	util.Log.With("port", port).With("gitTag", frontend.GitTag).With("pid", pid).
 		Info(frontend.CommandServerName + " start listening on")
 	// fmt.Printf("Copyright 2022~2023 wangqi.\n")
 	// fmt.Printf("%s%s", "Use of this source code is governed by a MIT-style",

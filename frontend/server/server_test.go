@@ -352,13 +352,13 @@ func TestMainRun(t *testing.T) {
 		{"run main and killed by signal",
 			[]string{frontend.CommandServerName, "-verbose", "0", "-locale",
 				"LC_ALL=en_US.UTF-8", "-p", "6100", "--", "/bin/sh", "-sh"},
-			[]string{frontend.CommandServerName, "start listening on", "buildVersion",
+			[]string{frontend.CommandServerName, "start listening on", "gitTag",
 				/* "got signal: SIGHUP",  */ "got signal: SIGTERM or SIGINT",
 				"stop listening", "6100"}},
 		{"main killed by -a", // auto stop after 1 second
 			[]string{frontend.CommandServerName, "-verbose", "1", "-auto", "1", "-locale",
 				"LC_ALL=en_US.UTF-8", "-p", "6200", "--", "/bin/sh", "-sh"},
-			[]string{frontend.CommandServerName, "start listening on", "buildVersion",
+			[]string{frontend.CommandServerName, "start listening on", "gitTag",
 				"stop listening", "6200"}},
 		{"main killed by -a, write to syslog", // auto stop after 1 second
 			[]string{frontend.CommandServerName, "-verbose", "514", "-auto", "1", "-locale",
@@ -1059,7 +1059,7 @@ func TestPrintWelcome(t *testing.T) {
 	}
 
 	expect := []string{frontend.CommandServerName, "start listening on",
-		"buildVersion", "Warning: termios IUTF8 flag not defined.",
+		"gitTag", "Warning: termios IUTF8 flag not defined.",
 	}
 
 	tc := []struct {

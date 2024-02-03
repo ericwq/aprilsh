@@ -78,7 +78,7 @@ snapshot() {
 
 ## prepare docker environment
 ```sh
-% docker run --rm -ti --privileged -h test --env TZ=Asia/Shanghai --name test \
+% docker run --rm -ti --privileged -h abuild-test --env TZ=Asia/Shanghai --name abuild-test \
         --mount source=proj-vol,target=/home/ide/proj \
         --mount type=bind,source=/Users/qiwang/dev,target=/home/ide/develop \
         alpine:3.19 
