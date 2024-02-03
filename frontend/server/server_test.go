@@ -1502,8 +1502,8 @@ func TestRunWorkerFail(t *testing.T) {
 			// intercept log output
 			defer util.Log.Restore()
 			util.Log.SetLevel(slog.LevelDebug)
-			util.Log.SetOutput(os.Stdout)
-			// util.Log.SetOutput(io.Discard)
+			// util.Log.SetOutput(os.Stdout)
+			util.Log.SetOutput(io.Discard)
 
 			var wg sync.WaitGroup
 			var hasWorkhorse bool

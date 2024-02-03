@@ -17,6 +17,7 @@ const (
 	TimeoutIfNoConnect = 15000
 
 	VersionInfo = `Copyright (c) 2022~2024 wangqi <ericwq057@qq.com>
+License MIT: <https://en.wikipedia.org/wiki/MIT_License>.
 This is free software: you are free to change and redistribute it.
 There is NO WARRANTY, to the extent permitted by law.
 
