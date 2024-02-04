@@ -7,12 +7,9 @@ pkgdesc="Remote shell support intermittent or mobile network"
 url="https://github.com/ericwq/aprilsh"
 arch="all"
 license="MIT"
-depends="musl-locales utmps ncurses-terminfo wezterm-extra-terminfo"
+depends="$pkgname-client $pkgname-server"
 makedepends="go protoc utmps-dev"
-install=""
-subpackages=""
-subpackages="$pkgname-client $pkgname-openrc"
-# source="$pkgname-$pkgver.tar.gz::https://github.com/ericwq/aprilsh/archive/refs/tags/$pkgver.tar.gz
+subpackages="$pkgname-client $pkgname-server $pkgname-openrc"
 source="https://github.com/ericwq/aprilsh/releases/download/$pkgver/$pkgname-$pkgver.tar.gz
 		  apshd.initd"
 builddir="$srcdir"/$pkgname-$pkgver
@@ -87,19 +84,20 @@ package() {
 }
 
 client() {
+	#Allow this package to be installed at the same time as the listed packages, even if they have conflicting files.
 	replaces="$pkgname"
-	pkgdesc="$pkgname server"
+	pkgdesc="$pkgname client"
 	depends="musl-locales"
 	mkdir -p "$subpkgdir/usr/bin"
-	cp "$pkgdir/usr/bin/apsh" "$subpkgdir/usr/bin/"
+	mv "$pkgdir/usr/bin/apsh" "$subpkgdir/usr/bin/"
 }
 
-# server() {
-# 	replaces="$pkgname"
-# 	pkgdesc="$pkgname server"
-# 	depends="musl-locales utmps"
-# 	mkdir -p "$subpkgdir/usr/bin"
-# 	cp "$pkgdir/usr/bin/apshd" "$subpkgdir/usr/bin/"
-# }
+server() {
+	replaces="$pkgname"
+	pkgdesc="$pkgname server"
+	depends="musl-locales utmps ncurses-terminfo wezterm-extra-terminfo"
+	mkdir -p "$subpkgdir/usr/bin"
+	mv "$pkgdir/usr/bin/apshd" "$subpkgdir/usr/bin/"
+}
 
 sha512sums=
