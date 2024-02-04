@@ -41,4 +41,4 @@ go build -cover -coverpkg=$PKGS -ldflags="-s -w
 # go build -race -cover -coverpkg=$PKGS -o ~/.local/bin/apshd .
 echo "build client end  : `date '+%F %T'`"
 echo "output client to  : ~/.local/bin/apsh"
-echo "run with          : GOCOVERDIR=./coverage/int  ~/.local/bin/apsh -verbose 1 -pwd password ide@localhost 2>> /tmp/apsh00.log"
+echo "run with          : GOCOVERDIR=./coverage/int  ~/.local/bin/apsh -verbose 1 -pwd password ide@localhost 2>> /tmp/apsh01.log"

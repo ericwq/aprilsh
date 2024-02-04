@@ -16,7 +16,7 @@
 `apk update` unlock the permission problem for abuild.
 
 ```shell
-$ apk update
+# apk update
 ```
 
 switch to user packager and prepare the environment.
@@ -47,11 +47,13 @@ validate the tarball.
 
 copy keys and apk to mount point, validate the apk content
 ```shell
+% cd
 % cd .abuild/
-% cp packager-65bd9c2a.rsa.pub /home/ide/proj/apk
+% mkdir -p /home/ide/proj/apk
+% cp packager-*.rsa.pub /home/ide/proj/apk
 % cd ~/packages/main/x86_64
 % cp *.apk /home/ide/proj/apk
-% tar tvvf packages/main/x86_64/aprilsh-0.5.13-r0.apk
+% tar tvvf aprilsh-0.5.49-r0.apk
 ```
 
 ## prepare docker environment for apk testing
