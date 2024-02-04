@@ -100,7 +100,7 @@ func TestWarnUnattached(t *testing.T) {
 			var out strings.Builder
 			warnUnattached(&out, v.ignoreHost)
 			got := out.String()
-			// t.Logf("%q\n", got)
+			t.Logf("%q\n", got)
 			count := strings.Count(got, "- ")
 			switch count {
 			case 0: // warnUnattached found one unattached session
