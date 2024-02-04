@@ -45,14 +45,16 @@ validate the tarball.
 % tar tvvf aprilsh-0.5.48.tar.gz
 ```
 
-copy keys and apk to mount point, validate the apk content
+copy keys and apks to mount point, note for 'cp -r': keep the packages directory structure is important.
 ```shell
 % cd
-% cd .abuild/
-% mkdir -p /home/ide/proj/apk
-% cp packager-*.rsa.pub /home/ide/proj/apk
+% cp -r packages/ /home/ide/proj/
+% cp .abuild/packager-*.rsa.pub /home/ide/proj/packages
+```
+
+validate the apk content
+```shell
 % cd ~/packages/main/x86_64
-% cp *.apk /home/ide/proj/apk
 % tar tvvf aprilsh-0.5.49-r0.apk
 ```
 
@@ -67,20 +69,26 @@ start a new container.
         alpine:3.19
 ```
 
-install the key from mount point.
+install timezone package and install package key from mount point.
 
 ```shell
 # apk update
-# apk add tzdata
-# cp /home/ide/proj/apk/packager-65bd9c2a.rsa.pub /etc/apk/keys
+# apk add tzdata openrc
+# cp /home/ide/proj/packages/packager-*.rsa.pub /etc/apk/keys
+```
+
+add local repository for apk.
+```shell
+# sed -i '1s/^/\/home\/ide\/proj\/packages\/main\n/' /etc/apk/repositories
+# apk update
 ```
 
 ## test alpine apk file
 install the package and validate the program.
 
 ```shell
-# cd /home/ide/proj/apk
-# apk add aprilsh-0.5.48-r0.apk
+# apk search aprilsh
+# apk add aprilsh
 # apsh -v
 # apshd -v
 ```
