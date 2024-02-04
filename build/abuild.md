@@ -11,7 +11,7 @@
 % docker exec -u root -it abuild ash
 ```
 
-## build alpine apk file
+## build apk files
 
 `apk update` unlock the permission problem for abuild.
 
@@ -45,19 +45,19 @@ validate the tarball.
 % tar tvvf aprilsh-0.5.48.tar.gz
 ```
 
-copy keys and apks to mount point, note for 'cp -r': keep the packages directory structure is important.
-```shell
-% cd
-% cp -r packages/ /home/ide/proj/
-% cp .abuild/packager-*.rsa.pub /home/ide/proj/packages
-```
-
 validate the apk content
 ```shell
 % cd ~/packages/main/x86_64
 % tar tvvf aprilsh-0.5.49-r0.apk
 ```
 
+### copy keys and apks to mount point
+note the `cp -r` command, it's important to keep the [directory structure of local repository](#directory-structure-of-local-repository).
+```shell
+% cd
+% cp -r packages/ /home/ide/proj/
+% cp .abuild/packager-*.rsa.pub /home/ide/proj/packages
+```
 ## prepare docker environment for apk testing
 
 start a new container.
@@ -83,7 +83,27 @@ add local repository for apk.
 # apk update
 ```
 
-## test alpine apk file
+### directory structure of local repository
+if you don't keep the directory structure of local repository, you will get the following error:
+```shell
+~ # apk update
+WARNING: opening /home/ide/proj/packages/: No such file or directory
+```
+
+The local repository should contains `x86_64` directory and `APKINDEX.tar.gz` file:
+```shell
+# tree /home/ide/proj/packages/main
+/home/ide/proj/packages/main
+└── x86_64
+    ├── APKINDEX.tar.gz
+    ├── aprilsh-0.5.49-r0.apk
+    ├── aprilsh-client-0.5.49-r0.apk
+    └── aprilsh-openrc-0.5.49-r0.apk
+
+1 directories, 4 files
+```
+
+## validate apk files
 install the package and validate the program.
 
 ```shell
