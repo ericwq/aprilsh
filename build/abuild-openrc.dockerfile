@@ -11,7 +11,7 @@ ARG SSH_PUB_KEY
 ARG HOME=/home/ide
 
 # Enable init.
-RUN apk add --update --no-cache sudo openrc openssh-server utmps rsyslog rsyslog-openrc && \
+RUN apk add --update --no-cache sudo openrc openssh-server utmps rsyslog rsyslog-openrc tzdata htop && \
     sed -i 's/^\(tty\d\:\:\)/#\1/g' /etc/inittab && \
     sed -i \
       -e 's/#rc_sys=".*"/rc_sys="docker"/g' \
