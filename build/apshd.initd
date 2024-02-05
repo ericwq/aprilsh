@@ -17,9 +17,7 @@ command_background=true
 # The special RC_SVCNAME variable contains the name of this service.
 # If the daemon backgrounds itself and creates its own PID file, use pidfile.
 pidfile="/run/${RC_SVCNAME}.pid"
-
-# output_log="/var/log/${RC_SVCNAME}.log"
-error_log="/tmp/${RC_SVCNAME}.err"
+error_log="/var/log/${RC_SVCNAME}.log"
 
 # # Reloading your daemon's configuration
 # extra_started_commands="reload"
@@ -30,9 +28,12 @@ error_log="/tmp/${RC_SVCNAME}.err"
 # }
 
 depend() {
-    need logger
-	 want utmpd
+    # need logger
+    want utmpd
     after networking
 }
 
+start_pre() {
+    checkpath -f -o utmp:utmp -m 0755 /var/log/${RC_SVCNAME}.log
+}
 # https://manpages.debian.org/testing/openrc/openrc-run.8.en.html
