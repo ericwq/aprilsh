@@ -60,8 +60,29 @@ note the `cp -r` command, it's important to keep the [directory structure of loc
 ```
 ## prepare docker environment for apk testing
 
-start a new container.
+build openrc image.
+```sh
+% docker build --build-arg ROOT_PWD=passowrd \
+	--build-arg USER_PWD=password \
+	--build-arg SSH_PUB_KEY="$(cat ~/.ssh/id_rsa.pub)" \
+	--progress plain -t abuild-openrc:0.1.0 -f abuild-openrc.dockerfile .
+```
 
+start openrc container, the container contains openrc, sshd, utmps, rsyslog by default.
+```sh
+% docker run --env TZ=Asia/Shanghai --tty --privileged --volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
+    --mount source=proj-vol,target=/home/ide/proj \
+    --mount type=bind,source=/Users/qiwang/dev,target=/home/ide/develop \
+    -h abuild-openrc --name abuild-openrc -d -p 8022:22  -p 65000:60000/udp  -p 65001:60001/udp -p 65002:60002/udp \
+    -p 65003:60003/udp abuild-openrc:0.1.0
+```
+
+don't forget to start utmps service.
+```shell
+# setup-utmp
+```
+
+start a base container.
 ```sh
 % docker run --rm -ti --privileged -h abuild-test --env TZ=Asia/Shanghai --name abuild-test \
         --mount source=proj-vol,target=/home/ide/proj \
