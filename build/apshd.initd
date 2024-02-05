@@ -6,7 +6,7 @@ name="apshd"
 description="apshd daemon for the aprilsh service"
 
 command=/usr/bin/apshd
-command_args="-verbose 1 2>> /tmp/apshd.log"
+command_args="-verbose 1"
 # If your daemon doesn't know how to change its own user or group,
 # then you can tell start-stop-daemon to launch it as an unprivileged
 # user with
@@ -18,6 +18,9 @@ command_background=true
 # If the daemon backgrounds itself and creates its own PID file, use pidfile.
 pidfile="/run/${RC_SVCNAME}.pid"
 
+# output_log="/var/log/${RC_SVCNAME}.log"
+error_log="/tmp/${RC_SVCNAME}.err"
+
 # # Reloading your daemon's configuration
 # extra_started_commands="reload"
 # reload() {
@@ -27,9 +30,9 @@ pidfile="/run/${RC_SVCNAME}.pid"
 # }
 
 depend() {
-	need net # declares a hard dependency
+    need logger
+	 want utmpd
+    after networking
 }
 
-start_pre() {
-	# checkpath -d -o utmp:utmp -m 0755 /run/utmps
-}
+# https://manpages.debian.org/testing/openrc/openrc-run.8.en.html

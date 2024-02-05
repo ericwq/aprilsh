@@ -70,7 +70,7 @@ build openrc image.
 
 start openrc container, the container contains openrc, sshd, utmps, rsyslog by default.
 ```sh
-% docker run --env TZ=Asia/Shanghai --tty --privileged --volume /sys/fs/cgroup:/sys/fs/cgroup:ro \
+% docker run --env TZ=Asia/Shanghai --tty --privileged --volume /sys/fs/cgroup:/sys/fs/cgroup:rw \
     --mount source=proj-vol,target=/home/ide/proj \
     --mount type=bind,source=/Users/qiwang/dev,target=/home/ide/develop \
     -h abuild-openrc --name abuild-openrc -d -p 8022:22  -p 65000:60000/udp  -p 65001:60001/udp -p 65002:60002/udp \
