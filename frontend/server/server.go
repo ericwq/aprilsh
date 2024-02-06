@@ -593,11 +593,14 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 		return nil, err
 	}
 
+	var env []string
 	// set TERM based on client TERM
 	if conf.term != "" {
-		os.Setenv("TERM", conf.term)
+		// os.Setenv("TERM", conf.term)
+		env = append(env, "TERM="+conf.term)
 	} else {
-		os.Setenv("TERM", "xterm-256color") // default TERM
+		// os.Setenv("TERM", "xterm-256color") // default TERM
+		env = append(env, "TERM="+"xterm-256color")
 	}
 
 	// clear STY environment variable so GNU screen regards us as top level
@@ -614,15 +617,27 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 	if err != nil {
 		return nil, err
 	}
-	util.Log.With("user", u.Username).With("gid", u.Gid).With("HOME", u.HomeDir).Info("start shell check user")
+	util.Log.With("user", u.Username).With("gid", u.Gid).With("HOME", u.HomeDir).
+		Info("start shell check user")
 
 	// the following function will set PWD environment variable
-	chdirHomedir(u.HomeDir)
+	// chdirHomedir(u.HomeDir)
+	env = append(env, "PWD="+u.HomeDir)
+	env = append(env, "HOME="+u.HomeDir) // it's important for shell to source .profile
+	env = append(env, "USER="+users[0])
+	env = append(env, "SHELL="+conf.commandPath)
+	env = append(env, fmt.Sprintf("TZ=%s", os.Getenv("TZ")))
+
+	// TODO should we put LOGNAME, MAIL into env?
 
 	// ask ncurses to send UTF-8 instead of ISO 2022 for line-drawing chars
-	ncursesEnv := "NCURSES_NO_UTF8_ACS=1"
+	// ncursesEnv := "NCURSES_NO_UTF8_ACS=1"
 	// should be the last statement related to environment variable
-	env := append(os.Environ(), ncursesEnv)
+	// env := append(os.Environ(), ncursesEnv)
+	env = append(env, "NCURSES_NO_UTF8_ACS=1")
+	util.Log.With("env", env).Info("start shell check env")
+	util.Log.With("commandPath", conf.commandPath).With("commandArgv", conf.commandArgv).
+		Info("start shell check command")
 
 	// set working directory
 	// cmd.Dir = getHomeDir()
