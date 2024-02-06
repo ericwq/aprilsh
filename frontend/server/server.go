@@ -634,9 +634,10 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 
 	procAttr := os.ProcAttr{
 		Files: []*os.File{pts, pts, pts}, // use pts as stdin, stdout, stderr
-		Dir:   getHomeDir(),
-		Sys:   sysProcAttr,
-		Env:   env,
+		// Dir:   getHomeDir(),
+		Dir: u.HomeDir,
+		Sys: sysProcAttr,
+		Env: env,
 	}
 
 	// // open terminal
