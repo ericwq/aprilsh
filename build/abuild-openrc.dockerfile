@@ -69,8 +69,8 @@ RUN rc-update add sshd boot \
 #
 RUN rc-update add rsyslog boot \
    # H;1h;$!d;x; slurps the file into memory
-	&& sed -ie \
-	'H;1h;$!d;x; s/#module.*imudp\(.*\)514\(.*\)#)/module(load="imudp")\ninput(type="imudp" port="514")\n/g' \
+	&& sed -i \
+	'H;1h;$!d;x; s/#module.*imudp\(.*\)514\(.*\)#)/module(load="imudp")\ninput(type="imudp" port="514")/g' \
 	/etc/rsyslog.conf
 
 
