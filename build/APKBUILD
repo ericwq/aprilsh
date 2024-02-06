@@ -95,7 +95,7 @@ client() {
 server() {
 	replaces="$pkgname"
 	pkgdesc="$pkgname server"
-	depends="musl-locales utmps ncurses-terminfo wezterm-extra-terminfo"
+	depends="musl-locales utmps ncurses-terminfo wezterm-extra-terminfo openssh-server"
 	mkdir -p "$subpkgdir/usr/bin"
 	mv "$pkgdir/usr/bin/apshd" "$subpkgdir/usr/bin/"
 }

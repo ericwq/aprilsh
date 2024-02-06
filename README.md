@@ -34,7 +34,7 @@ Ready for early acess. The missing part is install package and prediction engine
 ## build dependency
 
 ```sh
-% apk add musl-locales-lang musl-locales utmps-dev
+apk add musl-locales-lang musl-locales utmps-dev
 ```
 
 Use the above command to add musl locales support and utmps support for alpine. Note alpine only support UTF-8 charmap.
