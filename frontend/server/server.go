@@ -603,8 +603,21 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 	// clear STY environment variable so GNU screen regards us as top level
 	os.Unsetenv("STY")
 
+	// get the login user info
+	users := strings.Split(conf.target, "@")
+	u, err := user.Lookup(users[0])
+	if err != nil {
+		return nil, err
+	}
+	uid, err := strconv.ParseInt(u.Uid, 10, 32)
+	gid, err := strconv.ParseInt(u.Gid, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+	util.Log.With("user", u.Username).With("gid", u.Gid).With("HOME", u.HomeDir).Info("start shell check user")
+
 	// the following function will set PWD environment variable
-	// chdirHomedir("")
+	chdirHomedir(u.HomeDir)
 
 	// ask ncurses to send UTF-8 instead of ISO 2022 for line-drawing chars
 	ncursesEnv := "NCURSES_NO_UTF8_ACS=1"
@@ -617,6 +630,7 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 	sysProcAttr := &syscall.SysProcAttr{}
 	sysProcAttr.Setsid = true  // start a new session
 	sysProcAttr.Setctty = true // set controlling terminal
+	sysProcAttr.Credential = &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid)}
 
 	procAttr := os.ProcAttr{
 		Files: []*os.File{pts, pts, pts}, // use pts as stdin, stdout, stderr
@@ -627,6 +641,8 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 
 	// // open terminal
 	// fmt.Fprintf(pts, "\x1b[?1049h\x1b[22;0;0t\x1b[?1h")
+	//
+	// https://stackoverflow.com/questions/21705950/running-external-commands-through-os-exec-under-another-user
 	//
 	if conf.withMotd && !motdHushed() {
 		// For Ubuntu, try and print one of {,/var}/run/motd.dynamic.

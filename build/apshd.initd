@@ -10,7 +10,7 @@ command_args="-verbose 1"
 # If your daemon doesn't know how to change its own user or group,
 # then you can tell start-stop-daemon to launch it as an unprivileged
 # user with
-command_user=utmp
+# command_user=utmp
 # if your service doesn't background itself and to create a pidfile
 # use the following option to let openrc do it for you
 command_background=true
@@ -33,7 +33,7 @@ depend() {
     after networking
 }
 
-start_pre() {
-    checkpath -f -o utmp:utmp -m 0755 /var/log/${RC_SVCNAME}.log
-}
+# start_pre() {
+#     checkpath -f -o utmp:utmp -m 0755 /var/log/${RC_SVCNAME}.log
+# }
 # https://manpages.debian.org/testing/openrc/openrc-run.8.en.html
