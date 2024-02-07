@@ -594,29 +594,22 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 	}
 
 	var env []string
+
 	// set TERM based on client TERM
 	if conf.term != "" {
-		// os.Setenv("TERM", conf.term)
 		env = append(env, "TERM="+conf.term)
 	} else {
-		// os.Setenv("TERM", "xterm-256color") // default TERM
-		env = append(env, "TERM="+"xterm-256color")
+		env = append(env, "TERM=xterm-256color")
 	}
 
 	// clear STY environment variable so GNU screen regards us as top level
 	// os.Unsetenv("STY")
 
-	// get the login user info
+	// get login user info, we already check the user exist.
 	users := strings.Split(conf.target, "@")
-	u, err := user.Lookup(users[0])
-	if err != nil {
-		return nil, err
-	}
-	uid, err := strconv.ParseInt(u.Uid, 10, 32)
-	gid, err := strconv.ParseInt(u.Gid, 10, 32)
-	if err != nil {
-		return nil, err
-	}
+	u, _ := user.Lookup(users[0])
+	uid, _ := strconv.ParseInt(u.Uid, 10, 32)
+	gid, _ := strconv.ParseInt(u.Gid, 10, 32)
 	util.Log.With("user", u.Username).With("gid", u.Gid).With("HOME", u.HomeDir).
 		Info("start shell check user")
 
@@ -1511,6 +1504,8 @@ func (m *mainSrv) run(conf *Config) {
 			}
 			conf2.term = content[0]
 			conf2.target = content[1]
+
+			// we don't need to check if user exist, ssh already done that before
 
 			// For security, make sure we don't dump core
 			encrypt.DisableDumpingCore()

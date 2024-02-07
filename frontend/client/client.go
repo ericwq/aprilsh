@@ -352,7 +352,8 @@ func main() {
 
 	// login to remote server and fetch the key
 	if err = conf.fetchKey(); err != nil {
-		printUsage(err.Error())
+		// printUsage(err.Error())
+		printUsage(fmt.Sprintf("Failed to authenticate user %q.", conf.user))
 		return
 	}
 
