@@ -621,6 +621,10 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 	env = append(env, "SHELL="+conf.commandPath)
 	env = append(env, fmt.Sprintf("TZ=%s", os.Getenv("TZ")))
 
+	// TODO should we set ssh env ?
+	env = append(env, fmt.Sprintf("SSH_CLIENT=%s", os.Getenv("SSH_CLIENT")))
+	env = append(env, fmt.Sprintf("SSH_CONNECTION=%s", os.Getenv("SSH_CONNECTION")))
+
 	// ask ncurses to send UTF-8 instead of ISO 2022 for line-drawing chars
 	env = append(env, "NCURSES_NO_UTF8_ACS=1")
 	util.Log.With("env", env).Info("start shell check env")
