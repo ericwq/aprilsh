@@ -10,13 +10,13 @@ license="MIT"
 depends="$pkgname-client $pkgname-server"
 makedepends="go protoc utmps-dev"
 subpackages="$pkgname-client $pkgname-server $pkgname-openrc"
-source="https://github.com/ericwq/aprilsh/releases/download/$pkgver/$pkgname-$pkgver.tar.gz
+source="https://github.com/ericwq/aprilsh/releases/download/$pkgver/aprilsh-$pkgver.tar.gz
 		  apshd.initd"
-builddir="$srcdir"/$pkgname-$pkgver
+# builddir="$srcdir"/$pkgname-$pkgver
 
-_GitTag=0.6.0
-_GitCommit=a78815e6f1ae43b0550e87635795eb859fd7c056
-_GitBranch=HEAD
+_git_tag=0.6.0
+_git_commit=a78815e6f1ae43b0550e87635795eb859fd7c056
+_git_branch=HEAD
 
 export PATH=$PATH:~/go/bin
 export GOCACHE="${GOCACHE:-"$srcdir/go-cache"}"
@@ -24,10 +24,10 @@ export GOTMPDIR="${GOTMPDIR:-"$srcdir"}"
 export GOMODCACHE="${GOMODCACHE:-"$srcdir/go"}"
 
 prepare() {
-	printf "startdir=${startdir}\n"
-	printf "srcdir  =${srcdir}\n"
-	printf "builddir=${builddir}\n"
-	printf "pkgdir  =${pkgdir}\n"
+	printf "startdir=$startdir\n"
+	printf "srcdir  =$srcdir\n"
+	printf "builddir=$builddir\n"
+	printf "pkgdir  =$pkgdir\n"
 	# printf "PATH=$PATH\n"
 	default_prepare
 }
@@ -43,29 +43,29 @@ build() {
 	protoc --go_out=. -I . ./protobufs/userInput.proto
 
 	# prepare build info
-   _ModuleName=`head ./go.mod | grep "^module" | awk '{print $2}'`
-   _BuildTime=`TZ='Asia/Shanghai' date "+%F %T"`
-   _GoVersion=`go version | grep "version" | awk '{print $3,$4}'`
+   _module_name=$(head ./go.mod | grep "^module" | awk '{print $2}')
+   _build_time=$(TZ='Asia/Shanghai' date "+%F %T")
+   _go_version=$(go version | grep "version" | awk '{print $3,$4}')
 
-   echo "build server start: `TZ='Asia/Shanghai' date '+%F %T'`"
+   echo "build server start: $(TZ='Asia/Shanghai' date '+%F %T')"
    go build -ldflags="-s -w
-      -X '${_ModuleName}/frontend.GitTag=${_GitTag}'
-      -X '${_ModuleName}/frontend.GoVersion=${_GoVersion}'
-      -X '${_ModuleName}/frontend.GitCommit=${_GitCommit}'
-      -X '${_ModuleName}/frontend.GitBranch=${_GitBranch}'
-      -X '${_ModuleName}/frontend.BuildTime=${_BuildTime}'" -o "${builddir}/bin/apshd" ./frontend/server/*.go
-   echo "build server end  : `TZ='Asia/Shanghai' date '+%F %T'`"
-   echo "output server to  : ${builddir}/bin/apshd"
+      -X '$_module_name/frontend.GitTag=${_git_tag}'
+      -X '$_module_name/frontend.GoVersion=${_go_version}'
+      -X '$_module_name/frontend.GitCommit=${_git_commit}'
+      -X '$_module_name/frontend.GitBranch=${_git_branch}'
+      -X '$_module_name/frontend.BuildTime=${_build_time}'" -o "$builddir/bin/apshd" ./frontend/server/*.go
+   echo "build server end  : $(TZ='Asia/Shanghai' date '+%F %T')"
+   echo "output server to  : $builddir/bin/apshd"
 
-   echo "build client start: `TZ='Asia/Shanghai' date '+%F %T'`"
+   echo "build client start: $(TZ='Asia/Shanghai' date '+%F %T')"
    go build -ldflags="-s -w
-      -X '${_ModuleName}/frontend.GitTag=${_GitTag}'
-      -X '${_ModuleName}/frontend.GoVersion=${_GoVersion}'
-      -X '${_ModuleName}/frontend.GitCommit=${_GitCommit}'
-      -X '${_ModuleName}/frontend.GitBranch=${_GitBranch}'
-      -X '${_ModuleName}/frontend.BuildTime=${_BuildTime}'" -o "${builddir}/bin/apsh" ./frontend/client/*.go
-   echo "build client end  : `TZ='Asia/Shanghai' date '+%F %T'`"
-   echo "output client to  : ${builddir}/bin/apsh"
+      -X '$_module_name/frontend.GitTag=${_git_tag}'
+      -X '$_module_name/frontend.GoVersion=${_go_version}'
+      -X '$_module_name/frontend.GitCommit=${_git_commit}'
+      -X '$_module_name/frontend.GitBranch=${_git_branch}'
+      -X '$_module_name/frontend.BuildTime=${_build_time}'" -o "$builddir/bin/apsh" ./frontend/client/*.go
+   echo "build client end  : $(TZ='Asia/Shanghai' date '+%F %T')"
+   echo "output client to  : $builddir/bin/apsh"
 }
 
 check() {
@@ -100,4 +100,4 @@ server() {
 	mv "$pkgdir/usr/bin/apshd" "$subpkgdir/usr/bin/"
 }
 
-sha512sums=
+sha512sums="fakeone_a78815e6f1ae43b0550e87635795eb859fd7c056"
