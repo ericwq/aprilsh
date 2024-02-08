@@ -9,12 +9,15 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
+
+	"log/slog"
 
 	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/frontend"
@@ -24,10 +27,10 @@ import (
 	"github.com/ericwq/aprilsh/util"
 	"github.com/rivo/uniseg"
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
-	"log/slog"
 )
 
 const (
@@ -157,15 +160,22 @@ func (c *Config) getPassword(in *os.File) (string, error) {
 func (c *Config) fetchKey() error {
 
 	// https://betterprogramming.pub/a-simple-cross-platform-ssh-client-in-100-lines-of-go-280644d8beea
-	cc := &ssh.ClientConfig{
+	// https://blog.ralch.com/articles/golang-ssh-connection/
+	clientConfig := &ssh.ClientConfig{
 		User: c.user,
 		Auth: []ssh.AuthMethod{
 			ssh.Password(c.pwd),
+			// publicKeyFile("~/.ssh/id_rsa.pub"), // SSH certificate file
+			sshAgent(), // SSH agent
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		Timeout:         time.Duration(1) * time.Second,
 	}
-	client, err := ssh.Dial("tcp", c.host+":22", cc)
+
+	// TODO add APKBUILD issue in github.com
+	// TODO understand ssh login session, fix the root login issue
+	//	it that possible to replace the sshd depdends?
+	client, err := ssh.Dial("tcp", c.host+":22", clientConfig)
 	if err != nil {
 		return err
 	}
@@ -291,6 +301,26 @@ func (c *Config) buildConfig() (string, bool) {
 	return "", true
 }
 
+func sshAgent() ssh.AuthMethod {
+	if sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK")); err == nil {
+		return ssh.PublicKeysCallback(agent.NewClient(sshAgent).Signers)
+	}
+	return nil
+}
+
+func publicKeyFile(file string) ssh.AuthMethod {
+	buffer, err := os.ReadFile(file)
+	if err != nil {
+		return nil
+	}
+
+	key, err := ssh.ParsePrivateKey(buffer)
+	if err != nil {
+		return nil
+	}
+	return ssh.PublicKeys(key)
+}
+
 func main() {
 	// cpuf, err := os.Create("cpu.profile")
 	// if err != nil {
@@ -352,8 +382,12 @@ func main() {
 
 	// login to remote server and fetch the key
 	if err = conf.fetchKey(); err != nil {
-		// printUsage(err.Error())
-		printUsage(fmt.Sprintf("Failed to authenticate user %q.", conf.user))
+		fmt.Printf("%t\n", err)
+		printUsage(err.Error())
+		if errors.Is(err, errors.New("no such host")) {
+			printUsage(fmt.Sprintf("No such host: %q.", conf.host))
+		}
+		// printUsage(fmt.Sprintf("Failed to authenticate user %q.", conf.user))
 		return
 	}
 
