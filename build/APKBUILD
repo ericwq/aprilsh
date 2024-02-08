@@ -100,4 +100,7 @@ server() {
 	mv "$pkgdir/usr/bin/apshd" "$subpkgdir/usr/bin/"
 }
 
-sha512sums="fakeone_a78815e6f1ae43b0550e87635795eb859fd7c056"
+sha512sums="
+3c9125dac2b6df3fe0102280179876cf694eacadf19bcc66c373cc72ca35a99e8df8162427f63087416e4060d49f7bd2b60ab0a82ff7b05c43329327a6a2b0c9  aprilsh-0.6.1.tar.gz
+d439a571851b17a8004ccc6dc46c10ba4a1bbef9c51d782bc46640f2aa5fb0c81528446a596efd13c719e80a33f43230c6ff2587296e354ef5656407bacdd567  apshd.initd
+"
