@@ -10,31 +10,28 @@ rm -rf coverage
 mkdir -p coverage/unit 
 mkdir -p coverage/int
 
-GitTag=`git describe --tags`
-echo "build server start: `date '+%F %T'`"
+echo "build server start: $(date '+%F %T')"
 #
 # selecting package to cover
 PKGS="github.com/ericwq/aprilsh/frontend/server"
-# get go module name
-ModuleName=`head ../../go.mod | grep "^module" | awk '{print $2}'`
-# get build time
-BuildTime=`date '+%F %T'`
-# get go version
-GoVersion=`go version | grep "version" | awk '{print $3,$4}'`
-# get git commit ID
-GitCommit=`git rev-parse HEAD`
-# get git branch
-GitBranch=`git rev-parse --abbrev-ref HEAD`
+
+# prepare for ldflags
+_module_name=$(head ../../go.mod | grep "^module" | awk '{print $2}')
+_build_time=$(date '+%F %T')
+_go_version=$(go version | grep "version" | awk '{print $3,$4}')
+_git_tag=$(git describe --tags)
+_git_commit=$(git rev-parse HEAD)
+_git_branch=$(git rev-parse --abbrev-ref HEAD)
 #
 # build server for test
 go build -cover -coverpkg=$PKGS -ldflags="-s -w
-      -X '${ModuleName}/frontend.GitTag=${GitTag}'
-      -X '${ModuleName}/frontend.GoVersion=${GoVersion}'
-      -X '${ModuleName}/frontend.GitCommit=${GitCommit}'
-      -X '${ModuleName}/frontend.GitBranch=${GitBranch}'
-      -X '${ModuleName}/frontend.BuildTime=${BuildTime}'" -o ~/.local/bin/apshd .
+      -X '${_module_name}/frontend.GitTag=${_git_tag}'
+      -X '${_module_name}/frontend.GoVersion=${_go_version}'
+      -X '${_module_name}/frontend.GitCommit=${_git_commit}'
+      -X '${_module_name}/frontend.GitBranch=${_git_branch}'
+      -X '${_module_name}/frontend.BuildTime=${_build_time}'" -o ~/.local/bin/apshd .
 # go build -race -cover -coverpkg=$PKGS -o ~/.local/bin/apshd .
-echo "build server end  : `date '+%F %T'`"
+echo "build server end  : $(date '+%F %T')"
 echo "output server to  : ~/.local/bin/apshd"
 echo "move server to    : /usr/bin/apshd"
 echo "run with          : GOCOVERDIR=./coverage/int apshd -verbose 1 2>> /tmp/apshd.log"
