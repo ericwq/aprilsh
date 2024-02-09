@@ -382,12 +382,15 @@ func main() {
 
 	// login to remote server and fetch the key
 	if err = conf.fetchKey(); err != nil {
-		fmt.Printf("%t\n", err)
-		printUsage(err.Error())
-		if errors.Is(err, errors.New("no such host")) {
+		// the error returned by ssh.Dial() doen't warpping error,
+		// we have to check the error message directly.
+		if strings.Contains(err.Error(), "no such host") {
 			printUsage(fmt.Sprintf("No such host: %q.", conf.host))
+		} else if strings.Contains(err.Error(), "unable to authenticate") {
+			printUsage(fmt.Sprintf("Failed to authenticate user %q.", conf.user))
+		} else {
+			printUsage(err.Error())
 		}
-		// printUsage(fmt.Sprintf("Failed to authenticate user %q.", conf.user))
 		return
 	}
 
