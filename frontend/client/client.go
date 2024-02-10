@@ -164,19 +164,20 @@ func (c *Config) fetchKey() error {
 	clientConfig := &ssh.ClientConfig{
 		User: c.user,
 		Auth: []ssh.AuthMethod{
-			ssh.Password(c.pwd),
-			// publicKeyFile("~/.ssh/id_rsa.pub"), // SSH certificate file
-			sshAgent(), // SSH agent
+			sshAgent(),                     // SSH agent
+			publicKeyFile("~/.ssh/id_rsa"), // SSH certificate file
+			ssh.Password(c.pwd),            // password is the last resort
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         time.Duration(1) * time.Second,
+		// HostKeyCallback: ssh.FixedHostKey(),
+		Timeout: time.Duration(3) * time.Second,
 	}
 
-	// TODO add APKBUILD issue in github.com
 	// TODO understand ssh login session, fix the root login issue
 	//	it that possible to replace the sshd depdends?
 	client, err := ssh.Dial("tcp", c.host+":22", clientConfig)
 	if err != nil {
+		fmt.Println("dial failed")
 		return err
 	}
 	defer client.Close()
@@ -185,6 +186,7 @@ func (c *Config) fetchKey() error {
 	// represented by a Session.
 	session, err := client.NewSession()
 	if err != nil {
+		fmt.Println("session failed")
 		return err
 	}
 	defer session.Close()
@@ -197,10 +199,12 @@ func (c *Config) fetchKey() error {
 	// util.Log.With("cmd", cmd).Debug("execute command")
 
 	if b, err = session.Output(cmd); err != nil {
+		fmt.Println("run failed")
 		return err
 	}
 	out := strings.TrimSpace(string(b))
 
+	fmt.Printf("run got %q\n", out)
 	/*
 		args := []string{
 			fmt.Sprintf("%s@%s", c.user, c.host),
@@ -309,16 +313,16 @@ func sshAgent() ssh.AuthMethod {
 }
 
 func publicKeyFile(file string) ssh.AuthMethod {
-	buffer, err := os.ReadFile(file)
+	key, err := os.ReadFile(file)
 	if err != nil {
-		return nil
+		return nil // unable to read private key
 	}
 
-	key, err := ssh.ParsePrivateKey(buffer)
+	signer, err := ssh.ParsePrivateKey(key)
 	if err != nil {
-		return nil
+		return nil // unable to parse private key
 	}
-	return ssh.PublicKeys(key)
+	return ssh.PublicKeys(signer) // Use the PublicKeys method for remote authentication.
 }
 
 func main() {
@@ -387,7 +391,9 @@ func main() {
 		if strings.Contains(err.Error(), "no such host") {
 			printUsage(fmt.Sprintf("No such host: %q.", conf.host))
 		} else if strings.Contains(err.Error(), "unable to authenticate") {
+			// enable 'PubkeyAuthentication yes' line to sshd_config
 			printUsage(fmt.Sprintf("Failed to authenticate user %q.", conf.user))
+			fmt.Printf("%#v\n", err)
 		} else {
 			printUsage(err.Error())
 		}
