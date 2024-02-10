@@ -50,7 +50,8 @@ Options:
   -c, --colors   print the number of colors of terminal
   -p, --port     server port (default 60000)
       --verbose  verbose output mode
-      --pwd      ssh password
+      --pwd      password authentication
+      --sshid    SSH identification file, for SSH Key-Based Authentication (default $HOME/.ssh/id_rsa)
 `
 	predictionValues = []string{"always", "never", "adaptive", "experimental"}
 	signals          frontend.Signals
@@ -114,6 +115,7 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.BoolVar(&conf.colors, "c", false, "terminal number of colors")
 
 	flagSet.StringVar(&conf.pwd, "pwd", "", "ssh password")
+	flagSet.StringVar(&conf.sshId, "sshid", os.Getenv("HOME")+"/.ssh/id_rsa", "ssh identification file")
 
 	err = flagSet.Parse(args)
 	if err != nil {
@@ -136,7 +138,8 @@ type Config struct {
 	key              string
 	predictMode      string
 	predictOverwrite string
-	pwd              string // user password for ssh login
+	pwd              string // use password for ssh login
+	sshId            string // use SSH Key-Based Authentication
 }
 
 // read password from specified input source
@@ -164,9 +167,9 @@ func (c *Config) fetchKey() error {
 	clientConfig := &ssh.ClientConfig{
 		User: c.user,
 		Auth: []ssh.AuthMethod{
-			sshAgent(),                     // SSH agent
-			publicKeyFile("~/.ssh/id_rsa"), // SSH certificate file
-			ssh.Password(c.pwd),            // password is the last resort
+			sshAgent(),             // SSH agent, for SSH Key-Based Authentication
+			publicKeyFile(c.sshId), // SSH identification file, for SSH Key-Based Authentication
+			ssh.Password(c.pwd),    // password authentication is the last resort
 		},
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 		// HostKeyCallback: ssh.FixedHostKey(),
@@ -177,7 +180,6 @@ func (c *Config) fetchKey() error {
 	//	it that possible to replace the sshd depdends?
 	client, err := ssh.Dial("tcp", c.host+":22", clientConfig)
 	if err != nil {
-		fmt.Println("dial failed")
 		return err
 	}
 	defer client.Close()
@@ -186,7 +188,6 @@ func (c *Config) fetchKey() error {
 	// represented by a Session.
 	session, err := client.NewSession()
 	if err != nil {
-		fmt.Println("session failed")
 		return err
 	}
 	defer session.Close()
@@ -199,12 +200,10 @@ func (c *Config) fetchKey() error {
 	// util.Log.With("cmd", cmd).Debug("execute command")
 
 	if b, err = session.Output(cmd); err != nil {
-		fmt.Println("run failed")
 		return err
 	}
 	out := strings.TrimSpace(string(b))
 
-	fmt.Printf("run got %q\n", out)
 	/*
 		args := []string{
 			fmt.Sprintf("%s@%s", c.user, c.host),
@@ -315,12 +314,14 @@ func sshAgent() ssh.AuthMethod {
 func publicKeyFile(file string) ssh.AuthMethod {
 	key, err := os.ReadFile(file)
 	if err != nil {
-		return nil // unable to read private key
+		fmt.Printf("Unable to read private key: %s\n", err)
+		return nil
 	}
 
 	signer, err := ssh.ParsePrivateKey(key)
 	if err != nil {
-		return nil // unable to parse private key
+		fmt.Printf("Unable to parse private key: %s\n", err)
+		return nil
 	}
 	return ssh.PublicKeys(signer) // Use the PublicKeys method for remote authentication.
 }
@@ -393,7 +394,7 @@ func main() {
 		} else if strings.Contains(err.Error(), "unable to authenticate") {
 			// enable 'PubkeyAuthentication yes' line to sshd_config
 			printUsage(fmt.Sprintf("Failed to authenticate user %q.", conf.user))
-			fmt.Printf("%#v\n", err)
+			// fmt.Printf("%#v\n", err)
 		} else {
 			printUsage(err.Error())
 		}
