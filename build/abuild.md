@@ -1,4 +1,4 @@
-## prepare docker environment for apk building
+## prepare container for apk building
 
 ```sh
 % docker build -t abuild:0.1.0 -f abuild.dockerfile .
@@ -11,7 +11,7 @@
 % docker exec -u root -it abuild ash
 ```
 
-## build apk files
+### build apk files
 
 `apk update` unlock the permission problem for abuild.
 
@@ -59,36 +59,20 @@ note the `cp -r` command, it's important to keep the [directory structure of loc
 % cp .abuild/packager-*.rsa.pub /home/ide/proj/packages
 ```
 
-## prepare docker environment for apk testing
+## prepare openrc-nvide container for apk testing
 
-build openrc image.
+please check [Run the openrc-nvide container](https://github.com/ericwq/nvide?tab=readme-ov-file#run-the-openrc-nvide-container) for detail.
 ```sh
-% docker build --build-arg ROOT_PWD=passowrd \
-	--build-arg USER_PWD=password \
-	--build-arg SSH_PUB_KEY="$(cat ~/.ssh/id_rsa.pub)" \
-	--progress plain -t abuild-openrc:0.1.0 -f abuild-openrc.dockerfile .
-```
-
-start openrc container, the container contains openrc, sshd, utmps, rsyslog by default.
-```sh
-% docker run --env TZ=Asia/Shanghai --tty --privileged --volume /sys/fs/cgroup:/sys/fs/cgroup:rw \
+$ docker run --env TZ=Asia/Shanghai --tty --privileged --volume /sys/fs/cgroup:/sys/fs/cgroup:rw \
     --mount source=proj-vol,target=/home/ide/proj \
     --mount type=bind,source=/Users/qiwang/dev,target=/home/ide/develop \
-    -h abuild-openrc --name abuild-openrc -d -p 8022:22  -p 65000:60000/udp  -p 65001:60001/udp -p 65002:60002/udp \
-    -p 65003:60003/udp abuild-openrc:0.1.0
+    -h openrc-nvide --name openrc-nvide -d -p 22:22  -p 60000:60000/udp  -p 60001:60001/udp -p 60002:60002/udp \
+    -p 60003:60003/udp openrc-nvide:0.10.2
 ```
 
 don't forget to start utmps service.
 ```shell
 # setup-utmp
-```
-
-start a base container.
-```sh
-% docker run --rm -ti --privileged -h abuild-test --env TZ=Asia/Shanghai --name abuild-test \
-        --mount source=proj-vol,target=/home/ide/proj \
-        --mount type=bind,source=/Users/qiwang/dev,target=/home/ide/develop \
-        alpine:3.19
 ```
 
 install timezone package and install package key from mount point.
@@ -125,7 +109,7 @@ The local repository should contains `x86_64` directory and `APKINDEX.tar.gz` fi
 1 directories, 4 files
 ```
 
-## validate apk files
+### validate apk files
 install the package and validate the program.
 
 ```shell
