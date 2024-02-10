@@ -115,7 +115,7 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.BoolVar(&conf.colors, "c", false, "terminal number of colors")
 
 	flagSet.StringVar(&conf.pwd, "pwd", "", "ssh password")
-	flagSet.StringVar(&conf.sshId, "sshid", os.Getenv("HOME")+"/.ssh/id_rsa", "ssh identification file")
+	flagSet.StringVar(&conf.sshId, "sshid", os.ExpandEnv("$HOME/.ssh/id_rsa"), "ssh identification file")
 
 	err = flagSet.Parse(args)
 	if err != nil {
@@ -161,19 +161,32 @@ func (c *Config) getPassword(in *os.File) (string, error) {
 // For alpine, ssh is provided by openssh package, nc and echo is provided by busybox.
 // % ssh ide@localhost  "echo 'open aprilsh:' | nc localhost 6000 -u -w 1"
 func (c *Config) fetchKey() error {
+	// var hostKey ssh.PublicKey
+	var auth []ssh.AuthMethod
+	var am ssh.AuthMethod
+
+	auth = make([]ssh.AuthMethod, 0)
+	if am = sshAgent(); am != nil {
+		auth = append(auth, am) // SSH agent, for SSH Key-Based Authentication
+	}
+	if am = publicKeyFile(c.sshId); am != nil {
+		auth = append(auth, am) // SSH identification file, for SSH Key-Based Authentication
+	}
+	if am = ssh.Password(c.pwd); am != nil {
+		auth = append(auth, am) // password authentication is the last resort
+	}
 
 	// https://betterprogramming.pub/a-simple-cross-platform-ssh-client-in-100-lines-of-go-280644d8beea
 	// https://blog.ralch.com/articles/golang-ssh-connection/
 	clientConfig := &ssh.ClientConfig{
-		User: c.user,
-		Auth: []ssh.AuthMethod{
-			sshAgent(),             // SSH agent, for SSH Key-Based Authentication
-			publicKeyFile(c.sshId), // SSH identification file, for SSH Key-Based Authentication
-			ssh.Password(c.pwd),    // password authentication is the last resort
-		},
+		User:            c.user,
+		Auth:            auth,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		// HostKeyCallback: ssh.FixedHostKey(),
-		Timeout: time.Duration(3) * time.Second,
+		Timeout:         time.Duration(3) * time.Second,
+		// HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+		// 	return nil
+		// },
+		// HostKeyCallback: ssh.FixedHostKey(hostKey),
 	}
 
 	// TODO understand ssh login session, fix the root login issue
