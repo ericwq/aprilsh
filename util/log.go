@@ -7,7 +7,6 @@ package util
 import (
 	"fmt"
 	"io"
-	"net"
 	"os"
 
 	"log/slog"
@@ -55,19 +54,19 @@ func (l *logger) Restore() {
 }
 
 // network: udp, address: localhost:514. check net.Dial() for detail
-func (l *logger) SetupSyslog(network string, address string) error {
-	writer, err := net.Dial(network, address)
-	// writer, err := syslog.New(syslog.LOG_DAEMON|syslog.LOG_LOCAL7, "aprilsh")
-	if err != nil {
-		return err
-	}
-
-	ho := &slog.HandlerOptions{AddSource: l.isDebugLevel(), Level: Log.programLevel}
-	l.Logger = slog.New(slog.NewTextHandler(writer, ho))
-	slog.SetDefault(Log.Logger)
-	l.defaultLogger = slog.Default()
-	return nil
-}
+// func (l *logger) SetupSyslog(network string, address string) error {
+// 	writer, err := net.Dial(network, address)
+// 	// writer, err := syslog.New(syslog.LOG_DAEMON|syslog.LOG_LOCAL7, "aprilsh")
+// 	if err != nil {
+// 		return err
+// 	}
+//
+// 	ho := &slog.HandlerOptions{AddSource: l.isDebugLevel(), Level: Log.programLevel}
+// 	l.Logger = slog.New(slog.NewTextHandler(writer, ho))
+// 	slog.SetDefault(Log.Logger)
+// 	l.defaultLogger = slog.Default()
+// 	return nil
+// }
 
 // create log file based on prefix under tmp directory. such as aprilsh-PID.log
 func (l *logger) CreateLogFile(prefix string) (*os.File, error) {

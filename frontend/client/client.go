@@ -123,13 +123,13 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	}
 
 	// get the non-flag command-line arguments.
-	conf.target = flagSet.Args()
+	conf.destination = flagSet.Args()
 	return &conf, buf.String(), nil
 }
 
 type Config struct {
 	version          bool
-	target           []string // raw parameter
+	destination      []string // raw parameter
 	host             string   // target host/server
 	user             string   // target user
 	port             int      // target port
@@ -211,7 +211,7 @@ func (c *Config) fetchKey() error {
 	// the remote side using the Run method.
 	var b []byte
 	// cmd := fmt.Sprintf("echo '%s' | nc localhost %d -u -w 1", _ASH_OPEN, c.port)
-	cmd := fmt.Sprintf("/usr/bin/apshd -b -t %s -target %s", os.Getenv("TERM"), c.target[0])
+	cmd := fmt.Sprintf("/usr/bin/apshd -b -t %s -destination %s", os.Getenv("TERM"), c.destination[0])
 	// util.Log.With("cmd", cmd).Debug("execute command")
 
 	if b, err = session.Output(cmd); err != nil {
@@ -273,22 +273,21 @@ func (c *Config) buildConfig() (string, bool) {
 		return "", true
 	}
 
-	if len(c.target) == 0 {
-		return "target parameter (User@Server) is mandatory.", false
+	if len(c.destination) == 0 {
+		return "destination (User@Server) is mandatory.", false
 	}
 
-	if len(c.target) != 1 {
-		return "only one target parameter (User@Server) is allowed.", false
+	if len(c.destination) != 1 {
+		return "only one destination (User@Server) is allowed.", false
 	}
 
-	// check target is in the form of usr@host parameter
-	idx := strings.Index(c.target[0], "@")
-	if idx > 0 && idx < len(c.target[0])-1 {
-		c.host = c.target[0][idx+1:]
-		c.user = c.target[0][:idx]
+	// check destination is in the form of usr@host
+	idx := strings.Index(c.destination[0], "@")
+	if idx > 0 && idx < len(c.destination[0])-1 {
+		c.host = c.destination[0][idx+1:]
+		c.user = c.destination[0][:idx]
 	} else {
-		return "target parameter should be in the form of User@Server", false
-
+		return "destination should be in the form of User@Server", false
 	}
 
 	// Read key from environment

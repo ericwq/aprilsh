@@ -211,7 +211,7 @@ func TestBuildConfig(t *testing.T) {
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			var conf Config
-			conf.target = []string{v.target}
+			conf.destination = []string{v.target}
 
 			// prepare parse result
 			var host string

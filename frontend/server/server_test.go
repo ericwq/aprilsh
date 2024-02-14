@@ -1374,7 +1374,7 @@ func TestMalformRequest(t *testing.T) {
 
 func mockServe(ptmx *os.File, pts *os.File, pw *io.PipeWriter, terminal *statesync.Complete, // x chan bool,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
-	networkTimeout int64, networkSignaledTimeout int64) error {
+	networkTimeout int64, networkSignaledTimeout int64, user string) error {
 	time.Sleep(10 * time.Millisecond)
 	// x <- true
 	return nil

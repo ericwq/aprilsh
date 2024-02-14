@@ -24,6 +24,9 @@ import (
 	"syscall"
 	"time"
 
+	"log/slog"
+	"log/syslog"
+
 	"github.com/creack/pty"
 	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/frontend"
@@ -34,7 +37,6 @@ import (
 	utmp "github.com/ericwq/goutmp"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
-	"log/slog"
 )
 
 const (
@@ -48,7 +50,7 @@ const (
 
 var usage = `Usage:
   ` + frontend.CommandServerName + ` [-v] [-h] [--auto N]
-  ` + frontend.CommandServerName + ` [-b] [-t TERM] [-target user@server.domain]
+  ` + frontend.CommandServerName + ` [-b] [-t TERM] [-destination user@server.domain]
   ` + frontend.CommandServerName + ` [-s] [--verbose V] [-i LOCALADDR] [-p PORT[:PORT2]] [-l NAME=VALUE] [-- command...]
 Options:
   -h, --help     print this message
@@ -60,9 +62,9 @@ Options:
   -p, --port     listen port range (default port 60000)
   -l, --locale   key-value pairs (such as LANG=UTF-8, you can have multiple -l options)
   -t, --term     client TERM (such as xterm-256color, or alacritty or xterm-kitty)
-      --verbose  verbose output (such as 1)
-      --target   target string, such as user@server
-      -- command  shell command and options (note the space before command)
+  --verbose      verbose output (such as 1)
+  --destination  destination string, such as user@server
+  -- command     shell command and options (note the space before command)
 `
 
 var failToStartShell = errors.New("fail to start shell")
@@ -76,6 +78,7 @@ var (
 var (
 	utmpSupport   bool
 	syslogSupport bool
+	syslogWriter  *syslog.Writer
 	signals       frontend.Signals
 	maxPortLimit  = 100 // assume 10 concurrent users, each owns 10 connections
 )
@@ -111,7 +114,9 @@ type Config struct {
 	term        string     // client TERM
 	autoStop    int        // auto stop after N seconds
 	begin       bool       // begin a client connection
-	target      string     // target string
+	destination string     // [user@]hostname, destination string
+	host        string     // target host/server
+	user        string     // target user
 
 	commandPath string   // shell command path (absolute path)
 	commandArgv []string // the positional (non-flag) command-line arguments.
@@ -119,7 +124,7 @@ type Config struct {
 
 	// the serve func
 	serve func(*os.File, *os.File, *io.PipeWriter, *statesync.Complete, // chan bool,
-		*network.Transport[*statesync.Complete, *statesync.UserStream], int64, int64) error
+		*network.Transport[*statesync.Complete, *statesync.UserStream], int64, int64, string) error
 }
 
 // build the config instance and check the utf-8 locale. return error if the terminal
@@ -253,13 +258,24 @@ func main() {
 		util.Log.SetLevel(slog.LevelInfo)
 	}
 	util.Log.SetOutput(os.Stderr)
-	syslogSupport = false
-	if conf.verbose == _VERBOSE_LOG_TO_SYSLOG {
-		if util.Log.SetupSyslog("udp", "localhost:514") == nil {
-			// util.Log.With("verbose", conf.verbose).Debug("log to syslog")
-			syslogSupport = true
-		}
+
+	// syslogSupport = false
+	// if conf.verbose == _VERBOSE_LOG_TO_SYSLOG {
+	// 	if util.Log.SetupSyslog("udp", "localhost:514") == nil {
+	// 		// util.Log.With("verbose", conf.verbose).Debug("log to syslog")
+	// 		syslogSupport = true
+	// 	}
+	// }
+
+	// setup syslog
+	syslogWriter, err = syslog.New(syslog.LOG_WARNING|syslog.LOG_LOCAL7, frontend.CommandServerName)
+	if err != nil {
+		util.Log.Warn("can't find syslog service on this server.")
+		syslogSupport = false
+	} else {
+		syslogSupport = true
 	}
+	defer syslogWriter.Close()
 
 	// cpuf, err := os.Create("cpu.profile")
 	// if err != nil {
@@ -431,7 +447,7 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.StringVar(&conf.term, "term", "", "client TERM")
 	flagSet.StringVar(&conf.term, "t", "", "client TERM")
 
-	flagSet.StringVar(&conf.target, "target", "", "target string")
+	flagSet.StringVar(&conf.destination, "destination", "", "destination string")
 
 	flagSet.Var(&conf.locales, "locale", "locale list, key=value pair")
 	flagSet.Var(&conf.locales, "l", "locale list, key=value pair")
@@ -486,7 +502,7 @@ func beginClientConn(conf *Config) { //(port string, term string) {
 
 	// request from server
 	// open aprilsh:TERM,user@server.domain
-	request := fmt.Sprintf("%s%s,%s", frontend.AprilshMsgOpen, conf.term, conf.target)
+	request := fmt.Sprintf("%s%s,%s", frontend.AprilshMsgOpen, conf.term, conf.destination)
 	conn.SetDeadline(time.Now().Add(time.Millisecond * 20))
 	conn.WriteTo([]byte(request), dest)
 	// n, err := conn.WriteTo([]byte(request), dest)
@@ -605,9 +621,9 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 	// clear STY environment variable so GNU screen regards us as top level
 	// os.Unsetenv("STY")
 
-	// get login user info, we already check the user exist.
-	users := strings.Split(conf.target, "@")
-	u, _ := user.Lookup(users[0])
+	// get login user info, we already checked the user exist when ssh perform authentication.
+	// users := strings.Split(conf.destination, "@")
+	u, _ := user.Lookup(conf.user)
 	uid, _ := strconv.ParseInt(u.Uid, 10, 32)
 	gid, _ := strconv.ParseInt(u.Gid, 10, 32)
 	util.Log.With("user", u.Username).With("gid", u.Gid).With("HOME", u.HomeDir).
@@ -617,7 +633,7 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 	// TODO should we put LOGNAME, MAIL into env?
 	env = append(env, "PWD="+u.HomeDir)
 	env = append(env, "HOME="+u.HomeDir) // it's important for shell to source .profile
-	env = append(env, "USER="+users[0])
+	env = append(env, "USER="+conf.user)
 	env = append(env, "SHELL="+conf.commandPath)
 	env = append(env, fmt.Sprintf("TZ=%s", os.Getenv("TZ")))
 
@@ -665,7 +681,7 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 	}
 
 	// set new title
-	fmt.Fprintf(pts, "\x1B]0;%s %s:%s\a", frontend.CommandClientName, conf.target, conf.desiredPort)
+	fmt.Fprintf(pts, "\x1B]0;%s %s:%s\a", frontend.CommandClientName, conf.destination, conf.desiredPort)
 
 	encrypt.ReenableDumpingCore()
 
@@ -856,7 +872,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err err
 	// waitChan := make(chan bool)
 	// go conf.serve(ptmx, pw, terminal, waitChan, network, networkTimeout, networkSignaledTimeout)
 	go func() {
-		conf.serve(ptmx, pts, pw, terminal, server, networkTimeout, networkSignaledTimeout)
+		conf.serve(ptmx, pts, pw, terminal, server, networkTimeout, networkSignaledTimeout, conf.user)
 		exChan <- fmt.Sprintf("%s:shutdown", conf.desiredPort)
 		wg.Done()
 	}()
@@ -908,7 +924,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err err
 
 func serve(ptmx *os.File, pts *os.File, pw *io.PipeWriter, complete *statesync.Complete, // waitChan chan bool,
 	server *network.Transport[*statesync.Complete, *statesync.UserStream],
-	networkTimeout int64, networkSignaledTimeout int64) error {
+	networkTimeout int64, networkSignaledTimeout int64, user string) error {
 	// scale timeouts
 	networkTimeoutMs := networkTimeout * 1000
 	networkSignaledTimeoutMs := networkSignaledTimeout * 1000
@@ -1045,6 +1061,10 @@ mainLoop:
 						if !childReleased {
 							// only do once
 							server.InitSize(res.Width, res.Height)
+							if syslogSupport {
+								syslogWriter.Info(fmt.Sprintf("user %s connected from host: %s -> port %s",
+									user, server.GetRemoteAddr(), server.GetServerPort()))
+							}
 						}
 					}
 					terminalToHost.WriteString(complete.ActOne(action))
@@ -1280,6 +1300,8 @@ mainLoop:
 
 	if syslogSupport {
 		util.Log.With("user", userName).Info("user session end")
+		syslogWriter.Info(fmt.Sprintf("user %s disconnected from host: %s -> port %s",
+			user, server.GetRemoteAddr(), server.GetServerPort()))
 	}
 
 	return nil
@@ -1507,7 +1529,19 @@ func (m *mainSrv) run(conf *Config) {
 				continue
 			}
 			conf2.term = content[0]
-			conf2.target = content[1]
+			conf2.destination = content[1]
+
+			// parse user and host from destination
+			idx := strings.Index(content[1], "@")
+			if idx > 0 && idx < len(content[1])-1 {
+				conf2.host = content[1][idx+1:]
+				conf2.user = content[1][:idx]
+			} else {
+				// return "target parameter should be in the form of User@Server", false
+				resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "malform destination")
+				util.Log.With("destination", content[1]).With("response", resp).Warn("malform destination")
+				continue
+			}
 
 			// we don't need to check if user exist, ssh already done that before
 
