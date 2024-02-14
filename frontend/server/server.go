@@ -1061,10 +1061,6 @@ mainLoop:
 						if !childReleased {
 							// only do once
 							server.InitSize(res.Width, res.Height)
-							if syslogSupport {
-								syslogWriter.Info(fmt.Sprintf("user %s connected from host: %s -> port %s",
-									user, server.GetRemoteAddr(), server.GetServerPort()))
-							}
 						}
 					}
 					terminalToHost.WriteString(complete.ActOne(action))
@@ -1128,6 +1124,10 @@ mainLoop:
 					}
 					// util.Log.With("action", "send").Debug("start shell message")
 					childReleased = true
+					if syslogSupport {
+						syslogWriter.Info(fmt.Sprintf("user %s connected from host: %s -> port %s",
+							user, server.GetRemoteAddr(), server.GetServerPort()))
+					}
 				}
 			}
 		case remains := <-largeFeed:
