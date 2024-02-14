@@ -29,7 +29,7 @@ error_log="/var/log/${RC_SVCNAME}.log"
 
 depend() {
     need sshd
-    want utmpd
+    want utmpd logger
     after networking
 }
 
