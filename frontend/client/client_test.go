@@ -89,7 +89,7 @@ func TestMainRun_Parameters(t *testing.T) {
 			[]string{frontend.CommandClientName},
 			"xterm-256color",
 			[]string{
-				"target parameter (User@Server) is mandatory.", "Usage:", frontend.CommandClientName, "Options:",
+				"destination (user@host[:port]) is mandatory.", "Usage:", frontend.CommandClientName, "Options:",
 				"-c, --colors   print the number of colors of terminal",
 			},
 		},
@@ -122,25 +122,25 @@ func TestMainRun_Parameters(t *testing.T) {
 			[]string{frontend.CommandClientName, "invalid", "target", "parameter"},
 			"xterm-256color",
 			[]string{
-				"only one target parameter (User@Server) is allowed.", "Usage:", frontend.CommandClientName, "Options:",
+				"only one destination (user@host[:port]) is allowed.", "Usage:", frontend.CommandClientName, "Options:",
 				"-c, --colors   print the number of colors of terminal",
 			},
 		},
 		{
-			"malform target parameter no second part",
+			"destination no second part",
 			[]string{frontend.CommandClientName, "malform@"},
 			"xterm-256color",
 			[]string{
-				"target parameter should be in the form of User@Server", "Usage:", frontend.CommandClientName, "Options:",
+				"destination should be in the form of user@host[:port]", "Usage:", frontend.CommandClientName, "Options:",
 				"-c, --colors   print the number of colors of terminal",
 			},
 		},
 		{
-			"malform target parameter no first part",
+			"destination no first part",
 			[]string{frontend.CommandClientName, "@malform"},
 			"xterm-256color",
 			[]string{
-				"target parameter should be in the form of User@Server", "Usage:", frontend.CommandClientName, "Options:",
+				"destination should be in the form of user@host[:port]", "Usage:", frontend.CommandClientName, "Options:",
 				"-c, --colors   print the number of colors of terminal",
 			},
 		},
@@ -184,7 +184,7 @@ func TestMainRun_Parameters(t *testing.T) {
 				}
 			}
 			if found != len(v.expect) {
-				t.Errorf("#test %s expect %s, got %s\n", v.label, v.expect, result)
+				t.Errorf("#test expect %s, got \n%q\n", v.expect, result)
 			}
 		})
 	}

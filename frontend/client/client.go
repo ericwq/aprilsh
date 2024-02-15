@@ -43,7 +43,7 @@ const (
 var (
 	usage = `Usage:
   ` + frontend.CommandClientName + ` [--version] [--help] [--colors]
-  ` + frontend.CommandClientName + ` [--verbose] [--port PORT] [--pwd PASSWORD] user@server.domain
+  ` + frontend.CommandClientName + ` [--verbose] [--port PORT] [--pwd PASSWORD] user@server.domain[:port]
 Options:
   -h, --help     print this message
   -v, --version  print version information
@@ -117,6 +117,8 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.StringVar(&conf.pwd, "pwd", "", "ssh password")
 	flagSet.StringVar(&conf.sshClientID, "sshcid", os.ExpandEnv("$HOME/.ssh/id_rsa"), "ssh identification file")
 
+	conf.sshPort = "22"
+
 	err = flagSet.Parse(args)
 	if err != nil {
 		return nil, buf.String(), err
@@ -140,6 +142,7 @@ type Config struct {
 	predictOverwrite string
 	pwd              string // use password for ssh login
 	sshClientID      string // ssh client identification, for SSH Key-Based Authentication
+	sshPort          string // ssh port, default 22
 }
 
 // read password from specified input source
@@ -193,7 +196,7 @@ func (c *Config) fetchKey() error {
 
 	// TODO understand ssh login session, fix the root login issue
 	//	it that possible to replace the sshd depdends?
-	client, err := ssh.Dial("tcp", c.host+":22", clientConfig)
+	client, err := ssh.Dial("tcp", c.host+":"+c.sshPort, clientConfig)
 	if err != nil {
 		return err
 	}
@@ -274,20 +277,29 @@ func (c *Config) buildConfig() (string, bool) {
 	}
 
 	if len(c.destination) == 0 {
-		return "destination (User@Server) is mandatory.", false
+		return "destination (user@host[:port]) is mandatory.", false
 	}
 
 	if len(c.destination) != 1 {
-		return "only one destination (User@Server) is allowed.", false
+		return "only one destination (user@host[:port]) is allowed.", false
 	}
 
-	// check destination is in the form of usr@host
-	idx := strings.Index(c.destination[0], "@")
-	if idx > 0 && idx < len(c.destination[0])-1 {
-		c.host = c.destination[0][idx+1:]
-		c.user = c.destination[0][:idx]
+	// check destination
+	first := strings.Split(c.destination[0], "@")
+	if len(first) == 2 {
+		c.user = first[0]
+		second := strings.Split(first[1], ":")
+		c.host = second[0]
+		if len(second) == 1 {
+			c.sshPort = "22"
+		} else {
+			if _, err := strconv.Atoi(second[1]); err != nil {
+				return "please check destination user@host[:port], illegal port number.", false
+			}
+			c.sshPort = second[1]
+		}
 	} else {
-		return "destination should be in the form of User@Server", false
+		return "destination should be in the form of user@host[:port]", false
 	}
 
 	// Read key from environment
