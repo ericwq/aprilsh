@@ -1112,6 +1112,8 @@ mainLoop:
 						}
 						if syslogSupport {
 							util.Log.With("user", userName).With("host", host).Info("connected from remote host")
+							syslogWriter.Info(fmt.Sprintf("user %s connected from host: %s -> port %s",
+								user, server.GetRemoteAddr(), server.GetServerPort()))
 						}
 					}
 				}
@@ -1124,10 +1126,6 @@ mainLoop:
 					}
 					// util.Log.With("action", "send").Debug("start shell message")
 					childReleased = true
-					if syslogSupport {
-						syslogWriter.Info(fmt.Sprintf("user %s connected from host: %s -> port %s",
-							user, server.GetRemoteAddr(), server.GetServerPort()))
-					}
 				}
 			}
 		case remains := <-largeFeed:
