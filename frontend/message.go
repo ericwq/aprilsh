@@ -33,10 +33,10 @@ var (
 )
 
 func PrintVersion() {
-	fmt.Printf("go version\t: %s\n", GoVersion)
-	fmt.Printf("build time\t: %s\n", BuildTime)
 	fmt.Printf("git tag   \t: %s\n", GitTag)
 	fmt.Printf("git commit\t: %s\n", GitCommit)
-	fmt.Printf("git branch\t: %s\n\n", GitBranch)
+	fmt.Printf("git branch\t: %s\n", GitBranch)
+	fmt.Printf("go version\t: %s\n", GoVersion)
+	fmt.Printf("build time\t: %s\n\n", BuildTime)
 	fmt.Printf(VersionInfo)
 }

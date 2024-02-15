@@ -50,7 +50,7 @@ Options:
   -c, --colors   print the number of colors of terminal
   -p, --port     server port (default 60000)
       --verbose  verbose output mode
-      --pwd      password authentication, for password authentication.
+      --pwd      for password authentication.
       --sshcid   ssh client identification, for ssh key-based authentication (default $HOME/.ssh/id_rsa)
 `
 	predictionValues = []string{"always", "never", "adaptive", "experimental"}
@@ -305,7 +305,7 @@ func (c *Config) buildConfig() (string, bool) {
 			c.sshPort = "22"
 		} else {
 			if _, err := strconv.Atoi(second[1]); err != nil {
-				return "please check destination user@host[:port], illegal port number.", false
+				return "please check destination, illegal port number.", false
 			}
 			c.sshPort = second[1]
 		}
@@ -380,10 +380,10 @@ func main() {
 		printUsage("", usage)
 		return
 	} else if err != nil {
-		printUsage(err.Error(), usage)
+		printUsage(err.Error())
 		return
 	} else if hint, ok := conf.buildConfig(); !ok {
-		printUsage(hint, usage)
+		printUsage(hint)
 		return
 	}
 
