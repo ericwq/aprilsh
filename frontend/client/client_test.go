@@ -289,7 +289,7 @@ func TestGetPassword(t *testing.T) {
 			// prepare input data
 			ptmx.WriteString(v.pwd)
 
-			got, err := v.conf.getPassword(pts)
+			got, err := getPassword("password", pts)
 
 			ptmx.Close()
 			pts.Close()
@@ -313,14 +313,14 @@ func TestGetPassword(t *testing.T) {
 }
 
 func TestGetPasswordFail(t *testing.T) {
-	conf := &Config{}
+	// conf := &Config{}
 
 	// intercept stdout
 	saveStdout := os.Stdout
 	r, w, _ := os.Pipe()
 	os.Stdout = w
 
-	got, err := conf.getPassword(r)
+	got, err := getPassword("password", r)
 
 	// restore stdout
 	w.Close()

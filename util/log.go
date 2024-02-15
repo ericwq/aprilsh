@@ -5,7 +5,6 @@
 package util
 
 import (
-	"fmt"
 	"io"
 	"os"
 
@@ -68,20 +67,20 @@ func (l *logger) Restore() {
 // 	return nil
 // }
 
-// create log file based on prefix under tmp directory. such as aprilsh-PID.log
-func (l *logger) CreateLogFile(prefix string) (*os.File, error) {
-	name := joinPath(os.TempDir(), fmt.Sprintf("%s-%d.%s", prefix, os.Getpid(), "log"))
-	file, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
-	if err != nil {
-		return nil, err
-	}
+// // create log file based on prefix under tmp directory. such as aprilsh-PID.log
+// func (l *logger) CreateLogFile(prefix string) (*os.File, error) {
+// 	name := joinPath(os.TempDir(), fmt.Sprintf("%s-%d.%s", prefix, os.Getpid(), "log"))
+// 	file, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+//
+// 	return file, nil
+// }
 
-	return file, nil
-}
-
-func joinPath(dir, name string) string {
-	if len(dir) > 0 && os.IsPathSeparator(dir[len(dir)-1]) {
-		return dir + name
-	}
-	return dir + string(os.PathSeparator) + name
-}
+// func joinPath(dir, name string) string {
+// 	if len(dir) > 0 && os.IsPathSeparator(dir[len(dir)-1]) {
+// 		return dir + name
+// 	}
+// 	return dir + string(os.PathSeparator) + name
+// }

@@ -43,7 +43,7 @@ const (
 var (
 	usage = `Usage:
   ` + frontend.CommandClientName + ` [--version] [--help] [--colors]
-  ` + frontend.CommandClientName + ` [--verbose] [--port PORT] [--pwd PASSWORD] user@server.domain[:port]
+  ` + frontend.CommandClientName + ` [--verbose] [--port PORT] [--pwd PASSWORD] user@host[:port]
 Options:
   -h, --help     print this message
   -v, --version  print version information
@@ -129,6 +129,19 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	return &conf, buf.String(), nil
 }
 
+// read password from specified input source
+func getPassword(prompt string, in *os.File) (string, error) {
+	fmt.Printf("%s: ", prompt)
+	bytepw, err := term.ReadPassword(int(in.Fd()))
+	defer fmt.Printf("\n")
+
+	if err != nil {
+		return "", err
+	}
+
+	return string(bytepw), nil
+}
+
 type Config struct {
 	version          bool
 	destination      []string // raw parameter
@@ -143,19 +156,6 @@ type Config struct {
 	pwd              string // use password for ssh login
 	sshClientID      string // ssh client identification, for SSH Key-Based Authentication
 	sshPort          string // ssh port, default 22
-}
-
-// read password from specified input source
-func (c *Config) getPassword(in *os.File) (string, error) {
-	fmt.Print("Password: ")
-	bytepw, err := term.ReadPassword(int(in.Fd()))
-	defer fmt.Printf("\n")
-
-	if err != nil {
-		return "", err
-	}
-
-	return string(bytepw), nil
 }
 
 // utilize ssh to fetch the key from remote server and start a server.
@@ -175,8 +175,19 @@ func (c *Config) fetchKey() error {
 	if am = publicKeyFile(c.sshClientID); am != nil {
 		auth = append(auth, am) // ssh client identification, for ssh key-based authentication
 	}
-	if am = ssh.Password(c.pwd); am != nil {
-		auth = append(auth, am) // password authentication is the last resort
+	if len(auth) == 0 {
+		// get ssh pwd
+		if c.pwd == "" {
+			var err error
+			c.pwd, err = getPassword("password", os.Stdin)
+			if err != nil {
+				return err
+			}
+		}
+
+		if am = ssh.Password(c.pwd); am != nil {
+			auth = append(auth, am) // password authentication is the last resort
+		}
 	}
 
 	// https://betterprogramming.pub/a-simple-cross-platform-ssh-client-in-100-lines-of-go-280644d8beea
@@ -393,25 +404,24 @@ func main() {
 		util.Log.SetLevel(slog.LevelInfo)
 	}
 	util.Log.SetOutput(os.Stderr)
-	if conf.verbose == _VERBOSE_LOG_TMPFILE { //TODO consider remove this.
-		logf, err := util.Log.CreateLogFile(frontend.CommandClientName)
-		if err != nil {
-			fmt.Printf("can't create log file %s.\n", logf.Name())
-			return
-		}
-		util.Log.SetOutput(logf)
-	}
+	// if conf.verbose == _VERBOSE_LOG_TMPFILE { //TODO consider remove this.
+	// 	logf, err := util.Log.CreateLogFile(frontend.CommandClientName)
+	// 	if err != nil {
+	// 		fmt.Printf("can't create log file %s.\n", logf.Name())
+	// 		return
+	// 	}
+	// 	util.Log.SetOutput(logf)
+	// }
 
-	// get pwd
-	if conf.pwd == "" {
-		conf.pwd, err = conf.getPassword(os.Stdin)
-		if err != nil {
-			printUsage(err.Error())
-			return
-		}
-	}
-
-	// login to remote server and fetch the key
+	// // get pwd
+	// if conf.pwd == "" {
+	// 	conf.pwd, err = conf.getPassword(os.Stdin)
+	// 	if err != nil {
+	// 		printUsage(err.Error())
+	// 		return
+	// 	}
+	// }
+	// ssh login to remote server and fetch the seesion key
 	if err = conf.fetchKey(); err != nil {
 		// the error returned by ssh.Dial() doen't warpping error,
 		// we have to check the error message directly.
