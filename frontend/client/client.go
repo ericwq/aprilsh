@@ -53,8 +53,9 @@ Options:
       --pwd      for password authentication.
       --sshcid   ssh client identification, for ssh key-based authentication (default $HOME/.ssh/id_rsa)
 `
-	predictionValues = []string{"always", "never", "adaptive", "experimental"}
-	signals          frontend.Signals
+	predictionValues   = []string{"always", "never", "adaptive", "experimental"}
+	defaultSSHClientID = os.ExpandEnv("$HOME/.ssh/id_rsa")
+	signals            frontend.Signals
 )
 
 func printVersion() {
@@ -115,7 +116,7 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.BoolVar(&conf.colors, "c", false, "terminal number of colors")
 
 	flagSet.StringVar(&conf.pwd, "pwd", "", "ssh password")
-	flagSet.StringVar(&conf.sshClientID, "sshcid", os.ExpandEnv("$HOME/.ssh/id_rsa"), "ssh identification file")
+	flagSet.StringVar(&conf.sshClientID, "sshcid", defaultSSHClientID, "ssh identification file")
 
 	conf.sshPort = "22"
 
@@ -163,6 +164,8 @@ type Config struct {
 //
 // For alpine, ssh is provided by openssh package, nc and echo is provided by busybox.
 // % ssh ide@localhost  "echo 'open aprilsh:' | nc localhost 6000 -u -w 1"
+//
+// ssh-copy-id -i .ssh/id_ed25519.pub root@localhost
 func (c *Config) fetchKey() error {
 	// var hostKey ssh.PublicKey
 	var auth []ssh.AuthMethod
@@ -173,10 +176,31 @@ func (c *Config) fetchKey() error {
 		auth = append(auth, am) // ssh agent, for ssh key-based authentication
 	}
 	if am = publicKeyFile(c.sshClientID); am != nil {
-		auth = append(auth, am) // ssh client identification, for ssh key-based authentication
+		// fmt.Printf("auth.length=%d, defaultSSHClientID=%s, sshClientID=%s\n",
+		// 	len(auth), defaultSSHClientID, c.sshClientID)
+		if c.sshClientID != defaultSSHClientID {
+			if len(auth) == 0 {
+				// ssh client identification is the only available method,
+				auth = append(auth, am)
+				// fmt.Printf("auth=[pub]\n")
+			} else {
+				// ssh client identification is the first method,
+				// agent is the second mehtod
+				a2 := make([]ssh.AuthMethod, 0)
+				a2 = append(a2, am)
+				a2 = append(a2, auth...)
+				auth = a2
+				// fmt.Printf("auth=[pub,agent]\n")
+			}
+		} else {
+			// agent is the first method,
+			// ssh client identification is the second available method
+			auth = append(auth, am)
+			// fmt.Printf("auth=[agent, pub]\n")
+		}
 	}
-	if len(auth) == 0 {
-		// get ssh pwd
+	if len(auth) == 0 || c.pwd != "" {
+		// get password if we don't have any authenticate method
 		if c.pwd == "" {
 			var err error
 			c.pwd, err = getPassword("password", os.Stdin)
