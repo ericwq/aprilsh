@@ -357,8 +357,21 @@ func publicKeyFile(file string) ssh.AuthMethod {
 
 	signer, err := ssh.ParsePrivateKey(key)
 	if err != nil {
-		// fmt.Printf("Unable to parse private key: %s\n", err)
-		return nil
+		if strings.Contains(err.Error(), "private key is passphrase protected") {
+			passphrase, err2 := getPassword("passphrase", os.Stdin)
+			if err2 != nil {
+				fmt.Printf("Failed to get passphrase. %s\n", err2)
+				return nil // read passphrase error
+			}
+			signer, err = ssh.ParsePrivateKeyWithPassphrase(key, []byte(passphrase))
+			if err != nil {
+				fmt.Printf("Failed to parse private key. %s\n", err)
+				return nil //
+			}
+		} else {
+			fmt.Printf("Unable to parse private key: %s\n", err)
+			return nil
+		}
 	}
 	return ssh.PublicKeys(signer) // Use the PublicKeys method for remote authentication.
 }
