@@ -12,6 +12,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -28,6 +29,7 @@ import (
 	"github.com/rivo/uniseg"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
+	"golang.org/x/crypto/ssh/knownhosts"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
@@ -54,7 +56,7 @@ Options:
       --sshcid   ssh client identification, for ssh key-based authentication (default $HOME/.ssh/id_rsa)
 `
 	predictionValues   = []string{"always", "never", "adaptive", "experimental"}
-	defaultSSHClientID = os.ExpandEnv("$HOME/.ssh/id_rsa")
+	defaultSSHClientID = filepath.Join(os.Getenv("HOME"), ".ssh", "id_rsa")
 	signals            frontend.Signals
 )
 
@@ -214,17 +216,17 @@ func (c *Config) fetchKey() error {
 		}
 	}
 
+	knownhostsCallback, err := knownhosts.New(filepath.Join(os.Getenv("HOME"), ".ssh", "known_hosts"))
+	if err != nil {
+		return err
+	}
 	// https://betterprogramming.pub/a-simple-cross-platform-ssh-client-in-100-lines-of-go-280644d8beea
 	// https://blog.ralch.com/articles/golang-ssh-connection/
 	clientConfig := &ssh.ClientConfig{
 		User:            c.user,
 		Auth:            auth,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+		HostKeyCallback: knownhostsCallback,
 		Timeout:         time.Duration(3) * time.Second,
-		// HostKeyCallback: func(hostname string, remote net.Addr, key ssh.PublicKey) error {
-		// 	return nil
-		// },
-		// HostKeyCallback: ssh.FixedHostKey(hostKey),
 	}
 
 	// https://www.ssh.com/blog/what-are-ssh-host-keys
