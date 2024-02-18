@@ -51,7 +51,7 @@ Options:
   -v, --version  print version information
   -c, --colors   print the number of colors of terminal
   -p, --port     apshd server port (default 60000)
-      --verbose  verbose output mode
+      --verbose  verbose log output (default no verbose, available value 1,2)
       --i        ssh client identity (private key) for public key authentication (default $HOME/.ssh/id_rsa)
   destination    in the form of user@host[:port], here the port is ssh server port (default 22)
 `
@@ -106,7 +106,7 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 
 	var conf Config
 
-	flagSet.IntVar(&conf.verbose, "verbose", 0, "verbose output mode")
+	flagSet.IntVar(&conf.verbose, "verbose", 0, "verbose log output")
 
 	flagSet.BoolVar(&conf.version, "version", false, "print version information")
 	flagSet.BoolVar(&conf.version, "v", false, "print version information")
@@ -114,8 +114,8 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.IntVar(&conf.port, "port", 60000, frontend.CommandServerName+" server port")
 	flagSet.IntVar(&conf.port, "p", 60000, frontend.CommandServerName+" server port")
 
-	flagSet.BoolVar(&conf.colors, "color", false, "terminal number of colors")
-	flagSet.BoolVar(&conf.colors, "c", false, "terminal number of colors")
+	flagSet.BoolVar(&conf.colors, "color", false, "terminal colors number")
+	flagSet.BoolVar(&conf.colors, "c", false, "terminal colors number")
 
 	flagSet.StringVar(&conf.sshClientID, "i", defaultSSHClientID, "ssh client identity file")
 
@@ -207,8 +207,9 @@ func (c *Config) fetchKey() error {
 			return err
 		}
 
+		// password authentication is the last resort
 		if am = ssh.Password(pwd); am != nil {
-			auth = append(auth, am) // password authentication is the last resort
+			auth = append(auth, am)
 		}
 	}
 
@@ -216,12 +217,45 @@ func (c *Config) fetchKey() error {
 	if err != nil {
 		return err
 	}
+
+	// https://github.com/skeema/knownhosts
+	// https://github.com/golang/go/issues/29286
+	newHostsCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+		err := knownhostsCallback(hostname, remote, key)
+		if err != nil {
+			if strings.Contains(err.Error(), "key is unknown") {
+				hint := `The authenticity of host '%s (%s)' can't be established.
+%s key fingerprint is %s.
+This key is not known by any other names
+Are you sure you want to continue connecting (yes/no/[fingerprint])?`
+				fmt.Printf(hint, hostname, remote, strings.ToUpper(key.Type()), ssh.FingerprintSHA256(key))
+				// reader := bufio.NewReader(os.Stdin)
+				// answer, _ := reader.ReadString('\n')
+				// scanner := bufio.NewScanner(os.Stdin)
+				// answer := scanner.Text()
+				var answer string
+				fmt.Scanln(&answer)
+				switch answer {
+				case "yes", "y":
+					fmt.Printf("Warning: Permanently added '%s' (%s) to the list of known hosts.\n",
+						hostname, strings.ToUpper(key.Type()))
+					fmt.Printf("not finished.\n")
+					return nil
+				case "no", "n":
+					fmt.Println("Host key verification failed.")
+					return err
+				}
+			}
+		}
+		return nil
+	}
+
 	// https://betterprogramming.pub/a-simple-cross-platform-ssh-client-in-100-lines-of-go-280644d8beea
 	// https://blog.ralch.com/articles/golang-ssh-connection/
 	clientConfig := &ssh.ClientConfig{
 		User:            c.user,
 		Auth:            auth,
-		HostKeyCallback: knownhostsCallback,
+		HostKeyCallback: newHostsCallback,
 		Timeout:         time.Duration(3) * time.Second,
 	}
 
@@ -254,18 +288,6 @@ func (c *Config) fetchKey() error {
 		return err
 	}
 	out := strings.TrimSpace(string(b))
-
-	/*
-		args := []string{
-			fmt.Sprintf("%s@%s", c.user, c.host),
-			fmt.Sprintf("\"echo 'open aprilsh:' | nc localhost %d -u -w 1\"", c.port),
-		}
-
-		out, err := exec.Command("ssh", args...).Output()
-		if err != nil {
-			return err.Error()
-		}
-	*/
 
 	// open aprilsh:60001,31kR3xgfmNxhDESXQ8VIQw==
 	// util.Log.With("out", out).Debug("fetchKey")
@@ -364,10 +386,12 @@ func (c *Config) buildConfig() (string, bool) {
 }
 
 func sshAgent() ssh.AuthMethod {
-	if sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK")); err == nil {
-		return ssh.PublicKeysCallback(agent.NewClient(sshAgent).Signers)
+	sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
+	if err != nil {
+		fmt.Printf("Failed to connect ssh agent. %s\n", err)
+		return nil
 	}
-	return nil
+	return ssh.PublicKeysCallback(agent.NewClient(sshAgent).Signers)
 }
 
 func publicKeyFile(file string) ssh.AuthMethod {
@@ -388,7 +412,7 @@ func publicKeyFile(file string) ssh.AuthMethod {
 			signer, err = ssh.ParsePrivateKeyWithPassphrase(key, []byte(passphrase))
 			if err != nil {
 				fmt.Printf("Failed to parse private key. %s\n", err)
-				return nil //
+				return nil
 			}
 		} else {
 			fmt.Printf("Unable to parse private key: %s\n", err)
