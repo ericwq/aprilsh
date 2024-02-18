@@ -39,21 +39,21 @@ const (
 	_APRILSH_KEY          = "APRISH_KEY"
 	_PREDICTION_DISPLAY   = "APRISH_PREDICTION_DISPLAY"
 	_PREDICTION_OVERWRITE = "APRISH_PREDICTION_OVERWRITE"
-	_VERBOSE_LOG_TMPFILE  = 2
+	// _VERBOSE_LOG_TMPFILE  = 2
 )
 
 var (
 	usage = `Usage:
   ` + frontend.CommandClientName + ` [--version] [--help] [--colors]
-  ` + frontend.CommandClientName + ` [--verbose] [--port PORT] [--pwd PASSWORD] user@host[:port]
+  ` + frontend.CommandClientName + ` [--verbose] [--port PORT] [-i identity_file] destination
 Options:
   -h, --help     print this message
   -v, --version  print version information
   -c, --colors   print the number of colors of terminal
-  -p, --port     server port (default 60000)
+  -p, --port     apshd server port (default 60000)
       --verbose  verbose output mode
-      --pwd      for password authentication.
-      --sshcid   ssh client identification, for ssh key-based authentication (default $HOME/.ssh/id_rsa)
+      --i        ssh client identity (private key) for public key authentication (default $HOME/.ssh/id_rsa)
+  destination    in the form of user@host[:port], here the port is ssh server port (default 22)
 `
 	predictionValues   = []string{"always", "never", "adaptive", "experimental"}
 	defaultSSHClientID = filepath.Join(os.Getenv("HOME"), ".ssh", "id_rsa")
@@ -111,16 +111,13 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.BoolVar(&conf.version, "version", false, "print version information")
 	flagSet.BoolVar(&conf.version, "v", false, "print version information")
 
-	flagSet.IntVar(&conf.port, "port", 60000, "server port")
-	flagSet.IntVar(&conf.port, "p", 60000, "server port")
+	flagSet.IntVar(&conf.port, "port", 60000, frontend.CommandServerName+" server port")
+	flagSet.IntVar(&conf.port, "p", 60000, frontend.CommandServerName+" server port")
 
 	flagSet.BoolVar(&conf.colors, "color", false, "terminal number of colors")
 	flagSet.BoolVar(&conf.colors, "c", false, "terminal number of colors")
 
-	flagSet.StringVar(&conf.pwd, "pwd", "", "ssh password")
-	flagSet.StringVar(&conf.sshClientID, "sshcid", defaultSSHClientID, "ssh identification file")
-
-	conf.sshPort = "22"
+	flagSet.StringVar(&conf.sshClientID, "i", defaultSSHClientID, "ssh client identity file")
 
 	err = flagSet.Parse(args)
 	if err != nil {
@@ -156,8 +153,7 @@ type Config struct {
 	key              string
 	predictMode      string
 	predictOverwrite string
-	pwd              string // use password for ssh login
-	sshClientID      string // ssh client identification, for SSH Key-Based Authentication
+	sshClientID      string // ssh client identity, for SSH public key authentication
 	sshPort          string // ssh port, default 22
 }
 
@@ -167,7 +163,10 @@ type Config struct {
 // For alpine, ssh is provided by openssh package, nc and echo is provided by busybox.
 // % ssh ide@localhost  "echo 'open aprilsh:' | nc localhost 6000 -u -w 1"
 //
-// ssh-copy-id -i .ssh/id_ed25519.pub root@localhost
+// ssh-keygen -t ed25519
+// ssh-copy-id -i ~/.ssh/id_ed25519.pub root@localhost
+// ssh-copy-id -i ~/.ssh/id_ed25519.pub ide@localhost
+// ssh-add ~/.ssh/id_ed25519
 func (c *Config) fetchKey() error {
 	// var hostKey ssh.PublicKey
 	var auth []ssh.AuthMethod
@@ -201,17 +200,14 @@ func (c *Config) fetchKey() error {
 			// fmt.Printf("auth=[agent, pub]\n")
 		}
 	}
-	if len(auth) == 0 || c.pwd != "" {
+	if len(auth) == 0 {
 		// get password if we don't have any authenticate method
-		if c.pwd == "" {
-			var err error
-			c.pwd, err = getPassword("password", os.Stdin)
-			if err != nil {
-				return err
-			}
+		pwd, err := getPassword("password", os.Stdin)
+		if err != nil {
+			return err
 		}
 
-		if am = ssh.Password(c.pwd); am != nil {
+		if am = ssh.Password(pwd); am != nil {
 			auth = append(auth, am) // password authentication is the last resort
 		}
 	}
@@ -328,7 +324,7 @@ func (c *Config) buildConfig() (string, bool) {
 		second := strings.Split(first[1], ":")
 		c.host = second[0]
 		if len(second) == 1 {
-			c.sshPort = "22"
+			c.sshPort = "22" // default ssh port
 		} else {
 			if _, err := strconv.Atoi(second[1]); err != nil {
 				return "please check destination, illegal port number.", false

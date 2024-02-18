@@ -118,7 +118,12 @@ install the package and validate the program.
 # apsh -v
 # apshd -v
 ```
+### add apshd service
 
+```shell
+# rc-update add apshd boot
+# rc-service apshd start
+```
 ## reference
 
 - [How to build and install Alpine Linux package with newapkbuild](https://www.educative.io/answers/how-to-build-and-install-alpine-linux-package-with-newapkbuild)
