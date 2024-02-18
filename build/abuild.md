@@ -124,6 +124,25 @@ install the package and validate the program.
 # rc-update add apshd boot
 # rc-service apshd start
 ```
+## prepare container for new server testing
+
+build testing container.
+
+```shell
+docker build --build-arg ROOT_PWD=password \
+        --build-arg USER_PWD=password \
+        --build-arg SSH_PUB_KEY="$(cat ~/.ssh/id_rsa.pub)" \
+        --progress plain -t abuild:0.1.1 -f abuild-openrc.dockerfile .
+```
+
+start test container
+```shell
+docker run --env TZ=Asia/Shanghai --tty --privileged --volume /sys/fs/cgroup:/sys/fs/cgroup:rw \
+    --mount source=proj-vol,target=/home/ide/proj \
+    --mount type=bind,source=/Users/qiwang/dev,target=/home/ide/develop \
+    -h openrc-abuild --name openrc-abuild -d -p 8022:22  -p 60100:60000/udp  -p 60101:60001/udp -p 60102:60002/udp \
+    -p 60103:60003/udp abuild:0.1.1
+```
 ## reference
 
 - [How to build and install Alpine Linux package with newapkbuild](https://www.educative.io/answers/how-to-build-and-install-alpine-linux-package-with-newapkbuild)
