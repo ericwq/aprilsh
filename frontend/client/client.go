@@ -27,9 +27,9 @@ import (
 	"github.com/ericwq/aprilsh/terminal"
 	"github.com/ericwq/aprilsh/util"
 	"github.com/rivo/uniseg"
+	"github.com/skeema/knownhosts"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
-	"golang.org/x/crypto/ssh/knownhosts"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
@@ -213,57 +213,70 @@ func (c *Config) fetchKey() error {
 		}
 	}
 
-	knownhostsCallback, err := knownhosts.New(filepath.Join(os.Getenv("HOME"), ".ssh", "known_hosts"))
+	khPath := filepath.Join(os.Getenv("HOME"), ".ssh", "known_hosts")
+	kh, err := knownhosts.New(khPath)
 	if err != nil {
 		return err
 	}
 
 	// https://github.com/skeema/knownhosts
 	// https://github.com/golang/go/issues/29286
-	newHostsCallback := func(hostname string, remote net.Addr, key ssh.PublicKey) error {
-		err := knownhostsCallback(hostname, remote, key)
-		if err != nil {
-			if strings.Contains(err.Error(), "key is unknown") {
-				hint := `The authenticity of host '%s (%s)' can't be established.
-%s key fingerprint is %s.
-This key is not known by any other names
-Are you sure you want to continue connecting (yes/no/[fingerprint])?`
-				fmt.Printf(hint, hostname, remote, strings.ToUpper(key.Type()), ssh.FingerprintSHA256(key))
-				// reader := bufio.NewReader(os.Stdin)
-				// answer, _ := reader.ReadString('\n')
-				// scanner := bufio.NewScanner(os.Stdin)
-				// answer := scanner.Text()
-				var answer string
-				fmt.Scanln(&answer)
-				switch answer {
-				case "yes", "y":
-					fmt.Printf("Warning: Permanently added '%s' (%s) to the list of known hosts.\n",
-						hostname, strings.ToUpper(key.Type()))
-					fmt.Printf("not finished.\n")
-					return nil
-				case "no", "n":
-					fmt.Println("Host key verification failed.")
-					return err
+	// Create a custom permissive hostkey callback which still errors on hosts
+	// with changed keys, but allows unknown hosts and adds them to known_hosts
+	cb := ssh.HostKeyCallback(func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+		err := kh(hostname, remote, key)
+		if knownhosts.IsHostKeyChanged(err) {
+			return fmt.Errorf("REMOTE HOST IDENTIFICATION HAS CHANGED for host %s! This may indicate a MitM attack.", hostname)
+		} else if knownhosts.IsHostUnknown(err) {
+
+			hint := "The authenticity of host '%s (%s)' can't be established.\n" +
+				"%s key fingerprint is %s.\n" +
+				"This key is not known by any other names\n" +
+				"Are you sure you want to continue connecting (yes/no/[fingerprint])?"
+			fmt.Printf(hint, hostname, remote, strings.ToUpper(key.Type()), ssh.FingerprintSHA256(key))
+
+			var answer string
+			fmt.Scanln(&answer)
+			switch answer {
+			case "yes", "y":
+				fmt.Printf("Warning: Permanently added '%s' (%s) to the list of known hosts.\n",
+					hostname, strings.ToUpper(key.Type()))
+
+				f, ferr := os.OpenFile(khPath, os.O_APPEND|os.O_WRONLY, 0600)
+				if ferr == nil {
+					defer f.Close()
+					ferr = knownhosts.WriteKnownHost(f, hostname, remote, key)
 				}
+				if ferr == nil {
+					fmt.Printf("Added host %s to known_hosts\n", hostname)
+				} else {
+					fmt.Printf("Failed to add host %s to known_hosts: %v\n", hostname, ferr)
+				}
+				return nil // permit previously-unknown hosts (warning: may be insecure)
+			case "no", "n":
+				fmt.Println("Host key verification failed.")
+				return err
 			}
 		}
-		return nil
-	}
+		return err
+	})
+	sshHost := c.host + ":" + c.sshPort
 
 	// https://betterprogramming.pub/a-simple-cross-platform-ssh-client-in-100-lines-of-go-280644d8beea
 	// https://blog.ralch.com/articles/golang-ssh-connection/
 	clientConfig := &ssh.ClientConfig{
-		User:            c.user,
-		Auth:            auth,
-		HostKeyCallback: newHostsCallback,
-		Timeout:         time.Duration(3) * time.Second,
+		User:              c.user,
+		Auth:              auth,
+		HostKeyCallback:   cb,
+		HostKeyAlgorithms: kh.HostKeyAlgorithms(sshHost),
+		Timeout:           time.Duration(3) * time.Second,
 	}
 
 	// https://www.ssh.com/blog/what-are-ssh-host-keys
 
 	// TODO understand ssh login session, fix the root login issue
 	//	it that possible to replace the sshd depdends?
-	client, err := ssh.Dial("tcp", c.host+":"+c.sshPort, clientConfig)
+	client, err := ssh.Dial("tcp", sshHost, clientConfig)
 	if err != nil {
 		return err
 	}
@@ -472,23 +485,21 @@ func main() {
 	// 	util.Log.SetOutput(logf)
 	// }
 
-	// // get pwd
-	// if conf.pwd == "" {
-	// 	conf.pwd, err = conf.getPassword(os.Stdin)
-	// 	if err != nil {
-	// 		printUsage(err.Error())
-	// 		return
-	// 	}
-	// }
+	// https://earthly.dev/blog/golang-errors/
+	// https://gosamples.dev/check-error-type/
+	// https://www.digitalocean.com/community/tutorials/how-to-add-extra-information-to-errors-in-go
+	//
 	// ssh login to remote server and fetch the seesion key
 	if err = conf.fetchKey(); err != nil {
-		// the error returned by ssh.Dial() doen't warpping error,
-		// we have to check the error message directly.
-		if strings.Contains(err.Error(), "no such host") {
-			printUsage(fmt.Sprintf("No such host: %q.", conf.host))
+		var dnsError *net.DNSError
+		if errors.As(err, &dnsError) {
+			printUsage(fmt.Sprintf("No such host: %q", conf.host))
 		} else if strings.Contains(err.Error(), "unable to authenticate") {
-			// enable 'PubkeyAuthentication yes' line to sshd_config
-			printUsage(fmt.Sprintf("Failed to authenticate user %q.", conf.user))
+			// the error returned by ssh.NewClientConn() doen't naming error,
+			// we have to check the error message directly.
+
+			// enable 'PubkeyAuthentication yes' line in sshd_config
+			printUsage(fmt.Sprintf("Failed to authenticate user %q", conf.user))
 			// fmt.Printf("%#v\n", err)
 		} else {
 			printUsage(err.Error())
