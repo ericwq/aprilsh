@@ -296,7 +296,7 @@ func (c *Config) fetchKey() error {
 	var b []byte
 	// cmd := fmt.Sprintf("echo '%s' | nc localhost %d -u -w 1", _ASH_OPEN, c.port)
 	cmd := fmt.Sprintf("/usr/bin/apshd -b -t %s -destination %s", os.Getenv("TERM"), c.destination[0])
-	// util.Log.With("cmd", cmd).Debug("execute command")
+	// fmt.Printf("cmd=%s\n", cmd)
 
 	if b, err = session.Output(cmd); err != nil {
 		return err
@@ -304,7 +304,7 @@ func (c *Config) fetchKey() error {
 	out := strings.TrimSpace(string(b))
 
 	// open aprilsh:60001,31kR3xgfmNxhDESXQ8VIQw==
-	// util.Log.With("out", out).Debug("fetchKey")
+	// fmt.Printf("out=%s\n", out)
 	body := strings.Split(out, ":")
 	if len(body) != 2 || !strings.HasPrefix(frontend.AprilshMsgOpen, body[0]) {
 		return errNoResponse
@@ -470,6 +470,14 @@ func main() {
 		return
 	}
 
+	// https://rderik.com/blog/identify-if-output-goes-to-the-terminal-or-is-being-redirected-in-golang/
+	//
+	// if stderr outputs to terminal, we redirect it to /dev/null.
+	f2, _ := os.Stderr.Stat()
+	if (f2.Mode() & os.ModeCharDevice) == os.ModeCharDevice {
+		os.Stderr = os.NewFile(uintptr(syscall.Stderr), os.DevNull)
+	}
+
 	// setup client log file
 	if conf.verbose > 0 {
 		util.Log.SetLevel(slog.LevelDebug)
@@ -514,7 +522,6 @@ func main() {
 	}
 
 	// start client
-	// the Stdin, Stderr, Stdout are all set to pts/N
 	util.SetNativeLocale()
 	client := newSTMClient(conf)
 	if err := client.init(); err != nil {
@@ -943,12 +950,11 @@ func (sc *STMClient) shutdown() error {
 	}
 
 	if sc.stillConnecting() {
-		fmt.Printf("%s did not make a successful connection to %s:%d.\n",
+		fmt.Printf("%s did not make a successful connection to '%s:%d'.\n",
 			frontend.CommandClientName, sc.ip, sc.port)
-		fmt.Printf("Please verify that UDP port %d is not firewalled and can reach the server.\n\n",
-			sc.port)
-		fmt.Printf("By default, %s uses a UDP port between 60000 and 61000. The -p option\n%s\n",
-			frontend.CommandClientName, "selects a initial UDP port number.")
+		fmt.Printf("Please verify that UDP port is not firewalled and %s can reach the server.\n", frontend.CommandClientName)
+		fmt.Printf("By default, %s uses UDP port begin with %d, The -p option specifies base %s port.\n",
+			frontend.CommandClientName, frontend.DefaultPort+1, frontend.CommandServerName)
 	} else if sc.network != nil {
 		if !sc.cleanShutdown {
 			fmt.Printf("\n%s did not shut down cleanly.\n", frontend.CommandClientName)
