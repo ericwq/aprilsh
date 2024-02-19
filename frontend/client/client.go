@@ -30,6 +30,7 @@ import (
 	"github.com/skeema/knownhosts"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
+	xknownhosts "golang.org/x/crypto/ssh/knownhosts"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
 	"golang.org/x/term"
@@ -254,6 +255,8 @@ func (c *Config) fetchKey() error {
 					err = ferr
 				}
 			case "no", "n":
+				fallthrough
+			default:
 				fmt.Println("Host key verification failed.")
 			}
 		}
@@ -474,14 +477,6 @@ func main() {
 		util.Log.SetLevel(slog.LevelInfo)
 	}
 	util.Log.SetOutput(os.Stderr)
-	// if conf.verbose == _VERBOSE_LOG_TMPFILE { //TODO consider remove this.
-	// 	logf, err := util.Log.CreateLogFile(frontend.CommandClientName)
-	// 	if err != nil {
-	// 		fmt.Printf("can't create log file %s.\n", logf.Name())
-	// 		return
-	// 	}
-	// 	util.Log.SetOutput(logf)
-	// }
 
 	// https://earthly.dev/blog/golang-errors/
 	// https://gosamples.dev/check-error-type/
@@ -490,18 +485,25 @@ func main() {
 	// ssh login to remote server and fetch the seesion key
 	if err = conf.fetchKey(); err != nil {
 		var dnsError *net.DNSError
+		var opError *net.OpError
+		var keyError *xknownhosts.KeyError
+
 		if errors.As(err, &dnsError) {
-			printUsage(fmt.Sprintf("No such host: %q", conf.host))
+			printUsage(fmt.Sprintf("No such host: %q", dnsError.Name))
+		} else if errors.As(err, &opError) && opError.Op == "dial" {
+			printUsage(fmt.Sprintf("Failed to connect to: %s", opError.Addr))
 		} else if strings.Contains(err.Error(), "unable to authenticate") {
 			// the error returned by ssh.NewClientConn() doen't naming error,
 			// we have to check the error message directly.
 
 			// enable 'PubkeyAuthentication yes' line in sshd_config
 			printUsage(fmt.Sprintf("Failed to authenticate user %q", conf.user))
-			// fmt.Printf("%#v\n", err)
-		} else if strings.Contains(err.Error(), "key is unknown") {
+		} else if errors.As(err, &keyError) {
+			// } else if strings.Contains(err.Error(), "key is unknown") {
+			// we already handle it
 		} else {
-			printUsage(err.Error())
+			printUsage(fmt.Sprintf("%#v", err))
+			// printUsage(err.Error())
 		}
 		return
 	}
