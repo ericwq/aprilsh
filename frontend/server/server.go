@@ -441,8 +441,8 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.StringVar(&conf.desiredIP, "ip", "", "listen ip")
 	flagSet.StringVar(&conf.desiredIP, "i", "", "listen ip")
 
-	flagSet.StringVar(&conf.desiredPort, "port", "60000", "listen port range")
-	flagSet.StringVar(&conf.desiredPort, "p", "60000", "listen port range")
+	flagSet.StringVar(&conf.desiredPort, "port", strconv.Itoa(frontend.DefaultPort), "listen port range")
+	flagSet.StringVar(&conf.desiredPort, "p", strconv.Itoa(frontend.DefaultPort), "listen port range")
 
 	flagSet.StringVar(&conf.term, "term", "", "client TERM")
 	flagSet.StringVar(&conf.term, "t", "", "client TERM")

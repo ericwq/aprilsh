@@ -111,8 +111,8 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.BoolVar(&conf.version, "version", false, "print version information")
 	flagSet.BoolVar(&conf.version, "v", false, "print version information")
 
-	flagSet.IntVar(&conf.port, "port", 60000, frontend.CommandServerName+" server port")
-	flagSet.IntVar(&conf.port, "p", 60000, frontend.CommandServerName+" server port")
+	flagSet.IntVar(&conf.port, "port", frontend.DefaultPort, frontend.CommandServerName+" server port")
+	flagSet.IntVar(&conf.port, "p", frontend.DefaultPort, frontend.CommandServerName+" server port")
 
 	flagSet.BoolVar(&conf.colors, "color", false, "terminal colors number")
 	flagSet.BoolVar(&conf.colors, "c", false, "terminal colors number")
@@ -314,7 +314,8 @@ func (c *Config) fetchKey() error {
 		if e != nil {
 			return errors.New("can't get port")
 		}
-		c.port = p
+		// incase port mapping for docker
+		c.port += (p - frontend.DefaultPort)
 
 		idx++
 		if encrypt.NewBase64Key2(body[1][idx:]) != nil {
@@ -322,7 +323,7 @@ func (c *Config) fetchKey() error {
 		} else {
 			return errors.New("can't get key")
 		}
-		fmt.Printf("fetchKey port=%d, key=%s\n", c.port, c.key)
+		// fmt.Printf("fetchKey port=%d, key=%s\n", c.port, c.key)
 	} else {
 		return errors.New(fmt.Sprintf("malform response : %s", body[1]))
 	}

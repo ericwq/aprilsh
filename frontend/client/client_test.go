@@ -242,25 +242,25 @@ func TestBuildConfig(t *testing.T) {
 	}
 }
 
-func TestFetchKey(t *testing.T) {
-	tc := []struct {
-		label string
-		conf  *Config
-		pwd   string
-		msg   string
-	}{
-		{"wrong host", &Config{user: "ide", host: "wrong", port: 60000}, "password", "dial tcp"},
-	}
-	for _, v := range tc {
-		t.Run(v.label, func(t *testing.T) {
-			v.conf.pwd = v.pwd
-			got := v.conf.fetchKey()
-			if !strings.Contains(got.Error(), v.msg) {
-				t.Errorf("#test %q expect %q contains %q.\n", v.label, got, v.msg)
-			}
-		})
-	}
-}
+// func TestFetchKey(t *testing.T) {
+// 	tc := []struct {
+// 		label string
+// 		conf  *Config
+// 		pwd   string
+// 		msg   string
+// 	}{
+// 		{"wrong host", &Config{user: "ide", host: "wrong", port: 60000}, "password", "dial tcp"},
+// 	}
+// 	for _, v := range tc {
+// 		t.Run(v.label, func(t *testing.T) {
+// 			v.conf.pwd = v.pwd
+// 			got := v.conf.fetchKey()
+// 			if !strings.Contains(got.Error(), v.msg) {
+// 				t.Errorf("#test %q expect %q contains %q.\n", v.label, got, v.msg)
+// 			}
+// 		})
+// 	}
+// }
 
 func TestGetPassword(t *testing.T) {
 

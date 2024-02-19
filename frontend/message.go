@@ -25,11 +25,12 @@ remote shell support intermittent or mobile network.
 )
 
 var (
-	GitTag    string // build version
-	GoVersion string // Go version
-	BuildTime string // build time
-	GitCommit string // git commit id
-	GitBranch string // git branch name
+	GitTag      string // build version
+	GoVersion   string // Go version
+	BuildTime   string // build time
+	GitCommit   string // git commit id
+	GitBranch   string // git branch name
+	DefaultPort = 60000
 )
 
 func PrintVersion() {
