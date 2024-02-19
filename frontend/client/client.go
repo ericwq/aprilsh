@@ -213,6 +213,7 @@ func (c *Config) fetchKey() error {
 		}
 	}
 
+	sshHost := net.JoinHostPort(c.host, c.sshPort)
 	khPath := filepath.Join(os.Getenv("HOME"), ".ssh", "known_hosts")
 	kh, err := knownhosts.New(khPath)
 	if err != nil {
@@ -223,8 +224,8 @@ func (c *Config) fetchKey() error {
 	// https://github.com/golang/go/issues/29286
 	// Create a custom permissive hostkey callback which still errors on hosts
 	// with changed keys, but allows unknown hosts and adds them to known_hosts
-	cb := ssh.HostKeyCallback(func(hostname string, remote net.Addr, key ssh.PublicKey) error {
-		err := kh(hostname, remote, key)
+	cb := ssh.HostKeyCallback(func(hostname string, remote net.Addr, key ssh.PublicKey) (err error) {
+		err = kh(hostname, remote, key)
 		if knownhosts.IsHostKeyChanged(err) {
 			return fmt.Errorf("REMOTE HOST IDENTIFICATION HAS CHANGED for host %s! This may indicate a MitM attack.", hostname)
 		} else if knownhosts.IsHostUnknown(err) {
@@ -239,31 +240,29 @@ func (c *Config) fetchKey() error {
 			fmt.Scanln(&answer)
 			switch answer {
 			case "yes", "y":
-				fmt.Printf("Warning: Permanently added '%s' (%s) to the list of known hosts.\n",
-					hostname, strings.ToUpper(key.Type()))
-
 				f, ferr := os.OpenFile(khPath, os.O_APPEND|os.O_WRONLY, 0600)
 				if ferr == nil {
 					defer f.Close()
 					ferr = knownhosts.WriteKnownHost(f, hostname, remote, key)
 				}
 				if ferr == nil {
-					fmt.Printf("Added host %s to known_hosts\n", hostname)
+					fmt.Printf("Warning: Permanently added '%s' (%s) to the list of known hosts.\n",
+						hostname, strings.ToUpper(key.Type()))
+					err = nil // permit previously-unknown hosts (warning: may be insecure)
 				} else {
 					fmt.Printf("Failed to add host %s to known_hosts: %v\n", hostname, ferr)
+					err = ferr
 				}
-				return nil // permit previously-unknown hosts (warning: may be insecure)
 			case "no", "n":
 				fmt.Println("Host key verification failed.")
-				return err
 			}
 		}
-		return err
+		return
 	})
-	sshHost := c.host + ":" + c.sshPort
 
 	// https://betterprogramming.pub/a-simple-cross-platform-ssh-client-in-100-lines-of-go-280644d8beea
 	// https://blog.ralch.com/articles/golang-ssh-connection/
+	// https://www.ssh.com/blog/what-are-ssh-host-keys
 	clientConfig := &ssh.ClientConfig{
 		User:              c.user,
 		Auth:              auth,
@@ -272,10 +271,7 @@ func (c *Config) fetchKey() error {
 		Timeout:           time.Duration(3) * time.Second,
 	}
 
-	// https://www.ssh.com/blog/what-are-ssh-host-keys
-
-	// TODO understand ssh login session, fix the root login issue
-	//	it that possible to replace the sshd depdends?
+	// TODO understand ssh login session, is that possible to replace the sshd depdends?
 	client, err := ssh.Dial("tcp", sshHost, clientConfig)
 	if err != nil {
 		return err
@@ -298,6 +294,7 @@ func (c *Config) fetchKey() error {
 	// util.Log.With("cmd", cmd).Debug("execute command")
 
 	if b, err = session.Output(cmd); err != nil {
+		fmt.Println("cmd error")
 		return err
 	}
 	out := strings.TrimSpace(string(b))
@@ -325,7 +322,7 @@ func (c *Config) fetchKey() error {
 		} else {
 			return errors.New("can't get key")
 		}
-		// fmt.Printf("fetchKey port=%d, key=%s\n", c.port, c.key)
+		fmt.Printf("fetchKey port=%d, key=%s\n", c.port, c.key)
 	} else {
 		return errors.New(fmt.Sprintf("malform response : %s", body[1]))
 	}
@@ -501,6 +498,7 @@ func main() {
 			// enable 'PubkeyAuthentication yes' line in sshd_config
 			printUsage(fmt.Sprintf("Failed to authenticate user %q", conf.user))
 			// fmt.Printf("%#v\n", err)
+		} else if strings.Contains(err.Error(), "key is unknown") {
 		} else {
 			printUsage(err.Error())
 		}
