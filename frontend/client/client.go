@@ -158,6 +158,8 @@ type Config struct {
 	sshPort          string // ssh port, default 22
 }
 
+var errNoResponse = errors.New("no response, please make sure the server is running.")
+
 // utilize ssh to fetch the key from remote server and start a server.
 // return empty string if success, otherwise return error info.
 //
@@ -297,7 +299,6 @@ func (c *Config) fetchKey() error {
 	// util.Log.With("cmd", cmd).Debug("execute command")
 
 	if b, err = session.Output(cmd); err != nil {
-		fmt.Println("cmd error")
 		return err
 	}
 	out := strings.TrimSpace(string(b))
@@ -306,8 +307,7 @@ func (c *Config) fetchKey() error {
 	// util.Log.With("out", out).Debug("fetchKey")
 	body := strings.Split(out, ":")
 	if len(body) != 2 || !strings.HasPrefix(frontend.AprilshMsgOpen, body[0]) {
-		resp := fmt.Sprintf("no response, please make sure the server is running.")
-		return errors.New(resp)
+		return errNoResponse
 	}
 
 	// parse port and key
@@ -487,6 +487,7 @@ func main() {
 		var dnsError *net.DNSError
 		var opError *net.OpError
 		var keyError *xknownhosts.KeyError
+		var exitError *ssh.ExitError
 
 		if errors.As(err, &dnsError) {
 			printUsage(fmt.Sprintf("No such host: %q", dnsError.Name))
@@ -501,6 +502,10 @@ func main() {
 		} else if errors.As(err, &keyError) {
 			// } else if strings.Contains(err.Error(), "key is unknown") {
 			// we already handle it
+		} else if errors.Is(err, errNoResponse) {
+			printUsage(err.Error())
+		} else if errors.As(err, &exitError) && exitError.Waitmsg.ExitStatus() == 127 {
+			printUsage("Plase check aprilsh is installed on server.")
 		} else {
 			printUsage(fmt.Sprintf("%#v", err))
 			// printUsage(err.Error())
