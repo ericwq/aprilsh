@@ -71,3 +71,6 @@
 - 2024/Jan/25: finish unit test for Framebuffer and Emulator. fix bug #23, #27, #26.
 - 2024/Feb/01: finish release workflow for source tar ball. finish build apk for alpine.
 - 2024/Feb/09: aprilsh-openrc is ready #29. fix environment variable bug for login user #39.
+- 2024/Feb/19: syslog support #37, customized ssh port #36, ssh authentication passphrase #41, hostkey callback #43,
+- 2024/Feb/19: customized port #49, fetch key errror handling #48, password support #45.
+
