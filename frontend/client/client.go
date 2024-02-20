@@ -952,7 +952,8 @@ func (sc *STMClient) shutdown() error {
 	if sc.stillConnecting() {
 		fmt.Printf("%s did not make a successful connection to '%s:%d'.\n",
 			frontend.CommandClientName, sc.ip, sc.port)
-		fmt.Printf("Please verify that UDP port is not firewalled and %s can reach the server.\n", frontend.CommandClientName)
+		fmt.Printf("Please verify that UDP port is not firewalled and %s can reach the server.\n",
+			frontend.CommandClientName)
 		fmt.Printf("By default, %s uses UDP port begin with %d, The -p option specifies base %s port.\n",
 			frontend.CommandClientName, frontend.DefaultPort+1, frontend.CommandServerName)
 	} else if sc.network != nil {
@@ -1044,7 +1045,10 @@ mainLoop:
 
 			// got data from server
 			if networkMsg.Err != nil {
-
+				// quit asap for refused connection
+				if errors.Is(networkMsg.Err, syscall.ECONNREFUSED) {
+					break mainLoop
+				}
 				// if read from server failed, retry after 0.2 second
 				util.Log.With("error", networkMsg.Err).Warn("receive from network")
 				if !sc.network.ShutdownInProgress() {
