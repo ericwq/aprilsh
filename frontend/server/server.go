@@ -1437,12 +1437,19 @@ func (m *mainSrv) run(conf *Config) {
 	// clean up
 	defer func() {
 		signal.Stop(sig)
+		if syslogSupport {
+			syslogWriter.Info(fmt.Sprintf("stop listening on %s.", m.conn.LocalAddr()))
+		}
 		m.conn.Close()
 		util.Log.With("port", m.port).Info("stop listening on")
 	}()
 
 	buf := make([]byte, 128)
 	shutdown := false
+
+	if syslogSupport {
+		syslogWriter.Info(fmt.Sprintf("start listening on %s.", m.conn.LocalAddr()))
+	}
 
 	printWelcome(os.Getpid(), m.port, nil)
 	for {
