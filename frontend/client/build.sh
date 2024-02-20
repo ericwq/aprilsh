@@ -10,12 +10,16 @@ rm -rf coverage
 mkdir -p coverage/unit 
 mkdir -p coverage/int
 
-echo "build server start: $(date '+%F %T')"
+# chech version number
+# if [ "$1" != "" ]; then Version=$1;else
+#     read -p "Input Build Version: " Version; if [ "$Version" = "" ]; then echo "The input cannot be empty";exit;fi
+# fi
+echo "build client start: $(date '+%F %T')"
 #
 # selecting package to cover
-PKGS="github.com/ericwq/aprilsh/frontend/server"
+PKGS="github.com/ericwq/aprilsh/frontend/client"
 
-# prepare for ldflags
+# get go module name
 _module_name=$(head ../../go.mod | grep "^module" | awk '{print $2}')
 _build_time=$(date '+%F %T')
 _go_version=$(go version | grep "version" | awk '{print $3,$4}')
@@ -29,10 +33,8 @@ go build -cover -coverpkg=$PKGS -ldflags="-s -w
       -X '${_module_name}/frontend.GoVersion=${_go_version}'
       -X '${_module_name}/frontend.GitCommit=${_git_commit}'
       -X '${_module_name}/frontend.GitBranch=${_git_branch}'
-      -X '${_module_name}/frontend.BuildTime=${_build_time}'" -o ~/.local/bin/apshd .
+      -X '${_module_name}/frontend.BuildTime=${_build_time}'" -o ~/.local/bin/apsh .
 # go build -race -cover -coverpkg=$PKGS -o ~/.local/bin/apshd .
-echo "build server end  : $(date '+%F %T')"
-echo "output server to  : ~/.local/bin/apshd"
-echo "copy server to    : /usr/bin/apshd"
-echo "run with          : GOCOVERDIR=./coverage/int apshd -verbose 1 2>> /tmp/apshd.log"
-sudo cp ~/.local/bin/apshd /usr/bin/apshd
+echo "build client end  : $(date '+%F %T')"
+echo "output client to  : ~/.local/bin/apsh"
+echo "run with          : GOCOVERDIR=./coverage/int  ~/.local/bin/apsh -verbose ide@localhost 2> /tmp/apsh01.log"

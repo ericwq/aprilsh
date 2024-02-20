@@ -11,8 +11,11 @@ import (
 	"log/slog"
 )
 
-// var Log *slog.Logger
-// var programLevel = new(slog.LevelVar) // Info by default
+const (
+	LevelTrace = slog.Level(-8)
+	DebugLevel = 1
+	TraceLevel = 2
+)
 
 type logger struct {
 	*slog.Logger
@@ -34,15 +37,15 @@ func (l *logger) SetLevel(v slog.Level) {
 	l.programLevel.Set(v)
 }
 
-func (l *logger) isDebugLevel() bool {
-	if l.programLevel.Level() == slog.LevelDebug {
+func (l *logger) addSource() bool {
+	if l.programLevel.Level() <= slog.LevelDebug {
 		return true
 	}
 	return false
 }
 
 func (l *logger) SetOutput(w io.Writer) {
-	ho := &slog.HandlerOptions{AddSource: Log.isDebugLevel(), Level: Log.programLevel}
+	ho := &slog.HandlerOptions{AddSource: Log.addSource(), Level: Log.programLevel}
 	l.Logger = slog.New(slog.NewTextHandler(w, ho))
 	slog.SetDefault(Log.Logger)
 	l.defaultLogger = slog.Default()

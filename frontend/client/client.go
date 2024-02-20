@@ -46,14 +46,15 @@ const (
 var (
 	usage = `Usage:
   ` + frontend.CommandClientName + ` [--version] [--help] [--colors]
-  ` + frontend.CommandClientName + ` [--verbose] [--port PORT] [-i identity_file] destination
+  ` + frontend.CommandClientName + ` [-vv[v]] [--port PORT] [-i identity_file] destination
 Options:
-  -h, --help     print this message
-  -v, --version  print version information
-  -c, --colors   print the number of colors of terminal
-  -p, --port     apshd server port (default 60000)
-      --verbose  verbose log output (default no verbose, available value 1,2)
-      --i        ssh client identity (private key) for public key authentication (default $HOME/.ssh/id_rsa)
+  -h,  --help    print this message
+  -v,  --version print version information
+  -c,  --colors  print the number of colors of terminal
+  -p,  --port    apshd server port (default 60000)
+  -vv, --verbose verbose log output (debug level, default no verbose)
+  -vvv           verbose log output (trace level)
+  -i             ssh client identity (private key) for public key authentication (default $HOME/.ssh/id_rsa)
   destination    in the form of user@host[:port], here the port is ssh server port (default 22)
 `
 	predictionValues   = []string{"always", "never", "adaptive", "experimental"}
@@ -107,7 +108,10 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 
 	var conf Config
 
-	flagSet.IntVar(&conf.verbose, "verbose", 0, "verbose log output")
+	var v1, v2 bool
+	flagSet.BoolVar(&v1, "vv", false, "verbose log output debug level")
+	flagSet.BoolVar(&v1, "verbose", false, "verbose log output debug levle")
+	flagSet.BoolVar(&v2, "vvv", false, "verbose log output trace level")
 
 	flagSet.BoolVar(&conf.version, "version", false, "print version information")
 	flagSet.BoolVar(&conf.version, "v", false, "print version information")
@@ -127,20 +131,14 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 
 	// get the non-flag command-line arguments.
 	conf.destination = flagSet.Args()
-	return &conf, buf.String(), nil
-}
 
-// read password from specified input source
-func getPassword(prompt string, in *os.File) (string, error) {
-	fmt.Printf("%s: ", prompt)
-	bytepw, err := term.ReadPassword(int(in.Fd()))
-	defer fmt.Printf("\n")
-
-	if err != nil {
-		return "", err
+	// detremine verbose level
+	if v1 {
+		conf.verbose = util.DebugLevel
+	} else if v2 {
+		conf.verbose = util.TraceLevel
 	}
-
-	return string(bytepw), nil
+	return &conf, buf.String(), nil
 }
 
 type Config struct {
@@ -399,6 +397,19 @@ func (c *Config) buildConfig() (string, bool) {
 	return "", true
 }
 
+// read password from specified input source
+func getPassword(prompt string, in *os.File) (string, error) {
+	fmt.Printf("%s: ", prompt)
+	bytepw, err := term.ReadPassword(int(in.Fd()))
+	defer fmt.Printf("\n")
+
+	if err != nil {
+		return "", err
+	}
+
+	return string(bytepw), nil
+}
+
 func sshAgent() ssh.AuthMethod {
 	sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
 	if err != nil {
@@ -434,102 +445,6 @@ func publicKeyFile(file string) ssh.AuthMethod {
 		}
 	}
 	return ssh.PublicKeys(signer) // Use the PublicKeys method for remote authentication.
-}
-
-func main() {
-	// cpuf, err := os.Create("cpu.profile")
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	return
-	// }
-	// pprof.StartCPUProfile(cpuf)
-	// defer pprof.StopCPUProfile()
-
-	// For security, make sure we don't dump core
-	encrypt.DisableDumpingCore()
-
-	conf, _, err := parseFlags(os.Args[0], os.Args[1:])
-	if err == flag.ErrHelp {
-		printUsage("", usage)
-		return
-	} else if err != nil {
-		printUsage(err.Error())
-		return
-	} else if hint, ok := conf.buildConfig(); !ok {
-		printUsage(hint)
-		return
-	}
-
-	if conf.version {
-		printVersion()
-		return
-	}
-
-	if conf.colors {
-		printColors()
-		return
-	}
-
-	// https://rderik.com/blog/identify-if-output-goes-to-the-terminal-or-is-being-redirected-in-golang/
-	//
-	// if stderr outputs to terminal, we redirect it to /dev/null.
-	f2, _ := os.Stderr.Stat()
-	if (f2.Mode() & os.ModeCharDevice) == os.ModeCharDevice {
-		os.Stderr = os.NewFile(uintptr(syscall.Stderr), os.DevNull)
-	}
-
-	// setup client log file
-	if conf.verbose > 0 {
-		util.Log.SetLevel(slog.LevelDebug)
-	} else {
-		util.Log.SetLevel(slog.LevelInfo)
-	}
-	util.Log.SetOutput(os.Stderr)
-
-	// https://earthly.dev/blog/golang-errors/
-	// https://gosamples.dev/check-error-type/
-	// https://www.digitalocean.com/community/tutorials/how-to-add-extra-information-to-errors-in-go
-	//
-	// ssh login to remote server and fetch the seesion key
-	if err = conf.fetchKey(); err != nil {
-		var dnsError *net.DNSError
-		var opError *net.OpError
-		var keyError *xknownhosts.KeyError
-		var exitError *ssh.ExitError
-
-		if errors.As(err, &dnsError) {
-			printUsage(fmt.Sprintf("No such host: %q", dnsError.Name))
-		} else if errors.As(err, &opError) && opError.Op == "dial" {
-			printUsage(fmt.Sprintf("Failed to connect to: %s", opError.Addr))
-		} else if strings.Contains(err.Error(), "unable to authenticate") {
-			// the error returned by ssh.NewClientConn() doen't naming error,
-			// we have to check the error message directly.
-
-			// enable 'PubkeyAuthentication yes' line in sshd_config
-			printUsage(fmt.Sprintf("Failed to authenticate user %q", conf.user))
-		} else if errors.As(err, &keyError) {
-			// } else if strings.Contains(err.Error(), "key is unknown") {
-			// we already handle it
-		} else if errors.Is(err, errNoResponse) {
-			printUsage(err.Error())
-		} else if errors.As(err, &exitError) && exitError.Waitmsg.ExitStatus() == 127 {
-			printUsage("Plase check aprilsh is installed on server.")
-		} else {
-			printUsage(fmt.Sprintf("%#v", err))
-			// printUsage(err.Error())
-		}
-		return
-	}
-
-	// start client
-	util.SetNativeLocale()
-	client := newSTMClient(conf)
-	if err := client.init(); err != nil {
-		fmt.Printf("%s init error:%s\n", frontend.CommandClientName, err)
-		return
-	}
-	client.main()
-	client.shutdown()
 }
 
 type STMClient struct {
@@ -854,7 +769,7 @@ func (sc *STMClient) init() error {
 
 	// Put terminal in application-cursor-key mode
 	os.Stdout.WriteString(sc.display.Open())
-	util.Log.With("seq", sc.display.Open()).Debug("open terminal")
+	util.Log.Info("open terminal", "seq", sc.display.Open())
 
 	// Add our name to window title
 	prefix := os.Getenv("APRILSH_TITLE_PREFIX")
@@ -942,10 +857,10 @@ func (sc *STMClient) shutdown() error {
 
 	// Restore terminal and terminal-driver state
 	os.Stdout.WriteString(sc.display.Close())
-	util.Log.With("seq", sc.display.Close()).Debug("close terminal")
+	util.Log.Info("close terminal", "seq", sc.display.Close())
 
 	if err := term.Restore(int(os.Stdin.Fd()), sc.savedTermios); err != nil {
-		util.Log.With("error", err).Warn("restore terminal failed")
+		util.Log.Warn("restore terminal failed", "error", err)
 		return err
 	}
 
@@ -1193,4 +1108,103 @@ mainLoop:
 	eg.Wait()
 
 	return nil
+}
+
+func main() {
+	// cpuf, err := os.Create("cpu.profile")
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
+	// pprof.StartCPUProfile(cpuf)
+	// defer pprof.StopCPUProfile()
+
+	// For security, make sure we don't dump core
+	encrypt.DisableDumpingCore()
+
+	conf, _, err := parseFlags(os.Args[0], os.Args[1:])
+	if err == flag.ErrHelp {
+		printUsage("", usage)
+		return
+	} else if err != nil {
+		printUsage(err.Error())
+		return
+	} else if hint, ok := conf.buildConfig(); !ok {
+		printUsage(hint)
+		return
+	}
+
+	if conf.version {
+		printVersion()
+		return
+	}
+
+	if conf.colors {
+		printColors()
+		return
+	}
+
+	// https://rderik.com/blog/identify-if-output-goes-to-the-terminal-or-is-being-redirected-in-golang/
+	//
+	// if stderr outputs to terminal, we redirect it to /dev/null.
+	f2, _ := os.Stderr.Stat()
+	if (f2.Mode() & os.ModeCharDevice) == os.ModeCharDevice {
+		os.Stderr = os.NewFile(uintptr(syscall.Stderr), os.DevNull)
+	}
+
+	// setup client log file
+	switch conf.verbose {
+	case util.DebugLevel:
+		util.Log.SetLevel(slog.LevelDebug)
+	case util.TraceLevel:
+		util.Log.SetLevel(util.LevelTrace)
+	default:
+		util.Log.SetLevel(slog.LevelInfo)
+	}
+	util.Log.SetOutput(os.Stderr)
+
+	// https://earthly.dev/blog/golang-errors/
+	// https://gosamples.dev/check-error-type/
+	// https://www.digitalocean.com/community/tutorials/how-to-add-extra-information-to-errors-in-go
+	//
+	// ssh login to remote server and fetch the seesion key
+	if err = conf.fetchKey(); err != nil {
+		var dnsError *net.DNSError
+		var opError *net.OpError
+		var keyError *xknownhosts.KeyError
+		var exitError *ssh.ExitError
+
+		if errors.As(err, &dnsError) {
+			printUsage(fmt.Sprintf("No such host: %q", dnsError.Name))
+		} else if errors.As(err, &opError) && opError.Op == "dial" {
+			printUsage(fmt.Sprintf("Failed to connect to: %s", opError.Addr))
+		} else if strings.Contains(err.Error(), "unable to authenticate") {
+			// the error returned by ssh.NewClientConn() doen't naming error,
+			// we have to check the error message directly.
+
+			// enable 'PubkeyAuthentication yes' line in sshd_config
+			printUsage(fmt.Sprintf("Failed to authenticate user %q", conf.user))
+		} else if errors.As(err, &keyError) {
+			// } else if strings.Contains(err.Error(), "key is unknown") {
+			// we already handle it
+		} else if errors.Is(err, errNoResponse) {
+			printUsage(err.Error())
+		} else if errors.As(err, &exitError) && exitError.Waitmsg.ExitStatus() == 127 {
+			printUsage("Plase check aprilsh is installed on server.")
+		} else {
+			// printUsage(fmt.Sprintf("%#v", err))
+			printUsage(err.Error())
+		}
+		return
+	}
+
+	// start client
+	util.SetNativeLocale()
+	client := newSTMClient(conf)
+	if err := client.init(); err != nil {
+		fmt.Printf("%s init error:%s\n", frontend.CommandClientName, err)
+		return
+	}
+	client.main()
+	client.shutdown()
 }
