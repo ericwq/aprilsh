@@ -51,20 +51,25 @@ const (
 var usage = `Usage:
   ` + frontend.CommandServerName + ` [-v] [-h] [--auto N]
   ` + frontend.CommandServerName + ` [-b] [-t TERM] [-destination user@server.domain]
-  ` + frontend.CommandServerName + ` [-s] [--verbose V] [-i LOCALADDR] [-p PORT[:PORT2]] [-l NAME=VALUE] [-- command...]
+  ` + frontend.CommandServerName + ` [-s] [-vv[v]] [-i LOCALADDR] [-p PORT[:PORT2]] [-l NAME=VALUE] [-- command...]
 Options:
-  -h, --help     print this message
-  -v, --version  print version information
-  -b, --begin    begin a client connection
-  -a, --auto     auto stop the server after N seconds
-  -s, --server   listen with SSH ip
-  -i, --ip       listen with this ip/host
-  -p, --port     listen port range (default port 60000)
-  -l, --locale   key-value pairs (such as LANG=UTF-8, you can have multiple -l options)
-  -t, --term     client TERM (such as xterm-256color, or alacritty or xterm-kitty)
-  --verbose      verbose output (such as 1)
-  --destination  destination string, such as user@server
-  -- command     shell command and options (note the space before command)
+---------------------------------------------------------------------------------------------------
+  -v,  --version     print version information
+  -h,  --help        print this message
+  -a,  --auto        auto stop the server after N seconds
+---------------------------------------------------------------------------------------------------
+  -b,  --begin       begin a client connection
+  -t,  --term        client TERM (such as xterm-256color, or alacritty or xterm-kitty)
+  -d,  --destination in the form of user@host[:port], here the port is ssh server port (default 22)
+---------------------------------------------------------------------------------------------------
+  -s,  --server      listen with SSH ip
+  -vv, --verbose     verbose log output (debug level, default no verbose)
+  -vvv               verbose log output (trace level)
+  -i,  --ip          listen with this ip/host
+  -p,  --port        listen base port (default 60000)
+  -l,  --locale      key-value pairs (such as LANG=UTF-8, you can have multiple -l options)
+       -- command    shell command and options (note the space before command)
+---------------------------------------------------------------------------------------------------
 `
 
 var failToStartShell = errors.New("fail to start shell")
@@ -85,6 +90,10 @@ var (
 
 // https://www.antoniojgutierrez.com/posts/2021-05-14-short-and-long-options-in-go-flags-pkg/
 type localeFlag map[string]string
+
+func init() {
+	utmpSupport = utmp.HasUtmpSupport()
+}
 
 func (lv *localeFlag) String() string {
 	return fmt.Sprint(*lv)
@@ -220,90 +229,6 @@ func (conf *Config) buildConfig() (string, bool) {
 	return "", true
 }
 
-func init() {
-	utmpSupport = utmp.HasUtmpSupport()
-}
-
-// parse the flag first, print help or version based on flag
-// then run the main listening server
-// aprilsh-server should be installed under $HOME/.local/bin
-func main() {
-	// https://jvns.ca/blog/2017/09/24/profiling-go-with-pprof/
-	conf, _, err := parseFlags(os.Args[0], os.Args[1:])
-	if err == flag.ErrHelp {
-		printUsage("", usage)
-		return
-	} else if err != nil {
-		printUsage(err.Error(), usage)
-		return
-	} else if hint, ok := conf.buildConfig(); !ok {
-		printUsage(hint, usage)
-		return
-	}
-
-	if conf.version {
-		printVersion()
-		return
-	}
-
-	if conf.begin {
-		beginClientConn(conf)
-		return
-	}
-
-	// setup server log file
-	if conf.verbose > 0 {
-		util.Log.SetLevel(slog.LevelDebug)
-	} else {
-		util.Log.SetLevel(slog.LevelInfo)
-	}
-	util.Log.SetOutput(os.Stderr)
-
-	// syslogSupport = false
-	// if conf.verbose == _VERBOSE_LOG_TO_SYSLOG {
-	// 	if util.Log.SetupSyslog("udp", "localhost:514") == nil {
-	// 		// util.Log.With("verbose", conf.verbose).Debug("log to syslog")
-	// 		syslogSupport = true
-	// 	}
-	// }
-
-	// setup syslog
-	syslogWriter, err = syslog.New(syslog.LOG_WARNING|syslog.LOG_LOCAL7, frontend.CommandServerName)
-	if err != nil {
-		util.Log.Warn("can't find syslog service on this server.")
-		syslogSupport = false
-	} else {
-		syslogSupport = true
-	}
-	defer syslogWriter.Close()
-
-	// cpuf, err := os.Create("cpu.profile")
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	return
-	// }
-	// pprof.StartCPUProfile(cpuf)
-	// defer pprof.StopCPUProfile()
-
-	// f, err := os.Create("mem.profile")
-	// if err != nil {
-	// 	fmt.Println(err)
-	// 	return
-	// }
-	// pprof.WriteHeapProfile(f)
-	// defer f.Close()
-
-	// we need a webserver to get the pprof webserver
-	// go func() {
-	// 	fmt.Println(http.ListenAndServe("localhost:6060", nil))
-	// }()
-
-	// start server
-	srv := newMainSrv(conf, runWorker)
-	srv.start(conf)
-	srv.wait()
-}
-
 func printVersion() {
 	fmt.Printf("%s package : %s server, %s\n",
 		frontend.AprilshPackageName, frontend.AprilshPackageName, frontend.CommandServerName)
@@ -424,7 +349,11 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	conf.locales = make(localeFlag)
 	conf.commandArgv = []string{}
 
-	flagSet.IntVar(&conf.verbose, "verbose", 0, "verbose output")
+	// flagSet.IntVar(&conf.verbose, "verbose", 0, "verbose output")
+	var v1, v2 bool
+	flagSet.BoolVar(&v1, "vv", false, "verbose log output debug level")
+	flagSet.BoolVar(&v1, "verbose", false, "verbose log output debug levle")
+	flagSet.BoolVar(&v2, "vvv", false, "verbose log output trace level")
 
 	flagSet.IntVar(&conf.autoStop, "auto", 0, "auto stop after N seconds")
 	flagSet.IntVar(&conf.autoStop, "a", 0, "auto stop after N seconds")
@@ -465,6 +394,13 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 
 	// get the non-flag command-line arguments.
 	conf.commandArgv = flagSet.Args()
+
+	// detremine verbose level
+	if v1 {
+		conf.verbose = util.DebugLevel
+	} else if v2 {
+		conf.verbose = util.TraceLevel
+	}
 	return &conf, buf.String(), nil
 }
 
@@ -1662,4 +1598,80 @@ func (m *mainSrv) writeRespTo(addr *net.UDPAddr, header, msg string) (resp strin
 
 func (m *mainSrv) wait() {
 	m.wg.Wait()
+}
+
+// parse the flag first, print help or version based on flag
+// then run the main listening server
+// aprilsh-server should be installed under $HOME/.local/bin
+func main() {
+	// https://jvns.ca/blog/2017/09/24/profiling-go-with-pprof/
+	conf, _, err := parseFlags(os.Args[0], os.Args[1:])
+	if err == flag.ErrHelp {
+		printUsage("", usage)
+		return
+	} else if err != nil {
+		printUsage(err.Error(), usage)
+		return
+	} else if hint, ok := conf.buildConfig(); !ok {
+		printUsage(hint, usage)
+		return
+	}
+
+	if conf.version {
+		printVersion()
+		return
+	}
+
+	if conf.begin {
+		beginClientConn(conf)
+		return
+	}
+
+	util.Log.SetOutput(os.Stderr)
+	// setup client log file
+	switch conf.verbose {
+	case util.DebugLevel:
+		util.Log.SetLevel(slog.LevelDebug)
+	case util.TraceLevel:
+		util.Log.SetLevel(util.LevelTrace)
+	default:
+		util.Log.SetLevel(slog.LevelInfo)
+	}
+	util.Log.SetOutput(os.Stderr)
+
+	// setup syslog
+	syslogWriter, err = syslog.New(syslog.LOG_WARNING|syslog.LOG_LOCAL7, frontend.CommandServerName)
+	if err != nil {
+		util.Log.Warn("can't find syslog service on this server.")
+		syslogSupport = false
+	} else {
+		syslogSupport = true
+	}
+	defer syslogWriter.Close()
+
+	// cpuf, err := os.Create("cpu.profile")
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
+	// pprof.StartCPUProfile(cpuf)
+	// defer pprof.StopCPUProfile()
+
+	// f, err := os.Create("mem.profile")
+	// if err != nil {
+	// 	fmt.Println(err)
+	// 	return
+	// }
+	// pprof.WriteHeapProfile(f)
+	// defer f.Close()
+
+	// we need a webserver to get the pprof webserver
+	// go func() {
+	// 	fmt.Println(http.ListenAndServe("localhost:6060", nil))
+	// }()
+
+	// start server
+	srv := newMainSrv(conf, runWorker)
+	srv.start(conf)
+	srv.wait()
 }
