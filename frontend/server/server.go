@@ -51,7 +51,7 @@ const (
 var usage = `Usage:
   ` + frontend.CommandServerName + ` [-v] [-h] [--auto N]
   ` + frontend.CommandServerName + ` [-b] [-t TERM] [-destination user@server.domain]
-  ` + frontend.CommandServerName + ` [-s] [-vv[v]] [-i LOCALADDR] [-p PORT[:PORT2]] [-l NAME=VALUE] [-- command...]
+  ` + frontend.CommandServerName + ` [-s] [-vv[v]] [-i LOCALADDR] [-p PORT[:PORT2]] [-l NAME=VALUE] [-source] [-- command...]
 Options:
 ---------------------------------------------------------------------------------------------------
   -v,  --version     print version information
@@ -63,11 +63,12 @@ Options:
   -d,  --destination in the form of user@host[:port], here the port is ssh server port (default 22)
 ---------------------------------------------------------------------------------------------------
   -s,  --server      listen with SSH ip
-  -vv, --verbose     verbose log output (debug level, default no verbose)
-  -vvv               verbose log output (trace level)
   -i,  --ip          listen with this ip/host
   -p,  --port        listen base port (default 60000)
   -l,  --locale      key-value pairs (such as LANG=UTF-8, you can have multiple -l options)
+  -vv, --verbose     verbose log output (debug level, default no verbose)
+  -vvv               verbose log output (trace level)
+       --source      add source info to log
        -- command    shell command and options (note the space before command)
 ---------------------------------------------------------------------------------------------------
 `
@@ -126,6 +127,7 @@ type Config struct {
 	destination string     // [user@]hostname, destination string
 	host        string     // target host/server
 	user        string     // target user
+	addSource   bool       // add source file to log
 
 	commandPath string   // shell command path (absolute path)
 	commandArgv []string // the positional (non-flag) command-line arguments.
@@ -354,6 +356,8 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.BoolVar(&v1, "vv", false, "verbose log output debug level")
 	flagSet.BoolVar(&v1, "verbose", false, "verbose log output debug levle")
 	flagSet.BoolVar(&v2, "vvv", false, "verbose log output trace level")
+
+	flagSet.BoolVar(&conf.addSource, "source", false, "add source info to log")
 
 	flagSet.IntVar(&conf.autoStop, "auto", 0, "auto stop after N seconds")
 	flagSet.IntVar(&conf.autoStop, "a", 0, "auto stop after N seconds")
@@ -1627,6 +1631,7 @@ func main() {
 	default:
 		util.Log.SetLevel(slog.LevelInfo)
 	}
+	util.Log.AddSource(conf.addSource)
 	util.Log.SetOutput(os.Stderr)
 
 	// setup syslog

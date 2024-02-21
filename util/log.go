@@ -27,6 +27,7 @@ var levelNames = map[slog.Leveler]string{
 
 type logger struct {
 	*slog.Logger
+	addSource    bool
 	programLevel *slog.LevelVar
 }
 
@@ -42,12 +43,16 @@ func (l *logger) SetLevel(v slog.Level) {
 	l.programLevel.Set(v)
 }
 
-func (l *logger) addSource() bool {
-	if l.programLevel.Level() <= slog.LevelDebug {
-		return true
-	}
-	return false
+func (l *logger) AddSource(add bool) {
+	Log.addSource = add
 }
+
+// func (l *logger) addSource() bool {
+// 	if l.programLevel.Level() <= slog.LevelDebug {
+// 		return true
+// 	}
+// 	return false
+// }
 
 // how to replace a line in file,sample
 // sed -i 's/.*defer util\.Log\.Restore.*//g' encrypt/encrypt_test.go
@@ -55,7 +60,7 @@ func (l *logger) addSource() bool {
 
 func (l *logger) SetOutput(w io.Writer) {
 	ho := &slog.HandlerOptions{
-		AddSource: Log.addSource(),
+		AddSource: Log.addSource,
 		Level:     Log.programLevel,
 		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
 			if a.Key == slog.LevelKey {

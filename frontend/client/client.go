@@ -46,16 +46,20 @@ const (
 var (
 	usage = `Usage:
   ` + frontend.CommandClientName + ` [--version] [--help] [--colors]
-  ` + frontend.CommandClientName + ` [-vv[v]] [--port PORT] [-i identity_file] destination
+  ` + frontend.CommandClientName + ` [-vv[v]] [--port PORT] [-i identity_file] [--source] destination
 Options:
-  -h,  --help    print this message
-  -v,  --version print version information
-  -c,  --colors  print the number of colors of terminal
-  -p,  --port    apshd server port (default 60000)
-  -vv, --verbose verbose log output (debug level, default no verbose)
-  -vvv           verbose log output (trace level)
-  -i             ssh client identity (private key) for public key authentication (default $HOME/.ssh/id_rsa)
-  destination    in the form of user@host[:port], here the port is ssh server port (default 22)
+---------------------------------------------------------------------------------------------------
+  -h,  --help        print this message
+  -v,  --version     print version information
+  -c,  --colors      print the number of colors of terminal
+---------------------------------------------------------------------------------------------------
+  -p,  --port        apshd server port (default 60000)
+  destination        in the form of user@host[:port], here the port is ssh server port (default 22)
+  -i                 ssh client identity (private key) (default $HOME/.ssh/id_rsa)
+  -vv, --verbose     verbose log output (debug level, default no verbose)
+  -vvv               verbose log output (trace level)
+       --source      add source info to log
+---------------------------------------------------------------------------------------------------
 `
 	predictionValues   = []string{"always", "never", "adaptive", "experimental"}
 	defaultSSHClientID = filepath.Join(os.Getenv("HOME"), ".ssh", "id_rsa")
@@ -116,6 +120,8 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.BoolVar(&conf.version, "version", false, "print version information")
 	flagSet.BoolVar(&conf.version, "v", false, "print version information")
 
+	flagSet.BoolVar(&conf.addSource, "source", false, "add source info to log")
+
 	flagSet.IntVar(&conf.port, "port", frontend.DefaultPort, frontend.CommandServerName+" server port")
 	flagSet.IntVar(&conf.port, "p", frontend.DefaultPort, frontend.CommandServerName+" server port")
 
@@ -154,6 +160,7 @@ type Config struct {
 	predictOverwrite string
 	sshClientID      string // ssh client identity, for SSH public key authentication
 	sshPort          string // ssh port, default 22
+	addSource        bool   // add source file to log
 }
 
 var errNoResponse = errors.New("no response, please make sure the server is running.")
@@ -1173,6 +1180,7 @@ func main() {
 	default:
 		util.Log.SetLevel(slog.LevelInfo)
 	}
+	util.Log.AddSource(conf.addSource)
 	util.Log.SetOutput(os.Stderr)
 
 	// https://earthly.dev/blog/golang-errors/
