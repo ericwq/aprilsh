@@ -540,7 +540,7 @@ func (sc *STMClient) mainInit() error {
 	if err != nil {
 		return err
 	}
-	util.Log.With("col", col).With("row", row).Debug("client window size")
+	util.Log.Debug("client window size", "col", col, "row", row)
 
 	// local state
 	savedLines := terminal.SaveLinesRowsOption
@@ -553,7 +553,7 @@ func (sc *STMClient) mainInit() error {
 	// CSI ? 1l		Normal Cursor Keys (DECCKM)
 	// CSI ? 1004l Disable FocusIn/FocusOut
 	init := "\x1B[?1049l\x1B[?1l\x1B[?1004l"
-	util.Log.With("init", init).Debug("mainInit")
+	util.Log.Debug("mainInit", "init", init)
 	os.Stdout.WriteString(init)
 
 	// open network
@@ -576,7 +576,7 @@ func (sc *STMClient) mainInit() error {
 func (sc *STMClient) processNetworkInput(s string) {
 	// sc.network.Recv()
 	if err := sc.network.ProcessPayload(s); err != nil {
-		util.Log.With("error", err).Warn("ProcessPayload")
+		util.Log.Warn("ProcessPayload", "error", err)
 	}
 
 	//  Now give hints to the overlays
@@ -603,7 +603,7 @@ func (sc *STMClient) processUserInput(buf string) bool {
 		sc.overlays.GetPredictionEngine().Reset()
 	}
 
-	util.Log.With("buf", buf).Debug("processUserInput")
+	util.Log.Debug("processUserInput", "buf", buf)
 	var input []rune
 	graphemes := uniseg.NewGraphemes(buf)
 	for graphemes.Next() {
@@ -629,7 +629,7 @@ func (sc *STMClient) processUserInput(buf string) bool {
 				os.Stdout.WriteString(sc.display.Close())
 
 				if err := term.Restore(int(os.Stdin.Fd()), sc.savedTermios); err != nil {
-					util.Log.With("error", err).Error("restore terminal failed")
+					util.Log.Error("restore terminal failed", "error", err)
 					return false
 				}
 
@@ -719,7 +719,7 @@ func (sc *STMClient) outputNewFrame() {
 	// util.Log.SetLevel(slog.LevelDebug)
 	os.Stdout.WriteString(diff)
 	if diff != "" {
-		util.Log.With("diff", diff).Debug("outputNewFrame")
+		util.Log.Debug("outputNewFrame", "diff", diff)
 	}
 
 	sc.repaintRequested = false
@@ -939,7 +939,7 @@ func (sc *STMClient) main() error {
 	// 	for {
 	// 		select {
 	// 		case s := <-sigChan:
-	// 			util.Log.With("signal", s).Debug("got signal")
+	// 			util.Log.Debug("got signal","signal", s)
 	// 			signals.Handler(s)
 	// 		case <-shutdownChan:
 	// 			return nil
@@ -962,14 +962,12 @@ mainLoop:
 		}
 
 		timer := time.NewTimer(time.Duration(waitTime) * time.Millisecond)
-		util.Log.With("point", 100).With("network.WaitTime", w0).
-			With("overlays.WaitTime", w1).With("timeout", waitTime).Debug("mainLoop")
+		util.Log.Debug("mainLoop", "point", 100,
+			"network.WaitTime", w0, "overlays.WaitTime", w1, "timeout", waitTime)
 		select {
 		case <-timer.C:
-			// util.Log.With("overlays", sc.overlays.WaitTime()).
-			// 	With("network", sc.network.WaitTime()).
-			// 	With("waitTime", waitTime).
-			// 	Debug("mainLoop")
+			// util.Log.Debug("mainLoop", "overlays", sc.overlays.WaitTime(),
+			// 	"network", sc.network.WaitTime(), "waitTime", waitTime)
 		case networkMsg := <-networkChan:
 
 			// got data from server
@@ -979,7 +977,7 @@ mainLoop:
 					break mainLoop
 				}
 				// if read from server failed, retry after 0.2 second
-				util.Log.With("error", networkMsg.Err).Warn("receive from network")
+				util.Log.Warn("receive from network", "error", networkMsg.Err)
 				if !sc.network.ShutdownInProgress() {
 					sc.overlays.GetNotificationEngine().SetNetworkError(networkMsg.Err.Error())
 				}
@@ -987,7 +985,7 @@ mainLoop:
 				time.Sleep(time.Duration(200) * time.Millisecond)
 				continue mainLoop
 			}
-			// util.Log.With("data", networkMsg.Data).Info("got from network")
+			// util.Log.Info("got from network", "data", networkMsg.Data)
 			sc.processNetworkInput(networkMsg.Data)
 
 		case fileMsg := <-fileChan:
@@ -997,7 +995,7 @@ mainLoop:
 
 				// if read from local pts terminal failed, quit
 				if fileMsg.Err != nil {
-					util.Log.With("error", fileMsg.Err).Warn("read from file")
+					util.Log.Warn("read from file", "error", fileMsg.Err)
 				}
 				if !sc.network.HasRemoteAddr() {
 					break mainLoop
@@ -1007,7 +1005,7 @@ mainLoop:
 				}
 			}
 		case s := <-sigChan:
-			util.Log.With("signal", s).Debug("got signal")
+			util.Log.Debug("got signal", "signal", s)
 			signals.Handler(s)
 		}
 
@@ -1062,7 +1060,7 @@ mainLoop:
 					sc.overlays.GetNotificationEngine().SetNotificationString(
 						"Timed out waiting for server...", true, true)
 					// sc.network.StartShutdown()
-					util.Log.With("seconds", frontend.TimeoutIfNoConnect/1000).Warn("No connection within x seconds")
+					util.Log.Warn("No connection within x seconds", "seconds", frontend.TimeoutIfNoConnect/1000)
 					break
 				}
 			} else {
@@ -1074,10 +1072,10 @@ mainLoop:
 			sc.overlays.GetNotificationEngine().SetNotificationString("", false, true)
 		}
 
-		// util.Log.With("before", "tick").Warn("mainLoop")
+		// util.Log.Warn("mainLoop", "before", "tick")
 		err := sc.network.Tick()
 		if err != nil {
-			util.Log.With("error", err).Warn("tick send failed")
+			util.Log.Warn("tick send failed", "error", err)
 			sc.overlays.GetNotificationEngine().SetNetworkError(err.Error())
 			// if errors.Is(err, syscall.ECONNREFUSED) {
 			sc.network.StartShutdown()
@@ -1090,7 +1088,7 @@ mainLoop:
 		if sc.network.GetRemoteStateNum() != 0 && sinceLastResponse > frontend.TimeoutIfNoResp {
 			// if no awaken
 			if !sc.network.Awaken(now) {
-				util.Log.With("seconds", frontend.TimeoutIfNoResp).Warn("No server response over x seconds")
+				util.Log.Warn("No server response over x seconds", "seconds", frontend.TimeoutIfNoResp)
 				break
 			}
 		}

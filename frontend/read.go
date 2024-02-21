@@ -44,16 +44,16 @@ func ReadFromFile(timeout int, msgChan chan Message, doneChan chan any, fReader 
 			go func(fr io.Reader, buf []byte, ch chan Message) {
 				atomic.StoreInt64(&reading, 1)
 				// reading = true
-				// util.Log.With("action", "satrt").Debug("#read")
+				// util.Log.Debug("#read","action", "satrt")
 				bytesRead, err = fr.Read(buf)
 				if bytesRead > 0 {
 					ch <- Message{string(buf[:bytesRead]), nil, nil}
 					atomic.StoreInt64(&reading, 0)
 					// reading = false
-					// util.Log.With("action", "got").Debug("#read")
+					// util.Log.Debug("#read","action", "got")
 				} else {
 					ch <- Message{"", nil, err}
-					// util.Log.With("error", "EOF").Debug("#read")
+					// util.Log.Debug("#read","error", "EOF")
 				}
 			}(fReader, buf[:], msgChan)
 		}
@@ -87,7 +87,7 @@ func ReadFromNetwork(timeout int, msgChan chan Message, doneChan chan any, conne
 				// read timeout
 			} else {
 				if errors.Is(err, net.ErrClosed) { // connection is closed
-					// util.Log.With("error", err).Debug("#ReadFromNetwork")
+					// util.Log.Debug("#ReadFromNetwork","error", err)
 					return
 				}
 				// in case of other error, notify the caller and continue.

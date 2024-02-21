@@ -1335,7 +1335,7 @@ func (om *OverlayManager) SetTitlePrefix(v string) {
 func (om *OverlayManager) WaitTime() int {
 	w1 := om.notifications.waitTime()
 	w2 := om.predictions.waitTime()
-	// util.Log.With("predictions", w2).With("notifications", w1).Debug("waitTime")
+	// util.Log.Debug("waitTime", "predictions", w2, "notifications", w1)
 	return min(w1, w2)
 
 	// return terminal.Min(om.notifications.waitTime(), om.predictions.waitTime())

@@ -1427,7 +1427,6 @@ func TestRunWorkerKillSignal(t *testing.T) {
 			r, w, _ := os.Pipe()
 			os.Stdout = w
 
-
 			util.Log.SetLevel(slog.LevelDebug)
 			util.Log.SetOutput(w)
 
@@ -1767,7 +1766,6 @@ func TestStartShellFail(t *testing.T) {
 		}, // term is empty, withMotd is true, startShell should failed.
 	}
 
-
 	util.Log.SetOutput(io.Discard)
 	// util.Log.SetOutput(os.Stdout)
 	// util.Log.SetLevel(slog.LevelDebug)
@@ -1790,7 +1788,7 @@ func TestStartShellFail(t *testing.T) {
 				go func() {
 					time.Sleep(2 * time.Millisecond)
 					pw.Close()
-					util.Log.With("action", "send").Debug("start shell message")
+					util.Log.Debug("start shell message", "action", "send")
 				}()
 			}
 

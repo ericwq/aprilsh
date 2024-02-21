@@ -480,8 +480,8 @@ func getTimeFrom(env string, def int64) (ret int64) {
 }
 
 func printWelcome(pid int, port int, tty *os.File) {
-	util.Log.With("port", port).With("gitTag", frontend.GitTag).With("pid", pid).
-		Info(frontend.CommandServerName + " start listening on")
+	util.Log.Info(frontend.CommandServerName+" start listening on",
+		"port", port, "gitTag", frontend.GitTag, "pid", pid)
 	// fmt.Printf("Copyright 2022~2023 wangqi.\n")
 	// fmt.Printf("%s%s", "Use of this source code is governed by a MIT-style",
 	// 	"license that can be found in the LICENSE file.\n")
@@ -508,11 +508,12 @@ func printWelcome(pid int, port int, tty *os.File) {
 	}
 }
 
+// TODO can't get current user.
 func getCurrentUser() string {
 	user, err := user.Current()
 	if err != nil || userCurrentTest {
 		// logW.Printf("#getCurrentUser report: %s\n", err)
-		util.Log.With("error", err).Warn("Get current user")
+		util.Log.Warn("Get current user", "error", err)
 		return ""
 	}
 
@@ -562,8 +563,7 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 	u, _ := user.Lookup(conf.user)
 	uid, _ := strconv.ParseInt(u.Uid, 10, 32)
 	gid, _ := strconv.ParseInt(u.Gid, 10, 32)
-	util.Log.With("user", u.Username).With("gid", u.Gid).With("HOME", u.HomeDir).
-		Info("start shell check user")
+	util.Log.Info("start shell check user", "user", u.Username, "gid", u.Gid, "HOME", u.HomeDir)
 
 	// set base env
 	// TODO should we put LOGNAME, MAIL into env?
@@ -579,9 +579,9 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 
 	// ask ncurses to send UTF-8 instead of ISO 2022 for line-drawing chars
 	env = append(env, "NCURSES_NO_UTF8_ACS=1")
-	util.Log.With("env", env).Info("start shell check env")
-	util.Log.With("commandPath", conf.commandPath).With("commandArgv", conf.commandArgv).
-		Info("start shell check command")
+	util.Log.Info("start shell check env", "env", env)
+	util.Log.Info("start shell check command",
+		"commandPath", conf.commandPath, "commandArgv", conf.commandArgv)
 
 	sysProcAttr := &syscall.SysProcAttr{}
 	sysProcAttr.Setsid = true                     // start a new session
@@ -630,7 +630,7 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 		ch := make(chan bool, 0)
 		timer := time.NewTimer(time.Duration(frontend.TimeoutIfNoConnect) * time.Millisecond)
 
-		// util.Log.With("action", "wait").With("port", conf.desiredPort).Debug("start shell message")
+		// util.Log.Debug("start shell message", "action", "wait", "port", conf.desiredPort)
 		// add timeout for pipe read
 		go func(pr *io.PipeReader, ch chan bool) {
 			buf := make([]byte, 81)
@@ -638,9 +638,9 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 			_, err := pr.Read(buf)
 			if err != nil && errors.Is(err, io.EOF) {
 				ch <- true
-				// util.Log.With("action", "received").With("port", conf.desiredPort).Debug("start shell message")
+				// util.Log.Debug("start shell message", "action", "received", "port", conf.desiredPort)
 			} else {
-				// util.Log.With("action", "readFailed").With("port", conf.desiredPort).Debug("start shell message")
+				// util.Log.Debug("start shell message", "action", "readFailed", "port", conf.desiredPort)
 			}
 		}(pr, ch)
 
@@ -649,13 +649,13 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 		case <-ch:
 		case <-timer.C:
 			pr.Close() // close pipe will stop the Read operation
-			// util.Log.With("action", "timeout").With("port", conf.desiredPort).Debug("start shell message")
+			// util.Log.Debug("start shell message", "action", "timeout", "port", conf.desiredPort)
 			return nil, fmt.Errorf("pipe read: %w", os.ErrDeadlineExceeded)
 		}
 		timer.Stop()
 
 		pr.Close()
-		util.Log.With("pty", pts.Name()).Info("start shell at")
+		util.Log.Info("start shell at", "pty", pts.Name())
 	}
 
 	proc, err := os.StartProcess(conf.commandPath, conf.commandArgv, &procAttr)
@@ -726,8 +726,8 @@ func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err err
 	*/
 	networkSignaledTimeout := getTimeFrom("APRILSH_SERVER_SIGNAL_TMOUT", 0)
 
-	// util.Log.With("networkTimeout", networkTimeout).
-	// 	With("networkSignaledTimeout", networkSignaledTimeout).Debug("runWorker")
+	// util.Log.Debug("runWorker", "networkTimeout", networkTimeout,
+	// 	"networkSignaledTimeout", networkSignaledTimeout)
 
 	// get initial window size
 	var windowSize *unix.Winsize
@@ -739,7 +739,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err err
 		windowSize.Col = 80
 		windowSize.Row = 24
 	}
-	// util.Log.With("cols", windowSize.Col).With("rows", windowSize.Row).Debug("init terminal size")
+	// util.Log.Debug("init terminal size", "cols", windowSize.Col, "rows", windowSize.Row)
 
 	// open parser and terminal
 	savedLines := terminal.SaveLinesRowsOption
@@ -750,7 +750,6 @@ func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err err
 	server := network.NewTransportServer(terminal, blank, conf.desiredIP, conf.desiredPort)
 	server.SetVerbose(uint(conf.verbose))
 	// defer server.Close()
-	// util.Log.With("target", conf.target).Debug("runWorker")
 
 	/*
 		// If server is run on a pty, then typeahead may echo and break mosh.pl's
@@ -775,8 +774,7 @@ func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err err
 
 	ptmx, pts, err := openPTS(windowSize)
 	if err != nil {
-		// logW.Printf("#runWorker openPTS fail: %s\n", err)
-		util.Log.With("error", err).Warn("openPTS fail")
+		util.Log.Warn("openPTS fail", "error", err)
 		whChan <- workhorse{}
 		return err
 	}
@@ -822,14 +820,13 @@ func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err err
 		}
 	}()
 
-	util.Log.With("port", conf.desiredPort).With("clientTERM", conf.term).
-		Info("start listening on")
+	util.Log.Info("start listening on", "port", conf.desiredPort, "clientTERM", conf.term)
 
 	// start the shell with pts
 	shell, err := startShell(pts, pr, utmpHost, conf)
 	pts.Close() // it's copied by shell process, it's safe to close it here.
 	if err != nil {
-		util.Log.With("error", err).Warn("startShell fail")
+		util.Log.Warn("startShell fail", "error", err)
 		whChan <- workhorse{}
 	} else {
 
@@ -839,22 +836,22 @@ func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err err
 		state, err = shell.Wait()
 		if err != nil || state.Exited() {
 			if err != nil {
-				util.Log.With("error", err).With("state", state).Warn("shell.Wait fail")
+				util.Log.Warn("shell.Wait fail", "error", err, "state", state)
 				// } else {
-				// 	util.Log.With("state.exited", state.Exited()).Debug("shell.Wait quit")
+				// util.Log.Debug("shell.Wait quit", "state.exited", state.Exited())
 			}
 		}
 	}
 
 	// wait serve to finish
 	wg.Wait()
-	util.Log.With("port", conf.desiredPort).Info("stop listening on")
+	util.Log.Info("stop listening on", "port", conf.desiredPort)
 
 	// fmt.Printf("[%s is exiting.]\n", frontend.COMMAND_SERVER_NAME)
 	// https://www.dolthub.com/blog/2022-11-28-go-os-exec-patterns/
 	// https://www.prakharsrivastav.com/posts/golang-context-and-cancellation/
 
-	// util.Log.With("port", conf.desiredPort).Debug("runWorker quit")
+	// util.Log.Debug("runWorker quit", "port", conf.desiredPort)
 	return err
 }
 
@@ -873,7 +870,7 @@ func serve(ptmx *os.File, pts *os.File, pw *io.PipeWriter, complete *statesync.C
 	var userName string
 	if syslogSupport {
 		userName = getCurrentUser()
-		util.Log.With("user", userName).Info("user session begin")
+		util.Log.Info("user session begin", "user", userName)
 	}
 
 	var terminalToHost strings.Builder
@@ -942,22 +939,19 @@ mainLoop:
 		timeSinceRemoteState = now - p.GetTimestamp()
 		terminalToHost.Reset()
 
-		util.Log.With("port", server.GetServerPort()).With("network.WaitTime", w0).
-			With("complete.WaitTime", w1).With("timeout", timeout).Debug("mainLoop")
+		util.Log.Debug("mainLoop", "port", server.GetServerPort(),
+			"network.WaitTime", w0, "complete.WaitTime", w1, "timeout", timeout)
 		timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
 		select {
 		case <-timer.C:
-			// util.Log.With("complete", complete.WaitTime(now)).
-			// 	// With("network", network.WaitTime()).
-			// 	With("networkSleep", networkSleep).
-			// 	With("timeout", timeout).
-			// 	Debug("mainLoop")
+			util.Log.Debug("mainLoop", "complete", complete.WaitTime(now),
+				"networkSleep", networkSleep, "timeout", timeout)
 		case s := <-sigChan:
 			signals.Handler(s)
 		case socketMsg := <-networkChan: // packet received from the network
 			if socketMsg.Err != nil {
 				// TODO handle "use of closed network connection" error?
-				util.Log.With("error", socketMsg.Err).Warn("read from network")
+				util.Log.Warn("read from network", "error", socketMsg.Err)
 				continue mainLoop
 			}
 			server.ProcessPayload(socketMsg.Data)
@@ -993,7 +987,7 @@ mainLoop:
 							fmt.Printf("#serve ioctl TIOCSWINSZ %s", err)
 							server.StartShutdown()
 						}
-						// util.Log.With("col", winSize.Col).With("row", winSize.Row).Debug("input from remote")
+						// util.Log.Debug("input from remote", "col", winSize.Col, "row", winSize.Row)
 						if !childReleased {
 							// only do once
 							server.InitSize(res.Width, res.Height)
@@ -1003,7 +997,7 @@ mainLoop:
 				}
 
 				if terminalToHost.Len() > 0 {
-					util.Log.With("arise", "socket").With("data", terminalToHost.String()).Debug("input from remote")
+					util.Log.Debug("input from remote", "arise", "socket", "data", terminalToHost.String())
 				}
 
 				if !us.Empty() {
@@ -1047,7 +1041,7 @@ mainLoop:
 							connectedUtmp = true
 						}
 						if syslogSupport {
-							util.Log.With("user", userName).With("host", host).Info("connected from remote host")
+							util.Log.Info("connected from remote host", "user", userName, "host", host)
 							syslogWriter.Info(fmt.Sprintf("user %s connected from host: %s -> port %s",
 								user, server.GetRemoteAddr(), server.GetServerPort()))
 						}
@@ -1058,9 +1052,9 @@ mainLoop:
 				// release startShell() to start login session
 				if !childReleased {
 					if err := pw.Close(); err != nil {
-						util.Log.With("error", err).Error("send start shell message failed")
+						util.Log.Error("send start shell message failed", "error", err)
 					}
-					// util.Log.With("action", "send").Debug("start shell message")
+					// util.Log.Debug("start shell message", "action", "send")
 					childReleased = true
 				}
 			}
@@ -1069,7 +1063,7 @@ mainLoop:
 				out := complete.ActLarge(remains, largeFeed)
 				terminalToHost.WriteString(out)
 
-				util.Log.With("arise", "remains").With("input", out).Debug("ouput from host")
+				util.Log.Debug("ouput from host", "arise", "remains", "input", out)
 
 				// update client with new state of terminal
 				server.SetCurrentState(complete)
@@ -1082,18 +1076,17 @@ mainLoop:
 				// EIO (see #264).  So we treat errors on read() like EOF.
 				if masterMsg.Err != nil {
 					if len(masterMsg.Data) > 0 {
-						util.Log.With("error", masterMsg.Err).Warn("read from master")
+						util.Log.Warn("read from master", "error", masterMsg.Err)
 					}
 					if !signals.AnySignal() { // avoid conflict with signal
-						util.Log.With("from", "read file failed").With("port", server.GetServerPort()).Warn("shutdown")
+						util.Log.Warn("shutdown", "from", "read file failed", "port", server.GetServerPort())
 						server.StartShutdown()
 					}
 				} else {
 					out := complete.ActLarge(masterMsg.Data, largeFeed)
 					terminalToHost.WriteString(out)
 
-					util.Log.With("arise", "master").With("ouput", masterMsg.Data).
-						With("input", out).Debug("output from host")
+					util.Log.Debug("output from host", "arise", "master", "ouput", masterMsg.Data, "input", out)
 
 					// update client with new state of terminal
 					server.SetCurrentState(complete)
@@ -1108,7 +1101,7 @@ mainLoop:
 				server.StartShutdown()
 			}
 
-			util.Log.With("arise", "merge-").With("data", terminalToHost.String()).Debug("input to host")
+			util.Log.Debug("input to host", "arise", "merge-", "data", terminalToHost.String())
 		}
 
 		idleShutdown := false
@@ -1116,49 +1109,48 @@ mainLoop:
 			// if network timeout is set and over networkTimeoutMs quit this session.
 			idleShutdown = true
 			// fmt.Printf("Network idle for %d seconds.\n", timeSinceRemoteState/1000)
-			util.Log.With("seconds", timeSinceRemoteState/1000).Info("Network idle for x seconds")
+			util.Log.Info("Network idle for x seconds", "seconds", timeSinceRemoteState/1000)
 		}
 
 		if signals.GotSignal(syscall.SIGUSR1) {
 			if networkSignaledTimeoutMs == 0 || networkSignaledTimeoutMs <= timeSinceRemoteState {
 				idleShutdown = true
 				// fmt.Printf("Network idle for %d seconds when SIGUSR1 received.\n", timeSinceRemoteState/1000)
-				util.Log.With("seconds", timeSinceRemoteState/1000).
-					Info("Network idle for x seconds when SIGUSR1 received")
+				util.Log.Info("Network idle for x seconds when SIGUSR1 received", "seconds",
+					timeSinceRemoteState/1000)
 			}
 		}
 
 		if signals.AnySignal() || idleShutdown {
-			util.Log.With("HasRemoteAddr", server.HasRemoteAddr()).
-				With("ShutdownInProgress", server.ShutdownInProgress()).
-				Debug("got signal: start shutdown")
+			subLog := util.Log.With("HasRemoteAddr", server.HasRemoteAddr()).
+				With("ShutdownInProgress", server.ShutdownInProgress())
+
+			subLog.Debug("got signal: start shutdown")
 			signals.Clear()
 			// shutdown signal
 			if server.HasRemoteAddr() && !server.ShutdownInProgress() {
 				server.StartShutdown()
 			} else {
-				util.Log.With("HasRemoteAddr", server.HasRemoteAddr()).
-					With("ShutdownInProgress", server.ShutdownInProgress()).
-					Debug("got signal: break loop")
+				subLog.Debug("got signal: break loop")
 				break
 			}
 		}
 
 		// quit if our shutdown has been acknowledged
 		if server.ShutdownInProgress() && server.ShutdownAcknowledged() {
-			util.Log.With("from", "acked").With("port", server.GetServerPort()).Warn("shutdown")
+			util.Log.Warn("shutdown", "from", "acked", "port", server.GetServerPort())
 			break
 		}
 
 		// quit after shutdown acknowledgement timeout
 		if server.ShutdownInProgress() && server.ShutdownAckTimedout() {
-			util.Log.With("from", "act timeout").With("port", server.GetServerPort()).Warn("shutdown")
+			util.Log.Warn("shutdown", "from", "act timeout", "port", server.GetServerPort())
 			break
 		}
 
 		// quit if we received and acknowledged a shutdown request
 		if server.CounterpartyShutdownAckSent() {
-			util.Log.With("from", "peer acked").With("port", server.GetServerPort()).Warn("shutdown")
+			util.Log.Warn("shutdown", "from", "peer acked", "port", server.GetServerPort())
 			break
 		}
 
@@ -1178,29 +1170,27 @@ mainLoop:
 			server.SetCurrentState(complete)
 		}
 
-		// util.Log.With("point", 500).Debug("mainLoop")
+		// util.Log.Debug("mainLoop","point", 500)
 		err := server.Tick()
 		if err != nil {
-			util.Log.With("error", err).Warn("#serve send failed")
+			util.Log.Warn("#serve send failed", "error", err)
 		}
-		// util.Log.With("point", "d").Debug("mainLoop")
+		// util.Log.Debug("mainLoop","point", "d")
 
 		now = time.Now().UnixMilli()
 		if server.GetRemoteStateNum() == 0 && server.ShutdownInProgress() {
 			// abort if no connection over TimeoutIfNoConnect seconds
 
-			util.Log.With("seconds", frontend.TimeoutIfNoConnect/1000).With("timeout", "shutdown").
-				With("port", server.GetServerPort()).Warn("No connection within x seconds")
+			util.Log.Warn("No connection within x seconds", "seconds", frontend.TimeoutIfNoConnect/1000,
+				"timeout", "shutdown", "port", server.GetServerPort())
 			break
 		} else if server.GetRemoteStateNum() != 0 && timeSinceRemoteState >= frontend.TimeoutIfNoResp {
 			// if no response from client over TimeoutIfNoResp seconds
 			// if now-server.GetSentStateLastTimestamp() >= frontend.TimeoutIfNoResp-network.SERVER_ASSOCIATION_TIMEOUT {
 			if !server.Awaken(now) {
 				// abort if no request send over TimeoutIfNoResp seconds
-				util.Log.With("seconds", frontend.TimeoutIfNoResp/1000).
-					With("port", server.GetServerPort()).
-					With("timeSinceRemoteState", timeSinceRemoteState).
-					Warn("Time out for no client request")
+				util.Log.Warn("Time out for no client request", "seconds", frontend.TimeoutIfNoResp/1000,
+					"port", server.GetServerPort(), "timeSinceRemoteState", timeSinceRemoteState)
 				break
 			}
 			// }
@@ -1233,7 +1223,7 @@ mainLoop:
 	eg.Wait()
 
 	if syslogSupport {
-		util.Log.With("user", userName).Info("user session end")
+		util.Log.Info("user session end", "user", userName)
 		syslogWriter.Info(fmt.Sprintf("user %s disconnected from host: %s -> port %s",
 			user, server.GetRemoteAddr(), server.GetServerPort()))
 	}
@@ -1281,7 +1271,7 @@ func newMainSrv(conf *Config, runWorker func(*Config, chan string, chan workhors
 func (m *mainSrv) start(conf *Config) {
 	// listen the port
 	if err := m.listen(conf); err != nil {
-		util.Log.With("error", err).Warn("listen failed")
+		util.Log.Warn("listen failed", "error", err)
 		return
 	}
 
@@ -1324,20 +1314,20 @@ func (m *mainSrv) cleanWorkers(cmd string) {
 	if len(ps) == 1 {
 		p, err := strconv.Atoi(cmd)
 		if err != nil {
-			// util.Log.With("portStr", portStr).With("err", err).Debug("cleanWorkers receive wrong portStr")
+			util.Log.Debug("cleanWorkers receive wrong portStr", "portStr", cmd, "err", err)
 		}
 
 		// clean worker list
 		delete(m.workers, p)
-		// util.Log.With("worker", ps[0]).Warn("#run clean worker")
+		// util.Log.Warn("#run clean worker","worker", ps[0])
 	} else if ps[1] == "shutdown" {
 		idx, err := strconv.Atoi(ps[0])
 		if err != nil {
-			util.Log.With("portStr", cmd).Warn("#run receive malform message")
+			util.Log.Warn("#run receive malform message", "portStr", cmd)
 		} else if _, ok := m.workers[idx]; ok {
 			// stop the specified shell
 			m.workers[idx].shell.Kill()
-			// util.Log.With("shell", idx).Debug("#run kill shell")
+			// util.Log.Debug("#run kill shell","shell", idx)
 		}
 	}
 }
@@ -1377,7 +1367,7 @@ func (m *mainSrv) run(conf *Config) {
 			syslogWriter.Info(fmt.Sprintf("stop listening on %s.", m.conn.LocalAddr()))
 		}
 		m.conn.Close()
-		util.Log.With("port", m.port).Info("stop listening on")
+		util.Log.Info("stop listening on", "port", m.port)
 	}()
 
 	buf := make([]byte, 128)
@@ -1392,7 +1382,7 @@ func (m *mainSrv) run(conf *Config) {
 		select {
 		case portStr := <-m.exChan:
 			m.cleanWorkers(portStr)
-			// util.Log.With("port", portStr).Info("run some worker is done")
+			// util.Log.Info("run some worker is done","port", portStr)
 		case ss := <-sig:
 			switch ss {
 			case syscall.SIGHUP: // TODO:reload the config?
@@ -1408,14 +1398,14 @@ func (m *mainSrv) run(conf *Config) {
 		}
 
 		if shutdown {
-			// util.Log.With("shutdown", shutdown).Debug("run")
+			// util.Log.Debug("run","shutdown", shutdown)
 			if len(m.workers) == 0 {
 				return
 			} else {
 				// send kill message to the workers
 				for i := range m.workers {
 					m.workers[i].shell.Kill()
-					// util.Log.With("port", i).Debug("stop shell")
+					// util.Log.Debug("stop shell","port", i)
 				}
 				// wait for workers to finish, set time out to prevent dead lock
 				timeout := time.NewTimer(time.Duration(200) * time.Millisecond)
@@ -1424,7 +1414,7 @@ func (m *mainSrv) run(conf *Config) {
 					case portStr := <-m.exChan: // some worker is done
 						m.cleanWorkers(portStr)
 					case t := <-timeout.C:
-						util.Log.With("timeout", t).Warn("run quit with timeout")
+						util.Log.Warn("run quit with timeout", "timeout", t)
 						return
 					default:
 					}
@@ -1452,7 +1442,7 @@ func (m *mainSrv) run(conf *Config) {
 		if strings.HasPrefix(req, frontend.AprilshMsgOpen) { // 'open aprilsh:'
 			if len(m.workers) >= maxPortLimit {
 				resp := m.writeRespTo(addr, frontend.AprishMsgClose, "over max port limit")
-				util.Log.With("request", req).With("response", resp).Warn("over max port limit")
+				util.Log.Warn("over max port limit", "request", req, "response", resp)
 				continue
 			}
 			// prepare next port
@@ -1466,7 +1456,7 @@ func (m *mainSrv) run(conf *Config) {
 			content := strings.Split(body[1], ",")
 			if len(content) != 2 {
 				resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "malform request")
-				util.Log.With("request", req).With("response", resp).Warn("malform request")
+				util.Log.Warn("malform request", "request", req, "response", resp)
 				continue
 			}
 			conf2.term = content[0]
@@ -1480,7 +1470,7 @@ func (m *mainSrv) run(conf *Config) {
 			} else {
 				// return "target parameter should be in the form of User@Server", false
 				resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "malform destination")
-				util.Log.With("destination", content[1]).With("response", resp).Warn("malform destination")
+				util.Log.Warn("malform destination", "destination", content[1], "response", resp)
 
 				continue
 			}
@@ -1521,15 +1511,15 @@ func (m *mainSrv) run(conf *Config) {
 					m.writeRespTo(addr, frontend.AprishMsgClose, "done")
 				} else {
 					resp := m.writeRespTo(addr, frontend.AprishMsgClose, "port does not exist")
-					util.Log.With("request", req).With("response", resp).Warn("port does not exist")
+					util.Log.Warn("port does not exist", "request", req, "response", resp)
 				}
 			} else {
 				resp := m.writeRespTo(addr, frontend.AprishMsgClose, "wrong port number")
-				util.Log.With("request", req).With("response", resp).Warn("wrong port number")
+				util.Log.Warn("wrong port number", "request", req, "response", resp)
 			}
 		} else {
 			resp := m.writeRespTo(addr, frontend.AprishMsgClose, "unknow request")
-			util.Log.With("request", req).With("response", resp).Warn("unknow request")
+			util.Log.Warn("unknow request", "request", req, "response", resp)
 		}
 	}
 	/*
@@ -1561,8 +1551,8 @@ func (m *mainSrv) getAvailabePort() (port int) {
 		// shrink max if possible
 		m.maxPort = ports[len(ports)-1] + 1
 
-		// util.Log.With("ports", ports).With("port", port).With("maxPort", m.maxPort).
-		// 	With("workers", len(m.workers)).Info("getAvailabePort")
+		// util.Log.Info("getAvailabePort",
+		// 	"ports", ports, "port", port, "maxPort", m.maxPort, "workers", len(m.workers))
 
 		// check minimal available port
 		for i := 0; i < m.maxPort-m.port; i++ {
@@ -1583,15 +1573,14 @@ func (m *mainSrv) getAvailabePort() (port int) {
 		m.maxPort = port + 1
 	}
 
-	// util.Log.With("port", port).With("maxPort", m.maxPort).
-	// 	With("workers", len(m.workers)).Info("getAvailabePort")
+	// util.Log.Info("getAvailabePort","port", port,"maxPort", m.maxPort,"workers", len(m.workers))
 	return port
 }
 
 // write header and message to addr
 func (m *mainSrv) writeRespTo(addr *net.UDPAddr, header, msg string) (resp string) {
 	resp = fmt.Sprintf("%s%s\n", header, msg)
-	// util.Log.With("resp", resp).Debug("writeRespTo")
+	// util.Log.Debug("writeRespTo","resp", resp)
 	m.conn.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(m.timeout)))
 	m.conn.WriteToUDP([]byte(resp), addr)
 	return
