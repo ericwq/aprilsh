@@ -235,7 +235,7 @@ func printVersion() {
 	frontend.PrintVersion()
 }
 
-func printUsage(hint, usage string) {
+func printUsage(hint string, usage ...string) {
 	if hint != "" {
 		fmt.Printf("Hints: %s\n%s", hint, usage)
 	} else {
@@ -1481,6 +1481,7 @@ func (m *mainSrv) run(conf *Config) {
 				// return "target parameter should be in the form of User@Server", false
 				resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "malform destination")
 				util.Log.With("destination", content[1]).With("response", resp).Warn("malform destination")
+
 				continue
 			}
 
@@ -1606,14 +1607,14 @@ func (m *mainSrv) wait() {
 func main() {
 	// https://jvns.ca/blog/2017/09/24/profiling-go-with-pprof/
 	conf, _, err := parseFlags(os.Args[0], os.Args[1:])
-	if err == flag.ErrHelp {
+	if errors.Is(err, flag.ErrHelp) {
 		printUsage("", usage)
 		return
 	} else if err != nil {
-		printUsage(err.Error(), usage)
+		printUsage(err.Error())
 		return
 	} else if hint, ok := conf.buildConfig(); !ok {
-		printUsage(hint, usage)
+		printUsage(hint)
 		return
 	}
 
@@ -1627,7 +1628,6 @@ func main() {
 		return
 	}
 
-	util.Log.SetOutput(os.Stderr)
 	// setup client log file
 	switch conf.verbose {
 	case util.DebugLevel:

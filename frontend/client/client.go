@@ -1137,7 +1137,7 @@ func main() {
 	encrypt.DisableDumpingCore()
 
 	conf, _, err := parseFlags(os.Args[0], os.Args[1:])
-	if err == flag.ErrHelp {
+	if errors.Is(err, flag.ErrHelp) {
 		printUsage("", usage)
 		return
 	} else if err != nil {
