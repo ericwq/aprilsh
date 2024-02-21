@@ -669,6 +669,7 @@ func (m *mainSrv) run(conf *Config) {
 
 // return the minimal available port and increase the maxWorkerPort if necessary.
 // shrink the max port number if possible
+// https://coolaj86.com/articles/how-to-test-if-a-port-is-available-in-go/
 func (m *mainSrv) getAvailabePort() (port int) {
 	port = m.port
 	if len(m.workers) > 0 {
