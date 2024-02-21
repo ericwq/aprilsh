@@ -883,6 +883,30 @@ func getCurrentUser() string {
 	return user.Username
 }
 
+// check unattached session and print warning message if there is any
+// ignore current session
+func warnUnattached(w io.Writer, ignoreHost string) {
+	userName := getCurrentUser()
+
+	// check unattached sessions
+	unatttached := util.CheckUnattachedUtmpx(userName, ignoreHost, frontend.CommandServerName)
+
+	if unatttached == nil || len(unatttached) == 0 {
+		return
+	} else if len(unatttached) == 1 {
+		fmt.Fprintf(w, "\033[37;44mAprilsh: You have a detached session on this server (%s).\033[m\n\n",
+			unatttached[0])
+	} else {
+		var sb strings.Builder
+		for _, v := range unatttached {
+			fmt.Fprintf(&sb, "- %s\n", v)
+		}
+
+		fmt.Fprintf(w, "\033[37;44mAprilsh: You have %d detached sessions on this server, with PIDs:\n%s\033[m\n",
+			len(unatttached), sb.String())
+	}
+}
+
 // open pts master and slave, set terminal size according to window size.
 func openPTS(wsize *unix.Winsize) (ptmx *os.File, pts *os.File, err error) {
 	// open pts master and slave
@@ -1026,30 +1050,6 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 		return nil, err
 	}
 	return proc, nil
-}
-
-// check unattached session and print warning message if there is any
-// ignore current session
-func warnUnattached(w io.Writer, ignoreHost string) {
-	userName := getCurrentUser()
-
-	// check unattached sessions
-	unatttached := util.CheckUnattachedUtmpx(userName, ignoreHost, frontend.CommandServerName)
-
-	if unatttached == nil || len(unatttached) == 0 {
-		return
-	} else if len(unatttached) == 1 {
-		fmt.Fprintf(w, "\033[37;44mAprilsh: You have a detached session on this server (%s).\033[m\n\n",
-			unatttached[0])
-	} else {
-		var sb strings.Builder
-		for _, v := range unatttached {
-			fmt.Fprintf(&sb, "- %s\n", v)
-		}
-
-		fmt.Fprintf(w, "\033[37;44mAprilsh: You have %d detached sessions on this server, with PIDs:\n%s\033[m\n",
-			len(unatttached), sb.String())
-	}
 }
 
 // worker started by mainSrv.run(). worker will listen on specified port and
