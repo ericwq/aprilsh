@@ -17,13 +17,16 @@ const (
 	TraceLevel = 2
 )
 
+var Log *logger
+var levelNames = map[slog.Leveler]string{
+	LevelTrace: "TRACE",
+}
+
 type logger struct {
 	*slog.Logger
 	defaultLogger *slog.Logger
 	programLevel  *slog.LevelVar
 }
-
-var Log *logger
 
 func init() {
 	// default logger write to stderr
@@ -45,7 +48,23 @@ func (l *logger) addSource() bool {
 }
 
 func (l *logger) SetOutput(w io.Writer) {
-	ho := &slog.HandlerOptions{AddSource: Log.addSource(), Level: Log.programLevel}
+	ho := &slog.HandlerOptions{
+		AddSource: Log.addSource(),
+		Level:     Log.programLevel,
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			if a.Key == slog.LevelKey {
+				level := a.Value.Any().(slog.Level)
+				levelLabel, exists := levelNames[level]
+				if !exists {
+					levelLabel = level.String()
+				}
+
+				a.Value = slog.StringValue(levelLabel)
+			}
+
+			return a
+		},
+	}
 	l.Logger = slog.New(slog.NewTextHandler(w, ho))
 	slog.SetDefault(Log.Logger)
 	l.defaultLogger = slog.Default()
