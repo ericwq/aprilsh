@@ -253,7 +253,7 @@ func captureOutputRun(f func()) []byte {
 	// alll the output to stdout,stderr is captured
 	os.Stderr = w
 	os.Stdout = w
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(w)
 	util.Log.SetLevel(slog.LevelDebug)
 
@@ -854,7 +854,7 @@ func TestMainSrvStart(t *testing.T) {
 			// os.Stdout = w
 
 			// init log
-			defer util.Log.Restore()
+
 			util.Log.SetLevel(slog.LevelDebug)
 			util.Log.SetOutput(io.Discard)
 			// util.Log.SetOutput(os.Stderr)
@@ -918,7 +918,7 @@ func TestStartFail(t *testing.T) {
 			// intercept logW
 			var b strings.Builder
 			// logW.SetOutput(&b)
-			defer util.Log.Restore()
+
 			util.Log.SetOutput(&b)
 			util.Log.SetLevel(slog.LevelDebug)
 
@@ -1076,7 +1076,7 @@ func TestPrintWelcome(t *testing.T) {
 		r, w, _ := os.Pipe()
 		os.Stdout = w
 		// initLog()
-		defer util.Log.Restore()
+
 		util.Log.SetLevel(slog.LevelDebug)
 		util.Log.SetOutput(w)
 
@@ -1160,7 +1160,7 @@ func TestRunFail(t *testing.T) {
 			r, w, _ := os.Pipe()
 			os.Stdout = w
 			// initLog()
-			defer util.Log.Restore()
+
 			util.Log.SetLevel(slog.LevelDebug)
 			util.Log.SetOutput(w)
 
@@ -1231,7 +1231,7 @@ func TestRunFail2(t *testing.T) {
 			r, w, _ := os.Pipe()
 			os.Stdout = w
 			// initLog()
-			defer util.Log.Restore()
+
 			util.Log.SetLevel(slog.LevelDebug)
 			util.Log.SetOutput(w)
 
@@ -1284,7 +1284,7 @@ func TestMaxPortLimit(t *testing.T) {
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			// intercept stdout
-			defer util.Log.Restore()
+
 			util.Log.SetLevel(slog.LevelDebug)
 			// util.Log.SetOutput(os.Stderr)
 			util.Log.SetOutput(io.Discard)
@@ -1341,7 +1341,7 @@ func TestMalformRequest(t *testing.T) {
 
 	for _, v := range tc {
 		// intercept stdout
-		defer util.Log.Restore()
+
 		util.Log.SetLevel(slog.LevelDebug)
 		// util.Log.SetOutput(os.Stderr)
 		util.Log.SetOutput(io.Discard)
@@ -1418,7 +1418,7 @@ func TestRunWorkerKillSignal(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			// defer util.Log.Restore()
+
 			// util.Log.SetLevel(slog.LevelDebug)
 			// util.Log.SetOutput(os.Stdout)
 
@@ -1427,7 +1427,7 @@ func TestRunWorkerKillSignal(t *testing.T) {
 			r, w, _ := os.Pipe()
 			os.Stdout = w
 
-			defer util.Log.Restore()
+
 			util.Log.SetLevel(slog.LevelDebug)
 			util.Log.SetOutput(w)
 
@@ -1500,7 +1500,7 @@ func TestRunWorkerFail(t *testing.T) {
 		t.Run(v.label, func(t *testing.T) {
 
 			// intercept log output
-			defer util.Log.Restore()
+
 			util.Log.SetLevel(slog.LevelDebug)
 			// util.Log.SetOutput(os.Stdout)
 			util.Log.SetOutput(io.Discard)
@@ -1611,7 +1611,7 @@ func TestRunCloseFail(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			defer util.Log.Restore()
+
 			util.Log.SetLevel(slog.LevelDebug)
 			util.Log.SetOutput(io.Discard)
 			// util.Log.SetOutput(os.Stdout)
@@ -1688,12 +1688,12 @@ func TestRunWith2Clients(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			defer util.Log.Restore()
+
 			util.Log.SetLevel(slog.LevelDebug)
 			util.Log.SetOutput(os.Stdout)
 
 			// intercept stdout
-			defer util.Log.Restore()
+
 			util.Log.SetLevel(slog.LevelDebug)
 			util.Log.SetOutput(io.Discard)
 
@@ -1767,7 +1767,7 @@ func TestStartShellFail(t *testing.T) {
 		}, // term is empty, withMotd is true, startShell should failed.
 	}
 
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 	// util.Log.SetOutput(os.Stdout)
 	// util.Log.SetLevel(slog.LevelDebug)
@@ -1861,7 +1861,7 @@ func TestGetCurrentUser(t *testing.T) {
 	// intercept log output
 	var b strings.Builder
 	// logW.SetOutput(&b)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(&b)
 	util.Log.SetLevel(slog.LevelDebug)
 
@@ -1921,7 +1921,7 @@ func TestGetAvailablePort(t *testing.T) {
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			// intercept log output
-			defer util.Log.Restore()
+
 			util.Log.SetOutput(io.Discard)
 			// util.Log.SetOutput(os.Stdout)
 

@@ -143,7 +143,7 @@ func TestNewFrame_PutRow(t *testing.T) {
 		},
 	}
 
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
@@ -218,7 +218,7 @@ func TestNewFrame_ScrollUp(t *testing.T) {
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
 
-	// defer util.Log.Restore()
+
 	// util.Log.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
@@ -282,7 +282,7 @@ func TestNewFrame_Bell(t *testing.T) {
 
 	// oldE.logT.SetOutput(io.Discard)
 	// newE.logT.SetOutput(io.Discard)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
@@ -324,7 +324,7 @@ func TestNewFrame_CursorStyle(t *testing.T) {
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
 
-	// defer util.Log.Restore()
+
 	// util.Log.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
@@ -367,7 +367,7 @@ func TestNewFrame_WindowTitleIconName(t *testing.T) {
 
 	// oldE.logT.SetOutput(io.Discard)
 	// newE.logT.SetOutput(io.Discard)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
@@ -427,7 +427,7 @@ func TestNewFrame_TitleStack(t *testing.T) {
 
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
@@ -998,7 +998,7 @@ func TestNewFrame_Modes(t *testing.T) {
 
 	// oldE.logT.SetOutput(io.Discard)
 	// newE.logT.SetOutput(io.Discard)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
@@ -1049,7 +1049,7 @@ func TestNewFrame_TabStops(t *testing.T) {
 
 	// oldE.logT.SetOutput(io.Discard)
 	// newE.logT.SetOutput(io.Discard)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
@@ -1100,7 +1100,7 @@ func TestNewFrame_SelectionData(t *testing.T) {
 
 	// oldE.logT.SetOutput(io.Discard)
 	// newE.logT.SetOutput(io.Discard)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
@@ -1169,7 +1169,7 @@ func TestPutRow(t *testing.T) {
 			"\x1b[?25l\n-rw-r--r--    1 ide\x1b[6X\x1b[6Cdevelop\x1b[8X\x1b[8Cgo.work\x1b[K"},
 	}
 
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 	// util.Log.SetLevel(slog.LevelDebug)
 	// util.Log.SetOutput(os.Stderr)

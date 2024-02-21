@@ -94,7 +94,7 @@ func TestParsePortRange(t *testing.T) {
 
 	var place strings.Builder
 	// output := log.New(&place, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(&place)
 
 	for _, v := range tc {
@@ -140,7 +140,7 @@ func TestConnection(t *testing.T) {
 	// replace the logFunc
 	var output strings.Builder
 	// logFunc = log.New(&output, "#test", log.Ldate|log.Ltime|log.Lshortfile)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(&output)
 
 	// test server connection creation
@@ -189,7 +189,7 @@ func TestConnectionClient(t *testing.T) {
 	}
 
 	var output strings.Builder
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(&output)
 	// test client connection
 	for _, v := range tc {
@@ -240,7 +240,7 @@ func TestConnectionClientFail(t *testing.T) {
 
 	// intercept log output
 	var output strings.Builder
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(&output)
 
 	// create client
@@ -267,7 +267,7 @@ func TestConnectionReadWrite(t *testing.T) {
 
 	var output strings.Builder
 	// server.logW.SetOutput(&output)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(&output)
 
 	if server == nil {
@@ -449,7 +449,7 @@ func TestHopPort(t *testing.T) {
 	// intercept client log
 	var output strings.Builder
 	// client.logW.SetOutput(&output)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(&output)
 
 	// fake wrong remote address
@@ -477,7 +477,7 @@ func TestTryBindFail(t *testing.T) {
 	}
 
 	var output strings.Builder
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(&output)
 	// logFunc = log.New(&output, "#test", log.Ldate|log.Ltime|log.Lshortfile)
 
@@ -793,7 +793,7 @@ func TestSendBranch(t *testing.T) {
 	// intercept server log
 	var output strings.Builder
 	// server.logW.SetOutput(&output)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(&output)
 
 	msg, _, _ := server.Recv(1)
@@ -874,7 +874,7 @@ func TestRecvFail(t *testing.T) {
 	// intercept server log
 	var output strings.Builder
 	// client.logW.SetOutput(&output)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(&output)
 
 	// let the mock connection as the only connection
@@ -944,7 +944,7 @@ func TestRecvBranchServer(t *testing.T) {
 	// intercept server log
 	var output strings.Builder
 	// server.logW.SetOutput(&output)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(&output)
 
 	// perform the receive
@@ -980,7 +980,7 @@ func TestRecvBranchClient(t *testing.T) {
 	// intercept server log
 	var output strings.Builder
 	// server.logW.SetOutput(&output)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(&output)
 
 	msg0 := "from client to server"
@@ -1066,7 +1066,7 @@ func TestRecvCongestionPacket(t *testing.T) {
 	// intercept server log
 	var output strings.Builder
 	// server.logW.SetOutput(&output)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(&output)
 
 	// save old congestionFunc
@@ -1129,7 +1129,7 @@ func TestRecvSRTT(t *testing.T) {
 	// intercept server log
 	var output strings.Builder
 	// server.logW.SetOutput(&output)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(&output)
 
 	var got string
@@ -1214,7 +1214,7 @@ func TestConnectionRecvSeqFail(t *testing.T) {
 	var wg sync.WaitGroup
 	server := NewConnection(ip, port)
 
-	defer util.Log.Restore()
+
 	var output strings.Builder
 	util.Log.SetLevel(slog.LevelDebug)
 	// util.Log.SetOutput(os.Stdout)

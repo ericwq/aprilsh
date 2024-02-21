@@ -44,7 +44,7 @@ func TestCompleteApplyString(t *testing.T) {
 		{"fill one row and set ack", "\x1B[7;7H左边\x1B[7;77H中文", 0, 0, 3},
 	}
 
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	for _, v := range tc {
@@ -259,7 +259,7 @@ func TestDiffFrom(t *testing.T) {
 			[]string{"x1\r\nx2\r\nx3\r\nx4\r\n"}, ""},
 	}
 
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 	// util.Log.SetLevel(slog.LevelDebug)
 	// util.Log.SetOutput(os.Stderr)

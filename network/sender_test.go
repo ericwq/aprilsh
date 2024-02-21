@@ -386,7 +386,7 @@ func TestSenderSendEmptyAckShutdown(t *testing.T) {
 
 	// disable log
 	// server.connection.logW.SetOutput(io.Discard)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	// prepare for shutdown
@@ -433,7 +433,7 @@ func TestSenderSendEmptyAckFail(t *testing.T) {
 
 	// disable log
 	// server.connection.logW.SetOutput(io.Discard)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	// mockUdpConn will send with an error: send size doesn't match
@@ -473,7 +473,7 @@ func TestSenderSendToReceiverFail(t *testing.T) {
 
 	// disable log
 	// server.connection.logW.SetOutput(io.Discard)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	// mockUdpConn will send with an error: send size doesn't match
@@ -506,7 +506,7 @@ func TestSenderSendToReceiverShutdown(t *testing.T) {
 
 	// disable log
 	// server.connection.logW.SetOutput(io.Discard)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	// prepare for shutdown
@@ -565,7 +565,7 @@ func TestSenderTickSendToReceiverFail(t *testing.T) {
 
 	// disable log
 	// server.connection.logW.SetOutput(io.Discard)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	// mockUdpConn will send with an error: send size doesn't match
@@ -602,7 +602,7 @@ func TestSenderTickVerify(t *testing.T) {
 	server.SetVerbose(1)
 	client.SetVerbose(1)
 
-	defer util.Log.Restore()
+
 	var b strings.Builder
 	util.Log.SetLevel(slog.LevelDebug)
 	// util.Log.SetOutput(os.Stdout)
@@ -672,7 +672,7 @@ func TestSenderSendInterval(t *testing.T) {
 	keyStr := server.connection.getKey() // get the key from server
 	client := NewTransportClient(initialState, initialRemote, keyStr, desiredIp, desiredPort)
 
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	// round-trip several times to build a reasonable SRTT
@@ -768,7 +768,7 @@ func TestSenderTickNextSendTime(t *testing.T) {
 	server.SetVerbose(1)
 	client.SetVerbose(1)
 
-	defer util.Log.Restore()
+
 	var b strings.Builder
 	util.Log.SetLevel(slog.LevelDebug)
 	// util.Log.SetOutput(os.Stdout)

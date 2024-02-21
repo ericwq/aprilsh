@@ -41,7 +41,7 @@ func TestTransportClientSend(t *testing.T) {
 
 	// disable log
 	// server.connection.logW.SetOutput(io.Discard)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	// send user stream to server
@@ -110,7 +110,7 @@ func TestTransportServerSend(t *testing.T) {
 	// disable log
 	// server.connection.logW.SetOutput(io.Discard)
 	// client.connection.logW.SetOutput(io.Discard)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	// send user stream to server
@@ -203,7 +203,7 @@ func TestTransportRecvVersionError(t *testing.T) {
 	port := "6002"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	// send customized instruction to server
@@ -246,7 +246,7 @@ func TestTransportRecvRepeat(t *testing.T) {
 	port := "6003"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	// first round
@@ -289,7 +289,7 @@ func TestTransportRecvNotFoundOld(t *testing.T) {
 	port := "6004"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	// send customized instruction to server
@@ -341,7 +341,7 @@ func TestTransportRecvOverLimit(t *testing.T) {
 
 	// disable log
 	// server.connection.logW.SetOutput(io.Discard)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	// prepare the receivedState list
@@ -400,7 +400,7 @@ func TestTransportRecvOverLimit2(t *testing.T) {
 
 	// disable log
 	// server.connection.logW.SetOutput(io.Discard)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	// prepare the receivedState list
@@ -461,7 +461,7 @@ func TestTransportRecvOutOfOrder(t *testing.T) {
 
 	// disable log
 	// server.connection.logW.SetOutput(io.Discard)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	// prepare the receivedState list
@@ -530,7 +530,7 @@ func TestClientShutdown(t *testing.T) {
 	os.Stderr = w
 
 	// disable log
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 	// server.connection.logW.SetOutput(io.Discard)
 	// client.connection.logW.SetOutput(io.Discard)
@@ -742,7 +742,7 @@ func TestAwaken(t *testing.T) {
 			[]int64{270993, 273994}, 340981, false},
 	}
 
-	defer util.Log.Restore()
+
 	util.Log.SetLevel(slog.LevelDebug)
 	// util.Log.SetOutput(os.Stdout)
 	util.Log.SetOutput(io.Discard)
@@ -793,7 +793,7 @@ func TestGetServerPort(t *testing.T) {
 
 func TestGetSentStateLastTimestamp(t *testing.T) {
 
-	defer util.Log.Restore()
+
 	util.Log.SetLevel(slog.LevelDebug)
 	util.Log.SetOutput(os.Stdout)
 	// util.Log.SetOutput(io.Discard)

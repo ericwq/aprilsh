@@ -24,8 +24,7 @@ var levelNames = map[slog.Leveler]string{
 
 type logger struct {
 	*slog.Logger
-	defaultLogger *slog.Logger
-	programLevel  *slog.LevelVar
+	programLevel *slog.LevelVar
 }
 
 func init() {
@@ -47,6 +46,10 @@ func (l *logger) addSource() bool {
 	return false
 }
 
+// how to replace a line in file,sample
+// sed -i 's/.*defer util\.Log\.Restore.*//g' encrypt/encrypt_test.go
+//
+
 func (l *logger) SetOutput(w io.Writer) {
 	ho := &slog.HandlerOptions{
 		AddSource: Log.addSource(),
@@ -66,12 +69,6 @@ func (l *logger) SetOutput(w io.Writer) {
 		},
 	}
 	l.Logger = slog.New(slog.NewTextHandler(w, ho))
-	slog.SetDefault(Log.Logger)
-	l.defaultLogger = slog.Default()
-}
-
-func (l *logger) Restore() {
-	l.Logger = l.defaultLogger
 }
 
 // network: udp, address: localhost:514. check net.Dial() for detail

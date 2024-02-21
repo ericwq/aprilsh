@@ -22,7 +22,7 @@ func TestPrintVersion(t *testing.T) {
 	// all the output to stdout,stderr is captured
 	os.Stderr = w
 	os.Stdout = w
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(w)
 	util.Log.SetLevel(slog.LevelDebug)
 

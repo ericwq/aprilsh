@@ -194,7 +194,7 @@ func TestGetAssemblyFail(t *testing.T) {
 	}
 
 	// intercept the log
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	// validate uncompress error

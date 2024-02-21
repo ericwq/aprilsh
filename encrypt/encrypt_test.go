@@ -37,7 +37,7 @@ func TestBase64Key(t *testing.T) {
 	// 	logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 	// }()
 	// logW.SetOutput(io.Discard)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	// normal key
@@ -110,7 +110,7 @@ func TestSessionError(t *testing.T) {
 	// 	logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 	// }()
 	// logW.SetOutput(io.Discard)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	b := Base64Key{}
@@ -137,7 +137,7 @@ func TestRandomNonce(t *testing.T) {
 	// 	logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 	// }()
 	// logW.SetOutput(io.Discard)
-	defer util.Log.Restore()
+
 	util.Log.SetOutput(io.Discard)
 
 	nonce, err := _randomNonce(fakeRand)
