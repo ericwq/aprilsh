@@ -158,6 +158,20 @@ type Config struct {
 
 var errNoResponse = errors.New("no response, please make sure the server is running.")
 
+type hostkeyChangeError struct {
+	hostname string
+}
+
+func (e *hostkeyChangeError) Error() string {
+	if e == nil {
+		return "<nil>"
+	}
+	return "REMOTE HOST IDENTIFICATION HAS CHANGED for host '" +
+		e.hostname + "' ! This may indicate a MITM attack."
+}
+
+func (e *hostkeyChangeError) Hostname() string { return e.hostname }
+
 // utilize ssh to fetch the key from remote server and start a server.
 // return empty string if success, otherwise return error info.
 //
@@ -228,7 +242,7 @@ func (c *Config) fetchKey() error {
 	cb := ssh.HostKeyCallback(func(hostname string, remote net.Addr, key ssh.PublicKey) (err error) {
 		err = kh(hostname, remote, key)
 		if knownhosts.IsHostKeyChanged(err) {
-			return fmt.Errorf("REMOTE HOST IDENTIFICATION HAS CHANGED for host %s! This may indicate a MitM attack.", hostname)
+			return &hostkeyChangeError{hostname: hostname}
 		} else if knownhosts.IsHostUnknown(err) {
 
 			hint := "The authenticity of host '%s (%s)' can't be established.\n" +
@@ -1173,6 +1187,7 @@ func main() {
 		var opError *net.OpError
 		var keyError *xknownhosts.KeyError
 		var exitError *ssh.ExitError
+		var hostkeyChangeError *hostkeyChangeError
 
 		if errors.As(err, &dnsError) {
 			printUsage(fmt.Sprintf("No such host: %q", dnsError.Name))
@@ -1191,6 +1206,8 @@ func main() {
 			printUsage(err.Error())
 		} else if errors.As(err, &exitError) && exitError.Waitmsg.ExitStatus() == 127 {
 			printUsage("Plase check aprilsh is installed on server.")
+		} else if errors.As(err, &hostkeyChangeError) {
+			printUsage(hostkeyChangeError.Error())
 		} else {
 			// printUsage(fmt.Sprintf("%#v", err))
 			printUsage(err.Error())
