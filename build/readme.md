@@ -124,24 +124,34 @@ install the package and validate the program.
 # rc-update add apshd boot
 # rc-service apshd start
 ```
-## prepare container for new server testing
+## prepare container for port testing
 
-build testing container.
+build port container, which perform the following actions:
+
+- set password for root and ide user.
+- transfer public key to `$HOME/.ssh/authorized_keys` for root and ide user.
 
 ```shell
+cd aprilsh/build
 docker build --build-arg ROOT_PWD=password \
         --build-arg USER_PWD=password \
         --build-arg SSH_PUB_KEY="$(cat ~/.ssh/id_rsa.pub)" \
         --progress plain -t openrc:0.1.0 -f openrc.dockerfile .
 ```
 
-start test container
+start port container, which perform the following action:
+
+- mapping tcp port 22 to 8022, mapping udp port 6000[0..3] to 6010[0..3].
+- mount docker volume `proj-vol` to `/home/ide/proj`.
+- mount local directory `/Users/qiwang/dev` to `/home/ide/develop/`.
+- set hostname and container name to `openrc-port`.
+
 ```shell
 docker run --env TZ=Asia/Shanghai --tty --privileged --volume /sys/fs/cgroup:/sys/fs/cgroup:rw \
     --mount source=proj-vol,target=/home/ide/proj \
     --mount type=bind,source=/Users/qiwang/dev,target=/home/ide/develop \
-    -h openrc-abuild --name openrc-abuild -d -p 8022:22  -p 60100:60000/udp  -p 60101:60001/udp -p 60102:60002/udp \
-    -p 60103:60003/udp openrc:0.1.0
+    --hostname openrc-port --name openrc-port -d -p 8022:22  -p 60100:60000/udp \
+    -p 60101:60001/udp -p 60102:60002/udp -p 60103:60003/udp openrc:0.1.0
 ```
 ## reference
 
