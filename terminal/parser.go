@@ -109,9 +109,9 @@ func (p *Parser) appendToHistory(r rune) {
 	if p.history.Len() < 4097 {
 		p.history.PushBack(r)
 	} else {
-		// p.logE.Printf("Parser histroy string overflow (>4097). %q[%c]\n", p.historyString(), r)
-		util.Log.With("historyString", p.historyString()).With("rune", r).
-			Error("Parser histroy string overflow (>4097)")
+		util.Log.Error("Parser histroy string overflow (>4097)",
+			"historyString", p.historyString(),
+			"rune", r)
 	}
 }
 
@@ -184,22 +184,24 @@ func (p *Parser) reset() {
 // trace the input if logTrace is true
 func (p *Parser) traceNormalInput() {
 	if p.logTrace {
-		// p.logT.Printf("Input:%q inputOps=%d, nInputOps=%d, argBuf=%q\n",
-		// 	p.chs, p.inputOps, p.nInputOps, p.argBuf.String())
-		util.Log.With("input", p.chs).With("inputOps", p.inputOps).
-			With("nInputOps", p.nInputOps).With("argBuf", p.argBuf.String()).Debug("Input:")
+		util.Log.Debug("Input:",
+			"input", p.chs,
+			"inputOps", p.inputOps,
+			"nInputOps", p.nInputOps,
+			"argBuf", p.argBuf.String())
 	}
-
 }
 
 // log the unhandled input and reset the state to normal
 func (p *Parser) unhandledInput() {
-	// p.logU.Printf("Unhandled input:%q state=%s, inputOps=%d, nInputOps=%d, argBuf=%q\n",
-	// 	p.historyString(), strInputState[p.inputState], p.inputOps, p.nInputOps, p.argBuf.String())
 
-	util.Log.With("input", p.historyString()).With("state", strInputState[p.inputState]).
-		With("inputOps", p.inputOps).With("nInputOps", p.nInputOps).With("argBuf", p.argBuf.String()).
-		With("unimplement", "Any").Warn("Unhandled input:")
+	util.Log.Warn("Unhandled input:",
+		"input", p.historyString(),
+		"state", strInputState[p.inputState],
+		"inputOps", p.inputOps,
+		"nInputOps", p.nInputOps,
+		"argBuf", p.argBuf.String(),
+		"unimplement", "Any")
 	p.setState(InputState_Normal)
 }
 
@@ -231,9 +233,7 @@ func (p *Parser) collectNumericParameters(ch rune) (isNumeric bool) {
 		p.inputOps[p.nInputOps-1] *= 10
 		p.inputOps[p.nInputOps-1] += int(ch - '0')
 		if p.inputOps[p.nInputOps-1] >= 65535 {
-			// p.logE.Printf("the number is too big: > 65535, %d", p.inputOps[p.nInputOps-1])
-			util.Log.With("lastInputOps", p.inputOps[p.nInputOps-1]).
-				Error("the number is too big: > 65535")
+			util.Log.Error("the number is too big: > 65535", "lastInputOps", p.inputOps[p.nInputOps-1])
 			p.setState(InputState_Normal)
 		}
 	} else if ch == ';' || ch == ':' {
@@ -243,7 +243,7 @@ func (p *Parser) collectNumericParameters(ch rune) (isNumeric bool) {
 			p.nInputOps += 1
 		} else {
 			// p.logE.Printf("inputOps full, increase maxEscOps. %d", p.inputOps)
-			util.Log.With("inputOps", p.inputOps).Error("inputOps full, increase maxEscOps")
+			util.Log.Error("inputOps full, increase maxEscOps", "inputOps", p.inputOps)
 			p.setState(InputState_Normal)
 		}
 	}
@@ -424,7 +424,7 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 	}
 	var err error
 	if cmd, err = strconv.Atoi(arg[:pos]); err != nil {
-		util.Log.With("arg", arg[:pos]).Warn("OSC: illegal Ps parameter")
+		util.Log.Warn("OSC: illegal Ps parameter", "arg", arg[:pos])
 		return
 	}
 
@@ -435,8 +435,7 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 		arg = arg[pos+1:]
 	}
 	if cmd < 0 || cmd > 120 {
-		// p.logT.Printf("OSC: malformed command string %d %q\n", cmd, arg)
-		util.Log.With("cmd", cmd).With("arg", arg).Warn("OSC: malformed command string")
+		util.Log.Warn("OSC: malformed command string", "cmd", cmd, "arg", arg)
 	} else {
 		switch cmd {
 		// create the ActOn
@@ -466,8 +465,7 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 				hdl_osc_112(emu, cmd, arg)
 			}
 		default:
-			// p.logU.Printf("unhandled OSC: %d %q\n", cmd, arg)
-			util.Log.With("cmd", cmd).With("arg", arg).Warn("unhandled OSC")
+			util.Log.Warn("unhandled OSC", "cmd", cmd, "arg", arg)
 		}
 	}
 
@@ -1058,8 +1056,10 @@ func (p *Parser) handle_DECALN() (hd *Handler) {
 // ESC / C   Designate G3 Character Set, VT300.
 // https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Controls-beginning-with-ESC
 func (p *Parser) handle_ESC_DCS() (hd *Handler) {
-	// util.Log.With("scsDst", p.scsDst).With("scsMod", p.scsMod).With("ch", p.ch).
-	// 	Debug("Designate Character Set")
+	// util.Log.Debug("Designate Character Set",
+	// 	"scsDst", p.scsDst,
+	// 	"scsMod", p.scsMod,
+	// 	"ch", p.ch)
 
 	index := 0
 	charset96 := false
@@ -1220,8 +1220,7 @@ func (p *Parser) handle_DCS() (hd *Handler) {
 			hdl_dcs_decrqss(emu, arg)
 		}
 	} else {
-		// p.logU.Printf("DCS: %q", arg)
-		util.Log.With("unimplement", "DCS").With("arg", arg).Debug("DCS")
+		util.Log.Warn("DCS", "unimplement", "DCS", "arg", arg)
 	}
 
 	return hd
@@ -1742,24 +1741,19 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 	case InputState_Esc_Space:
 		switch ch {
 		case 'F':
-			// p.logU.Println("S7C1T: Send 7-bit controls")
-			util.Log.With("unimplement", "ESC space").Debug("S7C1T: Send 7-bit controls")
+			util.Log.Warn("S7C1T: Send 7-bit controls", "unimplement", "ESC space")
 			p.setState(InputState_Normal)
 		case 'G':
-			// p.logU.Println("S8C1T: Send 8-bit controls")
-			util.Log.With("unimplement", "ESC space").Debug("S8C1T: Send 8-bit controls")
+			util.Log.Warn("S8C1T: Send 8-bit controls", "unimplement", "ESC space")
 			p.setState(InputState_Normal)
 		case 'L':
-			// p.logU.Println("Set ANSI conformance level 1")
-			util.Log.With("unimplement", "ESC space").Debug("Set ANSI conformance level 1")
+			util.Log.Warn("Set ANSI conformance level 1", "unimplement", "ESC space")
 			p.setState(InputState_Normal)
 		case 'M':
-			// p.logU.Println("Set ANSI conformance level 2")
-			util.Log.With("unimplement", "ESC space").Debug("Set ANSI conformance level 2")
+			util.Log.Warn("Set ANSI conformance level 2", "unimplement", "ESC space")
 			p.setState(InputState_Normal)
 		case 'N':
-			// p.logU.Println("Set ANSI conformance level 3")
-			util.Log.With("unimplement", "ESC space").Debug("Set ANSI conformance level 3")
+			util.Log.Warn("Set ANSI conformance level 3", "unimplement", "ESC space")
 			p.setState(InputState_Normal)
 		default:
 			p.unhandledInput()
@@ -1767,20 +1761,16 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 	case InputState_Esc_Hash:
 		switch ch {
 		case '3':
-			// p.logU.Println("DECDHL: Double-height, top half.")
-			util.Log.With("unimplement", "ESC hash").Debug("DECDHL: Double-height, top half")
+			util.Log.Warn("DECDHL: Double-height, top half", "unimplement", "ESC hash")
 			p.setState(InputState_Normal)
 		case '4':
-			// p.logU.Println("DECDHL: Double-height, bottom half.")
-			util.Log.With("unimplement", "ESC hash").Debug("DECDHL: Double-height, bottom half")
+			util.Log.Warn("DECDHL: Double-height, bottom half", "unimplement", "ESC hash")
 			p.setState(InputState_Normal)
 		case '5':
-			// p.logU.Println("DECSWL: Single-width line.")
-			util.Log.With("unimplement", "ESC hash").Debug("DECSWL: Single-width line")
+			util.Log.Warn("DECSWL: Single-width line", "unimplement", "ESC hash")
 			p.setState(InputState_Normal)
 		case '6':
-			// p.logU.Println("DECDWL: Double-width line.")
-			util.Log.With("unimplement", "ESC hash").Debug("DECDWL: Double-width line")
+			util.Log.Warn("DECDWL: Double-width line", "unimplement", "ESC hash")
 			p.setState(InputState_Normal)
 		case '8':
 			hd = p.handle_DECALN()
@@ -1790,11 +1780,9 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 	case InputState_Esc_Pct:
 		switch ch {
 		case '@':
-			// p.logT.Println("Select charset: default (ISO-8859-1)")
 			util.Log.Debug("Select charset: default (ISO-8859-1)")
 			hd = p.handle_DOCS_ISO8859_1()
 		case 'G':
-			// p.logT.Println("Select charset: UTF-8")
 			util.Log.Debug("Select charset: UTF-8")
 			hd = p.handle_DOCS_UTF8()
 		default:
@@ -1985,9 +1973,7 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 			if p.argBuf.Len() < 4095 {
 				p.argBuf.WriteRune(ch)
 			} else {
-				// p.logE.Printf("DCS argument string overflow (>4095). %q\n", p.argBuf.String())
-				util.Log.With("argBuf", p.argBuf.String()[:64]).
-					Error("OSC argument string overflow (>4095)")
+				util.Log.Error("OSC argument string overflow (>4095)", "argBuf", p.argBuf.String()[:64])
 				p.setState(InputState_Normal)
 			}
 		}
@@ -2012,9 +1998,7 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 			if p.argBuf.Len() < 4095 {
 				p.argBuf.WriteRune(ch)
 			} else {
-				// p.logE.Printf("OSC argument string overflow (>4095). %q\n", p.argBuf.String())
-				util.Log.With("argBuf", p.argBuf.String()).
-					Error("OSC argument string overflow (>4095)")
+				util.Log.Error("OSC argument string overflow (>4095)", "argBuf", p.argBuf.String())
 				p.setState(InputState_Normal)
 			}
 		}

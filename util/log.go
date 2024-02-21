@@ -5,6 +5,7 @@
 package util
 
 import (
+	"context"
 	"io"
 	"os"
 
@@ -13,6 +14,7 @@ import (
 
 const (
 	LevelTrace = slog.Level(-8)
+	LevelFatal = slog.Level(12)
 	DebugLevel = 1
 	TraceLevel = 2
 )
@@ -20,6 +22,7 @@ const (
 var Log *logger
 var levelNames = map[slog.Leveler]string{
 	LevelTrace: "TRACE",
+	LevelFatal: "FATAL",
 }
 
 type logger struct {
@@ -69,6 +72,10 @@ func (l *logger) SetOutput(w io.Writer) {
 		},
 	}
 	l.Logger = slog.New(slog.NewTextHandler(w, ho))
+}
+
+func (l *logger) Trace(msg string, args ...any) {
+	l.Logger.Log(context.Background(), LevelTrace, msg, args...)
 }
 
 // network: udp, address: localhost:514. check net.Dial() for detail

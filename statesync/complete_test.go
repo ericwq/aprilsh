@@ -44,7 +44,6 @@ func TestCompleteApplyString(t *testing.T) {
 		{"fill one row and set ack", "\x1B[7;7H左边\x1B[7;77H中文", 0, 0, 3},
 	}
 
-
 	util.Log.SetOutput(io.Discard)
 
 	for _, v := range tc {
@@ -259,7 +258,6 @@ func TestDiffFrom(t *testing.T) {
 			[]string{"x1\r\nx2\r\nx3\r\nx4\r\n"}, ""},
 	}
 
-
 	util.Log.SetOutput(io.Discard)
 	// util.Log.SetLevel(slog.LevelDebug)
 	// util.Log.SetOutput(os.Stderr)
@@ -300,9 +298,9 @@ func TestDiffFrom(t *testing.T) {
 				t.Errorf("%s: terminal response expect %q, got %q\n", v.label, v.resp, t2.String())
 			}
 
-			// util.Log.With("point", 601).Debug("TestDiffFrom")
+			// util.Log.Debug("TestDiffFrom","point", 601)
 			diff := c.DiffFrom(a)
-			// util.Log.With("point", 602).Debug("TestDiffFrom")
+			// util.Log.Debug("TestDiffFrom","point", 602)
 
 			n := a.Clone()
 			n.ApplyString(diff)
@@ -311,11 +309,11 @@ func TestDiffFrom(t *testing.T) {
 				t.Logf("%s: diff=%q", v.label, diff)
 			}
 
-			// util.Log.With("point", 603).Debug("TestDiffFrom")
+			// util.Log.Debug("TestDiffFrom","point", 603)
 			cd := c.InitDiff()
-			// util.Log.With("point", 604).Debug("TestDiffFrom")
+			// util.Log.Debug("TestDiffFrom","point", 604)
 			nd := n.InitDiff()
-			// util.Log.With("point", 605).Debug("TestDiffFrom")
+			// util.Log.Debug("TestDiffFrom","point", 605)
 			if cd != nd {
 				t.Errorf("%s: target state Instruction verification failed!", v.label)
 				// t.Logf("current state diff=%q", cd)

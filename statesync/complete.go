@@ -61,17 +61,17 @@ func (c *Complete) ActLarge(str string, feed chan string) string {
 	// save remains if we got
 	if len(remains) > 0 {
 		c.remainsBuf.WriteString(remains)
-		util.Log.With("remains", remains).Debug("ActLarge")
+		util.Log.Debug("ActLarge", "remains", remains)
 		go func() {
 			// a little bit late is good enough, the main loop will block
 			// until it send the previous content.
 			time.Sleep(time.Millisecond * 10)
 			feed <- ""
-			util.Log.With("schedule", "send remains").Debug("ActLarge")
+			util.Log.Debug("ActLarge", "schedule", "send remains")
 		}()
 	}
 
-	// util.Log.With("diff", c.diffBuf.String()).Debug("ActLarge")
+	// util.Log.Debug("ActLarge","diff", c.diffBuf.String())
 	return c.terminal.ReadOctetsToHost()
 }
 
@@ -86,7 +86,7 @@ func (c *Complete) Act(str string) string {
 	_, diff := c.terminal.HandleStream(str)
 	c.diffBuf.WriteString(diff)
 
-	// util.Log.With("diff", c.diffBuf.String()).Debug("Act")
+	// util.Log.Debug("Act","diff", c.diffBuf.String())
 	return c.terminal.ReadOctetsToHost()
 }
 
@@ -125,7 +125,7 @@ func (c *Complete) SetEchoAck(now int64) (ret bool) {
 		}
 		// combine with RegisterInputFrame, if there is any user input
 		// the echo ack will send back to client.
-		// util.Log.With("frameNum", v.frameNum).With("timestamp", v.timestamp%10000).Debug("SetEchoAck")
+		// util.Log.Debug("SetEchoAck","frameNum", v.frameNum,"timestamp", v.timestamp%10000)
 	}
 
 	// filter frame number which is less than newestEchoAck
@@ -145,9 +145,8 @@ func (c *Complete) SetEchoAck(now int64) (ret bool) {
 
 	if c.echoAck != newestEchoAck {
 		ret = true
-		util.Log.With("newestEchoAck", newestEchoAck).
-			With("inputHistory", z).With("time", now%10000).
-			With("return", ret).Debug("SetEchoAck")
+		util.Log.Debug("SetEchoAck", "newestEchoAck",
+			newestEchoAck, "inputHistory", z, "time", now%10000, "return", ret)
 	}
 
 	c.echoAck = newestEchoAck
@@ -167,15 +166,12 @@ func (c *Complete) RegisterInputFrame(num uint64, now int64) {
 // if the frame is not acked after ECHO_TIMEOUT, give short WaitTime to accelerate
 // ack actions.
 func (c *Complete) WaitTime(now int64) int {
-	// defer util.Log.With("inputHistory length", len(c.inputHistory)).Debug("Complete WaitTime")
+	// defer util.Log.Debug("Complete WaitTime", "inputHistory length", len(c.inputHistory))
 	if len(c.inputHistory) < 2 {
 		return math.MaxInt
 	}
 	// start from the second
 	nextEchoAckTime := c.inputHistory[1].timestamp + ECHO_TIMEOUT
-
-	// util.Log.With("now", now).
-	// 	With("nextEchoAckTime", nextEchoAckTime).With("gap", nextEchoAckTime-now)
 
 	if nextEchoAckTime <= now {
 		return 0
@@ -234,7 +230,7 @@ func (c *Complete) diffFrom(existing *Complete, diffBuf bool) string {
 			instBytes := pb.Instruction{Hostbytes: &pb.HostBytes{Hoststring: []byte(update)}}
 			hm.Instruction = append(hm.Instruction, &instBytes)
 		}
-		// util.Log.With("diff", c.diffBuf.String()).Debug("DiffFrom")
+		// util.Log.Debug("DiffFrom","diff", c.diffBuf.String())
 		// c.Reset()
 	}
 

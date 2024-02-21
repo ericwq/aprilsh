@@ -74,7 +74,7 @@ func (t *Transport[S, R]) processThrowawayUntil(throwawayNum uint64) {
 		if t.receivedState[i].num >= throwawayNum {
 			rs = append(rs, t.receivedState[i])
 			// } else {
-			// 	util.Log.With("num", t.receivedState[i].num).Debug("remove num")
+			// 	util.Log.Debug("remove num","num", t.receivedState[i].num)
 		} // else condition means erase this element
 	}
 	t.receivedState = rs
@@ -226,10 +226,10 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		// if inst.NewNum == -1 {
 		// 	util.Log.Debug("got shutdown request")
 		// 	for i := range t.sender.sentStates {
-		// 		util.Log.With("i", i).With("num", t.sender.sentStates[i].num).Debug("sentStates")
+		// 		util.Log.Debug("sentStates","i", i,"num", t.sender.sentStates[i].num)
 		// 	}
 		// 	for i := range t.receivedState {
-		// 		util.Log.With("i", i).With("num", t.receivedState[i].num).Debug("receivedState")
+		// 		util.Log.Debug("receivedState","i", i,"num", t.receivedState[i].num)
 		// 	}
 		// }
 
@@ -237,17 +237,17 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 			return errors.New("aprilsh protocol version mismatch.")
 		}
 
-		util.Log.With("NewNum", inst.NewNum).
-			With("OldNum", inst.OldNum).
-			With("AckNum", inst.AckNum).
-			With("throwawayNum", inst.ThrowawayNum).
-			With("port", t.port).
-			Debug("got message")
+		util.Log.Trace("got message",
+			"NewNum", inst.NewNum,
+			"OldNum", inst.OldNum,
+			"AckNum", inst.AckNum,
+			"throwawayNum", inst.ThrowawayNum,
+			"port", t.port)
 
 		// remove send state for which num < AckNum
-		// util.Log.With("do", "before").With("sentStates", t.sender.getSentStateList()).Debug("got message")
+		// util.Log.Debug("got message","do", "before","sentStates", t.sender.getSentStateList())
 		t.sender.processAcknowledgmentThrough(inst.AckNum)
-		// util.Log.With("do", "after-").With("sentStates", t.sender.getSentStateList()).Debug("got message")
+		// util.Log.Debug("got message","do", "after-","sentStates", t.sender.getSentStateList())
 
 		// inform network layer of roundtrip (end-to-end-to-end) connectivity
 		t.connection.setLastRoundtripSuccess(t.sender.getSentStateAckedTimestamp())
@@ -255,7 +255,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		// first, make sure we don't already have the new state
 		for i := range t.receivedState {
 			if inst.NewNum == t.receivedState[i].num {
-				util.Log.With("quit", "duplicate state").With("NewNum", inst.NewNum).Warn("got message")
+				util.Log.Warn("got message", "quit", "duplicate state", "NewNum", inst.NewNum)
 				return nil
 			}
 		}
@@ -291,9 +291,8 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 				if t.verbose > 0 {
 					// fmt.Fprintf(os.Stderr, "#recv [%d] Receiver queue full, discarding %d (malicious sender or "+
 					// 	"long-unidirectional connectivity?)\n", now%100000, inst.NewNum)
-					util.Log.With("time", now%100000).With("newNum", inst.NewNum).
-						Debug("#recv Receiver queue full, discarding " +
-							" (malicious sender or long-unidirectional connectivity?)")
+					msg := "#recv Receiver queue full, discarding (malicious sender or long-unidirectional connectivity?)"
+					util.Log.Warn(msg, "time", now%100000, "newNum", inst.NewNum)
 				}
 				return nil
 			} else {
@@ -308,7 +307,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		newState.num = inst.NewNum
 		if len(inst.Diff) > 0 {
 			newState.state.ApplyString(string(inst.Diff))
-			// util.Log.With("applyString", inst.Diff).Debug("got message")
+			// util.Log.Debug("got message","applyString", inst.Diff)
 		}
 
 		// Insert new state in sorted place
@@ -322,10 +321,10 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 				t.receivedState = rs
 
 				if t.verbose > 0 {
-					util.Log.With("time", time.Now().UnixMilli()%100000).
-						With("newNum", newState.num).
-						With("ackNum", inst.AckNum).
-						Warn("#recv Received OUT-OF-ORDER state x [ack y]")
+					util.Log.Warn("#recv Received OUT-OF-ORDER state x [ack y]",
+						"time", time.Now().UnixMilli()%100000,
+						"newNum", newState.num,
+						"ackNum", inst.AckNum)
 				}
 				return nil
 			}
@@ -340,15 +339,16 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 			t.sender.setDataAck()
 		}
 
-		util.Log.With("receivedState", t.getReceivedStateList()).
-			With("AckNum", t.receivedState[len(t.receivedState)-1].num).
-			With("pendingDataAck", t.sender.pendingDataAck).
-			With("diffLength", len(inst.Diff)).
-			Debug("got message")
-		// util.Log.With("nextAckTime", t.sender.nextAckTime).
-		// 	With("nextSendTime", t.sender.nextSendTime).
-		// 	With("time", newState.GetTimestamp()%10000).
-		// 	Debug("got message")
+		util.Log.Trace("got message",
+			"receivedState", t.getReceivedStateList(),
+			"AckNum", t.receivedState[len(t.receivedState)-1].num,
+			"pendingDataAck", t.sender.pendingDataAck,
+			"diffLength", len(inst.Diff))
+
+		// util.Log.Debug("got message",
+		// 	"nextAckTime", t.sender.nextAckTime,
+		// 	"nextSendTime", t.sender.nextSendTime,
+		// 	"time", newState.GetTimestamp()%10000)
 	} else {
 		util.Log.Debug("addFragment return false")
 	}
@@ -397,17 +397,23 @@ func (t *Transport[S, R]) Awaken(now int64) (ret bool) {
 	*/
 
 	defer func() {
-		util.Log.With("recvStatus", recvStatus).With("sendStatus", sendStatus).
-			With("ret", ret).With("now", now).With("port", t.GetServerPort()).Debug("Awaken")
+		util.Log.Debug("Awaken",
+			"recvStatus", recvStatus,
+			"sendStatus", sendStatus,
+			"ret", ret,
+			"now", now,
+			"port", t.GetServerPort())
 		back := len(t.receivedState)
 		if back >= 2 {
-			util.Log.With("recvPrev", t.receivedState[back-2].GetTimestamp()).
-				With("recvLast", t.receivedState[back-1].GetTimestamp()).Debug("Awaken")
+			util.Log.Debug("Awaken",
+				"recvPrev", t.receivedState[back-2].GetTimestamp(),
+				"recvLast", t.receivedState[back-1].GetTimestamp())
 		}
 		back = len(t.sender.sentStates)
 		if back >= 2 {
-			util.Log.With("sendPrev", t.sender.sentStates[back-2].GetTimestamp()).
-				With("sendLast", t.sender.sentStates[back-1].GetTimestamp()).Debug("Awaken")
+			util.Log.Debug("Awaken",
+				"sendPrev", t.sender.sentStates[back-2].GetTimestamp(),
+				"sendLast", t.sender.sentStates[back-1].GetTimestamp())
 		}
 	}()
 

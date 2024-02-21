@@ -652,9 +652,10 @@ func (fb *Framebuffer) getRow(rowY int) []Cell {
 // 	endIdx := startIdx + (fb.nRows)*fb.nCols
 // 	maxIdx := len(fb.cells)
 // 	if endIdx > maxIdx || startIdx > maxIdx {
-// 		util.Log.With("startIdx", startIdx).With("endIdx", endIdx).
-// 			With("length", maxIdx).
-// 			Warn("getScreenRef")
+// 		util.Log.Warn("getScreenRef",
+// 			"startIdx", startIdx,
+// 			"endIdx", endIdx,
+// 			"length", maxIdx)
 // 	}
 // 	return fb.cells[startIdx:endIdx]
 // }
@@ -726,8 +727,8 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 			oldR := x.cells[dstStartIdx:dstEndIdx]
 			if !equalRow(newR, oldR) {
 				if trace {
-					util.Log.With("newRow", outputRow(newR, pY, fb.nCols)).Warn("equal")
-					util.Log.With("oldRow", outputRow(oldR, pY, x.nCols)).Warn("equal")
+					util.Log.Trace("equal", "newRow", outputRow(newR, pY, fb.nCols))
+					util.Log.Trace("equal", "oldRow", outputRow(oldR, pY, x.nCols))
 				}
 				ret = false
 				break
@@ -738,8 +739,8 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 			if fb.cells[i] != x.cells[i] {
 				if trace {
 					row := i / fb.nCols
-					util.Log.With("newRow", printRow(fb.cells, row, fb.nCols)).Warn("equal")
-					util.Log.With("oldRow", printRow(x.cells, row, x.nCols)).Warn("equal")
+					util.Log.Trace("equal", "newRow", printRow(fb.cells, row, fb.nCols))
+					util.Log.Trace("equal", "oldRow", printRow(x.cells, row, x.nCols))
 					ret = false
 					// break
 					i += fb.nCols - 1

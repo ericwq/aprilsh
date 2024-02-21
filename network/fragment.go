@@ -162,8 +162,8 @@ func (f *FragmentAssembly) addFragment(frag *Fragment) bool {
 		f.fragmentsTotal = int(frag.fragmentNum) + 1
 	}
 
-	// util.Log.With("fragmentID", frag.id).With("fragmentNum", frag.fragmentNum).
-	// 	With("length", len(frag.contents)).Debug("addFragment")
+	// util.Log.Debug("addFragment", "fragmentID", frag.id, "fragmentNum",
+	// 	frag.fragmentNum, "length", len(frag.contents))
 
 	// return true means all the fragments is arrived.
 	return f.fragmentsArrived == f.fragmentsTotal
@@ -180,13 +180,13 @@ func (f *FragmentAssembly) getAssembly() *pb.Instruction {
 	ret := pb.Instruction{}
 	b, err := GetCompressor().Uncompress([]byte(encoded.String()))
 	if err != nil {
-		util.Log.With("error", err).Warn("#getAssembly uncompress")
+		util.Log.Warn("#getAssembly uncompress", "error", err)
 		return nil
 	}
 
 	err = proto.Unmarshal(b, &ret)
 	if err != nil {
-		util.Log.With("error", err).Warn("#getAssembly unmarshal")
+		util.Log.Warn("#getAssembly unmarshal", "error", err)
 		return nil
 	}
 
@@ -244,11 +244,8 @@ func (f *Fragmenter) makeFragments(inst *pb.Instruction, mtu int) (ret []*Fragme
 	var fragmentNum uint16 = 0
 	pos := 0
 
-	// util.Log.With("mtu", mtu).
-	// 	With("diff", len(inst.Diff)).
-	// 	With("marshal", len(data)).
-	// 	With("compress", len(payload[pos:])).
-	// 	Debug("send message")
+	// util.Log.Debug("send message", "mtu", mtu, "diff", len(inst.Diff),
+	// 	"marshal", len(data), "compress", len(payload[pos:]))
 
 	for payload != nil {
 		final := false

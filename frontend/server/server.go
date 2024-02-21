@@ -1122,16 +1122,17 @@ mainLoop:
 		}
 
 		if signals.AnySignal() || idleShutdown {
-			subLog := util.Log.With("HasRemoteAddr", server.HasRemoteAddr()).
-				With("ShutdownInProgress", server.ShutdownInProgress())
-
-			subLog.Debug("got signal: start shutdown")
+			util.Log.Debug("got signal: start shutdown",
+				"HasRemoteAddr", server.HasRemoteAddr(),
+				"ShutdownInProgress", server.ShutdownInProgress())
 			signals.Clear()
 			// shutdown signal
 			if server.HasRemoteAddr() && !server.ShutdownInProgress() {
 				server.StartShutdown()
 			} else {
-				subLog.Debug("got signal: break loop")
+				util.Log.Debug("got signal: break loop",
+					"HasRemoteAddr", server.HasRemoteAddr(),
+					"ShutdownInProgress", server.ShutdownInProgress())
 				break
 			}
 		}

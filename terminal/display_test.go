@@ -143,7 +143,6 @@ func TestNewFrame_PutRow(t *testing.T) {
 		},
 	}
 
-
 	util.Log.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
@@ -217,7 +216,6 @@ func TestNewFrame_ScrollUp(t *testing.T) {
 
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
-
 
 	// util.Log.SetOutput(io.Discard)
 
@@ -323,7 +321,6 @@ func TestNewFrame_CursorStyle(t *testing.T) {
 	}
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
-
 
 	// util.Log.SetOutput(io.Discard)
 
@@ -1169,7 +1166,6 @@ func TestPutRow(t *testing.T) {
 			"\x1b[?25l\n-rw-r--r--    1 ide\x1b[6X\x1b[6Cdevelop\x1b[8X\x1b[8Cgo.work\x1b[K"},
 	}
 
-
 	util.Log.SetOutput(io.Discard)
 	// util.Log.SetLevel(slog.LevelDebug)
 	// util.Log.SetOutput(os.Stderr)
@@ -1204,9 +1200,9 @@ func TestPutRow(t *testing.T) {
 			frameY := v.row
 
 			// print info
-			util.Log.With("Before: ", fmt.Sprintf("fs.cursor=(%2d,%2d)", frame.cursorY, frame.cursorX)).Debug("TestPutRow")
-			util.Log.With("OldRow", printRow(oldE.cf.cells, rawY, oldE.nCols)).Debug("TestPutRow")
-			util.Log.With("NewRow", printRow(newE.cf.cells, rawY, newE.nCols)).Debug("TestPutRow")
+			util.Log.Debug("TestPutRow", "Before: ", fmt.Sprintf("fs.cursor=(%2d,%2d)", frame.cursorY, frame.cursorX))
+			util.Log.Debug("TestPutRow", "OldRow", printRow(oldE.cf.cells, rawY, oldE.nCols))
+			util.Log.Debug("TestPutRow", "NewRow", printRow(newE.cf.cells, rawY, newE.nCols))
 
 			oldRow = oldE.cf.getRow(rawY)
 			newRow = newE.cf.getRow(rawY)
@@ -1216,8 +1212,8 @@ func TestPutRow(t *testing.T) {
 			wrap = d.putRow2(false, frame, newE, newRow, frameY, oldRow, wrap)
 
 			// print info
-			util.Log.With("After:  ", fmt.Sprintf("fs.cursor=(%2d,%2d)", frame.cursorY, frame.cursorX)).Debug("TestPutRow")
-			util.Log.With("frameY", frameY).With("out", frame.output()).Debug("TestPutRow")
+			util.Log.Debug("TestPutRow", "After:  ", fmt.Sprintf("fs.cursor=(%2d,%2d)", frame.cursorY, frame.cursorX))
+			util.Log.Debug("TestPutRow", "frameY", frameY, "out", frame.output())
 
 			// validate result
 			if frame.output() != v.expect {

@@ -118,7 +118,7 @@ func (ts *TransportSender[T]) attemptProspectiveResendOptimization(proposedDiff 
 	if rLen <= pLen || (rLen < 1000 && rLen-pLen < 100) {
 		ts.assumedReceiverState = &ts.sentStates[0]
 		proposedDiff = resendDiff
-		util.Log.With("proposedDiff", proposedDiff).Debug("attemptProspectiveResendOptimization")
+		util.Log.Debug("attemptProspectiveResendOptimization", "proposedDiff", proposedDiff)
 	}
 
 	return proposedDiff
@@ -232,27 +232,28 @@ func (ts *TransportSender[T]) sendFragments(inst *pb.Instruction, newNum uint64)
 	fragments := ts.fragmenter.makeFragments(inst, ts.connection.getMTU()-ADDED_BYTES-encrypt.ADDED_BYTES-90)
 	for i := range fragments {
 		if ts.verbose > 0 {
-			util.Log.With("NewNum", inst.NewNum).
-				With("OldNum", inst.OldNum).
-				With("AckNum", inst.AckNum).
-				With("ThrowawayNum", inst.ThrowawayNum).
-				Debug("send message")
-			util.Log.With("sentStates", ts.getSentStateList()).
-				With("diffLength", len(inst.Diff)).
-				With("SRTT", ts.connection.getSRTT()).
-				Debug("send message")
-			// util.Log.With("time", (time.Now().UnixMilli()%100000)).
-			// 	With("fragmentsID", fragments[i].id).
-			// 	With("fragmentNum", fragments[i].fragmentNum).
-			// 	With("fragmentLength", len(fragments[i].contents)).
-			// 	With("frameRate", 1000.0/float64(ts.sendInterval())).
-			// 	With("timeout", ts.connection.timeout()).
-			// 	Debug("send message")
-			// util.Log.With("mindelayClock", ts.mindelayClock).
-			// 	With("SEND_MINDELAY", ts.SEND_MINDELAY).
-			// 	With("sendInterval", ts.sendInterval()).
-			// 	With("timeout", ts.connection.timeout()).
-			// 	Debug("send message")
+			util.Log.Trace("send message",
+				"NewNum", inst.NewNum,
+				"OldNum", inst.OldNum,
+				"AckNum", inst.AckNum,
+				"ThrowawayNum", inst.ThrowawayNum)
+			util.Log.Trace("send message",
+				"sentStates", ts.getSentStateList(),
+				"diffLength", len(inst.Diff),
+				"SRTT", ts.connection.getSRTT())
+
+			// util.Log.Trace("send message",
+			// 	"time", (time.Now().UnixMilli() % 100000),
+			// 	"fragmentsID", fragments[i].id,
+			// 	"fragmentNum", fragments[i].fragmentNum,
+			// 	"fragmentLength", len(fragments[i].contents),
+			// 	"frameRate", 1000.0/float64(ts.sendInterval()),
+			// 	"timeout", ts.connection.timeout())
+			// util.Log.Trace("send message",
+			// 	"mindelayClock", ts.mindelayClock,
+			// 	"SEND_MINDELAY", ts.SEND_MINDELAY,
+			// 	"sendInterval", ts.sendInterval(),
+			// 	"timeout", ts.connection.timeout())
 		}
 		ak, _ := ts.Awaken(time.Now().UnixMilli())
 		err := ts.connection.send(fragments[i].String(), ak)
@@ -296,9 +297,7 @@ func (ts *TransportSender[T]) calculateTimers() {
 
 	if ts.pendingDataAck && ts.nextAckTime > now+ACK_DELAY {
 		ts.nextAckTime = now + ACK_DELAY // got data from remote, send ack message later
-		// util.Log.With("status", "pendingDataAck").
-		// 	With("nextAckTime", ts.nextAckTime).
-		// 	Debug("calculateTimers")
+		// util.Log.Debug("calculateTimers", "status", "pendingDataAck", "nextAckTime", ts.nextAckTime)
 	}
 
 	if !ts.currentState.Equal(ts.sentStates[back].state) {
@@ -311,45 +310,36 @@ func (ts *TransportSender[T]) calculateTimers() {
 		ts.nextSendTime = min(ts.mindelayClock+int64(ts.SEND_MINDELAY),
 			ts.sentStates[back].timestamp+int64(ts.sendInterval()))
 		// we change from Max to Min to avoid duplicat message
-		// util.Log.With("status", "currentState!=lastSendStates").
-		// 	With("nextSendTime", ts.nextSendTime).
-		// 	Debug("calculateTimers")
+		// util.Log.Debug("calculateTimers", "status", "currentState!=lastSendStates",
+		// 	"nextSendTime", ts.nextSendTime)
 	} else if !ts.currentState.Equal(ts.assumedReceiverState.state) && ts.lastHeard+ACTIVE_RETRY_TIMEOUT > now {
 		// currentState is last sent state but not the assumed receiver state
 		ts.nextSendTime = ts.sentStates[back].timestamp + int64(ts.sendInterval())
 		if ts.mindelayClock != math.MaxInt64 {
 			ts.nextSendTime = max(ts.nextSendTime, ts.mindelayClock+int64(ts.SEND_MINDELAY))
 		}
-		// util.Log.With("status", "currentState==lastSendStates!=AssumedState").
-		// 	With("nextSendTime", ts.nextSendTime).
-		// 	With("lastHeard", ts.lastHeard).
-		// 	Debug("calculateTimers")
+		// util.Log.Debug("calculateTimers", "status", "currentState==lastSendStates!=AssumedState",
+		// 	"nextSendTime", ts.nextSendTime, "lastHeard", ts.lastHeard)
 	} else if !ts.currentState.Equal(ts.sentStates[0].state) && ts.lastHeard+ACTIVE_RETRY_TIMEOUT > now {
 		// currentState is the last and assumed receiver state but not the oldest sent state
 		ts.nextSendTime = ts.sentStates[back].timestamp + ts.connection.timeout() + ACK_DELAY
-		// util.Log.With("status", "currentState==lastSendStates==AssumedState").
-		// 	With("nextSendTime", ts.nextSendTime).
-		// 	With("lastHeard", ts.lastHeard).
-		// 	Debug("calculateTimers")
+		// util.Log.Debug("calculateTimers", "status", "currentState==lastSendStates==AssumedState",
+		// 	"nextSendTime", ts.nextSendTime, "lastHeard", ts.lastHeard)
 	} else {
 		ts.nextSendTime = math.MaxInt64 // nothing need to be sent actively
-		// util.Log.With("status", "others").
-		// 	With("nextSendTime", ts.nextSendTime).
-		// 	Debug("calculateTimers")
+		// util.Log.Debug("calculateTimers", "status", "others", "nextSendTime", ts.nextSendTime)
 	}
 
 	// speed up shutdown sequence
 	if ts.shutdownInProgress || ts.ackNum == math.MaxUint64 {
 		ts.nextAckTime = ts.sentStates[back].timestamp + int64(ts.sendInterval())
-		// util.Log.With("status", "shutdown").
-		// 	With("nextAckTime", ts.nextAckTime).
-		// 	With("ackNum", ts.ackNum).
-		// 	With("shutdown", ts.shutdownInProgress).
-		// 	Debug("calculateTimers")
+		// util.Log.Debug("calculateTimers",
+		// 	"status", "shutdown",
+		// 	"nextAckTime", ts.nextAckTime,
+		// 	"ackNum", ts.ackNum,
+		// 	"shutdown", ts.shutdownInProgress)
 	}
-	// util.Log.With("nextAckTime", ts.nextAckTime).
-	// 	With("nextSendTime", ts.nextSendTime).
-	// 	Debug("calculateTimers")
+	// util.Log.Debug("calculateTimers", "nextAckTime", ts.nextAckTime, "nextSendTime", ts.nextSendTime)
 }
 
 // make chaff with random length and random contents.
@@ -366,7 +356,7 @@ func (ts *TransportSender[T]) makeChaff() string {
 func (ts *TransportSender[T]) tick() error {
 	ts.calculateTimers() // updates assumed receiver state and rationalizes
 
-	// util.Log.With("point", 100).Debug("tick")
+	// util.Log.Debug("tick","point", 100)
 
 	// skip send if there is no peer
 	if !ts.connection.getHasRemoteAddr() {
@@ -377,18 +367,18 @@ func (ts *TransportSender[T]) tick() error {
 	// skip send if the interval is too short
 	now := time.Now().UnixMilli()
 	if now < ts.nextAckTime && now < ts.nextSendTime {
-		// util.Log.With("now", now).With("now<nextAckTime", now < ts.nextAckTime).
-		// 	With("now<nextSendTime", now < ts.nextSendTime).Debug("tick skip tick: time")
+		// util.Log.Debug("tick skip tick: time", "now", now, "now<nextAckTime", now < ts.nextAckTime,
+		// 	"now<nextSendTime", now < ts.nextSendTime)
 		return nil
 	}
 
-	// util.Log.With("point", 100).With("assumedReceiverState", ts.getAssumedReceiverStateIdx()).Debug("tick")
+	// util.Log.Debug("tick","point", 100,"assumedReceiverState", ts.getAssumedReceiverStateIdx())
 	// Determine if a new diff or empty ack needs to be sent
 	diff := ts.currentState.DiffFrom(ts.assumedReceiverState.state)
-	// util.Log.With("point", 200).Debug("tick")
+	// util.Log.Debug("tick", "point", 200)
 	// diff = ts.attemptProspectiveResendOptimization(diff)
-	// util.Log.With("point", 300).With("DiffFrom", ts.assumedReceiverState.num).Debug("tick")
-	// util.Log.With("point", 300).Debug("tick")
+	// util.Log.Debug("tick","point", 300,"DiffFrom", ts.assumedReceiverState.num)
+	// util.Log.Debug("tick","point", 300)
 	// util.Log.SetLevel(slog.LevelInfo)
 
 	if ts.hookForTick != nil { // hook function for testing
@@ -397,37 +387,37 @@ func (ts *TransportSender[T]) tick() error {
 	if ts.verbose > 0 && len(diff) > 0 {
 		// verify diff has round-trip identity (modulo Unicode fallback rendering)
 		newState := ts.assumedReceiverState.state.Clone()
-		// util.Log.With("point", 410).Debug("tick")
+		// util.Log.Debug("tick","point", 410)
 		newState.ApplyString(diff)
-		// util.Log.With("point", 420).Debug("tick")
+		// util.Log.Debug("tick","point", 420)
 		if !ts.currentState.Equal(newState) {
 			ts.currentState.EqualTrace(newState) // TODO remove this if integration test is finished
 			util.Log.Warn("#tick Warning, round-trip Instruction verification failed!")
 		}
 
 		// Also verify that both the original frame and generated frame have the same initial diff.
-		// util.Log.With("point", 500).Debug("tick")
+		// util.Log.Debug("tick","point", 500)
 		currentDiff := ts.currentState.InitDiff()
-		// util.Log.With("point", 600).Debug("tick")
+		// util.Log.Debug("tick","point", 600)
 		newDiff := newState.InitDiff()
 		if currentDiff != newDiff {
-			util.Log.With("currentDiff", currentDiff).Warn("tick")
-			util.Log.With("newDiff", newDiff).Warn("tick")
+			util.Log.Warn("tick", "currentDiff", currentDiff)
+			util.Log.Warn("tick", "newDiff", newDiff)
 			util.Log.Warn("#tick Warning, target state Instruction verification failed!")
 		}
-		// util.Log.With("point", 700).Debug("tick")
+		// util.Log.Debug("tick","point", 700)
 	}
 	// util.Log.SetLevel(slog.LevelDebug)
 	ts.currentState.Reset()
-	// util.Log.With("point", 800).With("lastRows", 0).Debug("tick")
+	// util.Log.Debug("tick","point", 800,"lastRows", 0)
 
 	// fmt.Printf("#tick send %q to receiver %s.\n", diff, ts.connection.getRemoteAddr())
 
-	// util.Log.With("nextAckTime", ts.nextAckTime).
-	// 	With("nextSendTime", ts.nextSendTime).
-	// 	With("assumedReceiverState", ts.assumedReceiverState.num).
-	// 	With("now", now).
-	// 	Debug("send message")
+	// util.Log.Debug("send message",
+	// 	"nextAckTime", ts.nextAckTime,
+	// 	"nextSendTime", ts.nextSendTime,
+	// 	"assumedReceiverState", ts.assumedReceiverState.num,
+	// 	"now", now)
 	if len(diff) == 0 {
 		if now >= ts.nextAckTime {
 			if err := ts.sendEmptyAck(); err != nil {
@@ -441,9 +431,10 @@ func (ts *TransportSender[T]) tick() error {
 			ts.mindelayClock = math.MaxInt64
 		}
 	} else if now >= ts.nextSendTime || now >= ts.nextAckTime {
-		// util.Log.With(">nextSendTime", now >= ts.nextSendTime).
-		// 	With(">nextAckTime", now >= ts.nextAckTime).
-		// 	Debug("send message")
+
+		// util.Log.Debug("send message",
+		// 	">nextSendTime", now >= ts.nextSendTime,
+		// 	">nextAckTime", now >= ts.nextAckTime)
 
 		// send diff or ack
 		if err := ts.sendToReceiver(diff); err != nil {
@@ -451,10 +442,11 @@ func (ts *TransportSender[T]) tick() error {
 		}
 		ts.mindelayClock = math.MaxInt64
 	}
-	// util.Log.With("nextAckTime", ts.nextAckTime).
-	// 	With("nextSendTime", ts.nextSendTime).
-	// 	With("now", time.Now().UnixMilli()).
-	// 	Debug("send message")
+
+	// util.Log.Debug("send message",
+	// 	"nextAckTime", ts.nextAckTime,
+	// 	"nextSendTime", ts.nextSendTime,
+	// 	"now", time.Now().UnixMilli())
 
 	return nil
 }
@@ -471,11 +463,11 @@ func (ts *TransportSender[T]) waitTime() int {
 
 	now := time.Now().UnixMilli()
 
-	// util.Log.With("nextSendTime", ts.nextSendTime).
-	// 	With("nextAckTime", ts.nextAckTime).
-	// 	With("nextWakeup", nextWakeup).
-	// 	With("now", now).
-	// 	Debug("sender waitTime")
+	// util.Log.Debug("sender waitTime",
+	// 	"nextSendTime", ts.nextSendTime,
+	// 	"nextAckTime", ts.nextAckTime,
+	// 	"nextWakeup", nextWakeup,
+	// 	"now", now)
 	if !ts.connection.getHasRemoteAddr() {
 		return math.MaxInt
 	}

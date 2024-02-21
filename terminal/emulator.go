@@ -156,7 +156,7 @@ func (emu *Emulator) resize(nCols, nRows int) {
 	if emu.nCols == nCols && emu.nRows == nRows {
 		return
 	}
-	// util.Log.With("cols", nCols).With("rows", nRows).Debug("Emulator.resize")
+	// util.Log.Debug("Emulator.resize","cols", nCols,"rows", nRows)
 
 	emu.hideCursor()
 
@@ -575,7 +575,9 @@ func (emu *Emulator) HandleStream(seq string) (hds []*Handler, diff string) {
 		if !emu.excludeHandler(hd, respLen, emu.terminalToHost.Len()) {
 			diffB.WriteString(hd.sequence)
 			// } else {
-			// 	util.Log.With("hd", strHandlerID[hd.GetId()]).With("sequence", hd.sequence).Warn("HandleStream diff skip")
+			// util.Log.Warn("HandleStream diff skip",
+			// 	"hd", strHandlerID[hd.GetId()],
+			// 	"sequence", hd.sequence)
 		}
 	}
 
@@ -605,17 +607,20 @@ func (emu *Emulator) HandleLargeStream(seq string) (diff, remains string) {
 	// prepare to check occupied rows
 	pos := emu.cf.getPhysicalRow(emu.posY)
 	start := false
-	// util.Log.With("pos", emu.cf.getPhysicalRow(emu.posY)).With("posY", emu.posY).
-	// 	Debug("rewind check")
+	// util.Log.Debug("rewind check",
+	// 	"pos", emu.cf.getPhysicalRow(emu.posY),
+	// 	"posY", emu.posY)
 	var diffB strings.Builder
 	var respLen int
 
 	hds := make([]*Handler, 0, 16)
 	hds = emu.parser.processStream(seq, hds)
 
-	// util.Log.With("point", 100).
-	// 	With("scrollHead", emu.cf.scrollHead).With("posY", emu.posY).With("posX", emu.posX).
-	// 	Debug("HandleLargeStream")
+	// util.Log.Debug("HandleLargeStream",
+	// 	"point", 100,
+	// 	"scrollHead", emu.cf.scrollHead,
+	// 	"posY", emu.posY,
+	// 	"posX", emu.posX)
 
 	for idx, hd := range hds {
 		// check rewind case
@@ -624,17 +629,18 @@ func (emu *Emulator) HandleLargeStream(seq string) (diff, remains string) {
 			// save over size content (remains) for later opportunity.
 			// diff = restoreSequence(hds[:idx])
 			remains = restoreSequence(hds[idx:])
-			// util.Log.With("oldPos", pos).
-			// 	With("posY", emu.posY).With("idx", idx).
-			// 	// With("processed", strings.Split(ret, "。")[0]).
-			// 	With("processed", ret).
-			// 	Warn("rewind check")
-			// util.Log.With("newPos", emu.cf.getPhysicalRow(emu.posY)).
-			// 	With("posY", emu.posY).With("idx", idx).
-			// 	With("remains", remains).
-			// 	Debug("rewind check")
-			// util.Log.With("gap", emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))).
-			// 	Debug("rewind check")
+			// util.Log.Warn("rewind check",
+			// 	"oldPos", pos,
+			// 	"posY", emu.posY,
+			// 	"idx", idx,
+			// 	"processed", ret)
+			// util.Log.Debug("rewind check",
+			// 	"newPos", emu.cf.getPhysicalRow(emu.posY),
+			// 	"posY", emu.posY,
+			// 	"idx", idx,
+			// 	"remains", remains)
+			// util.Log.Debug("rewind check",
+			// 	"gap", emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY)))
 			break
 		}
 
@@ -644,31 +650,36 @@ func (emu *Emulator) HandleLargeStream(seq string) (diff, remains string) {
 		if !emu.excludeHandler(hd, respLen, emu.terminalToHost.Len()) {
 			diffB.WriteString(hd.sequence)
 			// } else {
-			// 	util.Log.With("hd", strHandlerID[hd.GetId()]).With("sequence", hd.sequence).
-			// 		Debug("HandleLargeStream diff skip")
+			// util.Log.Debug("HandleLargeStream diff skip",
+			// 	"hd", strHandlerID[hd.GetId()],
+			// 	"sequence", hd.sequence)
 		}
 
 		// start the check
 		if !emu.altScreenBufferMode && emu.cf.getPhysicalRow(emu.posY) != pos {
 			start = true
 		}
-		// util.Log.With("newPos", emu.cf.getPhysicalRow(emu.posY)).
-		// 	With("gap", emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))).
-		// 	With("seq", hd.sequence).Debug("rewind check")
+		// util.Log.Debug("rewind check",
+		// 	"newPos", emu.cf.getPhysicalRow(emu.posY),
+		// 	"gap", emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY)),
+		// 	"seq", hd.sequence)
 	}
 
 	diff = diffB.String()
 
 	if !emu.altScreenBufferMode {
 		emu.lastRows += emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))
-		// util.Log.With("lastRows", emu.lastRows).
-		// 	With("once", emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY))).
-		// 	Debug("HandleLargeStream")
+		// util.Log.Debug("HandleLargeStream",
+		// 	"lastRows", emu.lastRows,
+		// 	"once", emu.cf.getRowsGap(pos, emu.cf.getPhysicalRow(emu.posY)))
 	}
 
-	// util.Log.With("point", 200).With("scrollHead", emu.cf.scrollHead).
-	// 	With("posY", emu.posY).With("posX", emu.posX).
-	// 	With("diff", diff).Debug("HandleLargeStream")
+	// util.Log.Debug("HandleLargeStream",
+	// 	"point", 200,
+	// 	"scrollHead", emu.cf.scrollHead,
+	// 	"posY", emu.posY,
+	// 	"posX", emu.posX,
+	// 	"diff", diff)
 	return
 }
 
