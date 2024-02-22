@@ -1859,12 +1859,19 @@ func (m *mainSrv) run2(conf *Config) {
 			// For security, make sure we don't dump core
 			encrypt.DisableDumpingCore()
 
-			// start the worker
+			shell, _ := startChild(&conf2)
 			m.wg.Add(1)
-			go func(conf *Config, exChan chan string, whChan chan workhorse) {
-				m.runWorker(conf, exChan, whChan)
+			go func() { // avatar is looking after the child process
+				shell.Wait()
 				m.wg.Done()
-			}(&conf2, m.exChan, m.whChan)
+			}()
+
+			// // start the worker
+			// m.wg.Add(1)
+			// go func(conf *Config, exChan chan string, whChan chan workhorse) {
+			// 	m.runWorker(conf, exChan, whChan)
+			// 	m.wg.Done()
+			// }(&conf2, m.exChan, m.whChan)
 
 			// blocking read the key from worker
 			key := <-m.exChan
@@ -1901,6 +1908,138 @@ func (m *mainSrv) run2(conf *Config) {
 			util.Log.Warn("unknow request", "request", req, "response", resp)
 		}
 	}
+}
+
+func startChild(conf *Config) (*os.Process, error) {
+	// var pts *os.File
+	// var pr *io.PipeReader
+	// var utmpHost string
+
+	// if conf.verbose == _VERBOSE_SKIP_START_SHELL {
+	// 	return nil, failToStartShell
+	// }
+	// set IUTF8 if available
+	// if err := util.SetIUTF8(int(pts.Fd())); err != nil {
+	// 	return nil, err
+	// }
+
+	var env []string
+
+	// set TERM based on client TERM
+	if conf.term != "" {
+		env = append(env, "TERM="+conf.term)
+	} else {
+		env = append(env, "TERM=xterm-256color")
+	}
+
+	// clear STY environment variable so GNU screen regards us as top level
+	// os.Unsetenv("STY")
+
+	// get login user info, we already checked the user exist when ssh perform authentication.
+	// users := strings.Split(conf.destination, "@")
+	u, _ := user.Lookup(conf.user)
+	uid, _ := strconv.ParseInt(u.Uid, 10, 32)
+	gid, _ := strconv.ParseInt(u.Gid, 10, 32)
+	util.Log.Info("start shell check user", "user", u.Username, "gid", u.Gid, "HOME", u.HomeDir)
+
+	// set base env
+	// TODO should we put LOGNAME, MAIL into env?
+	env = append(env, "PWD="+u.HomeDir)
+	env = append(env, "HOME="+u.HomeDir) // it's important for shell to source .profile
+	env = append(env, "USER="+conf.user)
+	env = append(env, "SHELL="+conf.commandPath)
+	env = append(env, fmt.Sprintf("TZ=%s", os.Getenv("TZ")))
+
+	// TODO should we set ssh env ?
+	env = append(env, fmt.Sprintf("SSH_CLIENT=%s", os.Getenv("SSH_CLIENT")))
+	env = append(env, fmt.Sprintf("SSH_CONNECTION=%s", os.Getenv("SSH_CONNECTION")))
+
+	// ask ncurses to send UTF-8 instead of ISO 2022 for line-drawing chars
+	env = append(env, "NCURSES_NO_UTF8_ACS=1")
+	util.Log.Info("start shell check env", "env", env)
+	util.Log.Info("start shell check command",
+		"commandPath", conf.commandPath, "commandArgv", conf.commandArgv)
+
+	sysProcAttr := &syscall.SysProcAttr{}
+	sysProcAttr.Setsid = true                     // start a new session
+	sysProcAttr.Setctty = true                    // set controlling terminal
+	sysProcAttr.Credential = &syscall.Credential{ // change user
+		Uid: uint32(uid),
+		Gid: uint32(gid),
+	}
+
+	procAttr := os.ProcAttr{
+		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr}, // use pts as stdin, stdout, stderr
+		Dir:   u.HomeDir,
+		Sys:   sysProcAttr,
+		Env:   env,
+	}
+
+	// https://stackoverflow.com/questions/21705950/running-external-commands-through-os-exec-under-another-user
+	//
+	// if conf.withMotd && !motdHushed() {
+	// 	// For Ubuntu, try and print one of {,/var}/run/motd.dynamic.
+	// 	// This file is only updated when pam_motd is run, but when
+	// 	// mosh-server is run in the usual way with ssh via the script,
+	// 	// this always happens.
+	// 	// XXX Hackish knowledge of Ubuntu PAM configuration.
+	// 	// But this seems less awful than build-time detection with autoconf.
+	// 	if !printMotd(pts, "/run/motd.dynamic") {
+	// 		printMotd(pts, "/var/run/motd.dynamic")
+	// 	}
+	// 	// Always print traditional /etc/motd.
+	// 	printMotd(pts, "/etc/motd")
+	//
+	// 	warnUnattached(pts, utmpHost)
+	// }
+	//
+	// // set new title
+	// fmt.Fprintf(pts, "\x1B]0;%s %s:%s\a", frontend.CommandClientName, conf.destination, conf.desiredPort)
+	//
+	// encrypt.ReenableDumpingCore()
+
+	/*
+		additional logic for pty.StartWithAttrs() end
+	*/
+
+	// wait for serve() to release us
+	// if pr != nil && conf.verbose != _VERBOSE_SKIP_READ_PIPE {
+	// 	ch := make(chan bool, 0)
+	// 	timer := time.NewTimer(time.Duration(frontend.TimeoutIfNoConnect) * time.Millisecond)
+	//
+	// 	// util.Log.Debug("start shell message", "action", "wait", "port", conf.desiredPort)
+	// 	// add timeout for pipe read
+	// 	go func(pr *io.PipeReader, ch chan bool) {
+	// 		buf := make([]byte, 81)
+	//
+	// 		_, err := pr.Read(buf)
+	// 		if err != nil && errors.Is(err, io.EOF) {
+	// 			ch <- true
+	// 			// util.Log.Debug("start shell message", "action", "received", "port", conf.desiredPort)
+	// 		} else {
+	// 			// util.Log.Debug("start shell message", "action", "readFailed", "port", conf.desiredPort)
+	// 		}
+	// 	}(pr, ch)
+	//
+	// 	// waiting for time out or get the pipe reader send message
+	// 	select {
+	// 	case <-ch:
+	// 	case <-timer.C:
+	// 		pr.Close() // close pipe will stop the Read operation
+	// 		// util.Log.Debug("start shell message", "action", "timeout", "port", conf.desiredPort)
+	// 		return nil, fmt.Errorf("pipe read: %w", os.ErrDeadlineExceeded)
+	// 	}
+	// 	timer.Stop()
+	//
+	// 	pr.Close()
+	// 	util.Log.Info("start shell at", "pty", pts.Name())
+	// }
+
+	proc, err := os.StartProcess(conf.commandPath, conf.commandArgv, &procAttr)
+	if err != nil {
+		return nil, err
+	}
+	return proc, nil
 }
 
 // parse the flag first, print help or version based on flag
