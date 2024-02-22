@@ -16,6 +16,7 @@ import (
 	"os"
 	"os/signal"
 	"os/user"
+	"path/filepath"
 	"reflect"
 	"sort"
 	"strconv"
@@ -362,16 +363,17 @@ func beginClientConn(conf *Config) { //(port string, term string) {
 }
 
 type mainSrv struct {
-	workers   map[int]workhorse
-	runWorker func(*Config, chan string, chan workhorse) error // worker
-	exChan    chan string                                      // worker done or passing key
-	whChan    chan workhorse                                   // workhorse
-	downChan  chan bool                                        // shutdown mainSrv
-	maxPort   int                                              // max worker port
-	timeout   int                                              // read udp time out,
-	port      int                                              // main listen port
-	conn      *net.UDPConn                                     // mainSrv listen port
-	wg        sync.WaitGroup
+	workers    map[int]workhorse
+	runWorker  func(*Config, chan string, chan workhorse) error // worker
+	exChan     chan string                                      // worker done or passing key
+	whChan     chan workhorse                                   // workhorse
+	downChan   chan bool                                        // shutdown mainSrv
+	uxdownChan chan bool                                        // ux shutdown mainSrv
+	maxPort    int                                              // max worker port
+	timeout    int                                              // read udp time out,
+	port       int                                              // main listen port
+	conn       *net.UDPConn                                     // mainSrv listen port
+	wg         sync.WaitGroup
 }
 
 type workhorse struct {
@@ -386,6 +388,7 @@ func newMainSrv(conf *Config, runWorker func(*Config, chan string, chan workhors
 	m.maxPort = m.port + 1
 	m.workers = make(map[int]workhorse)
 	m.downChan = make(chan bool, 1)
+	m.uxdownChan = make(chan bool, 1)
 	m.exChan = make(chan string, 1)
 	m.whChan = make(chan workhorse, 1)
 	m.timeout = 20
@@ -670,6 +673,7 @@ func (m *mainSrv) run(conf *Config) {
 // return the minimal available port and increase the maxWorkerPort if necessary.
 // shrink the max port number if possible
 // https://coolaj86.com/articles/how-to-test-if-a-port-is-available-in-go/
+// https://github.com/devlights/go-unix-domain-socket-example
 func (m *mainSrv) getAvailabePort() (port int) {
 	port = m.port
 	if len(m.workers) > 0 {
@@ -1596,6 +1600,309 @@ mainLoop:
 	return nil
 }
 
+const (
+	unixsockNetwork = "unixgram"
+)
+
+// "/tmp/aprilsh.sock"
+var unixsockAddr string = filepath.Join(os.TempDir(), "aprilsh.sock")
+
+func uxClient(msg string) {
+	conn, err := net.Dial(unixsockNetwork, unixsockAddr)
+	if err != nil {
+		panic(err)
+	}
+
+	_, err = conn.Write([]byte(msg))
+	if err != nil {
+		panic(err)
+	}
+	conn.Close()
+}
+
+func uxCleanup() (err error) {
+	if _, err = os.Stat(unixsockAddr); err == nil {
+		if err = os.RemoveAll(unixsockAddr); err != nil {
+			return err
+		}
+	}
+	return
+}
+
+func (m *mainSrv) uxListen() (conn *net.UnixConn, err error) {
+	if err = uxCleanup(); err != nil {
+		return
+	}
+
+	addr, _ := net.ResolveUnixAddr(unixsockNetwork, unixsockAddr)
+	conn, err = net.ListenUnixgram("unixgram", addr)
+	os.Chmod(unixsockAddr, 0777)
+
+	if err != nil {
+		return nil, err
+	}
+	return
+}
+
+func (m *mainSrv) uxServe(conn *net.UnixConn, timeout int) {
+	// prepare to receive the signal
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
+
+	// clean up
+	defer func() {
+		conn.Close()
+		uxCleanup()
+		util.Log.Info("uxServe stopped")
+	}()
+
+	util.Log.Info("uxServe started")
+	var buf [1024]byte
+	shutdown := false
+	for {
+		select {
+		case ss := <-sig:
+			switch ss {
+			case syscall.SIGHUP: // TODO:reload the config?
+				util.Log.Info("got signal: SIGHUP", "receiver", "uxServe")
+			case syscall.SIGTERM, syscall.SIGINT:
+				util.Log.Info("got signal: SIGTERM or SIGINT", "receiver", "uxServe")
+				shutdown = true
+			}
+		case <-m.uxdownChan:
+			shutdown = true
+		default:
+		}
+
+		if shutdown {
+			return
+		}
+
+		m.conn.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
+		n, err := conn.Read(buf[:])
+		if err != nil {
+			if errors.Is(err, os.ErrDeadlineExceeded) {
+				util.Log.Info("uxServe read timeout.")
+				continue
+			}
+		}
+		resp := string(buf[:n])
+
+		util.Log.Debug("uxServer got", "resp", resp)
+		m.exChan <- resp
+	}
+}
+
+func (m *mainSrv) start2(conf *Config) {
+	// listen the port
+	if err := m.listen(conf); err != nil {
+		util.Log.Warn("listen failed", "error", err)
+		return
+	}
+
+	uxConn, err := m.uxListen()
+	if err != nil {
+		util.Log.Warn("listen unix domain socket failed", "error", err)
+		return
+	}
+
+	// start main server waiting for open/close message.
+	m.wg.Add(1)
+	go func() {
+		m.run2(conf)
+		m.wg.Done()
+	}()
+
+	// start unix domain socket (datagram)
+	m.wg.Add(1)
+	go func() {
+		m.uxServe(uxConn, 2)
+		m.wg.Done()
+	}()
+
+	// shutdown if the auto stop flag is set
+	if conf.autoStop > 0 {
+		time.AfterFunc(time.Duration(conf.autoStop)*time.Second, func() {
+			m.downChan <- true
+		})
+	}
+}
+
+func (m *mainSrv) run2(conf *Config) {
+	if m.conn == nil {
+		return
+	}
+	// prepare to receive the signal
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
+
+	// clean up
+	defer func() {
+		signal.Stop(sig)
+		if syslogSupport {
+			syslogWriter.Info(fmt.Sprintf("stop listening on %s.", m.conn.LocalAddr()))
+		}
+		m.conn.Close()
+		util.Log.Info("stop listening on", "port", m.port)
+	}()
+
+	buf := make([]byte, 128)
+	shutdown := false
+
+	if syslogSupport {
+		syslogWriter.Info(fmt.Sprintf("start listening on %s.", m.conn.LocalAddr()))
+	}
+
+	printWelcome(os.Getpid(), m.port, nil)
+	for {
+		select {
+		case portStr := <-m.exChan:
+			m.cleanWorkers(portStr)
+			// util.Log.Info("run some worker is done","port", portStr)
+		case ss := <-sig:
+			switch ss {
+			case syscall.SIGHUP: // TODO:reload the config?
+				util.Log.Info("got signal: SIGHUP", "receiver", "run2")
+			case syscall.SIGTERM, syscall.SIGINT:
+				util.Log.Info("got signal: SIGTERM or SIGINT", "receiver", "run2")
+				shutdown = true
+			}
+		case <-m.downChan:
+			// another way to shutdown besides signal
+			shutdown = true
+		default:
+		}
+
+		if shutdown {
+			// shutdown uxServe
+			m.uxdownChan <- true
+
+			util.Log.Info("run2", "shutdown", shutdown)
+			if len(m.workers) == 0 {
+				return
+			} else {
+				// send kill message to the workers
+				for i := range m.workers {
+					m.workers[i].shell.Kill()
+					// util.Log.Debug("stop shell","port", i)
+				}
+				// wait for workers to finish, set time out to prevent dead lock
+				timeout := time.NewTimer(time.Duration(200) * time.Millisecond)
+				for len(m.workers) > 0 {
+					select {
+					case portStr := <-m.exChan: // some worker is done
+						m.cleanWorkers(portStr)
+					case t := <-timeout.C:
+						util.Log.Warn("run quit with timeout", "timeout", t)
+						return
+					default:
+					}
+				}
+				return
+			}
+		}
+
+		// set read time out: 200ms
+		m.conn.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(m.timeout)))
+		n, addr, err := m.conn.ReadFromUDP(buf)
+		if err != nil {
+			if errors.Is(err, os.ErrDeadlineExceeded) {
+				// fmt.Printf("#run read time out, workers=%d, shutdown=%t, err=%s\n", len(m.workers), shutdown, err)
+				continue
+			} else {
+				// take a break in case reading error
+				time.Sleep(time.Duration(5) * time.Millisecond)
+				// fmt.Println("#run read error: ", err)
+				continue
+			}
+		}
+
+		req := strings.TrimSpace(string(buf[0:n]))
+		if strings.HasPrefix(req, frontend.AprilshMsgOpen) { // 'open aprilsh:'
+			if len(m.workers) >= maxPortLimit {
+				resp := m.writeRespTo(addr, frontend.AprishMsgClose, "over max port limit")
+				util.Log.Warn("over max port limit", "request", req, "response", resp)
+				continue
+			}
+			// prepare next port
+			p := m.getAvailabePort()
+
+			// open aprilsh:TERM,user@server.domain
+			// prepare configuration
+			conf2 := *conf
+			conf2.desiredPort = fmt.Sprintf("%d", p)
+			body := strings.Split(req, ":")
+			content := strings.Split(body[1], ",")
+			if len(content) != 2 {
+				resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "malform request")
+				util.Log.Warn("malform request", "request", req, "response", resp)
+				continue
+			}
+			conf2.term = content[0]
+			conf2.destination = content[1]
+
+			// parse user and host from destination
+			idx := strings.Index(content[1], "@")
+			if idx > 0 && idx < len(content[1])-1 {
+				conf2.host = content[1][idx+1:]
+				conf2.user = content[1][:idx]
+			} else {
+				// return "target parameter should be in the form of User@Server", false
+				resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "malform destination")
+				util.Log.Warn("malform destination", "destination", content[1], "response", resp)
+
+				continue
+			}
+
+			// we don't need to check if user exist, ssh already done that before
+
+			// For security, make sure we don't dump core
+			encrypt.DisableDumpingCore()
+
+			// start the worker
+			m.wg.Add(1)
+			go func(conf *Config, exChan chan string, whChan chan workhorse) {
+				m.runWorker(conf, exChan, whChan)
+				m.wg.Done()
+			}(&conf2, m.exChan, m.whChan)
+
+			// blocking read the key from worker
+			key := <-m.exChan
+
+			// response session key and udp port to client
+			msg := fmt.Sprintf("%d,%s", p, key)
+			m.writeRespTo(addr, frontend.AprilshMsgOpen, msg)
+
+			// blocking read the workhorse from runWorker
+			wh := <-m.whChan
+			if wh.shell != nil {
+				m.workers[p] = wh
+			}
+		} else if strings.HasPrefix(req, frontend.AprishMsgClose) { // 'close aprilsh:[port]'
+			pstr := strings.TrimPrefix(req, frontend.AprishMsgClose)
+			port, err := strconv.Atoi(pstr)
+			if err == nil {
+				// find workhorse
+				if wh, ok := m.workers[port]; ok {
+					// kill the process, TODO SIGKILL or SIGTERM?
+					wh.shell.Kill()
+
+					m.writeRespTo(addr, frontend.AprishMsgClose, "done")
+				} else {
+					resp := m.writeRespTo(addr, frontend.AprishMsgClose, "port does not exist")
+					util.Log.Warn("port does not exist", "request", req, "response", resp)
+				}
+			} else {
+				resp := m.writeRespTo(addr, frontend.AprishMsgClose, "wrong port number")
+				util.Log.Warn("wrong port number", "request", req, "response", resp)
+			}
+		} else {
+			resp := m.writeRespTo(addr, frontend.AprishMsgClose, "unknow request")
+			util.Log.Warn("unknow request", "request", req, "response", resp)
+		}
+	}
+}
+
 // parse the flag first, print help or version based on flag
 // then run the main listening server
 // aprilsh-server should be installed under $HOME/.local/bin
@@ -1668,6 +1975,6 @@ func main() {
 
 	// start server
 	srv := newMainSrv(conf, runWorker)
-	srv.start(conf)
+	srv.start2(conf)
 	srv.wait()
 }
