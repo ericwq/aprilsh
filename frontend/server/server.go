@@ -723,6 +723,7 @@ func (m *mainSrv) writeRespTo(addr *net.UDPAddr, header, msg string) (resp strin
 
 func (m *mainSrv) wait() {
 	m.wg.Wait()
+	util.Log.Info("quit " + frontend.CommandServerName)
 }
 
 // Print the motd from a given file, if available
@@ -848,8 +849,7 @@ func getTimeFrom(env string, def int64) (ret int64) {
 }
 
 func printWelcome(pid int, port int, tty *os.File) {
-	util.Log.Info(frontend.CommandServerName+" start listening on",
-		"port", port, "gitTag", frontend.GitTag, "pid", pid)
+	util.Log.Info("start listening on", "port", port, "gitTag", frontend.GitTag, "pid", pid)
 	// fmt.Printf("Copyright 2022~2023 wangqi.\n")
 	// fmt.Printf("%s%s", "Use of this source code is governed by a MIT-style",
 	// 	"license that can be found in the LICENSE file.\n")
@@ -1626,6 +1626,7 @@ func uxCleanup() (err error) {
 			return err
 		}
 	}
+	err = nil // doesn't exist
 	return
 }
 
@@ -1636,7 +1637,7 @@ func (m *mainSrv) uxListen() (conn *net.UnixConn, err error) {
 
 	addr, _ := net.ResolveUnixAddr(unixsockNetwork, unixsockAddr)
 	conn, err = net.ListenUnixgram("unixgram", addr)
-	os.Chmod(unixsockAddr, 0777)
+	os.Chmod(unixsockAddr, 0666)
 
 	if err != nil {
 		return nil, err
@@ -1653,10 +1654,10 @@ func (m *mainSrv) uxServe(conn *net.UnixConn, timeout int) {
 	defer func() {
 		conn.Close()
 		uxCleanup()
-		util.Log.Info("uxServe stopped")
+		// util.Log.Info("uxServe stopped")
 	}()
 
-	util.Log.Info("uxServe started")
+	// util.Log.Info("uxServe started")
 	var buf [1024]byte
 	shutdown := false
 	for {
@@ -1678,11 +1679,10 @@ func (m *mainSrv) uxServe(conn *net.UnixConn, timeout int) {
 			return
 		}
 
-		m.conn.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
+		conn.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
 		n, err := conn.Read(buf[:])
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
-				util.Log.Info("uxServe read timeout.")
 				continue
 			}
 		}
@@ -1777,7 +1777,7 @@ func (m *mainSrv) run2(conf *Config) {
 			// shutdown uxServe
 			m.uxdownChan <- true
 
-			util.Log.Info("run2", "shutdown", shutdown)
+			// util.Log.Info("run2", "shutdown", shutdown)
 			if len(m.workers) == 0 {
 				return
 			} else {
