@@ -27,20 +27,20 @@ var levelNames = map[slog.Leveler]string{
 
 type logger struct {
 	*slog.Logger
-	addSource    bool
-	programLevel *slog.LevelVar
+	addSource bool
+	logLevel  *slog.LevelVar
 }
 
 func init() {
 	// default logger write to stderr
 	Log = new(logger)
-	Log.programLevel = new(slog.LevelVar)
+	Log.logLevel = new(slog.LevelVar)
 	Log.SetLevel(slog.LevelInfo)
 	Log.SetOutput(os.Stderr)
 }
 
 func (l *logger) SetLevel(v slog.Level) {
-	l.programLevel.Set(v)
+	l.logLevel.Set(v)
 }
 
 func (l *logger) AddSource(add bool) {
@@ -61,7 +61,7 @@ func (l *logger) AddSource(add bool) {
 func (l *logger) SetOutput(w io.Writer) {
 	ho := &slog.HandlerOptions{
 		AddSource: Log.addSource,
-		Level:     Log.programLevel,
+		Level:     Log.logLevel,
 		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
 			if a.Key == slog.LevelKey {
 				level := a.Value.Any().(slog.Level)
