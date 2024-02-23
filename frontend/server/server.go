@@ -1950,9 +1950,15 @@ func startChild(conf *Config) (*os.Process, error) {
 		return nil, err
 	}
 
+	util.Log.Debug("startChild", "user", conf.user, "term", conf.term,
+		"desiredPort", conf.desiredPort, "destination", conf.destination)
+
 	// specify child process
 	commandPath := "/usr/bin/apshd"
-	commandArgv := []string{commandPath, "-child", "-port", conf.desiredPort, "-destination", conf.destination}
+	commandArgv := []string{
+		commandPath, "-child", "-port", conf.desiredPort, "-destination", conf.destination,
+		"-term", conf.term, "-vv",
+	}
 
 	// var pts *os.File
 	// var pr *io.PipeReader
@@ -2085,20 +2091,21 @@ func startChild(conf *Config) (*os.Process, error) {
 }
 
 func runChild(conf *Config) (err error) {
-	name := filepath.Join(os.TempDir(), fmt.Sprintf("%s-%d.%s", frontend.CommandServerName, os.Getpid(), "log"))
-	file, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
-	defer file.Close()
+	// name := filepath.Join(os.TempDir(), fmt.Sprintf("%s-%d.%s", frontend.CommandServerName, os.Getpid(), "log"))
+	// file, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+	// defer file.Close()
+	//
+	// if err != nil {
+	// 	fmt.Printf("error %#v\n", err)
+	// 	return
+	// }
+	// os.Stderr = file
+	// util.Log.SetLevel(slog.LevelDebug)
+	// util.Log.AddSource(true)
+	// util.Log.SetOutput(os.Stderr)
+	// fmt.Println("log is ready", file)
 
-	if err != nil {
-		fmt.Printf("error %#v\n", err)
-		return
-	}
-	os.Stderr = file
-	util.Log.SetLevel(slog.LevelDebug)
-	util.Log.AddSource(true)
-	util.Log.SetOutput(os.Stderr)
-	fmt.Println("log is ready", file)
-
+	// prepare unix socket client (datagram)
 	uxClient, err := newUxClient()
 	if err != nil {
 		fmt.Printf("error %#v\n", err)
@@ -2112,7 +2119,15 @@ func runChild(conf *Config) (err error) {
 		uxClient.close()
 	}()
 
-	util.Log.Debug("runChild start")
+	// parse destination
+	first := strings.Split(conf.destination, "@")
+	if len(first) == 2 {
+		conf.user = first[0]
+		// second := strings.Split(first[1], ":")
+		conf.host = ""
+	}
+	util.Log.Debug("runChild", "user", conf.user, "host", conf.host, "term", conf.term,
+		"desiredPort", conf.desiredPort, "destination", conf.destination)
 	/*
 		If this variable is set to a positive integer number, it specifies how
 		long (in seconds) apshd will wait to receive an update from the
@@ -2212,7 +2227,7 @@ func runChild(conf *Config) (err error) {
 		ok := util.AddUtmpx(pts, utmpHost)
 		if !ok {
 			utmpSupport = false
-			util.Log.Warn("#runWorker can't update utmp")
+			util.Log.Warn("runChild can't update utmp")
 		}
 	}
 

@@ -76,7 +76,7 @@ func (l *logger) SetOutput(w io.Writer) {
 			return a
 		},
 	}
-	l.Logger = slog.New(slog.NewTextHandler(w, ho))
+	l.Logger = slog.New(slog.NewTextHandler(w, ho)).With("pid", os.Getpid())
 }
 
 func (l *logger) Trace(msg string, args ...any) {
