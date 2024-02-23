@@ -125,6 +125,7 @@ type Config struct {
 	term        string     // client TERM
 	autoStop    int        // auto stop after N seconds
 	begin       bool       // begin a client connection
+	child       bool       // begin a child process
 	destination string     // [user@]hostname, destination string
 	host        string     // target host/server
 	user        string     // target user
@@ -278,6 +279,9 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 
 	flagSet.BoolVar(&conf.begin, "begin", false, "begin a client connection")
 	flagSet.BoolVar(&conf.begin, "b", false, "begin a client connection")
+
+	flagSet.BoolVar(&conf.child, "child", false, "begin child process")
+	flagSet.BoolVar(&conf.child, "c", false, "begin child process")
 
 	flagSet.BoolVar(&conf.server, "server", false, "listen with SSH ip")
 	flagSet.BoolVar(&conf.server, "s", false, "listen with SSH ip")
@@ -1607,17 +1611,24 @@ const (
 // "/tmp/aprilsh.sock"
 var unixsockAddr string = filepath.Join(os.TempDir(), "aprilsh.sock")
 
-func uxClient(msg string) {
-	conn, err := net.Dial(unixsockNetwork, unixsockAddr)
-	if err != nil {
-		panic(err)
-	}
+type uxClient struct {
+	connection net.Conn
+}
 
-	_, err = conn.Write([]byte(msg))
-	if err != nil {
-		panic(err)
-	}
-	conn.Close()
+func newUxClient() (client *uxClient, err error) {
+	client = &uxClient{}
+	client.connection, err = net.Dial(unixsockNetwork, unixsockAddr)
+	return
+}
+
+func (uc *uxClient) send(msg string) (err error) {
+	_, err = uc.connection.Write([]byte(msg))
+	util.Log.Debug("uxClient send", "message", msg)
+	return
+}
+
+func (uc *uxClient) close() (err error) {
+	return uc.connection.Close()
 }
 
 func uxCleanup() (err error) {
@@ -1645,6 +1656,7 @@ func (m *mainSrv) uxListen() (conn *net.UnixConn, err error) {
 	return
 }
 
+// get a message from unix docket and forward it to exChan
 func (m *mainSrv) uxServe(conn *net.UnixConn, timeout int) {
 	// prepare to receive the signal
 	sig := make(chan os.Signal, 1)
@@ -1688,7 +1700,7 @@ func (m *mainSrv) uxServe(conn *net.UnixConn, timeout int) {
 		}
 		resp := string(buf[:n])
 
-		util.Log.Debug("uxServer got", "resp", resp)
+		util.Log.Debug("uxServe forward message to exChan", "resp", resp)
 		m.exChan <- resp
 	}
 }
@@ -1856,13 +1868,24 @@ func (m *mainSrv) run2(conf *Config) {
 
 			// we don't need to check if user exist, ssh already done that before
 
-			// For security, make sure we don't dump core
-			encrypt.DisableDumpingCore()
+			shell, err := startChild(&conf2)
+			if err != nil {
+				if errors.Is(err, syscall.EPERM) {
+					util.Log.Warn("operation not permitted")
+				} else {
+					util.Log.Warn("can't start child", "error", err)
+					fmt.Printf("can't start child, error=%#v\n", err)
+				}
+				continue
+			}
+			util.Log.Debug("start child successfully, wait for the key.")
 
-			shell, _ := startChild(&conf2)
 			m.wg.Add(1)
 			go func() { // avatar is looking after the child process
-				shell.Wait()
+				ps, err := shell.Wait()
+				if err != nil {
+					util.Log.Warn("start child return", "error", err, "ProcessState", ps)
+				}
 				m.wg.Done()
 			}()
 
@@ -1874,16 +1897,22 @@ func (m *mainSrv) run2(conf *Config) {
 			// }(&conf2, m.exChan, m.whChan)
 
 			// blocking read the key from worker
-			key := <-m.exChan
+			timer := time.NewTimer(time.Duration(20) * time.Millisecond)
+			select {
+			case <-timer.C:
+				resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "get key timeout")
+				util.Log.Warn("get key timeout", "request", req, "response", resp)
+				continue
+			case key := <-m.exChan:
+				util.Log.Debug("run2 got key")
+				// response session key and udp port to client
+				msg := fmt.Sprintf("%d,%s", p, key)
+				m.writeRespTo(addr, frontend.AprilshMsgOpen, msg)
 
-			// response session key and udp port to client
-			msg := fmt.Sprintf("%d,%s", p, key)
-			m.writeRespTo(addr, frontend.AprilshMsgOpen, msg)
-
-			// blocking read the workhorse from runWorker
-			wh := <-m.whChan
-			if wh.shell != nil {
-				m.workers[p] = wh
+				wh := workhorse{shell: shell}
+				if wh.shell != nil {
+					m.workers[p] = wh
+				}
 			}
 		} else if strings.HasPrefix(req, frontend.AprishMsgClose) { // 'close aprilsh:[port]'
 			pstr := strings.TrimPrefix(req, frontend.AprishMsgClose)
@@ -1911,6 +1940,20 @@ func (m *mainSrv) run2(conf *Config) {
 }
 
 func startChild(conf *Config) (*os.Process, error) {
+	// conf{term,user,desiredPort,destination}
+
+	// use the root's SHELL as replacement for user SHELL
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		err := errors.New("can't get shell from SHELL")
+		util.Log.Warn("startChild", "error", err)
+		return nil, err
+	}
+
+	// specify child process
+	commandPath := "/usr/bin/apshd"
+	commandArgv := []string{commandPath, "-child", "-port", conf.desiredPort, "-destination", conf.destination}
+
 	// var pts *os.File
 	// var pr *io.PipeReader
 	// var utmpHost string
@@ -1936,18 +1979,17 @@ func startChild(conf *Config) (*os.Process, error) {
 	// os.Unsetenv("STY")
 
 	// get login user info, we already checked the user exist when ssh perform authentication.
-	// users := strings.Split(conf.destination, "@")
 	u, _ := user.Lookup(conf.user)
 	uid, _ := strconv.ParseInt(u.Uid, 10, 32)
 	gid, _ := strconv.ParseInt(u.Gid, 10, 32)
-	util.Log.Info("start shell check user", "user", u.Username, "gid", u.Gid, "HOME", u.HomeDir)
+	util.Log.Debug("startChild check user", "user", u.Username, "gid", u.Gid, "HOME", u.HomeDir)
 
 	// set base env
 	// TODO should we put LOGNAME, MAIL into env?
 	env = append(env, "PWD="+u.HomeDir)
 	env = append(env, "HOME="+u.HomeDir) // it's important for shell to source .profile
 	env = append(env, "USER="+conf.user)
-	env = append(env, "SHELL="+conf.commandPath)
+	env = append(env, "SHELL="+shell)
 	env = append(env, fmt.Sprintf("TZ=%s", os.Getenv("TZ")))
 
 	// TODO should we set ssh env ?
@@ -1956,13 +1998,13 @@ func startChild(conf *Config) (*os.Process, error) {
 
 	// ask ncurses to send UTF-8 instead of ISO 2022 for line-drawing chars
 	env = append(env, "NCURSES_NO_UTF8_ACS=1")
-	util.Log.Info("start shell check env", "env", env)
-	util.Log.Info("start shell check command",
-		"commandPath", conf.commandPath, "commandArgv", conf.commandArgv)
+
+	util.Log.Debug("startChild env:", "env", env)
+	util.Log.Debug("startChild command:", "commandPath", commandPath, "commandArgv", commandArgv)
 
 	sysProcAttr := &syscall.SysProcAttr{}
-	sysProcAttr.Setsid = true                     // start a new session
-	sysProcAttr.Setctty = true                    // set controlling terminal
+	sysProcAttr.Setsid = true // start a new session
+	// sysProcAttr.Setctty = true                    // set controlling terminal
 	sysProcAttr.Credential = &syscall.Credential{ // change user
 		Uid: uint32(uid),
 		Gid: uint32(gid),
@@ -2035,17 +2077,206 @@ func startChild(conf *Config) (*os.Process, error) {
 	// 	util.Log.Info("start shell at", "pty", pts.Name())
 	// }
 
-	proc, err := os.StartProcess(conf.commandPath, conf.commandArgv, &procAttr)
+	proc, err := os.StartProcess(commandPath, commandArgv, &procAttr)
 	if err != nil {
 		return nil, err
 	}
 	return proc, nil
 }
 
+func runChild(conf *Config) (err error) {
+	name := filepath.Join(os.TempDir(), fmt.Sprintf("%s-%d.%s", frontend.CommandServerName, os.Getpid(), "log"))
+	file, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
+	defer file.Close()
+
+	if err != nil {
+		fmt.Printf("error %#v\n", err)
+		return
+	}
+	os.Stderr = file
+	util.Log.SetLevel(slog.LevelDebug)
+	util.Log.AddSource(true)
+	util.Log.SetOutput(os.Stderr)
+	fmt.Println("log is ready", file)
+
+	uxClient, err := newUxClient()
+	if err != nil {
+		fmt.Printf("error %#v\n", err)
+		return
+	}
+
+	defer func() {
+		// notify this child is done
+		// exChan <- conf.desiredPort
+		uxClient.send(conf.desiredPort)
+		uxClient.close()
+	}()
+
+	util.Log.Debug("runChild start")
+	/*
+		If this variable is set to a positive integer number, it specifies how
+		long (in seconds) apshd will wait to receive an update from the
+		client before exiting.  Since aprilsh is very useful for mobile
+		clients with intermittent operation and connectivity, we suggest
+		setting this variable to a high value, such as 604800 (one week) or
+		2592000 (30 days).  Otherwise, apshd will wait indefinitely for a
+		client to reappear.  This variable is somewhat similar to the TMOUT
+		variable found in many Bourne shells. However, it is not a login-session
+		inactivity timeout; it only applies to network connectivity.
+	*/
+	networkTimeout := getTimeFrom("APRILSH_SERVER_NETWORK_TMOUT", 0)
+
+	/*
+		If this variable is set to a positive integer number, it specifies how
+		long (in seconds) apshd will ignore SIGUSR1 while waiting to receive
+		an update from the client.  Otherwise, SIGUSR1 will always terminate
+		apshd. Users and administrators may implement scripts to clean up
+		disconnected aprilsh sessions. With this variable set, a user or
+		administrator can issue
+
+		$ pkill -SIGUSR1 aprilsh-server
+
+		to kill disconnected sessions without killing connected login
+		sessions.
+	*/
+	networkSignaledTimeout := getTimeFrom("APRILSH_SERVER_SIGNAL_TMOUT", 0)
+
+	// util.Log.Debug("runWorker", "networkTimeout", networkTimeout,
+	// 	"networkSignaledTimeout", networkSignaledTimeout)
+
+	// get initial window size
+	var windowSize *unix.Winsize
+	windowSize, err = unix.IoctlGetWinsize(int(os.Stdin.Fd()), unix.TIOCGWINSZ)
+	// windowSize, err := pty.GetsizeFull(os.Stdin)
+	if err != nil || windowSize.Col == 0 || windowSize.Row == 0 {
+		// Fill in sensible defaults. */
+		// They will be overwritten by client on first connection.
+		windowSize.Col = 80
+		windowSize.Row = 24
+	}
+	// util.Log.Debug("init terminal size", "cols", windowSize.Col, "rows", windowSize.Row)
+
+	// open parser and terminal
+	savedLines := terminal.SaveLinesRowsOption
+	terminal, err := statesync.NewComplete(int(windowSize.Col), int(windowSize.Row), savedLines)
+
+	// open network
+	blank := &statesync.UserStream{}
+	server := network.NewTransportServer(terminal, blank, conf.desiredIP, conf.desiredPort)
+	server.SetVerbose(uint(conf.verbose))
+	// defer server.Close()
+
+	/*
+		// If server is run on a pty, then typeahead may echo and break mosh.pl's
+		// detection of the CONNECT message.  Print it on a new line to bodge
+		// around that.
+
+		if term.IsTerminal(int(os.Stdin.Fd())) {
+			fmt.Printf("\r\n")
+		}
+	*/
+
+	// send the key to run()
+	uxClient.send(server.GetKey())
+	// exChan <- server.GetKey()
+
+	// in mosh: the parent print this to stderr.
+	// fmt.Printf("#runWorker %s CONNECT %s %s\n", COMMAND_NAME, network.Port(), network.GetKey())
+	// printWelcome(os.Stdout, os.Getpid(), os.Stdin)
+
+	// prepare for openPTS fail
+	if conf.verbose == _VERBOSE_OPEN_PTS_FAIL {
+		windowSize = nil
+	}
+
+	ptmx, pts, err := openPTS(windowSize)
+	if err != nil {
+		util.Log.Warn("openPTS fail", "error", err)
+		return err
+	}
+	defer func() {
+		ptmx.Close()
+		// pts.Close()
+	}() // Best effort.
+	// fmt.Printf("#runWorker openPTS successfully.\n")
+
+	// use pipe to signal when to start shell
+	// pw and pr is close inside serve() and startShell()
+	pr, pw := io.Pipe()
+
+	// prepare host field for utmp record
+	utmpHost := fmt.Sprintf("%s:%s", frontend.CommandServerName, server.GetServerPort())
+
+	// add utmp entry
+	if utmpSupport {
+		ok := util.AddUtmpx(pts, utmpHost)
+		if !ok {
+			utmpSupport = false
+			util.Log.Warn("#runWorker can't update utmp")
+		}
+	}
+
+	// start the udp server, serve the udp request
+	var wg sync.WaitGroup
+	wg.Add(1)
+	// waitChan := make(chan bool)
+	// go conf.serve(ptmx, pw, terminal, waitChan, network, networkTimeout, networkSignaledTimeout)
+	go func() {
+		conf.serve(ptmx, pts, pw, terminal, server, networkTimeout, networkSignaledTimeout, conf.user)
+		// exChan <- fmt.Sprintf("%s:shutdown", conf.desiredPort)
+		uxClient.send(fmt.Sprintf("%s:shutdown", conf.desiredPort))
+		wg.Done()
+	}()
+
+	// TODO update last log ?
+	// util.UpdateLastLog(ptmxName, getCurrentUser(), utmpHost)
+
+	defer func() { // clear utmp entry
+		if utmpSupport {
+			util.ClearUtmpx(pts)
+		}
+	}()
+
+	util.Log.Info("start listening on", "port", conf.desiredPort, "clientTERM", conf.term)
+
+	// start the shell with pts
+	shell, err := startShell(pts, pr, utmpHost, conf)
+	pts.Close() // it's copied by shell process, it's safe to close it here.
+	if err != nil {
+		util.Log.Warn("startShell fail", "error", err)
+		// whChan <- workhorse{}
+	} else {
+
+		// whChan <- workhorse{shell, ptmx}
+		// wait for the shell to finish.
+		var state *os.ProcessState
+		state, err = shell.Wait()
+		if err != nil || state.Exited() {
+			if err != nil {
+				util.Log.Warn("shell.Wait fail", "error", err, "state", state)
+				// } else {
+				// util.Log.Debug("shell.Wait quit", "state.exited", state.Exited())
+			}
+		}
+	}
+
+	// wait serve to finish
+	wg.Wait()
+	util.Log.Info("stop listening on", "port", conf.desiredPort)
+
+	// fmt.Printf("[%s is exiting.]\n", frontend.COMMAND_SERVER_NAME)
+	// https://www.dolthub.com/blog/2022-11-28-go-os-exec-patterns/
+	// https://www.prakharsrivastav.com/posts/golang-context-and-cancellation/
+
+	// util.Log.Debug("runWorker quit", "port", conf.desiredPort)
+	return err
+}
+
 // parse the flag first, print help or version based on flag
 // then run the main listening server
 // aprilsh-server should be installed under $HOME/.local/bin
 func main() {
+	fmt.Fprintf(os.Stderr, "main args=%s\n", os.Args)
 	// https://jvns.ca/blog/2017/09/24/profiling-go-with-pprof/
 	conf, _, err := parseFlags(os.Args[0], os.Args[1:])
 	if errors.Is(err, flag.ErrHelp) {
@@ -2063,6 +2294,9 @@ func main() {
 		printVersion()
 		return
 	}
+
+	// For security, make sure we don't dump core
+	encrypt.DisableDumpingCore()
 
 	if conf.begin {
 		beginClientConn(conf)
@@ -2091,6 +2325,10 @@ func main() {
 	}
 	defer syslogWriter.Close()
 
+	if conf.child {
+		runChild(conf)
+		return
+	}
 	// cpuf, err := os.Create("cpu.profile")
 	// if err != nil {
 	// 	fmt.Println(err)
