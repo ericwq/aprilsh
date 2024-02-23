@@ -179,6 +179,13 @@ func (e *hostkeyChangeError) Error() string {
 
 func (e *hostkeyChangeError) Hostname() string { return e.hostname }
 
+type responseError struct {
+	Err error
+	Msg string
+}
+
+func (e *responseError) Error() string { return e.Msg + ", " + e.Err.Error() }
+
 // utilize ssh to fetch the key from remote server and start a server.
 // return empty string if success, otherwise return error info.
 //
@@ -323,31 +330,29 @@ func (c *Config) fetchKey() error {
 	out := strings.TrimSpace(string(b))
 
 	// open aprilsh:60001,31kR3xgfmNxhDESXQ8VIQw==
-	// fmt.Printf("out=%s\n", out)
 	body := strings.Split(out, ":")
-	if len(body) != 2 || !strings.HasPrefix(frontend.AprilshMsgOpen, body[0]) {
-		return errNoResponse
+	if len(body) != 2 || body[0] != frontend.AprilshMsgOpen[:12] { // [:12]remove the last ':'
+		return errors.New(fmt.Sprintf("response: %s", out))
 	}
 
 	// parse port and key
-	idx := strings.Index(body[1], ",")
-	if idx > 0 && idx+1 < len(body[1]) {
-		p, e := strconv.Atoi(body[1][:idx])
+	content := strings.Split(body[1], ",")
+	if len(content) == 2 {
+		p, e := strconv.Atoi(content[0])
 		if e != nil {
 			return errors.New("can't get port")
 		}
 		// incase port mapping for docker
 		c.port += (p - frontend.DefaultPort)
 
-		idx++
-		if encrypt.NewBase64Key2(body[1][idx:]) != nil {
-			c.key = body[1][idx:]
+		if encrypt.NewBase64Key2(content[1]) != nil {
+			c.key = content[1]
 		} else {
 			return errors.New("can't get key")
 		}
 		// fmt.Printf("fetchKey port=%d, key=%s\n", c.port, c.key)
 	} else {
-		return errors.New(fmt.Sprintf("malform response : %s", body[1]))
+		return errors.New(fmt.Sprintf("response: %s", body[1]))
 	}
 
 	return nil
