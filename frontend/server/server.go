@@ -1986,8 +1986,8 @@ func startChild(conf *Config) (*os.Process, error) {
 
 	// get login user info, we already checked the user exist when ssh perform authentication.
 	u, _ := user.Lookup(conf.user)
-	uid, _ := strconv.ParseInt(u.Uid, 10, 32)
-	gid, _ := strconv.ParseInt(u.Gid, 10, 32)
+	// uid, _ := strconv.ParseInt(u.Uid, 10, 32)
+	// gid, _ := strconv.ParseInt(u.Gid, 10, 32)
 	util.Log.Debug("startChild check user", "user", u.Username, "gid", u.Gid, "HOME", u.HomeDir)
 
 	// set base env
@@ -2011,10 +2011,10 @@ func startChild(conf *Config) (*os.Process, error) {
 	sysProcAttr := &syscall.SysProcAttr{}
 	sysProcAttr.Setsid = true // start a new session
 	// sysProcAttr.Setctty = true                    // set controlling terminal
-	sysProcAttr.Credential = &syscall.Credential{ // change user
-		Uid: uint32(uid),
-		Gid: uint32(gid),
-	}
+	// sysProcAttr.Credential = &syscall.Credential{ // change user
+	// 	Uid: uint32(uid),
+	// 	Gid: uint32(gid),
+	// }
 
 	procAttr := os.ProcAttr{
 		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr}, // use pts as stdin, stdout, stderr
