@@ -46,7 +46,7 @@ const (
 var (
 	usage = `Usage:
   ` + frontend.CommandClientName + ` [--version] [--help] [--colors]
-  ` + frontend.CommandClientName + ` [-vv[v]] [--port PORT] [-i identity_file] [--source] destination
+  ` + frontend.CommandClientName + ` [-vv[v]] [--port PORT] [-i identity_file] destination
 Options:
 ---------------------------------------------------------------------------------------------------
   -h,  --help        print this message
@@ -58,7 +58,6 @@ Options:
   -i                 ssh client identity (private key) (default $HOME/.ssh/id_rsa)
   -vv, --verbose     verbose log output (debug level, default no verbose)
   -vvv               verbose log output (trace level)
-       --source      add source info to log
 ---------------------------------------------------------------------------------------------------
 `
 	predictionValues   = []string{"always", "never", "adaptive", "experimental"}

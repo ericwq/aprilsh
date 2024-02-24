@@ -52,7 +52,7 @@ const (
 var usage = `Usage:
   ` + frontend.CommandServerName + ` [-v] [-h] [--auto N]
   ` + frontend.CommandServerName + ` [-b] [-t TERM] [-destination user@server.domain]
-  ` + frontend.CommandServerName + ` [-s] [-vv[v]] [-i LOCALADDR] [-p PORT[:PORT2]] [-l NAME=VALUE] [-source] [-- command...]
+  ` + frontend.CommandServerName + ` [-s] [-vv[v]] [-i LOCALADDR] [-p PORT[:PORT2]] [-l NAME=VALUE] [-- command...]
 Options:
 ---------------------------------------------------------------------------------------------------
   -v,  --version     print version information
@@ -69,7 +69,6 @@ Options:
   -l,  --locale      key-value pairs (such as LANG=UTF-8, you can have multiple -l options)
   -vv, --verbose     verbose log output (debug level, default no verbose)
   -vvv               verbose log output (trace level)
-       --source      add source info to log
        -- command    shell command and options (note the space before command)
 ---------------------------------------------------------------------------------------------------
 `
@@ -233,20 +232,6 @@ func (conf *Config) buildConfig() (string, bool) {
 	return "", true
 }
 
-func printVersion() {
-	fmt.Printf("%s package : %s server, %s\n",
-		frontend.AprilshPackageName, frontend.AprilshPackageName, frontend.CommandServerName)
-	frontend.PrintVersion()
-}
-
-func printUsage(hint string, usage ...string) {
-	if hint != "" {
-		fmt.Printf("Hints: %s\n%s", hint, usage)
-	} else {
-		fmt.Printf("%s", usage)
-	}
-}
-
 // parseFlags parses the command-line arguments provided to the program.
 // Typically os.Args[0] is provided as 'progname' and os.args[1:] as 'args'.
 // Returns the Config in case parsing succeeded, or an error. In any case, the
@@ -320,7 +305,22 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	} else if v2 {
 		conf.verbose = util.TraceLevel
 	}
+
 	return &conf, buf.String(), nil
+}
+
+func printVersion() {
+	fmt.Printf("%s package : %s server, %s\n",
+		frontend.AprilshPackageName, frontend.AprilshPackageName, frontend.CommandServerName)
+	frontend.PrintVersion()
+}
+
+func printUsage(hint string, usage ...string) {
+	if hint != "" {
+		fmt.Printf("Hints: %s\n%s", hint, usage)
+	} else {
+		fmt.Printf("%s", usage)
+	}
 }
 
 func beginClientConn(conf *Config) { //(port string, term string) {
@@ -366,6 +366,11 @@ func beginClientConn(conf *Config) { //(port string, term string) {
 	fmt.Printf("%s", string(response[:m]))
 }
 
+type workhorse struct {
+	shell *os.Process
+	ptmx  *os.File
+}
+
 type mainSrv struct {
 	workers    map[int]workhorse
 	runWorker  func(*Config, chan string, chan workhorse) error // worker
@@ -378,11 +383,6 @@ type mainSrv struct {
 	port       int                                              // main listen port
 	conn       *net.UDPConn                                     // mainSrv listen port
 	wg         sync.WaitGroup
-}
-
-type workhorse struct {
-	shell *os.Process
-	ptmx  *os.File
 }
 
 func newMainSrv(conf *Config, runWorker func(*Config, chan string, chan workhorse) error) *mainSrv {
@@ -967,7 +967,6 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 		uid, _ = strconv.ParseInt(u.Uid, 10, 32)
 		gid, _ = strconv.ParseInt(u.Gid, 10, 32)
 	}
-	util.Log.Info("start shell check user", "user", u.Username, "gid", u.Gid, "HOME", u.HomeDir)
 
 	// set base env
 	// TODO should we put LOGNAME, MAIL into env?
@@ -983,6 +982,8 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 
 	// ask ncurses to send UTF-8 instead of ISO 2022 for line-drawing chars
 	env = append(env, "NCURSES_NO_UTF8_ACS=1")
+
+	util.Log.Debug("start shell check user", "user", u.Username, "gid", u.Gid, "HOME", u.HomeDir)
 	util.Log.Info("start shell check env", "env", env)
 	util.Log.Info("start shell check command",
 		"commandPath", conf.commandPath, "commandArgv", conf.commandArgv)
@@ -1459,7 +1460,8 @@ mainLoop:
 						util.Log.Warn("read from master", "error", masterMsg.Err)
 					}
 					if !signals.AnySignal() { // avoid conflict with signal
-						util.Log.Warn("shutdown", "from", "read file failed", "port", server.GetServerPort())
+						util.Log.Debug("shutdown", "from", "read file failed", "port", server.GetServerPort())
+						// &fs.PathError{Op:"read", Path:"/dev/ptmx", Err:0x5}
 						server.StartShutdown()
 					}
 				} else {
@@ -1519,7 +1521,7 @@ mainLoop:
 
 		// quit if our shutdown has been acknowledged
 		if server.ShutdownInProgress() && server.ShutdownAcknowledged() {
-			util.Log.Warn("shutdown", "from", "acked", "port", server.GetServerPort())
+			util.Log.Debug("shutdown", "from", "acked", "port", server.GetServerPort())
 			break
 		}
 
@@ -1968,6 +1970,16 @@ func startChild(conf *Config) (*os.Process, error) {
 		"-term", conf.term,
 	}
 
+	// inherit vervoce and source options form parent
+	if conf.verbose == util.DebugLevel {
+		commandArgv = append(commandArgv, "-vv")
+	} else if conf.verbose == util.TraceLevel {
+		commandArgv = append(commandArgv, "-vvv")
+	}
+	if conf.addSource {
+		commandArgv = append(commandArgv, "-source")
+	}
+
 	// var pts *os.File
 	// var pr *io.PipeReader
 	// var utmpHost string
@@ -2299,8 +2311,8 @@ func runChild(conf *Config) (err error) {
 // then run the main listening server
 // aprilsh-server should be installed under $HOME/.local/bin
 func main() {
-	fmt.Fprintf(os.Stderr, "main args=%s\n", os.Args)
-	// https://jvns.ca/blog/2017/09/24/profiling-go-with-pprof/
+	fmt.Fprintf(os.Stderr, "main process %d args=%s\n", os.Getpid(), os.Args)
+
 	conf, _, err := parseFlags(os.Args[0], os.Args[1:])
 	if errors.Is(err, flag.ErrHelp) {
 		printUsage("", usage)
@@ -2348,10 +2360,8 @@ func main() {
 	}
 	defer syslogWriter.Close()
 
-	if conf.child {
-		runChild(conf)
-		return
-	}
+	// https://jvns.ca/blog/2017/09/24/profiling-go-with-pprof/
+	//
 	// cpuf, err := os.Create("cpu.profile")
 	// if err != nil {
 	// 	fmt.Println(err)
@@ -2373,7 +2383,13 @@ func main() {
 	// 	fmt.Println(http.ListenAndServe("localhost:6060", nil))
 	// }()
 
-	// start server
+	// run child process
+	if conf.child {
+		runChild(conf)
+		return
+	}
+
+	// start mainSrv
 	srv := newMainSrv(conf, runWorker)
 	srv.start2(conf)
 	srv.wait()
