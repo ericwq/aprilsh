@@ -1249,10 +1249,8 @@ func serve(ptmx *os.File, pts *os.File, pw *io.PipeWriter, complete *statesync.C
 	var forceConnectionChangEvt bool
 	var savedAddr net.Addr
 
-	var userName string
 	if syslogSupport {
-		userName = getCurrentUser()
-		util.Log.Info("user session begin", "user", userName)
+		util.Log.Info("user session begin", "user", user)
 	}
 
 	var terminalToHost strings.Builder
@@ -1423,7 +1421,7 @@ mainLoop:
 							connectedUtmp = true
 						}
 						if syslogSupport {
-							util.Log.Info("connected from remote host", "user", userName, "host", host)
+							util.Log.Info("connected from remote host", "user", user, "host", host)
 							syslogWriter.Info(fmt.Sprintf("user %s connected from host: %s -> port %s",
 								user, server.GetRemoteAddr(), server.GetServerPort()))
 						}
@@ -1606,7 +1604,7 @@ mainLoop:
 	eg.Wait()
 
 	if syslogSupport {
-		util.Log.Info("user session end", "user", userName)
+		util.Log.Info("user session end", "user", user)
 		syslogWriter.Info(fmt.Sprintf("user %s disconnected from host: %s -> port %s",
 			user, server.GetRemoteAddr(), server.GetServerPort()))
 	}
@@ -1967,7 +1965,7 @@ func startChild(conf *Config) (*os.Process, error) {
 	commandPath := "/usr/bin/apshd"
 	commandArgv := []string{
 		commandPath, "-child", "-port", conf.desiredPort, "-destination", conf.destination,
-		"-term", conf.term, "-vv",
+		"-term", conf.term,
 	}
 
 	// var pts *os.File
