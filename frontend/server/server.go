@@ -956,9 +956,17 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 
 	// get login user info, we already checked the user exist when ssh perform authentication.
 	// users := strings.Split(conf.destination, "@")
+	var changeUser bool
+	if conf.user != getCurrentUser() {
+		changeUser = true
+	}
 	u, _ := user.Lookup(conf.user)
-	uid, _ := strconv.ParseInt(u.Uid, 10, 32)
-	gid, _ := strconv.ParseInt(u.Gid, 10, 32)
+	var uid int64
+	var gid int64
+	if changeUser {
+		uid, _ = strconv.ParseInt(u.Uid, 10, 32)
+		gid, _ = strconv.ParseInt(u.Gid, 10, 32)
+	}
 	util.Log.Info("start shell check user", "user", u.Username, "gid", u.Gid, "HOME", u.HomeDir)
 
 	// set base env
@@ -980,11 +988,13 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 		"commandPath", conf.commandPath, "commandArgv", conf.commandArgv)
 
 	sysProcAttr := &syscall.SysProcAttr{}
-	sysProcAttr.Setsid = true                     // start a new session
-	sysProcAttr.Setctty = true                    // set controlling terminal
-	sysProcAttr.Credential = &syscall.Credential{ // change user
-		Uid: uint32(uid),
-		Gid: uint32(gid),
+	sysProcAttr.Setsid = true  // start a new session
+	sysProcAttr.Setctty = true // set controlling terminal
+	if changeUser {
+		sysProcAttr.Credential = &syscall.Credential{ // change user
+			Uid: uint32(uid),
+			Gid: uint32(gid),
+		}
 	}
 
 	procAttr := os.ProcAttr{
