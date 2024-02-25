@@ -1518,12 +1518,12 @@ func TestRunWorkerFail(t *testing.T) {
 				<-exChan       // get the key
 				wh := <-whChan // get the workhorse
 				if hasWorkhorse {
-					if wh.ptmx == nil || wh.shell == nil {
+					if wh.child == nil {
 						t.Errorf("#test runWorker fail should return empty workhorse\n")
 					}
-					wh.shell.Kill()
+					wh.child.Kill()
 				} else if strings.Contains(v.label, "openPTS fail") {
-					if wh.ptmx != nil || wh.shell != nil {
+					if wh.child != nil {
 						t.Errorf("#test runWorker fail should return empty workhorse\n")
 					}
 					msg := <-exChan // get the done message
@@ -1531,7 +1531,7 @@ func TestRunWorkerFail(t *testing.T) {
 						t.Errorf("#test runWorker fail should return %s, got %s\n", v.conf.desiredPort, msg)
 					}
 				} else if strings.Contains(v.label, "startShell fail") {
-					if wh.ptmx != nil || wh.shell != nil {
+					if wh.child != nil {
 						t.Errorf("#test runWorker fail should return empty workhorse\n")
 					}
 					msg := <-exChan // get the done message
