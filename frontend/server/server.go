@@ -48,10 +48,10 @@ const (
 	_VERBOSE_SKIP_READ_PIPE   = 101 // skip start shell message
 	_VERBOSE_LOG_TO_SYSLOG    = 514 // log to syslog
 
-	_DownServeHeader = "down-serve"
-	_DownRunHeader   = "down-run"
-	_KeyHeader       = "key"
-	_ShellHeader     = "shell"
+	_ServeHeader = "serve"
+	_RunHeader   = "run"
+	_KeyHeader   = "key"
+	_ShellHeader = "shell"
 )
 
 var usage = `Usage:
@@ -446,80 +446,6 @@ func (m *mainSrv) cleanWorkers(cmd string) {
 			util.Log.Debug("#run kill shell", "shell", idx)
 		}
 	}
-}
-
-func (m *mainSrv) handleMessage(content string) (string, error) {
-	msg := strings.Split(content, ":")
-
-	if len(msg) != 2 {
-		return "", fmt.Errorf("malform content: %w", errors.New(content))
-	}
-
-	switch msg[0] {
-	case _DownServeHeader:
-		port, err := strconv.Atoi(msg[1])
-		if err != nil {
-			return "", fmt.Errorf("wrong port number: %w", err)
-		}
-		if _, ok := m.workers[port]; ok {
-			// stop the specified shell
-			// m.workers[idx].shell.Kill()
-			shell, err := os.FindProcess(m.workers[port].shellPid)
-			if err != nil {
-				return "", fmt.Errorf("find process failed: %w", err)
-			}
-			if err := shell.Kill(); err != nil {
-				return "", fmt.Errorf("kill shell failed: %w", err)
-			}
-			util.Log.Debug("handleMsg kill shell", "shell", port)
-		}
-	case _DownRunHeader:
-		p, err := strconv.Atoi(msg[1])
-		if err != nil {
-			return "", fmt.Errorf("wrong port number: %w", err)
-		}
-		// clean worker list
-		delete(m.workers, p)
-		// util.Log.Warn("#run clean worker","worker", ps[0])
-	case _KeyHeader:
-		part2 := strings.Split(msg[1], ",")
-		if len(part2) != 2 {
-			return "", fmt.Errorf("malform content: %w", errors.New(content))
-		}
-		port, err := strconv.Atoi(part2[0])
-		if err != nil {
-			return "", fmt.Errorf("wrong port number: %w", err)
-		}
-		if _, ok := m.workers[port]; !ok {
-			return "", fmt.Errorf("find worker failed: %w", errors.New(msg[1]))
-		}
-
-		// return key
-		return part2[1], nil
-	case _ShellHeader: // receive shell process id
-		part2 := strings.Split(msg[1], ",")
-		if len(part2) != 2 {
-			return "", fmt.Errorf("malform content: %w", errors.New(content))
-		}
-		port, err := strconv.Atoi(part2[0])
-		if err != nil {
-			return "", fmt.Errorf("wrong port number: %w", err)
-		}
-		if _, ok := m.workers[port]; !ok {
-			return "", fmt.Errorf("find worker failed: %w", errors.New(msg[1]))
-		}
-
-		// add shell pid
-		shellPid, err := strconv.Atoi(part2[1])
-		if err != nil {
-			return "", fmt.Errorf("wrong port number: %w", err)
-		}
-		m.workers[port].shellPid = shellPid
-	default:
-		return "", fmt.Errorf("unknown header: %w", errors.New(content))
-	}
-
-	return "", nil
 }
 
 // return the minimal available port and increase the maxWorkerPort if necessary.
@@ -1316,7 +1242,7 @@ func newUxClient() (client *uxClient, err error) {
 
 func (uc *uxClient) send(msg string) (err error) {
 	_, err = uc.connection.Write([]byte(msg))
-	util.Log.Debug("uxClient send", "message", msg)
+	// util.Log.Debug("uxClient send", "message", msg)
 	return
 }
 
@@ -1388,6 +1314,9 @@ func (m *mainSrv) uxServe(conn *net.UnixConn, timeout int) {
 		n, err := conn.Read(buf[:])
 		if err != nil {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
+				continue
+			} else {
+				util.Log.Warn("uxServe read failed", "error", err)
 				continue
 			}
 		}
@@ -1462,8 +1391,10 @@ func (m *mainSrv) run2(conf *Config) {
 	for {
 		select {
 		case msg := <-m.exChan:
-			m.handleMessage(msg)
-			// util.Log.Info("run some worker is done","port", portStr)
+			_, err := m.handleMessage(msg)
+			if err != nil {
+				util.Log.Warn("child failed", "error", err)
+			}
 		case ss := <-sig:
 			switch ss {
 			case syscall.SIGHUP: // TODO:reload the config?
@@ -1488,7 +1419,7 @@ func (m *mainSrv) run2(conf *Config) {
 				}
 				for len(m.workers) > 0 {
 					// wait for workers to finish, set time out to prevent dead lock
-					timer := time.NewTimer(time.Duration(100) * time.Millisecond)
+					timer := time.NewTimer(time.Duration(400) * time.Millisecond)
 
 					select {
 					case portStr := <-m.exChan: // some worker is done
@@ -1498,9 +1429,12 @@ func (m *mainSrv) run2(conf *Config) {
 					default:
 					}
 				}
+				util.Log.Debug("run2 finish clean workers")
 			}
 			// last, shutdown uxServe
 			m.uxdownChan <- true
+			util.Log.Debug("run2 stop uxServe")
+			return
 		}
 
 		// set read time out: 200ms
@@ -1557,7 +1491,7 @@ func (m *mainSrv) run2(conf *Config) {
 
 			// we don't need to check if user exist, ssh already done that before
 
-			shell, err := startChild(&conf2)
+			child, err := startChild(&conf2)
 			if err != nil {
 				if errors.Is(err, syscall.EPERM) {
 					util.Log.Warn("operation not permitted")
@@ -1571,13 +1505,14 @@ func (m *mainSrv) run2(conf *Config) {
 
 			m.wg.Add(1)
 			go func() { // avatar is looking after the child process
-				ps, err := shell.Wait()
+				ps, err := child.Wait()
 				if err != nil {
 					util.Log.Warn("start child return", "error", err, "ProcessState", ps)
 				}
+				util.Log.Info("start child finished")
 				m.wg.Done()
 			}()
-			m.workers[p] = &workhorse{child: shell}
+			m.workers[p] = &workhorse{child: child}
 
 			// // start the worker
 			// m.wg.Add(1)
@@ -1586,19 +1521,20 @@ func (m *mainSrv) run2(conf *Config) {
 			// 	m.wg.Done()
 			// }(&conf2, m.exChan, m.whChan)
 
-			// blocking read the key from worker
-			timer := time.NewTimer(time.Duration(20) * time.Millisecond)
+			// timeout read key from worker
+			timer := time.NewTimer(time.Duration(50) * time.Millisecond)
 			select {
 			case <-timer.C:
 				resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "get key timeout")
-				util.Log.Warn("get key timeout", "request", req, "response", resp)
+				util.Log.Warn("run2 got key timeout", "request", req, "response", resp)
 				continue
-			case key := <-m.exChan:
-				util.Log.Debug("run2 got key")
+			case content := <-m.exChan:
 				// response session key and udp port to client
+				key, _ := m.handleMessage(content)
+				util.Log.Debug("run2 got key", "key", key)
+
 				msg := fmt.Sprintf("%d,%s", p, key)
 				m.writeRespTo(addr, frontend.AprilshMsgOpen, msg)
-
 			}
 		} else if strings.HasPrefix(req, frontend.AprishMsgClose) { // 'close aprilsh:[port]'
 			pstr := strings.TrimPrefix(req, frontend.AprishMsgClose)
@@ -1623,6 +1559,61 @@ func (m *mainSrv) run2(conf *Config) {
 			util.Log.Warn("unknow request", "request", req, "response", resp)
 		}
 	}
+}
+
+func (m *mainSrv) handleMessage(content string) (string, error) {
+	msg := strings.Split(content, ":")
+
+	if len(msg) != 2 {
+		return "", fmt.Errorf("malform content: %w", errors.New(content))
+	}
+
+	part2 := strings.Split(msg[1], ",")
+	if len(part2) != 2 {
+		return "", fmt.Errorf("malform content: %w", errors.New(content))
+	}
+	port, err := strconv.Atoi(part2[0])
+	if err != nil {
+		return "", fmt.Errorf("wrong port number: %w", err)
+	}
+	if _, ok := m.workers[port]; !ok {
+		return "", fmt.Errorf("find worker failed: %w", errors.New(msg[1]))
+	}
+
+	switch msg[0] {
+	case _ServeHeader: // stop the specified shell
+		if part2[1] != "shutdown" {
+			return "", fmt.Errorf("malform content: %w", errors.New(content))
+		}
+		shell, err := os.FindProcess(m.workers[port].shellPid)
+		if err != nil {
+			return "", fmt.Errorf("find process failed: %w", err)
+		}
+		if err := shell.Kill(); err != nil {
+			fmt.Fprintf(os.Stderr, "kill shell failed %#v\n", err)
+			return "", fmt.Errorf("kill shell failed: %w", err)
+		}
+		util.Log.Debug("handleMessage kill shell", "shell", port)
+	case _RunHeader: // clean worker list
+		if part2[1] != "shutdown" {
+			return "", fmt.Errorf("malform content: %w", errors.New(content))
+		}
+		delete(m.workers, port)
+		util.Log.Debug("handleMessage clean worker", "port", port)
+	case _KeyHeader: // return key
+		return part2[1], nil
+	case _ShellHeader: // add shell pid
+		shellPid, err := strconv.Atoi(part2[1])
+		if err != nil {
+			return "", fmt.Errorf("wrong shell pid: %w", err)
+		}
+		m.workers[port].shellPid = shellPid
+		util.Log.Debug("handleMessage got shell pid", "port", port, "shellPid", shellPid)
+	default:
+		return "", fmt.Errorf("unknown header: %w", errors.New(content))
+	}
+
+	return "", nil
 }
 
 func startChild(conf *Config) (*os.Process, error) {
@@ -1811,7 +1802,7 @@ func runChild(conf *Config) (err error) {
 	defer func() {
 		// notify this child is done
 		// exChan <- conf.desiredPort
-		uxClient.send(_DownRunHeader + ":" + conf.desiredPort)
+		uxClient.send(fmt.Sprintf("%s:%s,%s", _RunHeader, conf.desiredPort, "shutdown"))
 		uxClient.close()
 	}()
 
@@ -1888,7 +1879,7 @@ func runChild(conf *Config) (err error) {
 	*/
 
 	// send the key to run()
-	uxClient.send(_KeyHeader + ":" + conf.desiredPort + "," + server.GetKey())
+	uxClient.send(fmt.Sprintf("%s:%s,%s", _KeyHeader, conf.desiredPort, server.GetKey()))
 	// exChan <- server.GetKey()
 
 	// in mosh: the parent print this to stderr.
@@ -1935,7 +1926,7 @@ func runChild(conf *Config) (err error) {
 	go func() {
 		conf.serve(ptmx, pts, pw, terminal, server, networkTimeout, networkSignaledTimeout, conf.user)
 		// exChan <- fmt.Sprintf("%s:shutdown", conf.desiredPort)
-		uxClient.send(_DownServeHeader + ":" + conf.desiredPort)
+		uxClient.send(fmt.Sprintf("%s:%s,%s", _ServeHeader, conf.desiredPort, "shutdown"))
 		wg.Done()
 	}()
 

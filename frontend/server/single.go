@@ -383,7 +383,7 @@ func (m *mainSrv) run(conf *Config) {
 			// blocking read the workhorse from runWorker
 			wh := <-m.whChan
 			if wh.child != nil {
-				m.workers[p] = wh
+				m.workers[p] = &wh
 			}
 		} else if strings.HasPrefix(req, frontend.AprishMsgClose) { // 'close aprilsh:[port]'
 			pstr := strings.TrimPrefix(req, frontend.AprishMsgClose)
