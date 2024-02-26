@@ -1419,11 +1419,10 @@ func (m *mainSrv) run2(conf *Config) {
 				}
 				for len(m.workers) > 0 {
 					// wait for workers to finish, set time out to prevent dead lock
-					timer := time.NewTimer(time.Duration(400) * time.Millisecond)
-
+					timer := time.NewTimer(time.Duration(100) * time.Millisecond)
 					select {
-					case portStr := <-m.exChan: // some worker is done
-						m.cleanWorkers(portStr)
+					case content := <-m.exChan: // some worker is done
+						m.handleMessage(content)
 					case t := <-timer.C:
 						util.Log.Warn("run2 waiting for worker timeout", "timeout", t)
 					default:
