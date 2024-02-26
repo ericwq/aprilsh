@@ -758,8 +758,8 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 	env = append(env, "NCURSES_NO_UTF8_ACS=1")
 
 	util.Log.Debug("start shell check user", "user", u.Username, "gid", u.Gid, "HOME", u.HomeDir)
-	util.Log.Info("start shell check env", "env", env)
-	util.Log.Info("start shell check command",
+	util.Log.Debug("start shell check env", "env", env)
+	util.Log.Debug("start shell check command",
 		"commandPath", conf.commandPath, "commandArgv", conf.commandArgv)
 
 	sysProcAttr := &syscall.SysProcAttr{}
@@ -836,7 +836,7 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 		timer.Stop()
 
 		pr.Close()
-		util.Log.Info("start shell at", "pty", pts.Name())
+		util.Log.Info("start shell with pty", "pty", pts.Name())
 	}
 
 	proc, err := os.StartProcess(conf.commandPath, conf.commandArgv, &procAttr)
@@ -860,6 +860,7 @@ func serve(ptmx *os.File, pts *os.File, pw *io.PipeWriter, complete *statesync.C
 
 	if syslogSupport {
 		util.Log.Info("user session begin", "user", user)
+		syslogWriter.Info(fmt.Sprintf("user %s session begin -> port %s", user, server.GetServerPort()))
 	}
 
 	var terminalToHost strings.Builder
@@ -1119,7 +1120,7 @@ mainLoop:
 			// shutdown signal
 			if server.HasRemoteAddr() && !server.ShutdownInProgress() {
 				server.StartShutdown()
-				util.Log.Info("serve start shutdown")
+				util.Log.Debug("serve start shutdown")
 			} else {
 				util.Log.Debug("got signal: break loop",
 					"HasRemoteAddr", server.HasRemoteAddr(),
@@ -1216,7 +1217,7 @@ mainLoop:
 
 	if syslogSupport {
 		util.Log.Info("user session end", "user", user)
-		syslogWriter.Info(fmt.Sprintf("user %s disconnected from host: %s -> port %s",
+		syslogWriter.Info(fmt.Sprintf("user %s session end %s -> port %s",
 			user, server.GetRemoteAddr(), server.GetServerPort()))
 	}
 
@@ -1508,7 +1509,7 @@ func (m *mainSrv) run2(conf *Config) {
 				if err != nil {
 					util.Log.Warn("start child return", "error", err, "ProcessState", ps)
 				}
-				util.Log.Info("start child finished")
+				util.Log.Debug("child finished", "port", p)
 				m.wg.Done()
 			}()
 			m.workers[p] = &workhorse{child: child}
@@ -1589,8 +1590,10 @@ func (m *mainSrv) handleMessage(content string) (string, error) {
 			return "", fmt.Errorf("find process failed: %w", err)
 		}
 		if err := shell.Kill(); err != nil {
-			fmt.Fprintf(os.Stderr, "kill shell failed %#v\n", err)
-			return "", fmt.Errorf("kill shell failed: %w", err)
+			if !errors.Is(err, os.ErrProcessDone) {
+				return "", fmt.Errorf("kill shell failed: %w", err)
+			}
+			// user quit shell actively.
 		}
 		util.Log.Debug("handleMessage kill shell", "shell", port)
 	case _RunHeader: // clean worker list
@@ -1928,6 +1931,7 @@ func runChild(conf *Config) (err error) {
 		uxClient.send(fmt.Sprintf("%s:%s,%s", _ServeHeader, conf.desiredPort, "shutdown"))
 		wg.Done()
 	}()
+	util.Log.Info("start listening on", "port", conf.desiredPort, "clientTERM", conf.term)
 
 	// TODO update last log ?
 	// util.UpdateLastLog(ptmxName, getCurrentUser(), utmpHost)
@@ -1937,8 +1941,6 @@ func runChild(conf *Config) (err error) {
 			util.ClearUtmpx(pts)
 		}
 	}()
-
-	util.Log.Info("start listening on", "port", conf.desiredPort, "clientTERM", conf.term)
 
 	// start the shell with pts
 	shell, err := startShell(pts, pr, utmpHost, conf)

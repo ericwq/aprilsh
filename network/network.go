@@ -758,7 +758,7 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 	if c.server { // only client can roam
 		if !reflect.DeepEqual(raddr, c.remoteAddr) {
 			c.remoteAddr = raddr
-			util.Log.Info("#recvOne server now attached to client",
+			util.Log.Debug("server now attached to client",
 				"localAddr", conn.(net.Conn).LocalAddr(),
 				"remoteAddr", c.remoteAddr,
 				"hasRemoteAddr", c.hasRemoteAddr)
