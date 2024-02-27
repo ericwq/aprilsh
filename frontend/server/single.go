@@ -4,198 +4,170 @@
 
 package main
 
-import (
-	"errors"
-	"fmt"
-	"io"
-	"os"
-	"os/signal"
-	"strconv"
-	"strings"
-	"sync"
-	"syscall"
-	"time"
+// func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err error) {
+// 	defer func() {
+// 		// notify this worker is done
+// 		exChan <- conf.desiredPort
+// 	}()
+//
+// 	/*
+// 		If this variable is set to a positive integer number, it specifies how
+// 		long (in seconds) apshd will wait to receive an update from the
+// 		client before exiting.  Since aprilsh is very useful for mobile
+// 		clients with intermittent operation and connectivity, we suggest
+// 		setting this variable to a high value, such as 604800 (one week) or
+// 		2592000 (30 days).  Otherwise, apshd will wait indefinitely for a
+// 		client to reappear.  This variable is somewhat similar to the TMOUT
+// 		variable found in many Bourne shells. However, it is not a login-session
+// 		inactivity timeout; it only applies to network connectivity.
+// 	*/
+// 	networkTimeout := getTimeFrom("APRILSH_SERVER_NETWORK_TMOUT", 0)
+//
+// 	/*
+// 		If this variable is set to a positive integer number, it specifies how
+// 		long (in seconds) apshd will ignore SIGUSR1 while waiting to receive
+// 		an update from the client.  Otherwise, SIGUSR1 will always terminate
+// 		apshd. Users and administrators may implement scripts to clean up
+// 		disconnected aprilsh sessions. With this variable set, a user or
+// 		administrator can issue
+//
+// 		$ pkill -SIGUSR1 aprilsh-server
+//
+// 		to kill disconnected sessions without killing connected login
+// 		sessions.
+// 	*/
+// 	networkSignaledTimeout := getTimeFrom("APRILSH_SERVER_SIGNAL_TMOUT", 0)
+//
+// 	// util.Log.Debug("runWorker", "networkTimeout", networkTimeout,
+// 	// 	"networkSignaledTimeout", networkSignaledTimeout)
+//
+// 	// get initial window size
+// 	var windowSize *unix.Winsize
+// 	windowSize, err = unix.IoctlGetWinsize(int(os.Stdin.Fd()), unix.TIOCGWINSZ)
+// 	// windowSize, err := pty.GetsizeFull(os.Stdin)
+// 	if err != nil || windowSize.Col == 0 || windowSize.Row == 0 {
+// 		// Fill in sensible defaults. */
+// 		// They will be overwritten by client on first connection.
+// 		windowSize.Col = 80
+// 		windowSize.Row = 24
+// 	}
+// 	// util.Log.Debug("init terminal size", "cols", windowSize.Col, "rows", windowSize.Row)
+//
+// 	// open parser and terminal
+// 	savedLines := terminal.SaveLinesRowsOption
+// 	terminal, err := statesync.NewComplete(int(windowSize.Col), int(windowSize.Row), savedLines)
+//
+// 	// open network
+// 	blank := &statesync.UserStream{}
+// 	server := network.NewTransportServer(terminal, blank, conf.desiredIP, conf.desiredPort)
+// 	server.SetVerbose(uint(conf.verbose))
+// 	// defer server.Close()
+//
+// 	/*
+// 		// If server is run on a pty, then typeahead may echo and break mosh.pl's
+// 		// detection of the CONNECT message.  Print it on a new line to bodge
+// 		// around that.
+//
+// 		if term.IsTerminal(int(os.Stdin.Fd())) {
+// 			fmt.Printf("\r\n")
+// 		}
+// 	*/
+//
+// 	exChan <- server.GetKey() // send the key to run()
+//
+// 	// in mosh: the parent print this to stderr.
+// 	// fmt.Printf("#runWorker %s CONNECT %s %s\n", COMMAND_NAME, network.Port(), network.GetKey())
+// 	// printWelcome(os.Stdout, os.Getpid(), os.Stdin)
+//
+// 	// prepare for openPTS fail
+// 	if conf.verbose == _VERBOSE_OPEN_PTS_FAIL {
+// 		windowSize = nil
+// 	}
+//
+// 	ptmx, pts, err := openPTS(windowSize)
+// 	if err != nil {
+// 		util.Log.Warn("openPTS fail", "error", err)
+// 		whChan <- workhorse{}
+// 		return err
+// 	}
+// 	defer func() {
+// 		ptmx.Close()
+// 		// pts.Close()
+// 	}() // Best effort.
+// 	// fmt.Printf("#runWorker openPTS successfully.\n")
+//
+// 	// use pipe to signal when to start shell
+// 	// pw and pr is close inside serve() and startShell()
+// 	pr, pw := io.Pipe()
+//
+// 	// prepare host field for utmp record
+// 	utmpHost := fmt.Sprintf("%s:%s", frontend.CommandServerName, server.GetServerPort())
+//
+// 	// add utmp entry
+// 	if utmpSupport {
+// 		ok := util.AddUtmpx(pts, utmpHost)
+// 		if !ok {
+// 			utmpSupport = false
+// 			util.Log.Warn("#runWorker can't update utmp")
+// 		}
+// 	}
+//
+// 	// start the udp server, serve the udp request
+// 	var wg sync.WaitGroup
+// 	wg.Add(1)
+// 	// waitChan := make(chan bool)
+// 	// go conf.serve(ptmx, pw, terminal, waitChan, network, networkTimeout, networkSignaledTimeout)
+// 	go func() {
+// 		conf.serve(ptmx, pts, pw, terminal, server, networkTimeout, networkSignaledTimeout, conf.user)
+// 		exChan <- fmt.Sprintf("%s:shutdown", conf.desiredPort)
+// 		wg.Done()
+// 	}()
+//
+// 	// TODO update last log ?
+// 	// util.UpdateLastLog(ptmxName, getCurrentUser(), utmpHost)
+//
+// 	defer func() { // clear utmp entry
+// 		if utmpSupport {
+// 			util.ClearUtmpx(pts)
+// 		}
+// 	}()
+//
+// 	util.Log.Info("start listening on", "port", conf.desiredPort, "clientTERM", conf.term)
+//
+// 	// start the shell with pts
+// 	shell, err := startShell(pts, pr, utmpHost, conf)
+// 	pts.Close() // it's copied by shell process, it's safe to close it here.
+// 	if err != nil {
+// 		util.Log.Warn("startShell fail", "error", err)
+// 		whChan <- workhorse{}
+// 	} else {
+//
+// 		whChan <- workhorse{shell, 0}
+// 		// wait for the shell to finish.
+// 		var state *os.ProcessState
+// 		state, err = shell.Wait()
+// 		if err != nil || state.Exited() {
+// 			if err != nil {
+// 				util.Log.Warn("shell.Wait fail", "error", err, "state", state)
+// 				// } else {
+// 				// util.Log.Debug("shell.Wait quit", "state.exited", state.Exited())
+// 			}
+// 		}
+// 	}
+//
+// 	// wait serve to finish
+// 	wg.Wait()
+// 	util.Log.Info("stop listening on", "port", conf.desiredPort)
+//
+// 	// fmt.Printf("[%s is exiting.]\n", frontend.COMMAND_SERVER_NAME)
+// 	// https://www.dolthub.com/blog/2022-11-28-go-os-exec-patterns/
+// 	// https://www.prakharsrivastav.com/posts/golang-context-and-cancellation/
+//
+// 	// util.Log.Debug("runWorker quit", "port", conf.desiredPort)
+// 	return err
+// }
 
-	"github.com/ericwq/aprilsh/encrypt"
-	"github.com/ericwq/aprilsh/frontend"
-	"github.com/ericwq/aprilsh/network"
-	"github.com/ericwq/aprilsh/statesync"
-	"github.com/ericwq/aprilsh/terminal"
-	"github.com/ericwq/aprilsh/util"
-	"golang.org/x/sys/unix"
-)
-
-// worker started by mainSrv.run(). worker will listen on specified port and
-// forward user input to shell (started by runWorker. the output is forward
-// to the network.
-func runWorker(conf *Config, exChan chan string, whChan chan workhorse) (err error) {
-	defer func() {
-		// notify this worker is done
-		exChan <- conf.desiredPort
-	}()
-
-	/*
-		If this variable is set to a positive integer number, it specifies how
-		long (in seconds) apshd will wait to receive an update from the
-		client before exiting.  Since aprilsh is very useful for mobile
-		clients with intermittent operation and connectivity, we suggest
-		setting this variable to a high value, such as 604800 (one week) or
-		2592000 (30 days).  Otherwise, apshd will wait indefinitely for a
-		client to reappear.  This variable is somewhat similar to the TMOUT
-		variable found in many Bourne shells. However, it is not a login-session
-		inactivity timeout; it only applies to network connectivity.
-	*/
-	networkTimeout := getTimeFrom("APRILSH_SERVER_NETWORK_TMOUT", 0)
-
-	/*
-		If this variable is set to a positive integer number, it specifies how
-		long (in seconds) apshd will ignore SIGUSR1 while waiting to receive
-		an update from the client.  Otherwise, SIGUSR1 will always terminate
-		apshd. Users and administrators may implement scripts to clean up
-		disconnected aprilsh sessions. With this variable set, a user or
-		administrator can issue
-
-		$ pkill -SIGUSR1 aprilsh-server
-
-		to kill disconnected sessions without killing connected login
-		sessions.
-	*/
-	networkSignaledTimeout := getTimeFrom("APRILSH_SERVER_SIGNAL_TMOUT", 0)
-
-	// util.Log.Debug("runWorker", "networkTimeout", networkTimeout,
-	// 	"networkSignaledTimeout", networkSignaledTimeout)
-
-	// get initial window size
-	var windowSize *unix.Winsize
-	windowSize, err = unix.IoctlGetWinsize(int(os.Stdin.Fd()), unix.TIOCGWINSZ)
-	// windowSize, err := pty.GetsizeFull(os.Stdin)
-	if err != nil || windowSize.Col == 0 || windowSize.Row == 0 {
-		// Fill in sensible defaults. */
-		// They will be overwritten by client on first connection.
-		windowSize.Col = 80
-		windowSize.Row = 24
-	}
-	// util.Log.Debug("init terminal size", "cols", windowSize.Col, "rows", windowSize.Row)
-
-	// open parser and terminal
-	savedLines := terminal.SaveLinesRowsOption
-	terminal, err := statesync.NewComplete(int(windowSize.Col), int(windowSize.Row), savedLines)
-
-	// open network
-	blank := &statesync.UserStream{}
-	server := network.NewTransportServer(terminal, blank, conf.desiredIP, conf.desiredPort)
-	server.SetVerbose(uint(conf.verbose))
-	// defer server.Close()
-
-	/*
-		// If server is run on a pty, then typeahead may echo and break mosh.pl's
-		// detection of the CONNECT message.  Print it on a new line to bodge
-		// around that.
-
-		if term.IsTerminal(int(os.Stdin.Fd())) {
-			fmt.Printf("\r\n")
-		}
-	*/
-
-	exChan <- server.GetKey() // send the key to run()
-
-	// in mosh: the parent print this to stderr.
-	// fmt.Printf("#runWorker %s CONNECT %s %s\n", COMMAND_NAME, network.Port(), network.GetKey())
-	// printWelcome(os.Stdout, os.Getpid(), os.Stdin)
-
-	// prepare for openPTS fail
-	if conf.verbose == _VERBOSE_OPEN_PTS_FAIL {
-		windowSize = nil
-	}
-
-	ptmx, pts, err := openPTS(windowSize)
-	if err != nil {
-		util.Log.Warn("openPTS fail", "error", err)
-		whChan <- workhorse{}
-		return err
-	}
-	defer func() {
-		ptmx.Close()
-		// pts.Close()
-	}() // Best effort.
-	// fmt.Printf("#runWorker openPTS successfully.\n")
-
-	// use pipe to signal when to start shell
-	// pw and pr is close inside serve() and startShell()
-	pr, pw := io.Pipe()
-
-	// prepare host field for utmp record
-	utmpHost := fmt.Sprintf("%s:%s", frontend.CommandServerName, server.GetServerPort())
-
-	// add utmp entry
-	if utmpSupport {
-		ok := util.AddUtmpx(pts, utmpHost)
-		if !ok {
-			utmpSupport = false
-			util.Log.Warn("#runWorker can't update utmp")
-		}
-	}
-
-	// start the udp server, serve the udp request
-	var wg sync.WaitGroup
-	wg.Add(1)
-	// waitChan := make(chan bool)
-	// go conf.serve(ptmx, pw, terminal, waitChan, network, networkTimeout, networkSignaledTimeout)
-	go func() {
-		conf.serve(ptmx, pts, pw, terminal, server, networkTimeout, networkSignaledTimeout, conf.user)
-		exChan <- fmt.Sprintf("%s:shutdown", conf.desiredPort)
-		wg.Done()
-	}()
-
-	// TODO update last log ?
-	// util.UpdateLastLog(ptmxName, getCurrentUser(), utmpHost)
-
-	defer func() { // clear utmp entry
-		if utmpSupport {
-			util.ClearUtmpx(pts)
-		}
-	}()
-
-	util.Log.Info("start listening on", "port", conf.desiredPort, "clientTERM", conf.term)
-
-	// start the shell with pts
-	shell, err := startShell(pts, pr, utmpHost, conf)
-	pts.Close() // it's copied by shell process, it's safe to close it here.
-	if err != nil {
-		util.Log.Warn("startShell fail", "error", err)
-		whChan <- workhorse{}
-	} else {
-
-		whChan <- workhorse{shell, 0}
-		// wait for the shell to finish.
-		var state *os.ProcessState
-		state, err = shell.Wait()
-		if err != nil || state.Exited() {
-			if err != nil {
-				util.Log.Warn("shell.Wait fail", "error", err, "state", state)
-				// } else {
-				// util.Log.Debug("shell.Wait quit", "state.exited", state.Exited())
-			}
-		}
-	}
-
-	// wait serve to finish
-	wg.Wait()
-	util.Log.Info("stop listening on", "port", conf.desiredPort)
-
-	// fmt.Printf("[%s is exiting.]\n", frontend.COMMAND_SERVER_NAME)
-	// https://www.dolthub.com/blog/2022-11-28-go-os-exec-patterns/
-	// https://www.prakharsrivastav.com/posts/golang-context-and-cancellation/
-
-	// util.Log.Debug("runWorker quit", "port", conf.desiredPort)
-	return err
-}
-
-// start mainSrv, which listen on the main udp port.
-// each new client send a shake hands message to mainSrv. mainSrv response
-// with the session key and target udp port for the new client.
-// mainSrv is shutdown by SIGTERM and all sessions must be done.
-// otherwise mainSrv will wait for the live session.
+/*
 func (m *mainSrv) start(conf *Config) {
 	// listen the port
 	if err := m.listen(conf); err != nil {
@@ -218,26 +190,6 @@ func (m *mainSrv) start(conf *Config) {
 	}
 }
 
-/*
-upon receive frontend.AprilshMsgOpen message, run() stat a new worker
-to serve the client, response to the client with choosen port number
-and session key.
-
-sample request  : open aprilsh:TERM,user@server.domain
-
-sample response : open aprilsh:60001,31kR3xgfmNxhDESXQ8VIQw==
-
-upon receive frontend.AprishMsgClose message, run() stop the worker
-specified by port number.
-
-sample request  : close aprilsh:60001
-
-sample response : close aprilsh:done
-
-when shutdown message is received (via SIGTERM or SIGINT), run() will send
-sutdown message to all workers and wait for the workers to finish. when
--auto flag is set, run() will shutdown after specified seconds.
-*/
 func (m *mainSrv) run(conf *Config) {
 	if m.conn == nil {
 		return
@@ -408,17 +360,17 @@ func (m *mainSrv) run(conf *Config) {
 			util.Log.Warn("unknow request", "request", req, "response", resp)
 		}
 	}
-	/*
-	   just for test purpose:
 
-	   in aprilsh: we can use nc client to get the key and send it back to client.
-	   we don't print it to the stdout as mosh did.
-
-	   send udp request and read reply
-	   % echo "open aprilsh:" | nc localhost 6000 -u -w 1
-	   % echo "close aprilsh:6001" | nc localhost 6000 -u -w 1
-
-	   send udp request to remote host
-	   % ssh ide@localhost  "echo 'open aprilsh:' | nc localhost 6000 -u -w 1"
-	*/
+	// just for test purpose:
+	//
+	// in aprilsh: we can use nc client to get the key and send it back to client.
+	// we don't print it to the stdout as mosh did.
+	//
+	// send udp request and read reply
+	// % echo "open aprilsh:" | nc localhost 6000 -u -w 1
+	// % echo "close aprilsh:6001" | nc localhost 6000 -u -w 1
+	//
+	// send udp request to remote host
+	// % ssh ide@localhost  "echo 'open aprilsh:' | nc localhost 6000 -u -w 1"
 }
+*/

@@ -378,22 +378,23 @@ type workhorse struct {
 }
 
 type mainSrv struct {
-	workers    map[int]*workhorse
-	runWorker  func(*Config, chan string, chan workhorse) error // worker
-	exChan     chan string                                      // worker done or passing key
-	whChan     chan workhorse                                   // workhorse
-	downChan   chan bool                                        // shutdown mainSrv
-	uxdownChan chan bool                                        // ux shutdown mainSrv
-	maxPort    int                                              // max worker port
-	timeout    int                                              // read udp time out,
-	port       int                                              // main listen port
-	conn       *net.UDPConn                                     // mainSrv listen port
+	workers map[int]*workhorse
+	// runWorker  func(*Config, chan string, chan workhorse) error // worker
+	exChan     chan string    // worker done or passing key
+	whChan     chan workhorse // workhorse
+	downChan   chan bool      // shutdown mainSrv
+	uxdownChan chan bool      // ux shutdown mainSrv
+	maxPort    int            // max worker port
+	timeout    int            // read udp time out,
+	port       int            // main listen port
+	conn       *net.UDPConn   // mainSrv listen port
 	wg         sync.WaitGroup
 }
 
-func newMainSrv(conf *Config, runWorker func(*Config, chan string, chan workhorse) error) *mainSrv {
+// func newMainSrv(conf *Config, runWorker func(*Config, chan string, chan workhorse) error) *mainSrv {
+func newMainSrv(conf *Config) *mainSrv {
 	m := mainSrv{}
-	m.runWorker = runWorker
+	// m.runWorker = runWorker
 	m.port, _ = strconv.Atoi(conf.desiredPort)
 	m.maxPort = m.port + 1
 	m.workers = make(map[int]*workhorse)
@@ -425,28 +426,28 @@ func (m *mainSrv) listen(conf *Config) error {
 // two kind of cmd: 60002 or 60002:shutdown.
 // the latter is used to stop the specified shell.
 // the former is used to clean the worker list.
-func (m *mainSrv) cleanWorkers(cmd string) {
-	ps := strings.Split(cmd, ":")
-	if len(ps) == 1 {
-		p, err := strconv.Atoi(cmd)
-		if err != nil {
-			util.Log.Debug("cleanWorkers receive wrong portStr", "portStr", cmd, "err", err)
-		}
-
-		// clean worker list
-		delete(m.workers, p)
-		// util.Log.Warn("#run clean worker","worker", ps[0])
-	} else if ps[1] == "shutdown" {
-		idx, err := strconv.Atoi(ps[0])
-		if err != nil {
-			util.Log.Warn("#run receive malform message", "portStr", cmd)
-		} else if _, ok := m.workers[idx]; ok {
-			// stop the specified shell
-			// m.workers[idx].shell.Kill()
-			util.Log.Debug("#run kill shell", "shell", idx)
-		}
-	}
-}
+// func (m *mainSrv) cleanWorkers(cmd string) {
+// 	ps := strings.Split(cmd, ":")
+// 	if len(ps) == 1 {
+// 		p, err := strconv.Atoi(cmd)
+// 		if err != nil {
+// 			util.Log.Debug("cleanWorkers receive wrong portStr", "portStr", cmd, "err", err)
+// 		}
+//
+// 		// clean worker list
+// 		delete(m.workers, p)
+// 		// util.Log.Warn("#run clean worker","worker", ps[0])
+// 	} else if ps[1] == "shutdown" {
+// 		idx, err := strconv.Atoi(ps[0])
+// 		if err != nil {
+// 			util.Log.Warn("#run receive malform message", "portStr", cmd)
+// 		} else if _, ok := m.workers[idx]; ok {
+// 			// stop the specified shell
+// 			// m.workers[idx].shell.Kill()
+// 			util.Log.Debug("#run kill shell", "shell", idx)
+// 		}
+// 	}
+// }
 
 // return the minimal available port and increase the maxWorkerPort if necessary.
 // shrink the max port number if possible
@@ -627,7 +628,6 @@ func getTimeFrom(env string, def int64) (ret int64) {
 }
 
 func printWelcome(pid int, port int, tty *os.File) {
-	util.Log.Info("start listening on", "port", port, "gitTag", frontend.GitTag, "pid", pid)
 	// fmt.Printf("Copyright 2022~2023 wangqi.\n")
 	// fmt.Printf("%s%s", "Use of this source code is governed by a MIT-style",
 	// 	"license that can be found in the LICENSE file.\n")
@@ -1328,6 +1328,11 @@ func (m *mainSrv) uxServe(conn *net.UnixConn, timeout int) {
 	}
 }
 
+// start mainSrv, which listen on the main udp port.
+// each new client send a shake hands message to mainSrv. mainSrv response
+// with the session key and target udp port for the new client.
+// mainSrv is shutdown by SIGTERM and all sessions must be done.
+// otherwise mainSrv will wait for the live session.
 func (m *mainSrv) start2(conf *Config) {
 	// listen the port
 	if err := m.listen(conf); err != nil {
@@ -1363,6 +1368,26 @@ func (m *mainSrv) start2(conf *Config) {
 	}
 }
 
+/*
+upon receive frontend.AprilshMsgOpen message, run() stat a new worker
+to serve the client, response to the client with choosen port number
+and session key.
+
+sample request  : open aprilsh:TERM,user@server.domain
+
+sample response : open aprilsh:60001,31kR3xgfmNxhDESXQ8VIQw==
+
+upon receive frontend.AprishMsgClose message, run() stop the worker
+specified by port number.
+
+sample request  : close aprilsh:60001
+
+sample response : close aprilsh:done
+
+when shutdown message is received (via SIGTERM or SIGINT), run() will send
+sutdown message to all workers and wait for the workers to finish. when
+-auto flag is set, run() will shutdown after specified seconds.
+*/
 func (m *mainSrv) run2(conf *Config) {
 	if m.conn == nil {
 		return
@@ -1376,9 +1401,9 @@ func (m *mainSrv) run2(conf *Config) {
 		signal.Stop(sig)
 		if syslogSupport {
 			syslogWriter.Info(fmt.Sprintf("stop listening on %s.", m.conn.LocalAddr()))
+			util.Log.Info("stop listening on", "port", m.port)
 		}
 		m.conn.Close()
-		util.Log.Info("stop listening on", "port", m.port)
 	}()
 
 	buf := make([]byte, 128)
@@ -1386,8 +1411,10 @@ func (m *mainSrv) run2(conf *Config) {
 
 	if syslogSupport {
 		syslogWriter.Info(fmt.Sprintf("start listening on %s.", m.conn.LocalAddr()))
+		util.Log.Info("start listening on", "port", m.port, "gitTag", frontend.GitTag)
 	}
 
+	//TODO remove it?
 	printWelcome(os.Getpid(), m.port, nil)
 	for {
 		select {
@@ -1413,13 +1440,14 @@ func (m *mainSrv) run2(conf *Config) {
 		if shutdown {
 			// util.Log.Info("run2", "shutdown", shutdown)
 			if len(m.workers) != 0 {
-				// send kill message to the workers
+				// stop all the the workers
 				for i := range m.workers {
 					m.workers[i].child.Signal(syscall.SIGTERM)
 					util.Log.Debug("stop shell", "port", i)
 				}
+
+				// wait for workers to shutdown
 				for len(m.workers) > 0 {
-					// wait for workers to finish, set time out to prevent dead lock
 					timer := time.NewTimer(time.Duration(100) * time.Millisecond)
 					select {
 					case content := <-m.exChan: // some worker is done
@@ -1431,7 +1459,7 @@ func (m *mainSrv) run2(conf *Config) {
 				}
 				util.Log.Debug("run2 finish clean workers")
 			}
-			// last, shutdown uxServe
+			// finally, shutdown uxServe
 			m.uxdownChan <- true
 			util.Log.Debug("run2 stop uxServe")
 			return
@@ -1455,7 +1483,7 @@ func (m *mainSrv) run2(conf *Config) {
 		req := strings.TrimSpace(string(buf[0:n]))
 		if strings.HasPrefix(req, frontend.AprilshMsgOpen) { // 'open aprilsh:'
 			if len(m.workers) >= maxPortLimit {
-				resp := m.writeRespTo(addr, frontend.AprishMsgClose, "over max port limit")
+				resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "over max port limit")
 				util.Log.Warn("over max port limit", "request", req, "response", resp)
 				continue
 			}
@@ -1490,7 +1518,7 @@ func (m *mainSrv) run2(conf *Config) {
 			}
 
 			// we don't need to check if user exist, ssh already done that before
-
+			//start child
 			child, err := startChild(&conf2)
 			if err != nil {
 				if errors.Is(err, syscall.EPERM) {
@@ -1503,8 +1531,9 @@ func (m *mainSrv) run2(conf *Config) {
 			}
 			util.Log.Debug("start child successfully, wait for the key.")
 
+			// waiting for the child process
 			m.wg.Add(1)
-			go func() { // avatar is looking after the child process
+			go func() {
 				ps, err := child.Wait()
 				if err != nil {
 					util.Log.Warn("start child return", "error", err, "ProcessState", ps)
@@ -1537,23 +1566,22 @@ func (m *mainSrv) run2(conf *Config) {
 				m.writeRespTo(addr, frontend.AprilshMsgOpen, msg)
 			}
 		} else if strings.HasPrefix(req, frontend.AprishMsgClose) { // 'close aprilsh:[port]'
+			// check port
 			pstr := strings.TrimPrefix(req, frontend.AprishMsgClose)
 			port, err := strconv.Atoi(pstr)
-			if err == nil {
-				// find workhorse
-				if wh, ok := m.workers[port]; ok {
-					// kill the process, TODO SIGKILL or SIGTERM?
-					wh.child.Kill()
-
-					m.writeRespTo(addr, frontend.AprishMsgClose, "done")
-				} else {
-					resp := m.writeRespTo(addr, frontend.AprishMsgClose, "port does not exist")
-					util.Log.Warn("port does not exist", "request", req, "response", resp)
-				}
-			} else {
+			if err != nil {
 				resp := m.writeRespTo(addr, frontend.AprishMsgClose, "wrong port number")
 				util.Log.Warn("wrong port number", "request", req, "response", resp)
 			}
+
+			// find worker
+			if _, ok := m.workers[port]; !ok {
+				resp := m.writeRespTo(addr, frontend.AprishMsgClose, "port does not exist")
+				util.Log.Warn("port does not exist", "request", req, "response", resp)
+			}
+			// send kill message to the workers
+			m.workers[port].child.Signal(syscall.SIGTERM)
+			m.writeRespTo(addr, frontend.AprishMsgClose, "done")
 		} else {
 			resp := m.writeRespTo(addr, frontend.AprishMsgClose, "unknow request")
 			util.Log.Warn("unknow request", "request", req, "response", resp)
@@ -1779,6 +1807,9 @@ func startChild(conf *Config) (*os.Process, error) {
 	return proc, nil
 }
 
+// worker started by mainSrv.run(). worker will listen on specified port and
+// forward user input to shell (started by runWorker. the output is forward
+// to the network.
 func runChild(conf *Config) (err error) {
 	// name := filepath.Join(os.TempDir(), fmt.Sprintf("%s-%d.%s", frontend.CommandServerName, os.Getpid(), "log"))
 	// file, err := os.OpenFile(name, os.O_RDWR|os.O_CREATE|os.O_EXCL, 0600)
@@ -2059,7 +2090,7 @@ func main() {
 	}
 
 	// start mainSrv
-	srv := newMainSrv(conf, runWorker)
+	srv := newMainSrv(conf)
 	srv.start2(conf)
 	srv.wait()
 }
