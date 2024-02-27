@@ -92,7 +92,7 @@ func (l *myLogger) CreateLogger(w io.Writer, source bool, level slog.Level) {
 		},
 	}
 	l.Logger = slog.New(slog.NewTextHandler(w, ho)).With("pid", os.Getpid())
-	slog.SetDefault(l.Logger)
+	// slog.SetDefault(l.Logger)
 }
 
 func (l *myLogger) Trace(msg string, args ...any) {

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/signal"
@@ -558,23 +559,19 @@ func (sc *STMClient) mainInit() error {
 	sc.localFramebuffer = terminal.NewEmulator3(col, row, savedLines)
 	sc.newState = terminal.NewEmulator3(col, row, savedLines)
 
-	fmt.Printf("mark A report \tos.Stderr =%s\r\n", os.Stderr.Name())
 	// initialize screen
 	// init := sc.display.NewFrame(true, sc.localFramebuffer, sc.localFramebuffer)
 	// CSI ? 1049l Use Normal Screen Buffer and restore cursor as in DECRC, xterm.
 	// CSI ? 1l		Normal Cursor Keys (DECCKM)
 	// CSI ? 1004l Disable FocusIn/FocusOut
 	init := "\x1B[?1049l\x1B[?1l\x1B[?1004l"
-	// util.Log.Debug("mainInit", "init", init)
 	os.Stdout.WriteString(init)
-	fmt.Printf("mark B report \tos.Stderr =%s, seq=%q\r\n", os.Stderr.Name(), init)
+	util.Log.Debug("mainInit", "init", init)
 
 	// open network
 	blank := &statesync.UserStream{}
 	terminal, err := statesync.NewComplete(col, row, savedLines)
-	fmt.Printf("mark C report \tos.Stderr =%s\r\n", os.Stderr.Name())
 	sc.network = network.NewTransportClient(blank, terminal, sc.key, sc.ip, fmt.Sprintf("%d", sc.port))
-	fmt.Printf("mark D report \tos.Stderr =%s\r\n", os.Stderr.Name())
 
 	// minimal delay on outgoing keystrokes
 	sc.network.SetSendDelay(1)
@@ -796,11 +793,8 @@ func (sc *STMClient) init() error {
 		return err
 	}
 
-	fmt.Printf("client.init() mark 1.0 report os.Stderr=%s, os.Stdout=%s, seq=%q\r\n",
-		os.Stderr.Name(), os.Stdout.Name(), sc.display.Open())
 	// Put terminal in application-cursor-key mode
 	os.Stdout.WriteString(sc.display.Open())
-	fmt.Printf("client.init() mark 1.1 report os.Stderr=%s, os.Stdout=%s\r\n", os.Stderr.Name(), os.Stdout.Name())
 	util.Log.Info("open terminal", "seq", sc.display.Open())
 
 	// Add our name to window title
@@ -809,7 +803,6 @@ func (sc *STMClient) init() error {
 		sc.overlays.SetTitlePrefix(prefix)
 	}
 
-	fmt.Printf("client.init() mark 1.2 report \tos.Stderr =%s\r\n", os.Stderr.Name())
 	// Set terminal escape key.
 	escapeKeyEnv := os.Getenv("APRILSH_ESCAPE_KEY")
 	if escapeKeyEnv != "" {
@@ -858,7 +851,6 @@ func (sc *STMClient) init() error {
 		sc.escapePassKey2 = '^'
 	}
 
-	fmt.Printf("client.init() mark 1.3 report os.Stderr =%s\r\n", os.Stderr.Name())
 	// Adjust escape help differently if escape is a control character.
 	if sc.escapeKey > 0 {
 		var b strings.Builder
@@ -919,9 +911,7 @@ func (sc *STMClient) shutdown() error {
 
 func (sc *STMClient) main() error {
 	// initialize signal handling and structures
-	fmt.Printf("mark O report \tos.Stderr =%s\r\n", os.Stderr.Name())
 	sc.mainInit()
-	fmt.Printf("mark O report \tos.Stderr =%s\r\n", os.Stderr.Name())
 
 	// 	/* Drop unnecessary privileges */
 	// #ifdef HAVE_PLEDGE
@@ -1178,31 +1168,29 @@ func main() {
 		return
 	}
 
-	fmt.Printf("client mark 0 report os.Stderr=%s, os.Stdout=%s\n", os.Stderr.Name(), os.Stdout.Name())
+	var logWriter io.Writer
+	logWriter = os.Stderr
+
 	// https://rderik.com/blog/identify-if-output-goes-to-the-terminal-or-is-being-redirected-in-golang/
 	//
 	// if stderr outputs to terminal, we redirect it to /dev/null.
 	f2, _ := os.Stderr.Stat()
 	if (f2.Mode() & os.ModeCharDevice) == os.ModeCharDevice {
 		os.Stderr = os.NewFile(uintptr(syscall.Stderr), os.DevNull)
+		logWriter = io.Discard
 	}
-	fmt.Printf("client mark 0 report os.Stderr=%s, os.Stdout=%s\n", os.Stderr.Name(), os.Stdout.Name())
 
 	// setup client log file
 	switch conf.verbose {
 	case util.DebugLevel:
-		// util.Log.SetLevel(slog.LevelDebug)
-		util.Log.CreateLogger(os.Stderr, conf.addSource, slog.LevelDebug)
+		util.Log.CreateLogger(logWriter, conf.addSource, slog.LevelDebug)
 	case util.TraceLevel:
-		// util.Log.SetLevel(util.LevelTrace)
-		util.Log.CreateLogger(os.Stderr, conf.addSource, util.LevelTrace)
+		util.Log.CreateLogger(logWriter, conf.addSource, util.LevelTrace)
 	default:
-		// util.Log.SetLevel(slog.LevelInfo)
-		util.Log.CreateLogger(os.Stderr, conf.addSource, slog.LevelInfo)
+		util.Log.CreateLogger(logWriter, conf.addSource, slog.LevelInfo)
 	}
 	// util.Log.AddSource(conf.addSource)
 	// util.Log.SetOutput(os.Stderr)
-	util.Log.Debug("mark ABC")
 
 	// https://earthly.dev/blog/golang-errors/
 	// https://gosamples.dev/check-error-type/
@@ -1245,7 +1233,6 @@ func main() {
 	// start client
 	util.SetNativeLocale()
 	client := newSTMClient(conf)
-	fmt.Printf("client mark 1 report os.Stderr=%s, os.Stdout=%s\n", os.Stderr.Name(), os.Stdout.Name())
 	if err := client.init(); err != nil {
 		fmt.Printf("%s init error:%s\n", frontend.CommandClientName, err)
 		return
