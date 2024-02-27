@@ -2010,14 +2010,14 @@ func main() {
 	// setup client log file
 	switch conf.verbose {
 	case util.DebugLevel:
-		util.Log.SetLevel(slog.LevelDebug)
+		util.Log.CreateLogger(os.Stderr, conf.addSource, slog.LevelDebug)
 	case util.TraceLevel:
-		util.Log.SetLevel(util.LevelTrace)
+		util.Log.CreateLogger(os.Stderr, conf.addSource, util.LevelTrace)
 	default:
-		util.Log.SetLevel(slog.LevelInfo)
+		util.Log.CreateLogger(os.Stderr, conf.addSource, slog.LevelInfo)
 	}
-	util.Log.AddSource(conf.addSource)
-	util.Log.SetOutput(os.Stderr)
+	// util.Log.AddSource(conf.addSource)
+	// util.Log.SetOutput(os.Stderr)
 
 	// setup syslog
 	syslogWriter, err = syslog.New(syslog.LOG_WARNING|syslog.LOG_LOCAL7, frontend.CommandServerName)
