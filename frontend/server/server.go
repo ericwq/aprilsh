@@ -53,6 +53,8 @@ const (
 	_RunHeader   = "run"
 	_KeyHeader   = "key"
 	_ShellHeader = "shell"
+
+	envArgs = "APRILSH_ARGS"
 )
 
 var usage = `Usage:
@@ -1718,19 +1720,18 @@ func startChild(conf *Config) (*os.Process, error) {
 
 	// specify child process
 	commandPath := "/usr/bin/apshd"
-	commandArgv := []string{
-		commandPath, "-child", "-port", conf.desiredPort, "-destination", conf.destination,
-		"-term", conf.term,
-	}
+	commandArgv := []string{commandPath, "-child"}
 
+	// hide the following command args from ps command
+	args := []string{"-port", conf.desiredPort, "-destination", conf.destination, "-term", conf.term}
 	// inherit vervoce and source options form parent
 	if conf.verbose == util.DebugLevel {
-		commandArgv = append(commandArgv, "-vv")
+		args = append(args, "-vv")
 	} else if conf.verbose == util.TraceLevel {
-		commandArgv = append(commandArgv, "-vvv")
+		args = append(args, "-vvv")
 	}
 	if conf.addSource {
-		commandArgv = append(commandArgv, "-source")
+		args = append(args, "-source")
 	}
 
 	// var pts *os.File
@@ -1777,6 +1778,7 @@ func startChild(conf *Config) (*os.Process, error) {
 
 	// ask ncurses to send UTF-8 instead of ISO 2022 for line-drawing chars
 	env = append(env, "NCURSES_NO_UTF8_ACS=1")
+	env = append(env, envArgs+"="+strings.Join(args, " "))
 
 	util.Logger.Debug("startChild env:", "env", env)
 	util.Logger.Debug("startChild command:", "commandPath", commandPath, "commandArgv", commandArgv)
@@ -2067,6 +2069,11 @@ func runChild(conf *Config) (err error) {
 // then run the main listening server
 // aprilsh-server should be installed under $HOME/.local/bin
 func main() {
+	str, ok := os.LookupEnv(envArgs)
+	if ok {
+		os.Args = append(os.Args, strings.Split(str, " ")...)
+		os.Unsetenv(envArgs)
+	}
 	fmt.Fprintf(os.Stderr, "main process %d args=%s\n", os.Getpid(), os.Args)
 
 	conf, _, err := parseFlags(os.Args[0], os.Args[1:])
