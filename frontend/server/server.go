@@ -372,6 +372,43 @@ func beginClientConn(conf *Config) { //(port string, term string) {
 	fmt.Printf("%s", string(response[:m]))
 }
 
+const (
+	unixsockNetwork = "unixgram"
+)
+
+// "/tmp/aprilsh.sock"
+var unixsockAddr string = filepath.Join(os.TempDir(), "aprilsh.sock")
+
+type uxClient struct {
+	connection net.Conn
+}
+
+func newUxClient() (client *uxClient, err error) {
+	client = &uxClient{}
+	client.connection, err = net.Dial(unixsockNetwork, unixsockAddr)
+	return
+}
+
+func (uc *uxClient) send(msg string) (err error) {
+	_, err = uc.connection.Write([]byte(msg))
+	// util.Log.Debug("uxClient send", "message", msg)
+	return
+}
+
+func (uc *uxClient) close() (err error) {
+	return uc.connection.Close()
+}
+
+func uxCleanup() (err error) {
+	if _, err = os.Stat(unixsockAddr); err == nil {
+		if err = os.RemoveAll(unixsockAddr); err != nil {
+			return err
+		}
+	}
+	err = nil // doesn't exist
+	return
+}
+
 type workhorse struct {
 	child *os.Process
 	// ptmx     *os.File
@@ -408,6 +445,151 @@ func newMainSrv(conf *Config) *mainSrv {
 	return &m
 }
 
+// start mainSrv, which listen on the main udp port.
+// each new client send a shake hands message to mainSrv. mainSrv response
+// with the session key and target udp port for the new client.
+// mainSrv is shutdown by SIGTERM and all sessions must be done.
+// otherwise mainSrv will wait for the live session.
+func (m *mainSrv) start(conf *Config) {
+	// listen the port
+	if err := m.listen(conf); err != nil {
+		util.Logger.Warn("listen failed", "error", err)
+		return
+	}
+
+	uxConn, err := m.uxListen()
+	if err != nil {
+		util.Logger.Warn("listen unix domain socket failed", "error", err)
+		return
+	}
+
+	// start main server waiting for open/close message.
+	m.wg.Add(1)
+	go func() {
+		m.run(conf)
+		m.wg.Done()
+	}()
+
+	// start unix domain socket (datagram)
+	m.wg.Add(1)
+	go func() {
+		m.uxServe(uxConn, 2)
+		m.wg.Done()
+	}()
+
+	// shutdown if the auto stop flag is set
+	if conf.autoStop > 0 {
+		time.AfterFunc(time.Duration(conf.autoStop)*time.Second, func() {
+			m.downChan <- true
+		})
+	}
+}
+
+func (m *mainSrv) wait() {
+	m.wg.Wait()
+	util.Logger.Info("quit " + frontend.CommandServerName)
+}
+
+/*
+upon receive frontend.AprilshMsgOpen message, run() stat a new worker
+to serve the client, response to the client with choosen port number
+and session key.
+
+sample request  : open aprilsh:TERM,user@server.domain
+
+sample response : open aprilsh:60001,31kR3xgfmNxhDESXQ8VIQw==
+
+upon receive frontend.AprishMsgClose message, run() stop the worker
+specified by port number.
+
+sample request  : close aprilsh:60001
+
+sample response : close aprilsh:done
+
+when shutdown message is received (via SIGTERM or SIGINT), run() will send
+sutdown message to all workers and wait for the workers to finish. when
+-auto flag is set, run() will shutdown after specified seconds.
+*/
+func (m *mainSrv) run(conf *Config) {
+	if m.conn == nil {
+		return
+	}
+	// prepare to receive the signal
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
+
+	// clean up
+	defer func() {
+		signal.Stop(sig)
+		if syslogSupport {
+			syslogWriter.Info(fmt.Sprintf("stop listening on %s.", m.conn.LocalAddr()))
+			util.Logger.Info("stop listening on", "port", m.port)
+		}
+		m.conn.Close()
+	}()
+
+	buf := make([]byte, 128)
+	shutdown := false
+
+	if syslogSupport {
+		syslogWriter.Info(fmt.Sprintf("start listening on %s.", m.conn.LocalAddr()))
+		util.Logger.Info("start listening on", "port", m.port, "gitTag", frontend.GitTag)
+	}
+
+	//TODO remove it?
+	printWelcome(os.Getpid(), m.port, nil)
+	for {
+		select {
+		case msg := <-m.exChan:
+			_, err := m.handleMessage(msg)
+			if err != nil {
+				util.Logger.Warn("child failed", "error", err)
+			}
+		case ss := <-sig:
+			switch ss {
+			case syscall.SIGHUP: // TODO:reload the config?
+				util.Logger.Info("got signal: SIGHUP", "receiver", "run2")
+			case syscall.SIGTERM, syscall.SIGINT:
+				util.Logger.Info("got signal: SIGTERM or SIGINT", "receiver", "run2")
+				shutdown = true
+			}
+		case <-m.downChan: // another way to shutdown besides signal
+			shutdown = true
+		default:
+		}
+
+		if shutdown {
+			m.shutdown()
+			return
+		}
+
+		// set read time out: 200ms
+		m.conn.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(m.timeout)))
+		n, addr, err := m.conn.ReadFromUDP(buf)
+		if err != nil {
+			if errors.Is(err, os.ErrDeadlineExceeded) {
+				// fmt.Printf("#run read time out, workers=%d, shutdown=%t, err=%s\n", len(m.workers), shutdown, err)
+				continue
+			} else {
+				// take a break in case reading error
+				time.Sleep(time.Duration(5) * time.Millisecond)
+				// fmt.Println("#run read error: ", err)
+				continue
+			}
+		}
+
+		req := strings.TrimSpace(string(buf[0:n]))
+		if strings.HasPrefix(req, frontend.AprilshMsgOpen) { // 'open aprilsh:'
+			m.startChild(req, addr, *conf)
+		} else if strings.HasPrefix(req, frontend.AprishMsgClose) { // 'close aprilsh:[port]'
+			m.closeChild(req, addr)
+		} else {
+			resp := m.writeRespTo(addr, frontend.AprishMsgClose, "unknow request")
+			util.Logger.Warn("unknow request", "request", req, "response", resp)
+		}
+	}
+}
+
 // to support multiple clients, mainServer listen on the specified port.
 // for security reason, we only listen on localhost port.
 func (m *mainSrv) listen(conf *Config) error {
@@ -422,6 +604,262 @@ func (m *mainSrv) listen(conf *Config) error {
 	}
 
 	return nil
+}
+
+func (m *mainSrv) uxListen() (conn *net.UnixConn, err error) {
+	if err = uxCleanup(); err != nil {
+		return
+	}
+
+	addr, _ := net.ResolveUnixAddr(unixsockNetwork, unixsockAddr)
+	conn, err = net.ListenUnixgram("unixgram", addr)
+	os.Chmod(unixsockAddr, 0666)
+
+	if err != nil {
+		return nil, err
+	}
+	return
+}
+
+// get a message from unix docket and forward it to exChan
+func (m *mainSrv) uxServe(conn *net.UnixConn, timeout int) {
+	// prepare to receive the signal
+	// sig := make(chan os.Signal, 1)
+	// signal.Notify(sig, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
+
+	// clean up
+	defer func() {
+		conn.Close()
+		uxCleanup()
+		// util.Log.Info("uxServe stopped")
+	}()
+
+	// util.Log.Info("uxServe started")
+	var buf [1024]byte
+	shutdown := false
+	for {
+		select {
+		// case ss := <-sig:
+		// 	switch ss {
+		// 	case syscall.SIGHUP: // TODO:reload the config?
+		// 		util.Log.Info("got signal: SIGHUP", "receiver", "uxServe")
+		// 	case syscall.SIGTERM, syscall.SIGINT:
+		// 		util.Log.Info("got signal: SIGTERM or SIGINT", "receiver", "uxServe")
+		// 		shutdown = true
+		// 	}
+		case <-m.uxdownChan:
+			shutdown = true
+		default:
+		}
+
+		if shutdown {
+			return
+		}
+
+		conn.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
+		n, err := conn.Read(buf[:])
+		if err != nil {
+			if errors.Is(err, os.ErrDeadlineExceeded) {
+				continue
+			} else {
+				util.Logger.Warn("uxServe read failed", "error", err)
+				continue
+			}
+		}
+		resp := string(buf[:n])
+
+		util.Logger.Debug("uxServe forward message to exChan", "resp", resp)
+		m.exChan <- resp
+	}
+}
+
+func (m *mainSrv) startChild(req string, addr *net.UDPAddr, conf2 Config) {
+	if len(m.workers) >= maxPortLimit {
+		resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "over max port limit")
+		util.Logger.Warn("over max port limit", "request", req, "response", resp)
+		return
+	}
+	// prepare next port
+	p := m.getAvailabePort()
+
+	// open aprilsh:TERM,user@server.domain
+	// prepare configuration
+	// conf2 := *conf
+	conf2.desiredPort = fmt.Sprintf("%d", p)
+	body := strings.Split(req, ":")
+	content := strings.Split(body[1], ",")
+	if len(content) != 2 {
+		resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "malform request")
+		util.Logger.Warn("malform request", "request", req, "response", resp)
+		return
+	}
+	conf2.term = content[0]
+	conf2.destination = content[1]
+
+	// parse user and host from destination
+	idx := strings.Index(content[1], "@")
+	if idx > 0 && idx < len(content[1])-1 {
+		conf2.host = content[1][idx+1:]
+		conf2.user = content[1][:idx]
+	} else {
+		// return "target parameter should be in the form of User@Server", false
+		resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "malform destination")
+		util.Logger.Warn("malform destination", "destination", content[1], "response", resp)
+
+		return
+	}
+
+	// we don't need to check if user exist, ssh already done that before
+	//start child
+	child, err := startChild(&conf2)
+	if err != nil {
+		if errors.Is(err, syscall.EPERM) {
+			util.Logger.Warn("operation not permitted")
+		} else {
+			util.Logger.Warn("can't start child", "error", err)
+			fmt.Printf("can't start child, error=%#v\n", err)
+		}
+		return
+	}
+	util.Logger.Debug("start child successfully, wait for the key.")
+
+	// waiting for the child process
+	m.wg.Add(1)
+	go func() {
+		ps, err := child.Wait()
+		if err != nil {
+			util.Logger.Warn("start child return", "error", err, "ProcessState", ps)
+		}
+		util.Logger.Debug("child finished", "port", p)
+		m.wg.Done()
+	}()
+	m.workers[p] = &workhorse{child: child}
+
+	// // start the worker
+	// m.wg.Add(1)
+	// go func(conf *Config, exChan chan string, whChan chan workhorse) {
+	// 	m.runWorker(conf, exChan, whChan)
+	// 	m.wg.Done()
+	// }(&conf2, m.exChan, m.whChan)
+
+	// timeout read key from worker
+	timer := time.NewTimer(time.Duration(50) * time.Millisecond)
+	select {
+	case <-timer.C:
+		resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "get key timeout")
+		util.Logger.Warn("run2 got key timeout", "request", req, "response", resp)
+		return
+	case content := <-m.exChan:
+		// response session key and udp port to client
+		key, _ := m.handleMessage(content)
+		util.Logger.Debug("run2 got key", "key", key)
+
+		msg := fmt.Sprintf("%d,%s", p, key)
+		m.writeRespTo(addr, frontend.AprilshMsgOpen, msg)
+	}
+}
+
+func (m *mainSrv) closeChild(req string, addr *net.UDPAddr) {
+	// check port
+	pstr := strings.TrimPrefix(req, frontend.AprishMsgClose)
+	port, err := strconv.Atoi(pstr)
+	if err != nil {
+		resp := m.writeRespTo(addr, frontend.AprishMsgClose, "wrong port number")
+		util.Logger.Warn("wrong port number", "request", req, "response", resp)
+	}
+
+	// find worker
+	if _, ok := m.workers[port]; !ok {
+		resp := m.writeRespTo(addr, frontend.AprishMsgClose, "port does not exist")
+		util.Logger.Warn("port does not exist", "request", req, "response", resp)
+	}
+	// send kill message to the workers
+	m.workers[port].child.Signal(syscall.SIGTERM)
+	m.writeRespTo(addr, frontend.AprishMsgClose, "done")
+}
+
+func (m *mainSrv) handleMessage(content string) (string, error) {
+	msg := strings.Split(content, ":")
+
+	if len(msg) != 2 {
+		return "", fmt.Errorf("malform content: %w", errors.New(content))
+	}
+
+	part2 := strings.Split(msg[1], ",")
+	if len(part2) != 2 {
+		return "", fmt.Errorf("malform content: %w", errors.New(content))
+	}
+	port, err := strconv.Atoi(part2[0])
+	if err != nil {
+		return "", fmt.Errorf("wrong port number: %w", err)
+	}
+	if _, ok := m.workers[port]; !ok {
+		return "", fmt.Errorf("find worker failed: %w", errors.New(msg[1]))
+	}
+
+	switch msg[0] {
+	case _ServeHeader: // stop the specified shell
+		if part2[1] != "shutdown" {
+			return "", fmt.Errorf("malform content: %w", errors.New(content))
+		}
+		shell, err := os.FindProcess(m.workers[port].shellPid)
+		if err != nil {
+			return "", fmt.Errorf("find process failed: %w", err)
+		}
+		if err := shell.Kill(); err != nil {
+			if !errors.Is(err, os.ErrProcessDone) {
+				return "", fmt.Errorf("kill shell failed: %w", err)
+			}
+			// user quit shell actively.
+		}
+		util.Logger.Debug("handleMessage kill shell", "port", port)
+	case _RunHeader: // clean worker list
+		if part2[1] != "shutdown" {
+			return "", fmt.Errorf("malform content: %w", errors.New(content))
+		}
+		delete(m.workers, port)
+		util.Logger.Debug("handleMessage clean worker", "port", port)
+	case _KeyHeader: // return key
+		return part2[1], nil
+	case _ShellHeader: // add shell pid
+		shellPid, err := strconv.Atoi(part2[1])
+		if err != nil {
+			return "", fmt.Errorf("wrong shell pid: %w", err)
+		}
+		m.workers[port].shellPid = shellPid
+		util.Logger.Debug("handleMessage got shell pid", "port", port, "shellPid", shellPid)
+	default:
+		return "", fmt.Errorf("unknown header: %w", errors.New(content))
+	}
+
+	return "", nil
+}
+
+func (m *mainSrv) shutdown() {
+	// util.Log.Info("run2", "shutdown", shutdown)
+	if len(m.workers) != 0 {
+		// stop all workers
+		for i := range m.workers {
+			m.workers[i].child.Signal(syscall.SIGTERM)
+			util.Logger.Debug("stop shell", "port", i)
+		}
+
+		// wait for workers to shutdown
+		for len(m.workers) > 0 {
+			timer := time.NewTimer(time.Duration(100) * time.Millisecond)
+			select {
+			case content := <-m.exChan: // some worker is done
+				m.handleMessage(content)
+			case t := <-timer.C:
+				util.Logger.Warn("run2 waiting for worker timeout", "timeout", t)
+			default:
+			}
+		}
+		util.Logger.Debug("run2 finish clean workers")
+	}
+	// finally, shutdown uxServe
+	m.uxdownChan <- true
+	util.Logger.Debug("run2 stop uxServe")
 }
 
 // two kind of cmd: 60002 or 60002:shutdown.
@@ -499,11 +937,6 @@ func (m *mainSrv) writeRespTo(addr *net.UDPAddr, header, msg string) (resp strin
 	m.conn.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(m.timeout)))
 	m.conn.WriteToUDP([]byte(resp), addr)
 	return
-}
-
-func (m *mainSrv) wait() {
-	m.wg.Wait()
-	util.Logger.Info("quit " + frontend.CommandServerName)
 }
 
 // Print the motd from a given file, if available
@@ -1225,439 +1658,6 @@ mainLoop:
 	return nil
 }
 
-const (
-	unixsockNetwork = "unixgram"
-)
-
-// "/tmp/aprilsh.sock"
-var unixsockAddr string = filepath.Join(os.TempDir(), "aprilsh.sock")
-
-type uxClient struct {
-	connection net.Conn
-}
-
-func newUxClient() (client *uxClient, err error) {
-	client = &uxClient{}
-	client.connection, err = net.Dial(unixsockNetwork, unixsockAddr)
-	return
-}
-
-func (uc *uxClient) send(msg string) (err error) {
-	_, err = uc.connection.Write([]byte(msg))
-	// util.Log.Debug("uxClient send", "message", msg)
-	return
-}
-
-func (uc *uxClient) close() (err error) {
-	return uc.connection.Close()
-}
-
-func uxCleanup() (err error) {
-	if _, err = os.Stat(unixsockAddr); err == nil {
-		if err = os.RemoveAll(unixsockAddr); err != nil {
-			return err
-		}
-	}
-	err = nil // doesn't exist
-	return
-}
-
-func (m *mainSrv) uxListen() (conn *net.UnixConn, err error) {
-	if err = uxCleanup(); err != nil {
-		return
-	}
-
-	addr, _ := net.ResolveUnixAddr(unixsockNetwork, unixsockAddr)
-	conn, err = net.ListenUnixgram("unixgram", addr)
-	os.Chmod(unixsockAddr, 0666)
-
-	if err != nil {
-		return nil, err
-	}
-	return
-}
-
-// get a message from unix docket and forward it to exChan
-func (m *mainSrv) uxServe(conn *net.UnixConn, timeout int) {
-	// prepare to receive the signal
-	// sig := make(chan os.Signal, 1)
-	// signal.Notify(sig, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
-
-	// clean up
-	defer func() {
-		conn.Close()
-		uxCleanup()
-		// util.Log.Info("uxServe stopped")
-	}()
-
-	// util.Log.Info("uxServe started")
-	var buf [1024]byte
-	shutdown := false
-	for {
-		select {
-		// case ss := <-sig:
-		// 	switch ss {
-		// 	case syscall.SIGHUP: // TODO:reload the config?
-		// 		util.Log.Info("got signal: SIGHUP", "receiver", "uxServe")
-		// 	case syscall.SIGTERM, syscall.SIGINT:
-		// 		util.Log.Info("got signal: SIGTERM or SIGINT", "receiver", "uxServe")
-		// 		shutdown = true
-		// 	}
-		case <-m.uxdownChan:
-			shutdown = true
-		default:
-		}
-
-		if shutdown {
-			return
-		}
-
-		conn.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
-		n, err := conn.Read(buf[:])
-		if err != nil {
-			if errors.Is(err, os.ErrDeadlineExceeded) {
-				continue
-			} else {
-				util.Logger.Warn("uxServe read failed", "error", err)
-				continue
-			}
-		}
-		resp := string(buf[:n])
-
-		util.Logger.Debug("uxServe forward message to exChan", "resp", resp)
-		m.exChan <- resp
-	}
-}
-
-// start mainSrv, which listen on the main udp port.
-// each new client send a shake hands message to mainSrv. mainSrv response
-// with the session key and target udp port for the new client.
-// mainSrv is shutdown by SIGTERM and all sessions must be done.
-// otherwise mainSrv will wait for the live session.
-func (m *mainSrv) start2(conf *Config) {
-	// listen the port
-	if err := m.listen(conf); err != nil {
-		util.Logger.Warn("listen failed", "error", err)
-		return
-	}
-
-	uxConn, err := m.uxListen()
-	if err != nil {
-		util.Logger.Warn("listen unix domain socket failed", "error", err)
-		return
-	}
-
-	// start main server waiting for open/close message.
-	m.wg.Add(1)
-	go func() {
-		m.run2(conf)
-		m.wg.Done()
-	}()
-
-	// start unix domain socket (datagram)
-	m.wg.Add(1)
-	go func() {
-		m.uxServe(uxConn, 2)
-		m.wg.Done()
-	}()
-
-	// shutdown if the auto stop flag is set
-	if conf.autoStop > 0 {
-		time.AfterFunc(time.Duration(conf.autoStop)*time.Second, func() {
-			m.downChan <- true
-		})
-	}
-}
-
-/*
-upon receive frontend.AprilshMsgOpen message, run() stat a new worker
-to serve the client, response to the client with choosen port number
-and session key.
-
-sample request  : open aprilsh:TERM,user@server.domain
-
-sample response : open aprilsh:60001,31kR3xgfmNxhDESXQ8VIQw==
-
-upon receive frontend.AprishMsgClose message, run() stop the worker
-specified by port number.
-
-sample request  : close aprilsh:60001
-
-sample response : close aprilsh:done
-
-when shutdown message is received (via SIGTERM or SIGINT), run() will send
-sutdown message to all workers and wait for the workers to finish. when
--auto flag is set, run() will shutdown after specified seconds.
-*/
-func (m *mainSrv) run2(conf *Config) {
-	if m.conn == nil {
-		return
-	}
-	// prepare to receive the signal
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
-
-	// clean up
-	defer func() {
-		signal.Stop(sig)
-		if syslogSupport {
-			syslogWriter.Info(fmt.Sprintf("stop listening on %s.", m.conn.LocalAddr()))
-			util.Logger.Info("stop listening on", "port", m.port)
-		}
-		m.conn.Close()
-	}()
-
-	buf := make([]byte, 128)
-	shutdown := false
-
-	if syslogSupport {
-		syslogWriter.Info(fmt.Sprintf("start listening on %s.", m.conn.LocalAddr()))
-		util.Logger.Info("start listening on", "port", m.port, "gitTag", frontend.GitTag)
-	}
-
-	//TODO remove it?
-	printWelcome(os.Getpid(), m.port, nil)
-	for {
-		select {
-		case msg := <-m.exChan:
-			_, err := m.handleMessage(msg)
-			if err != nil {
-				util.Logger.Warn("child failed", "error", err)
-			}
-		case ss := <-sig:
-			switch ss {
-			case syscall.SIGHUP: // TODO:reload the config?
-				util.Logger.Info("got signal: SIGHUP", "receiver", "run2")
-			case syscall.SIGTERM, syscall.SIGINT:
-				util.Logger.Info("got signal: SIGTERM or SIGINT", "receiver", "run2")
-				shutdown = true
-			}
-		case <-m.downChan: // another way to shutdown besides signal
-			shutdown = true
-		default:
-		}
-
-		if shutdown {
-			m.shutdown()
-			return
-		}
-
-		// set read time out: 200ms
-		m.conn.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(m.timeout)))
-		n, addr, err := m.conn.ReadFromUDP(buf)
-		if err != nil {
-			if errors.Is(err, os.ErrDeadlineExceeded) {
-				// fmt.Printf("#run read time out, workers=%d, shutdown=%t, err=%s\n", len(m.workers), shutdown, err)
-				continue
-			} else {
-				// take a break in case reading error
-				time.Sleep(time.Duration(5) * time.Millisecond)
-				// fmt.Println("#run read error: ", err)
-				continue
-			}
-		}
-
-		req := strings.TrimSpace(string(buf[0:n]))
-		if strings.HasPrefix(req, frontend.AprilshMsgOpen) { // 'open aprilsh:'
-			m.startChild(req, addr, *conf)
-		} else if strings.HasPrefix(req, frontend.AprishMsgClose) { // 'close aprilsh:[port]'
-			m.closeChild(req, addr)
-		} else {
-			resp := m.writeRespTo(addr, frontend.AprishMsgClose, "unknow request")
-			util.Logger.Warn("unknow request", "request", req, "response", resp)
-		}
-	}
-}
-
-func (m *mainSrv) startChild(req string, addr *net.UDPAddr, conf2 Config) {
-	if len(m.workers) >= maxPortLimit {
-		resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "over max port limit")
-		util.Logger.Warn("over max port limit", "request", req, "response", resp)
-		return
-	}
-	// prepare next port
-	p := m.getAvailabePort()
-
-	// open aprilsh:TERM,user@server.domain
-	// prepare configuration
-	// conf2 := *conf
-	conf2.desiredPort = fmt.Sprintf("%d", p)
-	body := strings.Split(req, ":")
-	content := strings.Split(body[1], ",")
-	if len(content) != 2 {
-		resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "malform request")
-		util.Logger.Warn("malform request", "request", req, "response", resp)
-		return
-	}
-	conf2.term = content[0]
-	conf2.destination = content[1]
-
-	// parse user and host from destination
-	idx := strings.Index(content[1], "@")
-	if idx > 0 && idx < len(content[1])-1 {
-		conf2.host = content[1][idx+1:]
-		conf2.user = content[1][:idx]
-	} else {
-		// return "target parameter should be in the form of User@Server", false
-		resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "malform destination")
-		util.Logger.Warn("malform destination", "destination", content[1], "response", resp)
-
-		return
-	}
-
-	// we don't need to check if user exist, ssh already done that before
-	//start child
-	child, err := startChild(&conf2)
-	if err != nil {
-		if errors.Is(err, syscall.EPERM) {
-			util.Logger.Warn("operation not permitted")
-		} else {
-			util.Logger.Warn("can't start child", "error", err)
-			fmt.Printf("can't start child, error=%#v\n", err)
-		}
-		return
-	}
-	util.Logger.Debug("start child successfully, wait for the key.")
-
-	// waiting for the child process
-	m.wg.Add(1)
-	go func() {
-		ps, err := child.Wait()
-		if err != nil {
-			util.Logger.Warn("start child return", "error", err, "ProcessState", ps)
-		}
-		util.Logger.Debug("child finished", "port", p)
-		m.wg.Done()
-	}()
-	m.workers[p] = &workhorse{child: child}
-
-	// // start the worker
-	// m.wg.Add(1)
-	// go func(conf *Config, exChan chan string, whChan chan workhorse) {
-	// 	m.runWorker(conf, exChan, whChan)
-	// 	m.wg.Done()
-	// }(&conf2, m.exChan, m.whChan)
-
-	// timeout read key from worker
-	timer := time.NewTimer(time.Duration(50) * time.Millisecond)
-	select {
-	case <-timer.C:
-		resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "get key timeout")
-		util.Logger.Warn("run2 got key timeout", "request", req, "response", resp)
-		return
-	case content := <-m.exChan:
-		// response session key and udp port to client
-		key, _ := m.handleMessage(content)
-		util.Logger.Debug("run2 got key", "key", key)
-
-		msg := fmt.Sprintf("%d,%s", p, key)
-		m.writeRespTo(addr, frontend.AprilshMsgOpen, msg)
-	}
-}
-
-func (m *mainSrv) closeChild(req string, addr *net.UDPAddr) {
-	// check port
-	pstr := strings.TrimPrefix(req, frontend.AprishMsgClose)
-	port, err := strconv.Atoi(pstr)
-	if err != nil {
-		resp := m.writeRespTo(addr, frontend.AprishMsgClose, "wrong port number")
-		util.Logger.Warn("wrong port number", "request", req, "response", resp)
-	}
-
-	// find worker
-	if _, ok := m.workers[port]; !ok {
-		resp := m.writeRespTo(addr, frontend.AprishMsgClose, "port does not exist")
-		util.Logger.Warn("port does not exist", "request", req, "response", resp)
-	}
-	// send kill message to the workers
-	m.workers[port].child.Signal(syscall.SIGTERM)
-	m.writeRespTo(addr, frontend.AprishMsgClose, "done")
-}
-
-func (m *mainSrv) handleMessage(content string) (string, error) {
-	msg := strings.Split(content, ":")
-
-	if len(msg) != 2 {
-		return "", fmt.Errorf("malform content: %w", errors.New(content))
-	}
-
-	part2 := strings.Split(msg[1], ",")
-	if len(part2) != 2 {
-		return "", fmt.Errorf("malform content: %w", errors.New(content))
-	}
-	port, err := strconv.Atoi(part2[0])
-	if err != nil {
-		return "", fmt.Errorf("wrong port number: %w", err)
-	}
-	if _, ok := m.workers[port]; !ok {
-		return "", fmt.Errorf("find worker failed: %w", errors.New(msg[1]))
-	}
-
-	switch msg[0] {
-	case _ServeHeader: // stop the specified shell
-		if part2[1] != "shutdown" {
-			return "", fmt.Errorf("malform content: %w", errors.New(content))
-		}
-		shell, err := os.FindProcess(m.workers[port].shellPid)
-		if err != nil {
-			return "", fmt.Errorf("find process failed: %w", err)
-		}
-		if err := shell.Kill(); err != nil {
-			if !errors.Is(err, os.ErrProcessDone) {
-				return "", fmt.Errorf("kill shell failed: %w", err)
-			}
-			// user quit shell actively.
-		}
-		util.Logger.Debug("handleMessage kill shell", "port", port)
-	case _RunHeader: // clean worker list
-		if part2[1] != "shutdown" {
-			return "", fmt.Errorf("malform content: %w", errors.New(content))
-		}
-		delete(m.workers, port)
-		util.Logger.Debug("handleMessage clean worker", "port", port)
-	case _KeyHeader: // return key
-		return part2[1], nil
-	case _ShellHeader: // add shell pid
-		shellPid, err := strconv.Atoi(part2[1])
-		if err != nil {
-			return "", fmt.Errorf("wrong shell pid: %w", err)
-		}
-		m.workers[port].shellPid = shellPid
-		util.Logger.Debug("handleMessage got shell pid", "port", port, "shellPid", shellPid)
-	default:
-		return "", fmt.Errorf("unknown header: %w", errors.New(content))
-	}
-
-	return "", nil
-}
-
-func (m *mainSrv) shutdown() {
-	// util.Log.Info("run2", "shutdown", shutdown)
-	if len(m.workers) != 0 {
-		// stop all workers
-		for i := range m.workers {
-			m.workers[i].child.Signal(syscall.SIGTERM)
-			util.Logger.Debug("stop shell", "port", i)
-		}
-
-		// wait for workers to shutdown
-		for len(m.workers) > 0 {
-			timer := time.NewTimer(time.Duration(100) * time.Millisecond)
-			select {
-			case content := <-m.exChan: // some worker is done
-				m.handleMessage(content)
-			case t := <-timer.C:
-				util.Logger.Warn("run2 waiting for worker timeout", "timeout", t)
-			default:
-			}
-		}
-		util.Logger.Debug("run2 finish clean workers")
-	}
-	// finally, shutdown uxServe
-	m.uxdownChan <- true
-	util.Logger.Debug("run2 stop uxServe")
-}
-
 func startChild(conf *Config) (*os.Process, error) {
 	// conf{term,user,desiredPort,destination}
 
@@ -2103,6 +2103,6 @@ func main() {
 
 	// start mainSrv
 	srv := newMainSrv(conf)
-	srv.start2(conf)
+	srv.start(conf)
 	srv.wait()
 }
