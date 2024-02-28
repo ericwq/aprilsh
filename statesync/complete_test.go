@@ -44,7 +44,7 @@ func TestCompleteApplyString(t *testing.T) {
 		{"fill one row and set ack", "\x1B[7;7H左边\x1B[7;77H中文", 0, 0, 3},
 	}
 
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	for _, v := range tc {
 		c0, _ := NewComplete(80, 40, 40)
@@ -258,7 +258,7 @@ func TestDiffFrom(t *testing.T) {
 			[]string{"x1\r\nx2\r\nx3\r\nx4\r\n"}, ""},
 	}
 
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 	// util.Log.SetLevel(slog.LevelDebug)
 	// util.Log.SetOutput(os.Stderr)
 

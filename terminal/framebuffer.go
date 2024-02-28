@@ -671,10 +671,10 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 		if trace {
 			msg := fmt.Sprintf("nCols=(%d,%d), nRows=(%d,%d), saveLines=(%d,%d)",
 				fb.nCols, x.nCols, fb.nRows, x.nRows, fb.saveLines, x.saveLines)
-			util.Log.Warn(msg)
+			util.Logger.Warn(msg)
 			msg = fmt.Sprintf("marginTop=(%d,%d), marginBottom=(%d,%d), cells length=(%d,%d)",
 				fb.marginTop, x.marginTop, fb.marginBottom, x.marginBottom, len(fb.cells), len(x.cells))
-			util.Log.Warn(msg)
+			util.Logger.Warn(msg)
 			ret = false
 		} else {
 			return false
@@ -686,7 +686,7 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 		if trace {
 			msg := fmt.Sprintf("scrollHead=(%d,%d), historyRows=(%d,%d), viewOffset=(%d,%d)",
 				fb.scrollHead, x.scrollHead, fb.historyRows, x.historyRows, fb.viewOffset, x.viewOffset)
-			util.Log.Warn(msg)
+			util.Logger.Warn(msg)
 			ret = false
 		} else {
 			return false
@@ -697,7 +697,7 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 		if trace {
 			msg := fmt.Sprintf("cursor.color=(%d,%d), cursor.showStyle=(%d,%d)",
 				fb.cursor.color, x.cursor.color, fb.cursor.showStyle, x.cursor.showStyle)
-			util.Log.Warn(msg)
+			util.Logger.Warn(msg)
 			ret = false
 		} else {
 			return false
@@ -708,7 +708,7 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 		if trace {
 			msg := fmt.Sprintf("selection=(%v,%v), snapTo=(%v,%v), damage=(%v,%v)",
 				fb.selection, x.selection, fb.snapTo, x.snapTo, fb.damage, x.damage)
-			util.Log.Warn(msg)
+			util.Logger.Warn(msg)
 			ret = false
 		} else {
 			return false
@@ -727,8 +727,8 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 			oldR := x.cells[dstStartIdx:dstEndIdx]
 			if !equalRow(newR, oldR) {
 				if trace {
-					util.Log.Trace("equal", "newRow", outputRow(newR, pY, fb.nCols))
-					util.Log.Trace("equal", "oldRow", outputRow(oldR, pY, x.nCols))
+					util.Logger.Trace("equal", "newRow", outputRow(newR, pY, fb.nCols))
+					util.Logger.Trace("equal", "oldRow", outputRow(oldR, pY, x.nCols))
 				}
 				ret = false
 				break
@@ -739,8 +739,8 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 			if fb.cells[i] != x.cells[i] {
 				if trace {
 					row := i / fb.nCols
-					util.Log.Trace("equal", "newRow", printRow(fb.cells, row, fb.nCols))
-					util.Log.Trace("equal", "oldRow", printRow(x.cells, row, x.nCols))
+					util.Logger.Trace("equal", "newRow", printRow(fb.cells, row, fb.nCols))
+					util.Logger.Trace("equal", "oldRow", printRow(x.cells, row, x.nCols))
 					ret = false
 					// break
 					i += fb.nCols - 1

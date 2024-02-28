@@ -254,8 +254,8 @@ func captureOutputRun(f func()) []byte {
 	os.Stderr = w
 	os.Stdout = w
 
-	util.Log.SetOutput(w)
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(w)
+	util.Logger.SetLevel(slog.LevelDebug)
 
 	// os.Args is a "global variable", so keep the state from before the test, and restore it after.
 	oldArgs := os.Args
@@ -371,7 +371,7 @@ func TestMainRun(t *testing.T) {
 		if strings.Contains(v.label, "by signal") {
 			// shutdown after 15ms
 			time.AfterFunc(time.Duration(15)*time.Millisecond, func() {
-				util.Log.Debug("#test kill process by signal")
+				util.Logger.Debug("#test kill process by signal")
 				syscall.Kill(os.Getpid(), syscall.SIGTERM)
 				// syscall.Kill(os.Getpid(), syscall.SIGHUP)
 			})
@@ -855,8 +855,8 @@ func TestMainSrvStart(t *testing.T) {
 
 			// init log
 
-			util.Log.SetLevel(slog.LevelDebug)
-			util.Log.SetOutput(io.Discard)
+			util.Logger.SetLevel(slog.LevelDebug)
+			util.Logger.SetOutput(io.Discard)
 			// util.Log.SetOutput(os.Stderr)
 
 			// v.conf.serve = mockServe
@@ -919,8 +919,8 @@ func TestStartFail(t *testing.T) {
 			var b strings.Builder
 			// logW.SetOutput(&b)
 
-			util.Log.SetOutput(&b)
-			util.Log.SetLevel(slog.LevelDebug)
+			util.Logger.SetOutput(&b)
+			util.Logger.SetLevel(slog.LevelDebug)
 
 			m := newMainSrv(&v.conf, mockRunWorker)
 
@@ -1077,8 +1077,8 @@ func TestPrintWelcome(t *testing.T) {
 		os.Stdout = w
 		// initLog()
 
-		util.Log.SetLevel(slog.LevelDebug)
-		util.Log.SetOutput(w)
+		util.Logger.SetLevel(slog.LevelDebug)
+		util.Logger.SetOutput(w)
 
 		printWelcome(os.Getpid(), 6000, v.tty)
 
@@ -1161,8 +1161,8 @@ func TestRunFail(t *testing.T) {
 			os.Stdout = w
 			// initLog()
 
-			util.Log.SetLevel(slog.LevelDebug)
-			util.Log.SetOutput(w)
+			util.Logger.SetLevel(slog.LevelDebug)
+			util.Logger.SetOutput(w)
 
 			srv := newMainSrv(&v.conf, mockRunWorker2)
 
@@ -1232,8 +1232,8 @@ func TestRunFail2(t *testing.T) {
 			os.Stdout = w
 			// initLog()
 
-			util.Log.SetLevel(slog.LevelDebug)
-			util.Log.SetOutput(w)
+			util.Logger.SetLevel(slog.LevelDebug)
+			util.Logger.SetOutput(w)
 
 			srv := newMainSrv(&v.conf, mockRunWorker)
 
@@ -1285,9 +1285,9 @@ func TestMaxPortLimit(t *testing.T) {
 		t.Run(v.label, func(t *testing.T) {
 			// intercept stdout
 
-			util.Log.SetLevel(slog.LevelDebug)
+			util.Logger.SetLevel(slog.LevelDebug)
 			// util.Log.SetOutput(os.Stderr)
-			util.Log.SetOutput(io.Discard)
+			util.Logger.SetOutput(io.Discard)
 
 			// init mainSrv and workers
 			m := newMainSrv(&v.conf, runWorker)
@@ -1342,9 +1342,9 @@ func TestMalformRequest(t *testing.T) {
 	for _, v := range tc {
 		// intercept stdout
 
-		util.Log.SetLevel(slog.LevelDebug)
+		util.Logger.SetLevel(slog.LevelDebug)
 		// util.Log.SetOutput(os.Stderr)
-		util.Log.SetOutput(io.Discard)
+		util.Logger.SetOutput(io.Discard)
 
 		// init mainSrv and workers
 		m := newMainSrv(&v.conf, runWorker)
@@ -1427,8 +1427,8 @@ func TestRunWorkerKillSignal(t *testing.T) {
 			r, w, _ := os.Pipe()
 			os.Stdout = w
 
-			util.Log.SetLevel(slog.LevelDebug)
-			util.Log.SetOutput(w)
+			util.Logger.SetLevel(slog.LevelDebug)
+			util.Logger.SetOutput(w)
 
 			// set serve func and runWorker func
 			v.conf.serve = mockServe
@@ -1500,9 +1500,9 @@ func TestRunWorkerFail(t *testing.T) {
 
 			// intercept log output
 
-			util.Log.SetLevel(slog.LevelDebug)
+			util.Logger.SetLevel(slog.LevelDebug)
 			// util.Log.SetOutput(os.Stdout)
-			util.Log.SetOutput(io.Discard)
+			util.Logger.SetOutput(io.Discard)
 
 			var wg sync.WaitGroup
 			var hasWorkhorse bool
@@ -1611,8 +1611,8 @@ func TestRunCloseFail(t *testing.T) {
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 
-			util.Log.SetLevel(slog.LevelDebug)
-			util.Log.SetOutput(io.Discard)
+			util.Logger.SetLevel(slog.LevelDebug)
+			util.Logger.SetOutput(io.Discard)
 			// util.Log.SetOutput(os.Stdout)
 
 			// set serve func and runWorker func
@@ -1688,13 +1688,13 @@ func TestRunWith2Clients(t *testing.T) {
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 
-			util.Log.SetLevel(slog.LevelDebug)
-			util.Log.SetOutput(os.Stdout)
+			util.Logger.SetLevel(slog.LevelDebug)
+			util.Logger.SetOutput(os.Stdout)
 
 			// intercept stdout
 
-			util.Log.SetLevel(slog.LevelDebug)
-			util.Log.SetOutput(io.Discard)
+			util.Logger.SetLevel(slog.LevelDebug)
+			util.Logger.SetOutput(io.Discard)
 
 			// set serve func and runWorker func
 			v.conf.serve = mockServe
@@ -1766,7 +1766,7 @@ func TestStartShellFail(t *testing.T) {
 		}, // term is empty, withMotd is true, startShell should failed.
 	}
 
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 	// util.Log.SetOutput(os.Stdout)
 	// util.Log.SetLevel(slog.LevelDebug)
 
@@ -1788,7 +1788,7 @@ func TestStartShellFail(t *testing.T) {
 				go func() {
 					time.Sleep(2 * time.Millisecond)
 					pw.Close()
-					util.Log.Debug("start shell message", "action", "send")
+					util.Logger.Debug("start shell message", "action", "send")
 				}()
 			}
 
@@ -1860,8 +1860,8 @@ func TestGetCurrentUser(t *testing.T) {
 	var b strings.Builder
 	// logW.SetOutput(&b)
 
-	util.Log.SetOutput(&b)
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(&b)
+	util.Logger.SetLevel(slog.LevelDebug)
 
 	userCurrentTest = true
 	got = getCurrentUser()
@@ -1920,7 +1920,7 @@ func TestGetAvailablePort(t *testing.T) {
 		t.Run(v.label, func(t *testing.T) {
 			// intercept log output
 
-			util.Log.SetOutput(io.Discard)
+			util.Logger.SetOutput(io.Discard)
 			// util.Log.SetOutput(os.Stdout)
 
 			srv := newMainSrv(conf, mockRunWorker)

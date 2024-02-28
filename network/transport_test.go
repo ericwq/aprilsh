@@ -42,7 +42,7 @@ func TestTransportClientSend(t *testing.T) {
 	// disable log
 	// server.connection.logW.SetOutput(io.Discard)
 
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	// send user stream to server
 	client.Tick()
@@ -111,7 +111,7 @@ func TestTransportServerSend(t *testing.T) {
 	// server.connection.logW.SetOutput(io.Discard)
 	// client.connection.logW.SetOutput(io.Discard)
 
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	// send user stream to server
 	client.Tick()
@@ -203,8 +203,7 @@ func TestTransportRecvVersionError(t *testing.T) {
 	port := "6002"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
-
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	// send customized instruction to server
 	var newNum uint64 = 1
@@ -246,8 +245,7 @@ func TestTransportRecvRepeat(t *testing.T) {
 	port := "6003"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
-
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	// first round
 	pushUserBytesTo(client.GetCurrentState(), "first regular send")
@@ -289,8 +287,7 @@ func TestTransportRecvNotFoundOld(t *testing.T) {
 	port := "6004"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
-
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	// send customized instruction to server
 	var newNum uint64 = 1
@@ -342,7 +339,7 @@ func TestTransportRecvOverLimit(t *testing.T) {
 	// disable log
 	// server.connection.logW.SetOutput(io.Discard)
 
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	// prepare the receivedState list
 	for i := 0; i < 1024; i++ {
@@ -401,7 +398,7 @@ func TestTransportRecvOverLimit2(t *testing.T) {
 	// disable log
 	// server.connection.logW.SetOutput(io.Discard)
 
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	// prepare the receivedState list
 	for i := 0; i < 1024; i++ {
@@ -462,7 +459,7 @@ func TestTransportRecvOutOfOrder(t *testing.T) {
 	// disable log
 	// server.connection.logW.SetOutput(io.Discard)
 
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	// prepare the receivedState list
 	server.receivedState = append(server.receivedState,
@@ -531,7 +528,7 @@ func TestClientShutdown(t *testing.T) {
 
 	// disable log
 
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 	// server.connection.logW.SetOutput(io.Discard)
 	// client.connection.logW.SetOutput(io.Discard)
 
@@ -742,10 +739,9 @@ func TestAwaken(t *testing.T) {
 			[]int64{270993, 273994}, 340981, false},
 	}
 
-
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetLevel(slog.LevelDebug)
 	// util.Log.SetOutput(os.Stdout)
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
@@ -793,9 +789,8 @@ func TestGetServerPort(t *testing.T) {
 
 func TestGetSentStateLastTimestamp(t *testing.T) {
 
-
-	util.Log.SetLevel(slog.LevelDebug)
-	util.Log.SetOutput(os.Stdout)
+	util.Logger.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(os.Stdout)
 	// util.Log.SetOutput(io.Discard)
 
 	completeTerminal, _ := statesync.NewComplete(80, 5, 0)

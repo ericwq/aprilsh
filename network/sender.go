@@ -118,7 +118,7 @@ func (ts *TransportSender[T]) attemptProspectiveResendOptimization(proposedDiff 
 	if rLen <= pLen || (rLen < 1000 && rLen-pLen < 100) {
 		ts.assumedReceiverState = &ts.sentStates[0]
 		proposedDiff = resendDiff
-		util.Log.Debug("attemptProspectiveResendOptimization", "proposedDiff", proposedDiff)
+		util.Logger.Debug("attemptProspectiveResendOptimization", "proposedDiff", proposedDiff)
 	}
 
 	return proposedDiff
@@ -232,12 +232,12 @@ func (ts *TransportSender[T]) sendFragments(inst *pb.Instruction, newNum uint64)
 	fragments := ts.fragmenter.makeFragments(inst, ts.connection.getMTU()-ADDED_BYTES-encrypt.ADDED_BYTES-90)
 	for i := range fragments {
 		if ts.verbose > 0 {
-			util.Log.Trace("send message",
+			util.Logger.Trace("send message",
 				"NewNum", inst.NewNum,
 				"OldNum", inst.OldNum,
 				"AckNum", inst.AckNum,
 				"ThrowawayNum", inst.ThrowawayNum)
-			util.Log.Trace("send message",
+			util.Logger.Trace("send message",
 				"sentStates", ts.getSentStateList(),
 				"diffLength", len(inst.Diff),
 				"SRTT", ts.connection.getSRTT())
@@ -392,7 +392,7 @@ func (ts *TransportSender[T]) tick() error {
 		// util.Log.Debug("tick","point", 420)
 		if !ts.currentState.Equal(newState) {
 			ts.currentState.EqualTrace(newState) // TODO remove this if integration test is finished
-			util.Log.Warn("#tick Warning, round-trip Instruction verification failed!")
+			util.Logger.Warn("#tick Warning, round-trip Instruction verification failed!")
 		}
 
 		// Also verify that both the original frame and generated frame have the same initial diff.
@@ -401,9 +401,9 @@ func (ts *TransportSender[T]) tick() error {
 		// util.Log.Debug("tick","point", 600)
 		newDiff := newState.InitDiff()
 		if currentDiff != newDiff {
-			util.Log.Warn("tick", "currentDiff", currentDiff)
-			util.Log.Warn("tick", "newDiff", newDiff)
-			util.Log.Warn("#tick Warning, target state Instruction verification failed!")
+			util.Logger.Warn("tick", "currentDiff", currentDiff)
+			util.Logger.Warn("tick", "newDiff", newDiff)
+			util.Logger.Warn("#tick Warning, target state Instruction verification failed!")
 		}
 		// util.Log.Debug("tick","point", 700)
 	}

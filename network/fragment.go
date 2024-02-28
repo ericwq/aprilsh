@@ -180,13 +180,13 @@ func (f *FragmentAssembly) getAssembly() *pb.Instruction {
 	ret := pb.Instruction{}
 	b, err := GetCompressor().Uncompress([]byte(encoded.String()))
 	if err != nil {
-		util.Log.Warn("#getAssembly uncompress", "error", err)
+		util.Logger.Warn("#getAssembly uncompress", "error", err)
 		return nil
 	}
 
 	err = proto.Unmarshal(b, &ret)
 	if err != nil {
-		util.Log.Warn("#getAssembly unmarshal", "error", err)
+		util.Logger.Warn("#getAssembly unmarshal", "error", err)
 		return nil
 	}
 

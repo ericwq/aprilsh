@@ -7,6 +7,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -502,7 +503,7 @@ func (m *mainSrv) writeRespTo(addr *net.UDPAddr, header, msg string) (resp strin
 
 func (m *mainSrv) wait() {
 	m.wg.Wait()
-	util.Log.Info("quit " + frontend.CommandServerName)
+	util.Logger.Info("quit " + frontend.CommandServerName)
 }
 
 // Print the motd from a given file, if available
@@ -637,7 +638,7 @@ func printWelcome(pid int, port int, tty *os.File) {
 		inputUTF8, err := util.CheckIUTF8(int(tty.Fd()))
 		if err != nil {
 			// fmt.Printf("Warning: %s\n", err)
-			util.Log.Warn(err.Error())
+			util.Logger.Warn(err.Error())
 		}
 
 		if !inputUTF8 {
@@ -649,7 +650,7 @@ func printWelcome(pid int, port int, tty *os.File) {
 			msg := fmt.Sprintf("%s %s %s", "Warning: termios IUTF8 flag not defined.",
 				"Character-erase of multibyte character sequence",
 				"probably does not work properly on this platform.")
-			util.Log.Warn(msg)
+			util.Logger.Warn(msg)
 		}
 	}
 }
@@ -659,7 +660,7 @@ func getCurrentUser() string {
 	user, err := user.Current()
 	if err != nil || userCurrentTest {
 		// logW.Printf("#getCurrentUser report: %s\n", err)
-		util.Log.Warn("Get current user", "error", err)
+		util.Logger.Warn("Get current user", "error", err)
 		return ""
 	}
 
@@ -757,9 +758,9 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 	// ask ncurses to send UTF-8 instead of ISO 2022 for line-drawing chars
 	env = append(env, "NCURSES_NO_UTF8_ACS=1")
 
-	util.Log.Debug("start shell check user", "user", u.Username, "gid", u.Gid, "HOME", u.HomeDir)
-	util.Log.Debug("start shell check env", "env", env)
-	util.Log.Debug("start shell check command",
+	util.Logger.Debug("start shell check user", "user", u.Username, "gid", u.Gid, "HOME", u.HomeDir)
+	util.Logger.Debug("start shell check env", "env", env)
+	util.Logger.Debug("start shell check command",
 		"commandPath", conf.commandPath, "commandArgv", conf.commandArgv)
 
 	sysProcAttr := &syscall.SysProcAttr{}
@@ -836,7 +837,7 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 		timer.Stop()
 
 		pr.Close()
-		util.Log.Info("start shell with pty", "pty", pts.Name())
+		util.Logger.Info("start shell with pty", "pty", pts.Name())
 	}
 
 	proc, err := os.StartProcess(conf.commandPath, conf.commandArgv, &procAttr)
@@ -859,7 +860,7 @@ func serve(ptmx *os.File, pts *os.File, pw *io.PipeWriter, complete *statesync.C
 	var savedAddr net.Addr
 
 	if syslogSupport {
-		util.Log.Info("user session begin", "user", user)
+		util.Logger.Info("user session begin", "user", user)
 		syslogWriter.Info(fmt.Sprintf("user %s session begin -> port %s", user, server.GetServerPort()))
 	}
 
@@ -929,19 +930,19 @@ mainLoop:
 		timeSinceRemoteState = now - p.GetTimestamp()
 		terminalToHost.Reset()
 
-		util.Log.Debug("mainLoop", "port", server.GetServerPort(),
+		util.Logger.Log(context.Background(), util.LevelTrace, "mainLoop", "port", server.GetServerPort(),
 			"network.WaitTime", w0, "complete.WaitTime", w1, "timeout", timeout)
 		timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
 		select {
 		case <-timer.C:
-			util.Log.Debug("mainLoop", "complete", complete.WaitTime(now),
-				"networkSleep", networkSleep, "timeout", timeout)
+			util.Logger.Log(context.Background(), util.LevelTrace, "mainLoop", "timeout", timeout,
+				"complete", complete.WaitTime(now), "networkSleep", networkSleep)
 		case s := <-sigChan:
 			signals.Handler(s)
 		case socketMsg := <-networkChan: // packet received from the network
 			if socketMsg.Err != nil {
 				// TODO handle "use of closed network connection" error?
-				util.Log.Warn("read from network", "error", socketMsg.Err)
+				util.Logger.Warn("read from network", "error", socketMsg.Err)
 				continue mainLoop
 			}
 			server.ProcessPayload(socketMsg.Data)
@@ -987,7 +988,7 @@ mainLoop:
 				}
 
 				if terminalToHost.Len() > 0 {
-					util.Log.Debug("input from remote", "arise", "socket", "data", terminalToHost.String())
+					util.Logger.Debug("input from remote", "arise", "socket", "data", terminalToHost.String())
 				}
 
 				if !us.Empty() {
@@ -1031,7 +1032,7 @@ mainLoop:
 							connectedUtmp = true
 						}
 						if syslogSupport {
-							util.Log.Info("connected from remote host", "user", user, "host", host)
+							util.Logger.Info("connected from remote host", "user", user, "host", host)
 							syslogWriter.Info(fmt.Sprintf("user %s connected from host: %s -> port %s",
 								user, server.GetRemoteAddr(), server.GetServerPort()))
 						}
@@ -1042,7 +1043,7 @@ mainLoop:
 				// release startShell() to start login session
 				if !childReleased {
 					if err := pw.Close(); err != nil {
-						util.Log.Error("send start shell message failed", "error", err)
+						util.Logger.Error("send start shell message failed", "error", err)
 					}
 					// util.Log.Debug("start shell message", "action", "send")
 					childReleased = true
@@ -1053,7 +1054,7 @@ mainLoop:
 				out := complete.ActLarge(remains, largeFeed)
 				terminalToHost.WriteString(out)
 
-				util.Log.Debug("ouput from host", "arise", "remains", "input", out)
+				util.Logger.Debug("ouput from host", "arise", "remains", "input", out)
 
 				// update client with new state of terminal
 				server.SetCurrentState(complete)
@@ -1066,10 +1067,10 @@ mainLoop:
 				// EIO (see #264).  So we treat errors on read() like EOF.
 				if masterMsg.Err != nil {
 					if len(masterMsg.Data) > 0 {
-						util.Log.Warn("read from master", "error", masterMsg.Err)
+						util.Logger.Warn("read from master", "error", masterMsg.Err)
 					}
 					if !signals.AnySignal() { // avoid conflict with signal
-						util.Log.Debug("shutdown", "from", "read file failed", "port", server.GetServerPort())
+						util.Logger.Debug("shutdown", "from", "read file failed", "port", server.GetServerPort())
 						// &fs.PathError{Op:"read", Path:"/dev/ptmx", Err:0x5}
 						server.StartShutdown()
 					}
@@ -1077,7 +1078,7 @@ mainLoop:
 					out := complete.ActLarge(masterMsg.Data, largeFeed)
 					terminalToHost.WriteString(out)
 
-					util.Log.Debug("output from host", "arise", "master", "ouput", masterMsg.Data, "input", out)
+					util.Logger.Debug("output from host", "arise", "master", "ouput", masterMsg.Data, "input", out)
 
 					// update client with new state of terminal
 					server.SetCurrentState(complete)
@@ -1092,7 +1093,7 @@ mainLoop:
 				server.StartShutdown()
 			}
 
-			util.Log.Debug("input to host", "arise", "merge-", "data", terminalToHost.String())
+			util.Logger.Debug("input to host", "arise", "merge-", "data", terminalToHost.String())
 		}
 
 		idleShutdown := false
@@ -1100,29 +1101,29 @@ mainLoop:
 			// if network timeout is set and over networkTimeoutMs quit this session.
 			idleShutdown = true
 			// fmt.Printf("Network idle for %d seconds.\n", timeSinceRemoteState/1000)
-			util.Log.Info("Network idle for x seconds", "seconds", timeSinceRemoteState/1000)
+			util.Logger.Info("Network idle for x seconds", "seconds", timeSinceRemoteState/1000)
 		}
 
 		if signals.GotSignal(syscall.SIGUSR1) {
 			if networkSignaledTimeoutMs == 0 || networkSignaledTimeoutMs <= timeSinceRemoteState {
 				idleShutdown = true
 				// fmt.Printf("Network idle for %d seconds when SIGUSR1 received.\n", timeSinceRemoteState/1000)
-				util.Log.Info("Network idle for x seconds when SIGUSR1 received", "seconds",
+				util.Logger.Info("Network idle for x seconds when SIGUSR1 received", "seconds",
 					timeSinceRemoteState/1000)
 			}
 		}
 
 		if signals.AnySignal() || idleShutdown {
-			util.Log.Debug("got signal: start shutdown",
+			util.Logger.Debug("got signal: start shutdown",
 				"HasRemoteAddr", server.HasRemoteAddr(),
 				"ShutdownInProgress", server.ShutdownInProgress())
 			signals.Clear()
 			// shutdown signal
 			if server.HasRemoteAddr() && !server.ShutdownInProgress() {
 				server.StartShutdown()
-				util.Log.Debug("serve start shutdown")
+				util.Logger.Debug("serve start shutdown")
 			} else {
-				util.Log.Debug("got signal: break loop",
+				util.Logger.Debug("got signal: break loop",
 					"HasRemoteAddr", server.HasRemoteAddr(),
 					"ShutdownInProgress", server.ShutdownInProgress())
 				break
@@ -1131,19 +1132,19 @@ mainLoop:
 
 		// quit if our shutdown has been acknowledged
 		if server.ShutdownInProgress() && server.ShutdownAcknowledged() {
-			util.Log.Debug("shutdown", "from", "acked", "port", server.GetServerPort())
+			util.Logger.Debug("shutdown", "from", "acked", "port", server.GetServerPort())
 			break
 		}
 
 		// quit after shutdown acknowledgement timeout
 		if server.ShutdownInProgress() && server.ShutdownAckTimedout() {
-			util.Log.Warn("shutdown", "from", "act timeout", "port", server.GetServerPort())
+			util.Logger.Warn("shutdown", "from", "act timeout", "port", server.GetServerPort())
 			break
 		}
 
 		// quit if we received and acknowledged a shutdown request
 		if server.CounterpartyShutdownAckSent() {
-			util.Log.Warn("shutdown", "from", "peer acked", "port", server.GetServerPort())
+			util.Logger.Warn("shutdown", "from", "peer acked", "port", server.GetServerPort())
 			break
 		}
 
@@ -1166,7 +1167,7 @@ mainLoop:
 		// util.Log.Debug("mainLoop","point", 500)
 		err := server.Tick()
 		if err != nil {
-			util.Log.Warn("#serve send failed", "error", err)
+			util.Logger.Warn("#serve send failed", "error", err)
 		}
 		// util.Log.Debug("mainLoop","point", "d")
 
@@ -1174,7 +1175,7 @@ mainLoop:
 		if server.GetRemoteStateNum() == 0 && server.ShutdownInProgress() {
 			// abort if no connection over TimeoutIfNoConnect seconds
 
-			util.Log.Warn("No connection within x seconds", "seconds", frontend.TimeoutIfNoConnect/1000,
+			util.Logger.Warn("No connection within x seconds", "seconds", frontend.TimeoutIfNoConnect/1000,
 				"timeout", "shutdown", "port", server.GetServerPort())
 			break
 		} else if server.GetRemoteStateNum() != 0 && timeSinceRemoteState >= frontend.TimeoutIfNoResp {
@@ -1182,7 +1183,7 @@ mainLoop:
 			// if now-server.GetSentStateLastTimestamp() >= frontend.TimeoutIfNoResp-network.SERVER_ASSOCIATION_TIMEOUT {
 			if !server.Awaken(now) {
 				// abort if no request send over TimeoutIfNoResp seconds
-				util.Log.Warn("Time out for no client request", "seconds", frontend.TimeoutIfNoResp/1000,
+				util.Logger.Warn("Time out for no client request", "seconds", frontend.TimeoutIfNoResp/1000,
 					"port", server.GetServerPort(), "timeSinceRemoteState", timeSinceRemoteState)
 				break
 			}
@@ -1216,7 +1217,7 @@ mainLoop:
 	eg.Wait()
 
 	if syslogSupport {
-		util.Log.Info("user session end", "user", user)
+		util.Logger.Info("user session end", "user", user)
 		syslogWriter.Info(fmt.Sprintf("user %s session end %s -> port %s",
 			user, server.GetRemoteAddr(), server.GetServerPort()))
 	}
@@ -1317,13 +1318,13 @@ func (m *mainSrv) uxServe(conn *net.UnixConn, timeout int) {
 			if errors.Is(err, os.ErrDeadlineExceeded) {
 				continue
 			} else {
-				util.Log.Warn("uxServe read failed", "error", err)
+				util.Logger.Warn("uxServe read failed", "error", err)
 				continue
 			}
 		}
 		resp := string(buf[:n])
 
-		util.Log.Debug("uxServe forward message to exChan", "resp", resp)
+		util.Logger.Debug("uxServe forward message to exChan", "resp", resp)
 		m.exChan <- resp
 	}
 }
@@ -1336,13 +1337,13 @@ func (m *mainSrv) uxServe(conn *net.UnixConn, timeout int) {
 func (m *mainSrv) start2(conf *Config) {
 	// listen the port
 	if err := m.listen(conf); err != nil {
-		util.Log.Warn("listen failed", "error", err)
+		util.Logger.Warn("listen failed", "error", err)
 		return
 	}
 
 	uxConn, err := m.uxListen()
 	if err != nil {
-		util.Log.Warn("listen unix domain socket failed", "error", err)
+		util.Logger.Warn("listen unix domain socket failed", "error", err)
 		return
 	}
 
@@ -1401,7 +1402,7 @@ func (m *mainSrv) run2(conf *Config) {
 		signal.Stop(sig)
 		if syslogSupport {
 			syslogWriter.Info(fmt.Sprintf("stop listening on %s.", m.conn.LocalAddr()))
-			util.Log.Info("stop listening on", "port", m.port)
+			util.Logger.Info("stop listening on", "port", m.port)
 		}
 		m.conn.Close()
 	}()
@@ -1411,7 +1412,7 @@ func (m *mainSrv) run2(conf *Config) {
 
 	if syslogSupport {
 		syslogWriter.Info(fmt.Sprintf("start listening on %s.", m.conn.LocalAddr()))
-		util.Log.Info("start listening on", "port", m.port, "gitTag", frontend.GitTag)
+		util.Logger.Info("start listening on", "port", m.port, "gitTag", frontend.GitTag)
 	}
 
 	//TODO remove it?
@@ -1421,14 +1422,14 @@ func (m *mainSrv) run2(conf *Config) {
 		case msg := <-m.exChan:
 			_, err := m.handleMessage(msg)
 			if err != nil {
-				util.Log.Warn("child failed", "error", err)
+				util.Logger.Warn("child failed", "error", err)
 			}
 		case ss := <-sig:
 			switch ss {
 			case syscall.SIGHUP: // TODO:reload the config?
-				util.Log.Info("got signal: SIGHUP", "receiver", "run2")
+				util.Logger.Info("got signal: SIGHUP", "receiver", "run2")
 			case syscall.SIGTERM, syscall.SIGINT:
-				util.Log.Info("got signal: SIGTERM or SIGINT", "receiver", "run2")
+				util.Logger.Info("got signal: SIGTERM or SIGINT", "receiver", "run2")
 				shutdown = true
 			}
 		case <-m.downChan:
@@ -1443,7 +1444,7 @@ func (m *mainSrv) run2(conf *Config) {
 				// stop all the the workers
 				for i := range m.workers {
 					m.workers[i].child.Signal(syscall.SIGTERM)
-					util.Log.Debug("stop shell", "port", i)
+					util.Logger.Debug("stop shell", "port", i)
 				}
 
 				// wait for workers to shutdown
@@ -1453,15 +1454,15 @@ func (m *mainSrv) run2(conf *Config) {
 					case content := <-m.exChan: // some worker is done
 						m.handleMessage(content)
 					case t := <-timer.C:
-						util.Log.Warn("run2 waiting for worker timeout", "timeout", t)
+						util.Logger.Warn("run2 waiting for worker timeout", "timeout", t)
 					default:
 					}
 				}
-				util.Log.Debug("run2 finish clean workers")
+				util.Logger.Debug("run2 finish clean workers")
 			}
 			// finally, shutdown uxServe
 			m.uxdownChan <- true
-			util.Log.Debug("run2 stop uxServe")
+			util.Logger.Debug("run2 stop uxServe")
 			return
 		}
 
@@ -1484,7 +1485,7 @@ func (m *mainSrv) run2(conf *Config) {
 		if strings.HasPrefix(req, frontend.AprilshMsgOpen) { // 'open aprilsh:'
 			if len(m.workers) >= maxPortLimit {
 				resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "over max port limit")
-				util.Log.Warn("over max port limit", "request", req, "response", resp)
+				util.Logger.Warn("over max port limit", "request", req, "response", resp)
 				continue
 			}
 			// prepare next port
@@ -1498,7 +1499,7 @@ func (m *mainSrv) run2(conf *Config) {
 			content := strings.Split(body[1], ",")
 			if len(content) != 2 {
 				resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "malform request")
-				util.Log.Warn("malform request", "request", req, "response", resp)
+				util.Logger.Warn("malform request", "request", req, "response", resp)
 				continue
 			}
 			conf2.term = content[0]
@@ -1512,7 +1513,7 @@ func (m *mainSrv) run2(conf *Config) {
 			} else {
 				// return "target parameter should be in the form of User@Server", false
 				resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "malform destination")
-				util.Log.Warn("malform destination", "destination", content[1], "response", resp)
+				util.Logger.Warn("malform destination", "destination", content[1], "response", resp)
 
 				continue
 			}
@@ -1522,23 +1523,23 @@ func (m *mainSrv) run2(conf *Config) {
 			child, err := startChild(&conf2)
 			if err != nil {
 				if errors.Is(err, syscall.EPERM) {
-					util.Log.Warn("operation not permitted")
+					util.Logger.Warn("operation not permitted")
 				} else {
-					util.Log.Warn("can't start child", "error", err)
+					util.Logger.Warn("can't start child", "error", err)
 					fmt.Printf("can't start child, error=%#v\n", err)
 				}
 				continue
 			}
-			util.Log.Debug("start child successfully, wait for the key.")
+			util.Logger.Debug("start child successfully, wait for the key.")
 
 			// waiting for the child process
 			m.wg.Add(1)
 			go func() {
 				ps, err := child.Wait()
 				if err != nil {
-					util.Log.Warn("start child return", "error", err, "ProcessState", ps)
+					util.Logger.Warn("start child return", "error", err, "ProcessState", ps)
 				}
-				util.Log.Debug("child finished", "port", p)
+				util.Logger.Debug("child finished", "port", p)
 				m.wg.Done()
 			}()
 			m.workers[p] = &workhorse{child: child}
@@ -1555,12 +1556,12 @@ func (m *mainSrv) run2(conf *Config) {
 			select {
 			case <-timer.C:
 				resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "get key timeout")
-				util.Log.Warn("run2 got key timeout", "request", req, "response", resp)
+				util.Logger.Warn("run2 got key timeout", "request", req, "response", resp)
 				continue
 			case content := <-m.exChan:
 				// response session key and udp port to client
 				key, _ := m.handleMessage(content)
-				util.Log.Debug("run2 got key", "key", key)
+				util.Logger.Debug("run2 got key", "key", key)
 
 				msg := fmt.Sprintf("%d,%s", p, key)
 				m.writeRespTo(addr, frontend.AprilshMsgOpen, msg)
@@ -1571,20 +1572,20 @@ func (m *mainSrv) run2(conf *Config) {
 			port, err := strconv.Atoi(pstr)
 			if err != nil {
 				resp := m.writeRespTo(addr, frontend.AprishMsgClose, "wrong port number")
-				util.Log.Warn("wrong port number", "request", req, "response", resp)
+				util.Logger.Warn("wrong port number", "request", req, "response", resp)
 			}
 
 			// find worker
 			if _, ok := m.workers[port]; !ok {
 				resp := m.writeRespTo(addr, frontend.AprishMsgClose, "port does not exist")
-				util.Log.Warn("port does not exist", "request", req, "response", resp)
+				util.Logger.Warn("port does not exist", "request", req, "response", resp)
 			}
 			// send kill message to the workers
 			m.workers[port].child.Signal(syscall.SIGTERM)
 			m.writeRespTo(addr, frontend.AprishMsgClose, "done")
 		} else {
 			resp := m.writeRespTo(addr, frontend.AprishMsgClose, "unknow request")
-			util.Log.Warn("unknow request", "request", req, "response", resp)
+			util.Logger.Warn("unknow request", "request", req, "response", resp)
 		}
 	}
 }
@@ -1623,13 +1624,13 @@ func (m *mainSrv) handleMessage(content string) (string, error) {
 			}
 			// user quit shell actively.
 		}
-		util.Log.Debug("handleMessage kill shell", "shell", port)
+		util.Logger.Debug("handleMessage kill shell", "port", port)
 	case _RunHeader: // clean worker list
 		if part2[1] != "shutdown" {
 			return "", fmt.Errorf("malform content: %w", errors.New(content))
 		}
 		delete(m.workers, port)
-		util.Log.Debug("handleMessage clean worker", "port", port)
+		util.Logger.Debug("handleMessage clean worker", "port", port)
 	case _KeyHeader: // return key
 		return part2[1], nil
 	case _ShellHeader: // add shell pid
@@ -1638,7 +1639,7 @@ func (m *mainSrv) handleMessage(content string) (string, error) {
 			return "", fmt.Errorf("wrong shell pid: %w", err)
 		}
 		m.workers[port].shellPid = shellPid
-		util.Log.Debug("handleMessage got shell pid", "port", port, "shellPid", shellPid)
+		util.Logger.Debug("handleMessage got shell pid", "port", port, "shellPid", shellPid)
 	default:
 		return "", fmt.Errorf("unknown header: %w", errors.New(content))
 	}
@@ -1653,11 +1654,11 @@ func startChild(conf *Config) (*os.Process, error) {
 	shell := os.Getenv("SHELL")
 	if shell == "" {
 		err := errors.New("can't get shell from SHELL")
-		util.Log.Warn("startChild", "error", err)
+		util.Logger.Warn("startChild", "error", err)
 		return nil, err
 	}
 
-	util.Log.Debug("startChild", "user", conf.user, "term", conf.term,
+	util.Logger.Debug("startChild", "user", conf.user, "term", conf.term,
 		"desiredPort", conf.desiredPort, "destination", conf.destination)
 
 	// specify child process
@@ -1705,7 +1706,7 @@ func startChild(conf *Config) (*os.Process, error) {
 	u, _ := user.Lookup(conf.user)
 	// uid, _ := strconv.ParseInt(u.Uid, 10, 32)
 	// gid, _ := strconv.ParseInt(u.Gid, 10, 32)
-	util.Log.Debug("startChild check user", "user", u.Username, "gid", u.Gid, "HOME", u.HomeDir)
+	util.Logger.Debug("startChild check user", "user", u.Username, "gid", u.Gid, "HOME", u.HomeDir)
 
 	// set base env
 	// TODO should we put LOGNAME, MAIL into env?
@@ -1722,8 +1723,8 @@ func startChild(conf *Config) (*os.Process, error) {
 	// ask ncurses to send UTF-8 instead of ISO 2022 for line-drawing chars
 	env = append(env, "NCURSES_NO_UTF8_ACS=1")
 
-	util.Log.Debug("startChild env:", "env", env)
-	util.Log.Debug("startChild command:", "commandPath", commandPath, "commandArgv", commandArgv)
+	util.Logger.Debug("startChild env:", "env", env)
+	util.Logger.Debug("startChild command:", "commandPath", commandPath, "commandArgv", commandArgv)
 
 	sysProcAttr := &syscall.SysProcAttr{}
 	sysProcAttr.Setsid = true // start a new session
@@ -1846,7 +1847,7 @@ func runChild(conf *Config) (err error) {
 		// second := strings.Split(first[1], ":")
 		conf.host = ""
 	}
-	util.Log.Debug("runChild", "user", conf.user, "host", conf.host, "term", conf.term,
+	util.Logger.Debug("runChild", "user", conf.user, "host", conf.host, "term", conf.term,
 		"desiredPort", conf.desiredPort, "destination", conf.destination)
 	/*
 		If this variable is set to a positive integer number, it specifies how
@@ -1926,7 +1927,7 @@ func runChild(conf *Config) (err error) {
 
 	ptmx, pts, err := openPTS(windowSize)
 	if err != nil {
-		util.Log.Warn("openPTS fail", "error", err)
+		util.Logger.Warn("openPTS fail", "error", err)
 		return err
 	}
 	defer func() {
@@ -1947,7 +1948,7 @@ func runChild(conf *Config) (err error) {
 		ok := util.AddUtmpx(pts, utmpHost)
 		if !ok {
 			utmpSupport = false
-			util.Log.Warn("runChild can't update utmp")
+			util.Logger.Warn("runChild can't update utmp")
 		}
 	}
 
@@ -1962,7 +1963,7 @@ func runChild(conf *Config) (err error) {
 		uxClient.send(fmt.Sprintf("%s:%s,%s", _ServeHeader, conf.desiredPort, "shutdown"))
 		wg.Done()
 	}()
-	util.Log.Info("start listening on", "port", conf.desiredPort, "clientTERM", conf.term)
+	util.Logger.Info("start listening on", "port", conf.desiredPort, "clientTERM", conf.term)
 
 	// TODO update last log ?
 	// util.UpdateLastLog(ptmxName, getCurrentUser(), utmpHost)
@@ -1977,7 +1978,7 @@ func runChild(conf *Config) (err error) {
 	shell, err := startShell(pts, pr, utmpHost, conf)
 	pts.Close() // it's copied by shell process, it's safe to close it here.
 	if err != nil {
-		util.Log.Warn("startShell fail", "error", err)
+		util.Logger.Warn("startShell fail", "error", err)
 		// whChan <- workhorse{}
 	} else {
 
@@ -1988,7 +1989,7 @@ func runChild(conf *Config) (err error) {
 		state, err = shell.Wait()
 		if err != nil || state.Exited() {
 			if err != nil {
-				util.Log.Warn("shell.Wait fail", "error", err, "state", state)
+				util.Logger.Warn("shell.Wait fail", "error", err, "state", state)
 				// } else {
 				// util.Log.Debug("shell.Wait quit", "state.exited", state.Exited())
 			}
@@ -1997,7 +1998,7 @@ func runChild(conf *Config) (err error) {
 
 	// wait serve to finish
 	wg.Wait()
-	util.Log.Info("stop listening on", "port", conf.desiredPort)
+	util.Logger.Info("stop listening on", "port", conf.desiredPort)
 
 	// fmt.Printf("[%s is exiting.]\n", frontend.COMMAND_SERVER_NAME)
 	// https://www.dolthub.com/blog/2022-11-28-go-os-exec-patterns/
@@ -2041,11 +2042,11 @@ func main() {
 	// setup client log file
 	switch conf.verbose {
 	case util.DebugLevel:
-		util.Log.CreateLogger(os.Stderr, conf.addSource, slog.LevelDebug)
+		util.Logger.CreateLogger(os.Stderr, conf.addSource, slog.LevelDebug)
 	case util.TraceLevel:
-		util.Log.CreateLogger(os.Stderr, conf.addSource, util.LevelTrace)
+		util.Logger.CreateLogger(os.Stderr, conf.addSource, util.LevelTrace)
 	default:
-		util.Log.CreateLogger(os.Stderr, conf.addSource, slog.LevelInfo)
+		util.Logger.CreateLogger(os.Stderr, conf.addSource, slog.LevelInfo)
 	}
 	// util.Log.AddSource(conf.addSource)
 	// util.Log.SetOutput(os.Stderr)
@@ -2053,7 +2054,7 @@ func main() {
 	// setup syslog
 	syslogWriter, err = syslog.New(syslog.LOG_WARNING|syslog.LOG_LOCAL7, frontend.CommandServerName)
 	if err != nil {
-		util.Log.Warn("can't find syslog service on this server.")
+		util.Logger.Warn("can't find syslog service on this server.")
 		syslogSupport = false
 	} else {
 		syslogSupport = true

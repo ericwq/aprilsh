@@ -239,8 +239,7 @@ func TestEmulatorGetWidth(t *testing.T) {
 		t.Errorf("#test GetWidth() expect %d, got %d\n", 80, emu.GetWidth())
 	}
 
-
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 	// emu.SetLogTraceOutput(io.Discard)
 
 	// set horizontal margin
@@ -338,7 +337,7 @@ func TestEmulatorGetCell(t *testing.T) {
 
 	// emu.SetLogTraceOutput(io.Discard)
 
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	for _, v := range tc {
 		emu.HandleStream(v.seq)
@@ -365,8 +364,7 @@ func TestEmulatorClone(t *testing.T) {
 		{"alter screen buffer, no resize", 0, 0, "\x1B[?47h\x1B[11;74Houtput for normal wrap line."},
 	}
 
-
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	for _, v := range tc {
 		emu := NewEmulator3(80, 40, 40)
@@ -540,7 +538,7 @@ func TestSaveWindowTitleOnStack(t *testing.T) {
 
 	var out strings.Builder
 
-	util.Log.SetOutput(&out)
+	util.Logger.SetOutput(&out)
 
 	// no title, check save stack
 	emu.saveWindowTitleOnStack()
@@ -631,8 +629,8 @@ func TestEmulatorEqual(t *testing.T) {
 
 	var output strings.Builder
 
-	util.Log.SetLevel(slog.LevelDebug)
-	util.Log.SetOutput(&output)
+	util.Logger.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(&output)
 	// util.Log.SetOutput(os.Stdout)
 
 	for _, v := range tc {
@@ -693,9 +691,9 @@ func TestLargeStream(t *testing.T) {
 
 	// var output strings.Builder
 
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetLevel(slog.LevelDebug)
 	// util.Log.SetOutput(&output)
-	util.Log.SetOutput(os.Stdout)
+	util.Logger.SetOutput(os.Stdout)
 
 	emu := NewEmulator3(80, 40, 40)
 
@@ -741,9 +739,9 @@ func TestExcludeHandler(t *testing.T) {
 
 	// var output strings.Builder
 
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetLevel(slog.LevelDebug)
 	// util.Log.SetOutput(&output)
-	util.Log.SetOutput(os.Stdout)
+	util.Logger.SetOutput(os.Stdout)
 
 	emu := NewEmulator3(80, 40, 40)
 

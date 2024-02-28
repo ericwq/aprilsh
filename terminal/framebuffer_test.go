@@ -488,7 +488,7 @@ func TestGetSnappedSelection(t *testing.T) {
 	emu := NewEmulator3(80, 40, 0)
 	// emu.logT.SetOutput(io.Discard) // hide the log output
 
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	for _, v := range tc {
 		// print the stream to the screen
@@ -551,7 +551,7 @@ func TestGetSelectedUtf8(t *testing.T) {
 	// hide the log output
 	// emu.logT.SetOutput(io.Discard)
 
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	for i, v := range tc {
 		// print the stream to the screen
@@ -635,7 +635,7 @@ func TestDamageDeltaCopy(t *testing.T) {
 	// hide the log output
 	// emu.logT.SetOutput(io.Discard)
 
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	// for easy typing
 	fb := emu.cf
@@ -692,8 +692,7 @@ func TestGetPhysicalRow(t *testing.T) {
 		{"100 scrollHead, row 30", 30, 100, 10},
 	}
 
-
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 	// util.Log.SetLevel(slog.LevelDebug)
 	// util.Log.SetOutput(os.Stderr)
 
@@ -735,8 +734,7 @@ func TestASBRow(t *testing.T) {
 		{"19 scrollHead, row  22", 22, 19, 21},
 	}
 
-
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 	// util.Log.SetLevel(slog.LevelDebug)
 	// util.Log.SetOutput(os.Stderr)
 
@@ -776,8 +774,8 @@ func TestFramebufferEqual(t *testing.T) {
 
 	var output strings.Builder
 
-	util.Log.SetLevel(slog.LevelDebug)
-	util.Log.SetOutput(&output)
+	util.Logger.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(&output)
 	// util.Log.SetOutput(os.Stdout)
 
 	for _, v := range tc {
@@ -839,8 +837,8 @@ func TestGetRowsGap(t *testing.T) {
 
 	var output strings.Builder
 
-	util.Log.SetLevel(slog.LevelDebug)
-	util.Log.SetOutput(&output)
+	util.Logger.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(&output)
 	// util.Log.SetOutput(os.Stdout)
 
 	for _, v := range tc {
@@ -868,8 +866,8 @@ func TestOutputRow(t *testing.T) {
 
 	var output strings.Builder
 
-	util.Log.SetLevel(slog.LevelDebug)
-	util.Log.SetOutput(&output)
+	util.Logger.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(&output)
 	// util.Log.SetOutput(os.Stdout)
 
 	for _, v := range tc {

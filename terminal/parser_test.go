@@ -277,7 +277,7 @@ func TestCollectNumericParameters(t *testing.T) {
 	// p.logU.SetOutput(ioutil.Discard)
 	// p.logT.SetOutput(ioutil.Discard)
 
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	for _, v := range tc {
 		// prepare for the condition
@@ -372,7 +372,7 @@ func TestHandle_Graphemes(t *testing.T) {
 	// p.logU.SetOutput(&place)
 	// p.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	emu := NewEmulator3(80, 40, 40)
 	// emu.logT.SetOutput(&place)
@@ -450,7 +450,7 @@ func TestHandle_Graphemes_Wrap(t *testing.T) {
 	var place strings.Builder
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 		place.Reset()
@@ -544,7 +544,7 @@ func TestHandle_REP(t *testing.T) {
 	// p.logU.SetOutput(&place)
 	// p.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	emu := NewEmulator3(80, 40, 40)
 	// emu.logT.SetOutput(&place)
@@ -672,7 +672,7 @@ func TestHandle_SGR_ANSIcolor(t *testing.T) {
 	// this will swallow the output from SGR, such as : attribute not supported.
 	// emu.logU.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 		t.Run(v.name, func(t *testing.T) {
@@ -837,7 +837,7 @@ func TestHandle_ESC_DCS(t *testing.T) {
 	var place strings.Builder
 	// p.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	emu := NewEmulator3(8, 4, 0)
 	for _, v := range tc {
@@ -888,8 +888,8 @@ func TestHandle_DOCS(t *testing.T) {
 	// p.logT.SetOutput(&place)
 	// p.logU.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(&place)
+	util.Logger.SetLevel(slog.LevelDebug)
 
 	emu := NewEmulator3(8, 4, 0)
 	for _, v := range tc {
@@ -974,8 +974,8 @@ func TestHandle_LS2_LS3(t *testing.T) {
 	var place strings.Builder
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(&place)
+	util.Logger.SetLevel(slog.LevelDebug)
 
 	for _, v := range tc {
 
@@ -1020,8 +1020,8 @@ func TestHandle_LS1R_LS2R_LS3R(t *testing.T) {
 	var place strings.Builder
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(&place)
+	util.Logger.SetLevel(slog.LevelDebug)
 
 	for _, v := range tc {
 
@@ -1108,8 +1108,8 @@ func TestHandle_SO_SI(t *testing.T) {
 	p.logTrace = true
 	// p.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(&place)
+	util.Logger.SetLevel(slog.LevelDebug)
 
 	emu := NewEmulator3(8, 4, 4)
 	for _, v := range tc {
@@ -1223,8 +1223,8 @@ func TestHandle_RI_NEL(t *testing.T) {
 	// emu.logI.SetOutput(&place) // redirect the output to the string builder
 	// emu.logT.SetOutput(&place) // redirect the output to the string builder
 
-	util.Log.SetOutput(&place)
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(&place)
+	util.Logger.SetLevel(slog.LevelDebug)
 
 	for _, v := range tc {
 		p.reset()
@@ -1293,8 +1293,8 @@ func TestHandle_ENQ_CAN_SUB_ESC(t *testing.T) {
 	// p.logE.SetOutput(&place)
 	// p.logU.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(&place)
+	util.Logger.SetLevel(slog.LevelDebug)
 
 	p.logTrace = true // open the trace
 	var hd *Handler
@@ -1359,7 +1359,7 @@ func TestHandle_priDA_secDA_DSR(t *testing.T) {
 	// emu.logI.SetOutput(&place) // redirect the output to the string builder
 	// emu.logT.SetOutput(&place) // redirect the output to the string builder
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 		// reset the target content
@@ -1432,7 +1432,7 @@ func TestHandle_VPA_VPR_CHA_HPA_HPR_CNL_CPL(t *testing.T) {
 	var place strings.Builder
 	// emu.logT.SetOutput(&place) // swallow the output
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 
@@ -1502,7 +1502,7 @@ func TestHistoryReset(t *testing.T) {
 	var place strings.Builder
 	// p.logU.SetOutput(&place) // redirect the output to the string builder
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 		// reset the output
@@ -1560,8 +1560,8 @@ func TestHandle_DECSTBM(t *testing.T) {
 	var place strings.Builder
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(&place)
+	util.Logger.SetLevel(slog.LevelDebug)
 
 	for k, v := range tc {
 		// reset the log content
@@ -1638,8 +1638,8 @@ func TestHandle_DECSCL(t *testing.T) {
 	//
 	// p.logU.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(&place)
+	util.Logger.SetLevel(slog.LevelDebug)
 
 	for i, v := range tc {
 		// reset the output
@@ -1698,7 +1698,7 @@ func TestHandle_ecma48_SL_SR_FI_BI(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 
@@ -1764,8 +1764,8 @@ func TestHandle_XTMMODEKEYS(t *testing.T) {
 	emu := NewEmulator3(8, 4, 4)
 	var place strings.Builder // all the message is output to herer
 
-	util.Log.SetOutput(&place)
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(&place)
+	util.Logger.SetLevel(slog.LevelDebug)
 
 	for _, v := range tc {
 		// reset the output
@@ -1817,7 +1817,7 @@ func TestHandle_XTWINOPS_Save(t *testing.T) {
 
 	var place strings.Builder
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 		emu.resetTerminal()
@@ -1883,7 +1883,7 @@ func TestHandle_XTWINOPS_Restore(t *testing.T) {
 
 	var place strings.Builder
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 		emu.resetTerminal()
@@ -1998,8 +1998,8 @@ func TestHandle_SCOSC_SCORC(t *testing.T) {
 	// emu.logI.SetOutput(&place) // redirect the output to the string builder
 	// emu.logT.SetOutput(&place) // redirect the output to the string builder
 
-	util.Log.SetOutput(&place)
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(&place)
+	util.Logger.SetLevel(slog.LevelDebug)
 
 	for i, v := range tc {
 		place.Reset()
@@ -2069,7 +2069,7 @@ func TestHandle_DECSC_DECRC_privSM_1048(t *testing.T) {
 	var place strings.Builder
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 		// process control sequence
@@ -2152,7 +2152,7 @@ func TestHandle_DECSLRM(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 
@@ -2228,8 +2228,8 @@ func TestHandle_DECSLRM_Others(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(&place)
+	util.Logger.SetLevel(slog.LevelDebug)
 
 	for i, v := range tc {
 
@@ -2310,7 +2310,7 @@ func TestHandle_DECSTR(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 
@@ -2377,7 +2377,7 @@ func TestHandle_CR_LF_VT_FF(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 
@@ -2431,7 +2431,7 @@ func TestHandle_CSI_BS_FF_VT_CR_TAB(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 		// parse control sequence
@@ -2494,7 +2494,7 @@ func TestHandle_CUU_CUD_CUF_CUB_CUP_FI_BI(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 		p.reset()
@@ -2561,7 +2561,7 @@ func TestHandle_SU_SD(t *testing.T) {
 		// emu.logI.SetOutput(&place)
 		// emu.logT.SetOutput(&place)
 
-		util.Log.SetOutput(&place)
+		util.Logger.SetOutput(&place)
 
 		hds := make([]*Handler, 0, 16)
 		hds = p.processStream(v.seq, hds)
@@ -2610,7 +2610,7 @@ func TestHandle_HTS_TBC(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 
@@ -2666,7 +2666,7 @@ func TestHandle_Focus(t *testing.T) {
 
 	var place strings.Builder
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 	// util.Log.SetLevel(slog.LevelDebug)
 	// util.Log.SetOutput(os.Stderr)
 
@@ -2727,7 +2727,7 @@ func TestHandle_HT_CHT_CBT(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 
@@ -2772,7 +2772,7 @@ func TestHandle_LF_ScrollUp(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 		emu.resetTerminal()
@@ -2827,7 +2827,7 @@ func TestHandle_DECIC_DECDC(t *testing.T) {
 		// emu.logI.SetOutput(&place)
 		// emu.logT.SetOutput(&place)
 
-		util.Log.SetOutput(&place)
+		util.Logger.SetOutput(&place)
 
 		fillCells(emu.cf)
 		before := printCells(emu.cf)
@@ -2877,7 +2877,7 @@ func TestHandle_DECALN_RIS(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 		emu.resetTerminal()
@@ -2944,8 +2944,8 @@ func TestHandle_ED_IL_DL(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(&place)
+	util.Logger.SetLevel(slog.LevelDebug)
 
 	for _, v := range tc {
 		place.Reset()
@@ -3030,7 +3030,7 @@ func TestHandle_ICH2(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 
@@ -3138,8 +3138,8 @@ func TestHandle_ICH_EL_DCH_ECH(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(&place)
+	util.Logger.SetLevel(slog.LevelDebug)
 
 	for _, v := range tc {
 
@@ -3281,8 +3281,8 @@ func TestHandle_ESCSpaceHash_Unhandled(t *testing.T) {
 	var place strings.Builder // all the message is output to herer
 	// p.logU.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(&place)
+	util.Logger.SetLevel(slog.LevelDebug)
 
 	for _, v := range tc {
 		place.Reset()
@@ -3414,7 +3414,7 @@ func TestHandle_SM_RM(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 		t.Run(v.name, func(t *testing.T) {
@@ -3457,7 +3457,7 @@ func TestHandle_SM_RM_Unknow(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logW.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 		t.Run(v.name, func(t *testing.T) {
@@ -3498,7 +3498,7 @@ func TestHandle_privSM_privRM_67(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 
@@ -3558,7 +3558,7 @@ func TestHandle_privSM_privRM_BOOL(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 		t.Run(v.name, func(t *testing.T) {
@@ -3611,7 +3611,7 @@ func TestHandle_privSM_privRM_Log(t *testing.T) {
 	// emu.logU.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 		t.Run(v.name, func(t *testing.T) {
@@ -3655,7 +3655,7 @@ func TestHandle_privSM_privRM_6(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 		t.Run(v.name, func(t *testing.T) {
@@ -3700,7 +3700,7 @@ func TestHandle_privSM_privRM_1(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 		t.Run(v.name, func(t *testing.T) {
@@ -3754,7 +3754,7 @@ func TestHandle_privSM_privRM_MouseTrackingMode(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 		t.Run(v.name, func(t *testing.T) {
@@ -3804,7 +3804,7 @@ func TestHandle_privSM_privRM_MouseTrackingEnc(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 		t.Run(v.name, func(t *testing.T) {
@@ -3850,7 +3850,7 @@ func TestHandle_privSM_privRM_47_1047(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 
@@ -3899,7 +3899,7 @@ func TestHandle_privSM_privRM_69(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 
@@ -3948,7 +3948,7 @@ func TestHandle_privSM_privRM_1049(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	// parse the control sequence
 	hds := make([]*Handler, 0, 16)
@@ -4036,7 +4036,7 @@ func TestHandle_privSM_privRM_3(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 
@@ -4081,7 +4081,7 @@ func TestHandle_privSM_privRM_2(t *testing.T) {
 	// emu.logI.SetOutput(&place)
 	// emu.logT.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 
@@ -4183,8 +4183,8 @@ func TestHandle_OSC_Abort(t *testing.T) {
 	// p.logT.SetOutput(&place) // redirect the output to the string builder
 	// p.logU.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(&place)
+	util.Logger.SetLevel(slog.LevelDebug)
 
 	for _, v := range tc {
 		// reset the out put for every test case
@@ -4305,8 +4305,8 @@ func TestHandle_OSC_52_abort(t *testing.T) {
 	var place strings.Builder
 	// emu.logW.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(&place)
+	util.Logger.SetLevel(slog.LevelDebug)
 
 	for _, v := range tc {
 		place.Reset()
@@ -4379,8 +4379,8 @@ func TestHandle_OSC_4(t *testing.T) {
 	var place strings.Builder
 	// emu.logW.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(&place)
+	util.Logger.SetLevel(slog.LevelDebug)
 
 	for _, v := range tc {
 		place.Reset()
@@ -4487,8 +4487,8 @@ func TestHandle_OSC_10x(t *testing.T) {
 	var place strings.Builder
 	// emu.logW.SetOutput(&place)
 
-	util.Log.SetOutput(&place)
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(&place)
+	util.Logger.SetLevel(slog.LevelDebug)
 
 	for _, v := range tc {
 		place.Reset()
@@ -4605,7 +4605,7 @@ func TestHandle_DECSCUSR(t *testing.T) {
 
 	var place strings.Builder
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 		emu.resetTerminal()
@@ -4657,7 +4657,7 @@ func TestHandle_DCS(t *testing.T) {
 	var place strings.Builder
 	// p.logU.SetOutput(&place) // redirect the output to the string builder
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 		place.Reset()
@@ -4845,8 +4845,7 @@ func TestMixSequence(t *testing.T) {
 	p := NewParser()
 	emu := NewEmulator3(8, 4, 0)
 
-
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 	// util.Log.SetLevel(slog.LevelDebug)
 	// util.Log.SetOutput(os.Stderr)
 

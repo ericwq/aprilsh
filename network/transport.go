@@ -237,7 +237,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 			return errors.New("aprilsh protocol version mismatch.")
 		}
 
-		util.Log.Trace("got message",
+		util.Logger.Trace("got message",
 			"NewNum", inst.NewNum,
 			"OldNum", inst.OldNum,
 			"AckNum", inst.AckNum,
@@ -255,7 +255,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		// first, make sure we don't already have the new state
 		for i := range t.receivedState {
 			if inst.NewNum == t.receivedState[i].num {
-				util.Log.Warn("got message", "quit", "duplicate state", "NewNum", inst.NewNum)
+				util.Logger.Warn("got message", "quit", "duplicate state", "NewNum", inst.NewNum)
 				return nil
 			}
 		}
@@ -292,7 +292,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 					// fmt.Fprintf(os.Stderr, "#recv [%d] Receiver queue full, discarding %d (malicious sender or "+
 					// 	"long-unidirectional connectivity?)\n", now%100000, inst.NewNum)
 					msg := "#recv Receiver queue full, discarding (malicious sender or long-unidirectional connectivity?)"
-					util.Log.Warn(msg, "time", now%100000, "newNum", inst.NewNum)
+					util.Logger.Warn(msg, "time", now%100000, "newNum", inst.NewNum)
 				}
 				return nil
 			} else {
@@ -321,7 +321,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 				t.receivedState = rs
 
 				if t.verbose > 0 {
-					util.Log.Warn("#recv Received OUT-OF-ORDER state x [ack y]",
+					util.Logger.Warn("#recv Received OUT-OF-ORDER state x [ack y]",
 						"time", time.Now().UnixMilli()%100000,
 						"newNum", newState.num,
 						"ackNum", inst.AckNum)
@@ -339,7 +339,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 			t.sender.setDataAck()
 		}
 
-		util.Log.Trace("got message",
+		util.Logger.Trace("got message",
 			"receivedState", t.getReceivedStateList(),
 			"AckNum", t.receivedState[len(t.receivedState)-1].num,
 			"pendingDataAck", t.sender.pendingDataAck,
@@ -350,7 +350,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		// 	"nextSendTime", t.sender.nextSendTime,
 		// 	"time", newState.GetTimestamp()%10000)
 	} else {
-		util.Log.Debug("addFragment return false")
+		util.Logger.Debug("addFragment return false")
 	}
 	return nil
 }
@@ -397,7 +397,7 @@ func (t *Transport[S, R]) Awaken(now int64) (ret bool) {
 	*/
 
 	defer func() {
-		util.Log.Debug("Awaken",
+		util.Logger.Debug("Awaken",
 			"recvStatus", recvStatus,
 			"sendStatus", sendStatus,
 			"ret", ret,
@@ -405,13 +405,13 @@ func (t *Transport[S, R]) Awaken(now int64) (ret bool) {
 			"port", t.GetServerPort())
 		back := len(t.receivedState)
 		if back >= 2 {
-			util.Log.Debug("Awaken",
+			util.Logger.Debug("Awaken",
 				"recvPrev", t.receivedState[back-2].GetTimestamp(),
 				"recvLast", t.receivedState[back-1].GetTimestamp())
 		}
 		back = len(t.sender.sentStates)
 		if back >= 2 {
-			util.Log.Debug("Awaken",
+			util.Logger.Debug("Awaken",
 				"sendPrev", t.sender.sentStates[back-2].GetTimestamp(),
 				"sendLast", t.sender.sentStates[back-1].GetTimestamp())
 		}

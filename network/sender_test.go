@@ -387,7 +387,7 @@ func TestSenderSendEmptyAckShutdown(t *testing.T) {
 	// disable log
 	// server.connection.logW.SetOutput(io.Discard)
 
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	// prepare for shutdown
 	client.sender.shutdownInProgress = true
@@ -434,7 +434,7 @@ func TestSenderSendEmptyAckFail(t *testing.T) {
 	// disable log
 	// server.connection.logW.SetOutput(io.Discard)
 
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	// mockUdpConn will send with an error: send size doesn't match
 	var mock mockUdpConn
@@ -474,7 +474,7 @@ func TestSenderSendToReceiverFail(t *testing.T) {
 	// disable log
 	// server.connection.logW.SetOutput(io.Discard)
 
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	// mockUdpConn will send with an error: send size doesn't match
 	var mock mockUdpConn
@@ -507,7 +507,7 @@ func TestSenderSendToReceiverShutdown(t *testing.T) {
 	// disable log
 	// server.connection.logW.SetOutput(io.Discard)
 
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	// prepare for shutdown
 	client.sender.startShutdown()
@@ -566,7 +566,7 @@ func TestSenderTickSendToReceiverFail(t *testing.T) {
 	// disable log
 	// server.connection.logW.SetOutput(io.Discard)
 
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	// mockUdpConn will send with an error: send size doesn't match
 	var mock mockUdpConn
@@ -602,11 +602,10 @@ func TestSenderTickVerify(t *testing.T) {
 	server.SetVerbose(1)
 	client.SetVerbose(1)
 
-
 	var b strings.Builder
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetLevel(slog.LevelDebug)
 	// util.Log.SetOutput(os.Stdout)
-	util.Log.SetOutput(&b)
+	util.Logger.SetOutput(&b)
 
 	// send user stream to server
 	client.Tick()
@@ -672,8 +671,7 @@ func TestSenderSendInterval(t *testing.T) {
 	keyStr := server.connection.getKey() // get the key from server
 	client := NewTransportClient(initialState, initialRemote, keyStr, desiredIp, desiredPort)
 
-
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	// round-trip several times to build a reasonable SRTT
 	var got string
@@ -768,11 +766,10 @@ func TestSenderTickNextSendTime(t *testing.T) {
 	server.SetVerbose(1)
 	client.SetVerbose(1)
 
-
 	var b strings.Builder
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetLevel(slog.LevelDebug)
 	// util.Log.SetOutput(os.Stdout)
-	util.Log.SetOutput(&b)
+	util.Logger.SetOutput(&b)
 
 	// send user stream to server
 	client.Tick()

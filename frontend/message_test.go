@@ -23,8 +23,8 @@ func TestPrintVersion(t *testing.T) {
 	os.Stderr = w
 	os.Stdout = w
 
-	util.Log.SetOutput(w)
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetOutput(w)
+	util.Logger.SetLevel(slog.LevelDebug)
 
 	PrintVersion()
 

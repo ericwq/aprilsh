@@ -19,7 +19,7 @@ const (
 	TraceLevel = 2
 )
 
-var Log *myLogger
+var Logger *myLogger
 var levelNames = map[slog.Leveler]string{
 	LevelTrace: "TRACE",
 	LevelFatal: "FATAL",
@@ -33,10 +33,10 @@ type myLogger struct {
 
 func init() {
 	// default logger write to stderr
-	Log = new(myLogger)
-	Log.logLevel = new(slog.LevelVar)
-	Log.SetLevel(slog.LevelInfo)
-	Log.SetOutput(os.Stderr)
+	Logger = new(myLogger)
+	Logger.logLevel = new(slog.LevelVar)
+	Logger.SetLevel(slog.LevelInfo)
+	Logger.SetOutput(os.Stderr)
 }
 
 func (l *myLogger) SetLevel(v slog.Level) {
@@ -44,7 +44,7 @@ func (l *myLogger) SetLevel(v slog.Level) {
 }
 
 func (l *myLogger) AddSource(add bool) {
-	Log.addSource = add
+	Logger.addSource = add
 }
 
 // how to replace a line in file,sample
@@ -53,8 +53,8 @@ func (l *myLogger) AddSource(add bool) {
 
 func (l *myLogger) SetOutput(w io.Writer) {
 	ho := &slog.HandlerOptions{
-		AddSource: Log.addSource,
-		Level:     Log.logLevel,
+		AddSource: Logger.addSource,
+		Level:     Logger.logLevel,
 		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
 			if a.Key == slog.LevelKey {
 				level := a.Value.Any().(slog.Level)

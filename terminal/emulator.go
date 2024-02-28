@@ -444,10 +444,10 @@ func (emu *Emulator) switchColMode(colMode ColMode) {
 
 	if colMode == ColMode_C80 {
 		// emu.logT.Println("DECCOLM: Selected 80 columns per line")
-		util.Log.Debug("DECCOLM: Selected 80 columns per line")
+		util.Logger.Debug("DECCOLM: Selected 80 columns per line")
 	} else {
 		// emu.logT.Println("DECCOLM: Selected 132 columns per line")
-		util.Log.Debug("DECCOLM: Selected 132 columns per line")
+		util.Logger.Debug("DECCOLM: Selected 132 columns per line")
 	}
 
 	emu.colMode = colMode
@@ -888,7 +888,7 @@ func (emu *Emulator) saveWindowTitleOnStack() {
 			emu.windowTitleStack = emu.windowTitleStack[1:]
 		}
 	} else {
-		util.Log.Warn("save title on stack failed: no title exist.")
+		util.Logger.Warn("save title on stack failed: no title exist.")
 	}
 }
 
@@ -899,7 +899,7 @@ func (emu *Emulator) restoreWindowTitleOnStack() {
 		emu.windowTitleStack = emu.windowTitleStack[:index]
 		emu.setWindowTitle(title)
 	} else {
-		util.Log.Warn("restore title from stack failed: empty stack.")
+		util.Logger.Warn("restore title from stack failed: empty stack.")
 	}
 }
 
@@ -921,7 +921,7 @@ func (emu *Emulator) equal(x *Emulator, trace bool) (ret bool) {
 	if emu.nRows != x.nRows || emu.nCols != x.nCols {
 		if trace {
 			msg := fmt.Sprintf("nRows=(%d,%d), nCols=(%d,%d)", emu.nRows, x.nRows, emu.nCols, x.nCols)
-			util.Log.Warn(msg)
+			util.Logger.Warn(msg)
 			ret = false
 		} else {
 			return false
@@ -933,7 +933,7 @@ func (emu *Emulator) equal(x *Emulator, trace bool) (ret bool) {
 		if trace {
 			msg := fmt.Sprintf("posX=(%d,%d), posY=(%d,%d), marginTop=(%d,%d), marginBottom=(%d,%d)",
 				emu.posX, x.posX, emu.posY, x.posY, emu.marginTop, x.marginTop, emu.marginBottom, x.marginBottom)
-			util.Log.Warn(msg)
+			util.Logger.Warn(msg)
 			ret = false
 		} else {
 			return false
@@ -945,7 +945,7 @@ func (emu *Emulator) equal(x *Emulator, trace bool) (ret bool) {
 		if trace {
 			msg := fmt.Sprintf("lastCol=(%t,%t), attrs=(%v,%v), fg=(%v,%v), bg=(%v,%v)",
 				emu.lastCol, x.lastCol, emu.attrs, x.attrs, emu.fg, x.fg, emu.bg, x.bg)
-			util.Log.Warn(msg)
+			util.Logger.Warn(msg)
 			ret = false
 		} else {
 			return false
@@ -958,7 +958,7 @@ func (emu *Emulator) equal(x *Emulator, trace bool) (ret bool) {
 			msg := fmt.Sprintf("reverseVideo=(%t,%t), hasFocus=(%t,%t), showCursorMode(%t,%t), altScreenBufferMode=(%t,%t)",
 				emu.reverseVideo, x.reverseVideo, emu.hasFocus, x.hasFocus, emu.showCursorMode, x.showCursorMode,
 				emu.altScreenBufferMode, x.altScreenBufferMode)
-			util.Log.Warn(msg)
+			util.Logger.Warn(msg)
 			ret = false
 		} else {
 			return false
@@ -971,7 +971,7 @@ func (emu *Emulator) equal(x *Emulator, trace bool) (ret bool) {
 			msg := fmt.Sprintf("autoWrapMode=(%t,%t), autoNewlineMode=(%t,%t), keyboardLocked=(%t,%t), insertMode=(%t,%t)",
 				emu.autoWrapMode, x.autoWrapMode, emu.autoNewlineMode, x.autoNewlineMode,
 				emu.keyboardLocked, x.keyboardLocked, emu.insertMode, x.insertMode)
-			util.Log.Warn(msg)
+			util.Logger.Warn(msg)
 			ret = false
 		} else {
 			return false
@@ -984,7 +984,7 @@ func (emu *Emulator) equal(x *Emulator, trace bool) (ret bool) {
 			msg := fmt.Sprintf("bkspSendsDel=(%t,%t), localEcho=(%t,%t), bracketedPasteMode=(%t,%t), altScrollMode=(%t,%t)",
 				emu.bkspSendsDel, x.bkspSendsDel, emu.localEcho, x.localEcho,
 				emu.bracketedPasteMode, x.bracketedPasteMode, emu.altScrollMode, x.altScrollMode)
-			util.Log.Warn(msg)
+			util.Logger.Warn(msg)
 			ret = false
 		} else {
 			return false
@@ -995,7 +995,7 @@ func (emu *Emulator) equal(x *Emulator, trace bool) (ret bool) {
 		if trace {
 			msg := fmt.Sprintf("altSendsEscape=(%t,%t), modifyOtherKeys=(%d,%d), ",
 				emu.altSendsEscape, x.altSendsEscape, emu.modifyOtherKeys, x.modifyOtherKeys)
-			util.Log.Warn(msg)
+			util.Logger.Warn(msg)
 			ret = false
 		} else {
 			return false
@@ -1007,7 +1007,7 @@ func (emu *Emulator) equal(x *Emulator, trace bool) (ret bool) {
 			msg := fmt.Sprintf("nColsEff=(%d,%d), hMargin=(%d,%d) horizMarginMode=(%t,%t)",
 				emu.nColsEff, x.nColsEff, emu.hMargin, x.hMargin,
 				emu.horizMarginMode, x.horizMarginMode)
-			util.Log.Warn(msg)
+			util.Logger.Warn(msg)
 			ret = false
 		} else {
 			return false
@@ -1017,7 +1017,7 @@ func (emu *Emulator) equal(x *Emulator, trace bool) (ret bool) {
 	if len(emu.tabStops) != len(x.tabStops) { // different tabStops number
 		if trace {
 			msg := fmt.Sprintf("tabStops length=(%d,%d)", len(emu.tabStops), len(x.tabStops))
-			util.Log.Warn(msg)
+			util.Logger.Warn(msg)
 			ret = false
 		} else {
 			return false
@@ -1028,7 +1028,7 @@ func (emu *Emulator) equal(x *Emulator, trace bool) (ret bool) {
 				// same tabStops number, different tabStops value
 				if trace {
 					msg := fmt.Sprintf("tabStops[%d]=(%d,%d)", i, emu.tabStops[i], x.tabStops[i])
-					util.Log.Warn(msg)
+					util.Logger.Warn(msg)
 					ret = false
 				} else {
 					return false
@@ -1043,7 +1043,7 @@ func (emu *Emulator) equal(x *Emulator, trace bool) (ret bool) {
 				"charsetState.vtMode=(%t,%t), charsetState.gl=(%d,%d), charsetState.gr=(%d,%d), charsetState.ss=(%d,%d)",
 				emu.charsetState.vtMode, x.charsetState.vtMode, emu.charsetState.gl, x.charsetState.gl,
 				emu.charsetState.gr, x.charsetState.gr, emu.charsetState.ss, x.charsetState.ss)
-			util.Log.Warn(msg)
+			util.Logger.Warn(msg)
 			ret = false
 		} else {
 			return false
@@ -1054,7 +1054,7 @@ func (emu *Emulator) equal(x *Emulator, trace bool) (ret bool) {
 		if trace {
 			msg := fmt.Sprintf("compatLevel=(%d,%d), cursorKeyMode=(%d,%d)",
 				emu.compatLevel, x.compatLevel, emu.cursorKeyMode, x.cursorKeyMode)
-			util.Log.Warn(msg)
+			util.Logger.Warn(msg)
 			ret = false
 		} else {
 			return false
@@ -1066,7 +1066,7 @@ func (emu *Emulator) equal(x *Emulator, trace bool) (ret bool) {
 			msg := fmt.Sprintf("keypadMode=(%d,%d), originMode=(%d,%d), colMode=(%d,%d)",
 				emu.keypadMode, x.keypadMode, emu.originMode, x.originMode,
 				emu.colMode, x.colMode)
-			util.Log.Warn(msg)
+			util.Logger.Warn(msg)
 			ret = false
 		} else {
 			return false
@@ -1076,7 +1076,7 @@ func (emu *Emulator) equal(x *Emulator, trace bool) (ret bool) {
 	if emu.savedCursor_SCO != x.savedCursor_SCO {
 		if trace {
 			msg := fmt.Sprintf("savedCursor_SCO=(%v,%v)", emu.savedCursor_SCO, x.savedCursor_SCO)
-			util.Log.Warn(msg)
+			util.Logger.Warn(msg)
 			ret = false
 		} else {
 			return false
@@ -1101,7 +1101,7 @@ func (emu *Emulator) equal(x *Emulator, trace bool) (ret bool) {
 					emu.savedCursor_DEC.attrs, x.savedCursor_DEC.attrs,
 					emu.savedCursor_DEC.originMode, x.savedCursor_DEC.originMode)
 			}
-			util.Log.Warn(msg)
+			util.Logger.Warn(msg)
 			ret = false
 		} else {
 			return false
@@ -1110,7 +1110,7 @@ func (emu *Emulator) equal(x *Emulator, trace bool) (ret bool) {
 	if emu.mouseTrk != x.mouseTrk {
 		if trace {
 			msg := fmt.Sprintf("mouseTrk=(%v,%v)", emu.mouseTrk, x.mouseTrk)
-			util.Log.Warn(msg)
+			util.Logger.Warn(msg)
 			ret = false
 		} else {
 			return false
@@ -1121,7 +1121,7 @@ func (emu *Emulator) equal(x *Emulator, trace bool) (ret bool) {
 		if trace {
 			msg := fmt.Sprintf("selectionData length=(%d,%d), data=(%q,%q)",
 				len(emu.selectionData), len(x.selectionData), emu.selectionData, x.selectionData)
-			util.Log.Warn(msg)
+			util.Logger.Warn(msg)
 			ret = false
 		} else {
 			return false
@@ -1146,7 +1146,7 @@ func (emu *Emulator) equal(x *Emulator, trace bool) (ret bool) {
 			msg := fmt.Sprintf("iconLabel=(%s,%s), windowTitle=(%s,%s), bellCount=(%d,%d), titleInitialized=(%t,%t)",
 				emu.iconLabel, x.iconLabel, emu.windowTitle, x.windowTitle,
 				emu.bellCount, x.bellCount, emu.titleInitialized, x.titleInitialized)
-			util.Log.Warn(msg)
+			util.Logger.Warn(msg)
 			ret = false
 		} else {
 			return false
@@ -1157,7 +1157,7 @@ func (emu *Emulator) equal(x *Emulator, trace bool) (ret bool) {
 		// different title stack number
 		if trace {
 			msg := fmt.Sprintf("windowTitleStack length=(%d,%d)", len(emu.windowTitleStack), len(x.windowTitleStack))
-			util.Log.Warn(msg)
+			util.Logger.Warn(msg)
 			ret = false
 		} else {
 			return false
@@ -1168,7 +1168,7 @@ func (emu *Emulator) equal(x *Emulator, trace bool) (ret bool) {
 				// same title stack number, different stack value
 				if trace {
 					msg := fmt.Sprintf("windowTitleStack[%d]=(%s,%s)", i, emu.windowTitleStack[i], x.windowTitleStack[i])
-					util.Log.Warn(msg)
+					util.Logger.Warn(msg)
 					ret = false
 				} else {
 					return false

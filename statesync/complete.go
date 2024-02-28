@@ -5,6 +5,7 @@
 package statesync
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"strings"
@@ -61,13 +62,13 @@ func (c *Complete) ActLarge(str string, feed chan string) string {
 	// save remains if we got
 	if len(remains) > 0 {
 		c.remainsBuf.WriteString(remains)
-		util.Log.Debug("ActLarge", "remains", remains)
+		util.Logger.Debug("ActLarge", "remains", remains)
 		go func() {
 			// a little bit late is good enough, the main loop will block
 			// until it send the previous content.
 			time.Sleep(time.Millisecond * 10)
 			feed <- ""
-			util.Log.Debug("ActLarge", "schedule", "send remains")
+			util.Logger.Debug("ActLarge", "schedule", "send remains")
 		}()
 	}
 
@@ -145,7 +146,7 @@ func (c *Complete) SetEchoAck(now int64) (ret bool) {
 
 	if c.echoAck != newestEchoAck {
 		ret = true
-		util.Log.Debug("SetEchoAck", "newestEchoAck",
+		util.Logger.Log(context.Background(), util.LevelTrace, "SetEchoAck", "newestEchoAck",
 			newestEchoAck, "inputHistory", z, "time", now%10000, "return", ret)
 	}
 
@@ -316,7 +317,7 @@ func (c *Complete) Clone() *Complete {
 func (c *Complete) EqualTrace(x *Complete) bool {
 	if c.echoAck != x.echoAck {
 		msg := fmt.Sprintf("echoAck=(%d,%d)", c.echoAck, x.echoAck)
-		util.Log.Warn(msg)
+		util.Logger.Warn(msg)
 		return false
 	}
 

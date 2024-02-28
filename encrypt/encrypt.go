@@ -71,7 +71,7 @@ func _randomNonce(r ..._randFunc) ([]byte, error) {
 	nonce := make([]byte, NONCE_LEN)
 	if _, err := f(rand.Reader, nonce); err != nil {
 		// logW.Printf("#randomNonce. %s\n", err)
-		util.Log.Warn("#randomNonce", "error", err)
+		util.Logger.Warn("#randomNonce", "error", err)
 		return nil, err
 	}
 
@@ -93,13 +93,13 @@ func NewBase64Key2(printableKey string) *Base64Key {
 	key, err := base64.StdEncoding.DecodeString(printableKey)
 	if err != nil {
 		// logW.Printf("#Base64Key Key must be well-formed base64. %s\n", err)
-		util.Log.Warn("key must be well-formed base64", "error", err)
+		util.Logger.Warn("key must be well-formed base64", "error", err)
 		return nil
 	}
 
 	if len(key) != 16 {
 		// logW.Println("#Base64Key Key must represent 16 octets.")
-		util.Log.Warn("key must represent 16 octets.", "key", key)
+		util.Logger.Warn("key must represent 16 octets.", "key", key)
 		return nil
 	}
 
@@ -201,7 +201,7 @@ func NewSession(key Base64Key) (*Session, error) {
 	block, err := aes.NewCipher([]byte(s.base64Key.key))
 	if err != nil {
 		// logW.Printf("#session %s\n", err)
-		util.Log.Warn("create session from key", "error", err)
+		util.Logger.Warn("create session from key", "error", err)
 		return nil, err
 	}
 

@@ -552,7 +552,7 @@ func (sc *STMClient) mainInit() error {
 	if err != nil {
 		return err
 	}
-	util.Log.Debug("client window size", "col", col, "row", row)
+	util.Logger.Debug("client window size", "col", col, "row", row)
 
 	// local state
 	savedLines := terminal.SaveLinesRowsOption
@@ -566,7 +566,7 @@ func (sc *STMClient) mainInit() error {
 	// CSI ? 1004l Disable FocusIn/FocusOut
 	init := "\x1B[?1049l\x1B[?1l\x1B[?1004l"
 	os.Stdout.WriteString(init)
-	util.Log.Debug("mainInit", "init", init)
+	util.Logger.Debug("mainInit", "init", init)
 
 	// open network
 	blank := &statesync.UserStream{}
@@ -588,7 +588,7 @@ func (sc *STMClient) mainInit() error {
 func (sc *STMClient) processNetworkInput(s string) {
 	// sc.network.Recv()
 	if err := sc.network.ProcessPayload(s); err != nil {
-		util.Log.Warn("ProcessPayload", "error", err)
+		util.Logger.Warn("ProcessPayload", "error", err)
 	}
 
 	//  Now give hints to the overlays
@@ -615,7 +615,7 @@ func (sc *STMClient) processUserInput(buf string) bool {
 		sc.overlays.GetPredictionEngine().Reset()
 	}
 
-	util.Log.Debug("processUserInput", "buf", buf)
+	util.Logger.Debug("processUserInput", "buf", buf)
 	var input []rune
 	graphemes := uniseg.NewGraphemes(buf)
 	for graphemes.Next() {
@@ -641,7 +641,7 @@ func (sc *STMClient) processUserInput(buf string) bool {
 				os.Stdout.WriteString(sc.display.Close())
 
 				if err := term.Restore(int(os.Stdin.Fd()), sc.savedTermios); err != nil {
-					util.Log.Error("restore terminal failed", "error", err)
+					util.Logger.Error("restore terminal failed", "error", err)
 					return false
 				}
 
@@ -731,7 +731,7 @@ func (sc *STMClient) outputNewFrame() {
 	// util.Log.SetLevel(slog.LevelDebug)
 	os.Stdout.WriteString(diff)
 	if diff != "" {
-		util.Log.Debug("outputNewFrame", "diff", diff)
+		util.Logger.Debug("outputNewFrame", "diff", diff)
 	}
 
 	sc.repaintRequested = false
@@ -795,7 +795,7 @@ func (sc *STMClient) init() error {
 
 	// Put terminal in application-cursor-key mode
 	os.Stdout.WriteString(sc.display.Open())
-	util.Log.Info("open terminal", "seq", sc.display.Open())
+	util.Logger.Info("open terminal", "seq", sc.display.Open())
 
 	// Add our name to window title
 	prefix := os.Getenv("APRILSH_TITLE_PREFIX")
@@ -883,10 +883,10 @@ func (sc *STMClient) shutdown() error {
 
 	// Restore terminal and terminal-driver state
 	os.Stdout.WriteString(sc.display.Close())
-	util.Log.Info("close terminal", "seq", sc.display.Close())
+	util.Logger.Info("close terminal", "seq", sc.display.Close())
 
 	if err := term.Restore(int(os.Stdin.Fd()), sc.savedTermios); err != nil {
-		util.Log.Warn("restore terminal failed", "error", err)
+		util.Logger.Warn("restore terminal failed", "error", err)
 		return err
 	}
 
@@ -974,7 +974,7 @@ mainLoop:
 		}
 
 		timer := time.NewTimer(time.Duration(waitTime) * time.Millisecond)
-		util.Log.Debug("mainLoop", "point", 100,
+		util.Logger.Debug("mainLoop", "point", 100,
 			"network.WaitTime", w0, "overlays.WaitTime", w1, "timeout", waitTime)
 		select {
 		case <-timer.C:
@@ -989,7 +989,7 @@ mainLoop:
 					break mainLoop
 				}
 				// if read from server failed, retry after 0.2 second
-				util.Log.Warn("receive from network", "error", networkMsg.Err)
+				util.Logger.Warn("receive from network", "error", networkMsg.Err)
 				if !sc.network.ShutdownInProgress() {
 					sc.overlays.GetNotificationEngine().SetNetworkError(networkMsg.Err.Error())
 				}
@@ -1007,7 +1007,7 @@ mainLoop:
 
 				// if read from local pts terminal failed, quit
 				if fileMsg.Err != nil {
-					util.Log.Warn("read from file", "error", fileMsg.Err)
+					util.Logger.Warn("read from file", "error", fileMsg.Err)
 				}
 				if !sc.network.HasRemoteAddr() {
 					break mainLoop
@@ -1017,7 +1017,7 @@ mainLoop:
 				}
 			}
 		case s := <-sigChan:
-			util.Log.Debug("got signal", "signal", s)
+			util.Logger.Debug("got signal", "signal", s)
 			signals.Handler(s)
 		}
 
@@ -1038,7 +1038,7 @@ mainLoop:
 			if !sc.network.HasRemoteAddr() {
 				break
 			} else if !sc.network.ShutdownInProgress() {
-				util.Log.Debug("start shutting down.")
+				util.Logger.Debug("start shutting down.")
 				sc.overlays.GetNotificationEngine().SetNotificationString(
 					"Signal received, shutting down...", true, true)
 				sc.network.StartShutdown()
@@ -1072,7 +1072,7 @@ mainLoop:
 					sc.overlays.GetNotificationEngine().SetNotificationString(
 						"Timed out waiting for server...", true, true)
 					// sc.network.StartShutdown()
-					util.Log.Warn("No connection within x seconds", "seconds", frontend.TimeoutIfNoConnect/1000)
+					util.Logger.Warn("No connection within x seconds", "seconds", frontend.TimeoutIfNoConnect/1000)
 					break
 				}
 			} else {
@@ -1087,11 +1087,11 @@ mainLoop:
 		// util.Log.Warn("mainLoop", "before", "tick")
 		err := sc.network.Tick()
 		if err != nil {
-			util.Log.Warn("tick send failed", "error", err)
+			util.Logger.Warn("tick send failed", "error", err)
 			sc.overlays.GetNotificationEngine().SetNetworkError(err.Error())
 			// if errors.Is(err, syscall.ECONNREFUSED) {
 			sc.network.StartShutdown()
-			util.Log.Debug("start shutting down.")
+			util.Logger.Debug("start shutting down.")
 		} else {
 			sc.overlays.GetNotificationEngine().ClearNetworkError()
 		}
@@ -1100,7 +1100,7 @@ mainLoop:
 		if sc.network.GetRemoteStateNum() != 0 && sinceLastResponse > frontend.TimeoutIfNoResp {
 			// if no awaken
 			if !sc.network.Awaken(now) {
-				util.Log.Warn("No server response over x seconds", "seconds", frontend.TimeoutIfNoResp)
+				util.Logger.Warn("No server response over x seconds", "seconds", frontend.TimeoutIfNoResp)
 				break
 			}
 		}
@@ -1183,11 +1183,11 @@ func main() {
 	// setup client log file
 	switch conf.verbose {
 	case util.DebugLevel:
-		util.Log.CreateLogger(logWriter, conf.addSource, slog.LevelDebug)
+		util.Logger.CreateLogger(logWriter, conf.addSource, slog.LevelDebug)
 	case util.TraceLevel:
-		util.Log.CreateLogger(logWriter, conf.addSource, util.LevelTrace)
+		util.Logger.CreateLogger(logWriter, conf.addSource, util.LevelTrace)
 	default:
-		util.Log.CreateLogger(logWriter, conf.addSource, slog.LevelInfo)
+		util.Logger.CreateLogger(logWriter, conf.addSource, slog.LevelInfo)
 	}
 	// util.Log.AddSource(conf.addSource)
 	// util.Log.SetOutput(os.Stderr)

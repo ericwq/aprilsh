@@ -95,7 +95,7 @@ func TestParsePortRange(t *testing.T) {
 	var place strings.Builder
 	// output := log.New(&place, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 
-	util.Log.SetOutput(&place)
+	util.Logger.SetOutput(&place)
 
 	for _, v := range tc {
 		place.Reset()
@@ -141,7 +141,7 @@ func TestConnection(t *testing.T) {
 	var output strings.Builder
 	// logFunc = log.New(&output, "#test", log.Ldate|log.Ltime|log.Lshortfile)
 
-	util.Log.SetOutput(&output)
+	util.Logger.SetOutput(&output)
 
 	// test server connection creation
 	for _, v := range tc {
@@ -190,7 +190,7 @@ func TestConnectionClient(t *testing.T) {
 
 	var output strings.Builder
 
-	util.Log.SetOutput(&output)
+	util.Logger.SetOutput(&output)
 	// test client connection
 	for _, v := range tc {
 		server := NewConnection(v.sIP, v.sPort)
@@ -241,7 +241,7 @@ func TestConnectionClientFail(t *testing.T) {
 	// intercept log output
 	var output strings.Builder
 
-	util.Log.SetOutput(&output)
+	util.Logger.SetOutput(&output)
 
 	// create client
 	wrongKey := "invalid key."
@@ -268,7 +268,7 @@ func TestConnectionReadWrite(t *testing.T) {
 	var output strings.Builder
 	// server.logW.SetOutput(&output)
 
-	util.Log.SetOutput(&output)
+	util.Logger.SetOutput(&output)
 
 	if server == nil {
 		t.Errorf("%q server should not return nil.\n", title)
@@ -450,7 +450,7 @@ func TestHopPort(t *testing.T) {
 	var output strings.Builder
 	// client.logW.SetOutput(&output)
 
-	util.Log.SetOutput(&output)
+	util.Logger.SetOutput(&output)
 
 	// fake wrong remote address
 	client.remoteAddr = &net.UDPAddr{Port: -80}
@@ -478,7 +478,7 @@ func TestTryBindFail(t *testing.T) {
 
 	var output strings.Builder
 
-	util.Log.SetOutput(&output)
+	util.Logger.SetOutput(&output)
 	// logFunc = log.New(&output, "#test", log.Ldate|log.Ltime|log.Lshortfile)
 
 	s := NewConnection("", "8000:8003")
@@ -794,7 +794,7 @@ func TestSendBranch(t *testing.T) {
 	var output strings.Builder
 	// server.logW.SetOutput(&output)
 
-	util.Log.SetOutput(&output)
+	util.Logger.SetOutput(&output)
 
 	msg, _, _ := server.Recv(1)
 	if msg != title {
@@ -875,7 +875,7 @@ func TestRecvFail(t *testing.T) {
 	var output strings.Builder
 	// client.logW.SetOutput(&output)
 
-	util.Log.SetOutput(&output)
+	util.Logger.SetOutput(&output)
 
 	// let the mock connection as the only connection
 	var mock mockUdpConn
@@ -945,7 +945,7 @@ func TestRecvBranchServer(t *testing.T) {
 	var output strings.Builder
 	// server.logW.SetOutput(&output)
 
-	util.Log.SetOutput(&output)
+	util.Logger.SetOutput(&output)
 
 	// perform the receive
 	_, _, err := server.Recv(1)
@@ -981,7 +981,7 @@ func TestRecvBranchClient(t *testing.T) {
 	var output strings.Builder
 	// server.logW.SetOutput(&output)
 
-	util.Log.SetOutput(&output)
+	util.Logger.SetOutput(&output)
 
 	msg0 := "from client to server"
 	// client send a message to server, server receive it.
@@ -1067,7 +1067,7 @@ func TestRecvCongestionPacket(t *testing.T) {
 	var output strings.Builder
 	// server.logW.SetOutput(&output)
 
-	util.Log.SetOutput(&output)
+	util.Logger.SetOutput(&output)
 
 	// save old congestionFunc
 	oldCF := congestionFunc
@@ -1130,7 +1130,7 @@ func TestRecvSRTT(t *testing.T) {
 	var output strings.Builder
 	// server.logW.SetOutput(&output)
 
-	util.Log.SetOutput(&output)
+	util.Logger.SetOutput(&output)
 
 	var got string
 	maxMsg := 10
@@ -1214,11 +1214,10 @@ func TestConnectionRecvSeqFail(t *testing.T) {
 	var wg sync.WaitGroup
 	server := NewConnection(ip, port)
 
-
 	var output strings.Builder
-	util.Log.SetLevel(slog.LevelDebug)
+	util.Logger.SetLevel(slog.LevelDebug)
 	// util.Log.SetOutput(os.Stdout)
-	util.Log.SetOutput(&output)
+	util.Logger.SetOutput(&output)
 
 	if server == nil {
 		t.Errorf("%q server should not return nil.\n", title)

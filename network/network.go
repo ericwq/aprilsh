@@ -307,7 +307,7 @@ func NewConnectionClient(keyStr string, ip, port string) *Connection { // client
 	c.key = encrypt.NewBase64Key2(keyStr)
 	// var err error
 	if c.key == nil {
-		util.Log.Warn("#NeNewConnectionClient build key failed", "keyStr", keyStr, "error", nil)
+		util.Logger.Warn("#NeNewConnectionClient build key failed", "keyStr", keyStr, "error", nil)
 		return nil
 
 	}
@@ -345,13 +345,13 @@ func NewConnectionClient(keyStr string, ip, port string) *Connection { // client
 func parsePort(portStr string, hint string) (port int, ok bool) {
 	value, err := strconv.Atoi(portStr)
 	if err != nil {
-		util.Log.Warn("#parsePort invalid port number",
+		util.Logger.Warn("#parsePort invalid port number",
 			"error", err, "hint", hint, "port", portStr)
 		return
 	}
 
 	if value < 0 || value > 65535 {
-		util.Log.Warn("#parsePort port number is outside of valid range [0..65535]",
+		util.Logger.Warn("#parsePort port number is outside of valid range [0..65535]",
 			"error", err,
 			"hint", hint,
 			"port number", value)
@@ -384,7 +384,7 @@ func ParsePortRange(desiredPort string) (desiredPortLow, desiredPortHigh int, ok
 
 		if desiredPortLow > desiredPortHigh {
 			// logW.Printf("#ParsePortRange low port %d greater than high port %d\n", desiredPortLow, desiredPortHigh)
-			util.Log.Warn("#ParsePortRange low port is greater than high port",
+			util.Logger.Warn("#ParsePortRange low port is greater than high port",
 				"low port", desiredPortLow,
 				"high port", desiredPortHigh)
 			ok = false
@@ -458,7 +458,7 @@ func (c *Connection) dialUDP(ip, port string) bool {
 
 	conn, err := d.Dial(NETWORK, net.JoinHostPort(ip, port))
 	if err != nil {
-		util.Log.Warn("#dialUDP dial fail", "error", err)
+		util.Logger.Warn("#dialUDP dial fail", "error", err)
 		return false
 	}
 
@@ -466,7 +466,7 @@ func (c *Connection) dialUDP(ip, port string) bool {
 	c.socks = append(c.socks, conn.(udpConn))
 	c.hasRemoteAddr = true
 
-	util.Log.Debug("dialUDP",
+	util.Logger.Debug("dialUDP",
 		"ip", ip,
 		"port", port,
 		"localAddr", conn.LocalAddr(),
@@ -495,7 +495,7 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 		localAddr, err := net.ResolveUDPAddr(NETWORK, address)
 		if err != nil {
 			// c.logW.Printf("#tryBind %s\n", err)
-			util.Log.Warn("#tryBind resolve", "error", err, "address", address)
+			util.Logger.Warn("#tryBind resolve", "error", err, "address", address)
 			return false
 		}
 
@@ -503,7 +503,7 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 		conn, err := lc.ListenPacket(context.Background(), NETWORK, localAddr.String())
 		if err != nil {
 			if i == searchHigh { // last port to search
-				util.Log.Warn("#tryBind listen", "address", c.remoteAddr, "error", err)
+				util.Logger.Warn("#tryBind listen", "address", c.remoteAddr, "error", err)
 			}
 		} else {
 			c.socks = append(c.socks, conn.(udpConn))
@@ -542,7 +542,7 @@ func (c *Connection) hopPort() {
 	host, port, _ := net.SplitHostPort(c.remoteAddr.String())
 	if !c.dialUDP(host, port) {
 		// c.logW.Printf("#hopPort failed to dial %s\n", c.remoteAddr)
-		util.Log.Warn("#hopPort failed to dial", "remote addr", c.remoteAddr)
+		util.Logger.Warn("#hopPort failed to dial", "remote addr", c.remoteAddr)
 		return
 	}
 
@@ -558,7 +558,7 @@ func (c *Connection) printSocks(postfix string) {
 		var x net.Conn
 
 		x = c.socks[i].(net.Conn)
-		util.Log.Debug(str,
+		util.Logger.Debug(str,
 			"i", i,
 			"localAddr", x.LocalAddr(),
 			"remoteAddr", x.RemoteAddr())
@@ -626,7 +626,7 @@ func (c *Connection) Recv(timeout int) (payload string, remoteAddr net.Addr, err
 		}
 
 		remoteAddr = c.remoteAddr
-		util.Log.Trace("got message",
+		util.Logger.Trace("got message",
 			"i", i,
 			"localAddr", c.socks[i].(net.Conn).LocalAddr(),
 			"remoteAddr", c.remoteAddr,
@@ -707,7 +707,7 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 	if p.seq < c.expectedReceiverSeq {
 		// don't use (but do return) out-of-order packets for timestamp or targeting
 		// c.hasRemoteAddr = true
-		util.Log.Warn("#recvOne received explicit out-of-order packets",
+		util.Logger.Warn("#recvOne received explicit out-of-order packets",
 			"expectedReceiverSeq", c.expectedReceiverSeq, "got", p.seq)
 		return string(p.payload), nil
 	}
@@ -726,7 +726,7 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 			c.savedTimestamp -= CONGESTION_TIMESTAMP_PENALTY
 			if c.server {
 				// c.logW.Println("#recvOne received explicit congestion notification.")
-				util.Log.Warn("#recvOne received explicit congestion notification")
+				util.Logger.Warn("#recvOne received explicit congestion notification")
 			}
 		}
 	}
@@ -758,7 +758,7 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 	if c.server { // only client can roam
 		if !reflect.DeepEqual(raddr, c.remoteAddr) {
 			c.remoteAddr = raddr
-			util.Log.Debug("server now attached to client",
+			util.Logger.Debug("server now attached to client",
 				"localAddr", conn.(net.Conn).LocalAddr(),
 				"remoteAddr", c.remoteAddr,
 				"hasRemoteAddr", c.hasRemoteAddr)
@@ -780,7 +780,7 @@ func (c *Connection) send(s string, awaken bool) (sendError error) {
 	conn := c.sock()
 	// check hibernate case
 	if !c.hasRemoteAddr {
-		util.Log.Trace("send message",
+		util.Logger.Trace("send message",
 			"localAddr", conn.(net.Conn).LocalAddr(),
 			"remoteAddr", c.remoteAddr,
 			"hasRemoteAddr", c.hasRemoteAddr)
@@ -798,12 +798,12 @@ func (c *Connection) send(s string, awaken bool) (sendError error) {
 
 	if c.server {
 		bytesSent, _, err = conn.WriteMsgUDP(p, nil, c.remoteAddr.(*net.UDPAddr)) // server
-		util.Log.Trace("send message",
+		util.Logger.Trace("send message",
 			"localAddr", conn.(net.Conn).LocalAddr(),
 			"remoteAddr", c.remoteAddr)
 	} else {
 		bytesSent, _, err = conn.WriteMsgUDP(p, nil, nil) // client connection is connected
-		util.Log.Trace("send message",
+		util.Logger.Trace("send message",
 			"localAddr", conn.(net.Conn).LocalAddr(),
 			"remoteAddr", conn.(net.Conn).RemoteAddr())
 	}
@@ -825,7 +825,7 @@ func (c *Connection) send(s string, awaken bool) (sendError error) {
 	if c.server {
 		if !awaken && now-c.lastHeard > SERVER_ASSOCIATION_TIMEOUT {
 			c.hasRemoteAddr = false
-			util.Log.Warn("#send server now detached from client",
+			util.Logger.Warn("#send server now detached from client",
 				"localAddr", conn.(net.Conn).LocalAddr(),
 				"remoteAddr", c.remoteAddr)
 		}

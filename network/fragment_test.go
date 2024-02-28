@@ -195,7 +195,7 @@ func TestGetAssemblyFail(t *testing.T) {
 
 	// intercept the log
 
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	// validate uncompress error
 	// # this can also test zlib.NewReader(b)

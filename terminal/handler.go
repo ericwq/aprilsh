@@ -519,7 +519,7 @@ func hdl_esc_decsc(emu *Emulator) {
 func hdl_esc_decrc(emu *Emulator) {
 	if !emu.savedCursor_DEC.isSet {
 		// emu.logI.Println("Asked to restore cursor (DECRC) but it has not been saved.")
-		util.Log.Warn("Asked to restore cursor (DECRC) but it has not been saved")
+		util.Logger.Warn("Asked to restore cursor (DECRC) but it has not been saved")
 	} else {
 		emu.posX = emu.savedCursor_DEC.posX
 		emu.posY = emu.savedCursor_DEC.posY
@@ -703,7 +703,7 @@ func hdl_csi_ed(emu *Emulator, cmd int) {
 		}
 	default:
 		// emu.logI.Printf("Erase in Display with illegal param: %d\n", cmd)
-		util.Log.Info("Erase in Display with illegal param", "cmd", cmd)
+		util.Logger.Info("Erase in Display with illegal param", "cmd", cmd)
 	}
 }
 
@@ -722,7 +722,7 @@ func hdl_csi_el(emu *Emulator, cmd int) {
 		emu.cf.eraseInRow(emu.posY, 0, emu.nCols, emu.attrs)
 	default:
 		// emu.logI.Printf("Erase in Line with illegal param: %d\n", cmd)
-		util.Log.Info("Erase in Line with illegal param", "cmd", cmd)
+		util.Logger.Info("Erase in Line with illegal param", "cmd", cmd)
 	}
 }
 
@@ -1066,7 +1066,7 @@ func hdl_csi_sgr(emu *Emulator, params []int) {
 			}
 		default:
 			// emu.logU.Printf("attribute not supported. %d \n", attr)
-			util.Log.Warn("attribute not supported",
+			util.Logger.Warn("attribute not supported",
 				"unimplement", "CSI SGR",
 				"attr", attr)
 		}
@@ -1130,7 +1130,7 @@ func hdl_osc_10x(emu *Emulator, cmd int, arg string) {
 				colorIdx, err := strconv.Atoi(color)
 				if err != nil {
 					// emu.logW.Printf("OSC 10x: can't parse color index. %q\n", arg)
-					util.Log.Warn("OSC 10x: can't parse color index", "arg", arg)
+					util.Logger.Warn("OSC 10x: can't parse color index", "arg", arg)
 					return
 				}
 
@@ -1149,7 +1149,7 @@ func hdl_osc_10x(emu *Emulator, cmd int, arg string) {
 		}
 	} else {
 		// emu.logW.Printf("OSC 10x: malformed argument, missing ';'. %q\n", arg)
-		util.Log.Warn("OSC 10x: malformed argument, missing ';'", "arg", arg)
+		util.Logger.Warn("OSC 10x: malformed argument, missing ';'", "arg", arg)
 		return
 	}
 }
@@ -1195,7 +1195,7 @@ func hdl_osc_52(emu *Emulator, cmd int, arg string) {
 	pos := strings.Index(arg, ";")
 	if pos == -1 {
 		// emu.logW.Printf("OSC 52: can't find Pc parameter. %q\n", arg)
-		util.Log.Warn("OSC 52: can't find Pc parameter", "arg", arg)
+		util.Logger.Warn("OSC 52: can't find Pc parameter", "arg", arg)
 		return
 	}
 	Pc := arg[:pos]
@@ -1212,7 +1212,7 @@ func hdl_osc_52(emu *Emulator, cmd int, arg string) {
 	// validate Pc
 	if !osc52InRange(Pc) {
 		// emu.logW.Printf("OSC 52: invalid Pc parameters. %q\n", Pc)
-		util.Log.Warn("OSC 52: invalid Pc parameters", "Pc", Pc)
+		util.Logger.Warn("OSC 52: invalid Pc parameters", "Pc", Pc)
 		return
 	}
 
@@ -1326,7 +1326,7 @@ func hdl_osc_4(emu *Emulator, cmd int, arg string) {
 				colorIdx, err := strconv.Atoi(c)
 				if err != nil {
 					// emu.logW.Printf("OSC 4: can't parse c parameter. %q\n", arg)
-					util.Log.Warn("OSC 4: can't parse c parameter", "arg", arg)
+					util.Logger.Warn("OSC 4: can't parse c parameter", "arg", arg)
 					return
 				}
 				color := PaletteColor(colorIdx)
@@ -1336,7 +1336,7 @@ func hdl_osc_4(emu *Emulator, cmd int, arg string) {
 		}
 	} else {
 		// emu.logW.Printf("OSC 4: malformed argument, missing ';'. %q\n", arg)
-		util.Log.Warn("OSC 4: malformed argument, missing ';'", "arg", arg)
+		util.Logger.Warn("OSC 4: malformed argument, missing ';'", "arg", arg)
 		return
 	}
 }
@@ -1391,7 +1391,7 @@ func hdl_csi_sm(emu *Emulator, params []int) {
 			emu.autoNewlineMode = true
 		default:
 			// emu.logW.Printf("Ignored bogus set mode %d.\n", param)
-			util.Log.Warn("Ignored bogus set mode", "param", param)
+			util.Logger.Warn("Ignored bogus set mode", "param", param)
 		}
 	}
 }
@@ -1414,7 +1414,7 @@ func hdl_csi_rm(emu *Emulator, params []int) {
 			emu.autoNewlineMode = false
 		default:
 			// emu.logW.Printf("Ignored bogus reset mode %d.\n", param)
-			util.Log.Warn("Ignored bogus reset mode", "param", param)
+			util.Logger.Warn("Ignored bogus reset mode", "param", param)
 		}
 	}
 }
@@ -1435,7 +1435,7 @@ func hdl_csi_privSM(emu *Emulator, params []int) {
 			emu.switchColMode(ColMode_C132)
 		case 4:
 			// emu.logT.Println("DECSCLM: Set smooth scroll")
-			util.Log.Debug("DECSCLM: Set smooth scroll")
+			util.Logger.Debug("DECSCLM: Set smooth scroll")
 		case 5:
 			// emu.framebuffer.DS.ReverseVideo = true // DECSCNM Reverse
 			emu.reverseVideo = true
@@ -1447,13 +1447,13 @@ func hdl_csi_privSM(emu *Emulator, params []int) {
 			emu.autoWrapMode = true
 		case 8:
 			// emu.logU.Println("DECARM: Set auto-repeat mode")
-			util.Log.Warn("DECARM: Set auto-repeat mode", "unimplement", "DECSET")
+			util.Logger.Warn("DECARM: Set auto-repeat mode", "unimplement", "DECSET")
 		case 9:
 			// emu.framebuffer.DS.mouseTrk.mode = MouseModeX10
 			emu.mouseTrk.mode = MouseTrackingMode_X10_Compat
 		case 12:
 			// emu.logU.Println("Start blinking cursor") // TODO support blinking
-			util.Log.Warn("Start blinking cursor", "unimplement", "DECSET")
+			util.Logger.Warn("Start blinking cursor", "unimplement", "DECSET")
 		case 25:
 			// emu.framebuffer.DS.CursorVisible = true // DECTCEM zutty:showCursorMode
 			emu.showCursorMode = true
@@ -1517,7 +1517,7 @@ func hdl_csi_privSM(emu *Emulator, params []int) {
 			emu.bracketedPasteMode = true
 		default:
 			// emu.logU.Printf("set priv mode %d\n", param)
-			util.Log.Warn("set priv mode", "unimplement", "DECSET", "param", param)
+			util.Logger.Warn("set priv mode", "unimplement", "DECSET", "param", param)
 		}
 	}
 }
@@ -1538,7 +1538,7 @@ func hdl_csi_privRM(emu *Emulator, params []int) {
 			emu.switchColMode(ColMode_C80)
 		case 4:
 			// emu.logT.Println("DECSCLM: Set jump scroll")
-			util.Log.Debug("DECSCLM: Set jump scroll")
+			util.Logger.Debug("DECSCLM: Set jump scroll")
 		case 5:
 			// emu.framebuffer.DS.ReverseVideo = false // Normal
 			emu.reverseVideo = false
@@ -1550,13 +1550,13 @@ func hdl_csi_privRM(emu *Emulator, params []int) {
 			emu.autoWrapMode = false
 		case 8:
 			// emu.logU.Println("DECARM: Reset auto-repeat mode")
-			util.Log.Warn("DECARM: Reset auto-repeat mode", "unimplement", "DECRST")
+			util.Logger.Warn("DECARM: Reset auto-repeat mode", "unimplement", "DECRST")
 		case 9, 1000, 1001, 1002, 1003:
 			// emu.framebuffer.DS.mouseTrk.mode = MouseModeNone
 			emu.mouseTrk.mode = MouseTrackingMode_Disable
 		case 12:
 			// emu.logU.Println("Stop blinking cursor")
-			util.Log.Warn("Stop blinking cursor", "unimplement", "DECRST")
+			util.Logger.Warn("Stop blinking cursor", "unimplement", "DECRST")
 		case 25:
 			// emu.framebuffer.DS.CursorVisible = false
 			emu.showCursorMode = false
@@ -1602,7 +1602,7 @@ func hdl_csi_privRM(emu *Emulator, params []int) {
 			emu.bracketedPasteMode = false
 		default:
 			// emu.logU.Printf("reset priv mode %d\n", param)
-			util.Log.Warn("reset priv mode", "unimplement", "DECRST", "param", param)
+			util.Logger.Warn("reset priv mode", "unimplement", "DECRST", "param", param)
 		}
 	}
 }
@@ -1625,7 +1625,7 @@ func hdl_csi_decstbm(emu *Emulator, params []int) {
 
 		if newMarginBottom < newMarginTop+2 || emu.nRows < newMarginBottom {
 			// emu.logT.Printf("Illegal arguments to SetTopBottomMargins: top=%d, bottom=%d\n", params[0], params[1])
-			util.Log.Warn("Illegal arguments to SetTopBottomMargins",
+			util.Logger.Warn("Illegal arguments to SetTopBottomMargins",
 				"top", params[0],
 				"bottom", params[1])
 		} else if newMarginTop != emu.marginTop || newMarginBottom != emu.marginBottom {
@@ -1705,7 +1705,7 @@ func hdl_csi_decslrm(emu *Emulator, params []int) {
 
 		if newMarginRight < newMarginLeft+2 || emu.nCols < newMarginRight {
 			// emu.logT.Printf("Illegal arguments to SetLeftRightMargins: left=%d, right=%d\n", params[0], params[1])
-			util.Log.Warn("Illegal arguments to SetLeftRightMargins",
+			util.Logger.Warn("Illegal arguments to SetLeftRightMargins",
 				"left", params[0],
 				"right", params[1])
 		} else if newMarginLeft != emu.hMargin || newMarginRight != emu.nColsEff {
@@ -1744,7 +1744,7 @@ func hdl_csi_slrm_scosc(emu *Emulator, params []int) {
 func hdl_csi_scorc(emu *Emulator) {
 	if !emu.savedCursor_SCO.isSet {
 		// emu.logI.Println("Asked to restore cursor (SCORC) but it has not been saved.")
-		util.Log.Info("Asked to restore cursor (SCORC) but it has not been saved")
+		util.Logger.Info("Asked to restore cursor (SCORC) but it has not been saved")
 	} else {
 		emu.posX = emu.savedCursor_SCO.posX
 		emu.posY = emu.savedCursor_SCO.posY
@@ -1785,7 +1785,7 @@ func hdl_csi_decscl(emu *Emulator, params []int) {
 			emu.setCompatLevel(sclCompatLevel(params[0]))
 		default:
 			// emu.logU.Printf("compatibility mode: %d", params[0])
-			util.Log.Warn("compatibility mode",
+			util.Logger.Warn("compatibility mode",
 				"unimplement", "DECSCL",
 				"param", params[0])
 		}
@@ -1794,13 +1794,13 @@ func hdl_csi_decscl(emu *Emulator, params []int) {
 		switch params[1] {
 		case 0, 2:
 			// emu.logT.Println("DECSCL: 8-bit controls")
-			util.Log.Debug("DECSCL: 8-bit controls")
+			util.Logger.Debug("DECSCL: 8-bit controls")
 		case 1:
 			// emu.logT.Println("DECSCL: 7-bit controls")
-			util.Log.Debug("DECSCL: 7-bit controls")
+			util.Logger.Debug("DECSCL: 7-bit controls")
 		default:
 			// emu.logU.Printf("DECSCL: C1 control transmission mode: %d", params[1])
-			util.Log.Warn("DECSCL: C1 control transmission mode",
+			util.Logger.Warn("DECSCL: C1 control transmission mode",
 				"unimplement", "DECSCL",
 				"param", params[1])
 		}
@@ -1833,7 +1833,7 @@ func hdl_csi_decscusr(emu *Emulator, arg int) {
 	case 6:
 		emu.cf.cursor.showStyle = CursorStyle_SteadyBar
 	default:
-		util.Log.Warn("unexpected Ps parameter",
+		util.Logger.Warn("unexpected Ps parameter",
 			"id", strHandlerID[CSI_DECSCUSR],
 			"arg", arg)
 	}
@@ -1937,33 +1937,33 @@ func hdl_csi_xtmodkeys(emu *Emulator, params []int) {
 		case 0:
 			if params[1] != 0 {
 				// emu.logU.Printf("XTMODKEYS: modifyKeyboard = %d\n", params[1])
-				util.Log.Warn("XTMODKEYS: modifyKeyboard",
+				util.Logger.Warn("XTMODKEYS: modifyKeyboard",
 					"unimplement", "XTMODKEYS",
 					"params", params[1])
 			}
 		case 1:
 			if params[1] != 2 {
 				// emu.logU.Printf("XTMODKEYS: modifyCursorKeys = %d\n", params[1])
-				util.Log.Warn("XTMODKEYS: modifyCursorKeys",
+				util.Logger.Warn("XTMODKEYS: modifyCursorKeys",
 					"unimplement", "XTMODKEYS",
 					"params", params[1])
 			}
 		case 2:
 			if params[1] != 2 {
 				// emu.logU.Printf("XTMODKEYS: modifyFunctionKeys = %d\n", params[1])
-				util.Log.Warn("XTMODKEYS: modifyFunctionKeys",
+				util.Logger.Warn("XTMODKEYS: modifyFunctionKeys",
 					"unimplement", "XTMODKEYS",
 					"params", params[1])
 			}
 		case 4:
 			if params[1] <= 2 {
 				emu.modifyOtherKeys = uint(params[1])
-				util.Log.Debug("XTMODKEYS: modifyOtherKeys set to",
+				util.Logger.Debug("XTMODKEYS: modifyOtherKeys set to",
 					"modifyOtherKeys", emu.modifyOtherKeys)
 
 			} else {
 				// emu.logI.Printf("XTMODKEYS: illegal argument for modifyOtherKeys: %d\n", params[1])
-				util.Log.Warn("XTMODKEYS: illegal argument for modifyOtherKeys",
+				util.Logger.Warn("XTMODKEYS: illegal argument for modifyOtherKeys",
 					"params", params[1])
 
 			}
@@ -1990,7 +1990,7 @@ func hdl_csi_xtmodkeys(emu *Emulator, params []int) {
 //	  Ps = 2 3 ; 2  ⇒  Restore xterm window title from stack.
 func hdl_csi_xtwinops(emu *Emulator, params []int, sequence string) {
 	if len(params) == 0 {
-		util.Log.Warn("unhandled operation",
+		util.Logger.Warn("unhandled operation",
 			"seq", sequence,
 			"id", strHandlerID[CSI_XTWINOPS])
 		return
@@ -2003,7 +2003,7 @@ func hdl_csi_xtwinops(emu *Emulator, params []int, sequence string) {
 		case 1:
 			fallthrough
 		default:
-			util.Log.Warn("unhandled operation",
+			util.Logger.Warn("unhandled operation",
 				"seq", sequence,
 				"id", strHandlerID[CSI_XTWINOPS])
 		}
@@ -2014,12 +2014,12 @@ func hdl_csi_xtwinops(emu *Emulator, params []int, sequence string) {
 		case 1:
 			fallthrough
 		default:
-			util.Log.Warn("unhandled operation",
+			util.Logger.Warn("unhandled operation",
 				"seq", sequence,
 				"id", strHandlerID[CSI_XTWINOPS])
 		}
 	default:
-		util.Log.Warn("unhandled operation",
+		util.Logger.Warn("unhandled operation",
 			"seq", sequence,
 			"id", strHandlerID[CSI_XTWINOPS])
 	}

@@ -38,7 +38,7 @@ func TestBase64Key(t *testing.T) {
 	// }()
 	// logW.SetOutput(io.Discard)
 
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	// normal key
 	normalKey := NewBase64Key()
@@ -111,7 +111,7 @@ func TestSessionError(t *testing.T) {
 	// }()
 	// logW.SetOutput(io.Discard)
 
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	b := Base64Key{}
 	b.key = PrngFill(9)
@@ -138,7 +138,7 @@ func TestRandomNonce(t *testing.T) {
 	// }()
 	// logW.SetOutput(io.Discard)
 
-	util.Log.SetOutput(io.Discard)
+	util.Logger.SetOutput(io.Discard)
 
 	nonce, err := _randomNonce(fakeRand)
 
