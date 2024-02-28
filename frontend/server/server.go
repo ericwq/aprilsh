@@ -1432,37 +1432,13 @@ func (m *mainSrv) run2(conf *Config) {
 				util.Logger.Info("got signal: SIGTERM or SIGINT", "receiver", "run2")
 				shutdown = true
 			}
-		case <-m.downChan:
-			// another way to shutdown besides signal
+		case <-m.downChan: // another way to shutdown besides signal
 			shutdown = true
 		default:
 		}
 
 		if shutdown {
-			// util.Log.Info("run2", "shutdown", shutdown)
-			if len(m.workers) != 0 {
-				// stop all the the workers
-				for i := range m.workers {
-					m.workers[i].child.Signal(syscall.SIGTERM)
-					util.Logger.Debug("stop shell", "port", i)
-				}
-
-				// wait for workers to shutdown
-				for len(m.workers) > 0 {
-					timer := time.NewTimer(time.Duration(100) * time.Millisecond)
-					select {
-					case content := <-m.exChan: // some worker is done
-						m.handleMessage(content)
-					case t := <-timer.C:
-						util.Logger.Warn("run2 waiting for worker timeout", "timeout", t)
-					default:
-					}
-				}
-				util.Logger.Debug("run2 finish clean workers")
-			}
-			// finally, shutdown uxServe
-			m.uxdownChan <- true
-			util.Logger.Debug("run2 stop uxServe")
+			m.shutdown()
 			return
 		}
 
@@ -1483,111 +1459,119 @@ func (m *mainSrv) run2(conf *Config) {
 
 		req := strings.TrimSpace(string(buf[0:n]))
 		if strings.HasPrefix(req, frontend.AprilshMsgOpen) { // 'open aprilsh:'
-			if len(m.workers) >= maxPortLimit {
-				resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "over max port limit")
-				util.Logger.Warn("over max port limit", "request", req, "response", resp)
-				continue
-			}
-			// prepare next port
-			p := m.getAvailabePort()
-
-			// open aprilsh:TERM,user@server.domain
-			// prepare configuration
-			conf2 := *conf
-			conf2.desiredPort = fmt.Sprintf("%d", p)
-			body := strings.Split(req, ":")
-			content := strings.Split(body[1], ",")
-			if len(content) != 2 {
-				resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "malform request")
-				util.Logger.Warn("malform request", "request", req, "response", resp)
-				continue
-			}
-			conf2.term = content[0]
-			conf2.destination = content[1]
-
-			// parse user and host from destination
-			idx := strings.Index(content[1], "@")
-			if idx > 0 && idx < len(content[1])-1 {
-				conf2.host = content[1][idx+1:]
-				conf2.user = content[1][:idx]
-			} else {
-				// return "target parameter should be in the form of User@Server", false
-				resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "malform destination")
-				util.Logger.Warn("malform destination", "destination", content[1], "response", resp)
-
-				continue
-			}
-
-			// we don't need to check if user exist, ssh already done that before
-			//start child
-			child, err := startChild(&conf2)
-			if err != nil {
-				if errors.Is(err, syscall.EPERM) {
-					util.Logger.Warn("operation not permitted")
-				} else {
-					util.Logger.Warn("can't start child", "error", err)
-					fmt.Printf("can't start child, error=%#v\n", err)
-				}
-				continue
-			}
-			util.Logger.Debug("start child successfully, wait for the key.")
-
-			// waiting for the child process
-			m.wg.Add(1)
-			go func() {
-				ps, err := child.Wait()
-				if err != nil {
-					util.Logger.Warn("start child return", "error", err, "ProcessState", ps)
-				}
-				util.Logger.Debug("child finished", "port", p)
-				m.wg.Done()
-			}()
-			m.workers[p] = &workhorse{child: child}
-
-			// // start the worker
-			// m.wg.Add(1)
-			// go func(conf *Config, exChan chan string, whChan chan workhorse) {
-			// 	m.runWorker(conf, exChan, whChan)
-			// 	m.wg.Done()
-			// }(&conf2, m.exChan, m.whChan)
-
-			// timeout read key from worker
-			timer := time.NewTimer(time.Duration(50) * time.Millisecond)
-			select {
-			case <-timer.C:
-				resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "get key timeout")
-				util.Logger.Warn("run2 got key timeout", "request", req, "response", resp)
-				continue
-			case content := <-m.exChan:
-				// response session key and udp port to client
-				key, _ := m.handleMessage(content)
-				util.Logger.Debug("run2 got key", "key", key)
-
-				msg := fmt.Sprintf("%d,%s", p, key)
-				m.writeRespTo(addr, frontend.AprilshMsgOpen, msg)
-			}
+			m.startChild(req, addr, *conf)
 		} else if strings.HasPrefix(req, frontend.AprishMsgClose) { // 'close aprilsh:[port]'
-			// check port
-			pstr := strings.TrimPrefix(req, frontend.AprishMsgClose)
-			port, err := strconv.Atoi(pstr)
-			if err != nil {
-				resp := m.writeRespTo(addr, frontend.AprishMsgClose, "wrong port number")
-				util.Logger.Warn("wrong port number", "request", req, "response", resp)
-			}
-
-			// find worker
-			if _, ok := m.workers[port]; !ok {
-				resp := m.writeRespTo(addr, frontend.AprishMsgClose, "port does not exist")
-				util.Logger.Warn("port does not exist", "request", req, "response", resp)
-			}
-			// send kill message to the workers
-			m.workers[port].child.Signal(syscall.SIGTERM)
-			m.writeRespTo(addr, frontend.AprishMsgClose, "done")
+			m.closeChild(req, addr)
 		} else {
 			resp := m.writeRespTo(addr, frontend.AprishMsgClose, "unknow request")
 			util.Logger.Warn("unknow request", "request", req, "response", resp)
 		}
 	}
+}
+
+func (m *mainSrv) startChild(req string, addr *net.UDPAddr, conf2 Config) {
+	if len(m.workers) >= maxPortLimit {
+		resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "over max port limit")
+		util.Logger.Warn("over max port limit", "request", req, "response", resp)
+		return
+	}
+	// prepare next port
+	p := m.getAvailabePort()
+
+	// open aprilsh:TERM,user@server.domain
+	// prepare configuration
+	// conf2 := *conf
+	conf2.desiredPort = fmt.Sprintf("%d", p)
+	body := strings.Split(req, ":")
+	content := strings.Split(body[1], ",")
+	if len(content) != 2 {
+		resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "malform request")
+		util.Logger.Warn("malform request", "request", req, "response", resp)
+		return
+	}
+	conf2.term = content[0]
+	conf2.destination = content[1]
+
+	// parse user and host from destination
+	idx := strings.Index(content[1], "@")
+	if idx > 0 && idx < len(content[1])-1 {
+		conf2.host = content[1][idx+1:]
+		conf2.user = content[1][:idx]
+	} else {
+		// return "target parameter should be in the form of User@Server", false
+		resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "malform destination")
+		util.Logger.Warn("malform destination", "destination", content[1], "response", resp)
+
+		return
+	}
+
+	// we don't need to check if user exist, ssh already done that before
+	//start child
+	child, err := startChild(&conf2)
+	if err != nil {
+		if errors.Is(err, syscall.EPERM) {
+			util.Logger.Warn("operation not permitted")
+		} else {
+			util.Logger.Warn("can't start child", "error", err)
+			fmt.Printf("can't start child, error=%#v\n", err)
+		}
+		return
+	}
+	util.Logger.Debug("start child successfully, wait for the key.")
+
+	// waiting for the child process
+	m.wg.Add(1)
+	go func() {
+		ps, err := child.Wait()
+		if err != nil {
+			util.Logger.Warn("start child return", "error", err, "ProcessState", ps)
+		}
+		util.Logger.Debug("child finished", "port", p)
+		m.wg.Done()
+	}()
+	m.workers[p] = &workhorse{child: child}
+
+	// // start the worker
+	// m.wg.Add(1)
+	// go func(conf *Config, exChan chan string, whChan chan workhorse) {
+	// 	m.runWorker(conf, exChan, whChan)
+	// 	m.wg.Done()
+	// }(&conf2, m.exChan, m.whChan)
+
+	// timeout read key from worker
+	timer := time.NewTimer(time.Duration(50) * time.Millisecond)
+	select {
+	case <-timer.C:
+		resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "get key timeout")
+		util.Logger.Warn("run2 got key timeout", "request", req, "response", resp)
+		return
+	case content := <-m.exChan:
+		// response session key and udp port to client
+		key, _ := m.handleMessage(content)
+		util.Logger.Debug("run2 got key", "key", key)
+
+		msg := fmt.Sprintf("%d,%s", p, key)
+		m.writeRespTo(addr, frontend.AprilshMsgOpen, msg)
+	}
+}
+
+func (m *mainSrv) closeChild(req string, addr *net.UDPAddr) {
+	// check port
+	pstr := strings.TrimPrefix(req, frontend.AprishMsgClose)
+	port, err := strconv.Atoi(pstr)
+	if err != nil {
+		resp := m.writeRespTo(addr, frontend.AprishMsgClose, "wrong port number")
+		util.Logger.Warn("wrong port number", "request", req, "response", resp)
+	}
+
+	// find worker
+	if _, ok := m.workers[port]; !ok {
+		resp := m.writeRespTo(addr, frontend.AprishMsgClose, "port does not exist")
+		util.Logger.Warn("port does not exist", "request", req, "response", resp)
+	}
+	// send kill message to the workers
+	m.workers[port].child.Signal(syscall.SIGTERM)
+	m.writeRespTo(addr, frontend.AprishMsgClose, "done")
 }
 
 func (m *mainSrv) handleMessage(content string) (string, error) {
@@ -1645,6 +1629,33 @@ func (m *mainSrv) handleMessage(content string) (string, error) {
 	}
 
 	return "", nil
+}
+
+func (m *mainSrv) shutdown() {
+	// util.Log.Info("run2", "shutdown", shutdown)
+	if len(m.workers) != 0 {
+		// stop all workers
+		for i := range m.workers {
+			m.workers[i].child.Signal(syscall.SIGTERM)
+			util.Logger.Debug("stop shell", "port", i)
+		}
+
+		// wait for workers to shutdown
+		for len(m.workers) > 0 {
+			timer := time.NewTimer(time.Duration(100) * time.Millisecond)
+			select {
+			case content := <-m.exChan: // some worker is done
+				m.handleMessage(content)
+			case t := <-timer.C:
+				util.Logger.Warn("run2 waiting for worker timeout", "timeout", t)
+			default:
+			}
+		}
+		util.Logger.Debug("run2 finish clean workers")
+	}
+	// finally, shutdown uxServe
+	m.uxdownChan <- true
+	util.Logger.Debug("run2 stop uxServe")
 }
 
 func startChild(conf *Config) (*os.Process, error) {
