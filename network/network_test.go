@@ -1,4 +1,4 @@
-// Copyright 2022~2023 wangqi. All rights reserved.
+// Copyright 2022~2024 wangqi. All rights reserved.
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
@@ -93,9 +93,7 @@ func TestParsePortRange(t *testing.T) {
 	}
 
 	var place strings.Builder
-	// output := log.New(&place, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-
-	util.Logger.SetOutput(&place)
+	util.Logger.CreateLogger(&place, true, slog.LevelDebug)
 
 	for _, v := range tc {
 		place.Reset()
@@ -133,15 +131,13 @@ func TestConnection(t *testing.T) {
 		{"default range", "", "9081:9090", true, ""}, // error on macOS for ipv6
 		{"invalid port", "", "4;3", false, "#parsePort invalid port number"},
 		{"reverse port order", "", "4:3", false, "#ParsePortRange low port"},
-		{"invalid host ", "dev.net", "403", false, "no such host"},
+		{"invalid host ", "not.valid.host", "403", false, "no such host"},
 		{"invalid host literal", "192.158.", "403:405", false, "no such host"}, //"#tryBind error"},
 	}
 
 	// replace the logFunc
 	var output strings.Builder
-	// logFunc = log.New(&output, "#test", log.Ldate|log.Ltime|log.Lshortfile)
-
-	util.Logger.SetOutput(&output)
+	util.Logger.CreateLogger(&output, true, slog.LevelDebug)
 
 	// test server connection creation
 	for _, v := range tc {
@@ -189,8 +185,8 @@ func TestConnectionClient(t *testing.T) {
 	}
 
 	var output strings.Builder
+	util.Logger.CreateLogger(&output, true, slog.LevelDebug)
 
-	util.Logger.SetOutput(&output)
 	// test client connection
 	for _, v := range tc {
 		server := NewConnection(v.sIP, v.sPort)
@@ -240,8 +236,7 @@ func TestConnectionClientFail(t *testing.T) {
 
 	// intercept log output
 	var output strings.Builder
-
-	util.Logger.SetOutput(&output)
+	util.Logger.CreateLogger(&output, true, slog.LevelDebug)
 
 	// create client
 	wrongKey := "invalid key."
@@ -266,9 +261,7 @@ func TestConnectionReadWrite(t *testing.T) {
 	server := NewConnection(ip, port)
 
 	var output strings.Builder
-	// server.logW.SetOutput(&output)
-
-	util.Logger.SetOutput(&output)
+	util.Logger.CreateLogger(&output, true, slog.LevelDebug)
 
 	if server == nil {
 		t.Errorf("%q server should not return nil.\n", title)
@@ -303,6 +296,7 @@ func TestConnectionReadWrite(t *testing.T) {
 				if i == 0 {
 					got := output.String()
 					expect := "server now attached to client"
+					// fmt.Println("got=", got)
 					if !strings.Contains(got, expect) {
 						t.Errorf("%q firt recv() expect \n%q, got \n%q\n", title, expect, got)
 					}
@@ -313,8 +307,6 @@ func TestConnectionReadWrite(t *testing.T) {
 	}()
 
 	wg.Wait()
-	// restor the logFunc
-	// logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestUDPReadWrite(t *testing.T) {
@@ -448,9 +440,7 @@ func TestHopPort(t *testing.T) {
 
 	// intercept client log
 	var output strings.Builder
-	// client.logW.SetOutput(&output)
-
-	util.Logger.SetOutput(&output)
+	util.Logger.CreateLogger(&output, true, slog.LevelDebug)
 
 	// fake wrong remote address
 	client.remoteAddr = &net.UDPAddr{Port: -80}
@@ -477,9 +467,7 @@ func TestTryBindFail(t *testing.T) {
 	}
 
 	var output strings.Builder
-
-	util.Logger.SetOutput(&output)
-	// logFunc = log.New(&output, "#test", log.Ldate|log.Ltime|log.Lshortfile)
+	util.Logger.CreateLogger(&output, true, slog.LevelDebug)
 
 	s := NewConnection("", "8000:8003")
 
@@ -792,9 +780,7 @@ func TestSendBranch(t *testing.T) {
 
 	// intercept server log
 	var output strings.Builder
-	// server.logW.SetOutput(&output)
-
-	util.Logger.SetOutput(&output)
+	util.Logger.CreateLogger(&output, true, slog.LevelDebug)
 
 	msg, _, _ := server.Recv(1)
 	if msg != title {
@@ -873,9 +859,7 @@ func TestRecvFail(t *testing.T) {
 
 	// intercept server log
 	var output strings.Builder
-	// client.logW.SetOutput(&output)
-
-	util.Logger.SetOutput(&output)
+	util.Logger.CreateLogger(&output, true, slog.LevelDebug)
 
 	// let the mock connection as the only connection
 	var mock mockUdpConn
@@ -943,9 +927,7 @@ func TestRecvBranchServer(t *testing.T) {
 
 	// intercept server log
 	var output strings.Builder
-	// server.logW.SetOutput(&output)
-
-	util.Logger.SetOutput(&output)
+	util.Logger.CreateLogger(&output, true, slog.LevelDebug)
 
 	// perform the receive
 	_, _, err := server.Recv(1)
@@ -979,9 +961,7 @@ func TestRecvBranchClient(t *testing.T) {
 
 	// intercept server log
 	var output strings.Builder
-	// server.logW.SetOutput(&output)
-
-	util.Logger.SetOutput(&output)
+	util.Logger.CreateLogger(&output, true, slog.LevelDebug)
 
 	msg0 := "from client to server"
 	// client send a message to server, server receive it.
@@ -1065,9 +1045,7 @@ func TestRecvCongestionPacket(t *testing.T) {
 
 	// intercept server log
 	var output strings.Builder
-	// server.logW.SetOutput(&output)
-
-	util.Logger.SetOutput(&output)
+	util.Logger.CreateLogger(&output, true, slog.LevelDebug)
 
 	// save old congestionFunc
 	oldCF := congestionFunc
@@ -1128,9 +1106,7 @@ func TestRecvSRTT(t *testing.T) {
 
 	// intercept server log
 	var output strings.Builder
-	// server.logW.SetOutput(&output)
-
-	util.Logger.SetOutput(&output)
+	util.Logger.CreateLogger(&output, true, slog.LevelDebug)
 
 	var got string
 	maxMsg := 10
@@ -1215,9 +1191,7 @@ func TestConnectionRecvSeqFail(t *testing.T) {
 	server := NewConnection(ip, port)
 
 	var output strings.Builder
-	util.Logger.SetLevel(slog.LevelDebug)
-	// util.Log.SetOutput(os.Stdout)
-	util.Logger.SetOutput(&output)
+	util.Logger.CreateLogger(&output, true, slog.LevelDebug)
 
 	if server == nil {
 		t.Errorf("%q server should not return nil.\n", title)
