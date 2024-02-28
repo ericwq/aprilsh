@@ -680,7 +680,15 @@ func (m *mainSrv) startChild(req string, addr *net.UDPAddr, conf2 Config) {
 		return
 	}
 	// prepare next port
-	p := m.getAvailabePort()
+	var p int
+	for i := 0; i < 5; i++ {
+		p = m.getAvailabePort()
+		if checkPortAvailable(p) {
+			break
+		}
+		// add a placeholder for this port
+		m.workers[p] = &workhorse{}
+	}
 
 	// open aprilsh:TERM,user@server.domain
 	// prepare configuration
@@ -774,8 +782,13 @@ func (m *mainSrv) closeChild(req string, addr *net.UDPAddr) {
 		util.Logger.Warn("port does not exist", "request", req, "response", resp)
 	}
 	// send kill message to the workers
-	m.workers[port].child.Signal(syscall.SIGTERM)
-	m.writeRespTo(addr, frontend.AprishMsgClose, "done")
+	if m.workers[port].child != nil {
+		m.workers[port].child.Signal(syscall.SIGTERM)
+		m.writeRespTo(addr, frontend.AprishMsgClose, "done")
+	} else {
+		resp := m.writeRespTo(addr, frontend.AprishMsgClose, "close port is a holder")
+		util.Logger.Warn("close port is a holder", "request", req, "response", resp)
+	}
 }
 
 func (m *mainSrv) handleMessage(content string) (string, error) {
@@ -840,19 +853,29 @@ func (m *mainSrv) shutdown() {
 	if len(m.workers) != 0 {
 		// stop all workers
 		for i := range m.workers {
-			m.workers[i].child.Signal(syscall.SIGTERM)
-			util.Logger.Debug("stop shell", "port", i)
+			if m.workers[i].child != nil { // chcek placeholder
+				m.workers[i].child.Signal(syscall.SIGTERM)
+				util.Logger.Debug("stop child", "port", i)
+			}
 		}
 
 		// wait for workers to shutdown
-		for len(m.workers) > 0 {
+		holder := 0
+		for holder != len(m.workers) {
 			timer := time.NewTimer(time.Duration(100) * time.Millisecond)
 			select {
 			case content := <-m.exChan: // some worker is done
 				m.handleMessage(content)
+				// counting placeholder
+				holder = 0
+				for i := range m.workers {
+					if m.workers[i].child == nil {
+						holder++
+					}
+				}
+				util.Logger.Debug("run2 waiting for worker response", "holder", holder)
 			case t := <-timer.C:
 				util.Logger.Warn("run2 waiting for worker timeout", "timeout", t)
-			default:
 			}
 		}
 		util.Logger.Debug("run2 finish clean workers")
@@ -1122,6 +1145,27 @@ func warnUnattached(w io.Writer, ignoreHost string) {
 		fmt.Fprintf(w, "\033[37;44mAprilsh: You have %d detached sessions on this server, with PIDs:\n%s\033[m\n",
 			len(unatttached), sb.String())
 	}
+}
+
+func checkPortAvailable(port int) bool {
+	laddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(port))
+	if err != nil {
+		util.Logger.Debug("checkPort listen", "error", err, "laddr", laddr)
+		return false
+	}
+
+	conn, err := net.ListenUDP("udp", laddr)
+	if err != nil {
+		util.Logger.Debug("checkPort listen", "port", port, "error", err)
+		return false
+	}
+
+	err = conn.Close()
+	if err != nil {
+		util.Logger.Debug("checkPort close", "port", port, "error", err)
+		return false
+	}
+	return true
 }
 
 // open pts master and slave, set terminal size according to window size.
