@@ -408,9 +408,9 @@ func newMainSrv(conf *Config) *mainSrv {
 }
 
 // to support multiple clients, mainServer listen on the specified port.
-// start udp server for each new client.
+// for security reason, we only listen on localhost port.
 func (m *mainSrv) listen(conf *Config) error {
-	local_addr, err := net.ResolveUDPAddr("udp", ":"+conf.desiredPort)
+	local_addr, err := net.ResolveUDPAddr("udp", "localhost:"+conf.desiredPort)
 	if err != nil {
 		return err
 	}
