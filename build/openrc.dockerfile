@@ -101,7 +101,6 @@ RUN mkdir -p /root/.ssh \
 VOLUME ["/sys/fs/cgroup"]
 
 EXPOSE 22
-EXPOSE 8100/udp
 EXPOSE 8101/udp
 EXPOSE 8102/udp
 EXPOSE 8103/udp

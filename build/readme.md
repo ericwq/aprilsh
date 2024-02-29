@@ -141,7 +141,7 @@ docker build --build-arg ROOT_PWD=password \
 
 start port container, which perform the following action:
 
-- mapping tcp port 22 to 8022, mapping udp port 6000[0..3] to 6010[0..3].
+- mapping tcp port 22 to 8022, mapping udp port 810[0..3] to 820[0..3].
 - mount docker volume `proj-vol` to `/home/ide/proj`.
 - mount local directory `/Users/qiwang/dev` to `/home/ide/develop/`.
 - set hostname and container name to `openrc-port`.
@@ -150,8 +150,8 @@ start port container, which perform the following action:
 docker run --env TZ=Asia/Shanghai --tty --privileged --volume /sys/fs/cgroup:/sys/fs/cgroup:rw \
     --mount source=proj-vol,target=/home/ide/proj \
     --mount type=bind,source=/Users/qiwang/dev,target=/home/ide/develop \
-    --hostname openrc-port --name openrc-port -d -p 8022:22  -p 8150:8100/udp \
-    -p 8151:8101/udp -p 8152:8102/udp -p 8153:8103/udp openrc:0.1.0
+    --hostname openrc-port --name openrc-port -d -p 8022:22 \
+    -p 8201:8101/udp -p 8202:8102/udp -p 8203:8103/udp openrc:0.1.0
 ```
 ## reference
 
