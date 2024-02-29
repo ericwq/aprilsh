@@ -878,6 +878,7 @@ func TestMainSrvStart(t *testing.T) {
 			srv.start(&v.conf)
 
 			// mock client operation
+			fmt.Printf("#test mark=%d\n", 100)
 			resp := mockClient(v.conf.desiredPort, v.pause, frontend.AprilshMsgOpen)
 			fmt.Printf("#test mark=%s\n", resp)
 			if resp != v.resp {
@@ -1019,7 +1020,7 @@ func mockClient(port string, pause int, action string, ex ...string) string {
 	}
 
 	_, err := conn.Write(txbuf)
-	// fmt.Printf("#mockClient send %q to server: %v from %v\n", txbuf, server_addr, conn.LocalAddr())
+	fmt.Printf("#mockClient send %q to server: %v from %v\n", txbuf, server_addr, conn.LocalAddr())
 	if err != nil {
 		fmt.Printf("#mockClient send %s, error %s\n", string(txbuf), err)
 	}
@@ -1031,7 +1032,7 @@ func mockClient(port string, pause int, action string, ex ...string) string {
 	rxbuf := make([]byte, 512)
 	n, _, err := conn.ReadFromUDP(rxbuf)
 
-	// fmt.Printf("#mockClient read %q from server: %v\n", rxbuf[0:n], server_addr)
+	fmt.Printf("#mockClient read %q from server: %v\n", rxbuf[0:n], server_addr)
 	return string(rxbuf[0:n])
 }
 
