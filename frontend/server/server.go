@@ -557,6 +557,7 @@ func (m *mainSrv) run(conf *Config) {
 				shutdown = true
 			}
 		case <-m.downChan: // another way to shutdown besides signal
+			util.Logger.Debug("got shutdown signal")
 			shutdown = true
 		default:
 		}
@@ -799,12 +800,12 @@ func (m *mainSrv) handleMessage(content string) (string, error) {
 	msg := strings.Split(content, ":")
 
 	if len(msg) != 2 {
-		return "", fmt.Errorf("malform content: %w", errors.New(content))
+		return "", fmt.Errorf("malform content A: %w", errors.New(content))
 	}
 
 	part2 := strings.Split(msg[1], ",")
 	if len(part2) != 2 {
-		return "", fmt.Errorf("malform content: %w", errors.New(content))
+		return "", fmt.Errorf("malform content B: %w", errors.New(content))
 	}
 	port, err := strconv.Atoi(part2[0])
 	if err != nil {
@@ -817,7 +818,7 @@ func (m *mainSrv) handleMessage(content string) (string, error) {
 	switch msg[0] {
 	case _ServeHeader: // stop the specified shell
 		if part2[1] != "shutdown" {
-			return "", fmt.Errorf("malform content: %w", errors.New(content))
+			return "", fmt.Errorf("malform content C: %w", errors.New(content))
 		}
 		shell, err := os.FindProcess(m.workers[port].shellPid)
 		if err != nil {
@@ -832,7 +833,7 @@ func (m *mainSrv) handleMessage(content string) (string, error) {
 		util.Logger.Debug("handleMessage kill shell", "port", port)
 	case _RunHeader: // clean worker list
 		if part2[1] != "shutdown" {
-			return "", fmt.Errorf("malform content: %w", errors.New(content))
+			return "", fmt.Errorf("malform content D: %w", errors.New(content))
 		}
 		delete(m.workers, port)
 		util.Logger.Debug("handleMessage clean worker", "port", port)
@@ -877,16 +878,16 @@ func (m *mainSrv) shutdown() {
 						holder++
 					}
 				}
-				util.Logger.Debug("run2 waiting for worker response", "holder", holder)
+				util.Logger.Debug("shutdown waiting for worker response", "holder", holder, "worker", m.workers)
 			case t := <-timer.C:
-				util.Logger.Warn("run2 waiting for worker timeout", "timeout", t)
+				util.Logger.Warn("shutdown waiting for worker timeout", "timeout", t)
 			}
 		}
-		util.Logger.Debug("run2 finish clean workers")
+		util.Logger.Debug("shutdown finish clean workers")
 	}
 	// finally, shutdown uxServe
 	m.uxdownChan <- true
-	util.Logger.Debug("run2 stop uxServe")
+	util.Logger.Debug("shutdown stop uxServe")
 }
 
 // two kind of cmd: 60002 or 60002:shutdown.
@@ -1216,7 +1217,10 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 	if conf.user != getCurrentUser() {
 		changeUser = true
 	}
-	u, _ := user.Lookup(conf.user)
+	u, err := user.Lookup(conf.user)
+	if err != nil {
+		return nil, err
+	}
 	var uid int64
 	var gid int64
 	if changeUser {
@@ -1998,6 +2002,8 @@ func runChild(conf *Config) (err error) {
 	}() // Best effort.
 	// fmt.Printf("#runWorker openPTS successfully.\n")
 
+	// SetProcessName(frontend.CommandClientName + ": [" + pts.Name() + "]")
+
 	// use pipe to signal when to start shell
 	// pw and pr is close inside serve() and startShell()
 	pr, pw := io.Pipe()
@@ -2042,6 +2048,7 @@ func runChild(conf *Config) (err error) {
 	if err != nil {
 		util.Logger.Warn("startShell fail", "error", err)
 		// whChan <- workhorse{}
+		uxClient.send(fmt.Sprintf("%s:%s,%d", _ShellHeader, conf.desiredPort, 0))
 	} else {
 
 		uxClient.send(fmt.Sprintf("%s:%s,%d", _ShellHeader, conf.desiredPort, shell.Pid))
@@ -2069,6 +2076,18 @@ func runChild(conf *Config) (err error) {
 	// util.Log.Debug("runWorker quit", "port", conf.desiredPort)
 	return err
 }
+
+// func SetProcessName(name string) error {
+// 	argv0str := (*reflect.StringHeader)(unsafe.Pointer(&os.Args[0]))
+// 	argv0 := (*[1 << 30]byte)(unsafe.Pointer(argv0str.Data))[:argv0str.Len]
+//
+// 	n := copy(argv0, name)
+// 	if n < len(argv0) {
+// 		argv0[n] = 0
+// 	}
+//
+// 	return nil
+// }
 
 // parse the flag first, print help or version based on flag
 // then run the main listening server

@@ -878,9 +878,9 @@ func TestMainSrvStart(t *testing.T) {
 			srv.start(&v.conf)
 
 			// mock client operation
-			fmt.Printf("#test mark=%d\n", 100)
+			// fmt.Printf("#test mark=%d\n", 100)
 			resp := mockClient(v.conf.desiredPort, v.pause, frontend.AprilshMsgOpen)
-			fmt.Printf("#test mark=%s\n", resp)
+			// fmt.Printf("#test mark=%s\n", resp)
 			if resp != v.resp {
 				t.Errorf("#test run expect %q got %q\n", v.resp, resp)
 			}
@@ -997,7 +997,7 @@ func mockClient(port string, pause int, action string, ex ...string) string {
 	case frontend.AprilshMsgOpen:
 		switch len(ex) {
 		case 0:
-			txbuf = []byte(frontend.AprilshMsgOpen + "xterm,mock@client")
+			txbuf = []byte(frontend.AprilshMsgOpen + "xterm,ide@localhost")
 		case 1:
 			// the request missing the ','
 			txbuf = []byte(fmt.Sprintf("%s%s", frontend.AprilshMsgOpen, ex[0]))
