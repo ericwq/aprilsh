@@ -66,8 +66,8 @@ please check [Run the openrc-nvide container](https://github.com/ericwq/nvide?ta
 $ docker run --env TZ=Asia/Shanghai --tty --privileged --volume /sys/fs/cgroup:/sys/fs/cgroup:rw \
     --mount source=proj-vol,target=/home/ide/proj \
     --mount type=bind,source=/Users/qiwang/dev,target=/home/ide/develop \
-    -h openrc-nvide --name openrc-nvide -d -p 22:22  -p 60000:60000/udp  -p 60001:60001/udp -p 60002:60002/udp \
-    -p 60003:60003/udp openrc-nvide:0.10.2
+    -h openrc-nvide --name openrc-nvide -d -p 22:22  -p 8100:8100/udp  -p 8101:8101/udp -p 8102:8102/udp \
+    -p 8103:8103/udp openrc-nvide:0.10.2
 ```
 
 don't forget to start utmps service.
@@ -150,8 +150,8 @@ start port container, which perform the following action:
 docker run --env TZ=Asia/Shanghai --tty --privileged --volume /sys/fs/cgroup:/sys/fs/cgroup:rw \
     --mount source=proj-vol,target=/home/ide/proj \
     --mount type=bind,source=/Users/qiwang/dev,target=/home/ide/develop \
-    --hostname openrc-port --name openrc-port -d -p 8022:22  -p 60100:60000/udp \
-    -p 60101:60001/udp -p 60102:60002/udp -p 60103:60003/udp openrc:0.1.0
+    --hostname openrc-port --name openrc-port -d -p 8022:22  -p 8150:8100/udp \
+    -p 8151:8101/udp -p 8152:8102/udp -p 8153:8103/udp openrc:0.1.0
 ```
 ## reference
 

@@ -74,7 +74,7 @@ Options:
 ---------------------------------------------------------------------------------------------------
   -s,  --server      listen with SSH ip
   -i,  --ip          listen with this ip/host
-  -p,  --port        listen base port (default 60000)
+  -p,  --port        listen base port (default 8100)
   -l,  --locale      key-value pairs (such as LANG=UTF-8, you can have multiple -l options)
   -vv, --verbose     verbose log output (debug level, default no verbose)
   -vvv               verbose log output (trace level)

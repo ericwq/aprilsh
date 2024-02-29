@@ -37,3 +37,4 @@ depend() {
 #     checkpath -f -o utmp:utmp -m 0755 /var/log/${RC_SVCNAME}.log
 # }
 # https://manpages.debian.org/testing/openrc/openrc-run.8.en.html
+# https://www.shellscript.sh/variables3.html

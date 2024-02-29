@@ -54,7 +54,7 @@ Options:
   -v,  --version     print version information
   -c,  --colors      print the number of colors of terminal
 ---------------------------------------------------------------------------------------------------
-  -p,  --port        apshd server port (default 60000)
+  -p,  --port        apshd server port (default 8100)
   destination        in the form of user@host[:port], here the port is ssh server port (default 22)
   -i                 ssh client identity (private key) (default $HOME/.ssh/id_rsa)
   -vv, --verbose     verbose log output (debug level, default no verbose)

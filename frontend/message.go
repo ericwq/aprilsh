@@ -30,7 +30,7 @@ var (
 	BuildTime   string // build time
 	GitCommit   string // git commit id
 	GitBranch   string // git branch name
-	DefaultPort = 60000
+	DefaultPort = 8100 // https://en.wikipedia.org/wiki/List_of_TCP_and_UDP_port_numbers
 )
 
 func PrintVersion() {
