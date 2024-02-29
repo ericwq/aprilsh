@@ -55,6 +55,7 @@ const (
 	_ShellHeader = "shell"
 
 	envArgs = "APRILSH_ARGS"
+	envUDS  = "APRILSH_UDS"
 )
 
 var usage = `Usage:
@@ -379,7 +380,7 @@ const (
 )
 
 // "/tmp/aprilsh.sock"
-var unixsockAddr string = filepath.Join(os.TempDir(), "aprilsh.sock")
+var unixsockAddr string = filepath.Join(os.TempDir(), "aprilsh-{}.sock")
 
 type uxClient struct {
 	connection net.Conn
@@ -613,6 +614,7 @@ func (m *mainSrv) uxListen() (conn *net.UnixConn, err error) {
 		return
 	}
 
+	unixsockAddr = strings.Replace(unixsockAddr, "{}", strconv.Itoa(os.Getpid()), 1)
 	addr, _ := net.ResolveUnixAddr(unixsockNetwork, unixsockAddr)
 	conn, err = net.ListenUnixgram("unixgram", addr)
 	os.Chmod(unixsockAddr, 0666)
@@ -1778,7 +1780,10 @@ func startChild(conf *Config) (*os.Process, error) {
 
 	// ask ncurses to send UTF-8 instead of ISO 2022 for line-drawing chars
 	env = append(env, "NCURSES_NO_UTF8_ACS=1")
+
+	// hidden parameter send via env
 	env = append(env, envArgs+"="+strings.Join(args, " "))
+	env = append(env, envUDS+"="+unixsockAddr)
 
 	util.Logger.Debug("startChild env:", "env", env)
 	util.Logger.Debug("startChild command:", "commandPath", commandPath, "commandArgv", commandArgv)
@@ -2074,7 +2079,12 @@ func main() {
 		os.Args = append(os.Args, strings.Split(str, " ")...)
 		os.Unsetenv(envArgs)
 	}
-	fmt.Fprintf(os.Stderr, "main process %d args=%s\n", os.Getpid(), os.Args)
+	str, ok = os.LookupEnv(envUDS)
+	if ok {
+		unixsockAddr = str
+		os.Unsetenv(envArgs)
+	}
+	fmt.Fprintf(os.Stderr, "main process %d args=%s, uds=%s\n", os.Getpid(), os.Args, unixsockAddr)
 
 	conf, _, err := parseFlags(os.Args[0], os.Args[1:])
 	if errors.Is(err, flag.ErrHelp) {
