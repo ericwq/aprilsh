@@ -235,7 +235,7 @@ func (conf *Config) buildConfig() (string, bool) {
 			fmt.Printf("The client-supplied environment %s specifies "+
 				"the character set \"%s\".\n", clientType, clientCharset)
 
-			return "UTF-8 locale fail.", false
+			return "", false
 		}
 	}
 	return "", true
@@ -324,13 +324,13 @@ func printVersion() {
 	frontend.PrintVersion()
 }
 
-func printUsage(hint string, usage ...string) {
-	if hint != "" {
-		fmt.Printf("Hints: %s\n%s", hint, usage)
-	} else {
-		fmt.Printf("%s", usage)
-	}
-}
+// func printUsage(hint string, usage ...string) {
+// 	if hint != "" {
+// 		fmt.Printf("Hints: %s\n%s", hint, usage)
+// 	} else {
+// 		fmt.Printf("%s", usage)
+// 	}
+// }
 
 func beginClientConn(conf *Config) { //(port string, term string) {
 	// Unlike Dial, ListenPacket creates a connection without any
@@ -2088,13 +2088,13 @@ func main() {
 
 	conf, _, err := parseFlags(os.Args[0], os.Args[1:])
 	if errors.Is(err, flag.ErrHelp) {
-		printUsage("", usage)
+		frontend.PrintUsage("", usage)
 		return
 	} else if err != nil {
-		printUsage(err.Error())
+		frontend.PrintUsage(err.Error())
 		return
 	} else if hint, ok := conf.buildConfig(); !ok {
-		printUsage(hint)
+		frontend.PrintUsage(hint)
 		return
 	}
 

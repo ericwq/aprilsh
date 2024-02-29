@@ -91,19 +91,6 @@ func printColors() {
 	}
 }
 
-func printUsage(hint string, usage ...string) {
-	if hint != "" {
-		var header string
-		if len(usage) != 0 {
-			header = "Hints: "
-		}
-		fmt.Printf("%s%s\n", header, hint)
-	}
-	if len(usage) > 0 {
-		fmt.Printf("%s", usage[0])
-	}
-}
-
 func parseFlags(progname string, args []string) (config *Config, output string, err error) {
 	// https://eli.thegreenplace.net/2020/testing-flag-parsing-in-go-programs/
 	flagSet := flag.NewFlagSet(progname, flag.ContinueOnError)
@@ -1148,13 +1135,13 @@ func main() {
 
 	conf, _, err := parseFlags(os.Args[0], os.Args[1:])
 	if errors.Is(err, flag.ErrHelp) {
-		printUsage("", usage)
+		frontend.PrintUsage("", usage)
 		return
 	} else if err != nil {
-		printUsage(err.Error())
+		frontend.PrintUsage(err.Error())
 		return
 	} else if hint, ok := conf.buildConfig(); !ok {
-		printUsage(hint)
+		frontend.PrintUsage(hint)
 		return
 	}
 
@@ -1205,27 +1192,27 @@ func main() {
 		var hostkeyChangeError *hostkeyChangeError
 
 		if errors.As(err, &dnsError) {
-			printUsage(fmt.Sprintf("No such host: %q", dnsError.Name))
+			frontend.PrintUsage(fmt.Sprintf("No such host: %q", dnsError.Name))
 		} else if errors.As(err, &opError) && opError.Op == "dial" {
-			printUsage(fmt.Sprintf("Failed to connect to: %s", opError.Addr))
+			frontend.PrintUsage(fmt.Sprintf("Failed to connect to: %s", opError.Addr))
 		} else if strings.Contains(err.Error(), "unable to authenticate") {
 			// the error returned by ssh.NewClientConn() doen't naming error,
 			// we have to check the error message directly.
 
 			// enable 'PubkeyAuthentication yes' line in sshd_config
-			printUsage(fmt.Sprintf("Failed to authenticate user %q", conf.user))
+			frontend.PrintUsage(fmt.Sprintf("Failed to authenticate user %q", conf.user))
 		} else if errors.As(err, &keyError) {
 			// } else if strings.Contains(err.Error(), "key is unknown") {
 			// we already handle it
 		} else if errors.Is(err, errNoResponse) {
-			printUsage(err.Error())
+			frontend.PrintUsage(err.Error())
 		} else if errors.As(err, &exitError) && exitError.Waitmsg.ExitStatus() == 127 {
-			printUsage("Plase check aprilsh is installed on server.")
+			frontend.PrintUsage("Plase check aprilsh is installed on server.")
 		} else if errors.As(err, &hostkeyChangeError) {
-			printUsage(hostkeyChangeError.Error())
+			frontend.PrintUsage(hostkeyChangeError.Error())
 		} else {
 			// printUsage(fmt.Sprintf("%#v", err))
-			printUsage(err.Error())
+			frontend.PrintUsage(err.Error())
 		}
 		return
 	}

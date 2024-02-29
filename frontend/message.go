@@ -41,3 +41,16 @@ func PrintVersion() {
 	fmt.Printf("build time\t: %s\n\n", BuildTime)
 	fmt.Printf(VersionInfo)
 }
+
+func PrintUsage(hint string, usage ...string) {
+	if hint != "" {
+		var header string
+		if len(usage) != 0 {
+			header = "Hints: "
+		}
+		fmt.Printf("%s%s\n", header, hint)
+	}
+	if len(usage) > 0 {
+		fmt.Printf("%s", usage[0])
+	}
+}
