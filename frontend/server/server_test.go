@@ -854,7 +854,8 @@ func TestMainSrvStart(t *testing.T) {
 
 			// init log
 
-			util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+			// util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+			util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
 			// v.conf.serve = mockServe
 			// srv := newMainSrv(&v.conf, mockRunWorker)
@@ -878,6 +879,7 @@ func TestMainSrvStart(t *testing.T) {
 
 			// mock client operation
 			resp := mockClient(v.conf.desiredPort, v.pause, frontend.AprilshMsgOpen)
+			fmt.Printf("#test mark=%s\n", resp)
 			if resp != v.resp {
 				t.Errorf("#test run expect %q got %q\n", v.resp, resp)
 			}

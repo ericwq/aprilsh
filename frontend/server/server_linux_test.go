@@ -91,8 +91,10 @@ func TestWarnUnattached(t *testing.T) {
 		ignoreHost string
 		count      int
 	}{
-		{"one match", frontend.CommandServerName + " [999]", 1},   // 666 pts/1 exist, 888 pts/7 does not exist, only 666 remains
-		{"two matches", frontend.CommandServerName + " [888]", 2}, // 666 pts1 exist, 999 pts/0 exist, so 666 and 999 remains
+		// 666 pts/1 exist, 888 pts/7 does not exist, only 666 remains
+		{"one match", frontend.CommandServerName + " [999]", 1},
+		// 666 pts1 exist, 999 pts/0 exist, so 666 and 999 remains
+		{"two matches", frontend.CommandServerName + " [888]", 2},
 	}
 
 	for _, v := range tc {
@@ -100,16 +102,19 @@ func TestWarnUnattached(t *testing.T) {
 			var out strings.Builder
 			warnUnattached(&out, v.ignoreHost)
 			got := out.String()
-			t.Logf("%q\n", got)
+			// t.Logf("%q\n", got)
 			count := strings.Count(got, "- ")
 			switch count {
 			case 0: // warnUnattached found one unattached session
-				if strings.Index(got, "detached session on this server") != -1 && v.count != 1 {
-					t.Errorf("#test warnUnattached() %q expect %d warning, got 1.\n", v.label, v.count)
+				if strings.Index(got, "detached session on this server") != -1 &&
+					v.count != 1 {
+					t.Errorf("#test warnUnattached() %q expect %d warning, got 1.\n",
+						v.label, v.count)
 				}
 			default: // warnUnattached found more than one unattached session
 				if count != v.count {
-					t.Errorf("#test warnUnattached() %q expect %d warning, got %d.\n", v.label, v.count, count)
+					t.Errorf("#test warnUnattached() %q expect %d warning, got %d.\n",
+						v.label, v.count, count)
 				}
 			}
 		})
