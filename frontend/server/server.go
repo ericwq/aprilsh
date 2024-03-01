@@ -394,7 +394,7 @@ func newUxClient() (client *uxClient, err error) {
 
 func (uc *uxClient) send(msg string) (err error) {
 	_, err = uc.connection.Write([]byte(msg))
-	// util.Log.Debug("uxClient send", "message", msg)
+	// util.Logger.Debug("uxClient send", "message", msg)
 	return
 }
 
@@ -540,13 +540,14 @@ func (m *mainSrv) run(conf *Config) {
 	}
 
 	//TODO remove it?
-	printWelcome(os.Getpid(), m.port, nil)
+	// printWelcome(os.Getpid(), m.port, nil)
+	// printWelcome(nil)
 	for {
 		select {
 		case msg := <-m.exChan:
 			_, err := m.handleMessage(msg)
 			if err != nil {
-				util.Logger.Warn("child failed", "error", err)
+				util.Logger.Warn("child failed", "error", err, "msg", msg)
 			}
 		case ss := <-sig:
 			switch ss {
@@ -1089,7 +1090,8 @@ func getTimeFrom(env string, def int64) (ret int64) {
 	return
 }
 
-func printWelcome(pid int, port int, tty *os.File) {
+func printWelcome(tty *os.File) {
+	// func printWelcome(pid int, port int, tty *os.File) {
 	// fmt.Printf("Copyright 2022~2023 wangqi.\n")
 	// fmt.Printf("%s%s", "Use of this source code is governed by a MIT-style",
 	// 	"license that can be found in the LICENSE file.\n")
@@ -1292,28 +1294,34 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 		additional logic for pty.StartWithAttrs() end
 	*/
 
+	// util.Logger.Debug("start shell waiting for pipe unlock")
 	// wait for serve() to release us
 	if pr != nil && conf.verbose != _VERBOSE_SKIP_READ_PIPE {
-		ch := make(chan bool, 0)
+		ch := make(chan string, 0)
 		timer := time.NewTimer(time.Duration(frontend.TimeoutIfNoConnect) * time.Millisecond)
 
 		// util.Log.Debug("start shell message", "action", "wait", "port", conf.desiredPort)
 		// add timeout for pipe read
-		go func(pr *io.PipeReader, ch chan bool) {
+		go func(pr *io.PipeReader, ch chan string) {
 			buf := make([]byte, 81)
 
-			_, err := pr.Read(buf)
+			n, err := pr.Read(buf)
 			if err != nil && errors.Is(err, io.EOF) {
-				ch <- true
-				// util.Log.Debug("start shell message", "action", "received", "port", conf.desiredPort)
+				ch <- string(buf[:n])
+				util.Logger.Debug("start shell unlock", "action", "closed", "buf", buf[:n])
 			} else {
-				// util.Log.Debug("start shell message", "action", "readFailed", "port", conf.desiredPort)
+				ch <- earlyShutdown
+				util.Logger.Debug("start shell unlock", "action", earlyShutdown, "error", err)
 			}
 		}(pr, ch)
 
 		// waiting for time out or get the pipe reader send message
 		select {
-		case <-ch:
+		case s := <-ch:
+			if s == earlyShutdown {
+				pr.Close()
+				return nil, errors.New(earlyShutdown)
+			}
 		case <-timer.C:
 			pr.Close() // close pipe will stop the Read operation
 			// util.Log.Debug("start shell message", "action", "timeout", "port", conf.desiredPort)
@@ -1321,9 +1329,9 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 		}
 		timer.Stop()
 
-		pr.Close()
 		util.Logger.Info("start shell with pty", "pty", pts.Name())
 	}
+	pr.Close()
 
 	proc, err := os.StartProcess(conf.commandPath, conf.commandArgv, &procAttr)
 	if err != nil {
@@ -1331,6 +1339,8 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 	}
 	return proc, nil
 }
+
+const earlyShutdown = "early-shutdown"
 
 func serve(ptmx *os.File, pts *os.File, pw *io.PipeWriter, complete *statesync.Complete, // waitChan chan bool,
 	server *network.Transport[*statesync.Complete, *statesync.UserStream],
@@ -1680,6 +1690,15 @@ mainLoop:
 	signal.Stop(sigChan)
 	server.Close()
 
+	if !childReleased {
+		util.Logger.Debug("release shell lock", "action", earlyShutdown)
+		pw.Write([]byte(earlyShutdown))
+		if err := pw.Close(); err != nil {
+			util.Logger.Error("send start shell message failed", "error", err)
+		}
+		childReleased = true
+	}
+
 	// shutdown the goroutines: file reader and network reader
 	select {
 	case fileDownChan <- "done":
@@ -1726,10 +1745,10 @@ func startChild(conf *Config) (*os.Process, error) {
 
 	// specify child process
 	commandPath := "/usr/bin/apshd"
-	commandArgv := []string{commandPath, "-child"}
+	commandArgv := []string{commandPath, "-p", conf.desiredPort}
 
 	// hide the following command args from ps command
-	args := []string{"-port", conf.desiredPort, "-destination", conf.destination, "-term", conf.term}
+	args := []string{"-child", "-destination", conf.destination, "-term", conf.term}
 	// inherit vervoce and source options form parent
 	if conf.verbose == util.DebugLevel {
 		args = append(args, "-vv")

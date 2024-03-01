@@ -437,7 +437,7 @@ func TestParseFlagsCorrect(t *testing.T) {
 		{
 			[]string{"-locale", "ALL=en_US.UTF-8", "-l", "LANG=UTF-8"},
 			Config{
-				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "60000",
+				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "8100",
 				locales:     localeFlag{"ALL": "en_US.UTF-8", "LANG": "UTF-8"},
 				commandPath: "", commandArgv: []string{}, withMotd: false,
 			},
@@ -445,7 +445,7 @@ func TestParseFlagsCorrect(t *testing.T) {
 		{
 			[]string{"--", "/bin/sh", "-sh"},
 			Config{
-				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "60000",
+				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "8100",
 				locales:     localeFlag{},
 				commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
 			},
@@ -453,7 +453,7 @@ func TestParseFlagsCorrect(t *testing.T) {
 		{
 			[]string{"--", ""},
 			Config{
-				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "60000",
+				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "8100",
 				locales:     localeFlag{},
 				commandPath: "", commandArgv: []string{""}, withMotd: false,
 			},
@@ -836,29 +836,24 @@ func TestMainSrvStart(t *testing.T) {
 		conf     Config
 	}{
 		{
-			"start normally", 20, frontend.AprilshMsgOpen + "7101,This is the mock key\n", 50,
+			"start normally", 2000, frontend.AprilshMsgOpen + "7101,", 50,
 			Config{
 				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
+				addSource: false,
 			},
 		},
 	}
 
+	// the test start child process, which is /usr/bin/apshd
+	// which means you need to compile /usr/bin/apshd before test
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			// intercept stdout
-			// saveStdout := os.Stdout
-			// r, w, _ := os.Pipe()
-			// os.Stdout = w
-
 			// init log
+			util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+			// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
-			// util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
-			util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
-
-			// v.conf.serve = mockServe
-			// srv := newMainSrv(&v.conf, mockRunWorker)
 			srv := newMainSrv(&v.conf)
 
 			// send shutdown message after some time
@@ -872,7 +867,7 @@ func TestMainSrvStart(t *testing.T) {
 				srv.downChan <- true
 				// stop the worker correctly, because mockRunWorker2 failed to
 				// do it on purpose.
-				srv.exChan <- fmt.Sprintf("%d", srv.maxPort)
+				// srv.exChan <- fmt.Sprintf("%d", srv.maxPort)
 			}()
 
 			srv.start(&v.conf)
@@ -881,17 +876,11 @@ func TestMainSrvStart(t *testing.T) {
 			// fmt.Printf("#test mark=%d\n", 100)
 			resp := mockClient(v.conf.desiredPort, v.pause, frontend.AprilshMsgOpen)
 			// fmt.Printf("#test mark=%s\n", resp)
-			if resp != v.resp {
+			if !strings.Contains(resp, v.resp) {
 				t.Errorf("#test run expect %q got %q\n", v.resp, resp)
 			}
 
 			srv.wait()
-
-			// restore stdout
-			// w.Close()
-			// io.ReadAll(r)
-			// os.Stdout = saveStdout
-			// r.Close()
 		})
 	}
 }
@@ -1020,7 +1009,7 @@ func mockClient(port string, pause int, action string, ex ...string) string {
 	}
 
 	_, err := conn.Write(txbuf)
-	fmt.Printf("#mockClient send %q to server: %v from %v\n", txbuf, server_addr, conn.LocalAddr())
+	// fmt.Printf("#mockClient send %q to server: %v from %v\n", txbuf, server_addr, conn.LocalAddr())
 	if err != nil {
 		fmt.Printf("#mockClient send %s, error %s\n", string(txbuf), err)
 	}
@@ -1032,7 +1021,7 @@ func mockClient(port string, pause int, action string, ex ...string) string {
 	rxbuf := make([]byte, 512)
 	n, _, err := conn.ReadFromUDP(rxbuf)
 
-	fmt.Printf("#mockClient read %q from server: %v\n", rxbuf[0:n], server_addr)
+	// fmt.Printf("#mockClient read %q from server: %v\n", rxbuf[0:n], server_addr)
 	return string(rxbuf[0:n])
 }
 
@@ -1076,7 +1065,8 @@ func TestPrintWelcome(t *testing.T) {
 		os.Stdout = w
 		util.Logger.CreateLogger(w, true, slog.LevelDebug)
 
-		printWelcome(os.Getpid(), 6000, v.tty)
+		// printWelcome(os.Getpid(), 6000, v.tty)
+		printWelcome(v.tty)
 
 		// restore stdout
 		w.Close()
