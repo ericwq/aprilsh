@@ -1993,7 +1993,7 @@ func TestHandleMessage(t *testing.T) {
 		{"wrong port number", "no:comma,x", "invalid port number"},
 		{"non-existence port number", "no:6000,x", "non-existence port number"},
 		{"invalid serve shutdown", _ServeHeader + ":8100,not shutdown", "invalid shutdown"},
-		{"find shell process failed", _ServeHeader + ":8100,shutdown", "find shell process failed"},
+		{"kill shell process failed", _ServeHeader + ":8100,shutdown", "kill shell process failed"},
 		{"invalid run shutdown", _RunHeader + ":8100,not shutdown", "invalid shutdown"},
 		{"invalid shell pid", _ShellHeader + ":8100,x", "invalid shell pid"},
 		{"unknown header", "unknow:8100,x", "unknown header"},
@@ -2012,6 +2012,8 @@ func TestHandleMessage(t *testing.T) {
 			if errors.As(err, &messagError) {
 				if messagError.reason != v.reason {
 					t.Errorf("%s expect %q, got %q\n", v.label, v.reason, messagError.reason)
+					// } else {
+					// 	t.Logf("go error %#v\n", messagError.err)
 				}
 			} else {
 				t.Errorf("%s expect %v, got %v\n", v.label, messagError, err)

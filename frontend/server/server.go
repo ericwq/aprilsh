@@ -823,13 +823,10 @@ func (m *mainSrv) handleMessage(content string) (string, error) {
 		if part2[1] != "shutdown" {
 			return "", &messageError{reason: "invalid shutdown", err: errors.New(content)}
 		}
-		shell, err := os.FindProcess(m.workers[port].shellPid)
-		if err != nil {
-			return "", &messageError{reason: "find shell process failed", err: err}
-		}
-		if err := shell.Kill(); err != nil {
+		shell, _ := os.FindProcess(m.workers[port].shellPid)
+		if err = shell.Kill(); err != nil {
 			if !errors.Is(err, os.ErrProcessDone) {
-				return "", &messageError{reason: "find shell process failed", err: err}
+				return "", &messageError{reason: "kill shell process failed", err: err}
 			}
 			// user quit shell actively.
 		}
