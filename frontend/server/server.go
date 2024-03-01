@@ -780,12 +780,14 @@ func (m *mainSrv) closeChild(req string, addr *net.UDPAddr) {
 	if err != nil {
 		resp := m.writeRespTo(addr, frontend.AprishMsgClose, "wrong port number")
 		util.Logger.Warn("wrong port number", "request", req, "response", resp)
+		return
 	}
 
 	// find worker
 	if _, ok := m.workers[port]; !ok {
 		resp := m.writeRespTo(addr, frontend.AprishMsgClose, "port does not exist")
 		util.Logger.Warn("port does not exist", "request", req, "response", resp)
+		return
 	}
 	// send kill message to the workers
 	if m.workers[port].child != nil {
@@ -801,40 +803,40 @@ func (m *mainSrv) handleMessage(content string) (string, error) {
 	msg := strings.Split(content, ":")
 
 	if len(msg) != 2 {
-		return "", fmt.Errorf("malform content A: %w", errors.New(content))
+		return "", &messageError{reason: "lack of ':'", err: errors.New(content)}
 	}
 
 	part2 := strings.Split(msg[1], ",")
 	if len(part2) != 2 {
-		return "", fmt.Errorf("malform content B: %w", errors.New(content))
+		return "", &messageError{reason: "lack of ','", err: errors.New(content)}
 	}
 	port, err := strconv.Atoi(part2[0])
 	if err != nil {
-		return "", fmt.Errorf("wrong port number: %w", err)
+		return "", &messageError{reason: "invalid port number", err: errors.New(content)}
 	}
 	if _, ok := m.workers[port]; !ok {
-		return "", fmt.Errorf("find worker failed: %w", errors.New(msg[1]))
+		return "", &messageError{reason: "non-existence port number", err: errors.New(content)}
 	}
 
 	switch msg[0] {
 	case _ServeHeader: // stop the specified shell
 		if part2[1] != "shutdown" {
-			return "", fmt.Errorf("malform content C: %w", errors.New(content))
+			return "", &messageError{reason: "invalid shutdown", err: errors.New(content)}
 		}
 		shell, err := os.FindProcess(m.workers[port].shellPid)
 		if err != nil {
-			return "", fmt.Errorf("find process failed: %w", err)
+			return "", &messageError{reason: "find shell process failed", err: err}
 		}
 		if err := shell.Kill(); err != nil {
 			if !errors.Is(err, os.ErrProcessDone) {
-				return "", fmt.Errorf("kill shell failed: %w", err)
+				return "", &messageError{reason: "find shell process failed", err: err}
 			}
 			// user quit shell actively.
 		}
 		util.Logger.Debug("handleMessage kill shell", "port", port)
 	case _RunHeader: // clean worker list
 		if part2[1] != "shutdown" {
-			return "", fmt.Errorf("malform content D: %w", errors.New(content))
+			return "", &messageError{reason: "invalid shutdown", err: errors.New(content)}
 		}
 		delete(m.workers, port)
 		util.Logger.Debug("handleMessage clean worker", "port", port)
@@ -843,12 +845,12 @@ func (m *mainSrv) handleMessage(content string) (string, error) {
 	case _ShellHeader: // add shell pid
 		shellPid, err := strconv.Atoi(part2[1])
 		if err != nil {
-			return "", fmt.Errorf("wrong shell pid: %w", err)
+			return "", &messageError{reason: "invalid shell pid", err: errors.New(content)}
 		}
 		m.workers[port].shellPid = shellPid
 		util.Logger.Debug("handleMessage got shell pid", "port", port, "shellPid", shellPid)
 	default:
-		return "", fmt.Errorf("unknown header: %w", errors.New(content))
+		return "", &messageError{reason: "unknown header", err: errors.New(content)}
 	}
 
 	return "", nil
@@ -1167,12 +1169,25 @@ func checkPortAvailable(port int) bool {
 		return false
 	}
 
-	err = conn.Close()
-	if err != nil {
-		util.Logger.Debug("checkPort close", "port", port, "error", err)
-		return false
-	}
+	conn.Close()
+	// err = conn.Close()
+	// if err != nil {
+	// 	util.Logger.Debug("checkPort close", "port", port, "error", err)
+	// 	return false
+	// }
 	return true
+}
+
+type messageError struct {
+	reason string
+	err    error
+}
+
+func (e *messageError) Error() string {
+	if e == nil {
+		return "<nil>"
+	}
+	return e.reason + ": " + e.err.Error()
 }
 
 // open pts master and slave, set terminal size according to window size.
@@ -1825,66 +1840,6 @@ func startChild(conf *Config) (*os.Process, error) {
 		Sys:   sysProcAttr,
 		Env:   env,
 	}
-
-	// https://stackoverflow.com/questions/21705950/running-external-commands-through-os-exec-under-another-user
-	//
-	// if conf.withMotd && !motdHushed() {
-	// 	// For Ubuntu, try and print one of {,/var}/run/motd.dynamic.
-	// 	// This file is only updated when pam_motd is run, but when
-	// 	// mosh-server is run in the usual way with ssh via the script,
-	// 	// this always happens.
-	// 	// XXX Hackish knowledge of Ubuntu PAM configuration.
-	// 	// But this seems less awful than build-time detection with autoconf.
-	// 	if !printMotd(pts, "/run/motd.dynamic") {
-	// 		printMotd(pts, "/var/run/motd.dynamic")
-	// 	}
-	// 	// Always print traditional /etc/motd.
-	// 	printMotd(pts, "/etc/motd")
-	//
-	// 	warnUnattached(pts, utmpHost)
-	// }
-	//
-	// // set new title
-	// fmt.Fprintf(pts, "\x1B]0;%s %s:%s\a", frontend.CommandClientName, conf.destination, conf.desiredPort)
-	//
-	// encrypt.ReenableDumpingCore()
-
-	/*
-		additional logic for pty.StartWithAttrs() end
-	*/
-
-	// wait for serve() to release us
-	// if pr != nil && conf.verbose != _VERBOSE_SKIP_READ_PIPE {
-	// 	ch := make(chan bool, 0)
-	// 	timer := time.NewTimer(time.Duration(frontend.TimeoutIfNoConnect) * time.Millisecond)
-	//
-	// 	// util.Log.Debug("start shell message", "action", "wait", "port", conf.desiredPort)
-	// 	// add timeout for pipe read
-	// 	go func(pr *io.PipeReader, ch chan bool) {
-	// 		buf := make([]byte, 81)
-	//
-	// 		_, err := pr.Read(buf)
-	// 		if err != nil && errors.Is(err, io.EOF) {
-	// 			ch <- true
-	// 			// util.Log.Debug("start shell message", "action", "received", "port", conf.desiredPort)
-	// 		} else {
-	// 			// util.Log.Debug("start shell message", "action", "readFailed", "port", conf.desiredPort)
-	// 		}
-	// 	}(pr, ch)
-	//
-	// 	// waiting for time out or get the pipe reader send message
-	// 	select {
-	// 	case <-ch:
-	// 	case <-timer.C:
-	// 		pr.Close() // close pipe will stop the Read operation
-	// 		// util.Log.Debug("start shell message", "action", "timeout", "port", conf.desiredPort)
-	// 		return nil, fmt.Errorf("pipe read: %w", os.ErrDeadlineExceeded)
-	// 	}
-	// 	timer.Stop()
-	//
-	// 	pr.Close()
-	// 	util.Log.Info("start shell at", "pty", pts.Name())
-	// }
 
 	proc, err := os.StartProcess(commandPath, commandArgv, &procAttr)
 	if err != nil {

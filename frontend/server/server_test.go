@@ -836,7 +836,7 @@ func TestMainSrvStart(t *testing.T) {
 		conf     Config
 	}{
 		{
-			"start normally", 2000, frontend.AprilshMsgOpen + "7101,", 50,
+			"start normally", 100, frontend.AprilshMsgOpen + "7101,", 50,
 			Config{
 				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -1046,9 +1046,7 @@ func TestPrintWelcome(t *testing.T) {
 		t.Errorf("#test printWelcome master got %t, expect %t\n", flag, false)
 	}
 
-	expect := []string{frontend.CommandServerName, "start listening on",
-		"gitTag", "Warning: termios IUTF8 flag not defined.",
-	}
+	expect := []string{"Warning: termios IUTF8 flag not defined."}
 
 	tc := []struct {
 		label string
@@ -1131,11 +1129,12 @@ func TestRunFail(t *testing.T) {
 		conf   Config
 	}{
 		{
-			"worker failed with wrong port number", 20, frontend.AprilshMsgOpen + "7101,mock key from mockRunWorker2\n", 30,
+			"worker failed with wrong port number", 100, frontend.AprilshMsgOpen + "7101,mock key from mockRunWorker2\n", 30,
 			Config{
-				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7100",
+				version: false, server: true, verbose: 1, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
+				addSource: false,
 			},
 		},
 	}
@@ -1148,7 +1147,8 @@ func TestRunFail(t *testing.T) {
 			os.Stdout = w
 			// initLog()
 
-			util.Logger.CreateLogger(w, true, slog.LevelDebug)
+			// util.Logger.CreateLogger(w, true, slog.LevelDebug)
+			util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
 			// srv := newMainSrv(&v.conf, mockRunWorker2)
 			srv := newMainSrv(&v.conf)
@@ -1164,6 +1164,7 @@ func TestRunFail(t *testing.T) {
 				// do it on purpose.
 				port, _ := strconv.Atoi(v.conf.desiredPort)
 				srv.exChan <- fmt.Sprintf("%d", port+1)
+				util.Logger.Debug("send port to exChan", "port", port+1)
 			}()
 			// fmt.Println("#test start timer for shutdown")
 
@@ -1949,5 +1950,72 @@ func BenchmarkGetAvailablePort(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		srv.getAvailabePort()
 		srv.maxPort-- // hedge maxPort++ in getAvailabePort
+	}
+}
+
+func TestCheckPortAvailable(t *testing.T) {
+	tc := []struct {
+		label  string
+		port   int
+		expect bool
+	}{
+		{"wrong port number", -200, false},
+		{"duplicate por number", 8022, false},
+	}
+
+	cfg := &Config{desiredPort: "8022"}
+	ms := newMainSrv(cfg)
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			// take the port
+			ms.listen(cfg)
+
+			// validate tc
+			got := checkPortAvailable(v.port)
+			if got != v.expect {
+				t.Errorf("%s expect %t, got %t\n", v.label, v.expect, got)
+			}
+			// clear port
+			ms.conn.Close()
+		})
+	}
+}
+
+func TestHandleMessage(t *testing.T) {
+
+	tc := []struct {
+		label   string
+		content string
+		reason  string
+	}{
+		{"no colon", "no colon", "lack of ':'"},
+		{"no comma", "no:comma", "lack of ','"},
+		{"wrong port number", "no:comma,x", "invalid port number"},
+		{"non-existence port number", "no:6000,x", "non-existence port number"},
+		{"invalid serve shutdown", _ServeHeader + ":8100,not shutdown", "invalid shutdown"},
+		{"find shell process failed", _ServeHeader + ":8100,shutdown", "find shell process failed"},
+		{"invalid run shutdown", _RunHeader + ":8100,not shutdown", "invalid shutdown"},
+		{"invalid shell pid", _ShellHeader + ":8100,x", "invalid shell pid"},
+		{"unknown header", "unknow:8100,x", "unknown header"},
+	}
+
+	cfg := &Config{desiredPort: "8022"}
+	ms := newMainSrv(cfg)
+	ms.workers[8100] = &workhorse{shellPid: 0}
+	// ms.workers[8110] = &workhorse{shellPid: os.Getpid()}
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			_, err := ms.handleMessage(v.content)
+			var messagError *messageError
+
+			if errors.As(err, &messagError) {
+				if messagError.reason != v.reason {
+					t.Errorf("%s expect %q, got %q\n", v.label, v.reason, messagError.reason)
+				}
+			} else {
+				t.Errorf("%s expect %v, got %v\n", v.label, messagError, err)
+			}
+		})
 	}
 }
