@@ -2084,25 +2084,25 @@ func TestBeginClientConn(t *testing.T) {
 	}
 }
 
+// https://coralogix.com/blog/optimizing-a-golang-service-to-reduce-over-40-cpu/
 func TestRunChild(t *testing.T) {
 	tc := []struct {
 		label     string
-		pause     int    // pause between client send and read
 		resp      string // response	for beginClientConn().
 		shutdown  int    // pause before shutdown message
 		conf      Config // config for mainSrv
 		childConf Config // config for child
 	}{
 		{
-			"normal runChild", 100, frontend.AprilshMsgOpen + "7101,", 30,
+			"normal runChild", frontend.AprilshMsgOpen + "7101,", 100,
 			Config{
-				version: false, server: false, verbose: util.DebugLevel, desiredIP: "", desiredPort: "7100",
+				server: false, verbose: util.DebugLevel, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 				addSource: true,
 			},
 			Config{desiredPort: "7200", term: "xterm", destination: getCurrentUser() + "@localhost",
-				verbose: 0, addSource: false},
+				serve: serve, verbose: 0, addSource: false},
 		},
 	}
 
@@ -2160,6 +2160,9 @@ func TestRunChild(t *testing.T) {
 					util.Logger.Debug("test handle message", "resp", resp)
 					srv.handleMessage(resp)
 
+					if strings.HasPrefix(resp, _ShellHeader) {
+						util.Logger.Debug("test handle message", "resp", resp)
+					}
 					// m.exChan <- resp
 				}
 
@@ -2178,7 +2181,7 @@ func TestRunChild(t *testing.T) {
 			go func() {
 				<-timer1.C
 				// prepare to shudown the mainSrv
-				// syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+				syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
 				srv.uxdownChan <- true
 			}()
 

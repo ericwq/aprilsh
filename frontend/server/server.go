@@ -1303,7 +1303,7 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 		additional logic for pty.StartWithAttrs() end
 	*/
 
-	// util.Logger.Debug("start shell waiting for pipe unlock")
+	util.Logger.Debug("start shell waiting for pipe unlock")
 	// wait for serve() to release us
 	if pr != nil && conf.verbose != _VERBOSE_SKIP_READ_PIPE {
 		ch := make(chan string, 0)
