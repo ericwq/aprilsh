@@ -5,6 +5,7 @@
 name="apshd"
 description="apshd daemon for the aprilsh service"
 
+export GOMAXPROCS=1
 command=/usr/bin/apshd
 command_args=""
 # If your daemon doesn't know how to change its own user or group,
