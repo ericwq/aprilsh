@@ -2083,3 +2083,65 @@ func TestBeginClientConn(t *testing.T) {
 		})
 	}
 }
+
+func TestRunChild(t *testing.T) {
+	tc := []struct {
+		label      string
+		pause      int    // pause between client send and read
+		resp       string // response	for beginClientConn().
+		shutdown   int    // pause before shutdown message
+		clientConf Config
+		conf       Config
+	}{
+		{
+			"normal beginClientConn", 100, frontend.AprilshMsgOpen + "7101,", 30,
+			Config{desiredPort: "7100", term: "xterm-256color", destination: getCurrentUser() + "@localhost"},
+			Config{
+				version: false, server: false, verbose: util.TraceLevel, desiredIP: "", desiredPort: "7100",
+				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
+				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
+				addSource: false,
+			},
+		},
+	}
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+			// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
+
+			srv := newMainSrv(&v.conf)
+			// send shutdown message after some time
+			timer1 := time.NewTimer(time.Duration(v.shutdown) * time.Millisecond)
+			go func() {
+				<-timer1.C
+				// prepare to shudown the mainSrv
+				// syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+				srv.downChan <- true
+			}()
+
+			srv.start(&v.conf)
+
+			// intercept stdout
+			saveStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+
+			beginClientConn(&v.clientConf)
+
+			// restore stdout
+			w.Close()
+			output, _ := io.ReadAll(r)
+			os.Stdout = saveStdout
+			r.Close()
+
+			// validate the result.
+			resp := strings.TrimSpace(string(output))
+			// fmt.Printf("output from beginClientConn= %q\n", resp)
+			if !strings.HasPrefix(resp, v.resp) {
+				t.Errorf("#test beginClientConn expect start with %q got %q\n", v.resp, resp)
+			}
+			srv.wait()
+		})
+	}
+}

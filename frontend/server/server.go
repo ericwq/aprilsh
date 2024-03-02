@@ -711,21 +711,18 @@ func (m *mainSrv) startChild(req string, addr *net.UDPAddr, conf2 Config) {
 	conf2.destination = content[1]
 
 	// parse user and host from destination
-	idx := strings.Index(content[1], "@")
-	if idx > 0 && idx < len(content[1])-1 {
-		conf2.host = content[1][idx+1:]
-		conf2.user = content[1][:idx]
-	} else {
-		// return "target parameter should be in the form of User@Server", false
+	dest := strings.Split(content[1], "@")
+	if len(dest) != 2 {
 		resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "malform destination")
 		util.Logger.Warn("malform destination", "destination", content[1], "response", resp)
-
 		return
 	}
+	conf2.user = dest[0]
+	conf2.host = dest[1]
 
 	// we don't need to check if user exist, ssh already done that before
 	//start child
-	child, err := startChild(&conf2)
+	child, err := startChildProcess(&conf2)
 	if err != nil {
 		if errors.Is(err, syscall.EPERM) {
 			util.Logger.Warn("operation not permitted")
@@ -1741,7 +1738,7 @@ mainLoop:
 	return nil
 }
 
-func startChild(conf *Config) (*os.Process, error) {
+func startChildProcess(conf *Config) (*os.Process, error) {
 	// conf{term,user,desiredPort,destination}
 
 	// use the root's SHELL as replacement for user SHELL
