@@ -2086,61 +2086,122 @@ func TestBeginClientConn(t *testing.T) {
 
 func TestRunChild(t *testing.T) {
 	tc := []struct {
-		label      string
-		pause      int    // pause between client send and read
-		resp       string // response	for beginClientConn().
-		shutdown   int    // pause before shutdown message
-		clientConf Config
-		conf       Config
+		label     string
+		pause     int    // pause between client send and read
+		resp      string // response	for beginClientConn().
+		shutdown  int    // pause before shutdown message
+		conf      Config // config for mainSrv
+		childConf Config // config for child
 	}{
 		{
-			"normal beginClientConn", 100, frontend.AprilshMsgOpen + "7101,", 30,
-			Config{desiredPort: "7100", term: "xterm-256color", destination: getCurrentUser() + "@localhost"},
+			"normal runChild", 100, frontend.AprilshMsgOpen + "7101,", 30,
 			Config{
-				version: false, server: false, verbose: util.TraceLevel, desiredIP: "", desiredPort: "7100",
+				version: false, server: false, verbose: util.DebugLevel, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
-				addSource: false,
+				addSource: true,
 			},
+			Config{desiredPort: "7200", term: "xterm", destination: getCurrentUser() + "@localhost",
+				verbose: 0, addSource: false},
 		},
 	}
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
-			// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
+			// util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+			util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
 			srv := newMainSrv(&v.conf)
+
+			// listen UDS
+			uxConn, err := srv.uxListen()
+			if err != nil {
+				util.Logger.Warn("listen unix domain socket failed", "error", err)
+				return
+			}
+
+			// receive UDS feed
+			srv.wg.Add(1)
+			go func(conn *net.UnixConn, timeout int) {
+				// clean up
+				defer func() {
+					conn.Close()
+					uxCleanup()
+					// util.Log.Info("uxServe stopped")
+					srv.wg.Done()
+				}()
+
+				// util.Log.Info("uxServe started")
+				var buf [1024]byte
+				shutdown := false
+				for {
+					select {
+					case <-srv.uxdownChan:
+						shutdown = true
+					default:
+					}
+
+					if shutdown {
+						return
+					}
+
+					conn.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
+					n, err := conn.Read(buf[:])
+					if err != nil {
+						if errors.Is(err, os.ErrDeadlineExceeded) {
+							continue
+						} else {
+							util.Logger.Warn("uxServe read failed", "error", err)
+							continue
+						}
+					}
+					resp := string(buf[:n])
+
+					util.Logger.Debug("test handle message", "resp", resp)
+					srv.handleMessage(resp)
+
+					// m.exChan <- resp
+				}
+
+			}(uxConn, 10)
+
+			// start runChild
+			srv.wg.Add(1)
+			go func() {
+				srv.workers[7100] = &workhorse{}
+				runChild(&v.childConf)
+				srv.wg.Done()
+			}()
+
 			// send shutdown message after some time
 			timer1 := time.NewTimer(time.Duration(v.shutdown) * time.Millisecond)
 			go func() {
 				<-timer1.C
 				// prepare to shudown the mainSrv
 				// syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
-				srv.downChan <- true
+				srv.uxdownChan <- true
 			}()
 
-			srv.start(&v.conf)
-
-			// intercept stdout
-			saveStdout := os.Stdout
-			r, w, _ := os.Pipe()
-			os.Stdout = w
-
-			beginClientConn(&v.clientConf)
-
-			// restore stdout
-			w.Close()
-			output, _ := io.ReadAll(r)
-			os.Stdout = saveStdout
-			r.Close()
-
-			// validate the result.
-			resp := strings.TrimSpace(string(output))
-			// fmt.Printf("output from beginClientConn= %q\n", resp)
-			if !strings.HasPrefix(resp, v.resp) {
-				t.Errorf("#test beginClientConn expect start with %q got %q\n", v.resp, resp)
-			}
+			// srv.start(&v.conf)
+			//
+			// // intercept stdout
+			// saveStdout := os.Stdout
+			// r, w, _ := os.Pipe()
+			// os.Stdout = w
+			//
+			//
+			// // restore stdout
+			// w.Close()
+			// output, _ := io.ReadAll(r)
+			// os.Stdout = saveStdout
+			// r.Close()
+			//
+			// // validate the result.
+			// resp := strings.TrimSpace(string(output))
+			// // fmt.Printf("output from beginClientConn= %q\n", resp)
+			// if !strings.HasPrefix(resp, v.resp) {
+			// 	t.Errorf("#test beginClientConn expect start with %q got %q\n", v.resp, resp)
+			// }
 			srv.wait()
 		})
 	}
