@@ -44,10 +44,9 @@ import (
 const (
 	_PATH_BSHELL = "/bin/sh"
 
-	_VERBOSE_OPEN_PTS_FAIL    = 99  // test purpose
-	_VERBOSE_SKIP_START_SHELL = 100 // test purpose
-	_VERBOSE_SKIP_READ_PIPE   = 101 // skip start shell message
-	_VERBOSE_LOG_TO_SYSLOG    = 514 // log to syslog
+	_FC_OPEN_PTS_FAIL    = 100 // flow contorl: open pts failed.
+	_FC_SKIP_START_SHELL = 101 // flow control: skip startShell() entirely.
+	_FC_SKIP_PIPE_LOCK   = 102 // flow control: skip pipe lock for start shell.
 
 	_ServeHeader = "serve"
 	_RunHeader   = "run"
@@ -138,6 +137,7 @@ type Config struct {
 	host        string     // target host/server
 	user        string     // target user
 	addSource   bool       // add source file to log
+	flowControl int        // control flow for testing
 
 	commandPath string   // shell command path (absolute path)
 	commandArgv []string // the positional (non-flag) command-line arguments.
@@ -1202,7 +1202,7 @@ func openPTS(wsize *unix.Winsize) (ptmx *os.File, pts *os.File, err error) {
 
 // set IUTF8 flag for pts file. start shell process according to Config.
 func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) (*os.Process, error) {
-	if conf.verbose == _VERBOSE_SKIP_START_SHELL {
+	if conf.flowControl == _FC_SKIP_START_SHELL {
 		return nil, failToStartShell
 	}
 	// set IUTF8 if available
@@ -1228,6 +1228,8 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 	if conf.user != getCurrentUser() {
 		changeUser = true
 	}
+	util.Logger.Debug("start shell check user", "changeUser", changeUser)
+
 	u, err := user.Lookup(conf.user)
 	if err != nil {
 		return nil, err
@@ -1305,7 +1307,7 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 
 	util.Logger.Debug("start shell waiting for pipe unlock")
 	// wait for serve() to release us
-	if pr != nil && conf.verbose != _VERBOSE_SKIP_READ_PIPE {
+	if pr != nil && conf.flowControl != _FC_SKIP_PIPE_LOCK {
 		ch := make(chan string, 0)
 		timer := time.NewTimer(time.Duration(frontend.TimeoutIfNoConnect) * time.Millisecond)
 
@@ -1346,6 +1348,7 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 	if err != nil {
 		return nil, err
 	}
+	util.Logger.Info("start shell done", "shellPid", proc.Pid)
 	return proc, nil
 }
 
@@ -1813,6 +1816,9 @@ func startChildProcess(conf *Config) (*os.Process, error) {
 	// ask ncurses to send UTF-8 instead of ISO 2022 for line-drawing chars
 	env = append(env, "NCURSES_NO_UTF8_ACS=1")
 
+	// decrease system thread number
+	env = append(env, "GOMAXPROCS=1")
+
 	// hidden parameter send via env
 	env = append(env, envArgs+"="+strings.Join(args, " "))
 	env = append(env, envUDS+"="+unixsockAddr)
@@ -1955,7 +1961,7 @@ func runChild(conf *Config) (err error) {
 	// printWelcome(os.Stdout, os.Getpid(), os.Stdin)
 
 	// prepare for openPTS fail
-	if conf.verbose == _VERBOSE_OPEN_PTS_FAIL {
+	if conf.flowControl == _FC_OPEN_PTS_FAIL {
 		windowSize = nil
 	}
 
@@ -2033,6 +2039,7 @@ func runChild(conf *Config) (err error) {
 		}
 	}
 
+	util.Logger.Debug("runChild wait")
 	// wait serve to finish
 	wg.Wait()
 	util.Logger.Info("stop listening on", "port", conf.desiredPort)

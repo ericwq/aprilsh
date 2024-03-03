@@ -1394,7 +1394,7 @@ func TestRunWorkerKillSignal(t *testing.T) {
 		{
 			"runWorker stopped by signal kill", 10, frontend.AprilshMsgOpen + "7101,", 50,
 			Config{
-				version: false, server: true, verbose: _VERBOSE_SKIP_READ_PIPE, desiredIP: "", desiredPort: "7100",
+				version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
@@ -1453,14 +1453,14 @@ func testRunWorkerFail(t *testing.T) {
 	}{
 		{
 			"openPTS fail", Config{
-				version: false, server: true, verbose: _VERBOSE_OPEN_PTS_FAIL, desiredIP: "", desiredPort: "7100",
+				version: false, server: true, flowControl: _FC_OPEN_PTS_FAIL, desiredIP: "", desiredPort: "7100",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, term: "kitty",
 				commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false,
 			},
 		},
 		{
 			"startShell fail", Config{
-				version: false, server: true, verbose: _VERBOSE_SKIP_START_SHELL, desiredIP: "", desiredPort: "7200",
+				version: false, server: true, flowControl: _FC_SKIP_START_SHELL, desiredIP: "", desiredPort: "7200",
 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, term: "kitty",
 				commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false,
 			},
@@ -1551,7 +1551,7 @@ func TestRunCloseFail(t *testing.T) {
 			[]string{},
 			50,
 			Config{
-				version: false, server: true, verbose: _VERBOSE_SKIP_READ_PIPE, desiredIP: "", desiredPort: "7110",
+				version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7110",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
@@ -1561,7 +1561,7 @@ func TestRunCloseFail(t *testing.T) {
 			[]string{"7100"},
 			50,
 			Config{
-				version: false, server: true, verbose: _VERBOSE_SKIP_READ_PIPE, desiredIP: "", desiredPort: "7120",
+				version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7120",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
@@ -1571,7 +1571,7 @@ func TestRunCloseFail(t *testing.T) {
 			[]string{"7121x"},
 			50,
 			Config{
-				version: false, server: true, verbose: _VERBOSE_SKIP_READ_PIPE, desiredIP: "", desiredPort: "7130",
+				version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7130",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
@@ -1581,7 +1581,7 @@ func TestRunCloseFail(t *testing.T) {
 			[]string{"two", "params"},
 			50,
 			Config{
-				version: false, server: true, verbose: _VERBOSE_SKIP_READ_PIPE, desiredIP: "", desiredPort: "7140",
+				version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7140",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
@@ -1657,7 +1657,7 @@ func TestRunWith2Clients(t *testing.T) {
 			"open aprilsh with duplicate request", 20, frontend.AprilshMsgOpen + "7101,", frontend.AprishMsgClose + "done",
 			frontend.AprilshMsgOpen + "7102", []string{}, 50,
 			Config{
-				version: false, server: true, verbose: _VERBOSE_SKIP_READ_PIPE, desiredIP: "", desiredPort: "7100",
+				version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
@@ -1724,7 +1724,7 @@ func testStartShellFail(t *testing.T) {
 		conf     Config
 	}{
 		{"first error return", "fail to start shell", nil, nil, "",
-			Config{verbose: _VERBOSE_SKIP_START_SHELL},
+			Config{flowControl: _FC_SKIP_START_SHELL},
 		},
 		{"IUTF8 error return", strENOTTY, os.Stdin, nil, "",
 			Config{verbose: 0},
@@ -2035,10 +2035,10 @@ func TestBeginClientConn(t *testing.T) {
 			"normal beginClientConn", 100, frontend.AprilshMsgOpen + "7101,", 30,
 			Config{desiredPort: "7100", term: "xterm-256color", destination: getCurrentUser() + "@localhost"},
 			Config{
-				version: false, server: false, verbose: util.TraceLevel, desiredIP: "", desiredPort: "7100",
+				version: false, server: false, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
-				addSource: false,
+				addSource: false, // verbose: util.TraceLevel,
 			},
 		},
 	}
@@ -2094,15 +2094,39 @@ func TestRunChild(t *testing.T) {
 		childConf Config // config for child
 	}{
 		{
-			"normal runChild", frontend.AprilshMsgOpen + "7101,", 100,
+			"runChild early shutdown", frontend.AprilshMsgOpen + "7101,", 100,
 			Config{
-				server: false, verbose: util.DebugLevel, desiredIP: "", desiredPort: "7100",
+				desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
-				addSource: true,
+				addSource: true, verbose: util.DebugLevel,
 			},
 			Config{desiredPort: "7200", term: "xterm", destination: getCurrentUser() + "@localhost",
 				serve: serve, verbose: 0, addSource: false},
+		},
+		{
+			"runChild skip pipe lock", frontend.AprilshMsgOpen + "7101,", 100,
+			Config{
+				desiredIP: "", desiredPort: "7100",
+				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
+				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
+				addSource: true, verbose: util.DebugLevel,
+			},
+			Config{desiredPort: "7200", term: "xterm", destination: getCurrentUser() + "@localhost",
+				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
+				flowControl: _FC_SKIP_PIPE_LOCK, serve: serve, verbose: 0, addSource: false},
+		},
+		{
+			"runChild skip start shell, shutdown", frontend.AprilshMsgOpen + "7101,", 100,
+			Config{
+				desiredIP: "", desiredPort: "7100",
+				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
+				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
+				addSource: true, verbose: util.DebugLevel,
+			},
+			Config{desiredPort: "7200", term: "xterm", destination: getCurrentUser() + "@localhost",
+				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
+				flowControl: _FC_SKIP_START_SHELL, serve: serve, verbose: 0, addSource: false},
 		},
 	}
 
@@ -2156,55 +2180,46 @@ func TestRunChild(t *testing.T) {
 						}
 					}
 					resp := string(buf[:n])
-
-					util.Logger.Debug("test handle message", "resp", resp)
+					// util.Logger.Debug("test handle message", "resp", resp)
 					srv.handleMessage(resp)
 
-					if strings.HasPrefix(resp, _ShellHeader) {
-						util.Logger.Debug("test handle message", "resp", resp)
+					if resp == "run:7200,shutdown" {
+						shutdown = true
 					}
-					// m.exChan <- resp
-				}
 
+					// stop shell process once we got shell pid
+					if strings.HasPrefix(resp, "shell:7200") {
+						if srv.workers[7200].shellPid > 0 {
+							util.Logger.Debug("test handle message", "action", "kill", "shellPid", srv.workers[7200].shellPid)
+							shell, err := os.FindProcess(srv.workers[7200].shellPid)
+							if err = shell.Kill(); err != nil {
+								util.Logger.Debug("test handle message", "error", err)
+							}
+						}
+					}
+				}
 			}(uxConn, 10)
 
 			// start runChild
 			srv.wg.Add(1)
 			go func() {
-				srv.workers[7100] = &workhorse{}
+				srv.workers[7200] = &workhorse{}
 				runChild(&v.childConf)
 				srv.wg.Done()
 			}()
 
-			// send shutdown message after some time
-			timer1 := time.NewTimer(time.Duration(v.shutdown) * time.Millisecond)
-			go func() {
-				<-timer1.C
-				// prepare to shudown the mainSrv
-				syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
-				srv.uxdownChan <- true
-			}()
+			if strings.Contains(v.label, "shutdown") {
+				// send shutdown message after some time
+				timer1 := time.NewTimer(time.Duration(v.shutdown) * time.Millisecond)
+				go func() {
+					<-timer1.C
+					// prepare to shudown the mainSrv
+					syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+					srv.uxdownChan <- true
+				}()
+			}
 
-			// srv.start(&v.conf)
-			//
-			// // intercept stdout
-			// saveStdout := os.Stdout
-			// r, w, _ := os.Pipe()
-			// os.Stdout = w
-			//
-			//
-			// // restore stdout
-			// w.Close()
-			// output, _ := io.ReadAll(r)
-			// os.Stdout = saveStdout
-			// r.Close()
-			//
-			// // validate the result.
-			// resp := strings.TrimSpace(string(output))
-			// // fmt.Printf("output from beginClientConn= %q\n", resp)
-			// if !strings.HasPrefix(resp, v.resp) {
-			// 	t.Errorf("#test beginClientConn expect start with %q got %q\n", v.resp, resp)
-			// }
+			// validate if we can quit this test
 			srv.wait()
 		})
 	}
