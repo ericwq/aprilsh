@@ -2113,7 +2113,7 @@ func TestRunChild(t *testing.T) {
 				addSource: true, verbose: util.DebugLevel,
 			},
 			Config{desiredPort: "7200", term: "xterm", destination: getCurrentUser() + "@localhost",
-				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
+				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: true,
 				flowControl: _FC_SKIP_PIPE_LOCK, serve: serve, verbose: 0, addSource: false},
 		},
 		{
