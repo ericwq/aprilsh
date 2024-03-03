@@ -1202,6 +1202,9 @@ func openPTS(wsize *unix.Winsize) (ptmx *os.File, pts *os.File, err error) {
 
 // set IUTF8 flag for pts file. start shell process according to Config.
 func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) (*os.Process, error) {
+	// close pipe will stop the Read operation
+	defer pr.Close()
+
 	if conf.flowControl == _FC_SKIP_START_SHELL {
 		return nil, failToStartShell
 	}
@@ -1330,11 +1333,9 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 		select {
 		case s := <-ch:
 			if s == earlyShutdown {
-				pr.Close()
 				return nil, errors.New(earlyShutdown)
 			}
 		case <-timer.C:
-			pr.Close() // close pipe will stop the Read operation
 			// util.Log.Debug("start shell message", "action", "timeout", "port", conf.desiredPort)
 			return nil, fmt.Errorf("pipe read: %w", os.ErrDeadlineExceeded)
 		}
@@ -1342,7 +1343,6 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 
 		util.Logger.Info("start shell with pty", "pty", pts.Name())
 	}
-	pr.Close()
 
 	proc, err := os.StartProcess(conf.commandPath, conf.commandArgv, &procAttr)
 	if err != nil {

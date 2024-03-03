@@ -2094,7 +2094,7 @@ func TestRunChild(t *testing.T) {
 		childConf Config // config for child
 	}{
 		{
-			"runChild early shutdown", frontend.AprilshMsgOpen + "7101,", 100,
+			"early shutdown", frontend.AprilshMsgOpen + "7101,", 100,
 			Config{
 				desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -2105,11 +2105,11 @@ func TestRunChild(t *testing.T) {
 				serve: serve, verbose: 0, addSource: false},
 		},
 		{
-			"runChild skip pipe lock", frontend.AprilshMsgOpen + "7101,", 100,
+			"skip pipe lock", frontend.AprilshMsgOpen + "7101,", 100,
 			Config{
 				desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
-				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
+				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: true,
 				addSource: true, verbose: util.DebugLevel,
 			},
 			Config{desiredPort: "7200", term: "xterm", destination: getCurrentUser() + "@localhost",
@@ -2117,7 +2117,7 @@ func TestRunChild(t *testing.T) {
 				flowControl: _FC_SKIP_PIPE_LOCK, serve: serve, verbose: 0, addSource: false},
 		},
 		{
-			"runChild skip start shell, shutdown", frontend.AprilshMsgOpen + "7101,", 100,
+			"skip start shell", frontend.AprilshMsgOpen + "7101,", 100,
 			Config{
 				desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -2125,8 +2125,20 @@ func TestRunChild(t *testing.T) {
 				addSource: true, verbose: util.DebugLevel,
 			},
 			Config{desiredPort: "7200", term: "xterm", destination: getCurrentUser() + "@localhost",
-				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
+				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: true,
 				flowControl: _FC_SKIP_START_SHELL, serve: serve, verbose: 0, addSource: false},
+		},
+		{
+			"open pts failed", frontend.AprilshMsgOpen + "7101,", 100,
+			Config{
+				desiredIP: "", desiredPort: "7100",
+				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
+				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
+				addSource: true, verbose: util.DebugLevel,
+			},
+			Config{desiredPort: "7200", term: "xterm", destination: getCurrentUser() + "@localhost",
+				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: true,
+				flowControl: _FC_OPEN_PTS_FAIL, serve: serve, verbose: 0, addSource: false},
 		},
 	}
 
