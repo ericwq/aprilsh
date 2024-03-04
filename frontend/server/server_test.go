@@ -2272,3 +2272,25 @@ func TestRunChild(t *testing.T) {
 		})
 	}
 }
+
+func TestMainServReturn(t *testing.T) {
+	m := mainSrv{}
+	cfg := &Config{}
+	m.run(cfg)
+	// run return if m.conn is nil
+}
+
+func TestUxCleanupFail(t *testing.T) {
+	old := unixsockAddr
+	defer func() {
+		unixsockAddr = old
+	}()
+
+	unixsockAddr = "/etc/hosts"
+	m := mainSrv{}
+	_, err := m.uxListen()
+	if err == nil {
+		fmt.Printf("%#v\n", err)
+		t.Errorf("uxListen expect error got nil\n")
+	}
+}

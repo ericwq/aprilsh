@@ -862,7 +862,7 @@ func (m *mainSrv) shutdown() {
 	if len(m.workers) != 0 {
 		// stop all workers
 		for i := range m.workers {
-			if m.workers[i].child != nil { // chcek placeholder
+			if m.workers[i].child != nil { // check placeholder
 				m.workers[i].child.Signal(syscall.SIGTERM)
 				util.Logger.Debug("stop child", "port", i)
 			}
@@ -1194,14 +1194,6 @@ func (e *messageError) Error() string {
 func startChildProcess(conf *Config) (*os.Process, error) {
 	// conf{term,user,desiredPort,destination}
 
-	// use the root's SHELL as replacement for user SHELL
-	shell := os.Getenv("SHELL")
-	if shell == "" {
-		err := errors.New("can't get shell from SHELL")
-		util.Logger.Warn("startChild", "error", err)
-		return nil, err
-	}
-
 	util.Logger.Debug("startChild", "user", conf.user, "term", conf.term,
 		"desiredPort", conf.desiredPort, "destination", conf.destination)
 
@@ -1236,11 +1228,12 @@ func startChildProcess(conf *Config) (*os.Process, error) {
 	var env []string
 
 	// set TERM based on client TERM
-	if conf.term != "" {
-		env = append(env, "TERM="+conf.term)
-	} else {
-		env = append(env, "TERM=xterm-256color")
-	}
+	env = append(env, "TERM="+conf.term)
+	// if conf.term != "" {
+	// 	env = append(env, "TERM="+conf.term)
+	// } else {
+	// 	env = append(env, "TERM=xterm-256color")
+	// }
 
 	// clear STY environment variable so GNU screen regards us as top level
 	// os.Unsetenv("STY")
@@ -1256,6 +1249,14 @@ func startChildProcess(conf *Config) (*os.Process, error) {
 	env = append(env, "PWD="+u.HomeDir)
 	env = append(env, "HOME="+u.HomeDir) // it's important for shell to source .profile
 	env = append(env, "USER="+conf.user)
+
+	// use the root's SHELL as replacement for user SHELL
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		err := errors.New("can't get shell from SHELL")
+		util.Logger.Warn("startChild", "error", err)
+		return nil, err
+	}
 	env = append(env, "SHELL="+shell)
 	env = append(env, fmt.Sprintf("TZ=%s", os.Getenv("TZ")))
 
