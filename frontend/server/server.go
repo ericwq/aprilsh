@@ -138,6 +138,7 @@ type Config struct {
 	user        string     // target user
 	addSource   bool       // add source file to log
 	flowControl int        // control flow for testing
+	coverDir    bool       // force GOCOVERDIR or not
 
 	commandPath string   // shell command path (absolute path)
 	commandArgv []string // the positional (non-flag) command-line arguments.
@@ -172,6 +173,19 @@ func (conf *Config) buildConfig() (string, bool) {
 		_, _, ok := network.ParsePortRange(conf.desiredPort)
 		if !ok {
 			return fmt.Sprintf("Bad UDP port (%s)", conf.desiredPort), false
+		}
+	}
+
+	if value, ok := os.LookupEnv("GOCOVERDIR"); ok {
+		if value != "" {
+			return "GOCOVERDIR is empty", false
+		}
+		if !conf.coverDir {
+			return "need -cover options", false
+		}
+	} else {
+		if conf.coverDir {
+			return "please set GOCOVERDIR", false
 		}
 	}
 
@@ -293,6 +307,8 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 
 	flagSet.Var(&conf.locales, "locale", "locale list, key=value pair")
 	flagSet.Var(&conf.locales, "l", "locale list, key=value pair")
+
+	flagSet.BoolVar(&conf.coverDir, "cover", false, "force GOCOVERDIR")
 
 	err = flagSet.Parse(args)
 	if err != nil {
@@ -1822,7 +1838,9 @@ func startChildProcess(conf *Config) (*os.Process, error) {
 
 	// decrease system thread number
 	env = append(env, "GOMAXPROCS=1")
-
+	if conf.coverDir {
+		env = append(env, fmt.Sprintf("GOCOVERDIR=%s", os.Getenv("GOCOVERDIR")))
+	}
 	// hidden parameter send via env
 	env = append(env, envArgs+"="+strings.Join(args, " "))
 	env = append(env, envUDS+"="+unixsockAddr)
@@ -2070,24 +2088,24 @@ func main() {
 		unixsockAddr = str
 		os.Unsetenv(envArgs)
 	}
-	fmt.Fprintf(os.Stderr, "main process %d args=%s, uds=%s\n", os.Getpid(), os.Args, unixsockAddr)
 
 	conf, _, err := parseFlags(os.Args[0], os.Args[1:])
 	if errors.Is(err, flag.ErrHelp) {
 		frontend.PrintUsage("", usage)
-		return
 	} else if err != nil {
 		frontend.PrintUsage(err.Error())
-		return
+		os.Exit(1)
 	} else if hint, ok := conf.buildConfig(); !ok {
 		frontend.PrintUsage(hint)
-		return
+		os.Exit(1)
 	}
 
 	if conf.version {
 		printVersion()
 		return
 	}
+
+	fmt.Fprintf(os.Stderr, "main process %d args=%s, uds=%s\n", os.Getpid(), os.Args, unixsockAddr)
 
 	// For security, make sure we don't dump core
 	encrypt.DisableDumpingCore()
