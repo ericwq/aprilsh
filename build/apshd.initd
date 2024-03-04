@@ -5,6 +5,7 @@
 name="apshd"
 description="apshd daemon for the aprilsh service"
 
+# export GOCOVERDIR=/home/ide/develop/aprilsh/frontend/server/coverage/int
 export GOMAXPROCS=1
 command=/usr/bin/apshd
 command_args=""

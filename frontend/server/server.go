@@ -55,6 +55,8 @@ const (
 
 	envArgs = "APRILSH_ARGS"
 	envUDS  = "APRILSH_UDS"
+
+	earlyShutdown = "early-shutdown"
 )
 
 var usage = `Usage:
@@ -728,12 +730,13 @@ func (m *mainSrv) startChild(req string, addr *net.UDPAddr, conf2 Config) {
 	//start child
 	child, err := startChildProcess(&conf2)
 	if err != nil {
-		if errors.Is(err, syscall.EPERM) {
-			util.Logger.Warn("operation not permitted")
-		} else {
-			util.Logger.Warn("can't start child", "error", err)
-			fmt.Printf("can't start child, error=%#v\n", err)
-		}
+		// if errors.Is(err, syscall.EPERM) {
+		// 	util.Logger.Warn("operation not permitted")
+		// } else {
+		// 	util.Logger.Warn("can't start child", "error", err)
+		// 	// fmt.Printf("can't start child, error=%#v\n", err)
+		// }
+		util.Logger.Warn("can't start child", "error", err)
 		return
 	}
 	util.Logger.Debug("start child successfully, wait for the key.")
@@ -1188,6 +1191,118 @@ func (e *messageError) Error() string {
 	return e.reason + ": " + e.err.Error()
 }
 
+func startChildProcess(conf *Config) (*os.Process, error) {
+	// conf{term,user,desiredPort,destination}
+
+	// use the root's SHELL as replacement for user SHELL
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		err := errors.New("can't get shell from SHELL")
+		util.Logger.Warn("startChild", "error", err)
+		return nil, err
+	}
+
+	util.Logger.Debug("startChild", "user", conf.user, "term", conf.term,
+		"desiredPort", conf.desiredPort, "destination", conf.destination)
+
+	// specify child process
+	commandPath := "/usr/bin/apshd"
+	commandArgv := []string{commandPath, "-p", conf.desiredPort}
+
+	// hide the following command args from ps command
+	args := []string{"-child", "-destination", conf.destination, "-term", conf.term}
+	// inherit vervoce and source options form parent
+	if conf.verbose == util.DebugLevel {
+		args = append(args, "-vv")
+	} else if conf.verbose == util.TraceLevel {
+		args = append(args, "-vvv")
+	}
+	if conf.addSource {
+		args = append(args, "-source")
+	}
+
+	// var pts *os.File
+	// var pr *io.PipeReader
+	// var utmpHost string
+
+	// if conf.verbose == _VERBOSE_SKIP_START_SHELL {
+	// 	return nil, failToStartShell
+	// }
+	// set IUTF8 if available
+	// if err := util.SetIUTF8(int(pts.Fd())); err != nil {
+	// 	return nil, err
+	// }
+
+	var env []string
+
+	// set TERM based on client TERM
+	if conf.term != "" {
+		env = append(env, "TERM="+conf.term)
+	} else {
+		env = append(env, "TERM=xterm-256color")
+	}
+
+	// clear STY environment variable so GNU screen regards us as top level
+	// os.Unsetenv("STY")
+
+	// get login user info, we already checked the user exist when ssh perform authentication.
+	u, _ := user.Lookup(conf.user)
+	// uid, _ := strconv.ParseInt(u.Uid, 10, 32)
+	// gid, _ := strconv.ParseInt(u.Gid, 10, 32)
+	util.Logger.Debug("startChild check user", "user", u.Username, "gid", u.Gid, "HOME", u.HomeDir)
+
+	// set base env
+	// TODO should we put LOGNAME, MAIL into env?
+	env = append(env, "PWD="+u.HomeDir)
+	env = append(env, "HOME="+u.HomeDir) // it's important for shell to source .profile
+	env = append(env, "USER="+conf.user)
+	env = append(env, "SHELL="+shell)
+	env = append(env, fmt.Sprintf("TZ=%s", os.Getenv("TZ")))
+
+	// TODO should we set ssh env ?
+	env = append(env, fmt.Sprintf("SSH_CLIENT=%s", os.Getenv("SSH_CLIENT")))
+	env = append(env, fmt.Sprintf("SSH_CONNECTION=%s", os.Getenv("SSH_CONNECTION")))
+
+	// ask ncurses to send UTF-8 instead of ISO 2022 for line-drawing chars
+	env = append(env, "NCURSES_NO_UTF8_ACS=1")
+
+	// decrease system thread number
+	env = append(env, "GOMAXPROCS=1")
+	if value, ok := os.LookupEnv("GOCOVERDIR"); ok {
+		if value != "" {
+			env = append(env, fmt.Sprintf("GOCOVERDIR=%s", value))
+		}
+	}
+	// hidden parameter send via env
+	env = append(env, envArgs+"="+strings.Join(args, " "))
+	env = append(env, envUDS+"="+unixsockAddr)
+
+	util.Logger.Debug("startChild env:", "env", env)
+	util.Logger.Debug("startChild command:", "commandPath", commandPath, "commandArgv", commandArgv)
+
+	sysProcAttr := &syscall.SysProcAttr{}
+	sysProcAttr.Setsid = true // start a new session
+	// sysProcAttr.Setctty = true                    // set controlling terminal
+	// sysProcAttr.Credential = &syscall.Credential{ // change user
+	// 	Uid: uint32(uid),
+	// 	Gid: uint32(gid),
+	// }
+
+	procAttr := os.ProcAttr{
+		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr}, // use pts as stdin, stdout, stderr
+		Dir:   u.HomeDir,
+		Sys:   sysProcAttr,
+		Env:   env,
+	}
+
+	return os.StartProcess(commandPath, commandArgv, &procAttr)
+	// proc, err := os.StartProcess(commandPath, commandArgv, &procAttr)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// return proc, nil
+}
+
 // open pts master and slave, set terminal size according to window size.
 func openPTS(wsize *unix.Winsize) (ptmx *os.File, pts *os.File, err error) {
 	// open pts master and slave
@@ -1205,7 +1320,7 @@ func openPTS(wsize *unix.Winsize) (ptmx *os.File, pts *os.File, err error) {
 }
 
 // set IUTF8 flag for pts file. start shell process according to Config.
-func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) (*os.Process, error) {
+func startShellProcess(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) (*os.Process, error) {
 	// close pipe will stop the Read operation
 	defer pr.Close()
 
@@ -1348,15 +1463,14 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 		util.Logger.Info("start shell with pty", "pty", pts.Name())
 	}
 
-	proc, err := os.StartProcess(conf.commandPath, conf.commandArgv, &procAttr)
-	if err != nil {
-		return nil, err
-	}
-	// util.Logger.Info("start shell done", "shellPid", proc.Pid)
-	return proc, nil
+	return os.StartProcess(conf.commandPath, conf.commandArgv, &procAttr)
+	// proc, err := os.StartProcess(conf.commandPath, conf.commandArgv, &procAttr)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// // util.Logger.Info("start shell done", "shellPid", proc.Pid)
+	// return proc, nil
 }
-
-const earlyShutdown = "early-shutdown"
 
 func serve(ptmx *os.File, pts *os.File, pw *io.PipeWriter, complete *statesync.Complete, // waitChan chan bool,
 	server *network.Transport[*statesync.Complete, *statesync.UserStream],
@@ -1745,117 +1859,6 @@ mainLoop:
 	return nil
 }
 
-func startChildProcess(conf *Config) (*os.Process, error) {
-	// conf{term,user,desiredPort,destination}
-
-	// use the root's SHELL as replacement for user SHELL
-	shell := os.Getenv("SHELL")
-	if shell == "" {
-		err := errors.New("can't get shell from SHELL")
-		util.Logger.Warn("startChild", "error", err)
-		return nil, err
-	}
-
-	util.Logger.Debug("startChild", "user", conf.user, "term", conf.term,
-		"desiredPort", conf.desiredPort, "destination", conf.destination)
-
-	// specify child process
-	commandPath := "/usr/bin/apshd"
-	commandArgv := []string{commandPath, "-p", conf.desiredPort}
-
-	// hide the following command args from ps command
-	args := []string{"-child", "-destination", conf.destination, "-term", conf.term}
-	// inherit vervoce and source options form parent
-	if conf.verbose == util.DebugLevel {
-		args = append(args, "-vv")
-	} else if conf.verbose == util.TraceLevel {
-		args = append(args, "-vvv")
-	}
-	if conf.addSource {
-		args = append(args, "-source")
-	}
-
-	// var pts *os.File
-	// var pr *io.PipeReader
-	// var utmpHost string
-
-	// if conf.verbose == _VERBOSE_SKIP_START_SHELL {
-	// 	return nil, failToStartShell
-	// }
-	// set IUTF8 if available
-	// if err := util.SetIUTF8(int(pts.Fd())); err != nil {
-	// 	return nil, err
-	// }
-
-	var env []string
-
-	// set TERM based on client TERM
-	if conf.term != "" {
-		env = append(env, "TERM="+conf.term)
-	} else {
-		env = append(env, "TERM=xterm-256color")
-	}
-
-	// clear STY environment variable so GNU screen regards us as top level
-	// os.Unsetenv("STY")
-
-	// get login user info, we already checked the user exist when ssh perform authentication.
-	u, _ := user.Lookup(conf.user)
-	// uid, _ := strconv.ParseInt(u.Uid, 10, 32)
-	// gid, _ := strconv.ParseInt(u.Gid, 10, 32)
-	util.Logger.Debug("startChild check user", "user", u.Username, "gid", u.Gid, "HOME", u.HomeDir)
-
-	// set base env
-	// TODO should we put LOGNAME, MAIL into env?
-	env = append(env, "PWD="+u.HomeDir)
-	env = append(env, "HOME="+u.HomeDir) // it's important for shell to source .profile
-	env = append(env, "USER="+conf.user)
-	env = append(env, "SHELL="+shell)
-	env = append(env, fmt.Sprintf("TZ=%s", os.Getenv("TZ")))
-
-	// TODO should we set ssh env ?
-	env = append(env, fmt.Sprintf("SSH_CLIENT=%s", os.Getenv("SSH_CLIENT")))
-	env = append(env, fmt.Sprintf("SSH_CONNECTION=%s", os.Getenv("SSH_CONNECTION")))
-
-	// ask ncurses to send UTF-8 instead of ISO 2022 for line-drawing chars
-	env = append(env, "NCURSES_NO_UTF8_ACS=1")
-
-	// decrease system thread number
-	env = append(env, "GOMAXPROCS=1")
-	if value, ok := os.LookupEnv("GOCOVERDIR"); ok {
-		if value != "" {
-			env = append(env, fmt.Sprintf("GOCOVERDIR=%s", value))
-		}
-	}
-	// hidden parameter send via env
-	env = append(env, envArgs+"="+strings.Join(args, " "))
-	env = append(env, envUDS+"="+unixsockAddr)
-
-	util.Logger.Debug("startChild env:", "env", env)
-	util.Logger.Debug("startChild command:", "commandPath", commandPath, "commandArgv", commandArgv)
-
-	sysProcAttr := &syscall.SysProcAttr{}
-	sysProcAttr.Setsid = true // start a new session
-	// sysProcAttr.Setctty = true                    // set controlling terminal
-	// sysProcAttr.Credential = &syscall.Credential{ // change user
-	// 	Uid: uint32(uid),
-	// 	Gid: uint32(gid),
-	// }
-
-	procAttr := os.ProcAttr{
-		Files: []*os.File{os.Stdin, os.Stdout, os.Stderr}, // use pts as stdin, stdout, stderr
-		Dir:   u.HomeDir,
-		Sys:   sysProcAttr,
-		Env:   env,
-	}
-
-	proc, err := os.StartProcess(commandPath, commandArgv, &procAttr)
-	if err != nil {
-		return nil, err
-	}
-	return proc, nil
-}
-
 // worker started by mainSrv.run(). worker will listen on specified port and
 // forward user input to shell (started by runWorker. the output is forward
 // to the network.
@@ -2025,7 +2028,7 @@ func runChild(conf *Config) (err error) {
 	}()
 
 	// start the shell with pts
-	shell, err := startShell(pts, pr, utmpHost, conf)
+	shell, err := startShellProcess(pts, pr, utmpHost, conf)
 	pts.Close() // it's copied by shell process, it's safe to close it here.
 	if err != nil {
 		util.Logger.Warn("startShell fail", "error", err)
@@ -2078,12 +2081,13 @@ func main() {
 	conf, _, err := parseFlags(os.Args[0], os.Args[1:])
 	if errors.Is(err, flag.ErrHelp) {
 		frontend.PrintUsage("", usage)
+		return
 	} else if err != nil {
 		frontend.PrintUsage(err.Error())
-		os.Exit(1)
+		return
 	} else if hint, ok := conf.buildConfig(); !ok {
 		frontend.PrintUsage(hint)
-		os.Exit(1)
+		return
 	}
 
 	if conf.version {

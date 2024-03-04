@@ -1747,7 +1747,7 @@ func TestStartShellError(t *testing.T) {
 				v.pr = pr
 			}
 
-			_, err := startShell(v.pts, v.pr, v.utmpHost, &v.conf)
+			_, err := startShellProcess(v.pts, v.pr, v.utmpHost, &v.conf)
 			// fmt.Printf("%#v\n", err)
 
 			// validate error
