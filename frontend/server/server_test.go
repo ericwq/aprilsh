@@ -1714,7 +1714,7 @@ func TestRunWith2Clients(t *testing.T) {
 	}
 }
 
-func testStartShellFail(t *testing.T) {
+func TestStartShellError(t *testing.T) {
 	tc := []struct {
 		label    string
 		errStr   string
@@ -1723,55 +1723,42 @@ func testStartShellFail(t *testing.T) {
 		utmpHost string
 		conf     Config
 	}{
-		{"first error return", "fail to start shell", nil, nil, "",
+		{"first error return", "fail to start shell", os.Stdout, nil, "",
 			Config{flowControl: _FC_SKIP_START_SHELL},
 		},
 		{"IUTF8 error return", strENOTTY, os.Stdin, nil, "",
-			Config{verbose: 0},
+			Config{},
 		}, // os.Stdin doesn't support IUTF8 flag, startShell should failed
-		{"start shell error return", "/bin/xxxsh", os.Stdin, nil, "aprilsh [123]",
-			Config{version: false, server: true, verbose: 1, desiredIP: "", desiredPort: "7100",
-				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, term: "kitty",
-				commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false},
-		}, // commandPath is wrong, startShell should failed.
-		{"start shell error with term", "/bin/xxxsh", os.Stdin, nil, "aprilsh [123]",
-			Config{version: false, server: true, verbose: 1, desiredIP: "", desiredPort: "7100",
-				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, term: "",
-				commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: true},
-		}, // term is empty, withMotd is true, startShell should failed.
 	}
 
 	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
 
-	for i, v := range tc {
+	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			if i >= 2 {
-				// open pty master and slave
-				ptmx, pts, _ := pty.Open()
-				defer func() {
-					ptmx.Close()
-					pts.Close()
-				}()
+			// open pty master and slave
+			ptmx, pts, _ := pty.Open()
+			if v.pts == nil {
 				v.pts = pts
+			}
 
-				// open pipe for parameter
-				pr, pw := io.Pipe()
+			// open pipe for parameter
+			pr, pw := io.Pipe()
+			if v.pr == nil {
 				v.pr = pr
-
-				go func() {
-					time.Sleep(2 * time.Millisecond)
-					pw.Close()
-					util.Logger.Debug("start shell message", "action", "send")
-				}()
 			}
 
 			_, err := startShell(v.pts, v.pr, v.utmpHost, &v.conf)
+			// fmt.Printf("%#v\n", err)
 
 			// validate error
 			if !strings.Contains(err.Error(), v.errStr) {
 				t.Errorf("%q should report %q, got %q\n", v.label, v.errStr, err)
-				fmt.Printf("%#v\n", err)
 			}
+
+			pr.Close()
+			pw.Close()
+			ptmx.Close()
+			pts.Close()
 		})
 	}
 }
@@ -2022,7 +2009,7 @@ func TestHandleMessage(t *testing.T) {
 	}
 }
 
-func TestBeginClientConn(t *testing.T) {
+func TestBeginChild(t *testing.T) {
 	tc := []struct {
 		label      string
 		pause      int    // pause between client send and read
@@ -2038,7 +2025,7 @@ func TestBeginClientConn(t *testing.T) {
 				version: false, server: false, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
-				addSource: false, // verbose: util.TraceLevel,
+				// addSource: false, verbose: util.TraceLevel,
 			},
 		},
 	}
@@ -2065,7 +2052,7 @@ func TestBeginClientConn(t *testing.T) {
 			r, w, _ := os.Pipe()
 			os.Stdout = w
 
-			beginClientConn(&v.clientConf)
+			beginChild(&v.clientConf)
 
 			// restore stdout
 			w.Close()
@@ -2075,77 +2062,147 @@ func TestBeginClientConn(t *testing.T) {
 
 			// validate the result.
 			resp := strings.TrimSpace(string(output))
-			// fmt.Printf("output from beginClientConn= %q\n", resp)
+			// fmt.Printf("output from beginChild= %q\n", resp)
 			if !strings.HasPrefix(resp, v.resp) {
-				t.Errorf("#test beginClientConn expect start with %q got %q\n", v.resp, resp)
+				t.Errorf("#test beginChild expect start with %q got %q\n", v.resp, resp)
 			}
 			srv.wait()
 		})
 	}
 }
 
+func TestMainBeginChild(t *testing.T) {
+	tc := []struct {
+		label    string
+		resp     string // response for beginChild().
+		shutdown int    // pause before shutdown message
+		args     []string
+		conf     Config
+	}{
+		{
+			"main begin child", frontend.AprilshMsgOpen + "7151,", 30,
+			[]string{"/usr/bin/apshd", "-b", "-destination", "ide@localhost",
+				"-p", "7150", "-t", "xterm-256color", "-vvv"},
+			Config{
+				desiredIP: "", desiredPort: "7150", // autoStop: 1,
+				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
+				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
+				// addSource: false,  verbose: util.TraceLevel,
+			},
+		},
+	}
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			r, w, _ := os.Pipe()
+			// save stdout
+			oldStdout := os.Stdout
+
+			// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
+			util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+
+			srv := newMainSrv(&v.conf)
+			srv.start(&v.conf)
+
+			// send shutdown message after some time
+			timer1 := time.NewTimer(time.Duration(v.shutdown) * time.Millisecond)
+			go func() {
+				<-timer1.C
+				// prepare to shudown the mainSrv
+				srv.downChan <- true
+			}()
+
+			testFunc := func() {
+				os.Args = v.args
+				os.Stdout = w
+				main()
+
+				// restore stdout
+				os.Stdout = oldStdout
+			}
+
+			testFunc()
+			srv.wait()
+
+			// close pipe writer, get the output
+			w.Close()
+			output, _ := io.ReadAll(r)
+			r.Close()
+
+			// validate the result.
+			resp := string(output)
+			if !strings.Contains(resp, v.resp) {
+				t.Errorf("%q expect start with %q got \n%s\n", v.label, v.resp, resp)
+			}
+		})
+	}
+}
+
 // https://coralogix.com/blog/optimizing-a-golang-service-to-reduce-over-40-cpu/
 func TestRunChild(t *testing.T) {
+	portStr := "7200"
+	port, _ := strconv.Atoi(portStr)
+	serverPortStr := "7100"
+
 	tc := []struct {
 		label     string
-		resp      string // response	for beginClientConn().
 		shutdown  int    // pause before shutdown message
 		conf      Config // config for mainSrv
 		childConf Config // config for child
 	}{
 		{
-			"early shutdown", frontend.AprilshMsgOpen + "7101,", 100,
+			"early shutdown", 100,
 			Config{
-				desiredIP: "", desiredPort: "7100",
+				desiredIP: "", desiredPort: serverPortStr,
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 				addSource: true, verbose: util.DebugLevel,
 			},
-			Config{desiredPort: "7200", term: "xterm", destination: getCurrentUser() + "@localhost",
+			Config{desiredPort: portStr, term: "xterm", destination: getCurrentUser() + "@localhost",
 				serve: serve, verbose: 0, addSource: false},
 		},
 		{
-			"skip pipe lock", frontend.AprilshMsgOpen + "7101,", 100,
+			"skip pipe lock", 100,
 			Config{
-				desiredIP: "", desiredPort: "7100",
+				desiredIP: "", desiredPort: serverPortStr,
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
-				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: true,
+				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 				addSource: true, verbose: util.DebugLevel,
 			},
-			Config{desiredPort: "7200", term: "xterm", destination: getCurrentUser() + "@localhost",
+			Config{desiredPort: portStr, destination: getCurrentUser() + "@localhost",
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: true,
 				flowControl: _FC_SKIP_PIPE_LOCK, serve: serve, verbose: 0, addSource: false},
 		},
 		{
-			"skip start shell", frontend.AprilshMsgOpen + "7101,", 100,
+			"skip start shell", 100,
 			Config{
-				desiredIP: "", desiredPort: "7100",
+				desiredIP: "", desiredPort: serverPortStr,
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 				addSource: true, verbose: util.DebugLevel,
 			},
-			Config{desiredPort: "7200", term: "xterm", destination: getCurrentUser() + "@localhost",
-				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: true,
+			Config{desiredPort: portStr, destination: getCurrentUser() + "@localhost",
+				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 				flowControl: _FC_SKIP_START_SHELL, serve: serve, verbose: 0, addSource: false},
 		},
 		{
-			"open pts failed", frontend.AprilshMsgOpen + "7101,", 100,
+			"open pts failed", 100,
 			Config{
-				desiredIP: "", desiredPort: "7100",
+				desiredIP: "", desiredPort: serverPortStr,
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 				addSource: true, verbose: util.DebugLevel,
 			},
-			Config{desiredPort: "7200", term: "xterm", destination: getCurrentUser() + "@localhost",
-				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: true,
+			Config{desiredPort: portStr, term: "xterm", destination: getCurrentUser() + "@localhost",
+				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 				flowControl: _FC_OPEN_PTS_FAIL, serve: serve, verbose: 0, addSource: false},
 		},
 	}
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			// util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
-			util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
+			util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+			// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
 			srv := newMainSrv(&v.conf)
 
@@ -2158,64 +2215,43 @@ func TestRunChild(t *testing.T) {
 
 			// receive UDS feed
 			srv.wg.Add(1)
-			go func(conn *net.UnixConn, timeout int) {
-				// clean up
-				defer func() {
-					conn.Close()
-					uxCleanup()
-					// util.Log.Info("uxServe stopped")
-					srv.wg.Done()
-				}()
-
-				// util.Log.Info("uxServe started")
-				var buf [1024]byte
-				shutdown := false
-				for {
-					select {
-					case <-srv.uxdownChan:
-						shutdown = true
-					default:
-					}
-
-					if shutdown {
+			go func() {
+				srv.uxServe(uxConn, 2, func(c chan string, resp string) {
+					ret, err := srv.handleMessage(resp)
+					if err != nil {
+						util.Logger.Warn("fake uxServe failed", "error", err)
 						return
 					}
 
-					conn.SetReadDeadline(time.Now().Add(time.Millisecond * time.Duration(timeout)))
-					n, err := conn.Read(buf[:])
-					if err != nil {
-						if errors.Is(err, os.ErrDeadlineExceeded) {
-							continue
-						} else {
-							util.Logger.Warn("uxServe read failed", "error", err)
-							continue
-						}
+					if ret != "" {
+						util.Logger.Debug("fake uxServe got key", "key", ret)
+						return
 					}
-					resp := string(buf[:n])
-					// util.Logger.Debug("test handle message", "resp", resp)
-					srv.handleMessage(resp)
 
-					if resp == "run:7200,shutdown" {
-						shutdown = true
+					// stop uxServe if the worker is done
+					if resp == _RunHeader+":"+portStr+",shutdown" {
+						srv.uxdownChan <- true
 					}
 
 					// stop shell process once we got shell pid
-					if strings.HasPrefix(resp, "shell:7200") {
-						if srv.workers[7200].shellPid > 0 {
-							util.Logger.Debug("test handle message", "action", "kill", "shellPid", srv.workers[7200].shellPid)
-							shell, err := os.FindProcess(srv.workers[7200].shellPid)
+					if strings.HasPrefix(resp, _ShellHeader+":"+portStr) {
+						if srv.workers[port].shellPid > 0 {
+							util.Logger.Debug("fake uxServe kill the shell", "shellPid", srv.workers[port].shellPid)
+							shell, err := os.FindProcess(srv.workers[port].shellPid)
 							if err = shell.Kill(); err != nil {
-								util.Logger.Debug("test handle message", "error", err)
+								util.Logger.Debug("fake uxServe", "error", err)
 							}
 						}
 					}
-				}
-			}(uxConn, 10)
+				})
+				srv.wg.Done()
+			}()
 
 			// start runChild
 			srv.wg.Add(1)
 			go func() {
-				srv.workers[7200] = &workhorse{}
+				// add this worker
+				srv.workers[port] = &workhorse{}
 				runChild(&v.childConf)
 				srv.wg.Done()
 			}()

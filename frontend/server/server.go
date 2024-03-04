@@ -332,18 +332,19 @@ func printVersion() {
 // 	}
 // }
 
-func beginClientConn(conf *Config) { //(port string, term string) {
+func beginChild(conf *Config) { //(port string, term string) {
 	// Unlike Dial, ListenPacket creates a connection without any
 	// association with peers.
 	conn, _ := net.ListenPacket("udp", ":0")
+	defer conn.Close()
 	// conn, err := net.ListenPacket("udp", ":0")
 	// if err != nil {
 	// 	fmt.Println(err)
+	// 	return
 	// }
-	defer conn.Close()
 
 	dest, _ := net.ResolveUDPAddr("udp", "localhost:"+conf.desiredPort)
-	// dest, err := net.ResolveUDPAddr("udp", "localhost:"+port)
+	// dest, err := net.ResolveUDPAddr("udp", "localhost:"+conf.desiredPort)
 	// if err != nil {
 	// 	fmt.Println(err)
 	// 	return
@@ -412,6 +413,11 @@ func uxCleanup() (err error) {
 	return
 }
 
+func uxForward(target chan string, msg string) {
+	// util.Logger.Debug("uxServe forward message to exChan", "msg", msg)
+	target <- msg
+}
+
 type workhorse struct {
 	child *os.Process
 	// ptmx     *os.File
@@ -476,7 +482,7 @@ func (m *mainSrv) start(conf *Config) {
 	// start unix domain socket (datagram)
 	m.wg.Add(1)
 	go func() {
-		m.uxServe(uxConn, 2)
+		m.uxServe(uxConn, 2, uxForward)
 		m.wg.Done()
 	}()
 
@@ -628,7 +634,7 @@ func (m *mainSrv) uxListen() (conn *net.UnixConn, err error) {
 }
 
 // get a message from unix docket and forward it to exChan
-func (m *mainSrv) uxServe(conn *net.UnixConn, timeout int) {
+func (m *mainSrv) uxServe(conn *net.UnixConn, timeout int, fn func(chan string, string)) {
 	// prepare to receive the signal
 	// sig := make(chan os.Signal, 1)
 	// signal.Notify(sig, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
@@ -673,9 +679,7 @@ func (m *mainSrv) uxServe(conn *net.UnixConn, timeout int) {
 			}
 		}
 		resp := string(buf[:n])
-
-		util.Logger.Debug("uxServe forward message to exChan", "resp", resp)
-		m.exChan <- resp
+		fn(m.exChan, resp)
 	}
 }
 
@@ -1231,7 +1235,7 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 	if conf.user != getCurrentUser() {
 		changeUser = true
 	}
-	util.Logger.Debug("start shell check user", "changeUser", changeUser)
+	// util.Logger.Debug("start shell check user", "changeUser", changeUser)
 
 	u, err := user.Lookup(conf.user)
 	if err != nil {
@@ -1308,7 +1312,7 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 		additional logic for pty.StartWithAttrs() end
 	*/
 
-	util.Logger.Debug("start shell waiting for pipe unlock")
+	// util.Logger.Debug("start shell waiting for pipe unlock")
 	// wait for serve() to release us
 	if pr != nil && conf.flowControl != _FC_SKIP_PIPE_LOCK {
 		ch := make(chan string, 0)
@@ -1322,10 +1326,10 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 			n, err := pr.Read(buf)
 			if err != nil && errors.Is(err, io.EOF) {
 				ch <- string(buf[:n])
-				util.Logger.Debug("start shell unlock", "action", "closed", "buf", buf[:n])
+				// util.Logger.Debug("shell unlock", "action", "closed", "buf", buf[:n])
 			} else {
 				ch <- earlyShutdown
-				util.Logger.Debug("start shell unlock", "action", earlyShutdown, "error", err)
+				// util.Logger.Debug("shell unlock", "action", earlyShutdown, "error", err)
 			}
 		}(pr, ch)
 
@@ -1348,7 +1352,7 @@ func startShell(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) 
 	if err != nil {
 		return nil, err
 	}
-	util.Logger.Info("start shell done", "shellPid", proc.Pid)
+	// util.Logger.Info("start shell done", "shellPid", proc.Pid)
 	return proc, nil
 }
 
@@ -2039,7 +2043,7 @@ func runChild(conf *Config) (err error) {
 		}
 	}
 
-	util.Logger.Debug("runChild wait")
+	// util.Logger.Debug("runChild wait")
 	// wait serve to finish
 	wg.Wait()
 	util.Logger.Info("stop listening on", "port", conf.desiredPort)
@@ -2051,18 +2055,6 @@ func runChild(conf *Config) (err error) {
 	// util.Log.Debug("runWorker quit", "port", conf.desiredPort)
 	return err
 }
-
-// func SetProcessName(name string) error {
-// 	argv0str := (*reflect.StringHeader)(unsafe.Pointer(&os.Args[0]))
-// 	argv0 := (*[1 << 30]byte)(unsafe.Pointer(argv0str.Data))[:argv0str.Len]
-//
-// 	n := copy(argv0, name)
-// 	if n < len(argv0) {
-// 		argv0[n] = 0
-// 	}
-//
-// 	return nil
-// }
 
 // parse the flag first, print help or version based on flag
 // then run the main listening server
@@ -2101,7 +2093,7 @@ func main() {
 	encrypt.DisableDumpingCore()
 
 	if conf.begin {
-		beginClientConn(conf)
+		beginChild(conf)
 		return
 	}
 
