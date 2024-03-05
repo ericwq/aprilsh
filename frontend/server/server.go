@@ -691,21 +691,9 @@ func (m *mainSrv) startChild(req string, addr *net.UDPAddr, conf2 Config) {
 		util.Logger.Warn("over max port limit", "request", req, "response", resp)
 		return
 	}
-	// prepare next port
-	var p int
-	for i := 0; i < 5; i++ {
-		p = m.getAvailabePort()
-		if checkPortAvailable(p) {
-			break
-		}
-		// add a placeholder for this port
-		m.workers[p] = &workhorse{}
-	}
 
 	// open aprilsh:TERM,user@server.domain
-	// prepare configuration
-	// conf2 := *conf
-	conf2.desiredPort = fmt.Sprintf("%d", p)
+	// parse term and destination from req
 	body := strings.Split(req, ":")
 	content := strings.Split(body[1], ",")
 	if len(content) != 2 {
@@ -726,8 +714,20 @@ func (m *mainSrv) startChild(req string, addr *net.UDPAddr, conf2 Config) {
 	conf2.user = dest[0]
 	conf2.host = dest[1]
 
+	// prepare next port
+	var p int
+	for i := 0; i < 5; i++ {
+		p = m.getAvailabePort()
+		if checkPortAvailable(p) {
+			break
+		}
+		// add a placeholder for this port
+		m.workers[p] = &workhorse{}
+	}
+	conf2.desiredPort = fmt.Sprintf("%d", p)
+
 	// we don't need to check if user exist, ssh already done that before
-	//start child
+	// start child to serve this client
 	child, err := startChildProcess(&conf2)
 	if err != nil {
 		// if errors.Is(err, syscall.EPERM) {
@@ -736,21 +736,23 @@ func (m *mainSrv) startChild(req string, addr *net.UDPAddr, conf2 Config) {
 		// 	util.Logger.Warn("can't start child", "error", err)
 		// 	// fmt.Printf("can't start child, error=%#v\n", err)
 		// }
-		util.Logger.Warn("can't start child", "error", err)
+		m.writeRespTo(addr, frontend.AprilshMsgOpen, "start child failed")
+		util.Logger.Warn("start child failed", "error", err)
 		return
 	}
 	util.Logger.Debug("start child successfully, wait for the key.")
 
-	// waiting for the child process
+	// waiting for the child process to finish
 	m.wg.Add(1)
 	go func() {
 		ps, err := child.Wait()
 		if err != nil {
 			util.Logger.Warn("start child return", "error", err, "ProcessState", ps)
 		}
-		util.Logger.Debug("child finished", "port", p)
+		util.Logger.Debug("start child finished", "port", p)
 		m.wg.Done()
 	}()
+	// add this child to worker list
 	m.workers[p] = &workhorse{child: child}
 
 	// // start the worker
@@ -765,13 +767,14 @@ func (m *mainSrv) startChild(req string, addr *net.UDPAddr, conf2 Config) {
 	select {
 	case <-timer.C:
 		resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "get key timeout")
-		util.Logger.Warn("run2 got key timeout", "request", req, "response", resp)
+		util.Logger.Warn("start child got key timeout", "request", req, "response", resp)
 		return
 	case content := <-m.exChan:
-		// response session key and udp port to client
+		// got session key
 		key, _ := m.handleMessage(content)
-		util.Logger.Debug("run2 got key", "key", key)
+		util.Logger.Debug("start child got key", "key", key)
 
+		//  send the key back to client
 		msg := fmt.Sprintf("%d,%s", p, key)
 		m.writeRespTo(addr, frontend.AprilshMsgOpen, msg)
 	}

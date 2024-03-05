@@ -2321,5 +2321,70 @@ func TestMainSrvStartFail(t *testing.T) {
 	if !strings.Contains(got, expect) {
 		t.Errorf("mainSrv.start() expect %q, got \n%s\n", expect, got)
 	}
+}
 
+func TestMainSrvStartChildFail(t *testing.T) {
+	tc := []struct {
+		label  string
+		req    string
+		conf   Config
+		expect string
+	}{
+		{"destination without @", "a:b,cd", Config{desiredPort: "6510"}, "open aprilsh:malform destination"},
+	}
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			util.Logger.CreateLogger(os.Stderr, false, slog.LevelDebug)
+
+			// prepare the server
+			m := newMainSrv(&v.conf)
+			m.listen(&v.conf)
+
+			var wg sync.WaitGroup
+
+			// reading and validate the message
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				buf := make([]byte, 128)
+				shutdown := false
+				for {
+					select {
+					case <-m.downChan:
+						shutdown = true
+					default:
+					}
+					if shutdown {
+						util.Logger.Debug("fake receiver shudown")
+						break
+					}
+					m.conn.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(m.timeout)))
+					n, addr, err := m.conn.ReadFromUDP(buf)
+					if err != nil && errors.Is(err, os.ErrDeadlineExceeded) {
+						continue
+					} else {
+						got := strings.TrimSpace(string(buf[0:n]))
+						util.Logger.Debug("fake receiver got message", "req", got, "addr", addr)
+						if !strings.HasPrefix(got, v.expect) {
+							t.Errorf("startChild expect %q, got %q\n", v.expect, got)
+						}
+					}
+				}
+			}()
+
+			// run startChild
+			addr, err := net.ResolveUDPAddr("udp", "localhost:"+v.conf.desiredPort)
+			if err != nil {
+				t.Errorf("startChild failed")
+			} else {
+				m.startChild(v.req, addr, v.conf)
+			}
+
+			// shudown reader
+			m.downChan <- true
+			m.conn.Close()
+			wg.Wait()
+		})
+	}
 }

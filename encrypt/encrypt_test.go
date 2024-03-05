@@ -7,6 +7,7 @@ package encrypt
 import (
 	"errors"
 	"io"
+	"log/slog"
 	"reflect"
 	"syscall"
 	"testing"
@@ -33,12 +34,7 @@ func TestPrng(t *testing.T) {
 }
 
 func TestBase64Key(t *testing.T) {
-	// defer func() {
-	// 	logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-	// }()
-	// logW.SetOutput(io.Discard)
-
-	util.Logger.SetOutput(io.Discard)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
 
 	// normal key
 	normalKey := NewBase64Key()
@@ -106,12 +102,7 @@ func TestSession(t *testing.T) {
 }
 
 func TestSessionError(t *testing.T) {
-	// defer func() {
-	// 	logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-	// }()
-	// logW.SetOutput(io.Discard)
-
-	util.Logger.SetOutput(io.Discard)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
 
 	b := Base64Key{}
 	b.key = PrngFill(9)
@@ -133,12 +124,7 @@ func fakeRand(io.Reader, []byte) (int, error) {
 }
 
 func TestRandomNonce(t *testing.T) {
-	// defer func() {
-	// 	logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-	// }()
-	// logW.SetOutput(io.Discard)
-
-	util.Logger.SetOutput(io.Discard)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
 
 	nonce, err := _randomNonce(fakeRand)
 
