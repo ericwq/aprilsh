@@ -44,9 +44,11 @@ import (
 const (
 	_PATH_BSHELL = "/bin/sh"
 
-	_FC_OPEN_PTS_FAIL    = 100 // flow contorl: open pts failed.
-	_FC_SKIP_START_SHELL = 101 // flow control: skip startShell() entirely.
-	_FC_SKIP_PIPE_LOCK   = 102 // flow control: skip pipe lock for start shell.
+	_FC_OPEN_PTS_FAIL    = 100 // open pts failed.
+	_FC_SKIP_START_SHELL = 101 // skip startShell() entirely.
+	_FC_SKIP_PIPE_LOCK   = 102 // skip pipe lock for start shell.
+	_FC_DEF_BASH_SHELL   = 103 // use default bash shell
+	_FC_NON_UTF8_LOCALE  = 104 // non utf8 locale
 
 	_ServeHeader = "serve"
 	_RunHeader   = "run"
@@ -60,14 +62,14 @@ const (
 )
 
 var usage = `Usage:
-  ` + frontend.CommandServerName + ` [-v] [-h] [--auto N]
+  ` + frontend.CommandServerName + ` [-version] [-h] [--auto N]
   ` + frontend.CommandServerName + ` [-b] [-t TERM] [-destination user@server.domain]
-  ` + frontend.CommandServerName + ` [-s] [-vv[v]] [-i LOCALADDR] [-p PORT[:PORT2]] [-l NAME=VALUE] [-- command...]
+  ` + frontend.CommandServerName + ` [-s] [-v[v]] [-i LOCALADDR] [-p PORT[:PORT2]] [-l NAME=VALUE] [-- command...]
 Options:
 ---------------------------------------------------------------------------------------------------
-  -v,  --version     print version information
   -h,  --help        print this message
   -a,  --auto        auto stop the server after N seconds
+       --version     print version information
 ---------------------------------------------------------------------------------------------------
   -b,  --begin       begin a client connection
   -t,  --term        client TERM (such as xterm-256color, or alacritty or xterm-kitty)
@@ -77,8 +79,8 @@ Options:
   -i,  --ip          listen with this ip/host
   -p,  --port        listen base port (default 8100)
   -l,  --locale      key-value pairs (such as LANG=UTF-8, you can have multiple -l options)
-  -vv, --verbose     verbose log output (debug level, default no verbose)
-  -vvv               verbose log output (trace level)
+  -v,  --verbose     verbose log output (debug level, default no verbose)
+  -vv                verbose log output (trace level)
        -- command    shell command and options (note the space before command)
 ---------------------------------------------------------------------------------------------------
 `
@@ -87,8 +89,6 @@ var failToStartShell = errors.New("fail to start shell")
 
 var (
 	userCurrentTest = false
-	getShellTest    = false
-	buildConfigTest = false
 )
 
 var (
@@ -189,7 +189,7 @@ func (conf *Config) buildConfig() (string, bool) {
 		}
 
 		shellPath := shell
-		if len(shellPath) == 0 || getShellTest { // empty shell means Bourne shell
+		if len(shellPath) == 0 || conf.flowControl == _FC_DEF_BASH_SHELL { // empty shell means Bourne shell
 			shellPath = _PATH_BSHELL
 		}
 
@@ -215,7 +215,7 @@ func (conf *Config) buildConfig() (string, bool) {
 
 	// Adopt implementation locale
 	util.SetNativeLocale()
-	if !util.IsUtf8Locale() || buildConfigTest {
+	if !util.IsUtf8Locale() || conf.flowControl == _FC_NON_UTF8_LOCALE {
 		nativeType := util.GetCtype()
 		nativeCharset := util.LocaleCharset()
 
@@ -228,7 +228,7 @@ func (conf *Config) buildConfig() (string, bool) {
 
 		// check again
 		util.SetNativeLocale()
-		if !util.IsUtf8Locale() || buildConfigTest {
+		if !util.IsUtf8Locale() || conf.flowControl == _FC_NON_UTF8_LOCALE {
 			clientType := util.GetCtype()
 			clientCharset := util.LocaleCharset()
 			fmt.Printf("%s needs a UTF-8 native locale to run.\n", frontend.CommandServerName)
@@ -261,9 +261,9 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 
 	// flagSet.IntVar(&conf.verbose, "verbose", 0, "verbose output")
 	var v1, v2 bool
-	flagSet.BoolVar(&v1, "vv", false, "verbose log output debug level")
+	flagSet.BoolVar(&v1, "v", false, "verbose log output debug level")
 	flagSet.BoolVar(&v1, "verbose", false, "verbose log output debug levle")
-	flagSet.BoolVar(&v2, "vvv", false, "verbose log output trace level")
+	flagSet.BoolVar(&v2, "vv", false, "verbose log output trace level")
 
 	flagSet.BoolVar(&conf.addSource, "source", false, "add source info to log")
 
@@ -271,7 +271,7 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.IntVar(&conf.autoStop, "a", 0, "auto stop after N seconds")
 
 	flagSet.BoolVar(&conf.version, "version", false, "print version information")
-	flagSet.BoolVar(&conf.version, "v", false, "print version information")
+	// flagSet.BoolVar(&conf.version, "v", false, "print version information")
 
 	flagSet.BoolVar(&conf.begin, "begin", false, "begin a client connection")
 	flagSet.BoolVar(&conf.begin, "b", false, "begin a client connection")

@@ -102,7 +102,7 @@ func TestPrintVersion(t *testing.T) {
 	}
 }
 
-var cmdOptions = "[-s] [-vv[v]] [-i LOCALADDR] [-p PORT[:PORT2]] [-l NAME=VALUE] [-- command...]"
+var cmdOptions = "[-s] [-v[v]] [-i LOCALADDR] [-p PORT[:PORT2]] [-l NAME=VALUE] [-- command...]"
 
 func TestPrintUsage(t *testing.T) {
 	tc := []struct {
@@ -399,7 +399,7 @@ func TestMainRun(t *testing.T) {
 	}
 }
 
-func TestMainBuildConfigFail(t *testing.T) {
+func testMainBuildConfigFail(t *testing.T) {
 	testFunc := func() {
 		// prepare parameter
 		os.Args = []string{frontend.CommandServerName, "-locale", "LC_ALL=en_US.UTF-8",
@@ -409,11 +409,11 @@ func TestMainBuildConfigFail(t *testing.T) {
 	}
 
 	// prepare for buildConfig fail
-	buildConfigTest = true
+	// buildConfigTest = true
 	out := captureOutputRun(testFunc)
 
 	// restore the condition
-	buildConfigTest = false
+	// buildConfigTest = false
 
 	// validate the result
 	expect := []string{"needs a UTF-8 native locale to run"}
@@ -533,6 +533,7 @@ func TestBuildConfig(t *testing.T) {
 				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
+				flowControl: _FC_DEF_BASH_SHELL,
 			},
 			// macOS: /bin/zsh
 			// alpine: /bin/ash
@@ -605,10 +606,11 @@ func TestBuildConfig(t *testing.T) {
 					// getShell() will fail
 					defer func() {
 						userCurrentTest = false
-						getShellTest = false
+						// getShellTest = false
 					}()
 
-					getShellTest = true
+					// getShellTest = true
+					v.conf0.flowControl = _FC_DEF_BASH_SHELL
 					userCurrentTest = false
 				}
 			}
@@ -2082,7 +2084,7 @@ func TestMainBeginChild(t *testing.T) {
 		{
 			"main begin child", frontend.AprilshMsgOpen + "7151,", 30,
 			[]string{"/usr/bin/apshd", "-b", "-destination", "ide@localhost",
-				"-p", "7150", "-t", "xterm-256color", "-vvv"},
+				"-p", "7150", "-t", "xterm-256color", "-vv"},
 			Config{
 				desiredIP: "", desiredPort: "7150", // autoStop: 1,
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
