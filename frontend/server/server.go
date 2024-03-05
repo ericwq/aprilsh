@@ -1238,6 +1238,14 @@ func startChildProcess(conf *Config) (*os.Process, error) {
 	// 	env = append(env, "TERM=xterm-256color")
 	// }
 
+	// use the root's SHELL as replacement for user SHELL
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		err := errors.New("can't get shell from SHELL")
+		return nil, err
+	}
+	env = append(env, "SHELL="+shell)
+
 	// clear STY environment variable so GNU screen regards us as top level
 	// os.Unsetenv("STY")
 
@@ -1253,14 +1261,6 @@ func startChildProcess(conf *Config) (*os.Process, error) {
 	env = append(env, "HOME="+u.HomeDir) // it's important for shell to source .profile
 	env = append(env, "USER="+conf.user)
 
-	// use the root's SHELL as replacement for user SHELL
-	shell := os.Getenv("SHELL")
-	if shell == "" {
-		err := errors.New("can't get shell from SHELL")
-		util.Logger.Warn("startChild", "error", err)
-		return nil, err
-	}
-	env = append(env, "SHELL="+shell)
 	env = append(env, fmt.Sprintf("TZ=%s", os.Getenv("TZ")))
 
 	// TODO should we set ssh env ?
@@ -1884,7 +1884,7 @@ func runChild(conf *Config) (err error) {
 	// prepare unix socket client (datagram)
 	uxClient, err := newUxClient()
 	if err != nil {
-		fmt.Printf("error %#v\n", err)
+		// fmt.Printf("error %#v\n", err)
 		return
 	}
 

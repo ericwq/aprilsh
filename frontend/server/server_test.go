@@ -2280,7 +2280,7 @@ func TestMainServReturn(t *testing.T) {
 	// run return if m.conn is nil
 }
 
-func TestUxCleanupFail(t *testing.T) {
+func TestUxListenFail(t *testing.T) {
 	old := unixsockAddr
 	defer func() {
 		unixsockAddr = old
@@ -2290,7 +2290,19 @@ func TestUxCleanupFail(t *testing.T) {
 	m := mainSrv{}
 	_, err := m.uxListen()
 	if err == nil {
-		fmt.Printf("%#v\n", err)
+		t.Errorf("uxListen expect error got nil\n")
+	}
+}
+
+func TestRunChildFail(t *testing.T) {
+	old := unixsockAddr
+	defer func() {
+		unixsockAddr = old
+	}()
+
+	unixsockAddr = "/etc/hosts"
+	err := runChild(&Config{})
+	if err == nil {
 		t.Errorf("uxListen expect error got nil\n")
 	}
 }
@@ -2330,23 +2342,37 @@ func TestMainSrvStartChildFail(t *testing.T) {
 		conf   Config
 		expect string
 	}{
-		{"destination without @", "a:b,cd", Config{desiredPort: "6510"}, "open aprilsh:malform destination"},
+		{"destination without @", "a:b,cd",
+			Config{desiredPort: "6510"}, "open aprilsh:malform destination"},
+		{"startShellProcess failed: DebugLevel", "open aprilsh:xterm-fake," + getCurrentUser() + "@fakehost",
+			Config{desiredPort: "6511", verbose: util.DebugLevel},
+			"start child failed"},
+		{"startShellProcess failed: TraceLevel", "open aprilsh:xterm-fake," + getCurrentUser() + "@fakehost",
+			Config{desiredPort: "6512", verbose: util.TraceLevel},
+			"start child failed"},
+		{"startShellProcess failed: addSource", "open aprilsh:xterm-fake," + getCurrentUser() + "@fakehost",
+			Config{desiredPort: "6513", addSource: true},
+			"start child failed"},
 	}
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			util.Logger.CreateLogger(os.Stderr, false, slog.LevelDebug)
-
 			// prepare the server
 			m := newMainSrv(&v.conf)
+			m.timeout = 10
 			m.listen(&v.conf)
 
 			var wg sync.WaitGroup
+
+			var out strings.Builder
+			// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
+			util.Logger.CreateLogger(&out, true, slog.LevelDebug)
 
 			// reading and validate the message
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
+
 				buf := make([]byte, 128)
 				shutdown := false
 				for {
@@ -2359,17 +2385,9 @@ func TestMainSrvStartChildFail(t *testing.T) {
 						util.Logger.Debug("fake receiver shudown")
 						break
 					}
+
 					m.conn.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(m.timeout)))
-					n, addr, err := m.conn.ReadFromUDP(buf)
-					if err != nil && errors.Is(err, os.ErrDeadlineExceeded) {
-						continue
-					} else {
-						got := strings.TrimSpace(string(buf[0:n]))
-						util.Logger.Debug("fake receiver got message", "req", got, "addr", addr)
-						if !strings.HasPrefix(got, v.expect) {
-							t.Errorf("startChild expect %q, got %q\n", v.expect, got)
-						}
-					}
+					m.conn.ReadFromUDP(buf)
 				}
 			}()
 
@@ -2378,13 +2396,22 @@ func TestMainSrvStartChildFail(t *testing.T) {
 			if err != nil {
 				t.Errorf("startChild failed")
 			} else {
+				old := os.Getenv("SHELL")
+				os.Setenv("SHELL", "")
 				m.startChild(v.req, addr, v.conf)
+				os.Setenv("SHELL", old)
 			}
 
 			// shudown reader
-			m.downChan <- true
 			m.conn.Close()
+			m.downChan <- true
 			wg.Wait()
+
+			// validate the result
+			got := out.String()
+			if !strings.Contains(got, v.expect) {
+				t.Errorf("startChild expect %q, got \n%s\n", v.expect, got)
+			}
 		})
 	}
 }
