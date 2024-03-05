@@ -2294,3 +2294,32 @@ func TestUxCleanupFail(t *testing.T) {
 		t.Errorf("uxListen expect error got nil\n")
 	}
 }
+
+func TestMainSrvStartFail(t *testing.T) {
+	// intercept log
+	var w strings.Builder
+	util.Logger.CreateLogger(&w, true, slog.LevelDebug)
+
+	cfg := &Config{desiredPort: "7230"}
+	m := mainSrv{}
+
+	// this will cause  uxListen failed
+	old := unixsockAddr
+	defer func() {
+		unixsockAddr = old
+	}()
+
+	// change unixsocke to error file
+	unixsockAddr = "/etc/hosts"
+	m.start(cfg)
+	// close udp connection
+	m.conn.Close()
+
+	//check the log
+	got := w.String()
+	expect := "listen unix domain socket failed"
+	if !strings.Contains(got, expect) {
+		t.Errorf("mainSrv.start() expect %q, got \n%s\n", expect, got)
+	}
+
+}
