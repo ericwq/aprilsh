@@ -849,8 +849,8 @@ func TestMainSrvStart(t *testing.T) {
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			// init log
-			util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
-			// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
+			// util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+			util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
 			srv := newMainSrv(&v.conf)
 
@@ -879,6 +879,10 @@ func TestMainSrvStart(t *testing.T) {
 			}
 
 			srv.wait()
+			e, err := os.Executable()
+			fmt.Fprintf(os.Stderr, "Executable=%s, err=%s\n", e, err)
+			fmt.Fprintf(os.Stderr, "Args[0]   =%s\n", os.Args[0])
+			fmt.Fprintf(os.Stderr, "CWD       =%s\n", os.Args[0])
 		})
 	}
 }

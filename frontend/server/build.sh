@@ -36,3 +36,4 @@ echo "output server to  : ~/.local/bin/apshd"
 echo "copy server to    : /usr/bin/apshd"
 echo "run with          : GOCOVERDIR=./coverage/int apshd -verbose 2> /tmp/apshd.log"
 sudo cp ~/.local/bin/apshd /usr/bin/apshd
+export APRILSH_APSHD_PATH="~/.local/bin/apshd"

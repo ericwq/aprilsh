@@ -55,8 +55,10 @@ const (
 	_KeyHeader   = "key"
 	_ShellHeader = "shell"
 
-	envArgs = "APRILSH_ARGS"
-	envUDS  = "APRILSH_UDS"
+	envArgs   = "APRILSH_ARGS"
+	envUDS    = "APRILSH_UDS"
+	apshPath  = "APRILSH_APSH_PATH"  // executable client file path for testing
+	apshdPath = "APRILSH_APSHD_PATH" // executable server file path for testing
 
 	earlyShutdown = "early-shutdown"
 )
@@ -1197,6 +1199,9 @@ func startChildProcess(conf *Config) (*os.Process, error) {
 
 	// specify child process
 	commandPath := "/usr/bin/apshd"
+	if commandPath, ok := os.LookupEnv(apshdPath); ok {
+		util.Logger.Debug("startChildProcess got commandPath from env", "commandPath", commandPath)
+	}
 	commandArgv := []string{commandPath, "-p", conf.desiredPort}
 
 	// hide the following command args from ps command
