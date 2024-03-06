@@ -1199,8 +1199,9 @@ func startChildProcess(conf *Config) (*os.Process, error) {
 
 	// specify child process
 	commandPath := "/usr/bin/apshd"
-	if commandPath, ok := os.LookupEnv(apshdPath); ok {
-		util.Logger.Debug("startChildProcess got commandPath from env", "commandPath", commandPath)
+	if path2, ok := os.LookupEnv(apshdPath); ok {
+		commandPath = path2
+		// util.Logger.Debug("startChildProcess got commandPath from env", "commandPath", commandPath)
 	}
 	commandArgv := []string{commandPath, "-p", conf.desiredPort}
 
