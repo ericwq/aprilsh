@@ -530,8 +530,8 @@ func (m *mainSrv) run(conf *Config) {
 		signal.Stop(sig)
 		if syslogSupport {
 			syslogWriter.Info(fmt.Sprintf("stop listening on %s.", m.conn.LocalAddr()))
-			util.Logger.Info("stop listening on", "port", m.port)
 		}
+		util.Logger.Info("stop listening on", "port", m.port)
 		m.conn.Close()
 	}()
 
@@ -540,8 +540,8 @@ func (m *mainSrv) run(conf *Config) {
 
 	if syslogSupport {
 		syslogWriter.Info(fmt.Sprintf("start listening on %s.", m.conn.LocalAddr()))
-		util.Logger.Info("start listening on", "port", m.port, "gitTag", frontend.GitTag)
 	}
+	util.Logger.Info("start listening on", "port", m.port, "gitTag", frontend.GitTag)
 
 	//TODO remove it?
 	// printWelcome(os.Getpid(), m.port, nil)
@@ -1484,9 +1484,9 @@ func serve(ptmx *os.File, pts *os.File, pw *io.PipeWriter, complete *statesync.C
 	var savedAddr net.Addr
 
 	if syslogSupport {
-		util.Logger.Info("user session begin", "user", user)
 		syslogWriter.Info(fmt.Sprintf("user %s session begin -> port %s", user, server.GetServerPort()))
 	}
+	util.Logger.Info("user session begin", "user", user)
 
 	var terminalToHost strings.Builder
 	var timeSinceRemoteState int64
@@ -1656,10 +1656,10 @@ mainLoop:
 							connectedUtmp = true
 						}
 						if syslogSupport {
-							util.Logger.Info("connected from remote host", "user", user, "host", host)
 							syslogWriter.Info(fmt.Sprintf("user %s connected from host: %s -> port %s",
 								user, server.GetRemoteAddr(), server.GetServerPort()))
 						}
+						util.Logger.Info("connected from remote host", "user", user, "host", host)
 					}
 				}
 
@@ -1850,10 +1850,10 @@ mainLoop:
 	eg.Wait()
 
 	if syslogSupport {
-		util.Logger.Info("user session end", "user", user)
 		syslogWriter.Info(fmt.Sprintf("user %s session end %s -> port %s",
 			user, server.GetRemoteAddr(), server.GetServerPort()))
 	}
+	util.Logger.Info("user session end", "user", user)
 
 	return nil
 }
@@ -2124,8 +2124,11 @@ func main() {
 	} else {
 		syslogSupport = true
 	}
-	defer syslogWriter.Close()
-
+	defer func() {
+		if syslogSupport {
+			syslogWriter.Close()
+		}
+	}()
 	// https://jvns.ca/blog/2017/09/24/profiling-go-with-pprof/
 	//
 	// cpuf, err := os.Create("cpu.profile")
