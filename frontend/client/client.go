@@ -47,18 +47,18 @@ const (
 var (
 	usage = `Usage:
   ` + frontend.CommandClientName + ` [--version] [--help] [--colors]
-  ` + frontend.CommandClientName + ` [-vv[v]] [--port PORT] [-i identity_file] destination
+  ` + frontend.CommandClientName + ` [-v[v]] [--port PORT] [-i identity_file] destination
 Options:
 ---------------------------------------------------------------------------------------------------
   -h,  --help        print this message
-  -v,  --version     print version information
   -c,  --colors      print the number of colors of terminal
+       --version     print version information
 ---------------------------------------------------------------------------------------------------
   -p,  --port        apshd server port (default 8100)
   destination        in the form of user@host[:port], here the port is ssh server port (default 22)
   -i                 ssh client identity (private key) (default $HOME/.ssh/id_rsa)
-  -vv, --verbose     verbose log output (debug level, default no verbose)
-  -vvv               verbose log output (trace level)
+  -v,  --verbose     verbose log output (debug level, default info level)
+  -vv                verbose log output (trace level)
 ---------------------------------------------------------------------------------------------------
 `
 	predictionValues   = []string{"always", "never", "adaptive", "experimental"}
@@ -100,12 +100,11 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	var conf Config
 
 	var v1, v2 bool
-	flagSet.BoolVar(&v1, "vv", false, "verbose log output debug level")
+	flagSet.BoolVar(&v1, "v", false, "verbose log output debug level")
 	flagSet.BoolVar(&v1, "verbose", false, "verbose log output debug levle")
-	flagSet.BoolVar(&v2, "vvv", false, "verbose log output trace level")
+	flagSet.BoolVar(&v2, "vv", false, "verbose log output trace level")
 
 	flagSet.BoolVar(&conf.version, "version", false, "print version information")
-	flagSet.BoolVar(&conf.version, "v", false, "print version information")
 
 	flagSet.BoolVar(&conf.addSource, "source", false, "add source info to log")
 
