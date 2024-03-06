@@ -88,14 +88,11 @@ func TestMainRun_Parameters(t *testing.T) {
 			"no parameters",
 			[]string{frontend.CommandClientName},
 			"xterm-256color",
-			[]string{
-				"destination (user@host[:port]) is mandatory.", "Usage:", frontend.CommandClientName, "Options:",
-				"-c, --colors   print the number of colors of terminal",
-			},
+			[]string{"destination (user@host[:port]) is mandatory."},
 		},
 		{
 			"just version",
-			[]string{frontend.CommandClientName, "-v"},
+			[]string{frontend.CommandClientName, "-version"},
 			"xterm-256color",
 			[]string{
 				frontend.CommandClientName, frontend.AprilshPackageName,
@@ -107,8 +104,8 @@ func TestMainRun_Parameters(t *testing.T) {
 			[]string{frontend.CommandClientName, "-h"},
 			"xterm-256color",
 			[]string{
-				"Usage:", frontend.CommandClientName, "Options:",
-				"-c, --colors   print the number of colors of terminal",
+				"Usage:", frontend.CommandClientName, "Options:", "-c", "--colors",
+				"print the number of terminal color",
 			},
 		},
 		{
@@ -121,37 +118,25 @@ func TestMainRun_Parameters(t *testing.T) {
 			"invalid target parameter",
 			[]string{frontend.CommandClientName, "invalid", "target", "parameter"},
 			"xterm-256color",
-			[]string{
-				"only one destination (user@host[:port]) is allowed.", "Usage:", frontend.CommandClientName, "Options:",
-				"-c, --colors   print the number of colors of terminal",
-			},
+			[]string{"only one destination (user@host[:port]) is allowed."},
 		},
 		{
 			"destination no second part",
 			[]string{frontend.CommandClientName, "malform@"},
 			"xterm-256color",
-			[]string{
-				"destination should be in the form of user@host[:port]", "Usage:", frontend.CommandClientName, "Options:",
-				"-c, --colors   print the number of colors of terminal",
-			},
+			[]string{"destination should be in the form of user@host[:port]"},
 		},
 		{
 			"destination no first part",
 			[]string{frontend.CommandClientName, "@malform"},
 			"xterm-256color",
-			[]string{
-				"destination should be in the form of user@host[:port]", "Usage:", frontend.CommandClientName, "Options:",
-				"-c, --colors   print the number of colors of terminal",
-			},
+			[]string{"destination should be in the form of user@host[:port]"},
 		},
 		{
 			"infvalid port number",
 			[]string{frontend.CommandClientName, "-p", "7s"},
 			"xterm-256color",
-			[]string{
-				"invalid value \"7s\" for flag -p: parse error", "Usage:", frontend.CommandClientName, "Options:",
-				"-c, --colors   print the number of colors of terminal",
-			},
+			[]string{"invalid value \"7s\" for flag -p: parse error"},
 		},
 	}
 
@@ -184,14 +169,14 @@ func TestMainRun_Parameters(t *testing.T) {
 				}
 			}
 			if found != len(v.expect) {
-				t.Errorf("#test expect %s, got \n%q\n", v.expect, result)
+				t.Errorf("#test expect %s, got \n%s\n", v.expect, result)
 			}
 		})
 	}
 }
 
 func TestBuildConfig(t *testing.T) {
-	targetMsg := "target parameter should be in the form of User@Server"
+	targetMsg := "destination should be in the form of user@host[:port]"
 	modeMsg := _PREDICTION_DISPLAY + " unknown prediction mode."
 	tc := []struct {
 		label       string
@@ -226,7 +211,7 @@ func TestBuildConfig(t *testing.T) {
 
 			got, ok := conf.buildConfig()
 			if got != v.expect {
-				t.Errorf("#test buildConfig() %s expect %q, got %q\n", v.label, v.expect, got)
+				t.Errorf("#test buildConfig() %s expect %q, got %s\n", v.label, v.expect, got)
 			}
 			if conf.user != user || conf.host != host {
 				t.Errorf("#test buildConfig() %q config.user expect %s, got %s\n", v.label, user, conf.user)

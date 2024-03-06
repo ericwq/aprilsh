@@ -51,7 +51,7 @@ var (
 Options:
 ---------------------------------------------------------------------------------------------------
   -h,  --help        print this message
-  -c,  --colors      print the number of colors of terminal
+  -c,  --colors      print the number of terminal color
        --version     print version information
 ---------------------------------------------------------------------------------------------------
   -p,  --port        apshd server port (default 8100)
@@ -365,7 +365,7 @@ func (c *Config) buildConfig() (string, bool) {
 
 	// check destination
 	first := strings.Split(c.destination[0], "@")
-	if len(first) == 2 {
+	if len(first) == 2 && len(first[0]) > 0 && len(first[1]) > 0 {
 		c.user = first[0]
 		second := strings.Split(first[1], ":")
 		c.host = second[0]
