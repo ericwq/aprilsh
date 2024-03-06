@@ -73,4 +73,7 @@
 - 2024/Feb/09: aprilsh-openrc is ready #29. fix environment variable bug for login user #39.
 - 2024/Feb/19: syslog support #37, customized ssh port #36, ssh authentication passphrase #41, hostkey callback #43,
 - 2024/Feb/19: customized port #49, fetch key errror handling #48, password support #45.
+- 2024/Mar/06: fix bug for server package #60, hild server command options, #59, fix bug for UDS name #61.
+- 2024/Mar/06: check available port before use #51, main server listen on local port #58, fix bug for server quit #57.
+- 2024/Mar/06: child inherit options from parent #56, each client run on child rocess #55.
 

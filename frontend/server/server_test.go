@@ -984,7 +984,7 @@ func mockClient(port string, pause int, action string, ex ...string) string {
 	case frontend.AprilshMsgOpen:
 		switch len(ex) {
 		case 0:
-			txbuf = []byte(frontend.AprilshMsgOpen + "xterm,ide@localhost")
+			txbuf = []byte(frontend.AprilshMsgOpen + "xterm," + getCurrentUser() + "@localhost")
 		case 1:
 			// the request missing the ','
 			txbuf = []byte(fmt.Sprintf("%s%s", frontend.AprilshMsgOpen, ex[0]))
@@ -2079,7 +2079,7 @@ func TestMainBeginChild(t *testing.T) {
 	}{
 		{
 			"main begin child", frontend.AprilshMsgOpen + "7151,", 30,
-			[]string{"/usr/bin/apshd", "-b", "-destination", "ide@localhost",
+			[]string{"/usr/bin/apshd", "-b", "-destination", getCurrentUser() + "@localhost",
 				"-p", "7150", "-t", "xterm-256color", "-vv"},
 			Config{
 				desiredIP: "", desiredPort: "7150", // autoStop: 1,

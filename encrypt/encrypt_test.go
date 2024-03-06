@@ -199,7 +199,7 @@ func TestDisableDumpingCoreError(t *testing.T) {
 	// test get fail
 	// the resouce argument 20 is invalid
 	if err := accessRlimit(20, f0, 0); err == nil {
-		t.Errorf("#test accessRlimit should return error, got %s\n", err.Error())
+		t.Errorf("#test accessRlimit should return error, got nil\n")
 	}
 
 	f1 := func(rlim *syscall.Rlimit, value uint64) {
@@ -210,6 +210,6 @@ func TestDisableDumpingCoreError(t *testing.T) {
 	// test set fail
 	// increase hard limit is a privilege action
 	if err := accessRlimit(syscall.RLIMIT_NOFILE, f1, 0); err == nil {
-		t.Errorf("#test accessRlimit should return error, got %s\n", err.Error())
+		t.Errorf("#test accessRlimit should return error, got nil\n")
 	}
 }
