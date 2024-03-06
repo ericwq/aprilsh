@@ -88,10 +88,6 @@ Options:
 var failToStartShell = errors.New("fail to start shell")
 
 var (
-	userCurrentTest = false
-)
-
-var (
 	utmpSupport   bool
 	syslogSupport bool
 	syslogWriter  *syslog.Writer
@@ -1127,8 +1123,7 @@ func printWelcome(tty *os.File) {
 // TODO can't get current user.
 func getCurrentUser() string {
 	user, err := user.Current()
-	if err != nil || userCurrentTest {
-		// logW.Printf("#getCurrentUser report: %s\n", err)
+	if err != nil {
 		util.Logger.Warn("Get current user", "error", err)
 		return ""
 	}
@@ -1188,7 +1183,7 @@ type messageError struct {
 }
 
 func (e *messageError) Error() string {
-	if e == nil {
+	if e.err == nil {
 		return "<nil>"
 	}
 	return e.reason + ": " + e.err.Error()
@@ -1884,7 +1879,7 @@ func runChild(conf *Config) (err error) {
 	// prepare unix socket client (datagram)
 	uxClient, err := newUxClient()
 	if err != nil {
-		// fmt.Printf("error %#v\n", err)
+		util.Logger.Error("init uds client failed", "error", err)
 		return
 	}
 

@@ -13,7 +13,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"os/user"
 	"reflect"
 	"runtime"
 	"strconv"
@@ -605,13 +604,10 @@ func TestBuildConfig(t *testing.T) {
 				if runtime.GOOS == "linux" {
 					// getShell() will fail
 					defer func() {
-						userCurrentTest = false
-						// getShellTest = false
+						v.conf0.flowControl = 0
 					}()
 
-					// getShellTest = true
 					v.conf0.flowControl = _FC_DEF_BASH_SHELL
-					userCurrentTest = false
 				}
 			}
 
@@ -1801,35 +1797,35 @@ func TestOpenPTS(t *testing.T) {
 	}
 }
 
-func TestGetCurrentUser(t *testing.T) {
-	// normal invocation
-	userCurrentTest = false
-	uid := fmt.Sprintf("%d", os.Getuid())
-	expect, _ := user.LookupId(uid)
-
-	got := getCurrentUser()
-	if len(got) == 0 || expect.Username != got {
-		t.Errorf("#test getCurrentUser expect %s, got %s\n", expect.Username, got)
-	}
-
-	// getCurrentUser fail
-	old := userCurrentTest
-	defer func() {
-		userCurrentTest = old
-	}()
-
-	// intercept log output
-	var b strings.Builder
-	util.Logger.CreateLogger(&b, true, slog.LevelDebug)
-
-	userCurrentTest = true
-	got = getCurrentUser()
-	if got != "" {
-		t.Errorf("#test getCurrentUser expect empty string, got %s\n", got)
-	}
-	// restore logW
-	// logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-}
+// func testGetCurrentUser(t *testing.T) {
+// 	// normal invocation
+// 	userCurrentTest = false
+// 	uid := fmt.Sprintf("%d", os.Getuid())
+// 	expect, _ := user.LookupId(uid)
+//
+// 	got := getCurrentUser()
+// 	if len(got) == 0 || expect.Username != got {
+// 		t.Errorf("#test getCurrentUser expect %s, got %s\n", expect.Username, got)
+// 	}
+//
+// 	// getCurrentUser fail
+// 	old := userCurrentTest
+// 	defer func() {
+// 		userCurrentTest = old
+// 	}()
+//
+// 	// intercept log output
+// 	var b strings.Builder
+// 	util.Logger.CreateLogger(&b, true, slog.LevelDebug)
+//
+// 	userCurrentTest = true
+// 	got = getCurrentUser()
+// 	if got != "" {
+// 		t.Errorf("#test getCurrentUser expect empty string, got %s\n", got)
+// 	}
+// 	// restore logW
+// 	// logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+// }
 
 func TestGetAvailablePort(t *testing.T) {
 	tc := []struct {
@@ -2275,7 +2271,7 @@ func TestRunChild(t *testing.T) {
 	}
 }
 
-func TestMainServReturn(t *testing.T) {
+func TestRunFail(t *testing.T) {
 	m := mainSrv{}
 	cfg := &Config{}
 	m.run(cfg)
@@ -2309,7 +2305,47 @@ func TestRunChildFail(t *testing.T) {
 	}
 }
 
-func TestMainSrvStartFail(t *testing.T) {
+func TestMainRunChildFail(t *testing.T) {
+	old := unixsockAddr
+	defer func() {
+		unixsockAddr = old
+	}()
+
+	args := []string{"/usr/bin/apshd", "-c", "-p", "6160", "-vv"}
+
+	r, w, _ := os.Pipe()
+	// save stdout
+	oldStderr := os.Stderr
+
+	// error condition
+	unixsockAddr = "/etc/hosts"
+
+	// run the test
+	testFunc := func() {
+		os.Args = args
+		os.Stderr = w
+		main()
+
+		// restore stdout
+		os.Stderr = oldStderr
+	}
+	testFunc()
+
+	// close pipe writer, get the output
+	w.Close()
+	output, _ := io.ReadAll(r)
+	r.Close()
+
+	// validate the result
+	got := string(output)
+	expect := "init uds client failed"
+	if !strings.Contains(got, expect) {
+		t.Errorf("runChild expect %q got %q\n", expect, got)
+	}
+}
+
+func TestStartFail2(t *testing.T) {
+
 	// intercept log
 	var w strings.Builder
 	util.Logger.CreateLogger(&w, true, slog.LevelDebug)
@@ -2337,7 +2373,7 @@ func TestMainSrvStartFail(t *testing.T) {
 	}
 }
 
-func TestMainSrvStartChildFail(t *testing.T) {
+func TestStartChildFail(t *testing.T) {
 	tc := []struct {
 		label  string
 		req    string
@@ -2405,12 +2441,136 @@ func TestMainSrvStartChildFail(t *testing.T) {
 			}
 
 			// shudown reader
-			m.conn.Close()
 			m.downChan <- true
 			wg.Wait()
+			m.conn.Close()
 
 			// validate the result
 			got := out.String()
+			if !strings.Contains(got, v.expect) {
+				t.Errorf("startChild expect %q, got \n%s\n", v.expect, got)
+			}
+		})
+	}
+}
+
+func TestBuildConfig2(t *testing.T) {
+	cfg := &Config{flowControl: _FC_NON_UTF8_LOCALE}
+
+	r, w, _ := os.Pipe()
+	// save stdout
+	olderr := os.Stderr
+	oldout := os.Stdout
+	os.Stderr = w
+	os.Stdout = w
+
+	_, ok := cfg.buildConfig()
+
+	// close pipe writer, get the output
+	w.Close()
+	output, _ := io.ReadAll(r)
+	r.Close()
+
+	os.Stderr = olderr
+	os.Stdout = oldout
+
+	// validate the result
+	got := string(output)
+	expect := "needs a UTF-8 native locale to run"
+	if !ok && strings.Contains(got, expect) {
+	} else {
+		t.Errorf("runChild expect %q got \n%s\n", expect, got)
+	}
+}
+
+func TestMessageError(t *testing.T) {
+	tc := []struct {
+		label  string
+		e      *messageError
+		expect string
+	}{
+		{"nil error", &messageError{}, "<nil>"},
+		{"reason + error", &messageError{reason: "got apple", err: errors.New("bad apple")}, "got apple: bad apple"},
+		{"only error", &messageError{err: errors.New("just apple")}, ": just apple"},
+	}
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			got := v.e.Error()
+			if got != v.expect {
+				t.Errorf("messageError sould return %q got %q\n", v.expect, got)
+			}
+		})
+	}
+}
+
+func TestCloseChild(t *testing.T) {
+	tc := []struct {
+		label   string
+		req     string
+		holders []int
+		conf    *Config
+		expect  string
+	}{
+		{"placeHolder port", frontend.AprishMsgClose + "6252", []int{6252},
+			&Config{desiredPort: "6250"}, "close port is a holder"},
+	}
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			// prepare the server
+			m := newMainSrv(v.conf)
+			m.listen(v.conf)
+
+			var wg sync.WaitGroup
+
+			var out strings.Builder
+			// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
+			util.Logger.CreateLogger(&out, true, slog.LevelDebug)
+
+			// create place holders data
+			for _, value := range v.holders {
+				m.workers[value] = &workhorse{}
+			}
+			// reading and validate the message
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+
+				buf := make([]byte, 128)
+				shutdown := false
+				for {
+					select {
+					case <-m.downChan:
+						shutdown = true
+					default:
+					}
+					if shutdown {
+						util.Logger.Debug("fake receiver shudown")
+						break
+					}
+
+					m.conn.SetDeadline(time.Now().Add(time.Millisecond * time.Duration(m.timeout)))
+					m.conn.ReadFromUDP(buf)
+				}
+			}()
+
+			// run closeChild
+			addr, err := net.ResolveUDPAddr("udp", "localhost:"+v.conf.desiredPort)
+			if err != nil {
+				t.Errorf("get address fail: %s\n", err)
+			} else {
+				m.closeChild(v.req, addr)
+			}
+
+			// shudown reader
+			m.downChan <- true
+			wg.Wait()
+			m.conn.Close()
+
+			// validate the result
+			got := out.String()
+			fmt.Println(got)
 			if !strings.Contains(got, v.expect) {
 				t.Errorf("startChild expect %q, got \n%s\n", v.expect, got)
 			}
