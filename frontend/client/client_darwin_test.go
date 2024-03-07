@@ -26,6 +26,10 @@ func TestMainRun_Parameters2(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
+			// in case we can't log in with ssh
+			if _, err := os.Stat(defaultSSHClientID); err != nil {
+				t.Skip("no " + defaultSSHClientID + " skip this")
+			}
 			// intercept stdout
 			saveStdout := os.Stdout
 			r, w, _ := os.Pipe()

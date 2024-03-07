@@ -41,7 +41,6 @@ const (
 	_APRILSH_KEY          = "APRISH_KEY"
 	_PREDICTION_DISPLAY   = "APRISH_PREDICTION_DISPLAY"
 	_PREDICTION_OVERWRITE = "APRISH_PREDICTION_OVERWRITE"
-	// _VERBOSE_LOG_TMPFILE  = 2
 )
 
 var (
@@ -156,21 +155,23 @@ type hostkeyChangeError struct {
 }
 
 func (e *hostkeyChangeError) Error() string {
-	if e == nil {
-		return "<nil>"
-	}
 	return "REMOTE HOST IDENTIFICATION HAS CHANGED for host '" +
 		e.hostname + "' ! This may indicate a MITM attack."
 }
 
-func (e *hostkeyChangeError) Hostname() string { return e.hostname }
+// func (e *hostkeyChangeError) Hostname() string { return e.hostname }
 
 type responseError struct {
 	Err error
 	Msg string
 }
 
-func (e *responseError) Error() string { return e.Msg + ", " + e.Err.Error() }
+func (e *responseError) Error() string {
+	if e.Err == nil {
+		return "<nil>"
+	}
+	return e.Msg + ", " + e.Err.Error()
+}
 
 // utilize ssh to fetch the key from remote server and start a server.
 // return empty string if success, otherwise return error info.
@@ -183,39 +184,25 @@ func (e *responseError) Error() string { return e.Msg + ", " + e.Err.Error() }
 // ssh-copy-id -i ~/.ssh/id_ed25519.pub ide@localhost
 // ssh-add ~/.ssh/id_ed25519
 func (c *Config) fetchKey() error {
-	// var hostKey ssh.PublicKey
 	var auth []ssh.AuthMethod
-	var am ssh.AuthMethod
-
 	auth = make([]ssh.AuthMethod, 0)
-	if am = sshAgent(); am != nil {
-		auth = append(auth, am) // ssh agent, for ssh key-based authentication
+
+	if c.sshClientID != defaultSSHClientID {
+		if am := publicKeyFile(c.sshClientID); am != nil {
+			auth = append(auth, am) // public key first
+		}
+		if am := sshAgent(); am != nil {
+			auth = append(auth, am) // ssh agent second
+		}
+	} else {
+		if am := sshAgent(); am != nil {
+			auth = append(auth, am) // ssh agent first
+		}
+		if am := publicKeyFile(c.sshClientID); am != nil {
+			auth = append(auth, am) // public key second
+		}
 	}
-	if am = publicKeyFile(c.sshClientID); am != nil {
-		// // fmt.Printf("auth.length=%d, defaultSSHClientID=%s, sshClientID=%s\n",
-		// // 	len(auth), defaultSSHClientID, c.sshClientID)
-		// if c.sshClientID != defaultSSHClientID {
-		// 	if len(auth) == 0 {
-		// 		// ssh client identification is the only available method,
-		// 		auth = append(auth, am)
-		// 		// fmt.Printf("auth=[pub]\n")
-		// 	} else {
-		// 		// ssh client identification is the first method,
-		// 		// agent is the second mehtod
-		// 		a2 := make([]ssh.AuthMethod, 0)
-		// 		a2 = append(a2, am)
-		// 		a2 = append(a2, auth...)
-		// 		auth = a2
-		// 		// fmt.Printf("auth=[pub,agent]\n")
-		// 	}
-		// } else {
-		// 	// fmt.Printf("auth=[agent, pub]\n")
-		// 	// agent is the first method,
-		// 	// ssh client identification is the second available method
-		// 	auth = append(auth, am)
-		// }
-		auth = append(auth, am) // ssh client identification is the second available method
-	}
+
 	if len(auth) == 0 {
 		// get password if we don't have any authenticate method
 		pwd, err := getPassword("password", os.Stdin)
@@ -224,13 +211,21 @@ func (c *Config) fetchKey() error {
 		}
 
 		// password authentication is the last resort
-		if am = ssh.Password(pwd); am != nil {
+		if am := ssh.Password(pwd); am != nil {
 			auth = append(auth, am)
 		}
 	}
 
+	// prepare for knownhosts
 	sshHost := net.JoinHostPort(c.host, c.sshPort)
 	khPath := filepath.Join(os.Getenv("HOME"), ".ssh", "known_hosts")
+	if _, err := os.Stat(khPath); err != nil {
+		kh, err2 := os.Create(khPath)
+		if err2 != nil {
+			return err
+		}
+		kh.Close()
+	}
 	kh, err := knownhosts.New(khPath)
 	if err != nil {
 		return err
@@ -238,6 +233,7 @@ func (c *Config) fetchKey() error {
 
 	// https://github.com/skeema/knownhosts
 	// https://github.com/golang/go/issues/29286
+	//
 	// Create a custom permissive hostkey callback which still errors on hosts
 	// with changed keys, but allows unknown hosts and adds them to known_hosts
 	cb := ssh.HostKeyCallback(func(hostname string, remote net.Addr, key ssh.PublicKey) (err error) {

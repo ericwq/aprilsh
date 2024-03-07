@@ -373,3 +373,26 @@ func TestSshAgentFail(t *testing.T) {
 		})
 	}
 }
+
+func TestErrors(t *testing.T) {
+	tc := []struct {
+		label  string
+		error  error
+		expect string
+	}{
+		{"hostkeyChangeError", &hostkeyChangeError{hostname: "some.where"},
+			"REMOTE HOST IDENTIFICATION HAS CHANGED"},
+		{"responseErr without error", &responseError{}, "<nil>"},
+		{"responseErr error", &responseError{Msg: "hello", Err: errors.New("world")}, "hello, world"},
+	}
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+
+			got := v.error.Error()
+			if !strings.Contains(got, v.expect) {
+				t.Errorf("%q expect %q got %q\n", v.label, v.expect, got)
+			}
+
+		})
+	}
+}

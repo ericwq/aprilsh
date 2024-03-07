@@ -16,7 +16,7 @@ func TestMainRun_Parameters2(t *testing.T) {
 		term   string
 		expect []string
 	}{
-		{
+		{ // by default, we can't login with ssh
 			"only password auth, no ssh agent, no public key file",
 			[]string{frontend.CommandClientName, "ide@localhost"},
 			"xterm-256color",
