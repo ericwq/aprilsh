@@ -192,28 +192,29 @@ func (c *Config) fetchKey() error {
 		auth = append(auth, am) // ssh agent, for ssh key-based authentication
 	}
 	if am = publicKeyFile(c.sshClientID); am != nil {
-		// fmt.Printf("auth.length=%d, defaultSSHClientID=%s, sshClientID=%s\n",
-		// 	len(auth), defaultSSHClientID, c.sshClientID)
-		if c.sshClientID != defaultSSHClientID {
-			if len(auth) == 0 {
-				// ssh client identification is the only available method,
-				auth = append(auth, am)
-				// fmt.Printf("auth=[pub]\n")
-			} else {
-				// ssh client identification is the first method,
-				// agent is the second mehtod
-				a2 := make([]ssh.AuthMethod, 0)
-				a2 = append(a2, am)
-				a2 = append(a2, auth...)
-				auth = a2
-				// fmt.Printf("auth=[pub,agent]\n")
-			}
-		} else {
-			// agent is the first method,
-			// ssh client identification is the second available method
-			auth = append(auth, am)
-			// fmt.Printf("auth=[agent, pub]\n")
-		}
+		// // fmt.Printf("auth.length=%d, defaultSSHClientID=%s, sshClientID=%s\n",
+		// // 	len(auth), defaultSSHClientID, c.sshClientID)
+		// if c.sshClientID != defaultSSHClientID {
+		// 	if len(auth) == 0 {
+		// 		// ssh client identification is the only available method,
+		// 		auth = append(auth, am)
+		// 		// fmt.Printf("auth=[pub]\n")
+		// 	} else {
+		// 		// ssh client identification is the first method,
+		// 		// agent is the second mehtod
+		// 		a2 := make([]ssh.AuthMethod, 0)
+		// 		a2 = append(a2, am)
+		// 		a2 = append(a2, auth...)
+		// 		auth = a2
+		// 		// fmt.Printf("auth=[pub,agent]\n")
+		// 	}
+		// } else {
+		// 	// fmt.Printf("auth=[agent, pub]\n")
+		// 	// agent is the first method,
+		// 	// ssh client identification is the second available method
+		// 	auth = append(auth, am)
+		// }
+		auth = append(auth, am) // ssh client identification is the second available method
 	}
 	if len(auth) == 0 {
 		// get password if we don't have any authenticate method
@@ -434,7 +435,7 @@ func sshAgent() ssh.AuthMethod {
 func publicKeyFile(file string) ssh.AuthMethod {
 	key, err := os.ReadFile(file)
 	if err != nil {
-		// fmt.Printf("Unable to read private key: %s\n", err)
+		fmt.Printf("Unable to read private key: %s\n", err)
 		return nil
 	}
 

@@ -56,7 +56,6 @@ build() {
       -X '$_module_name/frontend.BuildTime=${_build_time}'" -o "$builddir/bin/apshd" ./frontend/server/*.go
    echo "build server end  : $(TZ='Asia/Shanghai' date '+%F %T')"
    echo "output server to  : $builddir/bin/apshd"
-	# export APRILSH_APSHD_PATH="$builddir/bin/apshd"
 
    echo "build client start: $(TZ='Asia/Shanghai' date '+%F %T')"
    go build -ldflags="-s -w
@@ -67,14 +66,13 @@ build() {
       -X '$_module_name/frontend.BuildTime=${_build_time}'" -o "$builddir/bin/apsh" ./frontend/client/*.go
    echo "build client end  : $(TZ='Asia/Shanghai' date '+%F %T')"
    echo "output client to  : $builddir/bin/apsh"
-	# export APRILSH_APSH_PATH="$builddir/bin/apsh"
 }
 
 check() {
 	go test ./encrypt/...
 	go test ./frontend/
 	APRILSH_APSHD_PATH="$builddir/bin/apshd" go test ./frontend/server
-	# go test ./frontend/client
+	go test ./frontend/client
 	go test ./network/...
 	go test ./statesync/...
 	# go test ./terminal/...

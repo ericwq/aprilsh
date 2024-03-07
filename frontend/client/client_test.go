@@ -72,12 +72,6 @@ func TestPrintColors(t *testing.T) {
 }
 
 func TestMainRun_Parameters(t *testing.T) {
-	// shutdown after 50ms
-	// time.AfterFunc(100*time.Millisecond, func() {
-	// 	syscall.Kill(os.Getpid(), syscall.SIGHUP)
-	// 	syscall.Kill(os.Getpid(), syscall.SIGTERM)
-	// })
-
 	tc := []struct {
 		label  string
 		args   []string
@@ -227,6 +221,28 @@ func TestBuildConfig(t *testing.T) {
 	}
 }
 
+func TestBuildConfig2(t *testing.T) {
+	tc := []struct {
+		label     string
+		conf      *Config
+		expectStr string
+		ok        bool
+	}{
+		{"destination without port", &Config{destination: []string{"usr@host"}}, "", true},
+		{"destination with port", &Config{destination: []string{"usr@host:23"}}, "", true},
+		{"destination with wrong port",
+			&Config{destination: []string{"usr@host:a23"}}, "please check destination, illegal port number.", false},
+	}
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			got, ok := v.conf.buildConfig()
+			if ok != v.ok || got != v.expectStr {
+				t.Errorf("%q expect (%s,%t) got (%s,%t)\n", v.label, v.expectStr, v.ok, got, ok)
+			}
+		})
+	}
+}
+
 // func TestFetchKey(t *testing.T) {
 // 	tc := []struct {
 // 		label string
@@ -316,5 +332,44 @@ func TestGetPasswordFail(t *testing.T) {
 	// validate, for non-tty input, getPassword return err: inappropriate ioctl for device
 	if err == nil {
 		t.Errorf("#test getPassword fail expt %q, got=%q, err=%s, out=%s\n", "", got, err, out)
+	}
+}
+
+func TestSshAgentFail(t *testing.T) {
+	tc := []struct {
+		label  string
+		env    bool
+		expect string
+	}{
+		{"lack of SSH_AUTH_SOCK", false, "Failed to connect ssh agent."},
+	}
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			old := os.Getenv("SSH_AUTH_SOCK")
+			defer os.Setenv("SSH_AUTH_SOCK", old)
+
+			// intercept stdout
+			saveStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+
+			// clear SSH_AUTH_SOCK
+			if !v.env {
+				os.Unsetenv("SSH_AUTH_SOCK")
+			}
+			// run the test
+			sshAgent()
+
+			// restore stdout
+			w.Close()
+			out, _ := io.ReadAll(r)
+			os.Stdout = saveStdout
+			r.Close()
+
+			got := string(out)
+			if !strings.HasPrefix(got, v.expect) {
+				t.Errorf("%q expect %q got %q\n", v.label, v.expect, got)
+			}
+		})
 	}
 }
