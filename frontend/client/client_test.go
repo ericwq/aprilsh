@@ -106,7 +106,7 @@ func TestMainRun_Parameters(t *testing.T) {
 		},
 		{
 			"just colors",
-			[]string{frontend.CommandClientName, "-c"},
+			[]string{frontend.CommandClientName, "-c", "-v"},
 			"xterm-256color",
 			[]string{"xterm-256color", "256"},
 		},

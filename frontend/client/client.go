@@ -137,7 +137,7 @@ type Config struct {
 	destination      []string // raw parameter
 	host             string   // target host/server
 	user             string   // target user
-	port             int      // target port
+	port             int      // first server port, then target port
 	verbose          int
 	colors           bool
 	key              string
@@ -302,9 +302,10 @@ func (c *Config) fetchKey() error {
 
 	// Once a Session is created, you can execute a single command on
 	// the remote side using the Run method.
+	// before fetchKey() it's the server port, after it's target port
 	var b []byte
-	// cmd := fmt.Sprintf("echo '%s' | nc localhost %d -u -w 1", _ASH_OPEN, c.port)
-	cmd := fmt.Sprintf("/usr/bin/apshd -b -t %s -destination %s", os.Getenv("TERM"), c.destination[0])
+	cmd := fmt.Sprintf("/usr/bin/apshd -b -t %s -destination %s -p %d",
+		os.Getenv("TERM"), c.destination[0], c.port)
 	// fmt.Printf("cmd=%s\n", cmd)
 
 	if b, err = session.Output(cmd); err != nil {
