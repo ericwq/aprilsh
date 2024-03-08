@@ -20,3 +20,12 @@ go tool cover -html coverage/profile
 #	 1. reply no
 #	 2. reply enter
 #	 3. reply yes
+# 4. login with wrong host name or wrong user name
+# 	 GOCOVERDIR=./coverage/int  ~/.local/bin/apsh -verbose ide@localhost2
+# 	 GOCOVERDIR=./coverage/int  ~/.local/bin/apsh -verbose ide2@localhost
+# 5. close ssh agent, login with wrong plublic key, thus use password auth
+#	 export SSH_AUTH_SOCK=
+#	 GOCOVERDIR=./coverage/int  ~/.local/bin/apsh -i ~/.ssh/id_777 ide@localhost
+# 6. login then kill client process
+#	 GOCOVERDIR=./coverage/int  ~/.local/bin/apsh -verbose ide@localhost
+#	 kill <pid>
