@@ -338,6 +338,7 @@ func TestGetPasswordFail(t *testing.T) {
 }
 
 func TestGetPasswordFail2(t *testing.T) {
+	// store stdout/in, open pts pair
 	ptmx, pts, err := pty.Open()
 	if err != nil {
 		t.Errorf("failed to open pts, %s\n", err)
@@ -350,7 +351,7 @@ func TestGetPasswordFail2(t *testing.T) {
 
 	expect := "hello world"
 
-	// run the test
+	// provide the input
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go func() {
@@ -361,6 +362,7 @@ func TestGetPasswordFail2(t *testing.T) {
 		ptmx.WriteString(expect + "\n") // \n  is important for getPassword()
 	}()
 
+	// waiting for the input
 	wg.Add(1)
 	var got string
 	var err2 error
@@ -370,6 +372,7 @@ func TestGetPasswordFail2(t *testing.T) {
 	}()
 	wg.Wait()
 
+	// close pts paire and restore stdou/stdin
 	ptmx.Close()
 	pts.Close()
 	os.Stdout = saveStdout

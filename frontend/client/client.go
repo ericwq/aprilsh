@@ -58,6 +58,7 @@ Options:
   -i                 ssh client identity (private key) (default $HOME/.ssh/id_rsa)
   -v,  --verbose     verbose log output (debug level, default info level)
   -vv                verbose log output (trace level)
+  -m,  --mapping     container port mapping (target port = port + mapping, default 0)
 ---------------------------------------------------------------------------------------------------
 `
 	predictionValues   = []string{"always", "never", "adaptive", "experimental"}
@@ -114,6 +115,8 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.BoolVar(&conf.colors, "c", false, "terminal colors number")
 
 	flagSet.StringVar(&conf.sshClientID, "i", defaultSSHClientID, "ssh client identity file")
+	flagSet.IntVar(&conf.mapping, "mapping", 0, "container port mapping")
+	flagSet.IntVar(&conf.mapping, "m", 0, "container port mapping")
 
 	err = flagSet.Parse(args)
 	if err != nil {
@@ -146,6 +149,7 @@ type Config struct {
 	sshClientID      string // ssh client identity, for SSH public key authentication
 	sshPort          string // ssh port, default 22
 	addSource        bool   // add source file to log
+	mapping          int    // container(such as docker) port mapping value
 }
 
 var errNoResponse = errors.New("no response, please make sure the server is running.")
@@ -326,8 +330,10 @@ func (c *Config) fetchKey() error {
 		if e != nil {
 			return errors.New("can't get port")
 		}
-		// incase port mapping for docker
-		c.port += (p - frontend.DefaultPort)
+		// calculate new port based on container mapping value
+		// new port = returned port + mapping
+		// 8201 = 8101 + 100
+		c.port = p + c.mapping
 
 		if encrypt.NewBase64Key2(content[1]) != nil {
 			c.key = content[1]
