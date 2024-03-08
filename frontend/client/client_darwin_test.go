@@ -18,7 +18,7 @@ func TestMainRun_Parameters2(t *testing.T) {
 	}{
 		{
 			"on mac, we have SSH_AUTH_SOCK and .ssh/id_rsa.pub .ssh/id_rsa file, so we have ssh agent and public key auths",
-			[]string{frontend.CommandClientName, "ide@localhost2"},
+			[]string{frontend.CommandClientName, "-vv", "ide@localhost2"},
 			"xterm-256color",
 			[]string{"No such host"},
 		},

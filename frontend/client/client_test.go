@@ -9,7 +9,9 @@ import (
 	"io"
 	"os"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/creack/pty"
 	"github.com/ericwq/aprilsh/frontend"
@@ -335,6 +337,50 @@ func TestGetPasswordFail(t *testing.T) {
 	}
 }
 
+func TestGetPasswordFail2(t *testing.T) {
+	ptmx, pts, err := pty.Open()
+	if err != nil {
+		t.Errorf("failed to open pts, %s\n", err)
+		return
+	}
+	saveStdout := os.Stdout
+	saveStdin := os.Stdin
+	os.Stdout = pts
+	os.Stdin = pts
+
+	expect := "hello world"
+
+	// run the test
+	var wg sync.WaitGroup
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		// make sure we provide input after the getPassword()
+		timer := time.NewTimer(time.Duration(2) * time.Millisecond)
+		<-timer.C
+		ptmx.WriteString(expect + "\n") // \n  is important for getPassword()
+	}()
+
+	wg.Add(1)
+	var got string
+	var err2 error
+	go func() {
+		defer wg.Done()
+		got, err2 = getPassword("password", pts)
+	}()
+	wg.Wait()
+
+	ptmx.Close()
+	pts.Close()
+	os.Stdout = saveStdout
+	os.Stdin = saveStdin
+
+	// validate, for non-tty input, getPassword return err: inappropriate ioctl for device
+	if err2 != nil || got != expect {
+		t.Errorf("#test getPassword fail expt %q, got=%q, err=%s\n", expect, got, err)
+	}
+}
+
 func TestSshAgentFail(t *testing.T) {
 	tc := []struct {
 		label  string
@@ -393,6 +439,41 @@ func TestErrors(t *testing.T) {
 				t.Errorf("%q expect %q got %q\n", v.label, v.expect, got)
 			}
 
+		})
+	}
+}
+
+func TestPublicKeyFileFail(t *testing.T) {
+	tc := []struct {
+		label  string
+		file   string
+		expect string
+	}{
+		{"file doesn't exist", "/do/es/not/exist", "Unable to read private key"},
+		{"is not private key", "/etc/hosts", "Unable to parse private key"},
+	}
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+
+			// intercept stdout
+			saveStdout := os.Stdout
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+
+			// run the test
+			publicKeyFile(v.file)
+
+			// restore stdout
+			w.Close()
+			out, _ := io.ReadAll(r)
+			os.Stdout = saveStdout
+			r.Close()
+
+			// validate the output
+			got := string(out)
+			if !strings.Contains(got, v.expect) {
+				t.Errorf("%q expect %q got %q\n", v.label, v.expect, got)
+			}
 		})
 	}
 }

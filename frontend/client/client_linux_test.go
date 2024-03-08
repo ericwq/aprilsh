@@ -18,7 +18,7 @@ func TestMainRun_Parameters2(t *testing.T) {
 	}{
 		{ // by default, we can't login with ssh
 			"only password auth, no ssh agent, no public key file",
-			[]string{frontend.CommandClientName, "ide@localhost"},
+			[]string{frontend.CommandClientName, "-vv", "ide@localhost"},
 			"xterm-256color",
 			[]string{"Failed to connect ssh agent", "Unable to read private key", "inappropriate ioctl for device"},
 		},
