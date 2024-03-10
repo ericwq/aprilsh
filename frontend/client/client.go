@@ -58,7 +58,7 @@ Options:
   -i                 ssh client identity (private key) (default $HOME/.ssh/id_rsa)
   -v,  --verbose     verbose log output (debug level, default info level)
   -vv                verbose log output (trace level)
-  -m,  --mapping     container port mapping (target port = port + mapping, default 0)
+  -m,  --mapping     container port mapping (default 0, new port = returned port + mapping)
 ---------------------------------------------------------------------------------------------------
 `
 	predictionValues   = []string{"always", "never", "adaptive", "experimental"}
