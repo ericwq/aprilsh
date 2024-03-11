@@ -1,4 +1,4 @@
-// Copyright 2022~2023 wangqi. All rights reserved.
+// Copyright 2022~2024 wangqi. All rights reserved.
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
@@ -36,6 +36,7 @@ func init() {
 	Logger = new(myLogger)
 	Logger.logLevel = new(slog.LevelVar)
 	Logger.SetLevel(slog.LevelInfo)
+	Logger.AddSource(false)
 	Logger.SetOutput(os.Stderr)
 }
 
