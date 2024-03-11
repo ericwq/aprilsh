@@ -325,7 +325,7 @@ func (c *Config) fetchKey() error {
 
 	// parse port and key
 	content := strings.Split(body[1], ",")
-	if len(content) == 2 {
+	if len(content) == 2 && len(content[0]) > 0 && len(content[1]) > 0 {
 		p, e := strconv.Atoi(content[0])
 		if e != nil {
 			return errors.New("can't get port")
