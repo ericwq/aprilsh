@@ -22,13 +22,19 @@ const (
 
 func TestUpdateLastLog(t *testing.T) {
 	line := "pts/9"
-	userName := "ide"
+	// userName := "ide"
+	user, _ := user.Current()
+	userName := user.Username
 	host := fmt.Sprintf("%s [%d]", PACKAGE_STRING, os.Getpid())
 
 	ret := UpdateLastLog(line, userName, host)
 	msg := "This test require lastlog access privilege."
 	if !ret {
-		t.Errorf("#test UpdateLastLog() failed. %s\n", msg)
+		if userName != "root" {
+			t.Skip(msg)
+		} else {
+			t.Errorf("#test UpdateLastLog() failed. %s\n", msg)
+		}
 	}
 }
 
@@ -62,7 +68,11 @@ func TestCheckUnattachedUtmpx(t *testing.T) {
 	// 	fakeHost, ignoreHost)
 	ret := AddUtmpx(pts, fakeHost) // the go test can't give the required utmps privilege
 	if !ret {
-		t.Errorf("#test CheckUnattachedUtmpx() AddUtmpx() return %t, %s\n", ret, msg)
+		if user.Username != "root" {
+			t.Skip(msg)
+		} else {
+			t.Errorf("#test CheckUnattachedUtmpx() AddUtmpx() return %t, %s\n", ret, msg)
+		}
 	}
 
 	// CheckUnattachedUtmpx should return one record
