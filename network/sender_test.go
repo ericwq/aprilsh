@@ -385,9 +385,8 @@ func TestSenderSendEmptyAckShutdown(t *testing.T) {
 	client := NewTransportClient(initialState, initialRemote, keyStr, desiredIp, desiredPort)
 
 	// disable log
-	// server.connection.logW.SetOutput(io.Discard)
-
-	util.Logger.SetOutput(io.Discard)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stdout, true, slog.LevelDebug)
 
 	// prepare for shutdown
 	client.sender.shutdownInProgress = true
@@ -432,9 +431,8 @@ func TestSenderSendEmptyAckFail(t *testing.T) {
 	client := NewTransportClient(initialState, initialRemote, keyStr, desiredIp, desiredPort)
 
 	// disable log
-	// server.connection.logW.SetOutput(io.Discard)
-
-	util.Logger.SetOutput(io.Discard)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stdout, true, slog.LevelDebug)
 
 	// mockUdpConn will send with an error: send size doesn't match
 	var mock mockUdpConn
@@ -472,9 +470,8 @@ func TestSenderSendToReceiverFail(t *testing.T) {
 	client := NewTransportClient(initialState, initialRemote, keyStr, desiredIp, desiredPort)
 
 	// disable log
-	// server.connection.logW.SetOutput(io.Discard)
-
-	util.Logger.SetOutput(io.Discard)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stdout, true, slog.LevelDebug)
 
 	// mockUdpConn will send with an error: send size doesn't match
 	var mock mockUdpConn
@@ -505,9 +502,8 @@ func TestSenderSendToReceiverShutdown(t *testing.T) {
 	client := NewTransportClient(initialState, initialRemote, keyStr, desiredIp, desiredPort)
 
 	// disable log
-	// server.connection.logW.SetOutput(io.Discard)
-
-	util.Logger.SetOutput(io.Discard)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stdout, true, slog.LevelDebug)
 
 	// prepare for shutdown
 	client.sender.startShutdown()
@@ -564,9 +560,8 @@ func TestSenderTickSendToReceiverFail(t *testing.T) {
 	pushUserBytesTo(client.GetCurrentState(), "sendToReceiver failed.")
 
 	// disable log
-	// server.connection.logW.SetOutput(io.Discard)
-
-	util.Logger.SetOutput(io.Discard)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stdout, true, slog.LevelDebug)
 
 	// mockUdpConn will send with an error: send size doesn't match
 	var mock mockUdpConn
@@ -603,9 +598,8 @@ func TestSenderTickVerify(t *testing.T) {
 	client.SetVerbose(1)
 
 	var b strings.Builder
-	util.Logger.SetLevel(slog.LevelDebug)
-	// util.Log.SetOutput(os.Stdout)
-	util.Logger.SetOutput(&b)
+	util.Logger.CreateLogger(&b, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stdout, true, slog.LevelDebug)
 
 	// send user stream to server
 	client.Tick()
@@ -671,7 +665,8 @@ func TestSenderSendInterval(t *testing.T) {
 	keyStr := server.connection.getKey() // get the key from server
 	client := NewTransportClient(initialState, initialRemote, keyStr, desiredIp, desiredPort)
 
-	util.Logger.SetOutput(io.Discard)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stdout, true, slog.LevelDebug)
 
 	// round-trip several times to build a reasonable SRTT
 	var got string
@@ -767,9 +762,8 @@ func TestSenderTickNextSendTime(t *testing.T) {
 	client.SetVerbose(1)
 
 	var b strings.Builder
-	util.Logger.SetLevel(slog.LevelDebug)
-	// util.Log.SetOutput(os.Stdout)
-	util.Logger.SetOutput(&b)
+	util.Logger.CreateLogger(&b, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stdout, true, slog.LevelDebug)
 
 	// send user stream to server
 	client.Tick()

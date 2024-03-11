@@ -6,6 +6,7 @@ package statesync
 
 import (
 	"io"
+	"log/slog"
 	"math"
 	"reflect"
 	"strings"
@@ -44,7 +45,8 @@ func TestCompleteApplyString(t *testing.T) {
 		{"fill one row and set ack", "\x1B[7;7H左边\x1B[7;77H中文", 0, 0, 3},
 	}
 
-	util.Logger.SetOutput(io.Discard)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stdout, true, slog.LevelDebug)
 
 	for _, v := range tc {
 		c0, _ := NewComplete(80, 40, 40)
@@ -258,9 +260,8 @@ func TestDiffFrom(t *testing.T) {
 			[]string{"x1\r\nx2\r\nx3\r\nx4\r\n"}, ""},
 	}
 
-	util.Logger.SetOutput(io.Discard)
-	// util.Log.SetLevel(slog.LevelDebug)
-	// util.Log.SetOutput(os.Stderr)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {

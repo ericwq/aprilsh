@@ -27,52 +27,53 @@ var levelNames = map[slog.Leveler]string{
 
 type myLogger struct {
 	*slog.Logger
-	addSource bool
-	logLevel  *slog.LevelVar
+	// addSource bool
+	// logLevel  *slog.LevelVar
 }
 
 func init() {
 	// default logger write to stderr
 	Logger = new(myLogger)
-	Logger.logLevel = new(slog.LevelVar)
-	Logger.SetLevel(slog.LevelInfo)
-	Logger.AddSource(false)
-	Logger.SetOutput(os.Stderr)
+	// Logger.logLevel = new(slog.LevelVar)
+	// Logger.SetLevel(slog.LevelInfo)
+	// // Logger.AddSource(false)
+	// Logger.SetOutput(os.Stderr)
+	Logger.CreateLogger(os.Stderr, false, slog.LevelInfo)
 }
 
-func (l *myLogger) SetLevel(v slog.Level) {
-	l.logLevel.Set(v)
-}
+// func (l *myLogger) SetLevel(v slog.Level) {
+// 	l.logLevel.Set(v)
+// }
 
-func (l *myLogger) AddSource(add bool) {
-	Logger.addSource = add
-}
+// func (l *myLogger) AddSource(add bool) {
+// 	Logger.addSource = add
+// }
 
 // how to replace a line in file,sample
 // sed -i 's/.*defer util\.Log\.Restore.*//g' encrypt/encrypt_test.go
 //
 
-func (l *myLogger) SetOutput(w io.Writer) {
-	ho := &slog.HandlerOptions{
-		AddSource: Logger.addSource,
-		Level:     Logger.logLevel,
-		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
-			if a.Key == slog.LevelKey {
-				level := a.Value.Any().(slog.Level)
-				levelLabel, exists := levelNames[level]
-				if !exists {
-					levelLabel = level.String()
-				}
-
-				a.Value = slog.StringValue(levelLabel)
-			}
-
-			return a
-		},
-	}
-	l.Logger = slog.New(slog.NewTextHandler(w, ho)).With("pid", os.Getpid())
-	slog.SetDefault(l.Logger)
-}
+//	func (l *myLogger) SetOutput(w io.Writer) {
+//		ho := &slog.HandlerOptions{
+//			AddSource: Logger.addSource,
+//			Level:     Logger.logLevel,
+//			ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+//				if a.Key == slog.LevelKey {
+//					level := a.Value.Any().(slog.Level)
+//					levelLabel, exists := levelNames[level]
+//					if !exists {
+//						levelLabel = level.String()
+//					}
+//
+//					a.Value = slog.StringValue(levelLabel)
+//				}
+//
+//				return a
+//			},
+//		}
+//		l.Logger = slog.New(slog.NewTextHandler(w, ho)).With("pid", os.Getpid())
+//		slog.SetDefault(l.Logger)
+//	}
 
 func (l *myLogger) CreateLogger(w io.Writer, source bool, level slog.Level) {
 	ho := &slog.HandlerOptions{

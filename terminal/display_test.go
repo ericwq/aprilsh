@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"os"
 	"reflect"
 	"strings"
@@ -143,7 +144,7 @@ func TestNewFrame_PutRow(t *testing.T) {
 		},
 	}
 
-	util.Logger.SetOutput(io.Discard)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
@@ -217,7 +218,7 @@ func TestNewFrame_ScrollUp(t *testing.T) {
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
 
-	// util.Log.SetOutput(io.Discard)
+	// util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
@@ -278,10 +279,7 @@ func TestNewFrame_Bell(t *testing.T) {
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
 
-	// oldE.logT.SetOutput(io.Discard)
-	// newE.logT.SetOutput(io.Discard)
-
-	util.Logger.SetOutput(io.Discard)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
@@ -322,7 +320,7 @@ func TestNewFrame_CursorStyle(t *testing.T) {
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
 
-	// util.Log.SetOutput(io.Discard)
+	// util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
@@ -362,10 +360,7 @@ func TestNewFrame_WindowTitleIconName(t *testing.T) {
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
 
-	// oldE.logT.SetOutput(io.Discard)
-	// newE.logT.SetOutput(io.Discard)
-
-	util.Logger.SetOutput(io.Discard)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
@@ -425,7 +420,7 @@ func TestNewFrame_TitleStack(t *testing.T) {
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
 
-	util.Logger.SetOutput(io.Discard)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
@@ -474,9 +469,6 @@ func TestNewFrame_ReverseVideo(t *testing.T) {
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
 
-	// oldE.logT.SetOutput(io.Discard)
-	// newE.logT.SetOutput(io.Discard)
-
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
 	if e != nil {
@@ -523,9 +515,6 @@ func TestNewFrame_Resize(t *testing.T) {
 		oldE := NewEmulator3(80, 40, 40)
 		newE := NewEmulator3(80, 40, 40)
 
-		// oldE.logT.SetOutput(io.Discard)
-		// newE.logT.SetOutput(io.Discard)
-
 		newE.resize(v.width, v.height)
 
 		// fmt.Printf("OLD: w=%d, h=%d\n%s", oldE.GetWidth(), oldE.GetHeight(), printCells(oldE.cf))
@@ -552,9 +541,6 @@ func TestNewFrame_AltScreenBufferMode(t *testing.T) {
 	}
 	oldE := NewEmulator3(8, 4, 4)
 	newE := NewEmulator3(8, 4, 4)
-
-	// oldE.logT.SetOutput(io.Discard)
-	// newE.logT.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
@@ -601,9 +587,6 @@ func TestNewFrame_Margin(t *testing.T) {
 	oldE := NewEmulator3(8, 8, 4)
 	newE := NewEmulator3(8, 8, 4)
 
-	// oldE.logT.SetOutput(io.Discard)
-	// newE.logT.SetOutput(io.Discard)
-
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
 	if e != nil {
@@ -645,9 +628,6 @@ func TestNewFrame_HMargin(t *testing.T) {
 	}
 	oldE := NewEmulator3(8, 8, 4)
 	newE := NewEmulator3(8, 8, 4)
-
-	// oldE.logT.SetOutput(io.Discard)
-	// newE.logT.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
@@ -691,9 +671,6 @@ func TestNewFrame_Decsc(t *testing.T) {
 	oldE := NewEmulator3(8, 8, 4)
 	newE := NewEmulator3(8, 8, 4)
 
-	// oldE.logT.SetOutput(io.Discard)
-	// newE.logT.SetOutput(io.Discard)
-
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
 	if e != nil {
@@ -735,9 +712,6 @@ func TestNewFrame_Scosc(t *testing.T) {
 	}
 	oldE := NewEmulator3(8, 8, 4)
 	newE := NewEmulator3(8, 8, 4)
-
-	// oldE.logT.SetOutput(io.Discard)
-	// newE.logT.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
@@ -781,9 +755,6 @@ func TestNewFrame_ShowCursorMode(t *testing.T) {
 	oldE := NewEmulator3(8, 8, 4)
 	newE := NewEmulator3(8, 8, 4)
 
-	// oldE.logT.SetOutput(io.Discard)
-	// newE.logT.SetOutput(io.Discard)
-
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
 	if e != nil {
@@ -825,9 +796,6 @@ func TestNewFrame_BracketedPasteMode(t *testing.T) {
 	}
 	oldE := NewEmulator3(8, 8, 4)
 	newE := NewEmulator3(8, 8, 4)
-
-	// oldE.logT.SetOutput(io.Discard)
-	// newE.logT.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
@@ -874,9 +842,6 @@ func TestNewFrame_MouseTrk(t *testing.T) {
 	oldE := NewEmulator3(8, 8, 4)
 	newE := NewEmulator3(8, 8, 4)
 
-	// oldE.logT.SetOutput(io.Discard)
-	// newE.logT.SetOutput(io.Discard)
-
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
 	if e != nil {
@@ -920,9 +885,6 @@ func TestNewFrame_MouseTrkFocusEventMode(t *testing.T) {
 	}
 	oldE := NewEmulator3(8, 8, 4)
 	newE := NewEmulator3(8, 8, 4)
-
-	// oldE.logT.SetOutput(io.Discard)
-	// newE.logT.SetOutput(io.Discard)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
@@ -993,10 +955,7 @@ func TestNewFrame_Modes(t *testing.T) {
 	oldE := NewEmulator3(8, 8, 4)
 	newE := NewEmulator3(8, 8, 4)
 
-	// oldE.logT.SetOutput(io.Discard)
-	// newE.logT.SetOutput(io.Discard)
-
-	util.Logger.SetOutput(io.Discard)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
@@ -1044,10 +1003,7 @@ func TestNewFrame_TabStops(t *testing.T) {
 	oldE := NewEmulator3(80, 8, 4)
 	newE := NewEmulator3(80, 8, 4)
 
-	// oldE.logT.SetOutput(io.Discard)
-	// newE.logT.SetOutput(io.Discard)
-
-	util.Logger.SetOutput(io.Discard)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
@@ -1095,10 +1051,7 @@ func TestNewFrame_SelectionData(t *testing.T) {
 	oldE := NewEmulator3(80, 8, 4)
 	newE := NewEmulator3(80, 8, 4)
 
-	// oldE.logT.SetOutput(io.Discard)
-	// newE.logT.SetOutput(io.Discard)
-
-	util.Logger.SetOutput(io.Discard)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
 
 	os.Setenv("TERM", "xterm-256color")
 	d, e := NewDisplay(true)
@@ -1166,9 +1119,7 @@ func TestPutRow(t *testing.T) {
 			"\x1b[?25l\n-rw-r--r--    1 ide\x1b[6X\x1b[6Cdevelop\x1b[8X\x1b[8Cgo.work\x1b[K"},
 	}
 
-	util.Logger.SetOutput(io.Discard)
-	// util.Log.SetLevel(slog.LevelDebug)
-	// util.Log.SetOutput(os.Stderr)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
 
 	oldE := NewEmulator3(80, 8, 4)
 	newE := NewEmulator3(80, 8, 4)

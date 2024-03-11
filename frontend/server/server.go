@@ -1877,9 +1877,7 @@ func runChild(conf *Config) (err error) {
 	// 	return
 	// }
 	// os.Stderr = file
-	// util.Log.SetLevel(slog.LevelDebug)
-	// util.Log.AddSource(true)
-	// util.Log.SetOutput(os.Stderr)
+	// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 	// fmt.Println("log is ready", file)
 
 	// prepare unix socket client (datagram)
@@ -2119,8 +2117,6 @@ func main() {
 	default:
 		util.Logger.CreateLogger(os.Stderr, conf.addSource, slog.LevelInfo)
 	}
-	// util.Log.AddSource(conf.addSource)
-	// util.Log.SetOutput(os.Stderr)
 
 	// setup syslog
 	syslogWriter, err = syslog.New(syslog.LOG_WARNING|syslog.LOG_LOCAL7, frontend.CommandServerName)

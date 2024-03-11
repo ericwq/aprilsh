@@ -1179,8 +1179,6 @@ func main() {
 	default:
 		util.Logger.CreateLogger(logWriter, conf.addSource, slog.LevelInfo)
 	}
-	// util.Log.AddSource(conf.addSource)
-	// util.Log.SetOutput(os.Stderr)
 
 	// https://earthly.dev/blog/golang-errors/
 	// https://gosamples.dev/check-error-type/

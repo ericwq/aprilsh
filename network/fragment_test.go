@@ -6,6 +6,7 @@ package network
 
 import (
 	"io"
+	"log/slog"
 	"reflect"
 	"strings"
 	"testing"
@@ -194,8 +195,8 @@ func TestGetAssemblyFail(t *testing.T) {
 	}
 
 	// intercept the log
-
-	util.Logger.SetOutput(io.Discard)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stdout, true, slog.LevelDebug)
 
 	// validate uncompress error
 	// # this can also test zlib.NewReader(b)

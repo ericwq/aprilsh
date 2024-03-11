@@ -486,9 +486,8 @@ func TestGetSnappedSelection(t *testing.T) {
 	}
 
 	emu := NewEmulator3(80, 40, 0)
-	// emu.logT.SetOutput(io.Discard) // hide the log output
-
-	util.Logger.SetOutput(io.Discard)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
 	for _, v := range tc {
 		// print the stream to the screen
@@ -549,9 +548,8 @@ func TestGetSelectedUtf8(t *testing.T) {
 	}
 	emu := NewEmulator3(80, 40, 0)
 	// hide the log output
-	// emu.logT.SetOutput(io.Discard)
-
-	util.Logger.SetOutput(io.Discard)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
 	for i, v := range tc {
 		// print the stream to the screen
@@ -633,9 +631,8 @@ func TestDamageDeltaCopy(t *testing.T) {
 
 	emu := NewEmulator3(80, 40, 0)
 	// hide the log output
-	// emu.logT.SetOutput(io.Discard)
-
-	util.Logger.SetOutput(io.Discard)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
 	// for easy typing
 	fb := emu.cf
@@ -692,9 +689,8 @@ func TestGetPhysicalRow(t *testing.T) {
 		{"100 scrollHead, row 30", 30, 100, 10},
 	}
 
-	util.Logger.SetOutput(io.Discard)
-	// util.Log.SetLevel(slog.LevelDebug)
-	// util.Log.SetOutput(os.Stderr)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
@@ -734,9 +730,8 @@ func TestASBRow(t *testing.T) {
 		{"19 scrollHead, row  22", 22, 19, 21},
 	}
 
-	util.Logger.SetOutput(io.Discard)
-	// util.Log.SetLevel(slog.LevelDebug)
-	// util.Log.SetOutput(os.Stderr)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
@@ -774,9 +769,8 @@ func TestFramebufferEqual(t *testing.T) {
 
 	var output strings.Builder
 
-	util.Logger.SetLevel(slog.LevelDebug)
-	util.Logger.SetOutput(&output)
-	// util.Log.SetOutput(os.Stdout)
+	util.Logger.CreateLogger(&output, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stdout, true, slog.LevelDebug)
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
@@ -837,9 +831,8 @@ func TestGetRowsGap(t *testing.T) {
 
 	var output strings.Builder
 
-	util.Logger.SetLevel(slog.LevelDebug)
-	util.Logger.SetOutput(&output)
-	// util.Log.SetOutput(os.Stdout)
+	util.Logger.CreateLogger(&output, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stdout, true, slog.LevelDebug)
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
@@ -866,9 +859,8 @@ func TestOutputRow(t *testing.T) {
 
 	var output strings.Builder
 
-	util.Logger.SetLevel(slog.LevelDebug)
-	util.Logger.SetOutput(&output)
-	// util.Log.SetOutput(os.Stdout)
+	util.Logger.CreateLogger(&output, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stdout, true, slog.LevelDebug)
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {

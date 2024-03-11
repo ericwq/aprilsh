@@ -239,8 +239,8 @@ func TestEmulatorGetWidth(t *testing.T) {
 		t.Errorf("#test GetWidth() expect %d, got %d\n", 80, emu.GetWidth())
 	}
 
-	util.Logger.SetOutput(io.Discard)
-	// emu.SetLogTraceOutput(io.Discard)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stdout, true, slog.LevelDebug)
 
 	// set horizontal margin
 	emu.HandleStream("\x1b[9;1Hset hMargin\x1B[?69h\x1B[2;78s")
@@ -335,9 +335,8 @@ func TestEmulatorGetCell(t *testing.T) {
 
 	emu := NewEmulator3(80, 40, 40)
 
-	// emu.SetLogTraceOutput(io.Discard)
-
-	util.Logger.SetOutput(io.Discard)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
 	for _, v := range tc {
 		emu.HandleStream(v.seq)
@@ -364,7 +363,8 @@ func TestEmulatorClone(t *testing.T) {
 		{"alter screen buffer, no resize", 0, 0, "\x1B[?47h\x1B[11;74Houtput for normal wrap line."},
 	}
 
-	util.Logger.SetOutput(io.Discard)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
 	for _, v := range tc {
 		emu := NewEmulator3(80, 40, 40)
@@ -538,7 +538,8 @@ func TestSaveWindowTitleOnStack(t *testing.T) {
 
 	var out strings.Builder
 
-	util.Logger.SetOutput(&out)
+	util.Logger.CreateLogger(&out, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
 	// no title, check save stack
 	emu.saveWindowTitleOnStack()
@@ -629,9 +630,8 @@ func TestEmulatorEqual(t *testing.T) {
 
 	var output strings.Builder
 
-	util.Logger.SetLevel(slog.LevelDebug)
-	util.Logger.SetOutput(&output)
-	// util.Log.SetOutput(os.Stdout)
+	util.Logger.CreateLogger(&output, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stdout, true, slog.LevelDebug)
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
@@ -689,11 +689,8 @@ func TestLargeStream(t *testing.T) {
 		{"normal", string(data), "梨园弟子白发新，椒房阿监青娥老。\n\n", "天长地久有时尽，此恨绵绵无绝期。\n"},
 	}
 
-	// var output strings.Builder
-
-	util.Logger.SetLevel(slog.LevelDebug)
-	// util.Log.SetOutput(&output)
-	util.Logger.SetOutput(os.Stdout)
+	// util.Logger.CreateLogger(&output, true, slog.LevelDebug)
+	util.Logger.CreateLogger(os.Stdout, true, slog.LevelDebug)
 
 	emu := NewEmulator3(80, 40, 40)
 
@@ -739,9 +736,8 @@ func TestExcludeHandler(t *testing.T) {
 
 	// var output strings.Builder
 
-	util.Logger.SetLevel(slog.LevelDebug)
-	// util.Log.SetOutput(&output)
-	util.Logger.SetOutput(os.Stdout)
+	// util.Logger.CreateLogger(&output, true, slog.LevelDebug)
+	util.Logger.CreateLogger(os.Stdout, true, slog.LevelDebug)
 
 	emu := NewEmulator3(80, 40, 40)
 
