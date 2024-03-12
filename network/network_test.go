@@ -252,26 +252,26 @@ func TestConnectionClientFail(t *testing.T) {
 
 func TestConnectionReadWrite(t *testing.T) {
 	title := "connection read/write"
-	ip := "localhost"
+	ip := ""
 	port := "8080"
 
 	message := []string{"a good news from udp client.", "天下风云出我辈，一入江湖岁月催。"}
 
-	var wg sync.WaitGroup
-	server := NewConnection(ip, port)
-
 	var output strings.Builder
 	util.Logger.CreateLogger(&output, true, slog.LevelDebug)
+
+	var wg sync.WaitGroup
+	server := NewConnection(ip, port)
 
 	if server == nil {
 		t.Errorf("%q server should not return nil.\n", title)
 		return
 	}
-	// fmt.Printf("#test server listen on =%s\n", server.sock().LocalAddr())
+	// fmt.Printf("#test server listen on =%s\n", server.sock().(*net.UDPConn).LocalAddr())
 
 	key := server.key
 	client := NewConnectionClient(key.String(), ip, port)
-	// fmt.Printf("#test client=%s\n", client.sock().LocalAddr())
+	// fmt.Printf("#test client=%s\n", client.sock().(*net.UDPConn).LocalAddr())
 
 	for i := range message {
 		sendErr := client.send(message[i], false)
@@ -288,15 +288,16 @@ func TestConnectionReadWrite(t *testing.T) {
 			output.Reset()
 			// fmt.Printf("#test recv \n")
 			payload, _, _ := server.Recv(1)
-			// fmt.Printf("#test recv payload=%q\n", payload)
+			// payload, raddr, err := server.Recv(1)
+			// fmt.Printf("#test recv payload=%q, addr=%s, error=%s\n", payload, raddr, err)
 			if len(payload) == 0 || message[i] != payload {
 				t.Errorf("%q expect %q, got %q\n", title, message[i], payload)
 			} else {
-				// t.Logf("%q expect %q, got %q\n", title, message[i], payload)
+				t.Logf("%q expect %q, got %q\n", title, message[i], payload)
 				if i == 0 {
 					got := output.String()
 					expect := "server now attached to client"
-					// fmt.Println("got=", got)
+					fmt.Println("got=", got)
 					if !strings.Contains(got, expect) {
 						t.Errorf("%q firt recv() expect \n%q, got \n%q\n", title, expect, got)
 					}
