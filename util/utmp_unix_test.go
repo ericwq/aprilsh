@@ -67,7 +67,8 @@ func TestCheckUnattachedUtmpx(t *testing.T) {
 	// fmt.Printf("#test CheckUnattachedUtmpx() after add an record. fake host=%s, ignoreHost=%s\n",
 	// 	fakeHost, ignoreHost)
 	ret := AddUtmpx(pts, fakeHost) // the go test can't give the required utmps privilege
-	if !ret {
+	ret2 := ClearUtmpx(pts)
+	if !ret || !ret2 {
 		if user.Username != "root" {
 			t.Skip(msg)
 		} else {
@@ -82,7 +83,7 @@ func TestCheckUnattachedUtmpx(t *testing.T) {
 	}
 
 	// clean the test data
-	ret = ClearUtmpx(pts)
+	// ret = ClearUtmpx(pts)
 	if !ret {
 		t.Errorf("#test CheckUnattachedUtmpx() ClearUtmpx() return %t, %s\n", ret, msg)
 	}
