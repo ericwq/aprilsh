@@ -499,7 +499,7 @@ func (c *Connection) tryBind(desireIp string, portLow, portHigh int) bool {
 			return false
 		}
 
-		// fmt.Printf("#tryBind %d-%d, ladd=%q\n", i, searchHigh, ladd)
+		// fmt.Printf("#tryBind %d-%d, ladd=%q\n", i, searchHigh, localAddr)
 		conn, err := lc.ListenPacket(context.Background(), NETWORK, localAddr.String())
 		if err != nil {
 			if i == searchHigh { // last port to search

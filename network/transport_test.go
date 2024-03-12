@@ -24,14 +24,14 @@ import (
 func TestTransportClientSend(t *testing.T) {
 	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
 	initialRemoteSrv := &statesync.UserStream{}
-	desiredIp := "localhost"
+	desiredIp := ""
 	desiredPort := "6000"
 	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
 
 	initialState := &statesync.UserStream{}
 	initialRemote, _ := statesync.NewComplete(80, 40, 40)
 	keyStr := server.connection.getKey() // get the key from server
-	ip := "localhost"
+	ip := ""
 	port := "6000"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
@@ -82,14 +82,14 @@ func TestTransportClientSend(t *testing.T) {
 func TestTransportServerSend(t *testing.T) {
 	completeTerminal, _ := statesync.NewComplete(80, 5, 0)
 	blank := &statesync.UserStream{}
-	desiredIp := "localhost"
+	desiredIp := ""
 	desiredPort := "6010"
 	server := NewTransportServer(completeTerminal, blank, desiredIp, desiredPort)
 
 	initialState := &statesync.UserStream{}
 	initialRemote, _ := statesync.NewComplete(80, 5, 0)
 	keyStr := server.connection.getKey() // get the key from server
-	ip := "localhost"
+	ip := ""
 	port := "6010"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
@@ -169,7 +169,7 @@ func TestTransportServerSend(t *testing.T) {
 func TestTransportRecvError(t *testing.T) {
 	completeTerminal, _ := statesync.NewComplete(80, 5, 0)
 	blank := &statesync.UserStream{}
-	desiredIp := "localhost"
+	desiredIp := ""
 	desiredPort := "6011"
 	server := NewTransportServer(completeTerminal, blank, desiredIp, desiredPort)
 
@@ -189,14 +189,14 @@ func TestTransportRecvError(t *testing.T) {
 func TestTransportRecvVersionError(t *testing.T) {
 	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
 	initialRemoteSrv := &statesync.UserStream{}
-	desiredIp := "localhost"
+	desiredIp := ""
 	desiredPort := "6002"
 	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
 
 	initialState := &statesync.UserStream{}
 	initialRemote, _ := statesync.NewComplete(80, 40, 40)
 	keyStr := server.connection.getKey() // get the key from server
-	ip := "localhost"
+	ip := ""
 	port := "6002"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
@@ -232,14 +232,14 @@ func TestTransportRecvVersionError(t *testing.T) {
 func TestTransportRecvRepeat(t *testing.T) {
 	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
 	initialRemoteSrv := &statesync.UserStream{}
-	desiredIp := "localhost"
+	desiredIp := ""
 	desiredPort := "6003"
 	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
 
 	initialState := &statesync.UserStream{}
 	initialRemote, _ := statesync.NewComplete(80, 40, 40)
 	keyStr := server.connection.getKey() // get the key from server
-	ip := "localhost"
+	ip := ""
 	port := "6003"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
@@ -275,14 +275,14 @@ func TestTransportRecvRepeat(t *testing.T) {
 func TestTransportRecvNotFoundOld(t *testing.T) {
 	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
 	initialRemoteSrv := &statesync.UserStream{}
-	desiredIp := "localhost"
+	desiredIp := ""
 	desiredPort := "6004"
 	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
 
 	initialState := &statesync.UserStream{}
 	initialRemote, _ := statesync.NewComplete(80, 40, 40)
 	keyStr := server.connection.getKey() // get the key from server
-	ip := "localhost"
+	ip := ""
 	port := "6004"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
@@ -316,14 +316,14 @@ func TestTransportRecvNotFoundOld(t *testing.T) {
 func TestTransportRecvOverLimit(t *testing.T) {
 	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
 	initialRemoteSrv := &statesync.UserStream{}
-	desiredIp := "localhost"
+	desiredIp := ""
 	desiredPort := "6005"
 	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
 
 	initialState := &statesync.UserStream{}
 	initialRemote, _ := statesync.NewComplete(80, 40, 40)
 	keyStr := server.connection.getKey() // get the key from server
-	ip := "localhost"
+	ip := ""
 	port := "6005"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
@@ -374,14 +374,14 @@ func TestTransportRecvOverLimit(t *testing.T) {
 func TestTransportRecvOverLimit2(t *testing.T) {
 	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
 	initialRemoteSrv := &statesync.UserStream{}
-	desiredIp := "localhost"
+	desiredIp := ""
 	desiredPort := "6005"
 	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
 
 	initialState := &statesync.UserStream{}
 	initialRemote, _ := statesync.NewComplete(80, 40, 40)
 	keyStr := server.connection.getKey() // get the key from server
-	ip := "localhost"
+	ip := ""
 	port := "6005"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
@@ -433,14 +433,14 @@ func TestTransportRecvOverLimit2(t *testing.T) {
 func TestTransportRecvOutOfOrder(t *testing.T) {
 	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
 	initialRemoteSrv := &statesync.UserStream{}
-	desiredIp := "localhost"
+	desiredIp := ""
 	desiredPort := "6026"
 	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
 
 	initialState := &statesync.UserStream{}
 	initialRemote, _ := statesync.NewComplete(80, 40, 40)
 	keyStr := server.connection.getKey() // get the key from server
-	ip := "localhost"
+	ip := ""
 	port := "6026"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 
@@ -491,7 +491,7 @@ func TestTransportRecvOutOfOrder(t *testing.T) {
 func TestClientShutdown(t *testing.T) {
 	completeTerminal, _ := statesync.NewComplete(80, 5, 0)
 	blank := &statesync.UserStream{}
-	desiredIp := "localhost"
+	desiredIp := ""
 	desiredPort := "60100"
 	server := NewTransportServer(completeTerminal, blank, desiredIp, desiredPort)
 
@@ -500,7 +500,7 @@ func TestClientShutdown(t *testing.T) {
 	initialState := &statesync.UserStream{}
 	initialRemote, _ := statesync.NewComplete(80, 5, 0)
 	keyStr := server.connection.getKey() // get the key from server
-	ip := "localhost"
+	ip := ""
 	port := "60100"
 	client := NewTransportClient(initialState, initialRemote, keyStr, ip, port)
 

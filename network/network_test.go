@@ -293,11 +293,11 @@ func TestConnectionReadWrite(t *testing.T) {
 			if len(payload) == 0 || message[i] != payload {
 				t.Errorf("%q expect %q, got %q\n", title, message[i], payload)
 			} else {
-				t.Logf("%q expect %q, got %q\n", title, message[i], payload)
+				// t.Logf("%q expect %q, got %q\n", title, message[i], payload)
 				if i == 0 {
 					got := output.String()
 					expect := "server now attached to client"
-					fmt.Println("got=", got)
+					// fmt.Println("got=", got)
 					if !strings.Contains(got, expect) {
 						t.Errorf("%q firt recv() expect \n%q, got \n%q\n", title, expect, got)
 					}
@@ -755,7 +755,7 @@ func (mc *mockUdpConn) SetWriteDeadline(t time.Time) error {
 func TestSendBranch(t *testing.T) {
 	// prepare the client and server connection for the test
 	title := "detect server detached from client"
-	ip := "localhost"
+	ip := ""
 	port := "8080"
 
 	server := NewConnection(ip, port)
@@ -1021,8 +1021,13 @@ func (m *mockSession) Encrypt(plainText *encrypt.Message) []byte {
 func TestRecvCongestionPacket(t *testing.T) {
 	// prepare the client and server connection
 	title := "receive congestion packet branch"
-	ip := "localhost"
+	ip := ""
 	port := "8080"
+
+	// intercept server log
+	var output strings.Builder
+	// util.Logger.CreateLogger(&output, true, slog.LevelDebug)
+	util.Logger.CreateLogger(&output, false, util.LevelTrace)
 
 	server := NewConnection(ip, port)
 	defer server.sock().Close()
@@ -1044,10 +1049,6 @@ func TestRecvCongestionPacket(t *testing.T) {
 	client.send(msg0, false)
 	time.Sleep(time.Millisecond * 20)
 
-	// intercept server log
-	var output strings.Builder
-	util.Logger.CreateLogger(&output, true, slog.LevelDebug)
-
 	// save old congestionFunc
 	oldCF := congestionFunc
 	// mock the congestion case
@@ -1055,27 +1056,25 @@ func TestRecvCongestionPacket(t *testing.T) {
 		return true
 	}
 	server.Recv(1)
+	// restore congestionFunc
+	congestionFunc = oldCF
 
 	// validate the result
 	expect := "#recvOne received explicit congestion notification"
 	got := output.String()
 	if !strings.Contains(got, expect) {
-		t.Errorf("%q expect \n%q, got \n%q\n", title, expect, got)
+		t.Errorf("%q expect \n%q, got \n%s\n", title, expect, got)
 	}
 
 	// if server.savedTimestamp <= 0 {
 	// 	t.Errorf("%q savedTimestamp should be greater than zero, it's %d\n", title, server.savedTimestamp)
 	// }
-
-	// restor the logFunc
-	// logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-	congestionFunc = oldCF
 }
 
 func TestRecvSRTT(t *testing.T) {
 	// prepare the client and server connection
 	title := "receive packet to calculate SRTT/RTTVAR"
-	ip := "localhost"
+	ip := ""
 	port := "8080"
 
 	server := NewConnection(ip, port)
@@ -1183,7 +1182,7 @@ func TestServerRecvTimeout(t *testing.T) {
 
 func TestConnectionRecvSeqFail(t *testing.T) {
 	title := "connection recv seq fail"
-	ip := "localhost"
+	ip := ""
 	port := "60800"
 
 	message := []string{"first message."}

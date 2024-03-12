@@ -375,7 +375,7 @@ func TestSenderWaitTime(t *testing.T) {
 func TestSenderSendEmptyAckShutdown(t *testing.T) {
 	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
 	initialRemoteSrv := &statesync.UserStream{}
-	desiredIp := "localhost"
+	desiredIp := ""
 	desiredPort := "6100"
 	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
 
@@ -492,7 +492,7 @@ func TestSenderSendToReceiverFail(t *testing.T) {
 func TestSenderSendToReceiverShutdown(t *testing.T) {
 	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
 	initialRemoteSrv := &statesync.UserStream{}
-	desiredIp := "localhost"
+	desiredIp := ""
 	desiredPort := "6103"
 	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
 
@@ -582,7 +582,7 @@ func TestSenderTickSendToReceiverFail(t *testing.T) {
 func TestSenderTickVerify(t *testing.T) {
 	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
 	initialRemoteSrv := &statesync.UserStream{}
-	desiredIp := "localhost"
+	desiredIp := ""
 	desiredPort := "6005"
 	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
 
@@ -656,7 +656,7 @@ func TestSenderTickVerify(t *testing.T) {
 func TestSenderSendInterval(t *testing.T) {
 	initialStateSrv, _ := statesync.NewComplete(80, 40, 40)
 	initialRemoteSrv := &statesync.UserStream{}
-	desiredIp := "localhost"
+	desiredIp := ""
 	desiredPort := "6005"
 	server := NewTransportServer(initialStateSrv, initialRemoteSrv, desiredIp, desiredPort)
 
