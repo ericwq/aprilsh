@@ -33,7 +33,13 @@ go build -cover -coverpkg=$PKGS -ldflags="-s -w
 # go build -race -cover -coverpkg=$PKGS -o ~/.local/bin/apshd .
 echo "build server end  : $(date '+%F %T')"
 echo "output server to  : ~/.local/bin/apshd"
-echo "copy server to    : /usr/bin/apshd"
+
+_osType=$(uname)
+if [ "${_osType}" == 'Linux' ]
+then
+  echo "copy server to    : /usr/bin/apshd"
+  sudo cp ~/.local/bin/apshd /usr/bin/apshd
+fi
+
 echo "run with          : GOCOVERDIR=./coverage/int apshd -verbose 2> /tmp/apshd.log"
-sudo cp ~/.local/bin/apshd /usr/bin/apshd
 export APRILSH_APSHD_PATH=~/.local/bin/apshd
