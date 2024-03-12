@@ -235,7 +235,7 @@ func (conf *Config) buildConfig() (string, bool) {
 			fmt.Printf("The client-supplied environment %s specifies "+
 				"the character set \"%s\".\n", clientType, clientCharset)
 
-			return "", false
+			return "UTF-8 locale fail.", false
 		}
 	}
 	return "", true
@@ -761,9 +761,10 @@ func (m *mainSrv) startChild(req string, addr *net.UDPAddr, conf2 Config) {
 	// }(&conf2, m.exChan, m.whChan)
 
 	// timeout read key from worker
-	timer := time.NewTimer(time.Duration(50) * time.Millisecond)
+	timer := time.NewTimer(time.Duration(90) * time.Millisecond)
 	select {
 	case <-timer.C:
+		delete(m.workers, p) // clear failed worker
 		resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "get key timeout")
 		util.Logger.Warn("start child got key timeout", "request", req, "response", resp)
 		return
@@ -1246,6 +1247,9 @@ func startChildProcess(conf *Config) (*os.Process, error) {
 		return nil, err
 	}
 	env = append(env, "SHELL="+shell)
+
+	// macOS need this, anyway we set it for both linux and macOS
+	env = append(env, "LANG=en_US.UTF-8")
 
 	// clear STY environment variable so GNU screen regards us as top level
 	// os.Unsetenv("STY")

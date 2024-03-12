@@ -7,6 +7,8 @@
 package main
 
 import (
+	"os"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -140,5 +142,130 @@ func TestWarnUnattached0(t *testing.T) {
 	if len(got) != 0 {
 		t.Logf("%s\n", got)
 		t.Errorf("#test warnUnattached() zero match expect 0, got %d\n", len(got))
+	}
+}
+
+func TestBuildConfig(t *testing.T) {
+	tc := []struct {
+		label string
+		conf0 Config
+		conf2 Config
+		hint  string
+		ok    bool
+	}{
+		{
+			"UTF-8 locale",
+			Config{
+				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
+				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
+				commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
+			},
+			Config{
+				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
+				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
+				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: false,
+			},
+			"", true,
+		},
+		{
+			"empty commandArgv",
+			Config{
+				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
+				locales:     localeFlag{"LC_ALL": "en_US.UTF-8"},
+				commandPath: "", commandArgv: []string{}, withMotd: false,
+			},
+			Config{
+				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
+				locales:     localeFlag{"LC_ALL": "en_US.UTF-8"},
+				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
+				flowControl: _FC_DEF_BASH_SHELL,
+			},
+			// macOS: /bin/zsh
+			// alpine: /bin/ash
+			"", true,
+		},
+		// {
+		// 	"non UTF-8 locale",
+		// 	Config{
+		// 		version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
+		// 		locales: localeFlag{"LC_ALL": "zh_CN.GB2312", "LANG": "zh_CN.GB2312"},
+		// 		commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
+		// 	}, // TODO GB2312 is not available in apline linux
+		// 	Config{
+		// 		version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
+		// 		locales: localeFlag{},
+		// 		commandPath: "/bin/sh", commandArgv: []string{"*sh"}, withMotd: false,
+		// 	},
+		// 	errors.New("UTF-8 locale fail."),
+		// },
+		{
+			"commandArgv is one string",
+			Config{
+				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
+				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
+				commandPath: "", commandArgv: []string{"/bin/sh"}, withMotd: false,
+			},
+			Config{
+				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
+				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
+				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: false,
+			},
+			"", true,
+		},
+		{
+			"missing SSH_CONNECTION",
+			Config{
+				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "",
+				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
+				commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
+			},
+			Config{
+				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "",
+				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
+				commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
+			},
+			"Warning: SSH_CONNECTION not found; binding to any interface.", false,
+		},
+	}
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+
+			// set SHELL for empty commandArgv
+			if len(v.conf0.commandArgv) == 0 {
+				shell := os.Getenv("SHELL")
+				defer os.Setenv("SHELL", shell)
+				os.Unsetenv("SHELL")
+
+				// getShell() will fail
+				defer func() {
+					v.conf0.flowControl = 0
+				}()
+
+				v.conf0.flowControl = _FC_DEF_BASH_SHELL
+			}
+
+			if v.conf0.server { // unset SSH_CONNECTION, getSSHip will return false
+				shell := os.Getenv("SSH_CONNECTION")
+				defer os.Setenv("SSH_CONNECTION", shell)
+				os.Unsetenv("SSH_CONNECTION")
+			}
+
+			// validate buildConfig
+			hint, ok := v.conf0.buildConfig()
+			v.conf0.serve = nil // disable the serve func for testing
+
+			if hint != v.hint || ok != v.ok {
+				t.Errorf("#test buildConfig got hint=%s, ok=%t, expect hint=%s, ok=%t\n", hint, ok, v.hint, v.ok)
+			}
+			if !reflect.DeepEqual(v.conf0, v.conf2) {
+				t.Errorf("#test buildConfig got \n%+v, expect \n%+v\n", v.conf0, v.conf2)
+			}
+			// reset the environment
+			util.ClearLocaleVariables()
+
+			// restore logW
+			// logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
+		})
 	}
 }

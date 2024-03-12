@@ -499,143 +499,6 @@ func TestGetShell(t *testing.T) {
 	}
 }
 
-func TestBuildConfig(t *testing.T) {
-	tc := []struct {
-		label string
-		conf0 Config
-		conf2 Config
-		hint  string
-		ok    bool
-	}{
-		{
-			"UTF-8 locale",
-			Config{
-				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
-				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
-				commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
-			},
-			Config{
-				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
-				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
-				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: false,
-			},
-			"", true,
-		},
-		{
-			"empty commandArgv",
-			Config{
-				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
-				locales:     localeFlag{"LC_ALL": "en_US.UTF-8"},
-				commandPath: "", commandArgv: []string{}, withMotd: false,
-			},
-			Config{
-				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
-				locales:     localeFlag{"LC_ALL": "en_US.UTF-8"},
-				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
-				flowControl: _FC_DEF_BASH_SHELL,
-			},
-			// macOS: /bin/zsh
-			// alpine: /bin/ash
-			"", true,
-		},
-		// {
-		// 	"non UTF-8 locale",
-		// 	Config{
-		// 		version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
-		// 		locales: localeFlag{"LC_ALL": "zh_CN.GB2312", "LANG": "zh_CN.GB2312"},
-		// 		commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
-		// 	}, // TODO GB2312 is not available in apline linux
-		// 	Config{
-		// 		version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
-		// 		locales: localeFlag{},
-		// 		commandPath: "/bin/sh", commandArgv: []string{"*sh"}, withMotd: false,
-		// 	},
-		// 	errors.New("UTF-8 locale fail."),
-		// },
-		{
-			"commandArgv is one string",
-			Config{
-				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
-				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
-				commandPath: "", commandArgv: []string{"/bin/sh"}, withMotd: false,
-			},
-			Config{
-				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
-				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
-				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: false,
-			},
-			"", true,
-		},
-		{
-			"missing SSH_CONNECTION",
-			Config{
-				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "",
-				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
-				commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
-			},
-			Config{
-				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "",
-				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
-				commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
-			},
-			"Warning: SSH_CONNECTION not found; binding to any interface.", false,
-		},
-	}
-
-	// change the tc[1].conf2 value according to runtime.GOOS
-	switch runtime.GOOS {
-	case "darwin":
-		tc[1].conf2.commandArgv = []string{"-zsh"}
-		tc[1].conf2.commandPath = "/bin/zsh"
-		// case "linux":
-		// 	tc[1].conf2.commandArgv = []string{"-ash"}
-		// 	tc[1].conf2.commandPath = "/bin/ash"
-	}
-
-	for _, v := range tc {
-		t.Run(v.label, func(t *testing.T) {
-
-			// set SHELL for empty commandArgv
-			if len(v.conf0.commandArgv) == 0 {
-				shell := os.Getenv("SHELL")
-				defer os.Setenv("SHELL", shell)
-				os.Unsetenv("SHELL")
-
-				if runtime.GOOS == "linux" {
-					// getShell() will fail
-					defer func() {
-						v.conf0.flowControl = 0
-					}()
-
-					v.conf0.flowControl = _FC_DEF_BASH_SHELL
-				}
-			}
-
-			if v.conf0.server { // unset SSH_CONNECTION, getSSHip will return false
-				shell := os.Getenv("SSH_CONNECTION")
-				defer os.Setenv("SSH_CONNECTION", shell)
-				os.Unsetenv("SSH_CONNECTION")
-			}
-
-			// validate buildConfig
-			hint, ok := v.conf0.buildConfig()
-			v.conf0.serve = nil // disable the serve func for testing
-
-			if hint != v.hint || ok != v.ok {
-				t.Errorf("#test buildConfig got hint=%s, ok=%t, expect hint=%s, ok=%t\n", hint, ok, v.hint, v.ok)
-			}
-			if !reflect.DeepEqual(v.conf0, v.conf2) {
-				t.Errorf("#test buildConfig got \n%+v, expect \n%+v\n", v.conf0, v.conf2)
-			}
-			// reset the environment
-			util.ClearLocaleVariables()
-
-			// restore logW
-			// logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-		})
-	}
-}
-
 func TestParseFlagsError(t *testing.T) {
 	tests := []struct {
 		args   []string
@@ -834,7 +697,7 @@ func TestMainSrvStart(t *testing.T) {
 		conf     Config
 	}{
 		{
-			"start normally", 100, frontend.AprilshMsgOpen + "7101,", 50,
+			"start normally", 100, frontend.AprilshMsgOpen + "7101,", 90,
 			Config{
 				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -879,10 +742,10 @@ func TestMainSrvStart(t *testing.T) {
 			}
 
 			srv.wait()
-			e, err := os.Executable()
-			fmt.Fprintf(os.Stderr, "Executable=%s, err=%s\n", e, err)
-			fmt.Fprintf(os.Stderr, "Args[0]   =%s\n", os.Args[0])
-			fmt.Fprintf(os.Stderr, "CWD       =%s\n", os.Args[0])
+			// e, err := os.Executable()
+			// fmt.Fprintf(os.Stderr, "Executable=%s, err=%s\n", e, err)
+			// fmt.Fprintf(os.Stderr, "Args[0]   =%s\n", os.Args[0])
+			// fmt.Fprintf(os.Stderr, "CWD       =%s\n", os.Args[0])
 		})
 	}
 }
@@ -1122,79 +985,79 @@ func TestListenFail(t *testing.T) {
 	}
 }
 
-func testRunFail(t *testing.T) {
-	tc := []struct {
-		label  string
-		pause  int    // pause between client send and read
-		resp   string // response client read
-		finish int    // pause before shutdown message
-		conf   Config
-	}{
-		{
-			"worker failed with wrong port number", 100, frontend.AprilshMsgOpen + "7101,mock key from mockRunWorker2\n", 30,
-			Config{
-				version: false, server: true, verbose: 1, desiredIP: "", desiredPort: "7100",
-				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
-				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
-				addSource: false,
-			},
-		},
-	}
-
-	for _, v := range tc {
-		t.Run(v.label, func(t *testing.T) {
-			// intercept stdout
-			saveStdout := os.Stdout
-			r, w, _ := os.Pipe()
-			os.Stdout = w
-			// initLog()
-
-			// util.Logger.CreateLogger(w, true, slog.LevelDebug)
-			util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
-
-			// srv := newMainSrv(&v.conf, mockRunWorker2)
-			srv := newMainSrv(&v.conf)
-
-			// send shutdown message after some time
-			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
-			go func() {
-				<-timer1.C
-				// prepare to shudown the mainSrv
-				// syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
-				srv.downChan <- true
-				// stop the worker correctly, because mockRunWorker2 failed to
-				// do it on purpose.
-				port, _ := strconv.Atoi(v.conf.desiredPort)
-				srv.exChan <- fmt.Sprintf("%d", port+1)
-				util.Logger.Debug("send port to exChan", "port", port+1)
-			}()
-			// fmt.Println("#test start timer for shutdown")
-
-			srv.start(&v.conf)
-
-			// mock client operation
-			resp := mockClient(v.conf.desiredPort, v.pause, frontend.AprilshMsgOpen)
-
-			// validate the result.
-			if resp != v.resp {
-				t.Errorf("#test run expect %q got %q\n", v.resp, resp)
-			}
-
-			srv.wait()
-
-			// restore stdout
-			w.Close()
-			io.ReadAll(r)
-			os.Stdout = saveStdout
-			r.Close()
-		})
-	}
-
-	// test case for run() without connection
-
-	srv2 := &mainSrv{}
-	srv2.run(&Config{})
-}
+// func testRunFail(t *testing.T) {
+// 	tc := []struct {
+// 		label  string
+// 		pause  int    // pause between client send and read
+// 		resp   string // response client read
+// 		finish int    // pause before shutdown message
+// 		conf   Config
+// 	}{
+// 		{
+// 			"worker failed with wrong port number", 100, frontend.AprilshMsgOpen + "7101,mock key from mockRunWorker2\n", 30,
+// 			Config{
+// 				version: false, server: true, verbose: 1, desiredIP: "", desiredPort: "7100",
+// 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
+// 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
+// 				addSource: false,
+// 			},
+// 		},
+// 	}
+//
+// 	for _, v := range tc {
+// 		t.Run(v.label, func(t *testing.T) {
+// 			// intercept stdout
+// 			saveStdout := os.Stdout
+// 			r, w, _ := os.Pipe()
+// 			os.Stdout = w
+// 			// initLog()
+//
+// 			// util.Logger.CreateLogger(w, true, slog.LevelDebug)
+// 			util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
+//
+// 			// srv := newMainSrv(&v.conf, mockRunWorker2)
+// 			srv := newMainSrv(&v.conf)
+//
+// 			// send shutdown message after some time
+// 			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
+// 			go func() {
+// 				<-timer1.C
+// 				// prepare to shudown the mainSrv
+// 				// syscall.Kill(syscall.Getpid(), syscall.SIGTERM)
+// 				srv.downChan <- true
+// 				// stop the worker correctly, because mockRunWorker2 failed to
+// 				// do it on purpose.
+// 				port, _ := strconv.Atoi(v.conf.desiredPort)
+// 				srv.exChan <- fmt.Sprintf("%d", port+1)
+// 				util.Logger.Debug("send port to exChan", "port", port+1)
+// 			}()
+// 			// fmt.Println("#test start timer for shutdown")
+//
+// 			srv.start(&v.conf)
+//
+// 			// mock client operation
+// 			resp := mockClient(v.conf.desiredPort, v.pause, frontend.AprilshMsgOpen)
+//
+// 			// validate the result.
+// 			if resp != v.resp {
+// 				t.Errorf("#test run expect %q got %q\n", v.resp, resp)
+// 			}
+//
+// 			srv.wait()
+//
+// 			// restore stdout
+// 			w.Close()
+// 			io.ReadAll(r)
+// 			os.Stdout = saveStdout
+// 			r.Close()
+// 		})
+// 	}
+//
+// 	// test case for run() without connection
+//
+// 	srv2 := &mainSrv{}
+// 	srv2.run(&Config{})
+// }
 
 func TestRunFail2(t *testing.T) {
 	tc := []struct {
@@ -1448,95 +1311,95 @@ func TestRunWorkerKillSignal(t *testing.T) {
 	}
 }
 
-func testRunWorkerFail(t *testing.T) {
-	tc := []struct {
-		label string
-		conf  Config
-	}{
-		{
-			"openPTS fail", Config{
-				version: false, server: true, flowControl: _FC_OPEN_PTS_FAIL, desiredIP: "", desiredPort: "7100",
-				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, term: "kitty",
-				commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false,
-			},
-		},
-		{
-			"startShell fail", Config{
-				version: false, server: true, flowControl: _FC_SKIP_START_SHELL, desiredIP: "", desiredPort: "7200",
-				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, term: "kitty",
-				commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false,
-			},
-		},
-		// {
-		// 	"shell.Wait fail", Config{
-		// 		version: false, server: true, verbose: _VERBOSE_SKIP_READ_PIPE, desiredIP: "", desiredPort: "7300",
-		// 		locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, term: "kitty",
-		// 		commandPath: "echo", commandArgv: []string{"2"}, withMotd: false,
-		// 	},
-		// },
-	}
-
-	exChan := make(chan string, 1)
-	whChan := make(chan workhorse, 1)
-
-	for _, v := range tc {
-		t.Run(v.label, func(t *testing.T) {
-
-			// intercept log output
-			util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
-
-			var wg sync.WaitGroup
-			var hasWorkhorse bool
-			v.conf.serve = mockServe
-			if strings.Contains(v.label, "shell.Wait fail") {
-				v.conf.commandPath, _ = exec.LookPath(v.conf.commandPath)
-				hasWorkhorse = true // last one has effective work horse.
-			}
-
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				<-exChan       // get the key
-				wh := <-whChan // get the workhorse
-				if hasWorkhorse {
-					if wh.child == nil {
-						t.Errorf("#test runWorker fail should return empty workhorse\n")
-					}
-					wh.child.Kill()
-				} else if strings.Contains(v.label, "openPTS fail") {
-					if wh.child != nil {
-						t.Errorf("#test runWorker fail should return empty workhorse\n")
-					}
-					msg := <-exChan // get the done message
-					if msg != v.conf.desiredPort {
-						t.Errorf("#test runWorker fail should return %s, got %s\n", v.conf.desiredPort, msg)
-					}
-				} else if strings.Contains(v.label, "startShell fail") {
-					if wh.child != nil {
-						t.Errorf("#test runWorker fail should return empty workhorse\n")
-					}
-					msg := <-exChan // get the done message
-					if msg != v.conf.desiredPort+":shutdown" {
-						t.Errorf("#test runWorker fail should return %s, got %s\n", v.conf.desiredPort, msg)
-					}
-				}
-			}()
-
-			// TODO disable it for the time being
-			// if hasWorkhorse {
-			// 	if err := runWorker(&v.conf, exChan, whChan); err != nil {
-			// 		t.Errorf("#test runWorker should not report error.\n")
-			// 	}
-			// } else {
-			// 	if err := runWorker(&v.conf, exChan, whChan); err == nil {
-			// 		t.Errorf("#test runWorker should report error.\n")
-			// 	}
-			// }
-
-			wg.Wait()
-		})
-	}
-}
+// func testRunWorkerFail(t *testing.T) {
+// 	tc := []struct {
+// 		label string
+// 		conf  Config
+// 	}{
+// 		{
+// 			"openPTS fail", Config{
+// 				version: false, server: true, flowControl: _FC_OPEN_PTS_FAIL, desiredIP: "", desiredPort: "7100",
+// 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, term: "kitty",
+// 				commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false,
+// 			},
+// 		},
+// 		{
+// 			"startShell fail", Config{
+// 				version: false, server: true, flowControl: _FC_SKIP_START_SHELL, desiredIP: "", desiredPort: "7200",
+// 				locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, term: "kitty",
+// 				commandPath: "/bin/xxxsh", commandArgv: []string{"-sh"}, withMotd: false,
+// 			},
+// 		},
+// 		// {
+// 		// 	"shell.Wait fail", Config{
+// 		// 		version: false, server: true, verbose: _VERBOSE_SKIP_READ_PIPE, desiredIP: "", desiredPort: "7300",
+// 		// 		locales: localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"}, term: "kitty",
+// 		// 		commandPath: "echo", commandArgv: []string{"2"}, withMotd: false,
+// 		// 	},
+// 		// },
+// 	}
+//
+// 	exChan := make(chan string, 1)
+// 	whChan := make(chan workhorse, 1)
+//
+// 	for _, v := range tc {
+// 		t.Run(v.label, func(t *testing.T) {
+//
+// 			// intercept log output
+// 			util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+//
+// 			var wg sync.WaitGroup
+// 			var hasWorkhorse bool
+// 			v.conf.serve = mockServe
+// 			if strings.Contains(v.label, "shell.Wait fail") {
+// 				v.conf.commandPath, _ = exec.LookPath(v.conf.commandPath)
+// 				hasWorkhorse = true // last one has effective work horse.
+// 			}
+//
+// 			wg.Add(1)
+// 			go func() {
+// 				defer wg.Done()
+// 				<-exChan       // get the key
+// 				wh := <-whChan // get the workhorse
+// 				if hasWorkhorse {
+// 					if wh.child == nil {
+// 						t.Errorf("#test runWorker fail should return empty workhorse\n")
+// 					}
+// 					wh.child.Kill()
+// 				} else if strings.Contains(v.label, "openPTS fail") {
+// 					if wh.child != nil {
+// 						t.Errorf("#test runWorker fail should return empty workhorse\n")
+// 					}
+// 					msg := <-exChan // get the done message
+// 					if msg != v.conf.desiredPort {
+// 						t.Errorf("#test runWorker fail should return %s, got %s\n", v.conf.desiredPort, msg)
+// 					}
+// 				} else if strings.Contains(v.label, "startShell fail") {
+// 					if wh.child != nil {
+// 						t.Errorf("#test runWorker fail should return empty workhorse\n")
+// 					}
+// 					msg := <-exChan // get the done message
+// 					if msg != v.conf.desiredPort+":shutdown" {
+// 						t.Errorf("#test runWorker fail should return %s, got %s\n", v.conf.desiredPort, msg)
+// 					}
+// 				}
+// 			}()
+//
+// 			// TODO disable it for the time being
+// 			// if hasWorkhorse {
+// 			// 	if err := runWorker(&v.conf, exChan, whChan); err != nil {
+// 			// 		t.Errorf("#test runWorker should not report error.\n")
+// 			// 	}
+// 			// } else {
+// 			// 	if err := runWorker(&v.conf, exChan, whChan); err == nil {
+// 			// 		t.Errorf("#test runWorker should report error.\n")
+// 			// 	}
+// 			// }
+//
+// 			wg.Wait()
+// 		})
+// 	}
+// }
 
 func TestRunCloseFail(t *testing.T) {
 	tc := []struct {
