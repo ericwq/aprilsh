@@ -11,6 +11,7 @@ import (
 	"net"
 	"os"
 	"reflect"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -31,7 +32,7 @@ func TestPacket(t *testing.T) {
 		{"chinese message", uint64(0x7226) | DIRECTION_MASK, "\x42\x23\x64\x45大端字节序就和我们平时的写法顺序一样"},
 	}
 
-	// test NewPacket2 and toMessage
+	// test NewMessage and toMessage
 	for _, v := range tc {
 		m1 := encrypt.NewMessage(v.seqNonce, []byte(v.mixPayload))
 		p := NewPacketFrom(m1)
@@ -57,6 +58,7 @@ func TestPacket(t *testing.T) {
 	// test NewPacket func
 	for i, v := range tc2 {
 		p := NewPacket(v.direction, v.ts1+timestamp16(), v.ts2+timestamp16(), []byte(v.payload))
+		// fmt.Printf("p.seq=%d\n", p.seq)
 
 		if v.payload != string(p.payload) {
 			t.Errorf("%q expect payload %q, got %q\n", v.name, v.payload, p.payload)
@@ -70,8 +72,16 @@ func TestPacket(t *testing.T) {
 			t.Errorf("%q expect ts2-ts1 %d, got %d\n", v.name, v.ts2-v.ts1, p.timestampReply-p.timestamp)
 		}
 
-		if p.seq != uint64(i+1) {
-			t.Errorf("%q expect seq >0, got %d", v.name, p.seq)
+		switch runtime.GOOS {
+		case "linux":
+			// for linux, TestRecvCongestionPacket() will run before this test, thus change the value of seq
+			if p.seq != uint64(i+2) {
+				t.Errorf("%q expect seq >0, got %d", v.name, p.seq)
+			}
+		case "darwin":
+			if p.seq != uint64(i+1) {
+				t.Errorf("%q expect seq >0, got %d", v.name, p.seq)
+			}
 		}
 	}
 }
@@ -1016,59 +1026,6 @@ func (m *mockSession) Decrypt(text []byte) (*encrypt.Message, error) {
 
 func (m *mockSession) Encrypt(plainText *encrypt.Message) []byte {
 	return nil
-}
-
-func TestRecvCongestionPacket(t *testing.T) {
-	// prepare the client and server connection
-	title := "receive congestion packet branch"
-	ip := ""
-	port := "8080"
-
-	// intercept server log
-	var output strings.Builder
-	// util.Logger.CreateLogger(&output, true, slog.LevelDebug)
-	util.Logger.CreateLogger(&output, false, util.LevelTrace)
-
-	server := NewConnection(ip, port)
-	defer server.sock().Close()
-	if server == nil {
-		t.Errorf("%q server should not return nil.\n", title)
-		return
-	}
-
-	key := server.key
-	client := NewConnectionClient(key.String(), ip, port)
-	defer client.sock().Close()
-	if client == nil {
-		t.Errorf("%q client should not return nil.\n", title)
-	}
-
-	msg0 := "from client to server"
-	// client send a message to server, server receive it.
-	// this will initialize server remote address.
-	client.send(msg0, false)
-	time.Sleep(time.Millisecond * 20)
-
-	// save old congestionFunc
-	oldCF := congestionFunc
-	// mock the congestion case
-	congestionFunc = func(in byte) bool {
-		return true
-	}
-	server.Recv(1)
-	// restore congestionFunc
-	congestionFunc = oldCF
-
-	// validate the result
-	expect := "#recvOne received explicit congestion notification"
-	got := output.String()
-	if !strings.Contains(got, expect) {
-		t.Errorf("%q expect \n%q, got \n%s\n", title, expect, got)
-	}
-
-	// if server.savedTimestamp <= 0 {
-	// 	t.Errorf("%q savedTimestamp should be greater than zero, it's %d\n", title, server.savedTimestamp)
-	// }
 }
 
 func TestRecvSRTT(t *testing.T) {

@@ -662,7 +662,8 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 		return "", fmt.Errorf("datagram size=%d: %w", n, ErrRecvOversize)
 	}
 
-	// fmt.Printf("#recvOne flags=0x%x, MSG_TRUNC=0x%x, n=%d, oobn=%d, err=%p, raddr=%s\n", flags, unix.MSG_TRUNC, n, oobn, err, raddr)
+	// fmt.Printf("#recvOne flags=0x%x, MSG_TRUNC=0x%x, n=%d, oobn=%d, err=%p, raddr=%s\n",
+	// 	flags, unix.MSG_TRUNC, n, oobn, err, raddr)
 	// parse the optional ancillary data
 	ctrlMsgs, err := unix.ParseSocketControlMessage(oob[:oobn])
 	if err != nil {
@@ -670,7 +671,7 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 	}
 
 	// fmt.Printf("#recvOne ctrlMsgs=%v\n", ctrlMsgs)
-	// receive ECN
+	// receive ECN, macOS doesn't support ECN
 	congestionExperienced := false
 	for _, ctrlMsg := range ctrlMsgs {
 		if ctrlMsg.Header.Level == unix.IPPROTO_IP &&
