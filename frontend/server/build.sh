@@ -40,6 +40,11 @@ then
   echo "copy server to    : /usr/bin/apshd"
   sudo cp ~/.local/bin/apshd /usr/bin/apshd
 fi
+if [ "${_osType}" == 'Darwin' ]
+then
+	# run it for the first time for macOS
+  ~/.local/bin/apshd --version
+fi
 
 echo "run with          : GOCOVERDIR=./coverage/int apshd -verbose 2> /tmp/apshd.log"
 export APRILSH_APSHD_PATH=~/.local/bin/apshd
