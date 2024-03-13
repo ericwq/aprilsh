@@ -8,7 +8,7 @@ url="https://github.com/ericwq/aprilsh"
 arch="all"
 license="MIT"
 depends="$pkgname-client $pkgname-server"
-makedepends="go protoc utmps-dev"
+makedepends="go protoc utmps-dev ncurses ncurses-terminfo"
 subpackages="$pkgname-client $pkgname-server $pkgname-openrc"
 source="https://github.com/ericwq/aprilsh/releases/download/$pkgver/aprilsh-$pkgver.tar.gz
 		  apshd.initd"
@@ -89,7 +89,7 @@ client() {
 	#Allow this package to be installed at the same time as the listed packages, even if they have conflicting files.
 	replaces="$pkgname"
 	pkgdesc="$pkgname client"
-	depends="musl-locales"
+	depends="musl-locales ncurses ncurses-terminfo"
 	mkdir -p "$subpkgdir/usr/bin"
 	mv "$pkgdir/usr/bin/apsh" "$subpkgdir/usr/bin/"
 }
@@ -97,7 +97,7 @@ client() {
 server() {
 	replaces="$pkgname"
 	pkgdesc="$pkgname server"
-	depends="musl-locales utmps ncurses-terminfo wezterm-extra-terminfo openssh-server"
+	depends="musl-locales utmps ncurses ncurses-terminfo wezterm-extra-terminfo openssh-server"
 	mkdir -p "$subpkgdir/usr/bin"
 	mv "$pkgdir/usr/bin/apshd" "$subpkgdir/usr/bin/"
 }
