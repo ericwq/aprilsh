@@ -153,6 +153,15 @@ docker run --env TZ=Asia/Shanghai --tty --privileged --volume /sys/fs/cgroup:/sy
     --hostname openrc-port --name openrc-port -d -p 8022:22 \
     -p 8201:8101/udp -p 8202:8102/udp -p 8203:8103/udp openrc:0.1.0
 ```
+## add public key to remote server
+
+```sh
+ssh-keygen -t ed25519
+ssh-copy-id -i ~/.ssh/id_ed25519.pub root@localhost
+ssh-copy-id -i ~/.ssh/id_ed25519.pub ide@localhost
+ssh-add ~/.ssh/id_ed25519
+```
+
 ## reference
 
 - [How to build and install Alpine Linux package with newapkbuild](https://www.educative.io/answers/how-to-build-and-install-alpine-linux-package-with-newapkbuild)
