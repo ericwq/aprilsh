@@ -8,7 +8,7 @@ ENV container=docker
 ARG ROOT_PWD=inject_from_args
 ARG USER_PWD=inject_from_args
 ARG SSH_PUB_KEY
-ARG HOME=/home/ide
+ARG HOME=/home/eric
 
 # Enable init.
 RUN apk add --update --no-cache sudo openrc openssh-server utmps rsyslog tzdata htop \
@@ -41,17 +41,17 @@ RUN apk add --update --no-cache sudo openrc openssh-server utmps rsyslog tzdata 
 	&& apk del .build-dependencies
 
 # Create user/group 
-# ide/develop
+# eric/develop
 #
-RUN addgroup develop && adduser -D -h $HOME -s /bin/ash -G develop ide
-# RUN mkdir -p $GOPATH && chown -R ide:develop $GOPATH
-RUN echo 'ide ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/ide
+RUN addgroup develop && adduser -D -h $HOME -s /bin/ash -G develop eric
+# RUN mkdir -p $GOPATH && chown -R eric:develop $GOPATH
+RUN echo 'eric ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/eric
 
 
-USER ide:develop
+USER eric:develop
 WORKDIR $HOME
 
-# setup ssh for user ide
+# setup ssh for user eric
 # setup public key login for normal user
 #
 RUN mkdir -p $HOME/.ssh \
@@ -70,7 +70,7 @@ RUN rc-update add sshd boot \
 	/etc/ssh/sshd_config \
 	# && echo '%wheel ALL=(ALL) ALL' > /etc/sudoers.d/wheel \
 	# && ssh-keygen -A \
-	# && adduser ide wheel \
+	# && adduser eric wheel \
 	&& rm -rf /var/cache/apk/*
 
 # enable rsyslog 
@@ -90,12 +90,12 @@ RUN rc-update add rsyslog boot
 
 # enable root login, for debug dockerfile purpose.
 # set root password
-# set ide password
+# set eric password
 # set root public key login
 RUN mkdir -p /root/.ssh \
 	&& chmod 0700 /root/.ssh \
 	&& echo "root:${ROOT_PWD}" | chpasswd \
-	&& echo "ide:${USER_PWD}" | chpasswd \
+	&& echo "eric:${USER_PWD}" | chpasswd \
 	&& echo "$SSH_PUB_KEY" > /root/.ssh/authorized_keys
 
 VOLUME ["/sys/fs/cgroup"]
