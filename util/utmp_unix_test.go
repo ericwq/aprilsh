@@ -132,9 +132,9 @@ func init() {
 		id    int
 		pid   int
 	}{
-		{utmp.USER_PROCESS, PACKAGE_STRING + " [1220]", "pts/0", "root", 1, 1},
-		{utmp.USER_PROCESS, PACKAGE_STRING + " [1221]", "pts/2", getCurrentUser(), 51, 1221},
-		{utmp.DEAD_PROCESS, PACKAGE_STRING + " [1228]", "pts/3", getCurrentUser(), 751, 1228},
+		{utmp.USER_PROCESS, PACKAGE_STRING + " [1220]", "pts/3", "root", 1, 1},
+		{utmp.USER_PROCESS, PACKAGE_STRING + " [1221]", "pts/0", getCurrentUser(), 51, 1221},
+		{utmp.DEAD_PROCESS, PACKAGE_STRING + " [1228]", "pts/1", getCurrentUser(), 751, 1228},
 	}
 
 	for _, v := range data {
