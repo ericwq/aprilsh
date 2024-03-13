@@ -8,7 +8,7 @@ url="https://github.com/ericwq/aprilsh"
 arch="all"
 license="MIT"
 depends="$pkgname-client $pkgname-server"
-makedepends="go protoc utmps-dev ncurses ncurses-terminfo"
+makedepends="go protoc utmps-dev ncurses ncurses-terminfo musl-locales"
 subpackages="$pkgname-client $pkgname-server $pkgname-openrc"
 source="https://github.com/ericwq/aprilsh/releases/download/$pkgver/aprilsh-$pkgver.tar.gz
 		  apshd.initd"
