@@ -770,7 +770,6 @@ func TestFramebufferEqual(t *testing.T) {
 	var output strings.Builder
 
 	util.Logger.CreateLogger(&output, true, slog.LevelDebug)
-	// util.Logger.CreateLogger(os.Stdout, true, slog.LevelDebug)
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
@@ -811,7 +810,7 @@ func TestFramebufferEqual(t *testing.T) {
 				if !strings.Contains(trace, v.expectStr[i]) {
 					t.Errorf("%q EqualTrace() expect \n%s, \ngot \n%s\n", v.label, v.expectStr[i], trace)
 				}
-				t.Logf("%s\n", trace)
+				// t.Logf("%s\n", trace)
 			}
 		})
 	}
