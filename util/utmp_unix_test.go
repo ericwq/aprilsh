@@ -114,6 +114,15 @@ var (
 	utmpxMockData []*utmp.Utmpx
 )
 
+func getCurrentUser() string {
+	user, err := user.Current()
+	if err != nil {
+		fmt.Printf("Get current user error %s\n", err)
+		return ""
+	}
+	return user.Username
+}
+
 func init() {
 	data := []struct {
 		xtype int
@@ -124,8 +133,8 @@ func init() {
 		pid   int
 	}{
 		{utmp.USER_PROCESS, PACKAGE_STRING + " [1220]", "pts/0", "root", 1, 1},
-		{utmp.USER_PROCESS, PACKAGE_STRING + " [1221]", "pts/2", "ide", 51, 1221},
-		{utmp.DEAD_PROCESS, PACKAGE_STRING + " [1228]", "pts/3", "ide", 751, 1228},
+		{utmp.USER_PROCESS, PACKAGE_STRING + " [1221]", "pts/2", getCurrentUser(), 51, 1221},
+		{utmp.DEAD_PROCESS, PACKAGE_STRING + " [1228]", "pts/3", getCurrentUser(), 751, 1228},
 	}
 
 	for _, v := range data {
