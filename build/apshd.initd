@@ -9,6 +9,7 @@ description="apshd daemon for the aprilsh service"
 export GOMAXPROCS=1
 command=/usr/bin/apshd
 command_args=""
+supervisor=supervise-daemon
 # If your daemon doesn't know how to change its own user or group,
 # then you can tell start-stop-daemon to launch it as an unprivileged
 # user with
