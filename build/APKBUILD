@@ -11,61 +11,55 @@ depends="$pkgname-client $pkgname-server"
 makedepends="go protoc utmps-dev ncurses ncurses-terminfo musl-locales"
 subpackages="$pkgname-client $pkgname-server $pkgname-openrc"
 source="https://github.com/ericwq/aprilsh/releases/download/$pkgver/aprilsh-$pkgver.tar.gz
-		  apshd.initd"
-# builddir="$srcdir"/$pkgname-$pkgver
+	apshd.initd"
 
+# build info (part 1) required by go build
 _git_tag=0.6.14
 _git_commit=6fbe1494823cb5e277c77a402ae04c05aef72221
 _git_branch=HEAD
 
+# go build need this
 export PATH=$PATH:~/go/bin
 export GOCACHE="${GOCACHE:-"$srcdir/go-cache"}"
 export GOTMPDIR="${GOTMPDIR:-"$srcdir"}"
 export GOMODCACHE="${GOMODCACHE:-"$srcdir/go"}"
-
-prepare() {
-	printf "startdir=$startdir\n"
-	printf "srcdir  =$srcdir\n"
-	printf "builddir=$builddir\n"
-	printf "pkgdir  =$pkgdir\n"
-	# printf "PATH=$PATH\n"
-	default_prepare
-}
 
 build() {
 	# install go protocol buffers plugin
 	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
 	# install depends go module
 	go mod tidy
-	# use the following command to generate protocol buffer code
+	# generate protocol buffer code
 	protoc --go_out=. -I . ./protobufs/transportInstruction.proto
 	protoc --go_out=. -I . ./protobufs/hostInput.proto
 	protoc --go_out=. -I . ./protobufs/userInput.proto
 
-	# prepare build info
-   _module_name=$(head ./go.mod | grep "^module" | awk '{print $2}')
-   _build_time=$(TZ='Asia/Shanghai' date "+%F %T")
-   _go_version=$(go version | grep "version" | awk '{print $3,$4}')
+	# prepare build info (part 2)
+	_module_name=$(head ./go.mod | grep "^module" | awk '{print $2}')
+	_build_time=$(date)
+	_go_version=$(go version | grep "version" | awk '{print $3,$4}')
 
-   echo "build server start: $(TZ='Asia/Shanghai' date '+%F %T')"
-   go build -ldflags="-s -w
-      -X '$_module_name/frontend.GitTag=${_git_tag}'
-      -X '$_module_name/frontend.GoVersion=${_go_version}'
-      -X '$_module_name/frontend.GitCommit=${_git_commit}'
-      -X '$_module_name/frontend.GitBranch=${_git_branch}'
-      -X '$_module_name/frontend.BuildTime=${_build_time}'" -o "$builddir/bin/apshd" ./frontend/server/*.go
-   echo "build server end  : $(TZ='Asia/Shanghai' date '+%F %T')"
-   echo "output server to  : $builddir/bin/apshd"
+	echo "build server start: $(date)"
+	go build -ldflags="-s -w
+		-X '$_module_name/frontend.GitTag=${_git_tag}'
+		-X '$_module_name/frontend.GoVersion=${_go_version}'
+		-X '$_module_name/frontend.GitCommit=${_git_commit}'
+		-X '$_module_name/frontend.GitBranch=${_git_branch}'
+		-X '$_module_name/frontend.BuildTime=${_build_time}'
+		" -o "$builddir/bin/apshd" ./frontend/server/*.go
+	echo "build server end  : $(date)"
+	echo "output server to  : $builddir/bin/apshd"
 
-   echo "build client start: $(TZ='Asia/Shanghai' date '+%F %T')"
-   go build -ldflags="-s -w
-      -X '$_module_name/frontend.GitTag=${_git_tag}'
-      -X '$_module_name/frontend.GoVersion=${_go_version}'
-      -X '$_module_name/frontend.GitCommit=${_git_commit}'
-      -X '$_module_name/frontend.GitBranch=${_git_branch}'
-      -X '$_module_name/frontend.BuildTime=${_build_time}'" -o "$builddir/bin/apsh" ./frontend/client/*.go
-   echo "build client end  : $(TZ='Asia/Shanghai' date '+%F %T')"
-   echo "output client to  : $builddir/bin/apsh"
+	echo "build client start: $(date)"
+	go build -ldflags="-s -w
+		-X '$_module_name/frontend.GitTag=${_git_tag}'
+		-X '$_module_name/frontend.GoVersion=${_go_version}'
+		-X '$_module_name/frontend.GitCommit=${_git_commit}'
+		-X '$_module_name/frontend.GitBranch=${_git_branch}'
+		-X '$_module_name/frontend.BuildTime=${_build_time}'
+		" -o "$builddir/bin/apsh" ./frontend/client/*.go
+	echo "build client end  : $(date)"
+	echo "output client to  : $builddir/bin/apsh"
 }
 
 check() {
@@ -86,7 +80,6 @@ package() {
 }
 
 client() {
-	#Allow this package to be installed at the same time as the listed packages, even if they have conflicting files.
 	replaces="$pkgname"
 	pkgdesc="$pkgname client"
 	depends="musl-locales ncurses ncurses-terminfo"
