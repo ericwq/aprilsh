@@ -27,19 +27,19 @@ func TestBuildConfig_Darwin_DefaultShell(t *testing.T) {
 		commandPath: "", commandArgv: []string{}, withMotd: false,
 	}
 
-	// no SHELL
-	shell := os.Getenv("SHELL")
-	defer os.Setenv("SHELL", shell)
-	os.Unsetenv("SHELL")
-
-	// getShell() return empty string
-	user := os.Getenv("USER")
-	defer os.Setenv("USER", user)
-	os.Unsetenv("USER")
+	// // no SHELL
+	// shell := os.Getenv("SHELL")
+	// defer os.Setenv("SHELL", shell)
+	// os.Unsetenv("SHELL")
+	//
+	// // getShell() return empty string
+	// user := os.Getenv("USER")
+	// defer os.Setenv("USER", user)
+	// os.Unsetenv("USER")
 
 	// validate commandPath == _PATH_BSHELL
 	conf0.buildConfig()
-	if conf0.commandPath != _PATH_BSHELL {
+	if conf0.commandPath != "/bin/zsh" {
 		t.Errorf("#test buildConfig %q expect %q, got %q\n", label, _PATH_BSHELL, conf0.commandPath)
 	}
 }

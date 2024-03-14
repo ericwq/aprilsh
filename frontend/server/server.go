@@ -148,6 +148,50 @@ type Config struct {
 		*network.Transport[*statesync.Complete, *statesync.UserStream], int64, int64, string) error
 }
 
+// generate shell for specified user or current user if user is nil.
+func (conf *Config) prepareShell(user *user.User) {
+	// Get shell
+	if len(conf.commandArgv) == 0 {
+		var shell string
+		var err error
+		if user == nil {
+			shell = os.Getenv("SHELL")
+			if len(shell) == 0 {
+				shell, _ = util.GetShell() // another way to get shell path
+			}
+		} else {
+			shell, err = util.GetShell4(user)
+			if err != nil {
+				util.Logger.Warn("prepareShell failed", "user", user.Username, "error", err)
+			}
+		}
+
+		shellPath := shell
+		if len(shellPath) == 0 || conf.flowControl == _FC_DEF_BASH_SHELL { // empty shell means Bourne shell
+			shellPath = _PATH_BSHELL
+		}
+
+		conf.commandPath = shellPath
+
+		shellName := getShellNameFrom(shellPath)
+
+		conf.commandArgv = []string{shellName}
+
+		conf.withMotd = true
+	}
+
+	if len(conf.commandPath) == 0 {
+		conf.commandPath = conf.commandArgv[0]
+
+		if len(conf.commandArgv) == 1 {
+			shellName := getShellNameFrom(conf.commandPath)
+			conf.commandArgv = []string{shellName}
+		} else {
+			conf.commandArgv = conf.commandArgv[1:]
+		}
+	}
+}
+
 // build the config instance and check the utf-8 locale. return error if the terminal
 // can't support utf-8 locale.
 func (conf *Config) buildConfig() (string, bool) {
@@ -179,37 +223,7 @@ func (conf *Config) buildConfig() (string, bool) {
 	conf.withMotd = false
 	conf.serve = serve
 
-	// Get shell
-	if len(conf.commandArgv) == 0 {
-		shell := os.Getenv("SHELL")
-		if len(shell) == 0 {
-			shell, _ = util.GetShell() // another way to get shell path
-		}
-
-		shellPath := shell
-		if len(shellPath) == 0 || conf.flowControl == _FC_DEF_BASH_SHELL { // empty shell means Bourne shell
-			shellPath = _PATH_BSHELL
-		}
-
-		conf.commandPath = shellPath
-
-		shellName := getShellNameFrom(shellPath)
-
-		conf.commandArgv = []string{shellName}
-
-		conf.withMotd = true
-	}
-
-	if len(conf.commandPath) == 0 {
-		conf.commandPath = conf.commandArgv[0]
-
-		if len(conf.commandArgv) == 1 {
-			shellName := getShellNameFrom(conf.commandPath)
-			conf.commandArgv = []string{shellName}
-		} else {
-			conf.commandArgv = conf.commandArgv[1:]
-		}
-	}
+	conf.prepareShell(nil)
 
 	// Adopt implementation locale
 	util.SetNativeLocale()
@@ -1210,9 +1224,9 @@ func startChildProcess(conf *Config) (*os.Process, error) {
 	args := []string{"-child", "-destination", conf.destination, "-term", conf.term}
 	// inherit vervoce and source options form parent
 	if conf.verbose == util.DebugLevel {
-		args = append(args, "-vv")
+		args = append(args, "-v")
 	} else if conf.verbose == util.TraceLevel {
-		args = append(args, "-vvv")
+		args = append(args, "-vv")
 	}
 	if conf.addSource {
 		args = append(args, "-source")
@@ -1240,13 +1254,13 @@ func startChildProcess(conf *Config) (*os.Process, error) {
 	// 	env = append(env, "TERM=xterm-256color")
 	// }
 
-	// use the root's SHELL as replacement for user SHELL
-	shell, err := util.GetShell()
-	if shell == "" || err != nil {
-		err := errors.New("can't get shell from SHELL")
-		return nil, err
-	}
-	env = append(env, "SHELL="+shell)
+	// TODO use the root's SHELL as replacement for user SHELL
+	// shell, err := util.GetShell()
+	// if shell == "" || err != nil {
+	// 	err := errors.New("can't get shell from SHELL")
+	// 	return nil, err
+	// }
+	// env = append(env, "SHELL="+shell)
 
 	// macOS need this, anyway we set it for both linux and macOS
 	env = append(env, "LANG=en_US.UTF-8")
@@ -1266,11 +1280,17 @@ func startChildProcess(conf *Config) (*os.Process, error) {
 	env = append(env, "HOME="+u.HomeDir) // it's important for shell to source .profile
 	env = append(env, "USER="+conf.user)
 
-	env = append(env, fmt.Sprintf("TZ=%s", os.Getenv("TZ")))
+	if v := os.Getenv("TZ"); len(v) > 0 {
+		env = append(env, "TZ="+v)
+	}
 
 	// TODO should we set ssh env ?
-	env = append(env, fmt.Sprintf("SSH_CLIENT=%s", os.Getenv("SSH_CLIENT")))
-	env = append(env, fmt.Sprintf("SSH_CONNECTION=%s", os.Getenv("SSH_CONNECTION")))
+	if v := os.Getenv("SSH_CLIENT"); len(v) > 0 {
+		env = append(env, "SSH_CLIENT="+v)
+	}
+	if v := os.Getenv("SSH_CONNECTION"); len(v) > 0 {
+		env = append(env, "SSH_CONNECTION="+v)
+	}
 
 	// ask ncurses to send UTF-8 instead of ISO 2022 for line-drawing chars
 	env = append(env, "NCURSES_NO_UTF8_ACS=1")
@@ -1365,6 +1385,8 @@ func startShellProcess(pts *os.File, pr *io.PipeReader, utmpHost string, conf *C
 	if err != nil {
 		return nil, err
 	}
+	conf.prepareShell(u)
+
 	var uid int64
 	var gid int64
 	if changeUser {
@@ -1378,11 +1400,18 @@ func startShellProcess(pts *os.File, pr *io.PipeReader, utmpHost string, conf *C
 	env = append(env, "HOME="+u.HomeDir) // it's important for shell to source .profile
 	env = append(env, "USER="+conf.user)
 	env = append(env, "SHELL="+conf.commandPath)
-	env = append(env, fmt.Sprintf("TZ=%s", os.Getenv("TZ")))
+
+	if v := os.Getenv("TZ"); len(v) > 0 {
+		env = append(env, "TZ="+v)
+	}
 
 	// TODO should we set ssh env ?
-	env = append(env, fmt.Sprintf("SSH_CLIENT=%s", os.Getenv("SSH_CLIENT")))
-	env = append(env, fmt.Sprintf("SSH_CONNECTION=%s", os.Getenv("SSH_CONNECTION")))
+	if v := os.Getenv("SSH_CLIENT"); len(v) > 0 {
+		env = append(env, "SSH_CLIENT="+v)
+	}
+	if v := os.Getenv("SSH_CONNECTION"); len(v) > 0 {
+		env = append(env, "SSH_CONNECTION="+v)
+	}
 
 	// ask ncurses to send UTF-8 instead of ISO 2022 for line-drawing chars
 	env = append(env, "NCURSES_NO_UTF8_ACS=1")

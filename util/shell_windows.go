@@ -6,10 +6,19 @@ package util
 
 import (
 	"os"
+	"os/user"
 )
 
 // https://github.com/riywo/loginshell/blob/master/loginshell.go
 func GetShell() (string, error) {
+	return getShell()
+}
+
+func GetShell4(*user.User) (string, error) {
+	return getShell()
+}
+
+func getShell() (string, error) {
 	consoleApp := os.Getenv("COMSPEC")
 	if consoleApp == "" {
 		consoleApp = "cmd.exe"

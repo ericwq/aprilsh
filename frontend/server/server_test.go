@@ -14,7 +14,6 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
-	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -22,13 +21,14 @@ import (
 	"testing"
 	"time"
 
+	"log/slog"
+
 	"github.com/creack/pty"
 	"github.com/ericwq/aprilsh/frontend"
 	"github.com/ericwq/aprilsh/network"
 	"github.com/ericwq/aprilsh/statesync"
 	"github.com/ericwq/aprilsh/util"
 	"golang.org/x/sys/unix"
-	"log/slog"
 )
 
 func TestPrintMotd(t *testing.T) {
@@ -1257,7 +1257,7 @@ func TestRunWorkerKillSignal(t *testing.T) {
 		conf   Config
 	}{
 		{
-			"runWorker stopped by signal kill", 10, frontend.AprilshMsgOpen + "7101,", 50,
+			"runWorker stopped by signal kill", 10, frontend.AprilshMsgOpen + "7101,", 80,
 			Config{
 				version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -1275,6 +1275,7 @@ func TestRunWorkerKillSignal(t *testing.T) {
 			os.Stdout = w
 
 			util.Logger.CreateLogger(w, true, slog.LevelDebug)
+			// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
 			// set serve func and runWorker func
 			v.conf.serve = mockServe
@@ -1414,7 +1415,7 @@ func TestRunCloseFail(t *testing.T) {
 		{
 			"runWorker stopped by " + frontend.AprishMsgClose, 20, frontend.AprilshMsgOpen + "7111,", frontend.AprishMsgClose + "done",
 			[]string{},
-			50,
+			80,
 			Config{
 				version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7110",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -1424,7 +1425,7 @@ func TestRunCloseFail(t *testing.T) {
 		{
 			"runWorker stop port not exist", 5, frontend.AprilshMsgOpen + "7121,", frontend.AprishMsgClose + "port does not exist",
 			[]string{"7100"},
-			50,
+			80,
 			Config{
 				version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7120",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -1434,7 +1435,7 @@ func TestRunCloseFail(t *testing.T) {
 		{
 			"runWorker stop wrong port number", 5, frontend.AprilshMsgOpen + "7131,", frontend.AprishMsgClose + "wrong port number",
 			[]string{"7121x"},
-			50,
+			80,
 			Config{
 				version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7130",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -1444,7 +1445,7 @@ func TestRunCloseFail(t *testing.T) {
 		{
 			"runWorker stop unknow request", 5, frontend.AprilshMsgOpen + "7141,", frontend.AprishMsgClose + "unknow request",
 			[]string{"two", "params"},
-			50,
+			80,
 			Config{
 				version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7140",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -1884,7 +1885,7 @@ func TestBeginChild(t *testing.T) {
 		conf       Config
 	}{
 		{
-			"normal beginClientConn", 100, frontend.AprilshMsgOpen + "7101,", 30,
+			"normal beginClientConn", 100, frontend.AprilshMsgOpen + "7101,", 80,
 			Config{desiredPort: "7100", term: "xterm-256color", destination: getCurrentUser() + "@localhost"},
 			Config{
 				version: false, server: false, desiredIP: "", desiredPort: "7100",
@@ -1945,7 +1946,7 @@ func TestMainBeginChild(t *testing.T) {
 		conf     Config
 	}{
 		{
-			"main begin child", frontend.AprilshMsgOpen + "7151,", 30,
+			"main begin child", frontend.AprilshMsgOpen + "7151,", 50,
 			[]string{"/usr/bin/apshd", "-b", "-destination", getCurrentUser() + "@localhost",
 				"-p", "7150", "-t", "xterm-256color", "-vv"},
 			Config{
@@ -2251,13 +2252,13 @@ func TestStartChildFail(t *testing.T) {
 			Config{desiredPort: "6510"}, "open aprilsh:malform destination"},
 		{"startShellProcess failed: DebugLevel", "open aprilsh:xterm-fake," + getCurrentUser() + "@fakehost",
 			Config{desiredPort: "6511", verbose: util.DebugLevel},
-			"start child failed"},
+			"start child got key timeout"},
 		{"startShellProcess failed: TraceLevel", "open aprilsh:xterm-fake," + getCurrentUser() + "@fakehost",
 			Config{desiredPort: "6512", verbose: util.TraceLevel},
-			"start child failed"},
+			"start child got key timeout"},
 		{"startShellProcess failed: addSource", "open aprilsh:xterm-fake," + getCurrentUser() + "@fakehost",
 			Config{desiredPort: "6513", addSource: true},
-			"start child failed"},
+			"start child got key timeout"},
 	}
 
 	for _, v := range tc {

@@ -23,19 +23,22 @@ const (
 	LC_ALL      = 6
 )
 
-var (
-	userCurrentTest bool
-	execCmdTest     bool
-)
-
 func GetShell() (string, error) {
 	user, err := user.Current()
-	if err != nil || userCurrentTest {
+	if err != nil {
 		return "", err
 	}
 
+	return getShell(user)
+}
+
+func GetShell4(user *user.User) (string, error) {
+	return getShell(user)
+}
+
+func getShell(user *user.User) (string, error) {
 	out, err := exec.Command("getent", "passwd", user.Uid).Output()
-	if err != nil || execCmdTest {
+	if err != nil {
 		return "", err
 	}
 

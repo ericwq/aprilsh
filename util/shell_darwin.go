@@ -9,8 +9,8 @@ package util
 import (
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
+	"os/user"
 	"regexp"
 )
 
@@ -29,7 +29,19 @@ const (
 )
 
 func GetShell() (string, error) {
-	dir := "Local/Default/Users/" + os.Getenv("USER")
+	u, err := user.Current()
+	if err != nil {
+		return "", err
+	}
+	return getShell(u.Username)
+}
+
+func GetShell4(u *user.User) (string, error) {
+	return getShell(u.Username)
+}
+
+func getShell(user string) (string, error) {
+	dir := "Local/Default/Users/" + user
 	out, err := exec.Command("dscl", "localhost", "-read", dir, "UserShell").Output()
 	if err != nil {
 		return "", err

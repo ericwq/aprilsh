@@ -2,7 +2,7 @@
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
-//go:build darwin
+//go:build linux
 
 package util
 
@@ -11,14 +11,7 @@ import (
 	"testing"
 )
 
-// two test case for getShell()
-//
-// % dscl localhost -read Local/Default/Users/
-// name: dsRecTypeStandard:Users
-//
-// % dscl localhost -read Local/Default/Users/doesnotexist
-// <dscl_cmd> DS Error: -14136 (eDSRecordNotFound)
-func TestGetShellDarwin(t *testing.T) {
+func TestGetShell(t *testing.T) {
 
 	// get current user
 	s, e := GetShell()
@@ -37,4 +30,5 @@ func TestGetShellDarwin(t *testing.T) {
 	if e != nil {
 		t.Errorf("#test GetShell4() darwin expect no error, got %s, error %q\n", s, e)
 	}
+
 }
