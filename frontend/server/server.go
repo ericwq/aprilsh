@@ -1385,6 +1385,10 @@ func startShellProcess(pts *os.File, pr *io.PipeReader, utmpHost string, conf *C
 	if err != nil {
 		return nil, err
 	}
+
+	// prepare shell for target user.
+	conf.commandArgv = []string{}
+	conf.commandPath = ""
 	conf.prepareShell(u)
 
 	var uid int64

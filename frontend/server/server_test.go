@@ -712,8 +712,8 @@ func TestMainSrvStart(t *testing.T) {
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			// init log
-			// util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
-			util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
+			util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+			// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
 			srv := newMainSrv(&v.conf)
 
@@ -1946,7 +1946,7 @@ func TestMainBeginChild(t *testing.T) {
 		conf     Config
 	}{
 		{
-			"main begin child", frontend.AprilshMsgOpen + "7151,", 50,
+			"main begin child", frontend.AprilshMsgOpen + "7151,", 80,
 			[]string{"/usr/bin/apshd", "-b", "-destination", getCurrentUser() + "@localhost",
 				"-p", "7150", "-t", "xterm-256color", "-vv"},
 			Config{
