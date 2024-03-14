@@ -1,4 +1,5 @@
 ## prepare container for apk building
+create the container according to [Creating an Alpine package](https://wiki.alpinelinux.org/wiki/Creating_an_Alpine_package).
 
 ```sh
 % docker build -t abuild:0.1.0 -f abuild.dockerfile .
@@ -10,7 +11,7 @@
 % docker exec -ti --privileged abuild:0.1.0
 % docker exec -u root -it abuild ash
 ```
-
+The above container contains `alpine-sdk sudo atools` package, user `packager`, abuild keys, and aports fork (by ericwq057).
 ### build apk files
 
 `apk update` unlock the permission problem for abuild.
@@ -19,26 +20,37 @@
 # apk update
 ```
 
-switch to user packager and prepare the environment.
+switch to user packager, get the latest aports, create aprilsh directory if we don't have it.
 ```shell
 # sudo -u packager sh
-% cd
-% mkdir -p aports/main/aprilsh
-% cd ~/aports/main/aprilsh/
+% cd ~/aports && git pull
+% ls ~/aports/testing/aprilsh
+% mkdir -p ~/aports/testing/aprilsh
+% cd ~/aports/testing/aprilsh
 ```
+copy APKBUILD and other files from mount point. clean unused file.
 
-get the APKBUILD and local file from mount point.
 ```shell
 % cp /home/ide/develop/aprilsh/build/* .
-% abuild checksum
+% rm *.dockerfile readme.md
 ```
 
-build the apk.
+lint, checksum, build the apk.
 ```shell
+% apkbuild-lint APKBUILD
+% abuild checksum
 % abuild -r
-% REPODEST=~/packages/3.19 abuild -r
 ```
 
+### copy keys and apks to mount point
+delete the old packages directory, note the `cp -r` command, it's important to keep the [directory structure of local repository](#directory-structure-of-local-repository).
+```shell
+% rm -rf /home/ide/proj/packages
+% cd && cp -r packages/ /home/ide/proj/
+% cp .abuild/packager-*.rsa.pub /home/ide/proj/packages
+```
+
+### validate tarball and apk
 validate the tarball.
 ```shell
 % cd /var/cache/distfiles
@@ -49,14 +61,6 @@ validate the apk content
 ```shell
 % cd ~/packages/main/x86_64
 % tar tvvf aprilsh-0.5.49-r0.apk
-```
-
-### copy keys and apks to mount point
-note the `cp -r` command, it's important to keep the [directory structure of local repository](#directory-structure-of-local-repository).
-```shell
-% cd
-% cp -r packages/ /home/ide/proj/
-% cp .abuild/packager-*.rsa.pub /home/ide/proj/packages
 ```
 
 ## prepare openrc-nvide container for apk testing
@@ -70,23 +74,22 @@ $ docker run --env TZ=Asia/Shanghai --tty --privileged --volume /sys/fs/cgroup:/
     -p 8103:8103/udp openrc-nvide:0.10.2
 ```
 
-don't forget to start utmps service.
+don't forget to start utmps service, install timezone package if needed.
 ```shell
 # setup-utmp
-```
-
-install timezone package and install package key from mount point.
-
-```shell
-# apk update
 # apk add tzdata openrc
-# cp /home/ide/proj/packages/packager-*.rsa.pub /etc/apk/keys
 ```
 
-add local repository for apk.
+and install package key from mount point, add local repository for apk. install new apk and restart apshd service.
+
 ```shell
-# sed -i '1s/^/\/home\/ide\/proj\/packages\/main\n/' /etc/apk/repositories
+# cp /home/ide/proj/packages/packager-*.rsa.pub /etc/apk/keys
+# sed -i '1s/^/\/home\/ide\/proj\/packages\/testing\n/' /etc/apk/repositories
 # apk update
+# rc-service apshd stop
+# apk del aprilsh
+# apk add aprilsh
+# rc-service apshd start
 ```
 
 ### directory structure of local repository
