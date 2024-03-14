@@ -9,7 +9,7 @@ import (
 )
 
 // https://github.com/riywo/loginshell/blob/master/loginshell.go
-func getShell() (string, error) {
+func GetShell() (string, error) {
 	consoleApp := os.Getenv("COMSPEC")
 	if consoleApp == "" {
 		consoleApp = "cmd.exe"

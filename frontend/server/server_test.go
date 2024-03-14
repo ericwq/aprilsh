@@ -483,11 +483,11 @@ func TestGetShell(t *testing.T) {
 	}{
 		{"get unix shell from cmd", "fill later"},
 	}
-	switch runtime.GOOS {
-	case "darwin":
-		tc[0].expect = "/bin/zsh"
-	case "linux":
-		tc[0].expect = "/bin/ash"
+
+	var err error
+	tc[0].expect, err = util.GetShell()
+	if err != nil {
+		t.Errorf("#test getShell() reports %q\n", err)
 	}
 
 	for _, v := range tc {

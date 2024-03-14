@@ -1241,8 +1241,8 @@ func startChildProcess(conf *Config) (*os.Process, error) {
 	// }
 
 	// use the root's SHELL as replacement for user SHELL
-	shell := os.Getenv("SHELL")
-	if shell == "" {
+	shell, err := util.GetShell()
+	if shell == "" || err != nil {
 		err := errors.New("can't get shell from SHELL")
 		return nil, err
 	}
