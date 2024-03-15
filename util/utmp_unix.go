@@ -43,7 +43,7 @@ func CheckUnattachedUtmpx(userName, ignoreHost, prefix string) []string {
 			if len(host) >= 5 && strings.HasPrefix(host, prefix) &&
 				host != ignoreHost && utmp.DeviceExists(r.GetLine()) {
 				unatttached = append(unatttached, host)
-				if !testing.Testing() {
+				if testing.Testing() {
 					fmt.Printf("#checkUnattachedRecord() append host=%s, line=%q\n", host, r.GetLine())
 				}
 			}

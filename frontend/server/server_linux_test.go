@@ -29,14 +29,14 @@ func mockGetUtmpx() *utmp.Utmpx {
 		Host string
 		Line string
 	}{
-		{utmp.USER_PROCESS, "root", frontend.CommandServerName + " [777]", "pts/1"},
-		{utmp.USER_PROCESS, userName, frontend.CommandServerName + " [888]", "pts/7"},
-		{utmp.USER_PROCESS, userName, frontend.CommandServerName + " [666]", "pts/0"},
-		{utmp.USER_PROCESS, userName, frontend.CommandServerName + " [999]", "pts/1"},
+		{utmp.USER_PROCESS, "root", frontend.CommandServerName + ":777", "pts/1"},
+		{utmp.USER_PROCESS, userName, frontend.CommandServerName + ":888", "pts/7"},
+		{utmp.USER_PROCESS, userName, frontend.CommandServerName + ":666", "pts/0"},
+		{utmp.USER_PROCESS, userName, frontend.CommandServerName + ":999", "pts/ptmx"},
 	}
 	// the test requires the following files in /dev/pts directory
 	// ls /dev/pts
-	// 0     1     2     ptmx
+	// 0  ptmx
 
 	// if idx out of range, rewind it.
 	if idx >= len(rs) {
@@ -94,10 +94,10 @@ func TestWarnUnattached(t *testing.T) {
 		ignoreHost string
 		count      int
 	}{
-		// 666 pts/1 exist, 888 pts/7 does not exist, only 666 remains
-		{"one match", frontend.CommandServerName + " [999]", 1},
-		// 666 pts1 exist, 999 pts/0 exist, so 666 and 999 remains
-		{"two matches", frontend.CommandServerName + " [888]", 2},
+		// 666 pts/0 exist, 888 pts/7 does not exist, only 666 remains
+		{"one match", frontend.CommandServerName + ":999", 1},
+		// 666 pts0 exist, 999 pts/ptmx exist, so 666 and 999 remains
+		{"two matches", frontend.CommandServerName + ":888", 2},
 	}
 
 	for _, v := range tc {
