@@ -1,42 +1,56 @@
 ## prepare container for apk building
 create the container according to [Creating an Alpine package](https://wiki.alpinelinux.org/wiki/Creating_an_Alpine_package).
+The container install `alpine-sdk sudo atools` packages, create `packager` user, generate abuild keys, and cache the aports fork by ericwq057.
 
 ```sh
 % docker build -t abuild:0.1.0 -f abuild.dockerfile .
 % docker build --no-cache --progress plain -t abuild:0.1.0 -f abuild.dockerfile .
+```
+run as root
+```sh
 % docker run -u root --rm -ti -h abuild --env TZ=Asia/Shanghai --name abuild --privileged \
         --mount source=proj-vol,target=/home/ide/proj \
         --mount type=bind,source=/Users/qiwang/dev,target=/home/ide/develop \
         abuild:0.1.0
-% docker exec -ti --privileged abuild:0.1.0
-% docker exec -u root -it abuild ash
 ```
-The above container contains `alpine-sdk sudo atools` package, user `packager`, abuild keys, and aports fork (by ericwq057).
+run as packager
+```sh
+% docker run -u packager --rm -ti -h abuild --env TZ=Asia/Shanghai --name abuild --privileged \
+        --mount source=proj-vol,target=/home/ide/proj \
+        --mount type=bind,source=/Users/qiwang/dev,target=/home/ide/develop \
+        abuild:0.1.0
+
+```
 ### build apk files
 
-`apk update` unlock the permission problem for abuild.
+if run as root, use `apk update` unlock the permission problem for abuild.
 
-```shell
+```sh
 # apk update
+# sudo -u packager sh
 ```
 
-switch to user packager, get the latest aports, create aprilsh directory if we don't have it.
-```shell
-# sudo -u packager sh
+run as `packager` user, git pull aports fork.
+```sh
+% sudo apk update
 % cd ~/aports && git pull
+```
+
+create aprilsh directory if we don't have it.
+```sh
 % ls ~/aports/testing/aprilsh
 % mkdir -p ~/aports/testing/aprilsh
 % cd ~/aports/testing/aprilsh
 ```
-copy APKBUILD and other files from mount point. clean unused file.
 
-```shell
+copy APKBUILD and other files from mount point. clean unused file.
+```sh
 % cp /home/ide/develop/aprilsh/build/* .
 % rm *.dockerfile readme.md
 ```
 
 lint, checksum, build the apk.
-```shell
+```sh
 % apkbuild-lint APKBUILD
 % abuild checksum
 % abuild -r
@@ -44,7 +58,7 @@ lint, checksum, build the apk.
 
 ### copy keys and apks to mount point
 delete the old packages directory, note the `cp -r` command, it's important to keep the [directory structure of local repository](#directory-structure-of-local-repository).
-```shell
+```sh
 % rm -rf /home/ide/proj/packages
 % cd && cp -r packages/ /home/ide/proj/
 % cp .abuild/packager-*.rsa.pub /home/ide/proj/packages
@@ -52,13 +66,13 @@ delete the old packages directory, note the `cp -r` command, it's important to k
 
 ### validate tarball and apk
 validate the tarball.
-```shell
+```sh
 % cd /var/cache/distfiles
 % tar tvvf aprilsh-0.5.48.tar.gz
 ```
 
 validate the apk content
-```shell
+```sh
 % cd ~/packages/main/x86_64
 % tar tvvf aprilsh-0.5.49-r0.apk
 ```
@@ -75,14 +89,14 @@ $ docker run --env TZ=Asia/Shanghai --tty --privileged --volume /sys/fs/cgroup:/
 ```
 
 don't forget to start utmps service, install timezone package if needed.
-```shell
+```sh
 # setup-utmp
 # apk add tzdata openrc
 ```
 
 and install package key from mount point, add local repository for apk. install new apk and restart apshd service.
 
-```shell
+```sh
 # cp /home/ide/proj/packages/packager-*.rsa.pub /etc/apk/keys
 # sed -i '1s/^/\/home\/ide\/proj\/packages\/testing\n/' /etc/apk/repositories
 # apk update
@@ -94,13 +108,13 @@ and install package key from mount point, add local repository for apk. install 
 
 ### directory structure of local repository
 if you don't keep the directory structure of local repository, you will get the following error:
-```shell
+```sh
 ~ # apk update
 WARNING: opening /home/ide/proj/packages/: No such file or directory
 ```
 
 The local repository should contains `x86_64` directory and `APKINDEX.tar.gz` file:
-```shell
+```sh
 # tree /home/ide/proj/packages/main
 /home/ide/proj/packages/main
 └── x86_64
@@ -115,7 +129,7 @@ The local repository should contains `x86_64` directory and `APKINDEX.tar.gz` fi
 ### validate apk files
 install the package and validate the program.
 
-```shell
+```sh
 # apk search aprilsh
 # apk add aprilsh
 # apsh -v
@@ -123,7 +137,7 @@ install the package and validate the program.
 ```
 ### add apshd service
 
-```shell
+```sh
 # rc-update add apshd boot
 # rc-service apshd start
 ```
@@ -134,7 +148,7 @@ build port container, which perform the following actions:
 - set password for root and ide user.
 - transfer public key to `$HOME/.ssh/authorized_keys` for root and ide user.
 
-```shell
+```sh
 cd aprilsh/build
 docker build --build-arg ROOT_PWD=password \
         --build-arg USER_PWD=password \
@@ -149,7 +163,7 @@ start port container, which perform the following action:
 - mount local directory `/Users/qiwang/dev` to `/home/ide/develop/`.
 - set hostname and container name to `openrc-port`.
 
-```shell
+```sh
 docker run --env TZ=Asia/Shanghai --tty --privileged --volume /sys/fs/cgroup:/sys/fs/cgroup:rw \
     --mount source=proj-vol,target=/home/ide/proj \
     --mount type=bind,source=/Users/qiwang/dev,target=/home/ide/develop \

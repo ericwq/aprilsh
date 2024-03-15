@@ -1700,7 +1700,9 @@ mainLoop:
 
 						if utmpSupport {
 							util.ClearUtmpx(pts)
-							utmpHost := fmt.Sprintf("%s via %s:%s", host, frontend.CommandServerName, server.GetServerPort())
+							// utmpHost := fmt.Sprintf("%s via %s:%s",
+							// 	host, frontend.CommandServerName, server.GetServerPort())
+							utmpHost := fmt.Sprintf("%s:%s", frontend.CommandServerName, server.GetServerPort())
 							util.AddUtmpx(pts, utmpHost)
 							connectedUtmp = true
 						}
