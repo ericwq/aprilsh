@@ -31,8 +31,8 @@ func mockGetUtmpx() *utmp.Utmpx {
 	}{
 		{utmp.USER_PROCESS, "root", frontend.CommandServerName + " [777]", "pts/1"},
 		{utmp.USER_PROCESS, userName, frontend.CommandServerName + " [888]", "pts/7"},
-		{utmp.USER_PROCESS, userName, frontend.CommandServerName + " [666]", "pts/1"},
-		{utmp.USER_PROCESS, userName, frontend.CommandServerName + " [999]", "pts/0"},
+		{utmp.USER_PROCESS, userName, frontend.CommandServerName + " [666]", "pts/0"},
+		{utmp.USER_PROCESS, userName, frontend.CommandServerName + " [999]", "pts/1"},
 	}
 	// the test requires the following files in /dev/pts directory
 	// ls /dev/pts
