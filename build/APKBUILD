@@ -8,7 +8,7 @@ url="https://github.com/ericwq/aprilsh"
 arch="all"
 license="MIT"
 depends="$pkgname-client $pkgname-server"
-makedepends="go protoc utmps-dev ncurses ncurses-terminfo musl-locales"
+makedepends="go protoc utmps-dev ncurses ncurses-terminfo musl-locales protoc-gen-go"
 subpackages="$pkgname-client $pkgname-server $pkgname-openrc"
 source="https://github.com/ericwq/aprilsh/releases/download/$pkgver/aprilsh-$pkgver.tar.gz
 	apshd.initd"
@@ -25,10 +25,6 @@ export GOTMPDIR="${GOTMPDIR:-"$srcdir"}"
 export GOMODCACHE="${GOMODCACHE:-"$srcdir/go"}"
 
 build() {
-	# install go protocol buffers plugin
-	go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-	# install depends go module
-	go mod tidy
 	# generate protocol buffer code
 	protoc --go_out=. -I . ./protobufs/transportInstruction.proto
 	protoc --go_out=. -I . ./protobufs/hostInput.proto
@@ -83,16 +79,14 @@ client() {
 	replaces="$pkgname"
 	pkgdesc="$pkgname client"
 	depends="musl-locales ncurses ncurses-terminfo"
-	mkdir -p "$subpkgdir/usr/bin"
-	mv "$pkgdir/usr/bin/apsh" "$subpkgdir/usr/bin/"
+	amove usr/bin/apsh
 }
 
 server() {
 	replaces="$pkgname"
 	pkgdesc="$pkgname server"
 	depends="musl-locales utmps ncurses ncurses-terminfo wezterm-extra-terminfo openssh-server"
-	mkdir -p "$subpkgdir/usr/bin"
-	mv "$pkgdir/usr/bin/apshd" "$subpkgdir/usr/bin/"
+	amove usr/bin/apshd
 }
 
 sha512sums="
