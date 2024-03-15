@@ -784,7 +784,7 @@ func TestSenderTickNextSendTime(t *testing.T) {
 	// validate client sent and server received contents
 	if server.sender.nextSendTime != math.MaxInt64 || server.sender.mindelayClock != math.MaxInt64 {
 		t.Errorf("#test server expect nextSendTime and mindelayClock to be %d, got %d,%d\n",
-			math.MaxInt64, server.sender.nextSendTime, server.sender.mindelayClock)
+			int64(math.MaxInt64), server.sender.nextSendTime, server.sender.mindelayClock)
 	}
 
 	server.Close()
