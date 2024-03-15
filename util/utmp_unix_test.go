@@ -91,6 +91,7 @@ func TestCheckUnattachedUtmpx(t *testing.T) {
 
 func TestCheckUnattachedUtmpx_Mock(t *testing.T) {
 	SetFunc4GetUtmpx(mockGetUtmpx)
+	index = 0
 	defer func() {
 		SetFunc4GetUtmpx(utmp.GetUtmpx)
 	}()
@@ -98,6 +99,12 @@ func TestCheckUnattachedUtmpx_Mock(t *testing.T) {
 	user, _ := user.Current()
 	ignoreHost := fmt.Sprintf("%s [%d]", PACKAGE_STRING, 1223)
 
+	// out, err := exec.Command("ls", "/dev/pts").Output()
+	// if err != nil {
+	// 	t.Errorf("ls /dev/pts/* reports:%s\n", err)
+	// } else {
+	// 	t.Logf("ls /dev/pts/*\n%s\n", out)
+	// }
 	unatttached := CheckUnattachedUtmpx(user.Username, ignoreHost, PACKAGE_STRING)
 	expect := PACKAGE_STRING + " [1221]"
 	if unatttached == nil {

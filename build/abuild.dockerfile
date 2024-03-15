@@ -7,6 +7,7 @@ RUN adduser -D packager
 RUN addgroup packager abuild
 RUN echo 'packager ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/packager
 RUN sudo -u packager abuild-keygen -n --append --install
+RUN echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
 
 USER packager:abuild
 RUN cd ~ && \

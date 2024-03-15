@@ -1291,6 +1291,9 @@ func startChildProcess(conf *Config) (*os.Process, error) {
 	if v := os.Getenv("SSH_CONNECTION"); len(v) > 0 {
 		env = append(env, "SSH_CONNECTION="+v)
 	}
+	if v := os.Getenv("PATH"); len(v) > 0 {
+		env = append(env, "PATH="+v)
+	}
 
 	// ask ncurses to send UTF-8 instead of ISO 2022 for line-drawing chars
 	env = append(env, "NCURSES_NO_UTF8_ACS=1")
@@ -1415,6 +1418,9 @@ func startShellProcess(pts *os.File, pr *io.PipeReader, utmpHost string, conf *C
 	}
 	if v := os.Getenv("SSH_CONNECTION"); len(v) > 0 {
 		env = append(env, "SSH_CONNECTION="+v)
+	}
+	if v := os.Getenv("PATH"); len(v) > 0 {
+		env = append(env, "PATH="+v)
 	}
 
 	// ask ncurses to send UTF-8 instead of ISO 2022 for line-drawing chars

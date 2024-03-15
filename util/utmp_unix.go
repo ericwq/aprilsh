@@ -7,6 +7,7 @@
 package util
 
 import (
+	"fmt"
 	"os"
 	"strings"
 
@@ -31,23 +32,23 @@ func CheckUnattachedUtmpx(userName, ignoreHost, prefix string) []string {
 
 	r := fp()
 	for r != nil {
-		// fmt.Printf("#checkUnattachedRecord() user=%q,%q; type=%d, line=%s, host=%s, id=%s, pid=%d\n",
-		// 	r.GetUser(), userName, r.GetType(), r.GetLine(), r.GetHost(), r.GetId(), r.GetPid())
 		if r.GetType() == utmp.USER_PROCESS && r.GetUser() == userName {
 			// does line show unattached session
 			host := r.GetHost()
-			// fmt.Printf("#checkUnattachedRecord() MATCH user=%q,%q; type=%d,%d", r.GetUser(), userName, r.GetType(), utmp.USER_PROCESS)
-			// fmt.Printf(" host=%s, line=%q, ignoreHost=%s\n", host, r.GetLine(), ignoreHost)
-			// fmt.Printf("#checkUnattachedRecord() append 1=%t,2=%t,3=%t,4=%t,5=%t\n", len(host) >= 5,
-			// 	strings.HasPrefix(host, prefix), strings.HasSuffix(host, "]"), host != ignoreHost, utmp.DeviceExists(r.GetLine()))
+			fmt.Printf("#checkUnattachedRecord() MATCH user=(%q,%q) type=(%d,%d)\n",
+				r.GetUser(), userName, r.GetType(), utmp.USER_PROCESS)
 			if len(host) >= 5 && strings.HasPrefix(host, prefix) &&
 				strings.HasSuffix(host, "]") && host != ignoreHost && utmp.DeviceExists(r.GetLine()) {
 				// fmt.Printf("#checkUnattachedRecord() attached session %s\n", host)
 				unatttached = append(unatttached, host)
+				fmt.Printf("#checkUnattachedRecord() append host=%s, line=%q\n", host, r.GetLine())
 				// } else {
 				// 	fmt.Printf("#CheckUnattachedUtmpx() line:%s exist=%t ", r.GetLine(), utmp.DeviceExists(r.GetLine()))
 				// 	fmt.Printf("host:%s ignoreHost=%s \n", host, ignoreHost)
 			}
+		} else {
+			fmt.Printf("#checkUnattachedRecord() skip user=%q,%q; type=%d, line=%s, host=%s, id=%s, pid=%d\n",
+				r.GetUser(), userName, r.GetType(), r.GetLine(), r.GetHost(), r.GetId(), r.GetPid())
 		}
 		r = fp()
 	}
