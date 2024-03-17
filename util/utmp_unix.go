@@ -15,6 +15,7 @@ import (
 	utmp "github.com/ericwq/goutmp"
 )
 
+// https://blog.csdn.net/sg_knight/article/details/134373559
 func AddUtmpx(pts *os.File, host string) bool {
 	return utmp.UtmpxAddRecord(pts, host)
 }
