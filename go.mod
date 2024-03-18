@@ -4,7 +4,7 @@ go 1.21
 
 require (
 	github.com/creack/pty v1.1.18
-	github.com/ericwq/goutmp v0.4.7
+	github.com/ericwq/goutmp v0.5.1
 	github.com/ericwq/terminfo v0.2.0
 	github.com/rivo/uniseg v0.4.4
 	github.com/skeema/knownhosts v1.2.1
