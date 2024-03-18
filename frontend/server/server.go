@@ -36,7 +36,7 @@ import (
 	"github.com/ericwq/aprilsh/statesync"
 	"github.com/ericwq/aprilsh/terminal"
 	"github.com/ericwq/aprilsh/util"
-	utmp "github.com/ericwq/goutmp"
+	utmps "github.com/ericwq/goutmp"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
 )
@@ -90,19 +90,24 @@ Options:
 var failToStartShell = errors.New("fail to start shell")
 
 var (
-	utmpSupport   bool
 	syslogSupport bool
 	syslogWriter  *syslog.Writer
-	signals       frontend.Signals
-	maxPortLimit  = 100 // assume 10 concurrent users, each owns 10 connections
+
+	signals frontend.Signals
+
+	maxPortLimit = 100 // assume 10 concurrent users, each owns 10 connections
+
+	funcGetRecord func() *utmps.Utmpx // easy for testing
+	utmpSupport   bool
 )
+
+func init() {
+	utmpSupport = utmps.HasUtmpSupport()
+	funcGetRecord = utmps.GetRecord
+}
 
 // https://www.antoniojgutierrez.com/posts/2021-05-14-short-and-long-options-in-go-flags-pkg/
 type localeFlag map[string]string
-
-func init() {
-	utmpSupport = utmp.HasUtmpSupport()
-}
 
 func (lv *localeFlag) String() string {
 	return fmt.Sprint(*lv)
@@ -1148,15 +1153,47 @@ func getCurrentUser() string {
 	return user.Username
 }
 
+// easy for testing under linux
+func setGetRecord(f func() *utmps.Utmpx) {
+	funcGetRecord = f
+}
+
 // check unattached session and print warning message if there is any
-// ignore current session
+// unattached session: session started by client, but there is no client
+// packet received recently. unattached session example: "apshd:8101".
+// attached session example: "192.168.5.1 via apshd:8101"
 func warnUnattached(w io.Writer, ignoreHost string) {
 	userName := getCurrentUser()
 
 	// check unattached sessions
-	unatttached := util.CheckUnattachedUtmpx(userName, ignoreHost, frontend.CommandServerName)
+	unatttached := make([]string, 0)
+	// unatttached := CheckUnattachedUtmpx(userName, ignoreHost, frontend.CommandServerName)
+	r := funcGetRecord()
+	for r != nil {
+		if r.GetType() == utmps.USER_PROCESS && r.GetUser() == userName {
+			// does line show unattached session
+			host := r.GetHost()
+			// if testing.Testing() {
+			// 	fmt.Printf("#checkUnattachedRecord() MATCH user=(%q,%q) type=(%d,%d) host=%s\n",
+			// 		r.GetUser(), userName, r.GetType(), utmps.USER_PROCESS, host)
+			// }
+			if len(host) >= 5 && strings.HasPrefix(host, frontend.CommandServerName) &&
+				host != ignoreHost && utmps.DeviceExists(r.GetLine()) {
+				unatttached = append(unatttached, host)
+				// if testing.Testing() {
+				// 	fmt.Printf("#checkUnattachedRecord() append host=%s, line=%q\n", host, r.GetLine())
+				// }
+			}
+		} else {
+			// if testing.Testing() {
+			// 	fmt.Printf("#checkUnattachedRecord() skip user=%q,%q; type=%d, line=%s, host=%s, id=%d, pid=%d\n",
+			// 		r.GetUser(), userName, r.GetType(), r.GetLine(), r.GetHost(), r.GetId(), r.GetPid())
+			// }
+		}
+		r = funcGetRecord()
+	}
 
-	if unatttached == nil || len(unatttached) == 0 {
+	if len(unatttached) == 0 {
 		return
 	} else if len(unatttached) == 1 {
 		fmt.Fprintf(w, "\033[37;44mAprilsh: You have a detached session on this server (%s).\033[m\n\n",
@@ -1699,11 +1736,11 @@ mainLoop:
 						// }
 
 						if utmpSupport {
-							util.ClearUtmpx(pts)
-							// utmpHost := fmt.Sprintf("%s via %s:%s",
-							// 	host, frontend.CommandServerName, server.GetServerPort())
-							utmpHost := fmt.Sprintf("%s:%s", frontend.CommandServerName, server.GetServerPort())
-							util.AddUtmpx(pts, utmpHost)
+							utmps.RemoveRecord(pts.Name(), os.Getpid())
+							utmpHost := fmt.Sprintf("%s via %s:%s",
+								host, frontend.CommandServerName, server.GetServerPort())
+							// utmpHost := fmt.Sprintf("%s:%s", frontend.CommandServerName, server.GetServerPort())
+							utmps.AddRecord(pts.Name(), user, utmpHost, os.Getpid())
 							connectedUtmp = true
 						}
 						if syslogSupport {
@@ -1826,9 +1863,9 @@ mainLoop:
 		// update utmp if has been more than 30 seconds since heard from client
 		if utmpSupport && connectedUtmp && timeSinceRemoteState > 30000 {
 			if !server.Awaken(now) {
-				util.ClearUtmpx(pts)
+				utmps.RemoveRecord(pts.Name(), os.Getpid())
 				utmpHost := fmt.Sprintf("%s:%s", frontend.CommandServerName, server.GetServerPort())
-				util.AddUtmpx(pts, utmpHost)
+				utmps.AddRecord(pts.Name(), user, utmpHost, os.Getpid())
 				connectedUtmp = false
 				// util.Log.Info("serve doesn't heard from client over 16 minutes.")
 			}
@@ -2044,24 +2081,27 @@ func runChild(conf *Config) (err error) {
 	// prepare host field for utmp record
 	utmpHost := fmt.Sprintf("%s:%s", frontend.CommandServerName, server.GetServerPort())
 
-	// add utmp entry
-	if utmpSupport {
-		ok := util.AddUtmpx(pts, utmpHost)
-		if !ok {
-			utmpSupport = false
-			util.Logger.Warn("runChild can't update utmp")
-		}
-	}
-
 	// start the udp server, serve the udp request
 	var wg sync.WaitGroup
 	wg.Add(1)
-	// waitChan := make(chan bool)
-	// go conf.serve(ptmx, pw, terminal, waitChan, network, networkTimeout, networkSignaledTimeout)
 	go func() {
+		// add utmp entry
+		if utmpSupport {
+			ok := utmps.AddRecord(pts.Name(), conf.user, conf.host, os.Getpid())
+			if !ok {
+				// first utmpSupport means: we can read from utmp
+				// second utmpSupport means: we can write from utmp
+				utmpSupport = false
+				util.Logger.Warn("runChild can't update utmp")
+			}
+		}
 		conf.serve(ptmx, pts, pw, terminal, server, networkTimeout, networkSignaledTimeout, conf.user)
-		// exChan <- fmt.Sprintf("%s:shutdown", conf.desiredPort)
 		uxClient.send(fmt.Sprintf("%s:%s,%s", _ServeHeader, conf.desiredPort, "shutdown"))
+
+		// clear utmp entry
+		if utmpSupport {
+			utmps.RemoveRecord(pts.Name(), os.Getpid())
+		}
 		wg.Done()
 	}()
 	util.Logger.Info("start listening on", "port", conf.desiredPort, "clientTERM", conf.term)
@@ -2069,23 +2109,15 @@ func runChild(conf *Config) (err error) {
 	// TODO update last log ?
 	// util.UpdateLastLog(ptmxName, getCurrentUser(), utmpHost)
 
-	defer func() { // clear utmp entry
-		if utmpSupport {
-			util.ClearUtmpx(pts)
-		}
-	}()
-
 	// start the shell with pts
 	shell, err := startShellProcess(pts, pr, utmpHost, conf)
 	pts.Close() // it's copied by shell process, it's safe to close it here.
 	if err != nil {
 		util.Logger.Warn("startShell fail", "error", err)
-		// whChan <- workhorse{}
 		uxClient.send(fmt.Sprintf("%s:%s,%d", _ShellHeader, conf.desiredPort, 0))
 	} else {
 
 		uxClient.send(fmt.Sprintf("%s:%s,%d", _ShellHeader, conf.desiredPort, shell.Pid))
-		// whChan <- workhorse{shell, ptmx}
 		// wait for the shell to finish.
 		var state *os.ProcessState
 		state, err = shell.Wait()

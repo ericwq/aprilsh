@@ -6,27 +6,22 @@
 
 package util
 
-import (
-	"fmt"
-	"os"
-)
-
-func AddUtmpx(pts *os.File, host string) bool {
-	fmt.Printf("unimplement %s\n", "AddUtmpx()")
-	return false
-}
-
-func ClearUtmpx(pts *os.File) bool {
-	fmt.Printf("unimplement %s\n", "ClearUtmpx()")
-	return false
-}
-
-func UpdateLastLog(line, userName, host string) bool {
-	fmt.Printf("unimplement %s\n", "UpdateLastLog()")
-	return false
-}
-
-func CheckUnattachedUtmpx(userName, ignoreHost, prefix string) []string {
-	fmt.Printf("unimplement %s\n", "CheckUnattachedUtmpx()")
-	return nil
-}
+// func AddUtmpx(pts *os.File, host string) bool {
+// 	fmt.Printf("unimplement %s\n", "AddUtmpx()")
+// 	return false
+// }
+//
+// func ClearUtmpx(pts *os.File) bool {
+// 	fmt.Printf("unimplement %s\n", "ClearUtmpx()")
+// 	return false
+// }
+//
+// func UpdateLastLog(line, userName, host string) bool {
+// 	fmt.Printf("unimplement %s\n", "UpdateLastLog()")
+// 	return false
+// }
+//
+// func CheckUnattachedUtmpx(userName, ignoreHost, prefix string) []string {
+// 	fmt.Printf("unimplement %s\n", "CheckUnattachedUtmpx()")
+// 	return nil
+// }
