@@ -1498,7 +1498,9 @@ func startShellProcess(pts *os.File, pr *io.PipeReader, utmpHost string, conf *C
 		// Always print traditional /etc/motd.
 		printMotd(pts, "/etc/motd")
 
-		warnUnattached(pts, conf.user, utmpHost)
+		if utmpSupport {
+			warnUnattached(pts, conf.user, utmpHost)
+		}
 	}
 
 	// set new title
