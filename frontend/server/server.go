@@ -1162,9 +1162,7 @@ func setGetRecord(f func() *utmps.Utmpx) {
 // unattached session: session started by client, but there is no client
 // packet received recently. unattached session example: "apshd:8101".
 // attached session example: "192.168.5.1 via apshd:8101"
-func warnUnattached(w io.Writer, ignoreHost string) {
-	userName := getCurrentUser()
-
+func warnUnattached(w io.Writer, userName string, ignoreHost string) {
 	// check unattached sessions
 	unatttached := make([]string, 0)
 	// unatttached := CheckUnattachedUtmpx(userName, ignoreHost, frontend.CommandServerName)
@@ -1500,7 +1498,7 @@ func startShellProcess(pts *os.File, pr *io.PipeReader, utmpHost string, conf *C
 		// Always print traditional /etc/motd.
 		printMotd(pts, "/etc/motd")
 
-		warnUnattached(pts, utmpHost)
+		warnUnattached(pts, conf.user, utmpHost)
 	}
 
 	// set new title
