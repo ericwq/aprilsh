@@ -33,7 +33,10 @@ if run as root, use `apk update` unlock the permission problem for abuild.
 run as `packager` user, git pull aports fork.
 ```sh
 % sudo apk update
-% cd ~/aports && git pull
+% sudo apk add go protoc utmps-dev ncurses ncurses-terminfo musl-locales protoc-gen-go colordiff
+% cd ~/aports
+% git config pull.rebase true
+% git pull
 ```
 
 create aprilsh directory if we don't have it.
@@ -65,16 +68,16 @@ delete the old packages directory, note the `cp -r` command, it's important to k
 ```
 
 ### validate tarball and apk
+validate the apk content
+```sh
+% cd ~/packages/testing/x86_64
+% tar tvvf aprilsh-0.5.49-r0.apk
+```
+
 validate the tarball.
 ```sh
 % cd /var/cache/distfiles
 % tar tvvf aprilsh-0.5.48.tar.gz
-```
-
-validate the apk content
-```sh
-% cd ~/packages/main/x86_64
-% tar tvvf aprilsh-0.5.49-r0.apk
 ```
 
 ## prepare openrc-nvide container for apk testing
