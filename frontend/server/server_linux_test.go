@@ -100,8 +100,8 @@ func TestWarnUnattached(t *testing.T) {
 				}
 			default: // warnUnattached found more than one unattached session
 				if count != v.count {
-					t.Errorf("#test warnUnattached() %q expect %d warning, got %d.\n",
-						v.label, v.count, count)
+					t.Errorf("#test warnUnattached() %q expect %d warning, got %d. \n%s\n",
+						v.label, v.count, count, got)
 				}
 			}
 		})
