@@ -36,6 +36,7 @@ run as `packager` user, git pull aports fork.
 % sudo apk add go protoc utmps-dev ncurses ncurses-terminfo musl-locales protoc-gen-go colordiff
 % cd ~/aports
 % git config pull.rebase true
+% git checkout aprilsh-branch
 % git pull
 ```
 

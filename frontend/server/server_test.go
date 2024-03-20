@@ -712,8 +712,8 @@ func TestMainSrvStart(t *testing.T) {
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			// init log
-			util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
-			// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
+			// util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+			util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
 			srv := newMainSrv(&v.conf)
 

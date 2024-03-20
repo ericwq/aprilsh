@@ -79,7 +79,8 @@ func TestWarnUnattached(t *testing.T) {
 	}
 	initData(data)
 
-	// open pts for test
+	// open pts for test,
+	// on some container, if pts/0 is not opened, the test will failed. so we open it.
 	ptmx, pts, err := pty.Open()
 	if err != nil {
 		t.Errorf("test warnUnattached open pts failed, %s\n", err)

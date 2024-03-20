@@ -24,7 +24,6 @@ import (
 	"strings"
 	"sync"
 	"syscall"
-	"testing"
 	"time"
 
 	"log/slog"
@@ -645,8 +644,11 @@ func (m *mainSrv) uxListen() (conn *net.UnixConn, err error) {
 	unixsockAddr = strings.Replace(unixsockAddr, "{}", strconv.Itoa(os.Getpid()), 1)
 	addr, _ := net.ResolveUnixAddr(unixsockNetwork, unixsockAddr)
 	conn, err = net.ListenUnixgram("unixgram", addr)
-	os.Chmod(unixsockAddr, 0666)
+	if err != nil {
+		return nil, err
+	}
 
+	err = os.Chmod(unixsockAddr, 0666)
 	if err != nil {
 		return nil, err
 	}
@@ -1172,22 +1174,22 @@ func warnUnattached(w io.Writer, userName string, ignoreHost string) {
 		if r.GetType() == utmps.USER_PROCESS && r.GetUser() == userName {
 			// does line show unattached session
 			host := r.GetHost()
-			if testing.Testing() {
-				fmt.Printf("#checkUnattachedRecord() MATCH user=(%q,%q) type=(%d,%d) host=%s\n",
-					r.GetUser(), userName, r.GetType(), utmps.USER_PROCESS, host)
-			}
+			// if testing.Testing() {
+			// 	fmt.Printf("#checkUnattachedRecord() MATCH user=(%q,%q) type=(%d,%d) host=%s\n",
+			// 		r.GetUser(), userName, r.GetType(), utmps.USER_PROCESS, host)
+			// }
 			if len(host) >= 5 && strings.HasPrefix(host, frontend.CommandServerName) &&
 				host != ignoreHost && utmps.DeviceExists(r.GetLine()) {
 				unatttached = append(unatttached, host)
-				if testing.Testing() {
-					fmt.Printf("#checkUnattachedRecord() append host=%s, line=%q\n", host, r.GetLine())
-				}
+				// if testing.Testing() {
+				// 	fmt.Printf("#checkUnattachedRecord() append host=%s, line=%q\n", host, r.GetLine())
+				// }
 			}
 		} else {
-			if testing.Testing() {
-				fmt.Printf("#checkUnattachedRecord() skip user=%q,%q; type=%d, line=%s, host=%s, id=%d, pid=%d\n",
-					r.GetUser(), userName, r.GetType(), r.GetLine(), r.GetHost(), r.GetId(), r.GetPid())
-			}
+			// if testing.Testing() {
+			// 	fmt.Printf("#checkUnattachedRecord() skip user=%q,%q; type=%d, line=%s, host=%s, id=%d, pid=%d\n",
+			// 		r.GetUser(), userName, r.GetType(), r.GetLine(), r.GetHost(), r.GetId(), r.GetPid())
+			// }
 		}
 		r = funcGetRecord()
 	}
