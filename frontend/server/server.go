@@ -572,7 +572,7 @@ func (m *mainSrv) run(conf *Config) {
 		case msg := <-m.exChan:
 			_, err := m.handleMessage(msg)
 			if err != nil {
-				util.Logger.Warn("child failed", "error", err, "msg", msg)
+				util.Logger.Warn("child failed", "error", err, "oldmsg", msg)
 			}
 		case ss := <-sig:
 			switch ss {
@@ -783,7 +783,7 @@ func (m *mainSrv) startChild(req string, addr *net.UDPAddr, conf2 Config) {
 	// }(&conf2, m.exChan, m.whChan)
 
 	// timeout read key from worker
-	timer := time.NewTimer(time.Duration(120) * time.Millisecond)
+	timer := time.NewTimer(time.Duration(140) * time.Millisecond)
 	select {
 	case <-timer.C:
 		delete(m.workers, p) // clear failed worker
