@@ -7,11 +7,13 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/creack/pty"
 	"github.com/ericwq/aprilsh/util"
 	utmps "github.com/ericwq/goutmp"
 )
@@ -77,6 +79,17 @@ func TestWarnUnattached(t *testing.T) {
 		{utmps.USER_PROCESS, "apshd:999", "pts/ptmx", getCurrentUser(), 2, 1224},
 	}
 	initData(data)
+
+	// open pts for test
+	ptmx, pts, err := pty.Open()
+	if err == nil {
+		t.Errorf("test warnUnattached open pts failed, %s\n", err)
+	}
+	defer func() {
+		ptmx.Close()
+		pts.Close()
+	}()
+
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			var out strings.Builder
