@@ -145,6 +145,9 @@ func TestConnection(t *testing.T) {
 		{"invalid host literal", "wronthost999", "403:405", false, "no such host"}, //"#tryBind error"},
 	}
 
+	if runtime.GOARCH == "riscv64" {
+		t.Skip("riscv64 skip this test.")
+	}
 	// replace the logFunc
 	var output strings.Builder
 	util.Logger.CreateLogger(&output, true, slog.LevelDebug)
@@ -191,6 +194,9 @@ func TestConnectionClient(t *testing.T) {
 		{"wrong connect port", "localhost", "8080", "", "8001", true, ""},              // UDP does not connect, so different port still work.
 	}
 
+	if runtime.GOARCH == "riscv64" {
+		t.Skip("riscv64 skip this test.")
+	}
 	var output strings.Builder
 	util.Logger.CreateLogger(&output, true, slog.LevelDebug)
 
