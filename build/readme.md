@@ -36,7 +36,8 @@ run as `packager` user, git pull aports fork.
 % sudo apk add go protoc utmps-dev ncurses ncurses-terminfo musl-locales protoc-gen-go colordiff
 % cd ~/aports
 % git config pull.rebase true
-% git checkout aprilsh-branch
+% git branch aprilsh
+% git checkout aprilsh
 % git pull
 ```
 
@@ -94,7 +95,7 @@ commit the update, push to the remote repository.
 ```sh
 % git commit -a
 % git diff
-% git push origin aprilsh-branch
+% git push origin aprilsh
 ```
 ## prepare openrc-nvide container for apk testing
 
