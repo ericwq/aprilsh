@@ -7,7 +7,6 @@
 package main
 
 import (
-	"errors"
 	"os"
 	"reflect"
 	"strings"
@@ -82,7 +81,7 @@ func TestWarnUnattached(t *testing.T) {
 
 	// open pts for test
 	ptmx, pts, err := pty.Open()
-	if err == nil {
+	if err != nil {
 		t.Errorf("test warnUnattached open pts failed, %s\n", err)
 	}
 	defer func() {
@@ -106,7 +105,7 @@ func TestWarnUnattached(t *testing.T) {
 			count := strings.Count(got, "- ")
 			switch count {
 			case 0: // warnUnattached found one unattached session
-				if strings.Index(got, "detached session on this server") != -1 &&
+				if strings.Index(got, "a detached session on this server") != -1 &&
 					v.count != 1 {
 					t.Errorf("#test warnUnattached() %q expect %d warning, got 1.\n",
 						v.label, v.count)
