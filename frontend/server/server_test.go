@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -707,6 +708,9 @@ func TestMainSrvStart(t *testing.T) {
 		},
 	}
 
+	if runtime.GOARCH == "riscv64" {
+		t.Skip("riscv64 timer is not as accurate as other platform, skip this test.")
+	}
 	// the test start child process, which is /usr/bin/apshd
 	// which means you need to compile /usr/bin/apshd before test
 	for _, v := range tc {
