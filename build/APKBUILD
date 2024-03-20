@@ -1,7 +1,7 @@
 # Contributor: Wang Qi <ericwq057@qq.com>
 # Maintainer: Wang Qi <ericwq057@qq.com>
 pkgname=aprilsh
-pkgver=0.6.30
+pkgver=0.6.31
 pkgrel=0
 pkgdesc="Remote shell support intermittent or mobile network"
 url="https://github.com/ericwq/aprilsh"
@@ -14,8 +14,8 @@ source="https://github.com/ericwq/aprilsh/releases/download/$pkgver/aprilsh-$pkg
 	apshd.initd"
 
 # build info (part 1) required by go build
-_git_tag=0.6.30
-_git_commit=e41e16858f381000ba770641f0ba5e9eed3b5920
+_git_tag=0.6.31
+_git_commit=a657391cbe5e582a8b6f34b65b11fcfcc9de7175
 _git_branch=HEAD
 
 # go build need this
