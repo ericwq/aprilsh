@@ -81,6 +81,21 @@ validate the tarball.
 % tar tvvf aprilsh-0.5.48.tar.gz
 ```
 
+### commit the update to branch
+
+Use the following commit message template for new aports (without the comments):
+```txt
+testing/aprilsh: new aport
+
+https://github.com/ericwq/aprilsh
+Remote shell support intermittent or mobile network
+```
+commit the update, push to the remote repository.
+```sh
+% git commit -a
+% git diff
+% git push origin aprilsh-branch
+```
 ## prepare openrc-nvide container for apk testing
 
 please check [Run the openrc-nvide container](https://github.com/ericwq/nvide?tab=readme-ov-file#run-the-openrc-nvide-container) for detail.
