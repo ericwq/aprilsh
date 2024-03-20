@@ -141,8 +141,8 @@ func TestConnection(t *testing.T) {
 		{"default range", "", "9081:9090", true, ""}, // error on macOS for ipv6
 		{"invalid port", "", "4;3", false, "#parsePort invalid port number"},
 		{"reverse port order", "", "4:3", false, "#ParsePortRange low port"},
-		{"invalid host ", "localhost8", "403", false, "no such host"},
-		{"invalid host literal", "localhost9", "403:405", false, "no such host"}, //"#tryBind error"},
+		{"invalid host ", "wronghost888", "403", false, "no such host"},
+		{"invalid host literal", "wronthost999", "403:405", false, "no such host"}, //"#tryBind error"},
 	}
 
 	// replace the logFunc
@@ -170,13 +170,10 @@ func TestConnection(t *testing.T) {
 			}
 			got := output.String()
 			if !strings.Contains(got, v.msg) {
-				t.Errorf("%q expect \n%q, got \n%q\n", v.name, v.msg, got)
+				t.Errorf("%q expect \n%q for %q, got \n%q\n", v.name, v.msg, v.ip, got)
 			}
 		}
 	}
-
-	// restor the logFunc
-	// logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestConnectionClient(t *testing.T) {
@@ -190,8 +187,8 @@ func TestConnectionClient(t *testing.T) {
 		msg    string
 	}{
 		{"localhost 8080", "localhost", "8080", "localhost", "8080", true, ""},
-		{"wrong host", "", "9081:9090", "localhost7", "9081", false, "no such host"}, // error on macOS for ipv6
-		{"wrong connect port", "localhost", "8080", "", "8001", true, ""},            // UDP does not connect, so different port still work.
+		{"wrong host", "", "9081:9090", "wronghost777", "9081", false, "no such host"}, // error on macOS for ipv6
+		{"wrong connect port", "localhost", "8080", "", "8001", true, ""},              // UDP does not connect, so different port still work.
 	}
 
 	var output strings.Builder
@@ -233,7 +230,7 @@ func TestConnectionClient(t *testing.T) {
 			}
 			got := output.String()
 			if !strings.Contains(got, v.msg) {
-				t.Errorf("%q expect \n%q, got \n%q\n", v.name, v.msg, got)
+				t.Errorf("%q expect \n%q for host %q, got \n%q\n", v.name, v.msg, v.sIP, got)
 			}
 		}
 	}
