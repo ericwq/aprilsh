@@ -76,4 +76,5 @@
 - 2024/Mar/06: fix bug for server package #60, hild server command options, #59, fix bug for UDS name #61.
 - 2024/Mar/06: check available port before use #51, main server listen on local port #58, fix bug for server quit #57.
 - 2024/Mar/06: child inherit options from parent #56, each client run on child rocess #55.
+- 2024/Mar/20: fix failed test #60,#61,#62,#63,#66. add container port mapping support #65. add supervisor for apshd #67.
 
