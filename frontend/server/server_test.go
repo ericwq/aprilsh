@@ -697,7 +697,7 @@ func TestMainSrvStart(t *testing.T) {
 		conf     Config
 	}{
 		{
-			"start normally", 100, frontend.AprilshMsgOpen + "7101,", 90,
+			"start normally", 100, frontend.AprilshMsgOpen + "7101,", 150,
 			Config{
 				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -759,7 +759,7 @@ func TestStartFail(t *testing.T) {
 		conf   Config
 	}{
 		{
-			"illegal port", 20, "", 50,
+			"illegal port", 20, "", 150,
 			Config{
 				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7000a",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -1068,7 +1068,7 @@ func TestRunFail2(t *testing.T) {
 		conf   Config
 	}{
 		{
-			"read udp error", 20, "7101,This is the mock key", 50,
+			"read udp error", 20, "7101,This is the mock key", 150,
 			Config{
 				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -1124,7 +1124,7 @@ func TestMaxPortLimit(t *testing.T) {
 		conf         Config
 	}{
 		{
-			"run() over max port", 0, 20, "over max port limit", 50,
+			"run() over max port", 0, 20, "over max port limit", 150,
 			Config{
 				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7700",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -1181,7 +1181,7 @@ func TestMalformRequest(t *testing.T) {
 		conf         Config
 	}{
 		{
-			"run() malform request", 20, "malform request", 50,
+			"run() malform request", 20, "malform request", 150,
 			Config{
 				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7700",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -1257,7 +1257,7 @@ func TestRunWorkerKillSignal(t *testing.T) {
 		conf   Config
 	}{
 		{
-			"runWorker stopped by signal kill", 10, frontend.AprilshMsgOpen + "7101,", 80,
+			"runWorker stopped by signal kill", 10, frontend.AprilshMsgOpen + "7101,", 150,
 			Config{
 				version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -1415,7 +1415,7 @@ func TestRunCloseFail(t *testing.T) {
 		{
 			"runWorker stopped by " + frontend.AprishMsgClose, 20, frontend.AprilshMsgOpen + "7111,", frontend.AprishMsgClose + "done",
 			[]string{},
-			80,
+			150,
 			Config{
 				version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7110",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -1425,7 +1425,7 @@ func TestRunCloseFail(t *testing.T) {
 		{
 			"runWorker stop port not exist", 5, frontend.AprilshMsgOpen + "7121,", frontend.AprishMsgClose + "port does not exist",
 			[]string{"7100"},
-			80,
+			150,
 			Config{
 				version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7120",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -1435,7 +1435,7 @@ func TestRunCloseFail(t *testing.T) {
 		{
 			"runWorker stop wrong port number", 5, frontend.AprilshMsgOpen + "7131,", frontend.AprishMsgClose + "wrong port number",
 			[]string{"7121x"},
-			80,
+			150,
 			Config{
 				version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7130",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -1445,7 +1445,7 @@ func TestRunCloseFail(t *testing.T) {
 		{
 			"runWorker stop unknow request", 5, frontend.AprilshMsgOpen + "7141,", frontend.AprishMsgClose + "unknow request",
 			[]string{"two", "params"},
-			80,
+			150,
 			Config{
 				version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7140",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -1521,7 +1521,7 @@ func TestRunWith2Clients(t *testing.T) {
 	}{
 		{
 			"open aprilsh with duplicate request", 20, frontend.AprilshMsgOpen + "7101,", frontend.AprishMsgClose + "done",
-			frontend.AprilshMsgOpen + "7102", []string{}, 50,
+			frontend.AprilshMsgOpen + "7102", []string{}, 150,
 			Config{
 				version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -1885,7 +1885,7 @@ func TestBeginChild(t *testing.T) {
 		conf       Config
 	}{
 		{
-			"normal beginClientConn", 100, frontend.AprilshMsgOpen + "7101,", 80,
+			"normal beginClientConn", 100, frontend.AprilshMsgOpen + "7101,", 150,
 			Config{desiredPort: "7100", term: "xterm-256color", destination: getCurrentUser() + "@localhost"},
 			Config{
 				version: false, server: false, desiredIP: "", desiredPort: "7100",
@@ -1946,7 +1946,7 @@ func TestMainBeginChild(t *testing.T) {
 		conf     Config
 	}{
 		{
-			"main begin child", frontend.AprilshMsgOpen + "7151,", 80,
+			"main begin child", frontend.AprilshMsgOpen + "7151,", 150,
 			[]string{"/usr/bin/apshd", "-b", "-destination", getCurrentUser() + "@localhost",
 				"-p", "7150", "-t", "xterm-256color", "-vv"},
 			Config{

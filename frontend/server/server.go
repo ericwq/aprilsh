@@ -783,7 +783,7 @@ func (m *mainSrv) startChild(req string, addr *net.UDPAddr, conf2 Config) {
 	// }(&conf2, m.exChan, m.whChan)
 
 	// timeout read key from worker
-	timer := time.NewTimer(time.Duration(200) * time.Millisecond)
+	timer := time.NewTimer(time.Duration(120) * time.Millisecond)
 	select {
 	case <-timer.C:
 		delete(m.workers, p) // clear failed worker
