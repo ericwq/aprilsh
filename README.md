@@ -1,6 +1,78 @@
-# Aprilsh
+aprilsh: remote shell support intermittent or mobile network. inspired by [mosh](https://mosh.org/) and [zutty](https://github.com/tomscii/zutty).
 
-remote shell support intermittent or mobile network. (reborn [mosh](https://mosh.org/) with go)
+## Install
+
+### reqirement
+- [open-ssh](https://www.openssh.com/) is a must reqirement, aprilsh need openssh to perform user authentication.
+- [locale support](https://git.adelielinux.org/adelie/musl-locales/-/wikis/home) is must reqirement.
+- [ncurses and terminfo](https://invisible-island.net/ncurses/) is must requirement.
+- [openrc](https://github.com/OpenRC/openrc) is an optional reqirement, aprilsh need it to manage apshd service.
+- [utmps](https://skarnet.org/software/utmps/) is an optional requirement, aprilsh need it to update utmp/wtmp.
+
+### install for alpine
+
+add testing repositories to your alpine system, you need the root privilege to do that.
+```sh
+# echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
+# apk update
+```
+add aprilsh, which includes aprilsh-server, aprilsh-client, aprilsh-openrc.
+```sh
+# apk add aprilsh
+```
+
+run apshd (aprilsh server) as openrc service.
+```sh
+# rc-service apshd start
+```
+
+or run apshd (aprilsh server) manually.
+```sh
+# apshd 2>/var/log/apshd &
+```
+by default apshd listen on udp localhost:8100.
+```txt
+openrc-nvide:~# netstat -lup
+Active Internet connections (only servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
+udp        0      0 localhost:8100          0.0.0.0:*                           45561/apshd
+openrc-nvide:~#
+```
+now login to the system with apsh (aprilsh client), note the `motd`(welcome message) depends on you alpine system config.
+```txt
+qiwang@Qi15Pro client % apsh ide@localhost
+openrc-nvide:0.10.2
+
+Lua, C/C++ and Golang Integrated Development Environment.
+Powered by neovim, luals, gopls and clangd.
+ide@openrc-nvide:~ $
+```
+if you login on two terminals, on the server, there will be two server processes serve the clients. the following shows `apshd` serve two clients. one is`:8101`, the other is ':8102'
+```sh
+openrc-nvide:~# netstat -lup
+Active Internet connections (only servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
+udp        0      0 localhost:8100          0.0.0.0:*                           45561/apshd
+udp        0      0 :::8101                 :::*                                45647/apshd
+udp        0      0 :::8102                 :::*                                45612/apshd
+openrc-nvide:~#
+```
+enjoy the early access for aprilsh.
+## Status
+
+Ready for early acess. The missing part is prediction engine tuning. Check [here](status.md) for history deatil.
+
+## Dependency
+build dependency.
+```sh
+# apk add go protoc utmps-dev ncurses ncurses-terminfo musl-locales protoc-gen-go
+```
+
+run dependency.
+```sh
+# apk add musl-locales utmps ncurses ncurses-terminfo wezterm-extra-terminfo openssh-server
+
+```
 
 ## Motivation
 
@@ -22,21 +94,6 @@ There are also some goals for this project:
 - Prove golang is a good choice for terminal developing.
 
 The project name `Aprilsh` is derived from `April+sh`. This project started in shanghai April 2022, and it's a remote shell.
-
-## install
-
-Need a intall document. Please wait.
-
-## status
-
-Ready for early acess. The missing part is install package and prediction engine tuning. Check [here](status.md) for progress deatil.
-
-## build dependency
-
-```sh
-apk add musl-locales-lang musl-locales utmps-dev
-```
-
 Use the above command to add musl locales support and utmps support for alpine. Note alpine only support UTF-8 charmap.
 
 ## Architecture view
