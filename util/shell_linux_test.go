@@ -7,6 +7,7 @@
 package util
 
 import (
+	"os"
 	"os/user"
 	"testing"
 )
@@ -31,4 +32,15 @@ func TestGetShell(t *testing.T) {
 		t.Errorf("#test GetShell4() darwin expect no error, got %s, error %q\n", s, e)
 	}
 
+}
+func TestGetShellFail(t *testing.T) {
+	path := os.Getenv("PATH")
+	os.Unsetenv("PATH")
+	defer os.Setenv("PAHT", path)
+
+	user, _ := user.Current()
+	_, err := getShell(user)
+	if err == nil {
+		t.Errorf("#test getShell() expect error, got nil.\n")
+	}
 }
