@@ -1176,8 +1176,10 @@ func warnUnattached(w io.Writer, userName string, ignoreHost string) {
 	// check unattached sessions
 	unatttached := make([]string, 0)
 	// unatttached := CheckUnattachedUtmpx(userName, ignoreHost, frontend.CommandServerName)
+	util.Logger.Debug("warnUnattached", "get", "record", "funcGetRecord", funcGetRecord)
 	r := funcGetRecord()
 	for r != nil {
+		util.Logger.Debug("warnUnattached", "user", r.GetUser(), "line", r.GetHost(), "type", r.GetType())
 		if r.GetType() == utmps.USER_PROCESS && r.GetUser() == userName {
 			// does line show unattached session
 			host := r.GetHost()
@@ -1202,10 +1204,12 @@ func warnUnattached(w io.Writer, userName string, ignoreHost string) {
 	}
 
 	if len(unatttached) == 0 {
+		util.Logger.Debug("warnUnattached", "0", "record")
 		return
 	} else if len(unatttached) == 1 {
 		fmt.Fprintf(w, "\033[37;44mAprilsh: You have a detached session on this server (%s).\033[m\n\n",
 			unatttached[0])
+		util.Logger.Debug("warnUnattached", "1", "record")
 	} else {
 		var sb strings.Builder
 		for _, v := range unatttached {
@@ -1214,6 +1218,7 @@ func warnUnattached(w io.Writer, userName string, ignoreHost string) {
 
 		fmt.Fprintf(w, "\033[37;44mAprilsh: You have %d detached sessions on this server, with PIDs:\n%s\033[m\n",
 			len(unatttached), sb.String())
+		util.Logger.Debug("warnUnattached", "x", "record")
 	}
 }
 
@@ -1495,6 +1500,7 @@ func startShellProcess(pts *os.File, pr *io.PipeReader, utmpHost string, conf *C
 
 	// https://stackoverflow.com/questions/21705950/running-external-commands-through-os-exec-under-another-user
 	//
+	util.Logger.Debug("start shell prepare to check motd and unattached session", "utmpSupport", utmpSupport)
 	if conf.withMotd && !motdHushed() {
 		// For Ubuntu, try and print one of {,/var}/run/motd.dynamic.
 		// This file is only updated when pam_motd is run, but when
@@ -1508,21 +1514,21 @@ func startShellProcess(pts *os.File, pr *io.PipeReader, utmpHost string, conf *C
 		// Always print traditional /etc/motd.
 		printMotd(pts, "/etc/motd")
 
-		if utmpSupport {
-			warnUnattached(pts, conf.user, utmpHost)
-		}
+		// if utmpSupport {
+		// 	warnUnattached(pts, conf.user, utmpHost)
+		// }
 	}
 
 	// set new title
 	fmt.Fprintf(pts, "\x1B]0;%s %s:%s\a", frontend.CommandClientName, conf.destination, conf.desiredPort)
 
-	encrypt.ReenableDumpingCore()
+	// encrypt.ReenableDumpingCore()
 
 	/*
 		additional logic for pty.StartWithAttrs() end
 	*/
 
-	// util.Logger.Debug("start shell waiting for pipe unlock")
+	util.Logger.Debug("start shell waiting for pipe unlock")
 	// wait for serve() to release us
 	if pr != nil && conf.flowControl != _FC_SKIP_PIPE_LOCK {
 		ch := make(chan string, 0)
