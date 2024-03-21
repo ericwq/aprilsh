@@ -571,6 +571,13 @@ func (m *mainSrv) run(conf *Config) {
 		select {
 		case msg := <-m.exChan:
 			_, err := m.handleMessage(msg)
+			if len(m.workers) > 0 {
+				for port, wh := range m.workers {
+					util.Logger.Debug("there are clients:", "port", port, "childPid", wh.child.Pid)
+				}
+			} else {
+				util.Logger.Debug("there is no client remains")
+			}
 			if err != nil {
 				util.Logger.Warn("child failed", "error", err, "oldmsg", msg)
 			}
