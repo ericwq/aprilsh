@@ -692,7 +692,7 @@ func TestSenderSendInterval(t *testing.T) {
 	}
 
 	gotInterval := client.sender.sendInterval()
-	if gotInterval != SEND_INTERVAL_MIN {
+	if gotInterval-SEND_INTERVAL_MIN <= 2 {
 		t.Errorf("#test sendInterval expect interval %d < %d\n", gotInterval, SEND_INTERVAL_MIN)
 	}
 
