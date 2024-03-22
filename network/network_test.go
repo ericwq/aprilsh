@@ -57,7 +57,8 @@ func TestPacket(t *testing.T) {
 
 	// test NewPacket func
 	for i, v := range tc2 {
-		p := NewPacket(v.direction, v.ts1+timestamp16(), v.ts2+timestamp16(), []byte(v.payload))
+		t16 := timestamp16()
+		p := NewPacket(v.direction, v.ts1+t16, v.ts2+t16, []byte(v.payload))
 		// fmt.Printf("p.seq=%d\n", p.seq)
 
 		if v.payload != string(p.payload) {
