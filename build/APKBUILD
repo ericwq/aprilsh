@@ -11,6 +11,7 @@ depends="$pkgname-client $pkgname-server"
 makedepends="go protoc utmps-dev ncurses ncurses-terminfo musl-locales protoc-gen-go"
 subpackages="$pkgname-client $pkgname-server $pkgname-openrc"
 source="https://github.com/ericwq/aprilsh/releases/download/$pkgver/aprilsh-$pkgver.tar.gz
+	apshd.logrotate
 	apshd.initd"
 
 # build info (part 1) required by go build
@@ -73,6 +74,7 @@ package() {
 	install -Dm755 "$builddir/bin/apshd" "$pkgdir/usr/bin/apshd"
 	install -Dm755 "$builddir/bin/apsh"  "$pkgdir/usr/bin/apsh"
 	install -Dm755 "$srcdir/apshd.initd" "$pkgdir/etc/init.d/apshd"
+	install -Dm644 "$srcdir/apshd.logrotate" "$pkgdir/etc/logrotate.d/apshd"
 }
 
 client() {
