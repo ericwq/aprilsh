@@ -1,14 +1,25 @@
-aprilsh: remote shell support intermittent or mobile network. inspired by [mosh](https://mosh.org/) and [zutty](https://github.com/tomscii/zutty).
+Aprilsh: remote shell support intermittent or mobile network. inspired by [mosh](https://mosh.org/) and [zutty](https://github.com/tomscii/zutty). aprilsh is a remote shell based on UDP, authenticate user via ssh.
 
 ## Install
 
 ### reqirement
-- [open-ssh](https://www.openssh.com/) is a must reqirement, aprilsh need openssh to perform user authentication.
-- [locale support](https://git.adelielinux.org/adelie/musl-locales/-/wikis/home) is must reqirement.
-- [ncurses and terminfo](https://invisible-island.net/ncurses/) is must requirement.
-- [openrc](https://github.com/OpenRC/openrc) is an optional reqirement, aprilsh need it to manage apshd service.
-- [utmps](https://skarnet.org/software/utmps/) is an optional requirement, aprilsh need it to update utmp/wtmp.
+- [open-ssh](https://www.openssh.com/) is a must reqirement, openssh is needed to perform user authentication.
+- [locale support](https://git.adelielinux.org/adelie/musl-locales/-/wikis/home) is a must reqirement.
+- [ncurses and terminfo](https://invisible-island.net/ncurses/) is a must requirement.
+- [utmps](https://skarnet.org/software/utmps/) is a optional requirement, for update utmp/wtmp.
+- [openrc](https://github.com/OpenRC/openrc) is a optional reqirement.
+- [logrotate](https://github.com/logrotate/logrotate) is a optional requirement.
 
+build dependency.
+```sh
+# apk add go protoc utmps-dev ncurses musl-locales ncurses-terminfo protoc-gen-go
+```
+
+run dependency.
+```sh
+# apk add musl-locales utmps ncurses logrotate ncurses-terminfo wezterm-extra-terminfo openssh-server
+
+```
 ### install for alpine
 
 add testing repositories to your alpine system, you need the root privilege to do that.
@@ -58,21 +69,11 @@ udp        0      0 :::8102                 :::*                                
 openrc-nvide:~#
 ```
 enjoy the early access for aprilsh.
-## Status
 
-Ready for early acess. The missing part is prediction engine tuning. Check [here](status.md) for history deatil.
+## Changelog
 
-## Dependency
-build dependency.
-```sh
-# apk add go protoc utmps-dev ncurses ncurses-terminfo musl-locales protoc-gen-go
-```
+Ready for early acess. The missing part is prediction engine tuning. Check [here](changelog.md) for history deatil.
 
-run dependency.
-```sh
-# apk add musl-locales utmps ncurses ncurses-terminfo wezterm-extra-terminfo openssh-server
-
-```
 
 ## Motivation
 

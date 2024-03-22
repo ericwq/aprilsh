@@ -1,6 +1,4 @@
-# Aprilsh
-
-## Status
+## Changelog
 
 <details>
 <summary>2022</summary>
@@ -31,7 +29,7 @@
 - 2023/Mar/24: solve the locale problem in alpine.
 - 2023/Apr/07: support concurrent UDP server.
 - 2023/Apr/21: finish server start/stop part.
-- 2023/May/01: study [s6](https://skarnet.org/software/s6/) as PID 1 process: [utmps](https://skarnet.org/software/utmps/) require s6, aprilsh also require s6 or similar alternative.
+- 2023/May/01: study [s6](https://skarnet.org/software/s6/) as PID 1 process: [utmps](https://skarnet.org/software/utmps/) require s6, aprilsh should suppport openrc.
 - 2023/May/16: finish [alpine container with openrc support](https://github.com/ericwq/s6)
 - 2023/May/30: finish [eric/goutmp](https://github.com/ericwq/goutmp)
 - 2023/Jun/07: upgrade to `ericwq/goutmp` v0.2.0.
@@ -66,15 +64,20 @@
 </details> 
 
 - 2024/Jan/02: refine utmp access #22.
-- 2024/Jan/09: refine for no connection shutdown #20, refine for no request time out. fix bug #19, #21, #23, #24.
+- 2024/Jan/09: refine for no connection shutdown #20, refine for no request time out,
+- 2024/Jan/09: fix bug #19, #21, #23, #24.
 - 2024/Jan/13: attacked by a terrible fever, the fever last more than 7 days, the cough last more than 10 days.
 - 2024/Jan/25: finish unit test for Framebuffer and Emulator. fix bug #23, #27, #26.
 - 2024/Feb/01: finish release workflow for source tar ball. finish build apk for alpine.
 - 2024/Feb/09: aprilsh-openrc is ready #29. fix environment variable bug for login user #39.
-- 2024/Feb/19: syslog support #37, customized ssh port #36, ssh authentication passphrase #41, hostkey callback #43,
-- 2024/Feb/19: customized port #49, fetch key errror handling #48, password support #45.
-- 2024/Mar/06: fix bug for server package #60, hild server command options, #59, fix bug for UDS name #61.
-- 2024/Mar/06: check available port before use #51, main server listen on local port #58, fix bug for server quit #57.
-- 2024/Mar/06: child inherit options from parent #56, each client run on child rocess #55.
-- 2024/Mar/20: fix failed test #60,#61,#62,#63,#66. add container port mapping support #65. add supervisor for apshd #67.
+- 2024/Feb/19: syslog support #37, customized ssh port #36, ssh authentication passphrase #41, 
+- 2024/Feb/19: customized port #49, fetch key errror handling #48, password support #45,
+- 2024/Feb/19: hostkey callback #43.
+- 2024/Mar/06: fix bug for server package #60, hild server command options, #59, fix bug for UDS name #61,
+- 2024/Mar/06: check available port before use #51, main server listen on local port #58,
+- 2024/Mar/06: child inherit options from parent #56, each client run on child rocess #55,
+- 2024/Mar/06: fix bug for server quit #57.
+- 2024/Mar/20: fix failed test #60,#61,#62,#63,#66. add container port mapping support #65,
+- 2024/Mar/20: add supervisor for apshd #67. upgrade goutmp to 0.5.1.
+- 2024/Mar/22: add logrotate for apshd, #68, fix test bug for #34. disable warnUnattached().
 
