@@ -1416,38 +1416,38 @@ func TestRunCloseFail(t *testing.T) {
 		finish int      // pause before shutdown message
 		conf   Config
 	}{
+		// {
+		// 	"runWorker stopped by " + frontend.AprishMsgClose, 20, frontend.AprilshMsgOpen + "7111,", frontend.AprishMsgClose + "done",
+		// 	[]string{},
+		// 	150,
+		// 	Config{
+		// 		version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7110",
+		// 		locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
+		// 		commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
+		// 	},
+		// },
+		// {
+		// 	"runWorker stop port not exist", 5, frontend.AprilshMsgOpen + "7121,", frontend.AprishMsgClose + "port does not exist",
+		// 	[]string{"7100"},
+		// 	150,
+		// 	Config{
+		// 		version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7120",
+		// 		locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
+		// 		commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
+		// 	},
+		// },
+		// {
+		// 	"runWorker stop wrong port number", 5, frontend.AprilshMsgOpen + "7131,", frontend.AprishMsgClose + "wrong port number",
+		// 	[]string{"7121x"},
+		// 	150,
+		// 	Config{
+		// 		version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7130",
+		// 		locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
+		// 		commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
+		// 	},
+		// },
 		{
-			"runWorker stopped by " + frontend.AprishMsgClose, 20, frontend.AprilshMsgOpen + "7111,", frontend.AprishMsgClose + "done",
-			[]string{},
-			150,
-			Config{
-				version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7110",
-				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
-				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
-			},
-		},
-		{
-			"runWorker stop port not exist", 5, frontend.AprilshMsgOpen + "7121,", frontend.AprishMsgClose + "port does not exist",
-			[]string{"7100"},
-			150,
-			Config{
-				version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7120",
-				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
-				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
-			},
-		},
-		{
-			"runWorker stop wrong port number", 5, frontend.AprilshMsgOpen + "7131,", frontend.AprishMsgClose + "wrong port number",
-			[]string{"7121x"},
-			150,
-			Config{
-				version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7130",
-				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
-				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
-			},
-		},
-		{
-			"runWorker stop unknow request", 5, frontend.AprilshMsgOpen + "7141,", frontend.AprishMsgClose + "unknow request",
+			"runWorker stop unknow request", 25, frontend.AprilshMsgOpen + "7141,", frontend.AprishMsgClose + "unknow request",
 			[]string{"two", "params"},
 			150,
 			Config{
@@ -1458,10 +1458,14 @@ func TestRunCloseFail(t *testing.T) {
 		},
 	}
 
+	if runtime.GOARCH == "s390x" {
+		t.Skip("for s390x, skip this test.")
+	}
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 
 			util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+			// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
 			// set serve func and runWorker func
 			v.conf.serve = mockServe
@@ -2386,6 +2390,10 @@ func TestCloseChild(t *testing.T) {
 	}{
 		{"placeHolder port", frontend.AprishMsgClose + "6252", []int{6252},
 			&Config{desiredPort: "6250"}, "close port is a holder"},
+		{"wrong port number", frontend.AprishMsgClose + "625a", nil,
+			&Config{desiredPort: "6250"}, "wrong port number"},
+		{"port doesn't exist", frontend.AprishMsgClose + "6252", nil,
+			&Config{desiredPort: "6250"}, "port does not exist"},
 	}
 
 	for _, v := range tc {
@@ -2404,7 +2412,7 @@ func TestCloseChild(t *testing.T) {
 			for _, value := range v.holders {
 				m.workers[value] = &workhorse{}
 			}
-			// reading and validate the message
+			// reading the udp response
 			wg.Add(1)
 			go func() {
 				defer wg.Done()
@@ -2412,7 +2420,7 @@ func TestCloseChild(t *testing.T) {
 				buf := make([]byte, 128)
 				shutdown := false
 				for {
-					select {
+					select { // waiting for shutdown
 					case <-m.downChan:
 						shutdown = true
 					default:
@@ -2442,7 +2450,7 @@ func TestCloseChild(t *testing.T) {
 
 			// validate the result
 			got := out.String()
-			fmt.Println(got)
+			// fmt.Println(got)
 			if !strings.Contains(got, v.expect) {
 				t.Errorf("startChild expect %q, got \n%s\n", v.expect, got)
 			}

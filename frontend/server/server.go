@@ -828,6 +828,7 @@ func (m *mainSrv) closeChild(req string, addr *net.UDPAddr) {
 	if m.workers[port].child != nil {
 		m.workers[port].child.Signal(syscall.SIGTERM)
 		m.writeRespTo(addr, frontend.AprishMsgClose, "done")
+		util.Logger.Debug("close child done", "request", req)
 	} else {
 		resp := m.writeRespTo(addr, frontend.AprishMsgClose, "close port is a holder")
 		util.Logger.Warn("close port is a holder", "request", req, "response", resp)

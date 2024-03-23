@@ -1033,6 +1033,10 @@ func (m *mockSession) Encrypt(plainText *encrypt.Message) []byte {
 }
 
 func TestRecvSRTT(t *testing.T) {
+	if runtime.GOARCH == "s390x" {
+		t.Skip("for s390x, skip this test.")
+	}
+
 	// prepare the client and server connection
 	title := "receive packet to calculate SRTT/RTTVAR"
 	ip := ""

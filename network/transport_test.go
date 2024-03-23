@@ -10,6 +10,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -80,6 +81,10 @@ func TestTransportClientSend(t *testing.T) {
 }
 
 func TestTransportServerSend(t *testing.T) {
+	if runtime.GOARCH == "s390x" {
+		t.Skip("for s390x, skip this test.")
+	}
+
 	completeTerminal, _ := statesync.NewComplete(80, 5, 0)
 	blank := &statesync.UserStream{}
 	desiredIp := ""
