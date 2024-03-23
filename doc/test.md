@@ -87,3 +87,39 @@ go build -race -o apsh .
 ### pprof
 go tool pprof client cpu.profile
 go test -bench=. -count 5 -run=^# -benchmem
+
+## git branch
+
+### create git branch
+
+```sh
+git branch new-feature                  ## create new branch
+git checkout new-feature                ## switch to new branch
+```
+
+### commit to git branch
+```sh
+git add <changed-files>                 ## add all change to stage
+git commit -m "add new feature"         ## commit change to local repo
+git push origin new-feature             ## push change to remote repo
+```
+
+### merge to main branch
+```sh
+git checkout main                       ## switch to main branch
+git merge new-feature                   ## merge new branch to main
+git push origin main                    ## push main branch to remote repo
+```
+
+### solve conflict
+```sh
+git add <conflicted-file>               ## add conflict solved files to stage
+git commit -m "resolve merge conflict"  ## commit change to local repo
+git merge new-feature                   ## merge continue
+```
+
+### delete the branch
+```sh
+git branch -d new-feature               ## delete local branch
+git push origin --delete new-feature    ## delete remote branch
+```
