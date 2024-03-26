@@ -31,11 +31,6 @@ BuildRequires:	golang
 BuildRequires:	ncurses-devel	
 BuildRequires:	protobuf-compiler
 
-# build info (part 1) required by go build
-%define _git_tag 0.6.39
-%define _git_commit 88adc2f0e1063e86f136c05af9744aed3f7bebf5
-%define _git_branch HEAD
-
 %description
 Aprilsh: remote shell support intermittent or mobile network. inspired by mosh and zutty. 
 
@@ -48,52 +43,56 @@ Aprilsh: remote shell support intermittent or mobile network. inspired by mosh a
 %autosetup -n %{name}-%{version}
 mkdir -p ~/go/{bin,pkg,src}
 
-
 %build
 export GOPATH=$HOME/go
 export PATH=$PATH:$GOPATH/bin
-
-# prepare build info (part 2)
-%global _module_name `head ./go.mod | grep "^module" | awk '{print $2}'`
-%global _build_time	`date`
-%global _go_version	`go version | grep "version" | awk '{print $3,$4}'`
-
 go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
-go mod tidy
-echo "current directory is ${pwd}"
-echo "_builddir is %{_builddir}"
 
+# build info required by go build
+_git_tag=0.6.39
+_git_commit=88adc2f0e1063e86f136c05af9744aed3f7bebf5
+_git_branch=HEAD
+
+_module_name=$(head ./go.mod | grep "^module" | awk '{print $2}')
+_build_time=$(date)
+_go_version=$(go version | grep "version" | awk '{print $3,$4}')
+
+# install go dependencies
+go mod tidy
+# echo "current directory is $(pwd)"
+# echo "_builddir is %{_builddir}"
+
+# compile protobuf code
 protoc --go_out=. -I . ./protobufs/transportInstruction.proto
 protoc --go_out=. -I . ./protobufs/hostInput.proto
 protoc --go_out=. -I . ./protobufs/userInput.proto
 
-
-echo "build server start: `date`"
-go build -ldflags="-s -w
-	-X %{_module_name}/frontend.GitTag=%{_git_tag}
-	-X %{_module_name}/frontend.GoVersion=%{_go_version}
-	-X %{_module_name}/frontend.GitCommit=%{_git_commit}
-	-X %{_module_name}/frontend.GitBranch=%{_git_branch}
-	-X %{_module_name}/frontend.BuildTime=%{_build_time}
-	" -o %{_builddir}/%{_bindir}/apshd ./frontend/server/*.go
+echo "build server start: $(date)"
+go build -ldflags="-s -w \
+	-X ${_module_name}/frontend.GitTag=${_git_tag} \
+	-X ${_module_name}/frontend.GoVersion=${_go_version} \
+	-X ${_module_name}/frontend.GitCommit=${_git_commit} \
+	-X ${_module_name}/frontend.GitBranch=${_git_branch} \
+	-X ${_module_name}/frontend.BuildTime=${_build_time}" \
+	-o %{_builddir}%{_bindir}/apshd ./frontend/server/*.go
 echo "build server end	: $(date)"
-echo "output server to	: %{_builddir}/%{_bindir}/apshd"
+echo "output server to	: %{_builddir}%{_bindir}/apshd"
 
 echo "build client start: $(date)"
-go build -ldflags="-s -w
-	-X '$_module_name/frontend.GitTag=%{_git_tag}'
-	-X '$_module_name/frontend.GoVersion=${_go_version}'
-	-X '$_module_name/frontend.GitCommit=${_git_commit}'
-	-X '$_module_name/frontend.GitBranch=${_git_branch}'
-	-X '$_module_name/frontend.BuildTime=${_build_time}'
-	" -o "%{_builddir}/%{_bindir}/apsh" ./frontend/client/*.go
+go build -ldflags="-s -w \
+	-X $_module_name/frontend.GitTag=${_git_tag}\
+	-X $_module_name/frontend.GoVersion=${_go_version}\
+	-X $_module_name/frontend.GitCommit=${_git_commit}\
+	-X $_module_name/frontend.GitBranch=${_git_branch}\
+	-X $_module_name/frontend.BuildTime=${_build_time}"\
+	-o "%{_builddir}%{_bindir}/apsh" ./frontend/client/*.go
 echo "build client end	: $(date)"
-echo "output client to	: %{_builddir}/%{_bindir}/apsh"
+echo "output client to	: %{_builddir}%{_bindir}/apsh"
 
 # run unit test
 go test ./encrypt/...
 go test ./frontend/
-APRILSH_APSHD_PATH="$builddir/bin/apshd" go test ./frontend/server
+APRILSH_APSHD_PATH="%{_builddir}%{_bindir}/apshd" go test ./frontend/server
 go test ./frontend/client
 go test ./network/...
 go test ./statesync/...
@@ -103,7 +102,7 @@ go test ./util/...
 %install
 rm -rf $RPM_BUILD_ROOT
 echo  %{buildroot}
-install -Dm755 "%{_builddir}/%{_bindir}/apshd" "%{buildroot}/%{_bindir}"
-install -Dm755 "%{_builddir}/%{_bindir}/apsh" "%{buildroot}/%{_bindir}"
+install -Dm755 "%{_builddir}%{_bindir}/apshd" "%{buildroot}/%{_bindir}"
+install -Dm755 "%{_builddir}%{_bindir}/apsh" "%{buildroot}/%{_bindir}"
 install -Dm644 "${_sourcedir}/apshd.initd" "$i{buildroot}/etc/init.d/apshd"
 install -Dm644 "${_sourcedir}/apshd.logrotate" "${buildroot}/etc/logrotate.d/apshd"

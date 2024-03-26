@@ -6,7 +6,7 @@ LABEL maintainer="ericwq057@qq.com"
 # RUN curl -s https://mirror.go-repo.io/fedora/go-repo.repo | tee /etc/yum.repos.d/go-repo.repo
 
 RUN dnf install -y gcc rpm-build rpm-devel rpmlint make python bash coreutils diffutils patch rpmdevtools \
-	&& dnf install -y sudo dnf-plugins-core golang tree git wget
+	sudo dnf-plugins-core golang tree git wget which
 
 # add user/group
 RUN groupadd build

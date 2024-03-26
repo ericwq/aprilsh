@@ -49,12 +49,18 @@ For installing latest go versions, you would need to add a repository with the l
 ```sh
 sudo rpm --import https://mirror.go-repo.io/centos/RPM-GPG-KEY-GO-REPO
 curl -s https://mirror.go-repo.io/centos/go-repo.repo | sudo tee /etc/yum.repos.d/go-repo.repo
-sudo yum install golang
+sudo yum install -y golang
 ```
 
 ## install go with dnf
 [How To Install Go (Golang) On Fedora](https://computingforgeeks.com/how-to-install-go-golang-on-fedora/)
 ```sh 
 sudo dnf -y update
-sudo dnf install go
+sudo dnf install -y golang
+```
+
+## list fils in package
+```sh
+dnf repoquery -l <package name>
+rpm -ql <package name>
 ```
