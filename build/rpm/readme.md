@@ -6,7 +6,6 @@ centos7: protobuf-compiler only support proto2. so we switch to fedora 39.
 ```sh
 docker build -t rpm-builder:0.1.0 -f centos7.dockerfile .
 docker build --no-cache --progress plain -t rpm-builder:0.1.0 -f centos7.dockerfile .
-docker build --no-cache --progress plain -t rpm-builder:0.2.0 -f fedora.dockerfile .
 ```
 
 run centos 7 container as packager
@@ -17,6 +16,11 @@ docker run -u packager --rm -ti -h rpm-builder --env TZ=Asia/Shanghai --name rpm
         rpm-builder:0.1.0
 ```
 
+fedora: with newer protobuf-compiler and dnf
+```sh
+docker build -t rpm-builder:0.2.0 -f fedora.dockerfile .
+docker build --no-cache --progress plain -t rpm-builder:0.2.0 -f fedora.dockerfile .
+```
 run fedora 39 container as packager
 ```sh
 docker run -u packager --rm -ti -h rpm-builder --env TZ=Asia/Shanghai --name rpm-builder --privileged \
@@ -24,11 +28,11 @@ docker run -u packager --rm -ti -h rpm-builder --env TZ=Asia/Shanghai --name rpm
         --mount type=bind,source=/Users/qiwang/dev,target=/home/packager/develop \
         rpm-builder:0.2.0
 ```
+
 ## setup build environment
 ```sh
 rpmdev-setuptree
 cp /home/packager/develop/aprilsh/build/rpm/aprilsh.spec ~/rpmbuild/SPECS/
-rm ~/rpmbuild/SOURCES/*.tar.gz
 rpmlint -v ~/rpmbuild/SPECS/aprilsh.spec
 ```
 
@@ -40,8 +44,9 @@ sudo dnf builddep -y ~/rpmbuild/SPECS/aprilsh.spec
 
 ## build rpm package
 ```sh
-rpmbuild -v -bc ~/rpmbuild/SPECS/aprilsh.spec
+rpmbuild -bc ~/rpmbuild/SPECS/aprilsh.spec
 rpmbuild -bb ~/rpmbuild/SPECS/aprilsh.spec
+rm ~/rpmbuild/SOURCES/*.tar.gz
 ```
 
 ## install go with yum
@@ -63,4 +68,10 @@ sudo dnf install -y golang
 ```sh
 dnf repoquery -l <package name>
 rpm -ql <package name>
+```
+
+## given file, find package
+```sh
+rpm -qf <file>
+dnf provides <file>
 ```

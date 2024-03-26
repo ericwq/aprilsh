@@ -30,6 +30,8 @@ BuildRequires:	gcc
 BuildRequires:	golang
 BuildRequires:	ncurses-devel	
 BuildRequires:	protobuf-compiler
+Requires: ncurses-term
+Requires: openssh-server
 
 %description
 Aprilsh: remote shell support intermittent or mobile network. inspired by mosh and zutty. 
@@ -60,7 +62,7 @@ _go_version=$(go version | grep "version" | awk '{print $3,$4}')
 # install go dependencies
 go mod tidy
 # echo "current directory is $(pwd)"
-# echo "_builddir is %{_builddir}"
+echo "_builddir is %{_builddir}"
 
 # compile protobuf code
 protoc --go_out=. -I . ./protobufs/transportInstruction.proto
