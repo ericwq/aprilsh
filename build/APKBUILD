@@ -73,7 +73,7 @@ check() {
 package() {
 	install -Dm755 "$builddir/bin/apshd" "$pkgdir/usr/bin/apshd"
 	install -Dm755 "$builddir/bin/apsh"  "$pkgdir/usr/bin/apsh"
-	install -Dm755 "$srcdir/apshd.initd" "$pkgdir/etc/init.d/apshd"
+	install -Dm644 "$srcdir/apshd.initd" "$pkgdir/etc/init.d/apshd"
 	install -Dm644 "$srcdir/apshd.logrotate" "$pkgdir/etc/logrotate.d/apshd"
 }
 
