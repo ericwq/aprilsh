@@ -69,27 +69,27 @@ protoc --go_out=. -I . ./protobufs/transportInstruction.proto
 protoc --go_out=. -I . ./protobufs/hostInput.proto
 protoc --go_out=. -I . ./protobufs/userInput.proto
 
+echo "build client start: $(date)"
+go build -ldflags="-s -w \
+	-X '$_module_name/frontend.GitTag=${_git_tag}' \
+	-X '$_module_name/frontend.GoVersion=${_go_version}' \
+	-X '$_module_name/frontend.GitCommit=${_git_commit}' \
+	-X '$_module_name/frontend.GitBranch=${_git_branch}' \
+	-X '$_module_name/frontend.BuildTime=${_build_time}' " \
+	-o %{_builddir}%{_bindir}/apsh ./frontend/client/*.go
+echo "build client end	: $(date)"
+echo "output client to	: %{_builddir}%{_bindir}/apsh"
+
 echo "build server start: $(date)"
 go build -ldflags="-s -w \
-	-X ${_module_name}/frontend.GitTag=${_git_tag} \
-	-X ${_module_name}/frontend.GoVersion=${_go_version} \
-	-X ${_module_name}/frontend.GitCommit=${_git_commit} \
-	-X ${_module_name}/frontend.GitBranch=${_git_branch} \
-	-X ${_module_name}/frontend.BuildTime=${_build_time}" \
+	-X '${_module_name}/frontend.GitTag=${_git_tag}' \
+	-X '${_module_name}/frontend.GoVersion=${_go_version}' \
+	-X '${_module_name}/frontend.GitCommit=${_git_commit}' \
+	-X '${_module_name}/frontend.GitBranch=${_git_branch}' \
+	-X '${_module_name}/frontend.BuildTime=${_build_time}' " \
 	-o %{_builddir}%{_bindir}/apshd ./frontend/server/*.go
 echo "build server end	: $(date)"
 echo "output server to	: %{_builddir}%{_bindir}/apshd"
-
-echo "build client start: $(date)"
-go build -ldflags="-s -w \
-	-X $_module_name/frontend.GitTag=${_git_tag}\
-	-X $_module_name/frontend.GoVersion=${_go_version}\
-	-X $_module_name/frontend.GitCommit=${_git_commit}\
-	-X $_module_name/frontend.GitBranch=${_git_branch}\
-	-X $_module_name/frontend.BuildTime=${_build_time}"\
-	-o "%{_builddir}%{_bindir}/apsh" ./frontend/client/*.go
-echo "build client end	: $(date)"
-echo "output client to	: %{_builddir}%{_bindir}/apsh"
 
 # run unit test
 go test ./encrypt/...
