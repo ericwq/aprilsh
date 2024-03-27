@@ -26,12 +26,8 @@ Group:	  System Environment/Daemons
 Source0:  https://github.com/ericwq/aprilsh/releases/download/%{version}/aprilsh-%{version}.tar.gz
 Source1:  apshd.initd
 Source2:  apshd.logrotate
-BuildRequires:	gcc
-BuildRequires:	golang
-BuildRequires:	ncurses-devel	
-BuildRequires:	protobuf-compiler
-Requires: ncurses-term
-Requires: openssh-server
+BuildRequires:	gcc,golang,ncurses-devel,protobuf-compiler
+Requires: ncurses-term,openssh-server,bash
 
 %description
 Aprilsh: remote shell support intermittent or mobile network. inspired by mosh and zutty. 
@@ -108,3 +104,7 @@ install -Dm755 "%{_builddir}%{_bindir}/apshd" "%{buildroot}/%{_bindir}"
 install -Dm755 "%{_builddir}%{_bindir}/apsh" "%{buildroot}/%{_bindir}"
 install -Dm644 "${_sourcedir}/apshd.initd" "$i{buildroot}/etc/init.d/apshd"
 install -Dm644 "${_sourcedir}/apshd.logrotate" "${buildroot}/etc/logrotate.d/apshd"
+
+%changelog
+* Wed Mar 27 2024 Wang Qi <ericwq057@qq.com> - 0.6.39
+- First version being packaged
