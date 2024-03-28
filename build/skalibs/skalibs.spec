@@ -26,17 +26,19 @@ Group:	  Development/Libraries
 Requires: %{name} = %{version}-%{release}
 Requires: pkgconfig
 %description devel
-skalibs is a package centralizing the free software / open source C development files used for building all software at skarnet.org: it contains essentially general-purpose libraries. You will need to install skalibs if you plan to build skarnet.org software.
-
 This subpackage holds the development headers and sysdeps files for the library.
 
 %package  static
 Summary:  Set of general-purpose C programming libraries for skarnet.org software. (static library)
 Group:	  Development/Libraries
 %description static
-skalibs is a package centralizing the free software / open source C development files used for building all software at skarnet.org: it contains essentially general-purpose libraries. You will need to install skalibs if you plan to build skarnet.org software.
-
 This subpackage contains the static version of the library used for development.
+
+%package  doc
+Summary:   Set of general-purpose C programming libraries for skarnet.org software. (html document)
+Requires: %{name} = %{version}-%{release}
+%description doc
+This subpackage contains html document for %{name}.
 
 %prep
 %autosetup -n %{name}-%{version}
@@ -56,9 +58,9 @@ make install DESTDIR=%{buildroot}
 # copy pkgconfig
 install -D -m 0644 "%{SOURCE1}" "%{buildroot}%{_libdir}/pkgconfig/skalibs.pc"
 
-# copy doc
-mkdir -p %{buildroot}%{_docdir}/%{name}
-cp -r "doc/" "%{buildroot}%{_docdir}/%{name}/"
+# move doc
+mkdir -p %{buildroot}%{_docdir}
+mv "doc/" "%{buildroot}%{_docdir}/%{name}/"
 
 %files
 %defattr(-,root,root,0755)
@@ -66,7 +68,6 @@ cp -r "doc/" "%{buildroot}%{_docdir}/%{name}/"
 %{_libdir}/libskarnet.so
 
 %files devel
-%{_docdir}/%{name}/*
 %defattr(-,root,root,0755)
 %{_includedir}/skalibs/*
 %{_libdir}/skalibs/sysdeps
@@ -76,6 +77,10 @@ cp -r "doc/" "%{buildroot}%{_docdir}/%{name}/"
 %defattr(-,root,root,0755)
 %{_libdir}/libskarnet.a
 
+%files doc
+%defattr(-,root,root,-)
+%{_docdir}/%{name}/*
+
 %changelog
-* Thu Mar 28 2024 Wang Qi <ericwq057@qq.com> - v0.1
+* Fri Mar 29 2024 Wang Qi <ericwq057@qq.com> - v0.1
 - First version being packaged
