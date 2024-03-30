@@ -32,29 +32,33 @@ build() {
 	protoc --go_out=. -I . ./protobufs/userInput.proto
 
 	# prepare build info (part 2)
-	_module_name=$(head ./go.mod | grep "^module" | awk '{print $2}')
-	_build_time=$(date)
-	_go_version=$(go version | grep "version" | awk '{print $3,$4}')
+	_module_name=$(head ./go.mod | grep '^module' | awk '{print $2}')
+	_go_version=$(go version | grep 'version' | awk '{print $3}')
 
+	# set ldflags
+	local ldflags="-s -w \
+		-X $_module_name/frontend.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%S) \
+		-X $_module_name/frontend.GitBranch=$_git_branch \
+		-X $_module_name/frontend.GitCommit=$_git_commit \
+		-X $_module_name/frontend.GitTag=$_git_tag \
+		-X $_module_name/frontend.GoVersion=$_go_version \
+		"
 	echo "build server start: $(date)"
-	go build -ldflags="-s -w
-		-X '$_module_name/frontend.GitTag=${_git_tag}'
-		-X '$_module_name/frontend.GoVersion=${_go_version}'
-		-X '$_module_name/frontend.GitCommit=${_git_commit}'
-		-X '$_module_name/frontend.GitBranch=${_git_branch}'
-		-X '$_module_name/frontend.BuildTime=${_build_time}'
-		" -o "$builddir/bin/apshd" ./frontend/server/*.go
+	go build -ldflags="$ldflags" -o "$builddir/bin/apshd" ./frontend/server
 	echo "build server end  : $(date)"
 	echo "output server to  : $builddir/bin/apshd"
 
+
+	# set ldflags (required for update BuildTime)
+	local ldflags="-s -w \
+		-X $_module_name/frontend.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%S) \
+		-X $_module_name/frontend.GitBranch=$_git_branch \
+		-X $_module_name/frontend.GitCommit=$_git_commit \
+		-X $_module_name/frontend.GitTag=$_git_tag \
+		-X $_module_name/frontend.GoVersion=$_go_version \
+		"
 	echo "build client start: $(date)"
-	go build -ldflags="-s -w
-		-X '$_module_name/frontend.GitTag=${_git_tag}'
-		-X '$_module_name/frontend.GoVersion=${_go_version}'
-		-X '$_module_name/frontend.GitCommit=${_git_commit}'
-		-X '$_module_name/frontend.GitBranch=${_git_branch}'
-		-X '$_module_name/frontend.BuildTime=${_build_time}'
-		" -o "$builddir/bin/apsh" ./frontend/client/*.go
+	go build -ldflags="$ldflags" -o "$builddir/bin/apsh" ./frontend/client
 	echo "build client end  : $(date)"
 	echo "output client to  : $builddir/bin/apsh"
 }
