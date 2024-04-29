@@ -34,7 +34,7 @@ then
 else
 	_build_tag="-tags utmps"
 fi
-echo "use tags: $_build_tag, musl: $_musl"
+echo "build with tags   : $_build_tag"
 
 # set ldflags
 ldflags="-s -w \
