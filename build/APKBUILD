@@ -35,6 +35,15 @@ build() {
 	_module_name=$(head ./go.mod | grep '^module' | awk '{print $2}')
 	_go_version=$(go version | grep 'version' | awk '{print $3}')
 
+	# set build tags based on glibc or musl
+	_musl=$(ldd /bin/ls | grep 'musl'|head -n 1| awk '{print $1}')
+	if [ "$_musl" == "" ]
+	then
+		_build_tag="-tags utmp"
+	else
+		_build_tag="-tags utmps"
+	fi
+
 	# set ldflags
 	local ldflags="-s -w \
 		-X $_module_name/frontend.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%S) \
@@ -44,7 +53,7 @@ build() {
 		-X $_module_name/frontend.GoVersion=$_go_version \
 		"
 	echo "build server start: $(date)"
-	go build -ldflags="$ldflags" -o "$builddir/bin/apshd" ./frontend/server
+	go build $_build_tag -ldflags="$ldflags" -o "$builddir/bin/apshd" ./frontend/server
 	echo "build server end  : $(date)"
 	echo "output server to  : $builddir/bin/apshd"
 
