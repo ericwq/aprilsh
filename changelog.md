@@ -80,4 +80,16 @@
 - 2024/Mar/20: fix failed test #60,#61,#62,#63,#66. add container port mapping support #65,
 - 2024/Mar/20: add supervisor for apshd #67. upgrade goutmp to 0.5.1.
 - 2024/Mar/22: add logrotate for apshd, #68, fix test bug for #34. disable warnUnattached().
-
+- 2024/Mar/23: prepare apk build files for aports publish, #34.
+- 2024/Apr/01: skarnet rpm packaging: skalibs.
+- 2024/Apr/02: skarnet rpm packaging: execline.
+- 2024/Apr/11: skarnet rpm packaging: s6. with systemd service and journald support.
+- 2024/Apr/14: skarnet rpm packaging: s6-dns.
+- 2024/Apr/15: skarnet rpm packaging: s6-rc.
+- 2024/Apr/15: skarnet rpm packaging: s6-networking.
+- 2024/Apr/22: skarnet rpm packaging: tipidee.
+- 2024/Apr/24: skarnet rpm packaging: sign rpm packages and publish skarnet yum/dnf repo.
+- 2024/Apr/27: skarnet rpm packaging: move [ericwq/rpms](https://github.com/ericwq/rpms) project to [codeberg.org](https://codeberg.org/ericwq/rpms).
+- 2024/Apr/30: update goutmp to support glibc based linux. build rpm package for 0.6.40.
+- 2024/May/01: aprilsh rpm packaging.
+- 2024/May/06: publish aprilsh yum/dnf repo.
