@@ -4,7 +4,7 @@ class Aprilsh < Formula
   url "https://github.com/ericwq/aprilsh/archive/refs/tags/0.6.40.tar.gz"
   sha256 "938876efe036eb149d458c4952a989d0864ea9984a22ef704d02a902d1896826"
   license "MIT"
-  revision 1
+  revision 0
 
   depends_on "go" => [:build, :test]
 
@@ -18,7 +18,7 @@ class Aprilsh < Formula
     _go_module = "github.com/ericwq/aprilsh"
     _git_commit = "ba85f89"   # git rev-parse --short HEAD
     _git_branch = "HEAD"	  # git rev-parse --abbrev-ref HEAD
-    _go_version = "go1.21.5"  # go version | grep 'version' | awk '{print $3}'
+    _go_version = "go1.22.3"  # go version | grep 'version' | awk '{print $3}'
     # _build_time = shell_output("date -u +%Y-%m-%dT%H:%M:%S").strip
     _build_time = DateTime.now().rfc3339(0)
     ldflags = %W[
