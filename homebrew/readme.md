@@ -15,3 +15,16 @@ uninstakl aprilsh
 ```sh
 brew uninstall aprilsh
 ```
+audit the formula
+```sh
+brew audit --strict --online aprilsh
+brew audit --new --formula aprilsh
+```
+the second audit reports:
+```
+qiwang@Qi15Pro homebrew % brew audit --new --formula aprilsh
+aprilsh
+  * GitHub repository not notable enough (<30 forks, <30 watchers and <75 stars)
+Error: 1 problem in 1 formula detected.
+qiwang@Qi15Pro homebrew %
+```
