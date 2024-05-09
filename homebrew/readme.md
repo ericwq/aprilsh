@@ -11,4 +11,7 @@ build and install formula
 ```sh
 HOMEBREW_NO_INSTALL_FROM_API=1 brew install --build-from-source --verbose --debug aprilsh
 ```
-
+uninstakl aprilsh
+```sh
+brew uninstall aprilsh
+```

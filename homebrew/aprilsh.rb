@@ -7,29 +7,28 @@ class Aprilsh < Formula
   revision 0
 
   depends_on "go" => [:build, :test]
-
-  depends_on "protobuf"
-
-  uses_from_macos "ncurses"
+  depends_on "protobuf" => [:build, :test]
+  uses_from_macos "ncurses", since: :monterey
 
   def install
-    ENV["GOPATH"] = buildpath
+    # ENV["GOPATH"] = buildpath
     ENV["GO111MODULE"] = "auto"
-    _go_module = "github.com/ericwq/aprilsh"
+    _go_module_ = "github.com/ericwq/aprilsh"
     _git_commit = "ba85f89"   # git rev-parse --short HEAD
     _git_branch = "HEAD"	  # git rev-parse --abbrev-ref HEAD
     _go_version = "go1.22.3"  # go version | grep 'version' | awk '{print $3}'
     # _build_time = shell_output("date -u +%Y-%m-%dT%H:%M:%S").strip
-    _build_time = DateTime.now().rfc3339(0)
+    _build_time = DateTime.now().rfc3339()
+    output = "apsh"
     ldflags = %W[
         -s -w
-        -X #{_go_module}/frontend.BuildTime=#{_build_time}
-		-X #{_go_module}/frontend.GitBranch=#{_git_branch}
-		-X #{_go_module}/frontend.GitCommit=#{_git_commit}
-		-X #{_go_module}/frontend.GitTag=#{version}
-		-X #{_go_module}/frontend.GoVersion=#{_go_version}
+        -X #{_go_module_}/frontend.BuildTime=#{_build_time}
+		-X #{_go_module_}/frontend.GitBranch=#{_git_branch}
+		-X #{_go_module_}/frontend.GitCommit=#{_git_commit}
+		-X #{_go_module_}/frontend.GitTag=#{version}
+		-X #{_go_module_}/frontend.GoVersion=#{_go_version}
     ]
-    system "go", "build", *std_go_args(ldflags:),"-o","apsh","./frontend/client/"
+    system "go", "build", *std_go_args(output:, ldflags:), "./frontend/client/"
     bin.install "apsh"
   end
 
