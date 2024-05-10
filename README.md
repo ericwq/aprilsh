@@ -1,80 +1,38 @@
-Aprilsh: remote shell support intermittent or mobile network. inspired by [mosh](https://mosh.org/) and [zutty](https://github.com/tomscii/zutty). aprilsh is a remote shell based on UDP, authenticate user via ssh.
+Aprilsh: remote shell support intermittent or mobile network. inspired by [mosh](https://mosh.org/) and [zutty](https://github.com/tomscii/zutty). aprilsh is a remote shell based on UDP, authenticate user via openssh.
 
 ## Install
 
-### reqirement
+#### reqirement
 - [open-ssh](https://www.openssh.com/) is a must reqirement, openssh is needed to perform user authentication.
 - [locale support](https://git.adelielinux.org/adelie/musl-locales/-/wikis/home) is a must reqirement.
 - [ncurses and terminfo](https://invisible-island.net/ncurses/) is a must requirement.
-- [utmps](https://skarnet.org/software/utmps/) is a optional requirement, for update utmp/wtmp.
-- [openrc](https://github.com/OpenRC/openrc) is a optional reqirement.
-- [logrotate](https://github.com/logrotate/logrotate) is a optional requirement.
+- [systmd](https://systemd.io/) reuired for redhat linux family (fedora, centos, redhat).
+- [utmps](https://skarnet.org/software/utmps/) reuired only for alpine
+- [openrc](https://github.com/OpenRC/openrc) required only for alpine.
+- [logrotate](https://github.com/logrotate/logrotate) reuired only for alpine.
 
-build dependency.
+
+#### Alpine linux
+Please note: aprilsh is still waiting for aports testing repositories approval
 ```sh
-# apk add go protoc utmps-dev ncurses musl-locales ncurses-terminfo protoc-gen-go
+echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories  # add testing repositories
+apk update                                                                          # update repositories metadata
+apk add aprilsh                                                                     # install client and server
+rc-service apshd start                                                              # start server
 ```
-
-run dependency.
+if you want to build it manually, please refer to [this document](install-alpine.md)
+#### Fedora, CentOS, Redhat linux
 ```sh
-# apk add musl-locales utmps ncurses logrotate ncurses-terminfo wezterm-extra-terminfo openssh-server
-
+rpm --import https://ericwq.codeberg.page/RPM-GPG-KEY-wangqi            # import public key to rpm DB
+dnf config-manager --add-repo https://ericwq.codeberg.page/aprilsh.repo # add new repo to dnf
+dnf install aprilsh                                                     # install client and server
 ```
-### install for alpine
 
-add testing repositories to your alpine system, you need the root privilege to do that.
+#### MacOS
 ```sh
-# echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
-# apk update
+brew tap ericwq/utils                   # add tap to homebrew
+brew install aprilsh                    # only install aprilsh client
 ```
-add aprilsh, which includes aprilsh-server, aprilsh-client, aprilsh-openrc.
-```sh
-# apk add aprilsh
-```
-
-run apshd (aprilsh server) as openrc service.
-```sh
-# rc-service apshd start
-```
-
-or run apshd (aprilsh server) manually.
-```sh
-# apshd 2>/var/log/apshd &
-```
-by default apshd listen on udp localhost:8100.
-```txt
-openrc-nvide:~# netstat -lup
-Active Internet connections (only servers)
-Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
-udp        0      0 localhost:8100          0.0.0.0:*                           45561/apshd
-openrc-nvide:~#
-```
-now login to the system with apsh (aprilsh client), note the `motd`(welcome message) depends on you alpine system config.
-```txt
-qiwang@Qi15Pro client % apsh ide@localhost
-openrc-nvide:0.10.2
-
-Lua, C/C++ and Golang Integrated Development Environment.
-Powered by neovim, luals, gopls and clangd.
-ide@openrc-nvide:~ $
-```
-if you login on two terminals, on the server, there will be two server processes serve the clients. the following shows `apshd` serve two clients. one is`:8101`, the other is ':8102'
-```sh
-openrc-nvide:~# netstat -lup
-Active Internet connections (only servers)
-Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
-udp        0      0 localhost:8100          0.0.0.0:*                           45561/apshd
-udp        0      0 :::8101                 :::*                                45647/apshd
-udp        0      0 :::8102                 :::*                                45612/apshd
-openrc-nvide:~#
-```
-enjoy the early access for aprilsh.
-
-## Changelog
-
-Ready for early acess. The missing part is prediction engine tuning. Check [here](changelog.md) for history deatil.
-
-
 ## Motivation
 
 [openSSH](https://www.openssh.com/) is excellent. While `mosh` provides better keystroke prediction/latency and is capable of handle WiFi/cellular mobile network roaming. But `mosh` project is not active anymore and no release [sine 2017](https://github.com/mobile-shell/mosh/issues/1115). Such a good project like `mosh` should keeps developing.
@@ -107,6 +65,10 @@ Use the above command to add musl locales support and utmps support for alpine. 
 - Actually the yellow part can be any terminal based application: [emcas](https://www.gnu.org/software/emacs/), [neovim](https://neovim.io/), [htop](https://htop.dev/), etc.
 - The rest part is provided by the system.
 
+## Changelog
+
+Ready for early acess. The missing part is prediction engine tuning. Check [here](changelog.md) for history deatil.
+
 ## Reference
 
 - `mosh` source code analysis [client](https://github.com/ericwq/examples/blob/main/tty/client.md), [server](https://github.com/ericwq/examples/blob/main/tty/server.md)
@@ -118,7 +80,6 @@ Use the above command to add musl locales support and utmps support for alpine. 
 - [Linux logging guide: Understanding syslog, rsyslog, syslog-ng, journald](https://ikshitij.com/linux-logging-guide)
 - [Benchmarking in Golang: Improving function performance](https://blog.logrocket.com/benchmarking-golang-improve-function-performance/)
 
-## CSI u
 Need some time to figure out how to support CSI u in aprilsh.
 
 - [Comprehensive keyboard handling in terminals](https://sw.kovidgoyal.net/kitty/keyboard-protocol/#functional-key-definitions)
