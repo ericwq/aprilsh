@@ -69,6 +69,21 @@ delete the old packages directory, note the `cp -r` command, it's important to k
 % cp .abuild/packager-*.rsa.pub /home/ide/proj/packages
 ```
 
+### copy keys and apks to codeberg pages
+```sh
+cp ~/.abuild/packager-663ebf9b.rsa /home/ide/develop/pages/alpine/
+cp -r testing/ /home/ide/develop/pages/alpine/v3.19/
+```
+
+### add our repository to `/etc/apk/repositories`
+```sh
+echo "https://ericwq.codeberg.page/alpine/v3.19/testing" | tee -a /etc/apk/repositories
+```
+### download and store our signing key to `/etc/apk/keys`
+```sh
+wget -P /etc/apk/keys/ https://ericwq.codeberg.page/alpine/packager-663ebf9b.rsa.pub
+```
+
 ### validate tarball and apk
 validate the apk content
 ```sh
