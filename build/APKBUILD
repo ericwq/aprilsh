@@ -19,6 +19,15 @@ _git_tag=0.6.40
 _git_commit=6e1115c
 _git_branch=HEAD
 
+# set build tags based on glibc or musl
+_musl=$(ldd /bin/ls | grep 'musl'|head -n 1| awk '{print $1}')
+if [ "$_musl" == "" ]
+then
+	_build_tag="-tags utmp"
+else
+	_build_tag="-tags utmps"
+fi
+
 # go build need this
 export PATH=$PATH:~/go/bin
 export GOCACHE="${GOCACHE:-"$srcdir/go-cache"}"
@@ -34,15 +43,6 @@ build() {
 	# prepare build info (part 2)
 	_module_name=$(head ./go.mod | grep '^module' | awk '{print $2}')
 	_go_version=$(go version | grep 'version' | awk '{print $3}')
-
-	# set build tags based on glibc or musl
-	_musl=$(ldd /bin/ls | grep 'musl'|head -n 1| awk '{print $1}')
-	if [ "$_musl" == "" ]
-	then
-		_build_tag="-tags utmp"
-	else
-		_build_tag="-tags utmps"
-	fi
 
 	# set ldflags
 	local ldflags="-s -w \
@@ -75,7 +75,7 @@ build() {
 check() {
 	go test ./encrypt/...
 	go test ./frontend/
-	APRILSH_APSHD_PATH="$builddir/bin/apshd" go test ./frontend/server
+	APRILSH_APSHD_PATH="$builddir/bin/apshd" go test $_build_tag ./frontend/server
 	go test ./frontend/client
 	go test ./network/...
 	go test ./statesync/...
