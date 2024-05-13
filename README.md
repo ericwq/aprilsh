@@ -13,7 +13,6 @@ Aprilsh: remote shell support intermittent or mobile network. inspired by [mosh]
 
 
 #### Alpine linux
-Note: aprilsh is still waiting for aports approval. For now please use the following private repository.
 ```sh
 wget -P /etc/apk/keys/ https://ericwq.github.io/alpine/packager-663ebf9b.rsa.pub    # add public key
 echo "https://ericwq.github.io/alpine/v3.19/testing" >> /etc/apk/repositories       # add private repository
@@ -21,7 +20,9 @@ apk update                                                                      
 apk add aprilsh                                                                     # install client and server
 rc-service apshd start                                                              # start server
 ```
-when aports finally approve aprilsh, the above private repository will be replaced by testing repositories:
+Note: aprilsh is still waiting for aports approval. For now please use the following private repository. The private repository only provide `x86_64` packages.
+
+when aports finally approve aprilsh, the above private repository will be replaced by testing repositories. The testing repositories will provide all architecture packages.
 ```sh
 echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories  # add testing repositories
 ```
@@ -32,11 +33,12 @@ rpm --import https://ericwq.codeberg.page/RPM-GPG-KEY-wangqi            # import
 dnf config-manager --add-repo https://ericwq.codeberg.page/aprilsh.repo # add new repo to dnf
 dnf install aprilsh                                                     # install client and server
 ```
+Note: This is a private yum/dnf repositories, it only provides `x86_64` packages.
 
 #### MacOS
 ```sh
-brew tap ericwq/utils                   # add tap to homebrew
-brew install aprilsh                    # only install aprilsh client
+brew tap ericwq/utils       # add tap to homebrew
+brew install aprilsh        # only install aprilsh client
 ```
 ## Motivation
 

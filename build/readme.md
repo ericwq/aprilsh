@@ -61,27 +61,12 @@ lint, checksum, build the apk.
 % abuild -r
 ```
 
-### copy keys and apks to mount point
+### copy keys and apk to local repo
 delete the old packages directory, note the `cp -r` command, it's important to keep the [directory structure of local repository](#directory-structure-of-local-repository).
 ```sh
 % rm -rf /home/ide/proj/packages
 % cd && cp -r packages/ /home/ide/proj/
 % cp .abuild/packager-*.rsa.pub /home/ide/proj/packages
-```
-
-### copy keys and apks to codeberg pages
-```sh
-cp ~/.abuild/packager-663ebf9b.rsa /home/ide/develop/pages/alpine/
-cp -r testing/ /home/ide/develop/pages/alpine/v3.19/
-```
-
-### add our repository to `/etc/apk/repositories`
-```sh
-echo "https://ericwq.codeberg.page/alpine/v3.19/testing" | tee -a /etc/apk/repositories
-```
-### download and store our signing key to `/etc/apk/keys`
-```sh
-wget -P /etc/apk/keys/ https://ericwq.codeberg.page/alpine/packager-663ebf9b.rsa.pub
 ```
 
 ### validate tarball and apk
@@ -129,11 +114,18 @@ don't forget to start utmps service, install timezone package if needed.
 # apk add tzdata openrc
 ```
 
-and install package key from mount point, add local repository for apk. install new apk and restart apshd service.
-
+and install package key for local repo
 ```sh
-# cp /home/ide/proj/packages/packager-*.rsa.pub /etc/apk/keys
-# sed -i '1s/^/\/home\/ide\/proj\/packages\/testing\n/' /etc/apk/repositories
+cp /home/ide/proj/packages/packager-*.rsa.pub /etc/apk/keys
+```
+
+add local repo to apk repositories
+```sh
+echo "/home/ide/proj/packages/testing/" >> /etc/apk/repositories
+```
+
+update repositories metatdata, install new apk and restart apshd service.
+```sh
 # apk update
 # rc-service apshd stop
 # apk del aprilsh
@@ -205,7 +197,29 @@ docker run --env TZ=Asia/Shanghai --tty --privileged --volume /sys/fs/cgroup:/sy
     --hostname openrc-port --name openrc-port -d -p 8022:22 \
     -p 8201:8101/udp -p 8202:8102/udp -p 8203:8103/udp openrc:0.1.0
 ```
-## add public key to remote server
+## add remote repository
+After you verified the local repository, you can serve the repository with github pages.
+```sh
+git clone https://github.com/ericwq/ericwq.github.io.git
+cd ~/develop/ericwq.github.io/
+```
+
+copy keys and apks to codeberg pages
+```sh
+cp ~/.abuild/packager-663ebf9b.rsa /home/ide/develop/ericwq.github.io/alpine/
+cp -r testing/ /home/ide/develop/ericwq.github.io/alpine/v3.19/
+```
+
+add our repository to /etc/apk/repositories
+```sh
+echo "https://ericwq.github.io/alpine/v3.19/testing" >> /etc/apk/repositories
+```
+download and store our signing key to /etc/apk/keys
+```sh
+wget -P /etc/apk/keys/ https://ericwq.github.io/alpine/packager-663ebf9b.rsa.pub
+```
+
+## add ssh public key to remote server
 
 ```sh
 ssh-keygen -t ed25519
