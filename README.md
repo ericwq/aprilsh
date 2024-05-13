@@ -13,12 +13,17 @@ Aprilsh: remote shell support intermittent or mobile network. inspired by [mosh]
 
 
 #### Alpine linux
-Please note: aprilsh is still waiting for aports testing repositories approval
+Note: aprilsh is still waiting for aports approval. For now please use the following private repository.
 ```sh
-echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories  # add testing repositories
+wget -P /etc/apk/keys/ https://ericwq.github.io/alpine/packager-663ebf9b.rsa.pub    # add public key
+echo "https://ericwq.github.io/alpine/v3.19/testing" >> /etc/apk/repositories       # add private repository
 apk update                                                                          # update repositories metadata
 apk add aprilsh                                                                     # install client and server
 rc-service apshd start                                                              # start server
+```
+when aports finally approve aprilsh, the above private repository will be replaced by testing repositories:
+```sh
+echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories  # add testing repositories
 ```
 if you want to build it manually, please refer to [this document](install-alpine.md)
 #### Fedora, CentOS, Redhat linux
