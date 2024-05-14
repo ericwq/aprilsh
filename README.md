@@ -11,6 +11,7 @@ Aprilsh: remote shell support intermittent or mobile network. inspired by [mosh]
 - [openrc](https://github.com/OpenRC/openrc) required only for alpine.
 - [logrotate](https://github.com/logrotate/logrotate) reuired only for alpine.
 
+if you perfer to build aprilsh manually, please refer to [this document](doc/install-alpine.md)
 
 #### Alpine linux
 Note: aprilsh is still waiting for aports approval. For now please use the following private repository. The private repository only provide `x86_64` packages. Refer to [build doc](build/readme.md) to know how to build apk packages and private repositories.
@@ -32,8 +33,6 @@ Now you can ssh login to the server, it's time to start apshd service and login 
 rc-service apshd start      # start apshd server
 apsh user@host              # start apsh client on different host
 ```
-if you perfer to build aprilsh manually, please refer to [this document](doc/install-alpine.md)
-
 #### Fedora, CentOS, Redhat linux
 Note: This is a private yum/dnf repositories, it only provides `x86_64` packages. Refer to [rpms doc](https://codeberg.org/ericwq/rpms#build-rpm-packages) to understand how to build rpm packags and dnf repositories.
 ```sh
@@ -90,7 +89,7 @@ Use the above command to add musl locales support and utmps support for alpine. 
 
 ## Changelog
 
-Ready for early acess. The missing part is prediction engine tuning. Check [here](changelog.md) for history deatil.
+Ready for early acess. The missing part is prediction engine tuning. Check [here](doc/changelog.md) for history deatil.
 
 ## Reference
 
