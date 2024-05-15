@@ -26,3 +26,14 @@ docker run --env TZ=Asia/Shanghai --tty --privileged \
     --hostname openrc --name openrc -d -p 22:22 \
     -p 8101:8101/udp -p 8102:8102/udp -p 8103:8103/udp openrc:0.1.0
 ```
+
+copy ssh public key to target host.
+```sh
+ssh-copy-id -i ~/.ssh/id_rsa.pub eric@localhost
+ssh-copy-id -i ~/.ssh/id_ed25519.pub eric@localhost
+```
+
+verified you can login with the above public key.
+```sh
+ssh eric@localhost
+```

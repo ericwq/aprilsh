@@ -68,7 +68,12 @@ delete the old packages directory, note the `cp -r` command, it's important to k
 % cd && cp -r packages/ /home/ide/proj/
 % cp .abuild/packager-*.rsa.pub /home/ide/proj/packages
 ```
-
+### update apk to github pages
+```sh
+cd ~/packages/testing/x86_64
+rm /home/ide/develop/ericwq.github.io/alpine/v3.19/testing/x86_64/*
+cp * /home/ide/develop/ericwq.github.io/alpine/v3.19/testing/x86_64/
+```
 ### validate tarball and apk
 validate the apk content
 ```sh
