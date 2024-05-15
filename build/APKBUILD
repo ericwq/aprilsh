@@ -2,7 +2,7 @@
 # Maintainer: Wang Qi <ericwq057@qq.com>
 pkgname=aprilsh
 pkgver=0.6.40
-pkgrel=0
+pkgrel=1
 pkgdesc="Remote shell support intermittent or mobile network"
 url="https://github.com/ericwq/aprilsh"
 arch="all"
@@ -86,7 +86,7 @@ check() {
 package() {
 	install -Dm755 "$builddir/bin/apshd" "$pkgdir/usr/bin/apshd"
 	install -Dm755 "$builddir/bin/apsh"  "$pkgdir/usr/bin/apsh"
-	install -Dm644 "$srcdir/apshd.initd" "$pkgdir/etc/init.d/apshd"
+	install -Dm755 "$srcdir/apshd.initd" "$pkgdir/etc/init.d/apshd"
 	install -Dm644 "$srcdir/apshd.logrotate" "$pkgdir/etc/logrotate.d/apshd"
 }
 
