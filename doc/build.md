@@ -54,12 +54,12 @@ lint, checksum, build the apk.
 % abuild checksum
 % abuild -r
 ```
-### copy keys and apk to local repo
+### copy keys and apk to mount point
 delete the old packages directory, note the `cp -r` command, it's important to keep the [directory structure of local repository](#directory-structure-of-local-repository).
 ```sh
-% rm -rf /home/ide/proj/packages
-% cd && cp -r packages/ /home/ide/proj/
-% cp .abuild/packager-*.rsa.pub /home/ide/proj/packages
+% rm -rf /home/ide/proj/packages                        # clean local repo/mount point
+% cd && cp -r packages/ /home/ide/proj/                 # copy apk to local repo/mount point
+% cp .abuild/packager-*.rsa.pub /home/ide/proj/packages # copy public key to mount point
 ```
 ### update apk to github pages
 ```sh
@@ -111,21 +111,13 @@ The local repository should contains `x86_64` directory and `APKINDEX.tar.gz` fi
 1 directories, 4 files
 ```
 ### add local repository
-and install package key for local repo
+install public key to local key store
 ```sh
 cp /home/ide/proj/packages/packager-*.rsa.pub /etc/apk/keys
 ```
-add local repo to apk repositories
+add local repository to apk repositories
 ```sh
 echo "/home/ide/proj/packages/testing/" >> /etc/apk/repositories
-```
-update repositories metatdata, install new apk and restart apshd service.
-```sh
-# apk update
-# rc-service apshd stop
-# apk del aprilsh
-# apk add aprilsh
-# rc-service apshd start
 ```
 ### add remote repository
 After you verified the local repository, you can serve the repository with github pages.
@@ -147,10 +139,17 @@ download and store our signing key to /etc/apk/keys
 wget -P /etc/apk/keys/ https://ericwq.github.io/alpine/packager-663ebf9b.rsa.pub
 ```
 ## install and validate apk files
-install the package and validate the program.
+update repositories metatdata, install new apk and restart apshd service.
+```sh
+# apk update
+# rc-service apshd stop
+# apk del aprilsh
+# apk add aprilsh
+# rc-service apshd start
+```
+search aprilsh and validate the version.
 ```sh
 # apk search aprilsh
-# apk add aprilsh
 # apsh -v
 # apshd -v
 ```
