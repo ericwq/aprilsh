@@ -1,7 +1,8 @@
-## prepare container for ssh
+## prepare ssh container for alpine
+To avoid port conflict, the container map ssh port 22 to 8022 and map udp port 810* to 820*.
 
-build port container, which perform the following actions:
-
+### build container
+Run the following command to build ssh image, which perform the following actions:
 - set password for root and ide user.
 - transfer public key to `$HOME/.ssh/authorized_keys` for root and ide user.
 
@@ -13,27 +14,47 @@ docker build --build-arg ROOT_PWD=password \
         --progress plain -t openrc:0.1.0 -f openrc.dockerfile .
 ```
 
-start port container, which perform the following action:
-
-- mapping tcp port 22 to 8022, mapping udp port 810[0..3] to 820[0..3].
-- mount docker volume `proj-vol` to `/home/ide/proj`.
-- mount local directory `/Users/qiwang/dev` to `/home/ide/develop/`.
-- set hostname and container name to `openrc-port`.
+### start container
+Run the following command to start ssh container, which perform the following action:
+- mapping ssh port 22 to 8022,
+- mapping udp port 810[0..3] to 820[0..3],
+- set hostname and container name to `openrc`.
 
 ```sh
 docker run --env TZ=Asia/Shanghai --tty --privileged \
     --volume /sys/fs/cgroup:/sys/fs/cgroup:rw \
-    --hostname openrc --name openrc -d -p 22:22 \
-    -p 8101:8101/udp -p 8102:8102/udp -p 8103:8103/udp openrc:0.1.0
+    --hostname openrc --name openrc -d -p 8022:22 \
+    -p 8201:8101/udp -p 8202:8102/udp -p 8203:8103/udp openrc:0.1.0
+```
+### check local ssh key
+```sh
+qiwang@Qi15Pro ~ % ls -al ~/.ssh
+total 64
+drwx------  10 qiwang  staff   320 May 16 09:25 .
+drwxr-xr-x+ 36 qiwang  staff  1152 May 16 12:59 ..
+-rw-------@  1 qiwang  staff   464 Feb 18 09:23 id_ed25519
+-rw-r--r--@  1 qiwang  staff   102 Feb 18 09:23 id_ed25519.pub
+-rw-------   1 qiwang  staff  2610 Feb  9  2022 id_rsa
+-rw-r--r--   1 qiwang  staff   574 Feb  9  2022 id_rsa.pub
+```
+if you don't have any ssh keys, run the following command to generate it.
+```sh
+ssh-keygen -A
+```
+### copy ssh public key to target host
+```sh
+ssh-copy-id -p8022 -i ~/.ssh/id_rsa.pub eric@localhost
+ssh-copy-id -p8022 -i ~/.ssh/id_rsa.pub root@localhost
+ssh-copy-id -p8022 -i ~/.ssh/id_ed25519.pub eric@localhost
+ssh-copy-id -p8022 -i ~/.ssh/id_ed25519.pub root@localhost
 ```
 
-copy ssh public key to target host.
+### verified ssh authentication with public key.
 ```sh
-ssh-copy-id -i ~/.ssh/id_rsa.pub eric@localhost
-ssh-copy-id -i ~/.ssh/id_ed25519.pub eric@localhost
+ssh -p 8022 root@localhost
+ssh -p 8022 eric@localhost
 ```
-
-verified you can login with the above public key.
+### setup utmps service
 ```sh
-ssh eric@localhost
+setup-utmp
 ```

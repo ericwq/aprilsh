@@ -14,25 +14,25 @@ Aprilsh: remote shell support intermittent or mobile network. inspired by [mosh]
 if you perfer to build aprilsh manually, please refer to [this document](doc/install-alpine.md)
 
 #### Alpine linux
-Note: aprilsh is still waiting for aports approval. For now please use the following private repository. The private repository only provide `x86_64` packages. Refer to [build doc](build/readme.md) to know how to build apk packages and private repositories.
+Before start apshd, you need to make sure you can ssh login to the target server, please refer to [this doc](doc/ssh-alpine.md) to setup a ssh enabled docker container.
+
+Note: aprilsh is still waiting for aports approval. For now please use the following private repository. The private repository only provide `x86_64` packages. Refer to [build doc](doc/build.md) to know how to build apk packages and private repositories.
 ```sh
 wget -P /etc/apk/keys/ https://ericwq.github.io/alpine/packager-663ebf9b.rsa.pub    # add public key
 echo "https://ericwq.github.io/alpine/v3.19/testing" >> /etc/apk/repositories       # add private repository
 apk update                                                                          # update repositories metadata
 apk add aprilsh                                                                     # install client and server
 ```
-
-when aports finally approve aprilsh, the above private repository will be replaced by official testing repositories. The testing repositories will provide all architecture packages.
+Now you can ssh login to the server and the aprilsh is installed, it's time to start apshd server and login with apsh.
+```sh
+rc-service apshd start          # start apshd server
+apsh -m 100 eric@localhost:8022 # apsh login to server
+```
+Note: when aports finally approve aprilsh, the above private repository will be replaced by official testing repositories. The testing repositories will provide all architecture packages.
 ```sh
 echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories  # add testing repositories
 ```
-Before start apshd, you need to make sure you can ssh login to the target server, please refer to [this doc](doc/ssh-alpine.md) to setup a ssh enabled docker container.
 
-Now you can ssh login to the server, it's time to start apshd service and login with apsh.
-```sh
-rc-service apshd start      # start apshd server
-apsh user@host              # start apsh client on different host
-```
 #### Fedora, CentOS, Redhat linux
 Note: This is a private yum/dnf repositories, it only provides `x86_64` packages. Refer to [rpms doc](https://codeberg.org/ericwq/rpms#build-rpm-packages) to understand how to build rpm packags and dnf repositories.
 ```sh
