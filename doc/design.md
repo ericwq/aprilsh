@@ -136,3 +136,21 @@ Thus, we have the opportunity to use terminfo to output to the real terminal. Be
 
 - [Understanding The Linux TTY Subsystem](https://ishuah.com/2021/02/04/understanding-the-linux-tty-subsystem/)
 - [Build A Simple Terminal Emulator In 100 Lines of Golang](https://ishuah.com/2021/03/10/build-a-terminal-emulator-in-100-lines-of-go/)
+
+## Reference
+
+- `mosh` source code analysis [client](https://github.com/ericwq/examples/blob/main/tty/client.md), [server](https://github.com/ericwq/examples/blob/main/tty/server.md)
+- [Unicode 14.0 Character Code Charts](http://www.unicode.org/charts/)
+- [XTerm Control Sequences](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html)
+- [wezterm Escape Sequences](https://wezfurlong.org/wezterm/escape-sequences.html)
+- [Linux man pages](https://linux.die.net/man/)
+- [C++ Reference](http://www.cplusplus.com/reference/)
+- [Linux logging guide: Understanding syslog, rsyslog, syslog-ng, journald](https://ikshitij.com/linux-logging-guide)
+- [Benchmarking in Golang: Improving function performance](https://blog.logrocket.com/benchmarking-golang-improve-function-performance/)
+
+Need some time to figure out how to support CSI u in aprilsh.
+
+- [Comprehensive keyboard handling in terminals](https://sw.kovidgoyal.net/kitty/keyboard-protocol/#functional-key-definitions)
+- [feat(tui): query terminal for CSI u support](https://github.com/neovim/neovim/pull/18181)
+- [Fix Keyboard Input on Terminals - Please](https://www.leonerd.org.uk/hacks/fixterms/)
+- [xterm modified-keys](https://invisible-island.net/xterm/modified-keys.html)

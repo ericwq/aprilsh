@@ -1,8 +1,8 @@
 Aprilsh: remote shell support intermittent or mobile network. inspired by [mosh](https://mosh.org/) and [zutty](https://github.com/tomscii/zutty). aprilsh is a remote shell based on UDP, authenticate user via openssh.
 
-## Install
+## Installation
 
-#### reqirement
+### Reqirement
 - [open-ssh](https://www.openssh.com/) is a must reqirement, openssh is needed to perform user authentication.
 - [locale support](https://git.adelielinux.org/adelie/musl-locales/-/wikis/home) is a must reqirement.
 - [ncurses and terminfo](https://invisible-island.net/ncurses/) is a must requirement.
@@ -13,7 +13,7 @@ Aprilsh: remote shell support intermittent or mobile network. inspired by [mosh]
 
 if you perfer to build aprilsh manually, please refer to [this document](doc/install-alpine.md)
 
-#### Alpine linux
+### Alpine linux
 Before start apshd, you need to make sure you can ssh login to the target server, please refer to [this doc](doc/ssh-alpine.md) to setup a ssh enabled docker container.
 
 Note: aprilsh is still waiting for aports approval. For now please use the following private repository. The private repository only provide `x86_64` packages. Refer to [build doc](doc/build.md) to know how to build apk packages and private repositories.
@@ -33,7 +33,7 @@ Note: when aports finally approve aprilsh, the above private repository will be 
 echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories  # add testing repositories
 ```
 
-#### Fedora, CentOS, Redhat linux
+### Fedora, CentOS, Redhat linux
 Note: This is a private yum/dnf repositories, it only provides `x86_64` packages. Refer to [rpms doc](https://codeberg.org/ericwq/rpms#build-rpm-packages) to understand how to build rpm packags and dnf repositories.
 ```sh
 rpm --import https://ericwq.codeberg.page/RPM-GPG-KEY-wangqi            # import public key to rpm DB
@@ -48,13 +48,47 @@ sudo systemctl start apshd.service      #start apshd service
 sudo journalctl -f -u apshd.service     #keep reading the latest apshd.service log
 apsh user@host                          # start apsh client on different host
 ```
-#### MacOS
+### MacOS
 ```sh
 brew tap ericwq/utils       # add tap to homebrew
 brew install aprilsh        # only install aprilsh client
 ```
 Refer to [homebrew doc](https://github.com/ericwq/homebrew-utils) to know how to create homebrew package and tap.
+### Validate installation
+by default apshd listen on udp localhost:8100.
+```txt
+openrc-nvide:~# netstat -lup
+Active Internet connections (only servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
+udp        0      0 localhost:8100          0.0.0.0:*                           45561/apshd
+openrc-nvide:~#
+```
+now login to the system with apsh (aprilsh client), note the `motd`(welcome message) depends on you alpine system config.
+```txt
+qiwang@Qi15Pro client % apsh ide@localhost
+openrc-nvide:0.10.2
 
+Lua, C/C++ and Golang Integrated Development Environment.
+Powered by neovim, luals, gopls and clangd.
+ide@openrc-nvide:~ $
+```
+if you login on two terminals, on the server, there will be two server processes serve the clients. the following shows `apshd` serve two clients. one is`:8101`, the other is ':8102'
+```sh
+openrc:~# netstat -lp
+Active Internet connections (only servers)
+Proto Recv-Q Send-Q Local Address           Foreign Address         State       PID/Program name
+tcp        0      0 0.0.0.0:ssh             0.0.0.0:*               LISTEN      225/sshd [listener]
+tcp        0      0 :::ssh                  :::*                    LISTEN      225/sshd [listener]
+udp        0      0 localhost:8100          0.0.0.0:*                           45561/apshd
+udp        0      0 :::8101                 :::*                                45647/apshd
+udp        0      0 :::8102                 :::*                                45612/apshd
+Active UNIX domain sockets (only servers)
+Proto RefCnt Flags       Type       State         I-Node PID/Program name    Path
+unix  2      [ ACC ]     STREAM     LISTENING     872486 159/s6-ipcserverd   /run/utmps/.btmpd-socket
+unix  2      [ ACC ]     STREAM     LISTENING     869747 253/s6-ipcserverd   /run/utmps/.utmpd-socket
+unix  2      [ ACC ]     STREAM     LISTENING     866239 281/s6-ipcserverd   /run/utmps/.wtmpd-socket
+openrc-nvide:~#
+```
 ## Motivation
 
 [openSSH](https://www.openssh.com/) is excellent. While `mosh` provides better keystroke prediction/latency and is capable of handle WiFi/cellular mobile network roaming. But `mosh` project is not active anymore and no release [sine 2017](https://github.com/mobile-shell/mosh/issues/1115). Such a good project like `mosh` should keeps developing.
@@ -74,10 +108,9 @@ There are also some goals for this project:
 - Use terminfo database for better compatibility.
 - Prove golang is a good choice for terminal developing.
 
-The project name `Aprilsh` is derived from `April+sh`. This project started in shanghai April 2022, and it's a remote shell.
-Use the above command to add musl locales support and utmps support for alpine. Note alpine only support UTF-8 charmap.
+The project name `Aprilsh` is derived from `April+sh`. This project started in shanghai April 2022, and it's a remote shell. Use the above command to add musl locales support and utmps support for alpine. Note alpine only support UTF-8 charmap.
 
-## Architecture view
+## Architecture
 
 ![aprilsh.svg](img/aprilsh.svg)
 
@@ -91,20 +124,6 @@ Use the above command to add musl locales support and utmps support for alpine. 
 
 Ready for early acess. The missing part is prediction engine tuning. Check [here](doc/changelog.md) for history deatil.
 
-## Reference
+## License
 
-- `mosh` source code analysis [client](https://github.com/ericwq/examples/blob/main/tty/client.md), [server](https://github.com/ericwq/examples/blob/main/tty/server.md)
-- [Unicode 14.0 Character Code Charts](http://www.unicode.org/charts/)
-- [XTerm Control Sequences](https://invisible-island.net/xterm/ctlseqs/ctlseqs.html)
-- [wezterm Escape Sequences](https://wezfurlong.org/wezterm/escape-sequences.html)
-- [Linux man pages](https://linux.die.net/man/)
-- [C++ Reference](http://www.cplusplus.com/reference/)
-- [Linux logging guide: Understanding syslog, rsyslog, syslog-ng, journald](https://ikshitij.com/linux-logging-guide)
-- [Benchmarking in Golang: Improving function performance](https://blog.logrocket.com/benchmarking-golang-improve-function-performance/)
-
-Need some time to figure out how to support CSI u in aprilsh.
-
-- [Comprehensive keyboard handling in terminals](https://sw.kovidgoyal.net/kitty/keyboard-protocol/#functional-key-definitions)
-- [feat(tui): query terminal for CSI u support](https://github.com/neovim/neovim/pull/18181)
-- [Fix Keyboard Input on Terminals - Please](https://www.leonerd.org.uk/hacks/fixterms/)
-- [xterm modified-keys](https://invisible-island.net/xterm/modified-keys.html)
+[MIT](LICENSE)
