@@ -194,16 +194,20 @@ func (c *Config) fetchKey() error {
 	if c.sshClientID != defaultSSHClientID {
 		if am := publicKeyFile(c.sshClientID); am != nil {
 			auth = append(auth, am) // public key first
+			fmt.Printf("public key first, %s, %s\n", am, c.sshClientID)
 		}
 		if am := sshAgent(); am != nil {
 			auth = append(auth, am) // ssh agent second
+			fmt.Printf("ssh agent second, %s\n", am)
 		}
 	} else {
 		if am := sshAgent(); am != nil {
 			auth = append(auth, am) // ssh agent first
+			fmt.Printf("ssh agent first, %s\n", am)
 		}
 		if am := publicKeyFile(c.sshClientID); am != nil {
 			auth = append(auth, am) // public key second
+			fmt.Printf("public key second, %s, %s\n", am, c.sshClientID)
 		}
 	}
 
@@ -217,8 +221,12 @@ func (c *Config) fetchKey() error {
 		// password authentication is the last resort
 		if am := ssh.Password(pwd); am != nil {
 			auth = append(auth, am)
+			fmt.Printf("password auth last, %s\n", am)
 		}
 	}
+
+	fmt.Printf("c.sshClientID=%s, defaultSSHClientID=%s, eq=%t\n", c.sshClientID, defaultSSHClientID,
+		c.sshClientID == defaultSSHClientID)
 
 	// prepare for knownhosts
 	sshHost := net.JoinHostPort(c.host, c.sshPort)
@@ -1202,6 +1210,7 @@ func main() {
 
 			// enable 'PubkeyAuthentication yes' line in sshd_config
 			frontend.PrintUsage(fmt.Sprintf("Failed to authenticate user %q", conf.user))
+			fmt.Printf("%s\n", err)
 		} else if errors.As(err, &keyError) {
 			// } else if strings.Contains(err.Error(), "key is unknown") {
 			// we already handle it
