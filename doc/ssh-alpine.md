@@ -39,14 +39,25 @@ drwxr-xr-x+ 36 qiwang  staff  1152 May 16 12:59 ..
 ```
 if you don't have any ssh keys, run the following command to generate it.
 ```sh
-ssh-keygen -A
+ssh-keygen -t ed25519
+ssh-keygen -t rsa
+```
+### add rsa key to ssh agent
+Here is my ssh version:
+- ssh client: OpenSSH_9.0p1, LibreSSL 3.3.6
+- ssh server: OpenSSH_9.6p1, OpenSSL 3.1.4 24 Oct 2023
+
+if your rsa key doen's work and sshd log shows: `Connection closed by authenticating user eric 192.168.65.1 port 22915 [preauth]`, which might means rsa key is too long, use ssh agent as work-around.
+```sh
+ssh-add ~/.ssh/id_rsa   # add rsa private key to agent
+ssh-add -L              # check public key represented by the agent
 ```
 ### copy ssh public key to target host
 ```sh
-ssh-copy-id -p8022 -i ~/.ssh/id_rsa.pub eric@localhost
-ssh-copy-id -p8022 -i ~/.ssh/id_rsa.pub root@localhost
-ssh-copy-id -p8022 -i ~/.ssh/id_ed25519.pub eric@localhost
-ssh-copy-id -p8022 -i ~/.ssh/id_ed25519.pub root@localhost
+ssh-copy-id -p 8022 -i ~/.ssh/id_rsa.pub eric@localhost
+ssh-copy-id -p 8022 -i ~/.ssh/id_rsa.pub root@localhost
+ssh-copy-id -p 8022 -i ~/.ssh/id_ed25519.pub eric@localhost
+ssh-copy-id -p 8022 -i ~/.ssh/id_ed25519.pub root@localhost
 ```
 
 ### verified ssh authentication with public key.
