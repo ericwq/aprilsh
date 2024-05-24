@@ -3,19 +3,19 @@ create the container according to [Creating an Alpine package](https://wiki.alpi
 The container install `alpine-sdk sudo atools` packages, create `packager` user, generate abuild keys, and cache the aports fork by ericwq057.
 
 ```sh
-% docker build -t abuild:0.1.0 -f abuild.dockerfile .
-% docker build --no-cache --progress plain -t abuild:0.1.0 -f abuild.dockerfile .
+docker build -t abuild:0.1.0 -f abuild.dockerfile .
+docker build --no-cache --progress plain -t abuild:0.1.0 -f abuild.dockerfile .
 ```
 run as root
 ```sh
-% docker run -u root --rm -ti -h abuild --env TZ=Asia/Shanghai --name abuild --privileged \
+docker run -u root --rm -ti -h abuild --env TZ=Asia/Shanghai --name abuild --privileged \
         --mount source=proj-vol,target=/home/ide/proj \
         --mount type=bind,source=/Users/qiwang/dev,target=/home/ide/develop \
         abuild:0.1.0
 ```
 run as packager
 ```sh
-% docker run -u packager --rm -ti -h abuild --env TZ=Asia/Shanghai --name abuild --privileged \
+docker run -u packager --rm -ti -h abuild --env TZ=Asia/Shanghai --name abuild --privileged \
         --mount source=proj-vol,target=/home/ide/proj \
         --mount type=bind,source=/Users/qiwang/dev,target=/home/ide/develop \
         abuild:0.1.0
@@ -24,42 +24,46 @@ run as packager
 
 if run as root, use `apk update` unlock the permission problem for abuild.
 ```sh
-# apk update
-# sudo -u packager sh
+apk update
+sudo -u packager sh
 ```
 run as `packager` user, git pull aports fork.
 ```sh
-% sudo apk update
-% sudo apk add go protoc utmps-dev ncurses-terminfo musl-locales protoc-gen-go colordiff
-% cd ~/aports
-% git config pull.rebase true
-% git pull
-% git checkout aprilsh ## switch to branch
-% git branch aprilsh   ## create branch
+sudo apk update
+sudo apk add go protoc utmps-dev ncurses-terminfo musl-locales protoc-gen-go colordiff
+cd ~/aports
+git config pull.rebase true     # rebase pull
+git pull                        # get latest update
+git checkout aprilsh            # switch to branch
+git branch aprilsh              # create branch
+git branch -d aprilsh           # delete local branch
+git push origin -d aprilsh      # delete remote branch
+git branch -a                   # list all branches
 ```
+<!-- https://www.freecodecamp.org/news/git-delete-remote-branch/ -->
 create aprilsh directory if we don't have it.
 ```sh
-% ls ~/aports/testing/aprilsh
-% mkdir -p ~/aports/testing/aprilsh
-% cd ~/aports/testing/aprilsh
+ls ~/aports/testing/aprilsh
+mkdir -p ~/aports/testing/aprilsh
+cd ~/aports/testing/aprilsh
 ```
 copy APKBUILD and other files from mount point. clean unused file.
 ```sh
-% cp /home/ide/develop/aprilsh/build/* .
-% rm *.dockerfile readme.md
+cp /home/ide/develop/aprilsh/build/* .
+rm *.dockerfile readme.md
 ```
 lint, checksum, build the apk.
 ```sh
-% apkbuild-lint APKBUILD
-% abuild checksum
-% abuild -r
+apkbuild-lint APKBUILD
+abuild checksum
+abuild -r
 ```
 ### copy keys and apk to mount point
 delete the old packages directory, note the `cp -r` command, it's important to keep the [directory structure of local repository](#directory-structure-of-local-repository).
 ```sh
-% rm -rf /home/ide/proj/packages                        # clean local repo/mount point
-% cd && cp -r packages/ /home/ide/proj/                 # copy apk to local repo/mount point
-% cp .abuild/packager-*.rsa.pub /home/ide/proj/packages # copy public key to mount point
+rm -rf /home/ide/proj/packages                        # clean local repo/mount point
+cd && cp -r packages/ /home/ide/proj/                 # copy apk to local repo/mount point
+cp .abuild/packager-*.rsa.pub /home/ide/proj/packages # copy public key to mount point
 ```
 ### update apk to github pages
 ```sh
@@ -70,13 +74,13 @@ cp * /home/ide/develop/ericwq.github.io/alpine/v3.19/testing/x86_64/
 ### validate tarball and apk
 validate the apk content
 ```sh
-% cd ~/packages/testing/x86_64
-% tar tvvf aprilsh-0.5.49-r0.apk
+cd ~/packages/testing/x86_64
+tar tvvf aprilsh-0.5.49-r0.apk
 ```
 validate the tarball.
 ```sh
-% cd /var/cache/distfiles
-% tar tvvf aprilsh-0.5.48.tar.gz
+cd /var/cache/distfiles
+tar tvvf aprilsh-0.5.48.tar.gz
 ```
 ### commit the update to branch
 Use the following commit message template for new aports (without the comments):
@@ -88,9 +92,9 @@ Remote shell support intermittent or mobile network
 ```
 commit the update, push to the remote repository.
 ```sh
-% git commit -a
-% git diff
-% git push origin aprilsh
+git commit -a
+git diff
+git push origin aprilsh
 ```
 ## directory structure of alpine repository
 if you don't keep the directory structure of alpine repository, you will get the following error:
@@ -141,22 +145,22 @@ wget -P /etc/apk/keys/ https://ericwq.github.io/alpine/packager-663ebf9b.rsa.pub
 ## install and validate apk files
 update repositories metatdata, install new apk and restart apshd service.
 ```sh
-# apk update
-# rc-service apshd stop
-# apk del aprilsh
-# apk add aprilsh
-# rc-service apshd start
+apk update
+rc-service apshd stop
+apk del aprilsh
+apk add aprilsh
+rc-service apshd start
 ```
 search aprilsh and validate the version.
 ```sh
-# apk search aprilsh
-# apsh -v
-# apshd -v
+apk search aprilsh
+apsh -v
+apshd -v
 ```
 ## add apshd service
 ```sh
-# rc-update add apshd boot
-# rc-service apshd start
+rc-update add apshd boot
+rc-service apshd start
 ```
 ## add ssh public key to remote server
 ```sh
@@ -208,17 +212,17 @@ snapshot() {
 
 ## manually setup your system and account
 ```sh 
-# apk add alpine-sdk sudo mandoc abuild-doc
-# adduser -D packager
-# addgroup packager abuild
-# echo 'packager ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/packager
-# sudo -u packager sh
-% abuild-keygen -n --append --install
+apk add alpine-sdk sudo mandoc abuild-doc
+adduser -D packager
+addgroup packager abuild
+echo 'packager ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/packager
+sudo -u packager sh
+abuild-keygen -n --append --install
 ```
 
 generating a new apkbuild file with newapkbuild
 ```sh
-% newapkbuild \
+newapkbuild \
     -n aprilsh \
     -d "Remote shell support intermittent or mobile network" \
     -l "MIT" \
