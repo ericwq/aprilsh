@@ -3,8 +3,9 @@ To avoid port conflict, the container map ssh port 22 to 8022 and map udp port 8
 
 ### build container
 Run the following command to build ssh image, which perform the following actions:
-- set password for root and ide user.
-- transfer public key to `$HOME/.ssh/authorized_keys` for root and ide user.
+- create user: eric.
+- set password for root and eric user.
+- transfer public key to `$HOME/.ssh/authorized_keys` for root and eric user.
 
 ```sh
 cd aprilsh/build

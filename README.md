@@ -14,7 +14,7 @@ Aprilsh: remote shell support intermittent or mobile network. inspired by [mosh]
 if you perfer to build aprilsh manually, please refer to [this document](doc/install-alpine.md)
 
 ### Alpine linux
-Before start apshd, you need to make sure you can ssh login to the target server, please refer to [this doc](doc/ssh-alpine.md) to setup a ssh enabled docker container.
+Before start apshd, you need to make sure you can ssh login to the target server, please refer to [this doc](doc/ssh-openrc.md) to setup a ssh enabled docker container.
 
 Note: aprilsh is still waiting for aports approval. For now please use the following private repository. The private repository only provide `x86_64` packages. Refer to [build doc](doc/build.md) to know how to build apk packages and private repositories.
 ```sh
@@ -34,19 +34,19 @@ echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositori
 ```
 
 ### Fedora, CentOS, Redhat linux
+Before start apshd, you need to make sure you can ssh login to the target server, please refer to [this doc](doc/ssh-systemd.md) to setup a ssh enabled docker container.
+
 Note: This is a private yum/dnf repositories, it only provides `x86_64` packages. Refer to [rpms doc](https://codeberg.org/ericwq/rpms#build-rpm-packages) to understand how to build rpm packags and dnf repositories.
 ```sh
 rpm --import https://ericwq.codeberg.page/RPM-GPG-KEY-wangqi            # import public key to rpm DB
 dnf config-manager --add-repo https://ericwq.codeberg.page/aprilsh.repo # add new repo to dnf repository
-dnf install aprilsh                                                     # install client and server
+dnf install -y aprilsh                                                  # install client and server
 ```
-Before start apshd, you need to make sure you can ssh login to the target server, please refer to [this doc](doc/ssh-fedora.md) to setup a ssh enabled docker container.
-
 Now you can ssh login to the server, it's time to start apshd service and login with apsh.
 ```sh
 sudo systemctl start apshd.service      #start apshd service
 sudo journalctl -f -u apshd.service     #keep reading the latest apshd.service log
-apsh user@host                          # start apsh client on different host
+apsh -m 100 eric@localhost:8022         # apsh login to server
 ```
 ### MacOS
 ```sh
