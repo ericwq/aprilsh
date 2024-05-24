@@ -3,13 +3,13 @@ Aprilsh: remote shell support intermittent or mobile network. inspired by [mosh]
 ## Installation
 
 ### Reqirement
-- [open-ssh](https://www.openssh.com/) is a must reqirement, openssh is needed to perform user authentication.
+- [open-ssh](https://www.openssh.com/) is a must reqirement, sshd is required to perform user authentication.
 - [locale support](https://git.adelielinux.org/adelie/musl-locales/-/wikis/home) is a must reqirement.
 - [ncurses and terminfo](https://invisible-island.net/ncurses/) is a must requirement.
-- [systmd](https://systemd.io/) reuired for redhat linux family (fedora, centos, redhat).
-- [utmps](https://skarnet.org/software/utmps/) reuired only for alpine
-- [openrc](https://github.com/OpenRC/openrc) required only for alpine.
-- [logrotate](https://github.com/logrotate/logrotate) reuired only for alpine.
+- [systmd](https://systemd.io/) is reuired by redhat linux family (fedora, centos, redhat).
+- [openrc](https://github.com/OpenRC/openrc) is required by alpine.
+- [utmps](https://skarnet.org/software/utmps/) is reuired by alpine
+- [logrotate](https://github.com/logrotate/logrotate) is reuired by alpine.
 
 if you perfer to build aprilsh manually, please refer to [this document](doc/install-alpine.md)
 
