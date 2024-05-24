@@ -48,7 +48,7 @@ Here is my ssh version:
 - ssh client: OpenSSH_9.0p1, LibreSSL 3.3.6
 - ssh server: OpenSSH_9.6p1, OpenSSL 3.1.4 24 Oct 2023
 
-if your rsa key doen's work and sshd log shows: `Connection closed by authenticating user eric 192.168.65.1 port 22915 [preauth]`, which might means rsa key is too long, use ssh agent as work-around.
+if apsh reports `Failed to authenticate user "packager"`, which means your rsa key doen's work and sshd log shows: `Connection closed by authenticating user eric 192.168.65.1 port 22915 [preauth]`, which might means rsa key is too long, use ssh agent as work-around.
 ```sh
 ssh-add ~/.ssh/id_rsa   # add rsa private key to agent
 ssh-add -L              # check public key represented by the agent
