@@ -6,14 +6,17 @@ LABEL build_date="2024-05-24"
 # RUN rpm --import https://mirror.go-repo.io/fedora/RPM-GPG-KEY-GO-REPO
 # RUN curl -s https://mirror.go-repo.io/fedora/go-repo.repo | tee /etc/yum.repos.d/go-repo.repo
 
-RUN dnf -y install rpm-build rpm-devel rpmlint make python bash coreutils diffutils patch rpmdevtools \
+# add sssd to avoid warning:
+# PAM unable to dlopen(/usr/lib64/security/pam_sss.so): /usr/lib64/security/pam_sss.so: cannot open shared object file: No such file or directory
+# PAM adding faulty module: /usr/lib64/security/pam_sss.so
+RUN dnf -y install bash coreutils diffutils \
 	sudo dnf-plugins-core tree git wget which ripgrep fzf pkgconfig \
-	mock rpm-sign pinentry net-tools htop openssh-server sssd \
+	net-tools htop openssh-server sssd \
 	&& dnf clean all
 
 # add user/group
 # RUN groupadd mock
-RUN adduser -g mock packager
+RUN adduser -g wheel packager
 
 # set password for root and sudo
 ARG ROOT_PWD=password
@@ -26,6 +29,7 @@ RUN echo 'packager ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/packager
 RUN systemctl enable sshd.service
 RUN sed -i \
 	-e 's/#PermitRootLogin.*/PermitRootLogin\ yes/g' \
+	-e 's/#LogLevel.*/LogLevel\ VERBOSE/g' \
 	-e 's/#PubkeyAuthentication.*/PubkeyAuthentication\ yes/g' \
 	-e 's/#Port 22/Port 22/g' \
 	/etc/ssh/sshd_config

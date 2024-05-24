@@ -65,6 +65,7 @@ USER root
 RUN rc-update add sshd boot \
 	&& sed -i \
 	-e 's/#PermitRootLogin.*/PermitRootLogin\ yes/g' \
+	-e 's/#LogLevel.*/LogLevel\ VERBOSE/g' \
 	-e 's/#PubkeyAuthentication.*/PubkeyAuthentication\ yes/g' \
 	-e 's/#Port 22/Port 22/g' \
 	/etc/ssh/sshd_config \
