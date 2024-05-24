@@ -93,3 +93,7 @@
 - 2024/Apr/30: update goutmp to support glibc based linux. build rpm package for 0.6.40.
 - 2024/May/01: aprilsh rpm packaging.
 - 2024/May/06: publish aprilsh yum/dnf repo.
+- 2024/May/09: add homebrew aprilsh formula.
+- 2024/May/13: add alpine private repo.
+- 2024/May/15: fix alpine execute mode bug.
+- 2024/May/23: fix ssh rsa public key login problem for alpine.
