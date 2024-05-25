@@ -1,5 +1,6 @@
 FROM alpine:3.19
 LABEL maintainer="ericwq057@qq.com"
+LABEL build_date="2024-05-25"
 
 #
 RUN apk add --no-cache --update alpine-sdk sudo mandoc abuild-doc tzdata atools

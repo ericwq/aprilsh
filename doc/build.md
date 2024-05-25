@@ -6,6 +6,8 @@ The container install `alpine-sdk sudo atools` packages, create `packager` user,
 docker build -t abuild:0.1.0 -f abuild.dockerfile .
 docker build --no-cache --progress plain -t abuild:0.1.0 -f abuild.dockerfile .
 ```
+if you update abuild keys, remember back up the keys.
+
 run as root
 ```sh
 docker run -u root --rm -ti -h abuild --env TZ=Asia/Shanghai --name abuild --privileged \
@@ -34,11 +36,11 @@ sudo apk add go protoc utmps-dev ncurses-terminfo musl-locales protoc-gen-go col
 cd ~/aports
 git config pull.rebase true     # rebase pull
 git pull                        # get latest update
+git branch -a                   # list all branches
 git checkout aprilsh            # switch to branch
 git branch aprilsh              # create branch
 git branch -d aprilsh           # delete local branch
 git push origin -d aprilsh      # delete remote branch
-git branch -a                   # list all branches
 ```
 <!-- https://www.freecodecamp.org/news/git-delete-remote-branch/ -->
 create aprilsh directory if we don't have it.

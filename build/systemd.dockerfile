@@ -9,9 +9,8 @@ LABEL build_date="2024-05-24"
 # add sssd to avoid warning:
 # PAM unable to dlopen(/usr/lib64/security/pam_sss.so): /usr/lib64/security/pam_sss.so: cannot open shared object file: No such file or directory
 # PAM adding faulty module: /usr/lib64/security/pam_sss.so
-RUN dnf -y install bash coreutils diffutils \
-	sudo dnf-plugins-core tree git wget which ripgrep fzf pkgconfig \
-	net-tools htop openssh-server sssd \
+RUN dnf -y install bash coreutils diffutils net-tools htop openssh-server sssd \
+	sudo dnf-plugins-core tree git wget which ripgrep fzf \
 	&& dnf clean all
 
 # add user/group

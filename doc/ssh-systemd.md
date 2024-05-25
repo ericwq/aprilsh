@@ -22,6 +22,9 @@ docker run --env TZ=Asia/Shanghai --tty --privileged \
     --volume /sys/fs/cgroup:/sys/fs/cgroup:rw \
     --hostname systemd --name systemd -d -p 8022:22 \
     -p 8201:8101/udp -p 8202:8102/udp -p 8203:8103/udp systemd:0.1.0
+```
+get into the container
+```sh
 docker exec -u root -it systemd bash
 ```
 ### check local ssh key
@@ -39,6 +42,10 @@ if you don't have any ssh keys, run the following command to generate it.
 ```sh
 ssh-keygen -t ed25519
 ssh-keygen -t rsa
+```
+clean knowhost
+```sh
+rm ~/.ssh/known_hosts*
 ```
 ### add rsa key to ssh agent
 Here is my ssh version:
