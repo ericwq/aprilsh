@@ -15,18 +15,10 @@ source="https://github.com/ericwq/aprilsh/releases/download/$pkgver/aprilsh-$pkg
 	apshd.initd"
 
 # build info (part 1) required by go build
-_git_tag=0.7.0
+_git_tag=$pkgver
 _git_commit=f170d10
 _git_branch=HEAD
-
-# set build tags based on glibc or musl
-_musl=$(ldd /bin/ls | grep 'musl'|head -n 1| awk '{print $1}')
-if [ "$_musl" == "" ]
-then
-	_build_tag="-tags utmp"
-else
-	_build_tag="-tags utmps"
-fi
+_build_tag="-tags utmps"
 
 # go build need this
 export PATH=$PATH:~/go/bin
@@ -57,15 +49,6 @@ build() {
 	echo "build server end  : $(date)"
 	echo "output server to  : $builddir/bin/apshd"
 
-
-	# set ldflags (required for update BuildTime)
-	local ldflags="-s -w \
-		-X $_module_name/frontend.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%S) \
-		-X $_module_name/frontend.GitBranch=$_git_branch \
-		-X $_module_name/frontend.GitCommit=$_git_commit \
-		-X $_module_name/frontend.GitTag=$_git_tag \
-		-X $_module_name/frontend.GoVersion=$_go_version \
-		"
 	echo "build client start: $(date)"
 	go build -ldflags="$ldflags" -o "$builddir/bin/apsh" ./frontend/client
 	echo "build client end  : $(date)"

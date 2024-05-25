@@ -32,7 +32,8 @@ sudo -u packager sh
 run as `packager` user, git pull aports fork.
 ```sh
 sudo apk update
-sudo apk add go protoc utmps-dev ncurses-terminfo musl-locales protoc-gen-go colordiff
+sudo apk add go protoc utmps-dev ncurses-terminfo openssh-client
+sudo apk add musl-locales protoc-gen-go colordiff
 cd ~/aports
 git config pull.rebase true     # rebase pull
 git pull                        # get latest update
