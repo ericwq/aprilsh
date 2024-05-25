@@ -35,13 +35,18 @@ sudo apk update
 sudo apk add go protoc utmps-dev ncurses-terminfo openssh-client
 sudo apk add musl-locales protoc-gen-go colordiff
 cd ~/aports
+# rebase pull
 git config pull.rebase true     # rebase pull
 git pull                        # get latest update
+# delete old aprilsh branch
 git branch -a                   # list all branches
 git checkout aprilsh            # switch to branch
-git branch aprilsh              # create branch
+git checkout master             # switch to master
 git branch -d aprilsh           # delete local branch
 git push origin -d aprilsh      # delete remote branch
+# create new branch and switch to it.
+git branch aprilsh              # create branch
+git checkout aprilsh            # switch to branch
 ```
 <!-- https://www.freecodecamp.org/news/git-delete-remote-branch/ -->
 create aprilsh directory if we don't have it.
@@ -52,8 +57,8 @@ cd ~/aports/testing/aprilsh
 ```
 copy APKBUILD and other files from mount point. clean unused file.
 ```sh
-cp /home/ide/develop/aprilsh/build/* .
-rm *.dockerfile readme.md
+cp /home/ide/develop/aprilsh/build/APKBUILD .
+cp /home/ide/develop/aprilsh/build/apshd.* .
 ```
 lint, checksum, build the apk.
 ```sh
@@ -95,6 +100,8 @@ Remote shell support intermittent or mobile network
 ```
 commit the update, push to the remote repository.
 ```sh
+cd ~/aport/testing
+git add aprilsh
 git commit -a
 git diff
 git push origin aprilsh
