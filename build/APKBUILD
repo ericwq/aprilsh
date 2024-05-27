@@ -2,23 +2,22 @@
 # Maintainer: Wang Qi <ericwq057@qq.com>
 pkgname=aprilsh
 pkgver=0.7.1
-pkgrel=1
+pkgrel=0
 pkgdesc="Remote shell support intermittent or mobile network"
 url="https://github.com/ericwq/aprilsh"
 arch="all"
 license="MIT"
 depends="$pkgname-client $pkgname-server"
 makedepends="go protoc utmps-dev ncurses ncurses-terminfo musl-locales protoc-gen-go"
-subpackages="$pkgname-client $pkgname-server $pkgname-openrc"
+subpackages="
+	$pkgname-client
+	$pkgname-server
+	$pkgname-server-openrc:server_openrc
+	$pkgname-doc
+	"
 source="https://github.com/ericwq/aprilsh/releases/download/$pkgver/aprilsh-$pkgver.tar.gz
 	apshd.logrotate
 	apshd.initd"
-
-# build info (part 1) required by go build
-_git_tag=0.7.1
-_git_commit=549eea8
-_git_branch=HEAD
-_build_tag="-tags utmps"
 
 # go build need this
 export PATH=$PATH:~/go/bin
@@ -26,51 +25,43 @@ export GOCACHE="${GOCACHE:-"$srcdir/go-cache"}"
 export GOTMPDIR="${GOTMPDIR:-"$srcdir"}"
 export GOMODCACHE="${GOMODCACHE:-"$srcdir/go"}"
 
-build() {
+prepare() {
+	default_prepare
+
 	# generate protocol buffer code
 	protoc --go_out=. -I . ./protobufs/transportInstruction.proto
 	protoc --go_out=. -I . ./protobufs/hostInput.proto
 	protoc --go_out=. -I . ./protobufs/userInput.proto
+}
 
-	# prepare build info (part 2)
+build() {
+	# prepare build info
+	_build_tag="-tags utmps"
 	_module_name=$(head ./go.mod | grep '^module' | awk '{print $2}')
 	_go_version=$(go version | grep 'version' | awk '{print $3}')
 
 	# set ldflags
 	local ldflags="-s -w \
 		-X $_module_name/frontend.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%S) \
-		-X $_module_name/frontend.GitBranch=$_git_branch \
-		-X $_module_name/frontend.GitCommit=$_git_commit \
-		-X $_module_name/frontend.GitTag=$_git_tag \
+		-X $_module_name/frontend.GitBranch=HEAD \
+		-X $_module_name/frontend.GitCommit=alpine \
+		-X $_module_name/frontend.GitTag=$pkgver \
 		-X $_module_name/frontend.GoVersion=$_go_version \
 		"
-	echo "build server start: $(date)"
-	go build $_build_tag -ldflags="$ldflags" -o "$builddir/bin/apshd" ./frontend/server
-	echo "build server end  : $(date)"
-	echo "output server to  : $builddir/bin/apshd"
-
-	echo "build client start: $(date)"
-	go build -ldflags="$ldflags" -o "$builddir/bin/apsh" ./frontend/client
-	echo "build client end  : $(date)"
-	echo "output client to  : $builddir/bin/apsh"
+	go build $_build_tag -ldflags="$ldflags" -o ./bin/apshd ./frontend/server
+	go build -ldflags="$ldflags" -o ./bin/apsh ./frontend/client
 }
 
 check() {
-	go test ./encrypt/...
-	go test ./frontend/
 	APRILSH_APSHD_PATH="$builddir/bin/apshd" go test $_build_tag ./frontend/server
-	go test ./frontend/client
-	go test ./network/...
-	go test ./statesync/...
-	go test ./terminal/...
-	go test ./util/...
+	go test $(go list ./... | grep -Ev '(data|protobufs|frontend/server)')
 }
 
 package() {
-	install -Dm755 "$builddir/bin/apshd" "$pkgdir/usr/bin/apshd"
-	install -Dm755 "$builddir/bin/apsh"  "$pkgdir/usr/bin/apsh"
-	install -Dm755 "$srcdir/apshd.initd" "$pkgdir/etc/init.d/apshd"
-	install -Dm644 "$srcdir/apshd.logrotate" "$pkgdir/etc/logrotate.d/apshd"
+	install -Dm755 ./bin/apshd "$pkgdir/usr/bin/apshd"
+	install -Dm755 ./bin/apsh  "$pkgdir/usr/bin/apsh"
+	rm "$builddir/doc/network-module-aprilsh.key"
+	install -Dm644 ./doc/* -t "$pkgdir/usr/share/doc/$pkgname/"
 }
 
 client() {
@@ -85,6 +76,14 @@ server() {
 	pkgdesc="$pkgname server"
 	depends="musl-locales utmps ncurses ncurses-terminfo wezterm-extra-terminfo openssh-server"
 	amove usr/bin/apshd
+}
+
+server_openrc() {
+	default_openrc
+	depends="openrc"
+	install_if="openrc $pkgname-server=$pkgver-r$pkgrel"
+	install -Dm755 "$srcdir/apshd.initd" "$subpkgdir/etc/init.d/apshd"
+	install -Dm644 "$srcdir/apshd.logrotate" "$subpkgdir/etc/logrotate.d/apshd"
 }
 
 sha512sums="

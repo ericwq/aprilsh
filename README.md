@@ -19,7 +19,7 @@ Before start apshd, you need to make sure you can ssh login to the target server
 Note: aprilsh is still waiting for aports approval. For now please use the following private repository. The private repository only provide `x86_64` packages. Refer to [build doc](doc/build.md) to know how to build apk packages and private repositories.
 ```sh
 # add public key
-wget -P /etc/apk/keys/ https://ericwq.github.io/alpine/packager-665145ad.rsa.pub
+wget -P /etc/apk/keys/ https://ericwq.github.io/alpine/packager-663ebf9b.rsa.pub
 # add private repository
 echo "https://ericwq.github.io/alpine/v3.19/testing" >> /etc/apk/repositories
 # update repositories metadata

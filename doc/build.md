@@ -69,12 +69,20 @@ abuild -r
 ### copy keys and apk to mount point
 delete the old packages directory, note the `cp -r` command, it's important to keep the [directory structure of local repository](#directory-structure-of-local-repository).
 ```sh
-rm -rf /home/ide/proj/packages                        # clean local repo/mount point
-cd && cp -r packages/ /home/ide/proj/                 # copy apk to local repo/mount point
-cp .abuild/packager-*.rsa.pub /home/ide/proj/packages # copy public key to mount point
+# clean local repo/mount point
+rm -rf /home/ide/proj/packages
+# copy apk to local repo/mount point
+cd && cp -r packages/ /home/ide/proj/
+# copy public key to mount point
+cp .abuild/packager-*.rsa.pub /home/ide/proj/packages
 ```
 ### update apk to github pages
 ```sh
+# backup signed keys
+cp ~/.abuild/packager-663ebf9b.rsa* /home/ide/develop/key/
+# update signed keys
+cp ~/.abuild/packager-663ebf9b.rsa.pub  /home/ide/develop/ericwq.github.io/alpine/
+# update apk packages
 cd ~/packages/testing/x86_64
 rm /home/ide/develop/ericwq.github.io/alpine/v3.19/testing/x86_64/*
 cp * /home/ide/develop/ericwq.github.io/alpine/v3.19/testing/x86_64/

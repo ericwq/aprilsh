@@ -1,43 +1,20 @@
 #!/sbin/openrc-run
-# Copyright (c) 2022~2024 wangqi <ericwq057@qq.com>
-# Distributed under the terms of the MIT License.
+# Contributor: Wang Qi <ericwq057@qq.com>
+# Maintainer: Wang Qi <ericwq057@qq.com>
 #
 name="apshd"
 description="apshd daemon for the aprilsh service"
 
-# export GOCOVERDIR=/home/ide/develop/aprilsh/frontend/server/coverage/int
 export GOMAXPROCS=1
 command=/usr/bin/apshd
 command_args=""
 supervisor=supervise-daemon
-# If your daemon doesn't know how to change its own user or group,
-# then you can tell start-stop-daemon to launch it as an unprivileged
-# user with
-# command_user=utmp
-# if your service doesn't background itself and to create a pidfile
-# use the following option to let openrc do it for you
 command_background=true
-# The special RC_SVCNAME variable contains the name of this service.
-# If the daemon backgrounds itself and creates its own PID file, use pidfile.
 pidfile="/run/${RC_SVCNAME}.pid"
 error_log="/var/log/${RC_SVCNAME}.log"
-
-# # Reloading your daemon's configuration
-# extra_started_commands="reload"
-# reload() {
-#   ebegin "Reloading ${RC_SVCNAME}"
-#   start-stop-daemon --signal HUP --pidfile "${pidfile}"
-#   eend $?
-# }
 
 depend() {
     need sshd
     want utmpd logger
     after networking
 }
-
-# start_pre() {
-#     checkpath -f -o utmp:utmp -m 0755 /var/log/${RC_SVCNAME}.log
-# }
-# https://manpages.debian.org/testing/openrc/openrc-run.8.en.html
-# https://www.shellscript.sh/variables3.html

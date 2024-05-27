@@ -47,12 +47,12 @@ jobs:
         shell: bash
         run: |
           git config --global --add safe.directory /__w/aprilsh/aprilsh
-          sed -i -e "s/pkgver=.*/pkgver=`git describe --tags --abbrev=0`/g" ./build/APKBUILD
-          sed -i -e "s/.*_git_tag=.*/_git_tag=`git describe --tags`/g" ./build/APKBUILD
-          sed -i -e "s/.*_git_commit=.*/_git_commit=`git rev-parse --short HEAD`/g" ./build/APKBUILD
-          sed -i -e "s/.*_git_branch=.*/_git_branch=`git rev-parse --abbrev-ref HEAD`/g" ./build/APKBUILD
           echo "tar_version=$(git describe --tags)" >> $GITHUB_OUTPUT
 
+        # sed -i -e "s/pkgver=.*/pkgver=`git describe --tags --abbrev=0`/g" ./build/APKBUILD
+        # sed -i -e "s/.*_git_tag=.*/_git_tag=`git describe --tags`/g" ./build/APKBUILD
+        # sed -i -e "s/.*_git_commit=.*/_git_commit=`git rev-parse --short HEAD`/g" ./build/APKBUILD
+        # sed -i -e "s/.*_git_branch=.*/_git_branch=`git rev-parse --abbrev-ref HEAD`/g" ./build/APKBUILD
       - name: commit and push changes
         id: commit-and-push
         uses: stefanzweifel/git-auto-commit-action@v5
