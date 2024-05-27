@@ -19,6 +19,8 @@ source="https://github.com/ericwq/aprilsh/releases/download/$pkgver/aprilsh-$pkg
 	apshd.logrotate
 	apshd.initd"
 
+_build_tag="-tags utmps"
+
 # go build need this
 export PATH=$PATH:~/go/bin
 export GOCACHE="${GOCACHE:-"$srcdir/go-cache"}"
@@ -36,7 +38,6 @@ prepare() {
 
 build() {
 	# prepare build info
-	_build_tag="-tags utmps"
 	_module_name=$(head ./go.mod | grep '^module' | awk '{print $2}')
 	_go_version=$(go version | grep 'version' | awk '{print $3}')
 
