@@ -15,16 +15,16 @@ docker run -u root --rm -ti -h abuild --env TZ=Asia/Shanghai --name abuild --pri
         --mount type=bind,source=/Users/qiwang/dev,target=/home/ide/develop \
         abuild:0.1.0
 ```
-run as packager
-```sh
-docker run -u packager --rm -ti -h abuild --env TZ=Asia/Shanghai --name abuild --privileged \
-        --mount source=proj-vol,target=/home/ide/proj \
-        --mount type=bind,source=/Users/qiwang/dev,target=/home/ide/develop \
-        abuild:0.1.0
-```
+<!-- run as packager -->
+<!-- ```sh -->
+<!-- docker run -u packager --rm -ti -h abuild --env TZ=Asia/Shanghai --name abuild --privileged \ -->
+<!--         --mount source=proj-vol,target=/home/ide/proj \ -->
+<!--         --mount type=bind,source=/Users/qiwang/dev,target=/home/ide/develop \ -->
+<!--         abuild:0.1.0 -->
+<!-- ``` -->
 ### build apk files
 
-if run as root, use `apk update` unlock the permission problem for abuild.
+if run as root, use `apk update` to unlock the permission problem for abuild.
 ```sh
 apk update
 sudo -u packager sh
@@ -47,6 +47,9 @@ git push origin -d aprilsh      # delete remote branch
 # create new branch and switch to it.
 git branch aprilsh              # create branch
 git checkout aprilsh            # switch to branch
+# switch to branch
+git checkout aprilsh            # switch to branch
+git branch                      # list branches
 ```
 <!-- https://www.freecodecamp.org/news/git-delete-remote-branch/ -->
 create aprilsh directory if we don't have it.
@@ -62,9 +65,7 @@ cp /home/ide/develop/aprilsh/build/apshd.* .
 ```
 lint, checksum, build the apk.
 ```sh
-apkbuild-lint APKBUILD
-abuild checksum
-abuild -r
+apkbuild-lint APKBUILD && abuild checksum && abuild -r
 ```
 ### copy keys and apk to mount point
 delete the old packages directory, note the `cp -r` command, it's important to keep the [directory structure of local repository](#directory-structure-of-local-repository).
@@ -79,9 +80,9 @@ cp .abuild/packager-*.rsa.pub /home/ide/proj/packages
 ### update apk to github pages
 ```sh
 # backup signed keys
-cp ~/.abuild/packager-663ebf9b.rsa* /home/ide/develop/key/
-# update signed keys
-cp ~/.abuild/packager-663ebf9b.rsa.pub  /home/ide/develop/ericwq.github.io/alpine/
+cp ~/.abuild/packager-*.rsa* /home/ide/develop/key/
+# update public keys
+cp ~/.abuild/packager-*.rsa.pub  /home/ide/develop/ericwq.github.io/alpine/
 # update apk packages
 cd ~/packages/testing/x86_64
 rm /home/ide/develop/ericwq.github.io/alpine/v3.19/testing/x86_64/*
