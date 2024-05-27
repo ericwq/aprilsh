@@ -6,7 +6,11 @@ The container install `alpine-sdk sudo atools` packages, create `packager` user,
 docker build -t abuild:0.1.0 -f abuild.dockerfile .
 docker build --no-cache --progress plain -t abuild:0.1.0 -f abuild.dockerfile .
 ```
-if you update abuild keys, remember back up the keys.
+if you update abuild keys, remember to back up the keys.
+```sh
+# backup signed keys
+cp ~/.abuild/packager-*.rsa* /home/ide/develop/key/
+```
 
 run as root
 ```sh
@@ -24,7 +28,7 @@ docker run -u root --rm -ti -h abuild --env TZ=Asia/Shanghai --name abuild --pri
 <!-- ``` -->
 ### build apk files
 
-if run as root, use `apk update` to unlock the permission problem for abuild.
+run as root, use `apk update` to solve the permission problem for abuild.
 ```sh
 apk update
 sudo -u packager sh
@@ -79,9 +83,7 @@ cp .abuild/packager-*.rsa.pub /home/ide/proj/packages
 ```
 ### update apk to github pages
 ```sh
-# backup signed keys
-cp ~/.abuild/packager-*.rsa* /home/ide/develop/key/
-# update public keys
+# update public key
 cp ~/.abuild/packager-*.rsa.pub  /home/ide/develop/ericwq.github.io/alpine/
 # update apk packages
 cd ~/packages/testing/x86_64
