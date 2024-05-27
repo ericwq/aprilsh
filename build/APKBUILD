@@ -7,7 +7,7 @@ pkgdesc="Remote shell support intermittent or mobile network"
 url="https://github.com/ericwq/aprilsh"
 arch="all"
 license="MIT"
-depends="$pkgname-client $pkgname-server"
+depends="$pkgname-client=$pkgver-r$pkgrel $pkgname-server=$pkgver-r$pkgrel"
 makedepends="go protoc utmps-dev ncurses ncurses-terminfo musl-locales protoc-gen-go"
 subpackages="
 	$pkgname-client
@@ -21,7 +21,6 @@ source="https://github.com/ericwq/aprilsh/releases/download/$pkgver/aprilsh-$pkg
 
 _build_tag="-tags utmps"
 
-# go build need this
 export PATH=$PATH:~/go/bin
 export GOCACHE="${GOCACHE:-"$srcdir/go-cache"}"
 export GOTMPDIR="${GOTMPDIR:-"$srcdir"}"
@@ -30,20 +29,18 @@ export GOMODCACHE="${GOMODCACHE:-"$srcdir/go"}"
 prepare() {
 	default_prepare
 
-	# generate protocol buffer code
 	protoc --go_out=. -I . ./protobufs/transportInstruction.proto
 	protoc --go_out=. -I . ./protobufs/hostInput.proto
 	protoc --go_out=. -I . ./protobufs/userInput.proto
 }
 
 build() {
-	# prepare build info
 	_module_name=$(head ./go.mod | grep '^module' | awk '{print $2}')
 	_go_version=$(go version | grep 'version' | awk '{print $3}')
 
-	# set ldflags
+	_date_str=$(date -u "+%Y-%m-%dT%H:%M:%SZ" ${SOURCE_DATE_EPOCH:+-d @$SOURCE_DATE_EPOCH})
 	local ldflags="-s -w \
-		-X $_module_name/frontend.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%S) \
+		-X $_module_name/frontend.BuildTime=$_date_str \
 		-X $_module_name/frontend.GitBranch=HEAD \
 		-X $_module_name/frontend.GitCommit=alpine \
 		-X $_module_name/frontend.GitTag=$pkgver \
@@ -54,26 +51,23 @@ build() {
 }
 
 check() {
-	APRILSH_APSHD_PATH="$builddir/bin/apshd" go test $_build_tag ./frontend/server
-	go test $(go list ./... | grep -Ev '(data|protobufs|frontend/server)')
+	# shellcheck disable=2046
+	APRILSH_APSHD_PATH="$builddir/bin/apshd" \
+	go test $_build_tag $(go list ./... | grep -Ev '(data|protobufs)')
 }
 
 package() {
-	install -Dm755 ./bin/apshd "$pkgdir/usr/bin/apshd"
-	install -Dm755 ./bin/apsh  "$pkgdir/usr/bin/apsh"
-	rm "$builddir/doc/network-module-aprilsh.key"
-	install -Dm644 ./doc/* -t "$pkgdir/usr/share/doc/$pkgname/"
+	install -Dm755 ./bin/apshd ./bin/apsh -t "$pkgdir/usr/bin"
+	install -Dm644 ./doc/*.md -t "$pkgdir/usr/share/doc/$pkgname/"
 }
 
 client() {
-	replaces="$pkgname"
 	pkgdesc="$pkgname client"
 	depends="musl-locales ncurses ncurses-terminfo"
 	amove usr/bin/apsh
 }
 
 server() {
-	replaces="$pkgname"
 	pkgdesc="$pkgname server"
 	depends="musl-locales utmps ncurses ncurses-terminfo wezterm-extra-terminfo openssh-server"
 	amove usr/bin/apshd
@@ -81,8 +75,6 @@ server() {
 
 server_openrc() {
 	default_openrc
-	depends="openrc"
-	install_if="openrc $pkgname-server=$pkgver-r$pkgrel"
 	install -Dm755 "$srcdir/apshd.initd" "$subpkgdir/etc/init.d/apshd"
 	install -Dm644 "$srcdir/apshd.logrotate" "$subpkgdir/etc/logrotate.d/apshd"
 }
