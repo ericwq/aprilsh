@@ -31,7 +31,7 @@ Now you can ssh login to the server and the aprilsh is installed, it's time to s
 ```sh
 # start apshd server
 rc-service apshd start
-# apsh login to server
+# apsh login with port mapping
 apsh -m 100 eric@localhost:8022
 # apsh login without port mapping
 apsh eric@localhost

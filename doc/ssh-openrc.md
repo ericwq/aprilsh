@@ -3,6 +3,8 @@ To avoid port conflict, the container map ssh port 22 to 8022 and map udp port 8
 
 ### build container
 Run the following command to build ssh image, which perform the following actions:
+- install openssh server, rsyslog.
+- import local ssh rsa key into container.
 - create user: eric.
 - set password for root and eric user.
 - transfer public key to `$HOME/.ssh/authorized_keys` for root and eric user.
@@ -62,6 +64,11 @@ ssh-copy-id -p 8022 -i ~/.ssh/id_ed25519.pub root@localhost
 ```
 
 ### verified ssh authentication with public key.
+if ssh reports: "WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!".
+```sh
+rm ~/.ssh/known_hosts*
+```
+now, ssh login to verify ssh works for you.
 ```sh
 ssh -p 8022 root@localhost
 ssh -p 8022 eric@localhost

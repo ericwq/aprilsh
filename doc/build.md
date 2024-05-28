@@ -36,8 +36,8 @@ sudo -u packager sh
 run as `packager` user, git pull aports fork.
 ```sh
 sudo apk update
-sudo apk add go protoc utmps-dev ncurses-terminfo openssh-client
-sudo apk add musl-locales protoc-gen-go colordiff
+sudo apk add go protoc utmps-dev ncurses-terminfo openssh-client \
+    musl-locales protoc-gen-go colordiff
 cd ~/aports
 # rebase pull
 git config pull.rebase true     # rebase pull
@@ -52,6 +52,7 @@ git push origin -d aprilsh      # delete remote branch
 git branch aprilsh              # create branch
 git checkout aprilsh            # switch to branch
 # switch to branch
+git branch                      # list branches
 git checkout aprilsh            # switch to branch
 git branch                      # list branches
 ```
