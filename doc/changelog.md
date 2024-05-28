@@ -98,3 +98,4 @@
 - 2024/May/15: fix alpine execute mode bug.
 - 2024/May/23: fix ssh rsa public key login problem for alpine.
 - 2024/May/24: add ssh container for fedora.
+- 2024/May/27: refine apk build according to aports reivew.
