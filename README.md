@@ -2,7 +2,7 @@ Aprilsh: remote shell support intermittent or mobile network. inspired by [mosh]
 
 ## Installation
 
-### Reqirement
+#### Reqirement
 - [open-ssh](https://www.openssh.com/) is a must reqirement, sshd is required to perform user authentication.
 - [locale support](https://git.adelielinux.org/adelie/musl-locales/-/wikis/home) is a must reqirement.
 - [ncurses and terminfo](https://invisible-island.net/ncurses/) is a must requirement.
@@ -13,7 +13,9 @@ Aprilsh: remote shell support intermittent or mobile network. inspired by [mosh]
 
 if you perfer to build aprilsh manually, please refer to [this document](doc/install-alpine.md)
 
-### Alpine linux
+<details>
+<summary>Alpine linux</summary>
+
 Before start apshd, you need to make sure you can ssh login to the target server, please refer to [this doc](doc/ssh-openrc.md) to setup a ssh enabled docker container.
 
 Note: aprilsh is still waiting for aports approval. For now please use the following private repository. The private repository only provide `x86_64` packages. Refer to [build doc](doc/build.md) to know how to build apk packages and private repositories.
@@ -42,8 +44,11 @@ Note: when aports finally approve aprilsh, the above private repository will be 
 # add testing repositories
 echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
 ```
+</details>
 
-### Fedora, CentOS, Redhat linux
+<details>
+<summary>Fedora, CentOS, Redhat linux</summary>
+
 Before start apshd, you need to make sure you can ssh login to the target server, please refer to [this doc](doc/ssh-systemd.md) to setup a ssh enabled docker container.
 
 Note: This is a private yum/dnf repositories, it only provides `x86_64` packages. Refer to [rpms doc](https://codeberg.org/ericwq/rpms#build-rpm-packages) to understand how to build rpm packags and dnf repositories.
@@ -62,13 +67,22 @@ sudo journalctl -f -u apshd.service     # keep reading the latest apshd.service 
 apsh -m 100 packager@localhost:8022     # apsh login to server
 apsh packager@localhost                 # apsh login without port mapping
 ```
-### MacOS
+</details>
+
+<details>
+<summary>MacOS</summary>
+
+Run the following command to install aprilsh client for macOS.
 ```sh
 brew tap ericwq/utils                   # add tap to homebrew
 brew install aprilsh                    # only install aprilsh client
 ```
 Refer to [homebrew doc](https://github.com/ericwq/homebrew-utils) to know how to create homebrew package and tap.
-### Validate installation
+</details>
+
+<details>
+<summary>Validate installation</summary>
+
 by default apshd listen on udp localhost:8100.
 ```txt
 openrc-nvide:~# netstat -lup
@@ -77,7 +91,7 @@ Proto Recv-Q Send-Q Local Address           Foreign Address         State       
 udp        0      0 localhost:8100          0.0.0.0:*                           45561/apshd
 openrc-nvide:~#
 ```
-now login to the system with apsh (aprilsh client), note the `motd`(welcome message) depends on you alpine system config.
+now login to the system with apsh (aprilsh client), note the `motd`(welcome message) depends on your linux system.
 ```txt
 qiwang@Qi15Pro client % apsh ide@localhost
 openrc-nvide:0.10.2
@@ -103,6 +117,8 @@ unix  2      [ ACC ]     STREAM     LISTENING     869747 253/s6-ipcserverd   /ru
 unix  2      [ ACC ]     STREAM     LISTENING     866239 281/s6-ipcserverd   /run/utmps/.wtmpd-socket
 openrc-nvide:~#
 ```
+</details>
+
 ## Motivation
 
 [openSSH](https://www.openssh.com/) is excellent. While `mosh` provides better keystroke prediction/latency and is capable of handle WiFi/cellular mobile network roaming. But `mosh` project is not active anymore and no release [sine 2017](https://github.com/mobile-shell/mosh/issues/1115). Such a good project like `mosh` should keeps developing.
