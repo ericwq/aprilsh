@@ -73,7 +73,7 @@ lint, checksum, build the apk.
 apkbuild-lint APKBUILD && abuild checksum && abuild -r
 ```
 ### copy keys and apk to mount point
-delete the old packages directory, note the `cp -r` command, it's important to keep the [directory structure of local repository](#directory-structure-of-local-repository).
+delete the old packages directory, note the `cp -r` command, it's important to keep the [directory structure](#directory-structure-of-alpine-repository) of alpine repository.
 ```sh
 # clean local repo/mount point
 rm -rf /home/ide/proj/packages
@@ -82,7 +82,7 @@ cd && cp -r packages/ /home/ide/proj/
 # copy public key to mount point
 cp .abuild/packager-*.rsa.pub /home/ide/proj/packages
 ```
-### update apk to github pages
+### update key and apk to github pages
 ```sh
 # update public key
 cp ~/.abuild/packager-*.rsa.pub  /home/ide/develop/ericwq.github.io/alpine/
@@ -103,6 +103,15 @@ cd /var/cache/distfiles
 tar tvvf aprilsh-0.5.48.tar.gz
 ```
 ### commit the update to branch
+prepare git for commit
+```sh
+cd ~/aport/testing
+git add aprilsh
+git config --global user.email "ericwq057@qq.com"
+git config --global user.name "Wang Qi"
+mkdir ~/.ssh
+cp /home/ide/develop/key/id_rsa* ~/.ssh/
+```
 Use the following commit message template for new aports (without the comments):
 ```txt
 testing/aprilsh: new aport
@@ -110,12 +119,10 @@ testing/aprilsh: new aport
 https://github.com/ericwq/aprilsh
 Remote shell support intermittent or mobile network
 ```
-commit the update, push to the remote repository.
+commit the update, push to the remote branch.
 ```sh
-cd ~/aport/testing
-git add aprilsh
-git commit -a
 git diff
+git commit -a
 git push origin aprilsh
 ```
 ## directory structure of alpine repository
