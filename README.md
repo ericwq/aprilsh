@@ -37,8 +37,9 @@ rc-service apshd start
 apsh -m 100 eric@localhost:8022
 # apsh login without port mapping
 apsh eric@localhost
-
 ```
+After apsh login, you connection to the remote server is provided by aprilsh.
+
 Note: when aports finally approve aprilsh, the above private repository will be replaced by official testing repositories. The testing repositories will provide all architecture packages.
 ```sh
 # add testing repositories
@@ -67,6 +68,8 @@ sudo journalctl -f -u apshd.service     # keep reading the latest apshd.service 
 apsh -m 100 packager@localhost:8022     # apsh login to server
 apsh packager@localhost                 # apsh login without port mapping
 ```
+After apsh login, you connection to the remote server is provided by aprilsh.
+
 </details>
 
 <details>
@@ -77,6 +80,8 @@ Run the following command to install aprilsh client for macOS.
 brew tap ericwq/utils                   # add tap to homebrew
 brew install aprilsh                    # only install aprilsh client
 ```
+After apsh login, you connection to the remote server is provided by aprilsh.
+
 Refer to [homebrew doc](https://github.com/ericwq/homebrew-utils) to know how to create homebrew package and tap.
 </details>
 
