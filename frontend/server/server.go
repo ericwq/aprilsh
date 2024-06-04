@@ -36,7 +36,7 @@ import (
 	"github.com/ericwq/aprilsh/statesync"
 	"github.com/ericwq/aprilsh/terminal"
 	"github.com/ericwq/aprilsh/util"
-	utmps "github.com/ericwq/goutmp"
+	utmps "github.com/ericwq/goutmp" // set GOFLAGS="-tags=utmps" before nvim
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
 )
