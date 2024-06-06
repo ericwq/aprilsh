@@ -70,7 +70,7 @@ RUN rc-update add sshd boot \
 	-e 's/#Port 22/Port 22/g' \
 	/etc/ssh/sshd_config \
 	# && echo '%wheel ALL=(ALL) ALL' > /etc/sudoers.d/wheel \
-	# && ssh-keygen -A \
+	&& ssh-keygen -A \
 	# && adduser eric wheel \
 	&& rm -rf /var/cache/apk/*
 
