@@ -27,6 +27,7 @@ import (
 	"github.com/ericwq/aprilsh/statesync"
 	"github.com/ericwq/aprilsh/terminal"
 	"github.com/ericwq/aprilsh/util"
+	"github.com/kevinburke/ssh_config" // go env -w GOPROXY=https://goproxy.cn,direct
 	"github.com/rivo/uniseg"
 	"github.com/skeema/knownhosts"
 	"golang.org/x/crypto/ssh"
@@ -190,6 +191,17 @@ func (e *responseError) Error() string {
 func (c *Config) fetchKey() error {
 	var auth []ssh.AuthMethod
 	auth = make([]ssh.AuthMethod, 0)
+
+	idf, err := ssh_config.GetAllStrict(c.host, "IdentityFile")
+	for i := range idf {
+		fmt.Printf("IdentityFile=%s\n", idf[i])
+	}
+
+	sendEnv := ssh_config.Get(c.host, "SendEnv")
+	fmt.Printf("SendEnv=%s\n", sendEnv)
+
+	pa := ssh_config.Get(c.host, "PreferredAuthentications")
+	fmt.Printf("PreferredAuthentications=%s\n", pa)
 
 	if c.sshClientID != defaultSSHClientID {
 		if am := publicKeyFile(c.sshClientID); am != nil {
