@@ -27,7 +27,7 @@ import (
 	"github.com/ericwq/aprilsh/statesync"
 	"github.com/ericwq/aprilsh/terminal"
 	"github.com/ericwq/aprilsh/util"
-	"github.com/kevinburke/ssh_config" // go env -w GOPROXY=https://goproxy.cn,direct
+	"github.com/ericwq/ssh_config" // go env -w GOPROXY=https://goproxy.cn,direct
 	"github.com/rivo/uniseg"
 	"github.com/skeema/knownhosts"
 	"golang.org/x/crypto/ssh"
@@ -178,6 +178,11 @@ func (e *responseError) Error() string {
 	return e.Msg + ", " + e.Err.Error()
 }
 
+func checkFileExists(filePath string) bool {
+	_, error := os.Stat(filePath)
+	return !errors.Is(error, os.ErrNotExist)
+}
+
 // utilize ssh to fetch the key from remote server and start a server.
 // return empty string if success, otherwise return error info.
 //
@@ -192,16 +197,45 @@ func (c *Config) fetchKey() error {
 	var auth []ssh.AuthMethod
 	auth = make([]ssh.AuthMethod, 0)
 
-	idf, err := ssh_config.GetAllStrict(c.host, "IdentityFile")
-	for i := range idf {
-		fmt.Printf("IdentityFile=%s\n", idf[i])
+	expectIDFiles, err := ssh_config.GetAllStrict(c.host, "IdentityFile")
+	for i := range expectIDFiles {
+		fmt.Printf("IdentityFile=%s\n", expectIDFiles[i])
+	}
+	var actualIDFiles []string
+
+	// check identity file exist
+	for i := range expectIDFiles {
+		if strings.HasPrefix(expectIDFiles[i], "~") {
+			expectIDFiles[i] = strings.Replace(expectIDFiles[i], "~", os.Getenv("HOME"), 1)
+		}
+		if checkFileExists(expectIDFiles[i]) {
+			actualIDFiles = append(actualIDFiles, expectIDFiles[i])
+			fmt.Printf("%s remains\n", expectIDFiles[i])
+		}
 	}
 
-	sendEnv := ssh_config.Get(c.host, "SendEnv")
-	fmt.Printf("SendEnv=%s\n", sendEnv)
+	// if len(actualIDFiles) == 0 {
+	// 	return errors.New("no identity file on local host")
+	// }
 
-	pa := ssh_config.Get(c.host, "PreferredAuthentications")
-	fmt.Printf("PreferredAuthentications=%s\n", pa)
+	sshAgent0, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
+	if err != nil {
+		fmt.Printf("Failed to connect ssh agent. %s\n", err)
+		return nil
+	}
+	keys, err := agent.NewClient(sshAgent0).List()
+	if err == nil {
+		for i := range keys {
+			fmt.Printf("agent has key: %s\n", keys[i])
+		}
+	}
+	// return ssh.PublicKeysCallback(agent.NewClient(sshAgent).Signers)
+
+	// sendEnv := ssh_config.Get(c.host, "SendEnv")
+	// fmt.Printf("SendEnv=%s\n", sendEnv)
+	//
+	// pa := ssh_config.Get(c.host, "PreferredAuthentications")
+	// fmt.Printf("PreferredAuthentications=%s\n", pa)
 
 	if c.sshClientID != defaultSSHClientID {
 		if am := publicKeyFile(c.sshClientID); am != nil {
@@ -223,19 +257,29 @@ func (c *Config) fetchKey() error {
 		}
 	}
 
-	if len(auth) == 0 {
-		// get password if we don't have any authenticate method
+	// if len(auth) == 0 {
+	// 	// get password if we don't have any authenticate method
+	// 	pwd, err := getPassword("password", os.Stdin)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+
+	// password authentication is the last resort
+	if am := ssh.PasswordCallback(func() (secret string, err error) {
 		pwd, err := getPassword("password", os.Stdin)
 		if err != nil {
-			return err
+			return "", err
 		}
-
-		// password authentication is the last resort
-		if am := ssh.Password(pwd); am != nil {
-			auth = append(auth, am)
-			fmt.Printf("password auth last, %s\n", am)
-		}
+		return pwd, err
+	}); am != nil {
+		auth = append(auth, am)
 	}
+
+	// 	if am := ssh.Password(pwd); am != nil {
+	// 		auth = append(auth, am)
+	// 		fmt.Printf("password auth last, %s\n", am)
+	// 	}
+	// }
 
 	// fmt.Printf("c.sshClientID=%s, defaultSSHClientID=%s, eq=%t\n", c.sshClientID, defaultSSHClientID,
 	// 	c.sshClientID == defaultSSHClientID)

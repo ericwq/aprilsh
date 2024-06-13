@@ -1,12 +1,12 @@
 module github.com/ericwq/aprilsh
 
-go 1.21
+go 1.21.7
 
 require (
 	github.com/creack/pty v1.1.18
 	github.com/ericwq/goutmp v0.5.2
+	github.com/ericwq/ssh_config v1.2.2
 	github.com/ericwq/terminfo v0.2.0
-	github.com/kevinburke/ssh_config v1.2.0
 	github.com/rivo/uniseg v0.4.4
 	github.com/skeema/knownhosts v1.2.1
 	golang.org/x/crypto v0.23.0
