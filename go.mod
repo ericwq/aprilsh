@@ -2,6 +2,8 @@ module github.com/ericwq/aprilsh
 
 go 1.21.7
 
+toolchain go1.21.10
+
 require (
 	github.com/creack/pty v1.1.18
 	github.com/ericwq/goutmp v0.5.2

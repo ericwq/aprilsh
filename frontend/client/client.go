@@ -62,9 +62,9 @@ Options:
   -m,  --mapping     container port mapping (default 0, new port = returned port + mapping)
 ---------------------------------------------------------------------------------------------------
 `
-	predictionValues   = []string{"always", "never", "adaptive", "experimental"}
-	defaultSSHClientID = filepath.Join(os.Getenv("HOME"), ".ssh", "id_rsa")
-	signals            frontend.Signals
+	predictionValues = []string{"always", "never", "adaptive", "experimental"}
+	// defaultSSHClientID = filepath.Join(os.Getenv("HOME"), ".ssh", "id_rsa")
+	signals frontend.Signals
 )
 
 func printVersion() {
@@ -115,7 +115,7 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.BoolVar(&conf.colors, "color", false, "terminal colors number")
 	flagSet.BoolVar(&conf.colors, "c", false, "terminal colors number")
 
-	flagSet.StringVar(&conf.sshClientID, "i", defaultSSHClientID, "ssh client identity file")
+	flagSet.StringVar(&conf.sshClientID, "i", "", "ssh client identity file")
 	flagSet.IntVar(&conf.mapping, "mapping", 0, "container port mapping")
 	flagSet.IntVar(&conf.mapping, "m", 0, "container port mapping")
 
@@ -183,6 +183,11 @@ func checkFileExists(filePath string) bool {
 	return !errors.Is(error, os.ErrNotExist)
 }
 
+type publicKey struct {
+	file  string
+	agent bool
+}
+
 // utilize ssh to fetch the key from remote server and start a server.
 // return empty string if success, otherwise return error info.
 //
@@ -195,38 +200,61 @@ func checkFileExists(filePath string) bool {
 // ssh-add ~/.ssh/id_ed25519
 func (c *Config) fetchKey() error {
 	var auth []ssh.AuthMethod
-	auth = make([]ssh.AuthMethod, 0)
+	var preferred []publicKey
+	var err error
+	var files []string
+	var agentHasKey bool
 
-	expectIDFiles, err := ssh_config.GetAllStrict(c.host, "IdentityFile")
-	for i := range expectIDFiles {
-		fmt.Printf("IdentityFile=%s\n", expectIDFiles[i])
+	if c.sshClientID != "" {
+		files = []string{c.sshClientID}
+	} else {
+		files, err = ssh_config.GetAllStrict(c.host, "IdentityFile")
 	}
-	var actualIDFiles []string
-
-	// check identity file exist
-	for i := range expectIDFiles {
-		if strings.HasPrefix(expectIDFiles[i], "~") {
-			expectIDFiles[i] = strings.Replace(expectIDFiles[i], "~", os.Getenv("HOME"), 1)
-		}
-		if checkFileExists(expectIDFiles[i]) {
-			actualIDFiles = append(actualIDFiles, expectIDFiles[i])
-			fmt.Printf("%s remains\n", expectIDFiles[i])
-		}
+	for i := range files {
+		fmt.Printf("IdentityFile=%s\n", files[i])
 	}
 
-	// if len(actualIDFiles) == 0 {
-	// 	return errors.New("no identity file on local host")
-	// }
+	// does identity file exist?
+	for i := range files {
+		if strings.HasPrefix(files[i], "~") {
+			files[i] = strings.Replace(files[i], "~", os.Getenv("HOME"), 1)
+		}
+		if checkFileExists(files[i]) {
+			preferred = append(preferred, publicKey{files[i], false})
+			fmt.Printf("%v exist\n", preferred[len(preferred)-1])
+		}
+	}
 
+	// does ssh agent has publicKey?
 	sshAgent0, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
 	if err != nil {
 		fmt.Printf("Failed to connect ssh agent. %s\n", err)
-		return nil
+	} else {
+		if err == nil {
+			keys, err2 := agent.NewClient(sshAgent0).List()
+			if err2 == nil {
+				for i := range keys {
+					kt := strings.Split(keys[i].Type(), "-")[1]
+					for j := range preferred {
+						if strings.Contains(preferred[j].file, kt) {
+							preferred[j].agent = true
+							agentHasKey = true
+							fmt.Printf("%s publickey agent [%s]\n", preferred[j].file, kt)
+						}
+					}
+				}
+			}
+		}
 	}
-	keys, err := agent.NewClient(sshAgent0).List()
-	if err == nil {
-		for i := range keys {
-			fmt.Printf("agent has key: %s\n", keys[i])
+	if agentHasKey {
+		auth = append(auth, ssh.PublicKeysCallback(agent.NewClient(sshAgent0).Signers))
+	}
+
+	// remains public key
+	for i := range preferred {
+		if !preferred[i].agent {
+			auth = append(auth, publicKeyFile(preferred[i].file))
+			fmt.Printf("%s publickey\n", preferred[i].file)
 		}
 	}
 	// return ssh.PublicKeysCallback(agent.NewClient(sshAgent).Signers)
@@ -237,25 +265,25 @@ func (c *Config) fetchKey() error {
 	// pa := ssh_config.Get(c.host, "PreferredAuthentications")
 	// fmt.Printf("PreferredAuthentications=%s\n", pa)
 
-	if c.sshClientID != defaultSSHClientID {
-		if am := publicKeyFile(c.sshClientID); am != nil {
-			auth = append(auth, am) // public key first
-			// fmt.Printf("public key first, %s, %s\n", am, c.sshClientID)
-		}
-		if am := sshAgent(); am != nil {
-			auth = append(auth, am) // ssh agent second
-			// fmt.Printf("ssh agent second, %s\n", am)
-		}
-	} else {
-		if am := sshAgent(); am != nil {
-			auth = append(auth, am) // ssh agent first
-			// fmt.Printf("ssh agent first, %s\n", am)
-		}
-		if am := publicKeyFile(c.sshClientID); am != nil {
-			auth = append(auth, am) // public key second
-			// fmt.Printf("public key second, %s, %s\n", am, c.sshClientID)
-		}
-	}
+	// if c.sshClientID != defaultSSHClientID {
+	// 	if am := publicKeyFile(c.sshClientID); am != nil {
+	// 		auth = append(auth, am) // public key first
+	// 		// fmt.Printf("public key first, %s, %s\n", am, c.sshClientID)
+	// 	}
+	// 	if am := sshAgent(); am != nil {
+	// 		auth = append(auth, am) // ssh agent second
+	// 		// fmt.Printf("ssh agent second, %s\n", am)
+	// 	}
+	// } else {
+	// 	if am := sshAgent(); am != nil {
+	// 		auth = append(auth, am) // ssh agent first
+	// 		// fmt.Printf("ssh agent first, %s\n", am)
+	// 	}
+	// 	if am := publicKeyFile(c.sshClientID); am != nil {
+	// 		auth = append(auth, am) // public key second
+	// 		// fmt.Printf("public key second, %s, %s\n", am, c.sshClientID)
+	// 	}
+	// }
 
 	// if len(auth) == 0 {
 	// 	// get password if we don't have any authenticate method
@@ -265,14 +293,16 @@ func (c *Config) fetchKey() error {
 	// 	}
 
 	// password authentication is the last resort
-	if am := ssh.PasswordCallback(func() (secret string, err error) {
+	prompt := func() (secret string, err error) {
 		pwd, err := getPassword("password", os.Stdin)
 		if err != nil {
 			return "", err
 		}
 		return pwd, err
-	}); am != nil {
+	}
+	if am := ssh.PasswordCallback(prompt); am != nil {
 		auth = append(auth, am)
+		fmt.Printf("%s password\n", "last")
 	}
 
 	// 	if am := ssh.Password(pwd); am != nil {
@@ -374,7 +404,7 @@ func (c *Config) fetchKey() error {
 	var b []byte
 	cmd := fmt.Sprintf("/usr/bin/apshd -b -t %s -destination %s -p %d",
 		os.Getenv("TERM"), c.destination[0], c.port)
-	// fmt.Printf("cmd=%s\n", cmd)
+	fmt.Printf("cmd=%s\n", cmd)
 
 	if b, err = session.Output(cmd); err != nil {
 		return err
