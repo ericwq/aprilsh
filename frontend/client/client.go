@@ -189,27 +189,16 @@ type publicKey struct {
 	signer ssh.Signer
 }
 
-// utilize ssh to fetch the key from remote server and start a server.
-// return empty string if success, otherwise return error info.
-//
-// For alpine, ssh is provided by openssh package, nc and echo is provided by busybox.
-// % ssh ide@localhost  "echo 'open aprilsh:' | nc localhost 6000 -u -w 1"
-//
-// ssh-keygen -t ed25519
-// ssh-copy-id -i ~/.ssh/id_ed25519.pub root@localhost
-// ssh-copy-id -i ~/.ssh/id_ed25519.pub ide@localhost
-// ssh-add ~/.ssh/id_ed25519
-func (c *Config) fetchKey() error {
-	var auth []ssh.AuthMethod
+func prepareAuthMethod(id string, host string) (auth []ssh.AuthMethod) {
 	var preferred []publicKey
 	var err error
 	var files []string
 	var agentHasKey bool
 
-	if c.sshClientID != "" {
-		files = []string{c.sshClientID}
+	if id != "" {
+		files = []string{id}
 	} else {
-		files, err = ssh_config.GetAllStrict(c.host, "IdentityFile")
+		files, err = ssh_config.GetAllStrict(host, "IdentityFile")
 	}
 	// for i := range files {
 	// 	fmt.Printf("IdentityFile=%s\n", files[i])
@@ -236,13 +225,11 @@ func (c *Config) fetchKey() error {
 		agentKeys, err2 := agent.NewClient(sshAgentConn).List()
 		if err2 == nil {
 			for i := range agentKeys {
-				// fmt.Printf("agentKeys %d=%s\n", i, agentKeys[i].Type())
 				for j := range preferred {
-					// fmt.Printf("preferred %d=%s\n", j, preferred[j].signer.PublicKey().Type())
 					if agentKeys[i].Type() == preferred[j].signer.PublicKey().Type() {
 						preferred[j].agent = true
 						agentHasKey = true
-						fmt.Printf("%s publickey agent auth\n", preferred[j].file)
+						// fmt.Printf("%s publickey agent auth\n", preferred[j].file)
 					}
 				}
 			}
@@ -261,8 +248,7 @@ func (c *Config) fetchKey() error {
 			return signers, err
 		}
 		auth = append(auth, ssh.PublicKeysCallback(pcb))
-		fmt.Printf("publickey agent auth\n")
-		// auth = append(auth, ssh.PublicKeysCallback(agent.NewClient(sshAgentConn).Signers))
+		// fmt.Printf("publickey agent auth\n")
 	} else {
 		var signers []ssh.Signer
 		for j := range preferred {
@@ -273,42 +259,9 @@ func (c *Config) fetchKey() error {
 		// remains public key
 		if len(signers) > 0 {
 			auth = append(auth, ssh.PublicKeys(signers...))
-			fmt.Printf("publickey auth\n")
+			// fmt.Printf("publickey auth\n")
 		}
 	}
-
-	// sendEnv := ssh_config.Get(c.host, "SendEnv")
-	// fmt.Printf("SendEnv=%s\n", sendEnv)
-	//
-	// pa := ssh_config.Get(c.host, "PreferredAuthentications")
-	// fmt.Printf("PreferredAuthentications=%s\n", pa)
-
-	// if c.sshClientID != defaultSSHClientID {
-	// 	if am := publicKeyFile(c.sshClientID); am != nil {
-	// 		auth = append(auth, am) // public key first
-	// 		// fmt.Printf("public key first, %s, %s\n", am, c.sshClientID)
-	// 	}
-	// 	if am := sshAgent(); am != nil {
-	// 		auth = append(auth, am) // ssh agent second
-	// 		// fmt.Printf("ssh agent second, %s\n", am)
-	// 	}
-	// } else {
-	// 	if am := sshAgent(); am != nil {
-	// 		auth = append(auth, am) // ssh agent first
-	// 		// fmt.Printf("ssh agent first, %s\n", am)
-	// 	}
-	// 	if am := publicKeyFile(c.sshClientID); am != nil {
-	// 		auth = append(auth, am) // public key second
-	// 		// fmt.Printf("public key second, %s, %s\n", am, c.sshClientID)
-	// 	}
-	// }
-
-	// if len(auth) == 0 {
-	// 	// get password if we don't have any authenticate method
-	// 	pwd, err := getPassword("password", os.Stdin)
-	// 	if err != nil {
-	// 		return err
-	// 	}
 
 	// password authentication is the last resort
 	prompt := func() (secret string, err error) {
@@ -320,17 +273,25 @@ func (c *Config) fetchKey() error {
 	}
 	if am := ssh.PasswordCallback(prompt); am != nil {
 		auth = append(auth, am)
-		fmt.Printf("password auth\n")
+		// fmt.Printf("password auth\n")
 	}
 
-	// 	if am := ssh.Password(pwd); am != nil {
-	// 		auth = append(auth, am)
-	// 		fmt.Printf("password auth last, %s\n", am)
-	// 	}
-	// }
+	return
+}
 
-	// fmt.Printf("c.sshClientID=%s, defaultSSHClientID=%s, eq=%t\n", c.sshClientID, defaultSSHClientID,
-	// 	c.sshClientID == defaultSSHClientID)
+// utilize ssh to fetch the key from remote server and start a server.
+// return empty string if success, otherwise return error info.
+//
+// For alpine, ssh is provided by openssh package, nc and echo is provided by busybox.
+// % ssh ide@localhost  "echo 'open aprilsh:' | nc localhost 6000 -u -w 1"
+//
+// ssh-keygen -t ed25519
+// ssh-copy-id -i ~/.ssh/id_ed25519.pub root@localhost
+// ssh-copy-id -i ~/.ssh/id_ed25519.pub ide@localhost
+// ssh-add ~/.ssh/id_ed25519
+func (c *Config) fetchKey() error {
+	var auth []ssh.AuthMethod
+	auth = prepareAuthMethod(c.sshClientID, c.host)
 
 	// prepare for knownhosts
 	sshHost := net.JoinHostPort(c.host, c.sshPort)
