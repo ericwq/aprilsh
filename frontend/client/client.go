@@ -184,8 +184,9 @@ func checkFileExists(filePath string) bool {
 }
 
 type publicKey struct {
-	file  string
-	agent bool
+	file   string
+	agent  bool
+	signer ssh.Signer
 }
 
 // utilize ssh to fetch the key from remote server and start a server.
@@ -210,54 +211,71 @@ func (c *Config) fetchKey() error {
 	} else {
 		files, err = ssh_config.GetAllStrict(c.host, "IdentityFile")
 	}
-	for i := range files {
-		fmt.Printf("IdentityFile=%s\n", files[i])
-	}
+	// for i := range files {
+	// 	fmt.Printf("IdentityFile=%s\n", files[i])
+	// }
 
-	// does identity file exist?
+	// does identity file exist and valid?
 	for i := range files {
-		if strings.HasPrefix(files[i], "~") {
+		if strings.HasPrefix(files[i], "~") { // replace ~ with $HOME
 			files[i] = strings.Replace(files[i], "~", os.Getenv("HOME"), 1)
 		}
 		if checkFileExists(files[i]) {
-			preferred = append(preferred, publicKey{files[i], false})
-			fmt.Printf("%v exist\n", preferred[len(preferred)-1])
+			if s := getSigner(files[i]); s != nil {
+				preferred = append(preferred, publicKey{files[i], false, s})
+				// fmt.Printf("IdentityFile=%s valid\n", files[i])
+			}
 		}
 	}
 
 	// does ssh agent has publicKey?
-	sshAgent0, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
+	sshAgentConn, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
 	if err != nil {
 		fmt.Printf("Failed to connect ssh agent. %s\n", err)
 	} else {
-		if err == nil {
-			keys, err2 := agent.NewClient(sshAgent0).List()
-			if err2 == nil {
-				for i := range keys {
-					kt := strings.Split(keys[i].Type(), "-")[1]
-					for j := range preferred {
-						if strings.Contains(preferred[j].file, kt) {
-							preferred[j].agent = true
-							agentHasKey = true
-							fmt.Printf("%s publickey agent [%s]\n", preferred[j].file, kt)
-						}
+		agentKeys, err2 := agent.NewClient(sshAgentConn).List()
+		if err2 == nil {
+			for i := range agentKeys {
+				// fmt.Printf("agentKeys %d=%s\n", i, agentKeys[i].Type())
+				for j := range preferred {
+					// fmt.Printf("preferred %d=%s\n", j, preferred[j].signer.PublicKey().Type())
+					if agentKeys[i].Type() == preferred[j].signer.PublicKey().Type() {
+						preferred[j].agent = true
+						agentHasKey = true
+						fmt.Printf("%s publickey agent auth\n", preferred[j].file)
 					}
 				}
 			}
 		}
 	}
 	if agentHasKey {
-		auth = append(auth, ssh.PublicKeysCallback(agent.NewClient(sshAgent0).Signers))
-	}
+		pcb := func() ([]ssh.Signer, error) {
+			s1 := agent.NewClient(sshAgentConn).Signers
+			signers, err := s1()
 
-	// remains public key
-	for i := range preferred {
-		if !preferred[i].agent {
-			auth = append(auth, publicKeyFile(preferred[i].file))
-			fmt.Printf("%s publickey\n", preferred[i].file)
+			for j := range preferred {
+				if preferred[j].agent == false {
+					signers = append(signers, preferred[j].signer)
+				}
+			}
+			return signers, err
+		}
+		auth = append(auth, ssh.PublicKeysCallback(pcb))
+		fmt.Printf("publickey agent auth\n")
+		// auth = append(auth, ssh.PublicKeysCallback(agent.NewClient(sshAgentConn).Signers))
+	} else {
+		var signers []ssh.Signer
+		for j := range preferred {
+			if preferred[j].agent == false {
+				signers = append(signers, preferred[j].signer)
+			}
+		}
+		// remains public key
+		if len(signers) > 0 {
+			auth = append(auth, ssh.PublicKeys(signers...))
+			fmt.Printf("publickey auth\n")
 		}
 	}
-	// return ssh.PublicKeysCallback(agent.NewClient(sshAgent).Signers)
 
 	// sendEnv := ssh_config.Get(c.host, "SendEnv")
 	// fmt.Printf("SendEnv=%s\n", sendEnv)
@@ -302,7 +320,7 @@ func (c *Config) fetchKey() error {
 	}
 	if am := ssh.PasswordCallback(prompt); am != nil {
 		auth = append(auth, am)
-		fmt.Printf("%s password\n", "last")
+		fmt.Printf("password auth\n")
 	}
 
 	// 	if am := ssh.Password(pwd); am != nil {
@@ -404,7 +422,7 @@ func (c *Config) fetchKey() error {
 	var b []byte
 	cmd := fmt.Sprintf("/usr/bin/apshd -b -t %s -destination %s -p %d",
 		os.Getenv("TERM"), c.destination[0], c.port)
-	fmt.Printf("cmd=%s\n", cmd)
+	// fmt.Printf("cmd=%s\n", cmd)
 
 	if b, err = session.Output(cmd); err != nil {
 		return err
@@ -555,6 +573,34 @@ func publicKeyFile(file string) ssh.AuthMethod {
 		}
 	}
 	return ssh.PublicKeys(signer) // Use the PublicKeys method for remote authentication.
+}
+
+func getSigner(file string) (signer ssh.Signer) {
+	key, err := os.ReadFile(file)
+	if err != nil {
+		fmt.Printf("Unable to read private key: %s\n", err)
+		return nil
+	}
+
+	signer, err = ssh.ParsePrivateKey(key)
+	if err != nil {
+		if strings.Contains(err.Error(), "private key is passphrase protected") {
+			passphrase, err2 := getPassword("passphrase", os.Stdin)
+			if err2 != nil {
+				fmt.Printf("Failed to get passphrase. %s\n", err2)
+				return nil // read passphrase error
+			}
+			signer, err = ssh.ParsePrivateKeyWithPassphrase(key, []byte(passphrase))
+			if err != nil {
+				fmt.Printf("Failed to parse private key. %s\n", err)
+				return nil
+			}
+		} else {
+			fmt.Printf("Unable to parse private key:%s %s\n", file, err)
+			return nil
+		}
+	}
+	return
 }
 
 type STMClient struct {
