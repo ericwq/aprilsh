@@ -3,6 +3,7 @@ package main
 import (
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -17,7 +18,7 @@ func TestMainRun_Parameters2(t *testing.T) {
 		expect []string
 	}{
 		{
-			"on mac, we have SSH_AUTH_SOCK and .ssh/id_rsa.pub .ssh/id_rsa file, so we have ssh agent and public key auths",
+			"on mac, we have SSH_AUTH_SOCK and ~/.ssh/id_rsa{pub} files, so we have ssh agent and public key auths",
 			[]string{frontend.CommandClientName, "-vv", "ide@localhost2"},
 			"xterm-256color",
 			[]string{"No such host"},
@@ -26,6 +27,7 @@ func TestMainRun_Parameters2(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
+			defaultSSHClientID := filepath.Join(os.Getenv("HOME"), ".ssh", "id_rsa")
 			// in case we can't log in with ssh
 			if _, err := os.Stat(defaultSSHClientID); err != nil {
 				t.Skip("no " + defaultSSHClientID + " skip this")

@@ -217,7 +217,7 @@ func prepareAuthMethod(id string, host string) (auth []ssh.AuthMethod) {
 		}
 	}
 
-	// does ssh agent has publicKey?
+	// is there any keys in ssh agent?
 	sshAgentConn, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
 	if err != nil {
 		fmt.Printf("Failed to connect ssh agent. %s\n", err)
@@ -226,7 +226,7 @@ func prepareAuthMethod(id string, host string) (auth []ssh.AuthMethod) {
 		if err2 == nil {
 			for i := range agentKeys {
 				for j := range preferred {
-					if agentKeys[i].Type() == preferred[j].signer.PublicKey().Type() {
+					if bytes.Equal(agentKeys[i].Marshal(), preferred[j].signer.PublicKey().Marshal()) {
 						preferred[j].agent = true
 						agentHasKey = true
 						// fmt.Printf("%s publickey agent auth\n", preferred[j].file)
@@ -235,30 +235,30 @@ func prepareAuthMethod(id string, host string) (auth []ssh.AuthMethod) {
 			}
 		}
 	}
+
+	// remains public key
+	s2 := []ssh.Signer{}
+	for j := range preferred {
+		if preferred[j].agent == false {
+			s2 = append(s2, preferred[j].signer)
+		}
+	}
+
 	if agentHasKey {
+		// ssh key + remains public key
 		pcb := func() ([]ssh.Signer, error) {
 			s1 := agent.NewClient(sshAgentConn).Signers
 			signers, err := s1()
+			signers = append(signers, s2...)
 
-			for j := range preferred {
-				if preferred[j].agent == false {
-					signers = append(signers, preferred[j].signer)
-				}
-			}
 			return signers, err
 		}
 		auth = append(auth, ssh.PublicKeysCallback(pcb))
 		// fmt.Printf("publickey agent auth\n")
 	} else {
-		var signers []ssh.Signer
-		for j := range preferred {
-			if preferred[j].agent == false {
-				signers = append(signers, preferred[j].signer)
-			}
-		}
 		// remains public key
-		if len(signers) > 0 {
-			auth = append(auth, ssh.PublicKeys(signers...))
+		if len(s2) > 0 {
+			auth = append(auth, ssh.PublicKeys(s2...))
 			// fmt.Printf("publickey auth\n")
 		}
 	}
@@ -499,6 +499,7 @@ func getPassword(prompt string, in *os.File) (string, error) {
 	return string(bytepw), nil
 }
 
+/*
 func sshAgent() ssh.AuthMethod {
 	sshAgent, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
 	if err != nil {
@@ -535,6 +536,7 @@ func publicKeyFile(file string) ssh.AuthMethod {
 	}
 	return ssh.PublicKeys(signer) // Use the PublicKeys method for remote authentication.
 }
+*/
 
 func getSigner(file string) (signer ssh.Signer) {
 	key, err := os.ReadFile(file)

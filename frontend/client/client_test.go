@@ -384,6 +384,7 @@ func TestGetPasswordFail2(t *testing.T) {
 	}
 }
 
+/*
 func TestSshAgentFail(t *testing.T) {
 	tc := []struct {
 		label  string
@@ -422,6 +423,7 @@ func TestSshAgentFail(t *testing.T) {
 		})
 	}
 }
+*/
 
 func TestErrors(t *testing.T) {
 	tc := []struct {
@@ -446,7 +448,7 @@ func TestErrors(t *testing.T) {
 	}
 }
 
-func TestPublicKeyFileFail(t *testing.T) {
+func TestGetSignersFail(t *testing.T) {
 	tc := []struct {
 		label  string
 		file   string
@@ -464,7 +466,7 @@ func TestPublicKeyFileFail(t *testing.T) {
 			os.Stdout = w
 
 			// run the test
-			publicKeyFile(v.file)
+			getSigner(v.file)
 
 			// restore stdout
 			w.Close()

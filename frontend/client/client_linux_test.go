@@ -20,7 +20,7 @@ func TestMainRun_Parameters2(t *testing.T) {
 			"only password auth, no ssh agent, no public key file",
 			[]string{frontend.CommandClientName, "-vv", "ide@localhost"},
 			"xterm-256color",
-			[]string{"Failed to connect ssh agent", "Unable to read private key", "inappropriate ioctl for device"},
+			[]string{"Failed to connect ssh agent", "dial unix: missing address", "inappropriate ioctl for device"},
 		},
 	}
 
