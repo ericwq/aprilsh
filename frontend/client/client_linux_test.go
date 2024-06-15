@@ -20,7 +20,7 @@ func TestMainRun_Parameters2(t *testing.T) {
 			"only password auth, no ssh agent, no public key file",
 			[]string{frontend.CommandClientName, "-vv", "ide@localhost"},
 			"xterm-256color",
-			[]string{"Failed to connect ssh agent", "dial unix: missing address", "inappropriate ioctl for device"},
+			[]string{"prepareAuthMethod ssh auth password", "password:", "inappropriate ioctl for device"},
 		},
 	}
 
@@ -30,6 +30,7 @@ func TestMainRun_Parameters2(t *testing.T) {
 			saveStdout := os.Stdout
 			r, w, _ := os.Pipe()
 			os.Stdout = w
+			os.Stderr = w
 
 			// prepare data
 			os.Args = v.args
@@ -48,7 +49,7 @@ func TestMainRun_Parameters2(t *testing.T) {
 			found := 0
 			for i := range v.expect {
 				if strings.Contains(result, v.expect[i]) {
-					// fmt.Printf("found %s\n", expect[i])
+					// fmt.Printf("found %s\n", v.expect[i])
 					found++
 				}
 			}

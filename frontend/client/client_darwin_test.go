@@ -18,7 +18,8 @@ func TestMainRun_Parameters2(t *testing.T) {
 		expect []string
 	}{
 		{
-			"on mac, we have SSH_AUTH_SOCK and ~/.ssh/id_rsa{pub} files, so we have ssh agent and public key auths",
+			// "on mac, we have SSH_AUTH_SOCK and ~/.ssh/id_rsa{pub} files, so we have ssh agent and public key auths",
+			"on mac, see test comment",
 			[]string{frontend.CommandClientName, "-vv", "ide@localhost2"},
 			"xterm-256color",
 			[]string{"No such host"},
@@ -36,6 +37,7 @@ func TestMainRun_Parameters2(t *testing.T) {
 			saveStdout := os.Stdout
 			r, w, _ := os.Pipe()
 			os.Stdout = w
+			os.Stderr = w
 
 			// prepare data
 			os.Args = v.args

@@ -101,3 +101,4 @@
 - 2024/May/27: refine apk build according to aports reivew.
 - 2024/May/31: submit clean commit for aports review. add 3 new feat to issues.
 - 2024/Jun/12: understand ssh-auth protocol and openssh implementation.
+- 2024/Jun/15: aprilsh client suppport ssh auth methods: publickey and password.
