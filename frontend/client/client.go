@@ -189,20 +189,18 @@ type publicKey struct {
 	signer ssh.Signer
 }
 
-func prepareAuthMethod(id string, host string) (auth []ssh.AuthMethod) {
+// prepare publickey and password authentication methods for https://www.rfc-editor.org/rfc/rfc4252
+func prepareAuthMethod(identity string, host string) (auth []ssh.AuthMethod) {
 	var preferred []publicKey
 	var err error
 	var files []string
 	var agentHasKey bool
 
-	if id != "" {
-		files = []string{id}
+	if identity != "" {
+		files = []string{identity}
 	} else {
 		files, err = ssh_config.GetAllStrict(host, "IdentityFile")
 	}
-	// for i := range files {
-	// 	fmt.Printf("IdentityFile=%s\n", files[i])
-	// }
 
 	// does identity file exist and valid?
 	for i := range files {
@@ -212,24 +210,23 @@ func prepareAuthMethod(id string, host string) (auth []ssh.AuthMethod) {
 		if checkFileExists(files[i]) {
 			if s := getSigner(files[i]); s != nil {
 				preferred = append(preferred, publicKey{files[i], false, s})
-				// fmt.Printf("IdentityFile=%s valid\n", files[i])
+				util.Logger.Debug("prepareAuthMethod validate", "IdentityFile", files[i])
 			}
 		}
 	}
 
 	// is there any keys in ssh agent?
 	sshAgentConn, err := net.Dial("unix", os.Getenv("SSH_AUTH_SOCK"))
-	if err != nil {
-		fmt.Printf("Failed to connect ssh agent. %s\n", err)
-	} else {
-		agentKeys, err2 := agent.NewClient(sshAgentConn).List()
-		if err2 == nil {
+	if err == nil {
+		agentKeys, err := agent.NewClient(sshAgentConn).List()
+		if err == nil {
 			for i := range agentKeys {
 				for j := range preferred {
 					if bytes.Equal(agentKeys[i].Marshal(), preferred[j].signer.PublicKey().Marshal()) {
 						preferred[j].agent = true
 						agentHasKey = true
-						// fmt.Printf("%s publickey agent auth\n", preferred[j].file)
+						util.Logger.Debug("prepareAuthMethod found agent publickey",
+							"IdentityFile", preferred[j].file)
 					}
 				}
 			}
@@ -245,7 +242,6 @@ func prepareAuthMethod(id string, host string) (auth []ssh.AuthMethod) {
 	}
 
 	if agentHasKey {
-		// ssh key + remains public key
 		pcb := func() ([]ssh.Signer, error) {
 			s1 := agent.NewClient(sshAgentConn).Signers
 			signers, err := s1()
@@ -254,12 +250,11 @@ func prepareAuthMethod(id string, host string) (auth []ssh.AuthMethod) {
 			return signers, err
 		}
 		auth = append(auth, ssh.PublicKeysCallback(pcb))
-		// fmt.Printf("publickey agent auth\n")
+		util.Logger.Debug("prepareAuthMethod ssh auth publickey", "agent", true)
 	} else {
-		// remains public key
 		if len(s2) > 0 {
 			auth = append(auth, ssh.PublicKeys(s2...))
-			// fmt.Printf("publickey auth\n")
+			util.Logger.Debug("prepareAuthMethod ssh auth publickey", "agent", false)
 		}
 	}
 
@@ -273,7 +268,7 @@ func prepareAuthMethod(id string, host string) (auth []ssh.AuthMethod) {
 	}
 	if am := ssh.PasswordCallback(prompt); am != nil {
 		auth = append(auth, am)
-		// fmt.Printf("password auth\n")
+		util.Logger.Debug("prepareAuthMethod ssh auth password")
 	}
 
 	return
