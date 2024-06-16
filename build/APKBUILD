@@ -1,7 +1,7 @@
 # Contributor: Wang Qi <ericwq057@qq.com>
 # Maintainer: Wang Qi <ericwq057@qq.com>
 pkgname=aprilsh
-pkgver=0.7.1
+pkgver=0.7.2
 pkgrel=0
 pkgdesc="Remote shell support intermittent or mobile network"
 url="https://github.com/ericwq/aprilsh"
@@ -15,7 +15,7 @@ subpackages="
 	$pkgname-server-openrc:server_openrc
 	$pkgname-doc
 	"
-source="https://github.com/ericwq/aprilsh/releases/download/$pkgver/aprilsh-$pkgver.tar.gz
+source="https://github.com/ericwq/aprilsh/archive/refs/tags/$pkgver.tar.gz
 	apshd.logrotate
 	apshd.initd"
 
