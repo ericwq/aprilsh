@@ -35,7 +35,7 @@ go test -covermode=count -coverprofile=coverage.out
 
 ```sh
 % apk add ncurses foot-extra-terminfo rxvt-unicode-terminfo ncurses-terminfo wezterm-extra-terminfo ncurses-terminfo-base
-% apk add build-base autoconf automake gzip libtool ncurses-dev openssl-dev>3 perl-dev perl-io-tty protobuf-dev zlib-dev perl-doc
+% apk add build-base autoconf automake gzip libtool ncurses-dev openssl-dev perl-dev perl-io-tty protobuf-dev zlib-dev perl-doc
 % apk add libxmu-dev mesa-dev freetype-dev
 % apk add musl-locales-lang musl-locales utmps-dev
 ```
