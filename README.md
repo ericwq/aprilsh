@@ -1,3 +1,4 @@
+<img src="img/aprilsh-avatar.png" alt="image" width="150"/>
 Aprilsh: remote shell support intermittent or mobile network. inspired by [mosh](https://mosh.org/) and [zutty](https://github.com/tomscii/zutty). aprilsh is a remote shell based on UDP, authenticate user via openssh.
 
 ## Installation
