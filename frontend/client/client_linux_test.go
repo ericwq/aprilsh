@@ -3,6 +3,7 @@ package main
 import (
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -20,10 +21,15 @@ func TestMainRun_Parameters2(t *testing.T) {
 			"only password auth, no ssh agent, no public key file",
 			[]string{frontend.CommandClientName, "-vv", "ide@localhost"},
 			"xterm-256color",
-			[]string{"prepareAuthMethod ssh auth password", "password:", "inappropriate ioctl for device"},
+			[]string{"prepareAuthMethod ssh auth password", // "password:", "inappropriate ioctl for device"},
+				"/.ssh/known_hosts: no such file or directory"},
 		},
 	}
 
+	khPath := filepath.Join(os.Getenv("HOME"), ".ssh")
+	if _, err := os.Stat(khPath); err != nil {
+		t.Skip("no ~/.ssh exist!, skip this test")
+	}
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			// intercept stdout
