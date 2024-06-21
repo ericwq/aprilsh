@@ -10,6 +10,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"os"
 	"os/signal"
@@ -18,8 +19,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-
-	"log/slog"
 
 	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/frontend"
@@ -153,7 +152,7 @@ type Config struct {
 	mapping          int    // container(such as docker) port mapping value
 }
 
-var errNoResponse = errors.New("no response, please make sure the server is running.")
+var errNoResponse = errors.New("no response, please make sure the server is running")
 
 type hostkeyChangeError struct {
 	hostname string
@@ -200,6 +199,9 @@ func prepareAuthMethod(identity string, host string) (auth []ssh.AuthMethod) {
 		files = []string{identity}
 	} else {
 		files, err = ssh_config.GetAllStrict(host, "IdentityFile")
+		if err != nil {
+			files = []string{}
+		}
 	}
 
 	// does identity file exist and valid?
@@ -236,7 +238,7 @@ func prepareAuthMethod(identity string, host string) (auth []ssh.AuthMethod) {
 	// remains public key
 	s2 := []ssh.Signer{}
 	for j := range preferred {
-		if preferred[j].agent == false {
+		if !preferred[j].agent {
 			s2 = append(s2, preferred[j].signer)
 		}
 	}
@@ -285,8 +287,7 @@ func prepareAuthMethod(identity string, host string) (auth []ssh.AuthMethod) {
 // ssh-copy-id -i ~/.ssh/id_ed25519.pub ide@localhost
 // ssh-add ~/.ssh/id_ed25519
 func (c *Config) fetchKey() error {
-	var auth []ssh.AuthMethod
-	auth = prepareAuthMethod(c.sshClientID, c.host)
+	auth := prepareAuthMethod(c.sshClientID, c.host)
 
 	// prepare for knownhosts
 	sshHost := net.JoinHostPort(c.host, c.sshPort)
@@ -388,7 +389,7 @@ func (c *Config) fetchKey() error {
 	// open aprilsh:60001,31kR3xgfmNxhDESXQ8VIQw==
 	body := strings.Split(out, ":")
 	if len(body) != 2 || body[0] != frontend.AprilshMsgOpen[:12] { // [:12]remove the last ':'
-		return errors.New(fmt.Sprintf("response: %s", out))
+		return fmt.Errorf("response: %s", out)
 	}
 
 	// parse port and key
@@ -410,7 +411,7 @@ func (c *Config) fetchKey() error {
 		}
 		// fmt.Printf("fetchKey port=%d, key=%s\n", c.port, c.key)
 	} else {
-		return errors.New(fmt.Sprintf("response: %s", body[1]))
+		return fmt.Errorf("response: %s", body[1])
 	}
 
 	return nil
@@ -659,6 +660,9 @@ func (sc *STMClient) mainInit() error {
 	// open network
 	blank := &statesync.UserStream{}
 	terminal, err := statesync.NewComplete(col, row, savedLines)
+	if err != nil {
+		return err
+	}
 	sc.network = network.NewTransportClient(blank, terminal, sc.key, sc.ip, fmt.Sprintf("%d", sc.port))
 
 	// minimal delay on outgoing keystrokes
@@ -852,7 +856,7 @@ func (sc *STMClient) init() error {
 		fmt.Printf("%s needs a UTF-8 native locale to run.\n\n", frontend.CommandClientName)
 		fmt.Printf("Unfortunately, the client's environment (%s) specifies\nthe character set %q.\n\n",
 			nativeType, nativeCharset)
-		return errors.New(frontend.CommandClientName + " requires UTF-8 environment.")
+		return errors.New(frontend.CommandClientName + " requires UTF-8 environment")
 	}
 
 	var err error
@@ -1306,7 +1310,7 @@ func main() {
 			// we already handle it
 		} else if errors.Is(err, errNoResponse) {
 			frontend.PrintUsage(err.Error())
-		} else if errors.As(err, &exitError) && exitError.Waitmsg.ExitStatus() == 127 {
+		} else if errors.As(err, &exitError) && exitError.ExitStatus() == 127 {
 			frontend.PrintUsage("Plase check aprilsh is installed on server.")
 		} else if errors.As(err, &hostkeyChangeError) {
 			frontend.PrintUsage(hostkeyChangeError.Error())
