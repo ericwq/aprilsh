@@ -4,13 +4,14 @@ Aprilsh: remote shell support intermittent or mobile network. inspired by [mosh]
 ## Installation
 
 #### Reqirement
-- [open-ssh](https://www.openssh.com/) is a must reqirement, sshd is required to perform user authentication.
-- [locale support](https://git.adelielinux.org/adelie/musl-locales/-/wikis/home) is a must reqirement.
+
+- [open-ssh](https://www.openssh.com/) is a must requirement, sshd is required to perform user authentication.
+- [locale support](https://git.adelielinux.org/adelie/musl-locales/-/wikis/home) is a must requirement.
 - [ncurses and terminfo](https://invisible-island.net/ncurses/) is a must requirement.
 - [systmd](https://systemd.io/) is reuired by redhat linux family (fedora, centos, redhat).
 - [openrc](https://github.com/OpenRC/openrc) is required by alpine.
 - [utmps](https://skarnet.org/software/utmps/) is reuired by alpine
-- [logrotate](https://github.com/logrotate/logrotate) is reuired by alpine.
+- [logrotate](https://github.com/logrotate/logrotate) is required by alpine.
 
 if you perfer to build aprilsh manually, please refer to [this document](doc/install-alpine.md)
 
@@ -20,6 +21,7 @@ if you perfer to build aprilsh manually, please refer to [this document](doc/ins
 Before start apshd, you need to make sure you can ssh login to the target server, please refer to [this doc](doc/ssh-openrc.md) to setup a ssh enabled docker container.
 
 Note: aprilsh is still waiting for aports approval. For now please use the following private repository. The private repository only provide `x86_64` packages. Refer to [build doc](doc/build.md) to know how to build apk packages and private repositories.
+
 ```sh
 # add public key
 wget -P /etc/apk/keys/ https://ericwq.github.io/alpine/packager-663ebf9b.rsa.pub
@@ -30,7 +32,9 @@ apk update
 # install client and server
 apk add aprilsh
 ```
+
 Now you can ssh login to the server and the aprilsh is installed, it's time to start apshd server and login with apsh.
+
 ```sh
 # start apshd server
 rc-service apshd start
@@ -39,13 +43,16 @@ apsh -m 100 eric@localhost:8022
 # apsh login without port mapping
 apsh eric@localhost
 ```
+
 After apsh login, you connection to the remote server is provided by aprilsh.
 
 Note: when aports finally approve aprilsh, the above private repository will be replaced by official testing repositories. The testing repositories will provide all architecture packages.
+
 ```sh
 # add testing repositories
 echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
 ```
+
 </details>
 
 <details>
@@ -53,7 +60,8 @@ echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositori
 
 Before start apshd, you need to make sure you can ssh login to the target server, please refer to [this doc](doc/ssh-systemd.md) to setup a ssh enabled docker container.
 
-Note: This is a private yum/dnf repositories, it only provides `x86_64` packages. Refer to [rpms doc](https://codeberg.org/ericwq/rpms#build-rpm-packages) to understand how to build rpm packags and dnf repositories.
+Note: This is a private yum/dnf repositories, it only provides `x86_64` packages. Refer to [rpms doc](https://codeberg.org/ericwq/rpms#build-rpm-packages) to understand how to build rpm packages and dnf repositories.
+
 ```sh
 # import public key to rpm DB
 rpm --import https://ericwq.codeberg.page/RPM-GPG-KEY-wangqi
@@ -62,13 +70,16 @@ dnf config-manager --add-repo https://ericwq.codeberg.page/aprilsh.repo
 # install client and server
 dnf install -y aprilsh
 ```
+
 Now you can ssh login to the server, it's time to start apshd service and login with apsh.
+
 ```sh
 sudo systemctl start apshd.service      # start apshd service
 sudo journalctl -f -u apshd.service     # keep reading the latest apshd.service log
 apsh -m 100 packager@localhost:8022     # apsh login to server
 apsh packager@localhost                 # apsh login without port mapping
 ```
+
 After apsh login, you connection to the remote server is provided by aprilsh.
 
 </details>
@@ -77,10 +88,12 @@ After apsh login, you connection to the remote server is provided by aprilsh.
 <summary>MacOS</summary>
 
 Run the following command to install aprilsh client for macOS.
+
 ```sh
 brew tap ericwq/utils                   # add tap to homebrew
 brew install aprilsh                    # only install aprilsh client
 ```
+
 After apsh login, you connection to the remote server is provided by aprilsh.
 
 Refer to [homebrew doc](https://github.com/ericwq/homebrew-utils) to know how to create homebrew package and tap.
@@ -90,6 +103,7 @@ Refer to [homebrew doc](https://github.com/ericwq/homebrew-utils) to know how to
 <summary>Validate installation</summary>
 
 by default apshd listen on udp localhost:8100.
+
 ```txt
 openrc-nvide:~# netstat -lup
 Active Internet connections (only servers)
@@ -97,7 +111,9 @@ Proto Recv-Q Send-Q Local Address           Foreign Address         State       
 udp        0      0 localhost:8100          0.0.0.0:*                           45561/apshd
 openrc-nvide:~#
 ```
+
 now login to the system with apsh (aprilsh client), note the `motd`(welcome message) depends on your linux system.
+
 ```txt
 qiwang@Qi15Pro client % apsh ide@localhost
 openrc-nvide:0.10.2
@@ -106,7 +122,9 @@ Lua, C/C++ and Golang Integrated Development Environment.
 Powered by neovim, luals, gopls and clangd.
 ide@openrc-nvide:~ $
 ```
+
 if you login on two terminals, on the server, there will be two server processes serve the clients. the following shows `apshd` serve two clients. one is`:8101`, the other is ':8102'
+
 ```txt
 openrc:~# netstat -lp
 Active Internet connections (only servers)
@@ -123,6 +141,7 @@ unix  2      [ ACC ]     STREAM     LISTENING     869747 253/s6-ipcserverd   /ru
 unix  2      [ ACC ]     STREAM     LISTENING     866239 281/s6-ipcserverd   /run/utmps/.wtmpd-socket
 openrc-nvide:~#
 ```
+
 </details>
 
 ## Motivation
@@ -158,7 +177,7 @@ The project name `Aprilsh` is derived from `April+sh`. This project started in s
 
 ## Changelog
 
-Ready for early acess. The missing part is prediction engine tuning. Check [here](doc/changelog.md) for history deatil.
+Ready for early access. The missing part is prediction engine tuning. Check [here](doc/changelog.md) for history deatil.
 
 ## License
 

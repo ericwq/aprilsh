@@ -135,21 +135,22 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	return &conf, buf.String(), nil
 }
 
+// fieldalignment -fix frontend/client/client.go
 type Config struct {
-	version          bool
-	destination      []string // raw parameter
-	host             string   // target host/server
-	user             string   // target user
-	port             int      // first server port, then target port
-	verbose          int
-	colors           bool
-	key              string
-	predictMode      string
 	predictOverwrite string
 	sshClientID      string // ssh client identity, for SSH public key authentication
+	host             string // target host/server
+	user             string // target user
 	sshPort          string // ssh port, default 22
-	addSource        bool   // add source file to log
-	mapping          int    // container(such as docker) port mapping value
+	key              string
+	predictMode      string
+	destination      []string // raw parameter
+	port             int      // first server port, then target port
+	mapping          int      // container(such as docker) port mapping value
+	verbose          int
+	version          bool
+	colors           bool
+	addSource        bool // add source file to log
 }
 
 var errNoResponse = errors.New("no response, please make sure the server is running")
@@ -183,9 +184,9 @@ func checkFileExists(filePath string) bool {
 }
 
 type publicKey struct {
+	signer ssh.Signer
 	file   string
 	agent  bool
-	signer ssh.Signer
 }
 
 // prepare publickey and password authentication methods for https://www.rfc-editor.org/rfc/rfc4252
@@ -211,7 +212,7 @@ func prepareAuthMethod(identity string, host string) (auth []ssh.AuthMethod) {
 		}
 		if checkFileExists(files[i]) {
 			if s := getSigner(files[i]); s != nil {
-				preferred = append(preferred, publicKey{files[i], false, s})
+				preferred = append(preferred, publicKey{s, files[i], false})
 				util.Logger.Debug("prepareAuthMethod validate", "IdentityFile", files[i])
 			}
 		}
@@ -563,32 +564,28 @@ func getSigner(file string) (signer ssh.Signer) {
 }
 
 type STMClient struct {
-	ip   string
-	port int
-	key  string
-
-	escapeKey        int
-	escapePassKey    int
-	escapePassKey2   int
-	escapeRequireslf bool
-	escapeKeyHelp    string
-
-	savedTermios *term.State // store the original termios, used for shutdown.
-	rawTermios   *term.State // set IUTF8 flag, set raw terminal in raw mode, used for resume.
-	windowSize   *unix.Winsize
-
-	localFramebuffer *terminal.Emulator
-	newState         *terminal.Emulator
-	overlays         *frontend.OverlayManager
-	network          *network.Transport[*statesync.UserStream, *statesync.Complete]
-	display          *terminal.Display
-
+	display                *terminal.Display
+	newState               *terminal.Emulator
+	localFramebuffer       *terminal.Emulator
+	windowSize             *unix.Winsize
+	network                *network.Transport[*statesync.UserStream, *statesync.Complete]
+	overlays               *frontend.OverlayManager
+	savedTermios           *term.State // store the original termios, used for shutdown
+	rawTermios             *term.State // set IUTF8 flag, set raw terminal in raw mode, used for resume
 	connectingNotification string
-	repaintRequested       bool
+	key                    string
+	escapeKeyHelp          string
+	ip                     string
+	escapeKey              int
+	verbose                int
+	escapePassKey2         int
+	escapePassKey          int
+	port                   int
+	escapeRequireslf       bool
 	lfEntered              bool
 	quitSequenceStarted    bool
 	cleanShutdown          bool
-	verbose                int
+	repaintRequested       bool
 }
 
 func newSTMClient(config *Config) *STMClient {
