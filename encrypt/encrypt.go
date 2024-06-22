@@ -191,8 +191,8 @@ func (m *Message) GetPayload() (payload []byte) {
 }
 
 type Session struct {
-	base64Key Base64Key
 	aead      cipher.AEAD
+	base64Key Base64Key
 	// sync.Mutex
 }
 

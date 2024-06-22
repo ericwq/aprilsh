@@ -136,16 +136,27 @@ func TestRandomNonce(t *testing.T) {
 func TestMessage(t *testing.T) {
 	tc := []struct {
 		name           string
-		seqNonce       uint64
 		mixPayload     string
+		payload        string
+		seqNonce       uint64
 		timestamp      uint16
 		timestampReply uint16
-		payload        string
 	}{
-		{"english message", uint64(0x5223), "\x12\x23\x34\x45normal message", 0x1223, 0x3445, "normal message"},
 		{
-			"chinese message", uint64(0x7226) | (uint64(1) << 63), "\x42\x23\x64\x45大端字节序就和我们平时的写法顺序一样",
-			0x4223, 0x6445, "大端字节序就和我们平时的写法顺序一样",
+			name:           "english message",
+			seqNonce:       uint64(0x5223),
+			mixPayload:     "\x12\x23\x34\x45normal message",
+			timestamp:      0x1223,
+			timestampReply: 0x3445,
+			payload:        "normal message",
+		},
+		{
+			name:           "chinese message",
+			seqNonce:       uint64(0x7226) | (uint64(1) << 63),
+			mixPayload:     "\x42\x23\x64\x45大端字节序就和我们平时的写法顺序一样",
+			timestamp:      0x4223,
+			timestampReply: 0x6445,
+			payload:        "大端字节序就和我们平时的写法顺序一样",
 		},
 	}
 
