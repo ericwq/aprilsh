@@ -15,10 +15,10 @@ import (
 )
 
 type mockFile struct {
-	round   int
 	timeout []int
 	data    []string
 	err     []error
+	round   int
 	limit   int
 }
 
@@ -65,7 +65,7 @@ func TestReadFromFile(t *testing.T) {
 
 	var fileChan chan Message
 	var doneChan chan any
-	fileChan = make(chan Message, 0)
+	fileChan = make(chan Message)
 	doneChan = make(chan any, 1)
 
 	// start the deal line reader
@@ -91,7 +91,7 @@ func TestReadFromFile(t *testing.T) {
 			if !errors.Is(fileMsg.Err, mockReader.err[i]) {
 				t.Errorf("#test ReadFromFile expect %s, got %s\n", mockReader.err[i], fileMsg.Err)
 			}
-			if "" != fileMsg.Data {
+			if fileMsg.Data != "" {
 				t.Errorf("#test ReadFromFile expect %q, got %s\n", "", fileMsg.Data)
 			}
 		} else {
@@ -146,7 +146,7 @@ func TestReadFromFile_DoneChan(t *testing.T) {
 			if !errors.Is(fileMsg.Err, mockReader.err[i]) {
 				t.Errorf("#test ReadFromFile expect %s, got %s\n", mockReader.err[i], fileMsg.Err)
 			}
-			if "" != fileMsg.Data {
+			if fileMsg.Data != "" {
 				t.Errorf("#test ReadFromFile expect %q, got %s\n", "", fileMsg.Data)
 			}
 		} else {
@@ -171,10 +171,10 @@ func TestReadFromFile_DoneChan(t *testing.T) {
 }
 
 type mockConnection struct {
-	round   int
 	timeout []int
 	data    []string
 	err     []error
+	round   int
 	limit   int
 }
 
@@ -255,7 +255,7 @@ func TestReadFromNetwork(t *testing.T) {
 			if !errors.Is(netMsg.Err, mr.err[i]) {
 				t.Errorf("#test ReadFromFile expect %s, got %s\n", mr.err[i], netMsg.Err)
 			}
-			if "" != netMsg.Data {
+			if netMsg.Data != "" {
 				t.Errorf("#test ReadFromFile expect %q, got %s\n", "", netMsg.Data)
 			}
 		} else {
@@ -318,7 +318,7 @@ func TestReadFromNetwork_ErrClosed(t *testing.T) {
 			if !errors.Is(netMsg.Err, mr.err[i]) {
 				t.Errorf("#test ReadFromFile expect %s, got %s\n", mr.err[i], netMsg.Err)
 			}
-			if "" != netMsg.Data {
+			if netMsg.Data != "" {
 				t.Errorf("#test ReadFromFile expect %q, got %s\n", "", netMsg.Data)
 			}
 		} else {

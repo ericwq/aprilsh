@@ -162,11 +162,11 @@ func (ccm *conditionalCursorMove) getValidity(emu *terminal.Emulator, lateAck ui
 // represent the prediction cell in the specified column. including the original cell contents and
 // replacement contents.
 type conditionalOverlayCell struct {
-	conditionalOverlay
-	replacement      terminal.Cell   // the prediction, replace the cell content
-	unknown          bool            // last cell in row
 	originalContents []terminal.Cell // history cell content including original cell
 	// we don't give credit for correct predictions that match the original contents
+	replacement terminal.Cell // the prediction, replace the cell content
+	conditionalOverlay
+	unknown bool // last cell in row
 }
 
 func newConditionalOverlayCell(expirationFrame uint64, col int, tentativeUntilEpoch int64) conditionalOverlayCell {
@@ -317,8 +317,8 @@ func (coc *conditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, 
 // represents row prediction, each row contains a group of cell prediction
 // and a row number
 type conditionalOverlayRow struct {
-	rowNum       int
 	overlayCells []conditionalOverlayCell
+	rowNum       int
 }
 
 func newConditionalOverlayRow(rowNum int) *conditionalOverlayRow {
@@ -338,12 +338,12 @@ func (c *conditionalOverlayRow) apply(emu *terminal.Emulator, confirmedEpoch int
 
 // represent the prediction notifications
 type NotificationEngine struct {
-	lastWordFromServer    int64 // last received state timestamp
-	lastAckedState        int64 // last sent state (acked) timestamp
 	escapeKeyString       string
 	message               string
-	messageIsNetworkError bool
+	lastWordFromServer    int64 // last received state timestamp
+	lastAckedState        int64 // last sent state (acked) timestamp
 	messageExpiration     int64
+	messageIsNetworkError bool
 	showQuitKeystroke     bool
 }
 
@@ -522,22 +522,22 @@ func (ne *NotificationEngine) ClearNetworkError() {
 // prediction rows and cells.
 type PredictionEngine struct {
 	lastByte              []rune
-	parser                terminal.Parser
 	overlays              []conditionalOverlayRow
 	cursors               []conditionalCursorMove
-	localFrameSent        uint64 // the last sent state num
-	localFrameAcked       uint64 // the first sent state num
+	parser                terminal.Parser
+	confirmedEpoch        int64  // only in cull() Correct validity condition, update confirmedEpoch
+	glitchTrigger         int    // show predictions temporarily because of long-pending prediction
 	localFrameLateAcked   uint64 // the last received remote state ack
 	predictionEpoch       int64  // only in becomeTentative(), update predictionEpoch
-	confirmedEpoch        int64  // only in cull() Correct validity condition, update confirmedEpoch
-	flagging              bool   // whether we are underlining predictions
-	srttTrigger           bool   // show predictions because of slow round trip time
-	glitchTrigger         int    // show predictions temporarily because of long-pending prediction
+	localFrameSent        uint64 // the last sent state num
+	displayPreference     DisplayPreference
+	lastHeight            int
+	localFrameAcked       uint64 // the first sent state num
 	lastQuickConfirmation int64
 	sendInterval          uint
 	lastWidth             int
-	lastHeight            int
-	displayPreference     DisplayPreference
+	srttTrigger           bool // show predictions because of slow round trip time
+	flagging              bool // whether we are underlining predictions
 	predictOverwrite      bool
 }
 
@@ -711,7 +711,8 @@ func (pe *PredictionEngine) active() bool {
 
 // Are there any timing-based triggers that haven't fired yet?
 func (pe *PredictionEngine) timingTestsNecessary() bool {
-	return !(pe.glitchTrigger > 0 && pe.flagging)
+	// return !(pe.glitchTrigger > 0 && pe.flagging)
+	return pe.glitchTrigger <= 0 || !pe.flagging
 }
 
 func (pe *PredictionEngine) SetDisplayPreference(v DisplayPreference) {
@@ -725,8 +726,12 @@ func (pe *PredictionEngine) SetPredictOverwrite(overwrite bool) {
 // checks the displayPreference to determine whether we should show the prediction.
 // if yes, move the cursor in emulator, show the cell prediction in emulator.
 func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
-	if pe.displayPreference == Never || !(pe.srttTrigger || pe.glitchTrigger > 0 ||
-		pe.displayPreference == Always || pe.displayPreference == Experimental) {
+	// if pe.displayPreference == Never || !(pe.srttTrigger || pe.glitchTrigger > 0 ||
+	// 	pe.displayPreference == Always || pe.displayPreference == Experimental) {
+	// 	return
+	// }
+	if pe.displayPreference == Never || (!pe.srttTrigger && pe.glitchTrigger <= 0 &&
+		pe.displayPreference != Always && pe.displayPreference != Experimental) {
 		return
 	}
 
@@ -748,10 +753,11 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
 		return
 	}
 
-	if pe.displayPreference == Never {
+	switch pe.displayPreference {
+	case Never:
 		// option Never means disable the prediction
 		return
-	} else if pe.displayPreference == Experimental {
+	case Experimental:
 		pe.predictionEpoch = pe.confirmedEpoch
 		// fmt.Printf("newUserInput #Experimental predictionEpoch = confirmedEpoch = %d\n", pe.confirmedEpoch)
 	}
@@ -771,8 +777,8 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
 
 	// fmt.Printf("#NewUserInput lastByte=%q, input=%q\n", pe.lastByte, input)
 
-	var hd *terminal.Handler
-	hd = pe.parser.ProcessInput(input...) // TODO validate we can handle flag grapheme
+	// var hd *terminal.Handler
+	hd := pe.parser.ProcessInput(input...) // TODO validate we can handle flag grapheme
 	if hd != nil {
 		switch hd.GetId() {
 		case terminal.Graphemes:
@@ -985,7 +991,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 				}
 			default:
 				// fmt.Printf("cell (%d,%d) return Inactive=%d\n", pe.overlays[i].rowNum, cell.col, Inactive)
-				break
+				// break
 			}
 		}
 

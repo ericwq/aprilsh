@@ -374,7 +374,7 @@ func TestPredictionApply(t *testing.T) {
 				i++
 			}
 			cell := emu.GetCell(v.row+1, 0) // cr to next row
-			if "水" != cell.GetContents() {
+			if cell.GetContents() != `水` {
 				t.Errorf("%q expect %q at (%d,%d), got %q\n", v.name, "水", v.row+1, 0, cell.GetContents())
 			}
 		case 2: // early return does nothing.
@@ -541,6 +541,7 @@ func TestPrediction_NewUserInput_Backspace_Overwrite(t *testing.T) {
 		})
 	}
 }
+
 func TestPredictionActive(t *testing.T) {
 	tc := []struct {
 		name     string

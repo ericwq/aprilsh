@@ -1,5 +1,5 @@
 <img src="img/aprilsh-avatar.png" alt="image" width="150"/>
-Aprilsh: remote shell support intermittent or mobile network. inspired by [mosh](https://mosh.org/) and [zutty](https://github.com/tomscii/zutty). aprilsh is a remote shell based on UDP, authenticate user via openssh.
+Aprilsh: remote shell support intermittent or mobile network. Inspired by [mosh](https://mosh.org/) and [zutty](https://github.com/tomscii/zutty). aprilsh is a remote shell based on UDP, authenticate user via openssh.
 
 ## Installation
 
@@ -8,12 +8,12 @@ Aprilsh: remote shell support intermittent or mobile network. inspired by [mosh]
 - [open-ssh](https://www.openssh.com/) is a must requirement, sshd is required to perform user authentication.
 - [locale support](https://git.adelielinux.org/adelie/musl-locales/-/wikis/home) is a must requirement.
 - [ncurses and terminfo](https://invisible-island.net/ncurses/) is a must requirement.
-- [systmd](https://systemd.io/) is reuired by redhat linux family (fedora, centos, redhat).
+- [systmd](https://systemd.io/) is required by redhat linux family (fedora, centos, redhat).
 - [openrc](https://github.com/OpenRC/openrc) is required by alpine.
-- [utmps](https://skarnet.org/software/utmps/) is reuired by alpine
+- [utmps](https://skarnet.org/software/utmps/) is required by alpine
 - [logrotate](https://github.com/logrotate/logrotate) is required by alpine.
 
-if you perfer to build aprilsh manually, please refer to [this document](doc/install-alpine.md)
+If you prefer to build aprilsh manually, please refer to [this document](doc/install-alpine.md)
 
 <details>
 <summary>Alpine linux</summary>
@@ -177,7 +177,7 @@ The project name `Aprilsh` is derived from `April+sh`. This project started in s
 
 ## Changelog
 
-Ready for early access. The missing part is prediction engine tuning. Check [here](doc/changelog.md) for history deatil.
+Ready for early access. The missing part is prediction engine tuning. Check [here](doc/changelog.md) for history detail.
 
 ## License
 

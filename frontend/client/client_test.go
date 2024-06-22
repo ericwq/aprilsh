@@ -232,8 +232,10 @@ func TestBuildConfig2(t *testing.T) {
 	}{
 		{"destination without port", &Config{destination: []string{"usr@host"}}, "", true},
 		{"destination with port", &Config{destination: []string{"usr@host:23"}}, "", true},
-		{"destination with wrong port",
-			&Config{destination: []string{"usr@host:a23"}}, "please check destination, illegal port number.", false},
+		{
+			"destination with wrong port",
+			&Config{destination: []string{"usr@host:a23"}}, "please check destination, illegal port number.", false,
+		},
 	}
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
@@ -266,11 +268,10 @@ func TestBuildConfig2(t *testing.T) {
 // }
 
 func TestGetPassword(t *testing.T) {
-
 	tc := []struct {
 		label  string
 		conf   *Config
-		pwd    string //input
+		pwd    string // input
 		expect string
 	}{
 		{"normal get password", &Config{}, "password\n", "password"},
@@ -286,7 +287,7 @@ func TestGetPassword(t *testing.T) {
 			// get password require pts file.
 			ptmx, pts, err := pty.Open()
 			if err != nil {
-				err = errors.New("invalid parameter")
+				t.Errorf("invalid parameter %s\n", err)
 			}
 
 			// prepare input data
@@ -310,7 +311,6 @@ func TestGetPassword(t *testing.T) {
 			if got != v.expect {
 				t.Errorf("#test %q expect %q, got %q. out=%s\n", v.label, v.expect, got, out)
 			}
-
 		})
 	}
 }
@@ -431,19 +431,19 @@ func TestErrors(t *testing.T) {
 		error  error
 		expect string
 	}{
-		{"hostkeyChangeError", &hostkeyChangeError{hostname: "some.where"},
-			"REMOTE HOST IDENTIFICATION HAS CHANGED"},
+		{
+			"hostkeyChangeError", &hostkeyChangeError{hostname: "some.where"},
+			"REMOTE HOST IDENTIFICATION HAS CHANGED",
+		},
 		{"responseErr without error", &responseError{}, "<nil>"},
 		{"responseErr error", &responseError{Msg: "hello", Err: errors.New("world")}, "hello, world"},
 	}
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-
 			got := v.error.Error()
 			if !strings.Contains(got, v.expect) {
 				t.Errorf("%q expect %q got %q\n", v.label, v.expect, got)
 			}
-
 		})
 	}
 }
@@ -459,7 +459,6 @@ func TestGetSignersFail(t *testing.T) {
 	}
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-
 			// intercept stdout
 			saveStdout := os.Stdout
 			r, w, _ := os.Pipe()

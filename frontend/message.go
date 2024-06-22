@@ -39,7 +39,7 @@ func PrintVersion() {
 	fmt.Printf("git branch\t: %s\n", GitBranch)
 	fmt.Printf("go version\t: %s\n", GoVersion)
 	fmt.Printf("build time\t: %s\n\n", BuildTime)
-	fmt.Printf(VersionInfo)
+	fmt.Print(VersionInfo)
 }
 
 func PrintUsage(hint string, usage ...string) {

@@ -15,9 +15,9 @@ import (
 
 // communication the read result with the others
 type Message struct {
-	Data  string   // payload data
 	RAddr net.Addr // if the message is from network, it's the remote address
 	Err   error    // error if it happens
+	Data  string   // payload data
 }
 
 // for easy mock
@@ -47,12 +47,12 @@ func ReadFromFile(timeout int, msgChan chan Message, doneChan chan any, fReader 
 				// util.Log.Debug("#read","action", "satrt")
 				bytesRead, err = fr.Read(buf)
 				if bytesRead > 0 {
-					ch <- Message{string(buf[:bytesRead]), nil, nil}
+					ch <- Message{nil, nil, string(buf[:bytesRead])}
 					atomic.StoreInt64(&reading, 0)
 					// reading = false
 					// util.Log.Debug("#read","action", "got")
 				} else {
-					ch <- Message{"", nil, err}
+					ch <- Message{nil, err, ""}
 					// util.Log.Debug("#read","error", "EOF")
 				}
 			}(fReader, buf[:], msgChan)
@@ -91,11 +91,11 @@ func ReadFromNetwork(timeout int, msgChan chan Message, doneChan chan any, conne
 					return
 				}
 				// in case of other error, notify the caller and continue.
-				msgChan <- Message{"", nil, err}
+				msgChan <- Message{nil, err, ""}
 			}
 		} else {
 			// normal read
-			msgChan <- Message{payload, rAddr, nil}
+			msgChan <- Message{rAddr, nil, payload}
 		}
 
 		// waiting for time out or get the shutdown message
