@@ -147,6 +147,8 @@ Thus, we have the opportunity to use terminfo to output to the real terminal. Be
 - [C++ Reference](http://www.cplusplus.com/reference/)
 - [Linux logging guide: Understanding syslog, rsyslog, syslog-ng, journald](https://ikshitij.com/linux-logging-guide)
 - [Benchmarking in Golang: Improving function performance](https://blog.logrocket.com/benchmarking-golang-improve-function-performance/)
+- [Golang Field Alignment](https://medium.com/@didi12468/golang-field-alignment-2e657e87668a)
+- [Structure size optimization in Golang (alignment/padding). More effective memory layout (linters)](https://itnext.io/structure-size-optimization-in-golang-alignment-padding-more-effective-memory-layout-linters-fffdcba27c61)
 
 Need some time to figure out how to support CSI u in aprilsh.
 
