@@ -12,8 +12,8 @@ import (
 )
 
 type Compressor struct {
-	bufSize int
 	buf     []byte
+	bufSize int
 }
 
 var combo struct {
