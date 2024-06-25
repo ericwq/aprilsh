@@ -1,7 +1,7 @@
 github.com/creack/pty v1.1.18 h1:n56/Zwd5o6whRC5PMGretI4IdRLlmBXYNjScPaBgsbY=
 github.com/creack/pty v1.1.18/go.mod h1:MOBLtS5ELjhRRrroQr9kyvTxUAFNvYEK993ew/Vr4O4=
-github.com/ericwq/goutmp v0.5.2 h1:3LRjHd7Qgg11aWslqICf94SuN0aQ0dfCV25BXfupVTU=
-github.com/ericwq/goutmp v0.5.2/go.mod h1:7SGbmN3Bb9EFLGjDDVEgKgS3q1IB+uotTkEhqCFDGNQ=
+github.com/ericwq/goutmp v0.5.3 h1:psKNcPJJ2YVFf1gAPmY5jwqywogPSHADEUC6xLiMRD8=
+github.com/ericwq/goutmp v0.5.3/go.mod h1:7SGbmN3Bb9EFLGjDDVEgKgS3q1IB+uotTkEhqCFDGNQ=
 github.com/ericwq/ssh_config v1.2.2 h1:KQAyn10yR9n+Pz+HyZZ1G3JsYVEO6RVfL+0Lt6vmUqs=
 github.com/ericwq/ssh_config v1.2.2/go.mod h1:FV9GNIvs8oAL45Sr0EWb0Is4xjlpJC82NMSdfa7HTE0=
 github.com/ericwq/terminfo v0.2.0 h1:Z2dd3WQARLJ3isLUWoEVf8L3iF6fIPgdZ8FHhyJ2t8Y=

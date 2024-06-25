@@ -10,6 +10,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
 	"net"
 	"os"
 	"os/exec"
@@ -21,8 +22,6 @@ import (
 	"syscall"
 	"testing"
 	"time"
-
-	"log/slog"
 
 	"github.com/creack/pty"
 	"github.com/ericwq/aprilsh/frontend"
@@ -116,7 +115,6 @@ func TestPrintUsage(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-
 			out := captureOutputRun(func() {
 				frontend.PrintUsage(v.hints, usage)
 			})
@@ -274,20 +272,20 @@ func captureOutputRun(f func()) []byte {
 }
 
 func TestMainVersion(t *testing.T) {
-
 	testHelpFunc := func() {
 		// prepare data
 		os.Args = []string{frontend.CommandServerName, "--version"}
 		// test
 		main()
-
 	}
 
 	out := captureOutputRun(testHelpFunc)
 
 	// validate result
-	expect := []string{frontend.CommandServerName, "go version", "git commit", "wangqi <ericwq057@qq.com>",
-		"remote shell support intermittent or mobile network."}
+	expect := []string{
+		frontend.CommandServerName, "go version", "git commit", "wangqi <ericwq057@qq.com>",
+		"remote shell support intermittent or mobile network.",
+	}
 	result := string(out)
 	found := 0
 	for i := range expect {
@@ -335,7 +333,7 @@ func TestParseFlagsUsage(t *testing.T) {
 			if conf != nil {
 				t.Errorf("conf got %v, want nil", conf)
 			}
-			if strings.Index(output, "Usage of") < 0 {
+			if !strings.Contains(output, "Usage of") {
 				t.Errorf("output can't find \"Usage of\": %q", output)
 			}
 		})
@@ -348,21 +346,37 @@ func TestMainRun(t *testing.T) {
 		args   []string
 		expect []string
 	}{
-		{"run main and killed by signal",
-			[]string{frontend.CommandServerName, "-locale",
-				"LC_ALL=en_US.UTF-8", "-p", "6100", "--", "/bin/sh", "-sh"},
-			[]string{frontend.CommandServerName, "start listening on", "gitTag",
+		{
+			"run main and killed by signal",
+			[]string{
+				frontend.CommandServerName, "-locale",
+				"LC_ALL=en_US.UTF-8", "-p", "6100", "--", "/bin/sh", "-sh",
+			},
+			[]string{
+				frontend.CommandServerName, "start listening on", "gitTag",
 				/* "got signal: SIGHUP",  */ "got signal: SIGTERM or SIGINT",
-				"stop listening", "6100"}},
-		{"main killed by -a", // auto stop after 1 second
-			[]string{frontend.CommandServerName, "-verbose", "-auto", "1", "-locale",
-				"LC_ALL=en_US.UTF-8", "-p", "6200", "--", "/bin/sh", "-sh"},
-			[]string{frontend.CommandServerName, "start listening on", "gitTag",
-				"stop listening", "6200"}},
-		{"main killed by -a, write to syslog", // auto stop after 1 second
-			[]string{frontend.CommandServerName, "-auto", "1", "-locale",
-				"LC_ALL=en_US.UTF-8", "-p", "6300", "--", "/bin/sh", "-sh"},
-			[]string{}}, // log write to syslog, we can't get anything
+				"stop listening", "6100",
+			},
+		},
+		{
+			"main killed by -a", // auto stop after 1 second
+			[]string{
+				frontend.CommandServerName, "-verbose", "-auto", "1", "-locale",
+				"LC_ALL=en_US.UTF-8", "-p", "6200", "--", "/bin/sh", "-sh",
+			},
+			[]string{
+				frontend.CommandServerName, "start listening on", "gitTag",
+				"stop listening", "6200",
+			},
+		},
+		{
+			"main killed by -a, write to syslog", // auto stop after 1 second
+			[]string{
+				frontend.CommandServerName, "-auto", "1", "-locale",
+				"LC_ALL=en_US.UTF-8", "-p", "6300", "--", "/bin/sh", "-sh",
+			},
+			[]string{},
+		}, // log write to syslog, we can't get anything
 	}
 
 	for _, v := range tc {
@@ -402,8 +416,10 @@ func TestMainRun(t *testing.T) {
 func testMainBuildConfigFail(t *testing.T) {
 	testFunc := func() {
 		// prepare parameter
-		os.Args = []string{frontend.CommandServerName, "-locale", "LC_ALL=en_US.UTF-8",
-			"-p", "6100", "--", "/bin/sh", "-sh"}
+		os.Args = []string{
+			frontend.CommandServerName, "-locale", "LC_ALL=en_US.UTF-8",
+			"-p", "6100", "--", "/bin/sh", "-sh",
+		}
 		// test
 		main()
 	}
@@ -577,10 +593,14 @@ func TestGetSSHip(t *testing.T) {
 	}{
 		{"no env variable", "", "Warning: SSH_CONNECTION not found; binding to any interface.", false},
 		{"ipv4 address", "172.17.0.1 58774 172.17.0.2 22", "172.17.0.2", true},
-		{"malform variable", " 1 2 3 4",
-			"Warning: Could not parse SSH_CONNECTION; binding to any interface.", false},
-		{"ipv6 address", "fe80::14d5:1215:f8c9:11fa%en0 42000 fe80::aede:48ff:fe00:1122%en5 22",
-			"fe80::aede:48ff:fe00:1122%en5", true},
+		{
+			"malform variable", " 1 2 3 4",
+			"Warning: Could not parse SSH_CONNECTION; binding to any interface.", false,
+		},
+		{
+			"ipv6 address", "fe80::14d5:1215:f8c9:11fa%en0 42000 fe80::aede:48ff:fe00:1122%en5 22",
+			"fe80::aede:48ff:fe00:1122%en5", true,
+		},
 		{"ipv4 mapped address", "::FFFF:172.17.0.1 42200 ::FFFF:129.144.52.38 22", "129.144.52.38", true},
 	}
 
@@ -888,7 +908,7 @@ func mockClient(port string, pause int, action string, ex ...string) string {
 
 	// read the response
 	rxbuf := make([]byte, 512)
-	n, _, err := conn.ReadFromUDP(rxbuf)
+	n, _, _ := conn.ReadFromUDP(rxbuf)
 
 	// fmt.Printf("#mockClient read %q from server: %v\n", rxbuf[0:n], server_addr)
 	return string(rxbuf[0:n])
@@ -1228,7 +1248,8 @@ func TestMalformRequest(t *testing.T) {
 
 func mockServe(ptmx *os.File, pts *os.File, pw *io.PipeWriter, terminal *statesync.Complete, // x chan bool,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
-	networkTimeout int64, networkSignaledTimeout int64, user string) error {
+	networkTimeout int64, networkSignaledTimeout int64, user string,
+) error {
 	time.Sleep(10 * time.Millisecond)
 	// x <- true
 	return nil
@@ -1272,7 +1293,6 @@ func TestRunWorkerKillSignal(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-
 			// intercept stdout
 			saveStdout := os.Stdout
 			r, w, _ := os.Pipe()
@@ -1463,7 +1483,6 @@ func TestRunCloseFail(t *testing.T) {
 	}
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-
 			util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
 			// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
@@ -1529,7 +1548,9 @@ func TestRunWith2Clients(t *testing.T) {
 	}{
 		{
 			"open aprilsh with duplicate request", 20, frontend.AprilshMsgOpen + "7101,", frontend.AprishMsgClose + "done",
-			frontend.AprilshMsgOpen + "7102", []string{}, 150,
+			frontend.AprilshMsgOpen + "7102",
+			[]string{},
+			150,
 			Config{
 				version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -1540,7 +1561,6 @@ func TestRunWith2Clients(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-
 			// intercept stdout
 			util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
 
@@ -1597,10 +1617,12 @@ func TestStartShellError(t *testing.T) {
 		utmpHost string
 		conf     Config
 	}{
-		{"first error return", "fail to start shell", os.Stdout, nil, "",
+		{
+			"first error return", "fail to start shell", os.Stdout, nil, "",
 			Config{flowControl: _FC_SKIP_START_SHELL},
 		},
-		{"IUTF8 error return", strENOTTY, os.Stdin, nil, "",
+		{
+			"IUTF8 error return", strENOTTY, os.Stdin, nil, "",
 			Config{},
 		}, // os.Stdin doesn't support IUTF8 flag, startShell should failed
 	}
@@ -1638,7 +1660,6 @@ func TestStartShellError(t *testing.T) {
 }
 
 func TestOpenPTS(t *testing.T) {
-
 	tc := []struct {
 		label  string
 		ws     unix.Winsize
@@ -1799,7 +1820,6 @@ func TestGetAvailablePort(t *testing.T) {
 // }
 
 func BenchmarkGetAvailablePort(b *testing.B) {
-
 	conf := &Config{desiredPort: "100"}
 	srv := newMainSrv(conf)
 	srv.workers[100] = &workhorse{}
@@ -1843,7 +1863,6 @@ func TestCheckPortAvailable(t *testing.T) {
 }
 
 func TestHandleMessage(t *testing.T) {
-
 	tc := []struct {
 		label   string
 		content string
@@ -1955,8 +1974,10 @@ func TestMainBeginChild(t *testing.T) {
 	}{
 		{
 			"main begin child", frontend.AprilshMsgOpen + "7151,", 150,
-			[]string{"/usr/bin/apshd", "-b", "-destination", getCurrentUser() + "@localhost",
-				"-p", "7150", "-t", "xterm-256color", "-vv"},
+			[]string{
+				"/usr/bin/apshd", "-b", "-destination", getCurrentUser() + "@localhost",
+				"-p", "7150", "-t", "xterm-256color", "-vv",
+			},
 			Config{
 				desiredIP: "", desiredPort: "7150", // autoStop: 1,
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -2032,8 +2053,10 @@ func TestRunChild(t *testing.T) {
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 				addSource: true, verbose: util.DebugLevel,
 			},
-			Config{desiredPort: portStr, term: "xterm", destination: getCurrentUser() + "@localhost",
-				serve: serve, verbose: 0, addSource: false},
+			Config{
+				desiredPort: portStr, term: "xterm", destination: getCurrentUser() + "@localhost",
+				serve: serve, verbose: 0, addSource: false,
+			},
 		},
 		{
 			"skip pipe lock", 100,
@@ -2043,9 +2066,11 @@ func TestRunChild(t *testing.T) {
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 				addSource: true, verbose: util.DebugLevel,
 			},
-			Config{desiredPort: portStr, destination: getCurrentUser() + "@localhost",
+			Config{
+				desiredPort: portStr, destination: getCurrentUser() + "@localhost",
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: true,
-				flowControl: _FC_SKIP_PIPE_LOCK, serve: serve, verbose: 0, addSource: false},
+				flowControl: _FC_SKIP_PIPE_LOCK, serve: serve, verbose: 0, addSource: false,
+			},
 		},
 		{
 			"skip start shell", 100,
@@ -2055,9 +2080,11 @@ func TestRunChild(t *testing.T) {
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 				addSource: true, verbose: util.DebugLevel,
 			},
-			Config{desiredPort: portStr, destination: getCurrentUser() + "@localhost",
+			Config{
+				desiredPort: portStr, destination: getCurrentUser() + "@localhost",
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
-				flowControl: _FC_SKIP_START_SHELL, serve: serve, verbose: 0, addSource: false},
+				flowControl: _FC_SKIP_START_SHELL, serve: serve, verbose: 0, addSource: false,
+			},
 		},
 		{
 			"open pts failed", 100,
@@ -2067,9 +2094,11 @@ func TestRunChild(t *testing.T) {
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 				addSource: true, verbose: util.DebugLevel,
 			},
-			Config{desiredPort: portStr, term: "xterm", destination: getCurrentUser() + "@localhost",
+			Config{
+				desiredPort: portStr, term: "xterm", destination: getCurrentUser() + "@localhost",
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
-				flowControl: _FC_OPEN_PTS_FAIL, serve: serve, verbose: 0, addSource: false},
+				flowControl: _FC_OPEN_PTS_FAIL, serve: serve, verbose: 0, addSource: false,
+			},
 		},
 	}
 
@@ -2111,7 +2140,7 @@ func TestRunChild(t *testing.T) {
 					if strings.HasPrefix(resp, _ShellHeader+":"+portStr) {
 						if srv.workers[port].shellPid > 0 {
 							util.Logger.Debug("fake uxServe kill the shell", "shellPid", srv.workers[port].shellPid)
-							shell, err := os.FindProcess(srv.workers[port].shellPid)
+							shell, _ := os.FindProcess(srv.workers[port].shellPid)
 							if err = shell.Kill(); err != nil {
 								util.Logger.Debug("fake uxServe", "error", err)
 							}
@@ -2221,7 +2250,6 @@ func TestMainRunChildFail(t *testing.T) {
 }
 
 func TestStartFail2(t *testing.T) {
-
 	// intercept log
 	var w strings.Builder
 	util.Logger.CreateLogger(&w, true, slog.LevelDebug)
@@ -2241,7 +2269,7 @@ func TestStartFail2(t *testing.T) {
 	// close udp connection
 	m.conn.Close()
 
-	//check the log
+	// check the log
 	got := w.String()
 	expect := "listen unix domain socket failed"
 	if !strings.Contains(got, expect) {
@@ -2256,17 +2284,26 @@ func TestStartChildFail(t *testing.T) {
 		conf   Config
 		expect string
 	}{
-		{"destination without @", "a:b,cd",
-			Config{desiredPort: "6510"}, "open aprilsh:malform destination"},
-		{"startShellProcess failed: DebugLevel", "open aprilsh:xterm-fake," + getCurrentUser() + "@fakehost",
+		{
+			"destination without @", "a:b,cd",
+			Config{desiredPort: "6510"},
+			"open aprilsh:malform destination",
+		},
+		{
+			"startShellProcess failed: DebugLevel", "open aprilsh:xterm-fake," + getCurrentUser() + "@fakehost",
 			Config{desiredPort: "6511", verbose: util.DebugLevel},
-			"start child got key timeout"},
-		{"startShellProcess failed: TraceLevel", "open aprilsh:xterm-fake," + getCurrentUser() + "@fakehost",
+			"start child got key timeout",
+		},
+		{
+			"startShellProcess failed: TraceLevel", "open aprilsh:xterm-fake," + getCurrentUser() + "@fakehost",
 			Config{desiredPort: "6512", verbose: util.TraceLevel},
-			"start child got key timeout"},
-		{"startShellProcess failed: addSource", "open aprilsh:xterm-fake," + getCurrentUser() + "@fakehost",
+			"start child got key timeout",
+		},
+		{
+			"startShellProcess failed: addSource", "open aprilsh:xterm-fake," + getCurrentUser() + "@fakehost",
 			Config{desiredPort: "6513", addSource: true},
-			"start child got key timeout"},
+			"start child got key timeout",
+		},
 	}
 
 	for _, v := range tc {
@@ -2382,18 +2419,24 @@ func TestMessageError(t *testing.T) {
 
 func TestCloseChild(t *testing.T) {
 	tc := []struct {
+		conf    *Config
 		label   string
 		req     string
-		holders []int
-		conf    *Config
 		expect  string
+		holders []int
 	}{
-		{"placeHolder port", frontend.AprishMsgClose + "6252", []int{6252},
-			&Config{desiredPort: "6250"}, "close port is a holder"},
-		{"wrong port number", frontend.AprishMsgClose + "625a", nil,
-			&Config{desiredPort: "6250"}, "wrong port number"},
-		{"port doesn't exist", frontend.AprishMsgClose + "6252", nil,
-			&Config{desiredPort: "6250"}, "port does not exist"},
+		{
+			label: "placeHolder port", req: frontend.AprishMsgClose + "6252", holders: []int{6252},
+			conf: &Config{desiredPort: "6250"}, expect: "close port is a holder",
+		},
+		{
+			label: "wrong port number", req: frontend.AprishMsgClose + "625a", holders: nil,
+			conf: &Config{desiredPort: "6250"}, expect: "wrong port number",
+		},
+		{
+			label: "port doesn't exist", req: frontend.AprishMsgClose + "6252", holders: nil,
+			conf: &Config{desiredPort: "6250"}, expect: "port does not exist",
+		},
 	}
 
 	for _, v := range tc {

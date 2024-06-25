@@ -28,7 +28,7 @@ func TestTimer(t *testing.T) {
 			<-timer.C
 
 			got := time.Now().UnixMilli() - now
-			if !(got-v.expect == 0 || got-v.expect <= 2) { // asllow 1ms deviation
+			if got-v.expect != 0 && got-v.expect > 2 { // asllow 1ms deviation
 				t.Skip("#test timer failed")
 				// t.Errorf("#test %s expect %d, got %d\n", v.label, v.expect, got)
 			}
