@@ -1904,15 +1904,14 @@ func TestHandleMessage(t *testing.T) {
 
 func TestBeginChild(t *testing.T) {
 	tc := []struct {
-		label      string
-		pause      int    // pause between client send and read
-		resp       string // response	for beginClientConn().
-		shutdown   int    // pause before shutdown message
 		clientConf Config
 		conf       Config
+		label      string
+		resp       string // response	for beginClientConn().
+		pause      int    // pause between client send and read
+		shutdown   int    // pause before shutdown message
 	}{
 		{
-			"normal beginClientConn", 100, frontend.AprilshMsgOpen + "7101,", 150,
 			Config{desiredPort: "7100", term: "xterm-256color", destination: getCurrentUser() + "@localhost"},
 			Config{
 				version: false, server: false, desiredIP: "", desiredPort: "7100",
@@ -1920,6 +1919,7 @@ func TestBeginChild(t *testing.T) {
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 				// addSource: false, verbose: util.TraceLevel,
 			},
+			"normal beginClientConn", frontend.AprilshMsgOpen + "7101,", 100, 150,
 		},
 	}
 
