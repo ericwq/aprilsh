@@ -45,7 +45,7 @@ func TestCheckIUTF8(t *testing.T) {
 
 	// STDIN fd should return error
 	// only works for go test command
-	flag, err = CheckIUTF8(int(os.Stdin.Fd()))
+	_, err = CheckIUTF8(int(os.Stdin.Fd()))
 	if err == nil {
 		t.Errorf("#checkIUTF8 stdin should report error, got nil\n")
 	}
@@ -57,7 +57,7 @@ func TestCheckIUTF8(t *testing.T) {
 	defer nullFD.Close()
 
 	// null fd should return error
-	flag, err = CheckIUTF8(int(nullFD.Fd()))
+	_, err = CheckIUTF8(int(nullFD.Fd()))
 	if err == nil {
 		t.Errorf("#checkIUTF8 null fd should return error, got nil\n")
 	}
@@ -123,7 +123,7 @@ func TestSetIUTF8(t *testing.T) {
 	defer nullFD.Close()
 
 	// null fd doesn't support termios, checkIUTF8 return error
-	flag, err = CheckIUTF8(int(nullFD.Fd()))
+	_, err = CheckIUTF8(int(nullFD.Fd()))
 	if err == nil {
 		t.Errorf("#setIUTF8 check %s failed, %s\n", "/dev/null", err)
 	}
@@ -137,16 +137,16 @@ func TestSetIUTF8(t *testing.T) {
 
 func TestConvertWinsize(t *testing.T) {
 	tc := []struct {
-		label  string
 		win    *unix.Winsize
 		expect *pty.Winsize
+		label  string
 	}{
 		{
-			"normal case",
 			&unix.Winsize{Col: 80, Row: 40, Xpixel: 0, Ypixel: 0},
 			&pty.Winsize{Cols: 80, Rows: 40, X: 0, Y: 0},
+			"normal case",
 		},
-		{"nil case", nil, nil},
+		{nil, nil, "nil case"},
 	}
 
 	for _, v := range tc {

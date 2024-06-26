@@ -37,7 +37,6 @@ func nl_langinfo2(cmd string, args []string) (string, error) {
 		return "", err
 	}
 
-	// fmt.Printf("#nl_langinfo2 got %q\n", out)
 	charmap := strings.TrimSuffix(string(out), "\n")
 	return charmap, nil
 }

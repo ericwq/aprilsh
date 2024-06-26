@@ -7,9 +7,8 @@ package util
 import (
 	"context"
 	"io"
-	"os"
-
 	"log/slog"
+	"os"
 )
 
 const (
@@ -19,11 +18,13 @@ const (
 	TraceLevel = 2
 )
 
-var Logger *myLogger
-var levelNames = map[slog.Leveler]string{
-	LevelTrace: "TRACE",
-	LevelFatal: "FATAL",
-}
+var (
+	Logger     *myLogger
+	levelNames = map[slog.Leveler]string{
+		LevelTrace: "TRACE",
+		LevelFatal: "FATAL",
+	}
+)
 
 type myLogger struct {
 	*slog.Logger
@@ -98,7 +99,7 @@ func (l *myLogger) CreateLogger(w io.Writer, source bool, level slog.Level) {
 }
 
 func (l *myLogger) Trace(msg string, args ...any) {
-	l.Logger.Log(context.Background(), LevelTrace, msg, args...)
+	l.Log(context.Background(), LevelTrace, msg, args...)
 }
 
 // network: udp, address: localhost:514. check net.Dial() for detail

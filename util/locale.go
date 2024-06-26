@@ -48,10 +48,7 @@ func IsUtf8Locale() bool {
 	cs := LocaleCharset()
 	// fmt.Printf("#isUtf8Locale cs=%s\n", cs)
 
-	if strings.Compare(strings.ToLower(cs), "utf-8") == 0 {
-		return true
-	}
-	return false
+	return strings.Compare(strings.ToLower(cs), "utf-8") == 0
 }
 
 func ClearLocaleVariables() {
