@@ -518,12 +518,12 @@ func TestGetShell(t *testing.T) {
 
 func TestParseFlagsError(t *testing.T) {
 	tests := []struct {
-		args   []string
 		errstr string
+		args   []string
 	}{
-		{[]string{"-foo"}, "flag provided but not defined"},
+		{"flag provided but not defined", []string{"-foo"}},
 		// {[]string{"-color", "joe"}, "invalid value"},
-		{[]string{"-locale", "a=b=c"}, "malform locale parameter"},
+		{"malform locale parameter", []string{"-locale", "a=b=c"}},
 	}
 
 	for _, tt := range tests {
@@ -532,10 +532,10 @@ func TestParseFlagsError(t *testing.T) {
 			if conf != nil {
 				t.Errorf("conf got %v, want nil", conf)
 			}
-			if strings.Index(err.Error(), tt.errstr) < 0 {
+			if !strings.Contains(err.Error(), tt.errstr) {
 				t.Errorf("err got %q, want to find %q", err.Error(), tt.errstr)
 			}
-			if strings.Index(output, "Usage of prog") < 0 {
+			if !strings.Contains(output, "Usage of prog") {
 				t.Errorf("output got %q", output)
 			}
 		})
@@ -712,19 +712,20 @@ func TestGetTimeFrom(t *testing.T) {
 func TestMainSrvStart(t *testing.T) {
 	tc := []struct {
 		label    string
-		pause    int    // pause between client send and read
 		resp     string // response client read
-		shutdown int    // pause before shutdown message
 		conf     Config
+		pause    int // pause between client send and read
+		shutdown int // pause before shutdown message
 	}{
 		{
-			"start normally", 100, frontend.AprilshMsgOpen + "7101,", 150,
+			"start normally", frontend.AprilshMsgOpen + "7101,",
 			Config{
 				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 				addSource: false,
 			},
+			100, 150,
 		},
 	}
 
@@ -777,18 +778,19 @@ func TestMainSrvStart(t *testing.T) {
 func TestStartFail(t *testing.T) {
 	tc := []struct {
 		label  string
-		pause  int    // pause between client send and read
 		resp   string // response client read
-		finish int    // pause before shutdown message
 		conf   Config
+		pause  int // pause between client send and read
+		finish int // pause before shutdown message
 	}{
 		{
-			"illegal port", 20, "", 150,
+			"illegal port", "",
 			Config{
 				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7000a",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 			},
+			20, 150,
 		},
 	}
 
@@ -938,11 +940,11 @@ func TestPrintWelcome(t *testing.T) {
 	expect := []string{"Warning: termios IUTF8 flag not defined."}
 
 	tc := []struct {
-		label string
 		tty   *os.File
+		label string
 	}{
-		{"tty doesn't support IUTF8 flag", pty},
-		{"tty failed with checkIUTF8", os.Stdin},
+		{pty, "tty doesn't support IUTF8 flag"},
+		{os.Stdin, "tty failed with checkIUTF8"},
 	}
 
 	for _, v := range tc {
@@ -1086,18 +1088,19 @@ func TestListenFail(t *testing.T) {
 func TestRunFail2(t *testing.T) {
 	tc := []struct {
 		label  string
-		pause  int    // pause between client send and read
 		resp   string // response client read
-		finish int    // pause before shutdown message
 		conf   Config
+		pause  int // pause between client send and read
+		finish int // pause before shutdown message
 	}{
 		{
-			"read udp error", 20, "7101,This is the mock key", 150,
+			"read udp error", "7101,This is the mock key",
 			Config{
 				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 			},
+			20, 150,
 		},
 	}
 
@@ -1141,19 +1144,20 @@ func TestRunFail2(t *testing.T) {
 func TestMaxPortLimit(t *testing.T) {
 	tc := []struct {
 		label        string
-		maxPortLimit int
-		pause        int    // pause between client send and read
 		resp         string // response client read
-		shutdownTime int    // pause before shutdown message
 		conf         Config
+		maxPortLimit int
+		pause        int // pause between client send and read
+		shutdownTime int // pause before shutdown message
 	}{
 		{
-			"run() over max port", 0, 20, "over max port limit", 150,
+			"run() over max port", "over max port limit",
 			Config{
 				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7700",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 			},
+			0, 20, 150,
 		},
 	}
 
@@ -1199,18 +1203,19 @@ func TestMaxPortLimit(t *testing.T) {
 func TestMalformRequest(t *testing.T) {
 	tc := []struct {
 		label        string
-		pause        int    // pause between client send and read
 		resp         string // response client read
-		shutdownTime int    // pause before shutdown message
 		conf         Config
+		pause        int // pause between client send and read
+		shutdownTime int // pause before shutdown message
 	}{
 		{
-			"run() malform request", 20, "malform request", 150,
+			"run() malform request", "malform request",
 			Config{
 				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "7700",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 			},
+			20, 150,
 		},
 	}
 
@@ -1276,18 +1281,19 @@ func failRunWorker(conf *Config, exChan chan string, whChan chan *workhorse) err
 func TestRunWorkerKillSignal(t *testing.T) {
 	tc := []struct {
 		label  string
-		pause  int    // pause between client send and read
 		resp   string // response client read
-		finish int    // pause before shutdown message
 		conf   Config
+		pause  int // pause between client send and read
+		finish int // pause before shutdown message
 	}{
 		{
-			"runWorker stopped by signal kill", 10, frontend.AprilshMsgOpen + "7101,", 150,
+			"runWorker stopped by signal kill", frontend.AprilshMsgOpen + "7101,",
 			Config{
 				version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
+			10, 150,
 		},
 	}
 
@@ -1429,12 +1435,12 @@ func TestRunWorkerKillSignal(t *testing.T) {
 func TestRunCloseFail(t *testing.T) {
 	tc := []struct {
 		label  string
-		pause  int      // pause between client send and read
 		resp1  string   // response of start action
 		resp2  string   // response of stop action
 		exp    []string // ex parameter
-		finish int      // pause before shutdown message
 		conf   Config
+		pause  int // pause between client send and read
+		finish int // pause before shutdown message
 	}{
 		// {
 		// 	"runWorker stopped by " + frontend.AprishMsgClose, 20, frontend.AprilshMsgOpen + "7111,", frontend.AprishMsgClose + "done",
@@ -1467,14 +1473,14 @@ func TestRunCloseFail(t *testing.T) {
 		// 	},
 		// },
 		{
-			"runWorker stop unknow request", 25, frontend.AprilshMsgOpen + "7141,", frontend.AprishMsgClose + "unknow request",
+			"runWorker stop unknow request", frontend.AprilshMsgOpen + "7141,", frontend.AprishMsgClose + "unknow request",
 			[]string{"two", "params"},
-			150,
 			Config{
 				version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7140",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
+			25, 150,
 		},
 	}
 
@@ -1538,24 +1544,24 @@ func TestRunCloseFail(t *testing.T) {
 func TestRunWith2Clients(t *testing.T) {
 	tc := []struct {
 		label  string
-		pause  int      // pause between client send and read
 		resp1  string   // response of start action
 		resp2  string   // response of stop action
 		resp3  string   // response of additinoal open request
 		exp    []string // ex parameter
-		finish int      // pause before shutdown message
 		conf   Config
+		pause  int // pause between client send and read
+		finish int // pause before shutdown message
 	}{
 		{
-			"open aprilsh with duplicate request", 20, frontend.AprilshMsgOpen + "7101,", frontend.AprishMsgClose + "done",
+			"open aprilsh with duplicate request", frontend.AprilshMsgOpen + "7101,", frontend.AprishMsgClose + "done",
 			frontend.AprilshMsgOpen + "7102",
 			[]string{},
-			150,
 			Config{
 				version: false, server: true, flowControl: _FC_SKIP_PIPE_LOCK, desiredIP: "", desiredPort: "7100",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
+			20, 150,
 		},
 	}
 
@@ -1610,19 +1616,21 @@ func TestRunWith2Clients(t *testing.T) {
 
 func TestStartShellError(t *testing.T) {
 	tc := []struct {
-		label    string
-		errStr   string
 		pts      *os.File
 		pr       *io.PipeReader
+		label    string
+		errStr   string
 		utmpHost string
 		conf     Config
 	}{
 		{
-			"first error return", "fail to start shell", os.Stdout, nil, "",
+			os.Stdout, nil,
+			"first error return", "fail to start shell", "",
 			Config{flowControl: _FC_SKIP_START_SHELL},
 		},
 		{
-			"IUTF8 error return", strENOTTY, os.Stdin, nil, "",
+			os.Stdin, nil,
+			"IUTF8 error return", strENOTTY, "",
 			Config{},
 		}, // os.Stdin doesn't support IUTF8 flag, startShell should failed
 	}
@@ -1662,11 +1670,11 @@ func TestStartShellError(t *testing.T) {
 func TestOpenPTS(t *testing.T) {
 	tc := []struct {
 		label  string
-		ws     unix.Winsize
 		errStr string
+		ws     unix.Winsize
 	}{
-		{"invalid parameter error", unix.Winsize{}, "invalid parameter"},
-		{"invalid parameter error", unix.Winsize{Row: 4, Col: 4}, ""},
+		{"invalid parameter error", "invalid parameter", unix.Winsize{}},
+		{"invalid parameter error", "", unix.Winsize{Row: 4, Col: 4}},
 	}
 
 	for i, v := range tc {
@@ -1726,43 +1734,43 @@ func TestOpenPTS(t *testing.T) {
 
 func TestGetAvailablePort(t *testing.T) {
 	tc := []struct {
+		workers    map[int]*workhorse
 		label      string
-		max        int // pre-condition before getAvailabePort
+		max        int
 		expectPort int
 		expectMax  int
-		workers    map[int]*workhorse
 	}{
 		{
+			map[int]*workhorse{},
 			"empty worker list", 6001, 6001, 6002,
-			map[int]*workhorse{},
 		},
 		{
+			map[int]*workhorse{},
 			"lart gap empty worker", 6008, 6001, 6002,
-			map[int]*workhorse{},
 		},
 		{
+			map[int]*workhorse{6001: {}},
 			"add one port", 6002, 6002, 6003,
-			map[int]*workhorse{6001: {}},
 		},
 		{
+			map[int]*workhorse{6001: {}},
 			"shrink max", 6013, 6002, 6003,
-			map[int]*workhorse{6001: {}},
 		},
 		{
-			"right most", 6004, 6004, 6005,
 			map[int]*workhorse{6001: {}, 6002: {}, 6003: {}},
+			"right most", 6004, 6004, 6005,
 		},
 		{
-			"left most", 6006, 6001, 6006,
 			map[int]*workhorse{6003: {}, 6004: {}, 6005: {}},
+			"left most", 6006, 6001, 6006,
 		},
 		{
-			"middle hole", 6009, 6004, 6009,
 			map[int]*workhorse{6001: {}, 6002: {}, 6003: {}, 6008: {}},
+			"middle hole", 6009, 6004, 6009,
 		},
 		{
-			"border shape hole", 6019, 6002, 6019,
 			map[int]*workhorse{6001: {}, 6018: {}},
+			"border shape hole", 6019, 6002, 6019,
 		},
 	}
 
@@ -1903,15 +1911,19 @@ func TestHandleMessage(t *testing.T) {
 }
 
 func TestBeginChild(t *testing.T) {
+	// clientConf Config
+	// conf       Config
+	// label      string
 	tc := []struct {
-		clientConf Config
-		conf       Config
 		label      string
 		resp       string // response	for beginClientConn().
-		pause      int    // pause between client send and read
-		shutdown   int    // pause before shutdown message
+		clientConf Config
+		conf       Config
+		pause      int // pause between client send and read
+		shutdown   int // pause before shutdown message
 	}{
 		{
+			"normal beginClientConn", frontend.AprilshMsgOpen + "7101,",
 			Config{desiredPort: "7100", term: "xterm-256color", destination: getCurrentUser() + "@localhost"},
 			Config{
 				version: false, server: false, desiredIP: "", desiredPort: "7100",
@@ -1919,7 +1931,7 @@ func TestBeginChild(t *testing.T) {
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 				// addSource: false, verbose: util.TraceLevel,
 			},
-			"normal beginClientConn", frontend.AprilshMsgOpen + "7101,", 100, 150,
+			100, 150,
 		},
 	}
 
@@ -1968,12 +1980,12 @@ func TestMainBeginChild(t *testing.T) {
 	tc := []struct {
 		label    string
 		resp     string // response for beginChild().
-		shutdown int    // pause before shutdown message
 		args     []string
 		conf     Config
+		shutdown int // pause before shutdown message
 	}{
 		{
-			"main begin child", frontend.AprilshMsgOpen + "7151,", 150,
+			"main begin child", frontend.AprilshMsgOpen + "7151,",
 			[]string{
 				"/usr/bin/apshd", "-b", "-destination", getCurrentUser() + "@localhost",
 				"-p", "7150", "-t", "xterm-256color", "-vv",
@@ -1984,6 +1996,7 @@ func TestMainBeginChild(t *testing.T) {
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 				// addSource: false,  verbose: util.TraceLevel,
 			},
+			150,
 		},
 	}
 
@@ -2041,12 +2054,12 @@ func TestRunChild(t *testing.T) {
 
 	tc := []struct {
 		label     string
-		shutdown  int    // pause before shutdown message
 		conf      Config // config for mainSrv
 		childConf Config // config for child
+		shutdown  int    // pause before shutdown message
 	}{
 		{
-			"early shutdown", 100,
+			"early shutdown",
 			Config{
 				desiredIP: "", desiredPort: serverPortStr,
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -2057,9 +2070,10 @@ func TestRunChild(t *testing.T) {
 				desiredPort: portStr, term: "xterm", destination: getCurrentUser() + "@localhost",
 				serve: serve, verbose: 0, addSource: false,
 			},
+			100,
 		},
 		{
-			"skip pipe lock", 100,
+			"skip pipe lock",
 			Config{
 				desiredIP: "", desiredPort: serverPortStr,
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -2071,9 +2085,10 @@ func TestRunChild(t *testing.T) {
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: true,
 				flowControl: _FC_SKIP_PIPE_LOCK, serve: serve, verbose: 0, addSource: false,
 			},
+			100,
 		},
 		{
-			"skip start shell", 100,
+			"skip start shell",
 			Config{
 				desiredIP: "", desiredPort: serverPortStr,
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -2085,9 +2100,10 @@ func TestRunChild(t *testing.T) {
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 				flowControl: _FC_SKIP_START_SHELL, serve: serve, verbose: 0, addSource: false,
 			},
+			100,
 		},
 		{
-			"open pts failed", 100,
+			"open pts failed",
 			Config{
 				desiredIP: "", desiredPort: serverPortStr,
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -2099,6 +2115,7 @@ func TestRunChild(t *testing.T) {
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
 				flowControl: _FC_OPEN_PTS_FAIL, serve: serve, verbose: 0, addSource: false,
 			},
+			100,
 		},
 	}
 
@@ -2281,28 +2298,28 @@ func TestStartChildFail(t *testing.T) {
 	tc := []struct {
 		label  string
 		req    string
-		conf   Config
 		expect string
+		conf   Config
 	}{
 		{
 			"destination without @", "a:b,cd",
-			Config{desiredPort: "6510"},
 			"open aprilsh:malform destination",
+			Config{desiredPort: "6510"},
 		},
 		{
 			"startShellProcess failed: DebugLevel", "open aprilsh:xterm-fake," + getCurrentUser() + "@fakehost",
-			Config{desiredPort: "6511", verbose: util.DebugLevel},
 			"start child got key timeout",
+			Config{desiredPort: "6511", verbose: util.DebugLevel},
 		},
 		{
 			"startShellProcess failed: TraceLevel", "open aprilsh:xterm-fake," + getCurrentUser() + "@fakehost",
-			Config{desiredPort: "6512", verbose: util.TraceLevel},
 			"start child got key timeout",
+			Config{desiredPort: "6512", verbose: util.TraceLevel},
 		},
 		{
 			"startShellProcess failed: addSource", "open aprilsh:xterm-fake," + getCurrentUser() + "@fakehost",
-			Config{desiredPort: "6513", addSource: true},
 			"start child got key timeout",
+			Config{desiredPort: "6513", addSource: true},
 		},
 	}
 

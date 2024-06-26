@@ -12,6 +12,8 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log/slog"
+	"log/syslog"
 	"math"
 	"net"
 	"os"
@@ -26,9 +28,6 @@ import (
 	"syscall"
 	"time"
 
-	"log/slog"
-	"log/syslog"
-
 	"github.com/creack/pty"
 	"github.com/ericwq/aprilsh/encrypt"
 	"github.com/ericwq/aprilsh/frontend"
@@ -36,11 +35,12 @@ import (
 	"github.com/ericwq/aprilsh/statesync"
 	"github.com/ericwq/aprilsh/terminal"
 	"github.com/ericwq/aprilsh/util"
-	utmps "github.com/ericwq/goutmp" // set GOFLAGS="-tags=utmps" before nvim
+	utmps "github.com/ericwq/goutmp"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/sys/unix"
 )
 
+// set GOFLAGS="-tags=utmps" APRILSH_APSHD_PATH=~/.local/bin/apshd  before nvim
 const (
 	_PATH_BSHELL = "/bin/sh"
 
@@ -87,7 +87,7 @@ Options:
 ---------------------------------------------------------------------------------------------------
 `
 
-var failToStartShell = errors.New("fail to start shell")
+var errStartShell = errors.New("fail to start shell")
 
 var (
 	syslogSupport bool
@@ -128,29 +128,26 @@ func (lv *localeFlag) IsBoolFlag() bool {
 }
 
 type Config struct {
-	version     bool       // print version information
-	server      bool       // use SSH ip
-	verbose     int        // verbose output
-	desiredIP   string     // server ip/host
-	desiredPort string     // server port
-	locales     localeFlag // localse environment variables
-	term        string     // client TERM
-	autoStop    int        // auto stop after N seconds
-	begin       bool       // begin a client connection
-	child       bool       // begin a child process
-	destination string     // [user@]hostname, destination string
-	host        string     // target host/server
-	user        string     // target user
-	addSource   bool       // add source file to log
-	flowControl int        // control flow for testing
-
+	locales localeFlag // localse environment variables
+	// the serve func
+	serve       func(*os.File, *os.File, *io.PipeWriter, *statesync.Complete, *network.Transport[*statesync.Complete, *statesync.UserStream], int64, int64, string) error
+	user        string   // target user
+	desiredIP   string   // server ip/host
+	desiredPort string   // server port
+	term        string   // client TERM
+	host        string   // target host/server
+	destination string   // [user@]hostname, destination string
 	commandPath string   // shell command path (absolute path)
 	commandArgv []string // the positional (non-flag) command-line arguments.
+	autoStop    int      // auto stop after N seconds
+	flowControl int      // control flow for testing
+	verbose     int      // verbose output
+	begin       bool     // begin a client connection
+	child       bool     // begin a child process
+	version     bool     // print version information
+	addSource   bool     // add source file to log
+	server      bool     // use SSH ip
 	withMotd    bool
-
-	// the serve func
-	serve func(*os.File, *os.File, *io.PipeWriter, *statesync.Complete, // chan bool,
-		*network.Transport[*statesync.Complete, *statesync.UserStream], int64, int64, string) error
 }
 
 // generate shell for specified user or current user if user is nil.
@@ -444,17 +441,16 @@ type workhorse struct {
 }
 
 type mainSrv struct {
-	workers map[int]*workhorse
-	// runWorker  func(*Config, chan string, chan workhorse) error // worker
+	workers    map[int]*workhorse
 	exChan     chan string    // worker done or passing key
 	whChan     chan workhorse // workhorse
 	downChan   chan bool      // shutdown mainSrv
 	uxdownChan chan bool      // ux shutdown mainSrv
-	maxPort    int            // max worker port
-	timeout    int            // read udp time out,
-	port       int            // main listen port
 	conn       *net.UDPConn   // mainSrv listen port
 	wg         sync.WaitGroup
+	maxPort    int // max worker port
+	timeout    int // read udp time out,
+	port       int // main listen port
 }
 
 // func newMainSrv(conf *Config, runWorker func(*Config, chan string, chan workhorse) error) *mainSrv {
@@ -564,7 +560,7 @@ func (m *mainSrv) run(conf *Config) {
 	}
 	util.Logger.Info("start listening on", "port", m.port, "gitTag", frontend.GitTag)
 
-	//TODO remove it?
+	// TODO remove it?
 	// printWelcome(os.Getpid(), m.port, nil)
 	// printWelcome(nil)
 	for {
@@ -1058,18 +1054,14 @@ func getHomeDir() string {
 func motdHushed() bool {
 	// must be in home directory already
 	_, err := os.Lstat(".hushlogin")
-	if err != nil {
-		return false
-	}
-
-	return true
+	return err == nil
 }
 
 // extract server ip addresss from SSH_CONNECTION
 func getSSHip() (string, bool) {
 	env := os.Getenv("SSH_CONNECTION")
 	if len(env) == 0 { // Older sshds don't set this
-		return fmt.Sprintf("Warning: SSH_CONNECTION not found; binding to any interface."), false
+		return "Warning: SSH_CONNECTION not found; binding to any interface.", false
 	}
 
 	// SSH_CONNECTION' Identifies the client and server ends of the connection.
@@ -1079,7 +1071,7 @@ func getSSHip() (string, bool) {
 	// ipv4 sample: SSH_CONNECTION=172.17.0.1 58774 172.17.0.2 22
 	sshConn := strings.Split(env, " ")
 	if len(sshConn) != 4 {
-		return fmt.Sprintf("Warning: Could not parse SSH_CONNECTION; binding to any interface."), false
+		return "Warning: Could not parse SSH_CONNECTION; binding to any interface.", false
 	}
 
 	localInterfaceIP := strings.ToLower(sshConn[2])
@@ -1195,7 +1187,7 @@ func warnUnattached(w io.Writer, userName string, ignoreHost string) {
 				// 	fmt.Printf("#checkUnattachedRecord() append host=%s, line=%q\n", host, r.GetLine())
 				// }
 			}
-		} else {
+			// } else {
 			// if testing.Testing() {
 			// 	fmt.Printf("#checkUnattachedRecord() skip user=%q,%q; type=%d, line=%s, host=%s, id=%d, pid=%d\n",
 			// 		r.GetUser(), userName, r.GetType(), r.GetLine(), r.GetHost(), r.GetId(), r.GetPid())
@@ -1246,8 +1238,8 @@ func checkPortAvailable(port int) bool {
 }
 
 type messageError struct {
-	reason string
 	err    error
+	reason string
 }
 
 func (e *messageError) Error() string {
@@ -1274,9 +1266,10 @@ func startChildProcess(conf *Config) (*os.Process, error) {
 	// hide the following command args from ps command
 	args := []string{"-child", "-destination", conf.destination, "-term", conf.term}
 	// inherit vervoce and source options form parent
-	if conf.verbose == util.DebugLevel {
+	switch conf.verbose {
+	case util.DebugLevel:
 		args = append(args, "-v")
-	} else if conf.verbose == util.TraceLevel {
+	case util.TraceLevel:
 		args = append(args, "-vv")
 	}
 	if conf.addSource {
@@ -1403,12 +1396,12 @@ func openPTS(wsize *unix.Winsize) (ptmx *os.File, pts *os.File, err error) {
 }
 
 // set IUTF8 flag for pts file. start shell process according to Config.
-func startShellProcess(pts *os.File, pr *io.PipeReader, utmpHost string, conf *Config) (*os.Process, error) {
+func startShellProcess(pts *os.File, pr *io.PipeReader, _ string, conf *Config) (*os.Process, error) {
 	// close pipe will stop the Read operation
 	defer pr.Close()
 
 	if conf.flowControl == _FC_SKIP_START_SHELL {
-		return nil, failToStartShell
+		return nil, errStartShell
 	}
 	// set IUTF8 if available
 	if err := util.SetIUTF8(int(pts.Fd())); err != nil {
@@ -1532,7 +1525,7 @@ func startShellProcess(pts *os.File, pr *io.PipeReader, utmpHost string, conf *C
 	util.Logger.Debug("start shell waiting for pipe unlock")
 	// wait for serve() to release us
 	if pr != nil && conf.flowControl != _FC_SKIP_PIPE_LOCK {
-		ch := make(chan string, 0)
+		ch := make(chan string)
 		timer := time.NewTimer(time.Duration(frontend.TimeoutIfNoConnect) * time.Millisecond)
 
 		// util.Log.Debug("start shell message", "action", "wait", "port", conf.desiredPort)
@@ -1576,7 +1569,8 @@ func startShellProcess(pts *os.File, pr *io.PipeReader, utmpHost string, conf *C
 
 func serve(ptmx *os.File, pts *os.File, pw *io.PipeWriter, complete *statesync.Complete, // waitChan chan bool,
 	server *network.Transport[*statesync.Complete, *statesync.UserStream],
-	networkTimeout int64, networkSignaledTimeout int64, user string) error {
+	networkTimeout int64, networkSignaledTimeout int64, user string,
+) error {
 	// scale timeouts
 	networkTimeoutMs := networkTimeout * 1000
 	networkSignaledTimeoutMs := networkSignaledTimeout * 1000
@@ -1791,7 +1785,6 @@ mainLoop:
 		case masterMsg := <-fileChan:
 			// input from the host needs to be fed to the terminal
 			if !server.ShutdownInProgress() {
-
 				// If the pty slave is closed, reading from the master can fail with
 				// EIO (see #264).  So we treat errors on read() like EOF.
 				if masterMsg.Err != nil {

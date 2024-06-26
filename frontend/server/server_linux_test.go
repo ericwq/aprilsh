@@ -25,12 +25,12 @@ var (
 )
 
 type mockData struct {
-	xtype int
 	host  string
 	line  string
 	usr   string
 	id    int
 	pid   int
+	xtype int
 }
 
 func initData(data []mockData) {
@@ -71,11 +71,11 @@ func TestWarnUnattached(t *testing.T) {
 	}
 
 	data := []mockData{
-		{utmps.USER_PROCESS, "apshd:777", "pts/1", "root", 3, 1},
-		{utmps.USER_PROCESS, "apshd:888", "pts/7", getCurrentUser(), 7, 1221},
-		{utmps.USER_PROCESS, "apshd:666", "pts/0", getCurrentUser(), 0, 1222},
-		{utmps.USER_PROCESS, "192.168.0.123 via apshd:555", "pts/0", getCurrentUser(), 0, 1223},
-		{utmps.USER_PROCESS, "apshd:999", "pts/ptmx", getCurrentUser(), 2, 1224},
+		{"apshd:777", "pts/1", "root", 3, 1, utmps.USER_PROCESS},
+		{"apshd:888", "pts/7", getCurrentUser(), 7, 1221, utmps.USER_PROCESS},
+		{"apshd:666", "pts/0", getCurrentUser(), 0, 1222, utmps.USER_PROCESS},
+		{"192.168.0.123 via apshd:555", "pts/0", getCurrentUser(), 0, 1223, utmps.USER_PROCESS},
+		{"apshd:999", "pts/ptmx", getCurrentUser(), 2, 1224, utmps.USER_PROCESS},
 	}
 	initData(data)
 
@@ -106,7 +106,7 @@ func TestWarnUnattached(t *testing.T) {
 			count := strings.Count(got, "- ")
 			switch count {
 			case 0: // warnUnattached found one unattached session
-				if strings.Index(got, "a detached session on this server") != -1 &&
+				if strings.Contains(got, "a detached session on this server") &&
 					v.count != 1 {
 					t.Errorf("#test warnUnattached() %q expect %d warning, got 1.\n",
 						v.label, v.count)
@@ -131,11 +131,11 @@ func TestWarnUnattachedZero(t *testing.T) {
 	}
 
 	data := []mockData{
-		{utmps.USER_PROCESS, "apshd:777", "pts/1", "root", 3, 1},
-		{utmps.USER_PROCESS, "192.168.0.123 via apshd:888", "pts/8", getCurrentUser(), 7, 1221},
-		{utmps.USER_PROCESS, "192.168.0.123 via apshd:666", "pts/0", getCurrentUser(), 0, 1222},
-		{utmps.USER_PROCESS, "192.168.0.123 via apshd:555", "pts/9", getCurrentUser(), 0, 1223},
-		{utmps.USER_PROCESS, "192.168.0.123 via apshd:999", "pts/ptmx", getCurrentUser(), 2, 1224},
+		{"apshd:777", "pts/1", "root", 3, 1, utmps.USER_PROCESS},
+		{"192.168.0.123 via apshd:888", "pts/8", getCurrentUser(), 7, 1221, utmps.USER_PROCESS},
+		{"192.168.0.123 via apshd:666", "pts/0", getCurrentUser(), 0, 1222, utmps.USER_PROCESS},
+		{"192.168.0.123 via apshd:555", "pts/9", getCurrentUser(), 0, 1223, utmps.USER_PROCESS},
+		{"192.168.0.123 via apshd:999", "pts/ptmx", getCurrentUser(), 2, 1224, utmps.USER_PROCESS},
 	}
 	initData(data)
 	for _, v := range tc {
@@ -161,13 +161,13 @@ func TestWarnUnattachedZero(t *testing.T) {
 func TestBuildConfig(t *testing.T) {
 	tc := []struct {
 		label string
+		hint  string
 		conf0 Config
 		conf2 Config
-		hint  string
 		ok    bool
 	}{
 		{
-			"UTF-8 locale",
+			"UTF-8 locale", "",
 			Config{
 				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -178,10 +178,10 @@ func TestBuildConfig(t *testing.T) {
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: false,
 			},
-			"", true,
+			true,
 		},
 		{
-			"empty commandArgv",
+			"empty commandArgv", "",
 			Config{
 				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8"},
@@ -195,7 +195,7 @@ func TestBuildConfig(t *testing.T) {
 			},
 			// macOS: /bin/zsh
 			// alpine: /bin/ash
-			"", true,
+			true,
 		},
 		// {
 		// 	"non UTF-8 locale",
@@ -212,7 +212,7 @@ func TestBuildConfig(t *testing.T) {
 		// 	errors.New("UTF-8 locale fail."),
 		// },
 		{
-			"commandArgv is one string",
+			"commandArgv is one string", "",
 			Config{
 				version: false, server: false, verbose: 0, desiredIP: "", desiredPort: "",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -223,10 +223,10 @@ func TestBuildConfig(t *testing.T) {
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: false,
 			},
-			"", true,
+			true,
 		},
 		{
-			"missing SSH_CONNECTION",
+			"missing SSH_CONNECTION", "Warning: SSH_CONNECTION not found; binding to any interface.",
 			Config{
 				version: false, server: true, verbose: 0, desiredIP: "", desiredPort: "",
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
@@ -237,13 +237,12 @@ func TestBuildConfig(t *testing.T) {
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "", commandArgv: []string{"/bin/sh", "-sh"}, withMotd: false,
 			},
-			"Warning: SSH_CONNECTION not found; binding to any interface.", false,
+			false,
 		},
 	}
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-
 			// set SHELL for empty commandArgv
 			if len(v.conf0.commandArgv) == 0 {
 				shell := os.Getenv("SHELL")
