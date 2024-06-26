@@ -64,11 +64,11 @@ func TestEmulatorResize(t *testing.T) {
 func TestEmulatorReadOctetsToHost(t *testing.T) {
 	tc := []struct {
 		name   string
-		rawStr []string
 		expect string
+		rawStr []string
 	}{
-		{"one sequence", []string{"\x1B[23m"}, "\x1B[23m"},
-		{"three mix sequence", []string{"\x1B[24;14H", "\x1B[3g", "长"}, "\x1B[24;14H\x1B[3g长"},
+		{"one sequence", "\x1B[23m", []string{"\x1B[23m"}},
+		{"three mix sequence", "\x1B[24;14H\x1B[3g长", []string{"\x1B[24;14H", "\x1B[3g", "长"}},
 	}
 
 	emu := NewEmulator3(80, 40, 0)
@@ -178,13 +178,13 @@ func TestEmulatorLookupCharset(t *testing.T) {
 func TestEmulatorPasteSelection(t *testing.T) {
 	tc := []struct {
 		label              string
-		bracketedPasteMode bool
 		selection          string
 		expect             string
+		bracketedPasteMode bool
 	}{
-		{"bracketedPasteMode is false", false, "lock down", "lock down"},
-		{"bracketedPasteMode is true, english ", true, "lock down", "\x1b[200~lock down\x1b[201~"},
-		{"bracketedPasteMode is true, chinese ", true, "解除封控", "\x1b[200~解除封控\x1b[201~"},
+		{"bracketedPasteMode is false", "lock down", "lock down", false},
+		{"bracketedPasteMode is true, english ", "lock down", "\x1b[200~lock down\x1b[201~", true},
+		{"bracketedPasteMode is true, chinese ", "解除封控", "\x1b[200~解除封控\x1b[201~", true},
 	}
 
 	emu := NewEmulator3(80, 40, 0)
@@ -325,12 +325,12 @@ func TestEmulatorGetCell(t *testing.T) {
 	tc := []struct {
 		label      string
 		seq        string
-		posY, posX int
 		contents   string
+		posY, posX int
 	}{
-		{"in the middle", "\x1B[11;74Houtput for normal wrap line.", 10, 73, "o"},
-		{"in the last cols", "", 10, 79, " "},
-		{"in the first cols", "", 11, 0, "f"},
+		{"in the middle", "\x1B[11;74Houtput for normal wrap line.", "o", 10, 73},
+		{"in the last cols", "", " ", 10, 79},
+		{"in the first cols", "", "f", 11, 0},
 	}
 
 	emu := NewEmulator3(80, 40, 40)
@@ -356,11 +356,11 @@ func TestEmulatorGetCell(t *testing.T) {
 func TestEmulatorClone(t *testing.T) {
 	tc := []struct {
 		label        string
-		nRows, nCols int    // resize
 		seq          string // mix data stream
+		nRows, nCols int    // resize
 	}{
-		{"seq, no resize", 0, 0, "\x1B[11;74Houtput for normal wrap line."},
-		{"alter screen buffer, no resize", 0, 0, "\x1B[?47h\x1B[11;74Houtput for normal wrap line."},
+		{"seq, no resize", "\x1B[11;74Houtput for normal wrap line.", 0, 0},
+		{"alter screen buffer, no resize", "\x1B[?47h\x1B[11;74Houtput for normal wrap line.", 0, 0},
 	}
 
 	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
@@ -426,19 +426,19 @@ func TestEmulatorClone(t *testing.T) {
 func TestHandleStream_MoveDelete(t *testing.T) {
 	tc := []struct {
 		label            string
-		row, col         int    // the start cursor position
 		base             string // base content
 		expect           string // the expect content
+		row, col         int    // the start cursor position
 		expectY, expectX int    // new cursor position
 	}{
-		{"move cursor and delete one regular graphemes", 0, 70, "abcde\x1B[4D\x1B[P", "acde", 0, 71},
-		{"move cursor and delete one wide graphemes", 1, 60, "abc太学生\x1B[6D\x1B[2P", "abc学生", 1, 63},
-		{"move cursor back and forth for wide graphemes", 2, 60, "东部战区\x1B[8D\x1B[2C\x1B[2P", "东战区", 2, 62},
-		{"move cursor to right edge", 3, 75, "平潭\x1B[5C", "平潭", 3, 79},
-		{"move cursor to left edge", 4, 0, "三号木\x1B[6D", "三号木", 4, 0},
-		{"move cursor to left edge, delete 2 graphemes", 5, 0, "小鸡腿\x1B[6D\x1B[4P", "腿", 5, 0},
-		{"move cursor and delete 2 graphemes", 6, 74, "gocto\x1B[8C\x1B[4D\x1B[2P", "gto", 6, 75},
-		{"move cursor back and delete 4 regular graphemes", 7, 60, "捉鹰打goto\x1B[4D\x1B[4P鸟", "捉鹰打鸟", 7, 68},
+		{"move cursor and delete one regular graphemes", "abcde\x1B[4D\x1B[P", "acde", 0, 70, 0, 71},
+		{"move cursor and delete one wide graphemes", "abc太学生\x1B[6D\x1B[2P", "abc学生", 1, 60, 1, 63},
+		{"move cursor back and forth for wide graphemes", "东部战区\x1B[8D\x1B[2C\x1B[2P", "东战区", 2, 60, 2, 62},
+		{"move cursor to right edge", "平潭\x1B[5C", "平潭", 3, 75, 3, 79},
+		{"move cursor to left edge", "三号木\x1B[6D", "三号木", 4, 0, 4, 0},
+		{"move cursor to left edge, delete 2 graphemes", "小鸡腿\x1B[6D\x1B[4P", "腿", 5, 0, 5, 0},
+		{"move cursor and delete 2 graphemes", "gocto\x1B[8C\x1B[4D\x1B[2P", "gto", 6, 74, 6, 75},
+		{"move cursor back and delete 4 regular graphemes", "捉鹰打goto\x1B[4D\x1B[4P鸟", "捉鹰打鸟", 7, 60, 7, 68},
 	}
 	emu := NewEmulator3(80, 40, 40) // TODO why we can't init emulator outside of for loop
 
@@ -561,7 +561,7 @@ func TestSaveWindowTitleOnStack(t *testing.T) {
 	title := "our title prefix "
 	emu.setWindowTitle(title)
 
-	//push to the stack max
+	// push to the stack max
 	for i := 0; i < 10; i++ {
 		tt := fmt.Sprintf("%s%d", title, i)
 		emu.setWindowTitle(tt)
@@ -580,52 +580,110 @@ func TestSaveWindowTitleOnStack(t *testing.T) {
 
 func TestEmulatorEqual(t *testing.T) {
 	tc := []struct {
-		label      string
-		seq1, seq2 string
-		expect     bool
-		expectStr  []string
+		label     string
+		seq1      string
+		seq2      string
+		expectStr []string
+		expect    bool
 	}{
-		{"size", "", "", false, []string{"nRows=", "nCols="}},
-		{"same content", "Hello world", "Hello world", true, []string{}},
-		{"diff cursor", "Hello world", "Hello world\x1b[7;24H", false, []string{"posX=", "posY="}},
-		{"lastCol", "\x1b[4;76Hworld", "\x1b[4;80H",
-			false, []string{"lastCol=", "attrs="}},
-		{"has focus", "Hello world\x1B[?1004h\x1B[I", "Hello world\x1B[?1004h\x1B[O",
-			false, []string{"hasFocus=", "reverseVideo="}},
-		{"insert mode", "Hello world\x1B[4h", "Hello world\x1B[4l",
-			false, []string{"autoWrapMode=", "insertMode="}},
-		{"bracketedPasteMode", "Hello world\x1B[?2004h", "Hello world\x1B[?2004l",
-			false, []string{"bracketedPasteMode=", "altScrollMode="}},
-		{"altSendsEscape", "Hello world\x1B[?1036h", "Hello world\x1B[?1039l",
-			false, []string{"altSendsEscape=", "modifyOtherKeys="}},
-		{"hMargin", "\x1B[?69h\x1B[2;38sworld", "world",
-			false, []string{"hMargin=", "nColsEff="}},
-		{"diff tabStops", "world\x1BH", "world",
-			false, []string{"tabStops length="}},
-		{"diff tabStops position", "\x1B[1;5H\x1BH", "\x1B[1;13H\x1BH\x1B[1;5H",
-			false, []string{"tabStops[0]="}},
-		{"set charset ss", "\x1B[1;5H\x1BN", "\x1B[1;5H",
-			false, []string{"charsetState.ss="}},
-		{"set application cursor", "\x1B[1;5H\x1B[?1h", "\x1B[1;5H",
-			false, []string{"cursorKeyMode="}},
-		{"set application keypad", "\x1B[1;5H\x1B=", "\x1B[1;5H",
-			false, []string{"keypadMode="}},
-		{"set cursor SCO", "\x1B[1;5H\x1B[s", "\x1B[1;5H",
-			false, []string{"savedCursor_SCO="}},
-		{"set save cursor", "\x1B[1;5H\x1B7", "\x1B[1;5H",
-			false, []string{"savedCursor_DEC .SavedCursor_SCO="}},
-		{"set save cursor charsetState", "\x1B[1;5H\x1BN\x1B7", "\x1B[1;5H",
-			false, []string{"savedCursor_DEC .charsetState .vtMode="}},
-		{"set mouse tracking", "\x1B[1;5H\x1B[?1000h\x1B[?1005h", "\x1B[1;5H",
-			false, []string{"mouseTrk="}},
-		{"set select data", "\x1B[1;5H\x1B]52;c;YXByaWxzaAo=\x1B\\", "\x1B[1;5H",
-			false, []string{"selectionData length="}},
-		{"set window title", "\x1B[1;5H\x1B]1;adas\x1B\\", "\x1B[1;5H",
-			false, []string{"windowTitle="}},
-		{"save window title on stack", "\x1B[1;5H\x1B]0;adas\x1B\\\x1B[22;2t", "\x1B[1;5H\x1B]0;adas\x1B\\",
-			false, []string{"windowTitleStack length="}},
-		{"diff window title value on stack", "\x1B[1;5H\x1B]0;adas\x1B\\\x1B[22;2t", "\x1B[1;5H\x1B]0;addas\x1B\\\x1B[22;2t\x1B]0;adas\x1B\\",
-			false, []string{"windowTitleStack[0]="}},
+		{"size", "", "", []string{"nRows=", "nCols="}, false},
+		{"same content", "Hello world", "Hello world", []string{}, true},
+		{"diff cursor", "Hello world", "Hello world\x1b[7;24H", []string{"posX=", "posY="}, false},
+		{
+			"lastCol", "\x1b[4;76Hworld", "\x1b[4;80H",
+			[]string{"lastCol=", "attrs="},
+			false,
+		},
+		{
+			"has focus", "Hello world\x1B[?1004h\x1B[I", "Hello world\x1B[?1004h\x1B[O",
+			[]string{"hasFocus=", "reverseVideo="},
+			false,
+		},
+		{
+			"insert mode", "Hello world\x1B[4h", "Hello world\x1B[4l",
+			[]string{"autoWrapMode=", "insertMode="},
+			false,
+		},
+		{
+			"bracketedPasteMode", "Hello world\x1B[?2004h", "Hello world\x1B[?2004l",
+			[]string{"bracketedPasteMode=", "altScrollMode="},
+			false,
+		},
+		{
+			"altSendsEscape", "Hello world\x1B[?1036h", "Hello world\x1B[?1039l",
+			[]string{"altSendsEscape=", "modifyOtherKeys="},
+			false,
+		},
+		{
+			"hMargin", "\x1B[?69h\x1B[2;38sworld", "world",
+			[]string{"hMargin=", "nColsEff="},
+			false,
+		},
+		{
+			"diff tabStops", "world\x1BH", "world",
+			[]string{"tabStops length="},
+			false,
+		},
+		{
+			"diff tabStops position", "\x1B[1;5H\x1BH", "\x1B[1;13H\x1BH\x1B[1;5H",
+			[]string{"tabStops[0]="},
+			false,
+		},
+		{
+			"set charset ss", "\x1B[1;5H\x1BN", "\x1B[1;5H",
+			[]string{"charsetState.ss="},
+			false,
+		},
+		{
+			"set application cursor", "\x1B[1;5H\x1B[?1h", "\x1B[1;5H",
+			[]string{"cursorKeyMode="},
+			false,
+		},
+		{
+			"set application keypad", "\x1B[1;5H\x1B=", "\x1B[1;5H",
+			[]string{"keypadMode="},
+			false,
+		},
+		{
+			"set cursor SCO", "\x1B[1;5H\x1B[s", "\x1B[1;5H",
+			[]string{"savedCursor_SCO="},
+			false,
+		},
+		{
+			"set save cursor", "\x1B[1;5H\x1B7", "\x1B[1;5H",
+			[]string{"savedCursor_DEC .SavedCursor_SCO="},
+			false,
+		},
+		{
+			"set save cursor charsetState", "\x1B[1;5H\x1BN\x1B7", "\x1B[1;5H",
+			[]string{"savedCursor_DEC .charsetState .vtMode="},
+			false,
+		},
+		{
+			"set mouse tracking", "\x1B[1;5H\x1B[?1000h\x1B[?1005h", "\x1B[1;5H",
+			[]string{"mouseTrk="},
+			false,
+		},
+		{
+			"set select data", "\x1B[1;5H\x1B]52;c;YXByaWxzaAo=\x1B\\", "\x1B[1;5H",
+			[]string{"selectionData length="},
+			false,
+		},
+		{
+			"set window title", "\x1B[1;5H\x1B]1;adas\x1B\\", "\x1B[1;5H",
+			[]string{"windowTitle="},
+			false,
+		},
+		{
+			"save window title on stack", "\x1B[1;5H\x1B]0;adas\x1B\\\x1B[22;2t", "\x1B[1;5H\x1B]0;adas\x1B\\",
+			[]string{"windowTitleStack length="},
+			false,
+		},
+		{
+			"diff window title value on stack", "\x1B[1;5H\x1B]0;adas\x1B\\\x1B[22;2t", "\x1B[1;5H\x1B]0;addas\x1B\\\x1B[22;2t\x1B]0;adas\x1B\\",
+			[]string{"windowTitleStack[0]="},
+			false,
+		},
 	}
 
 	var output strings.Builder
@@ -666,7 +724,6 @@ func TestEmulatorEqual(t *testing.T) {
 }
 
 func TestLargeStream(t *testing.T) {
-
 	// 读取文件内容
 	file, err := os.Open("../data/regret_poem.txt")
 	if err != nil {
@@ -721,17 +778,16 @@ func TestLargeStream(t *testing.T) {
 }
 
 func TestExcludeHandler(t *testing.T) {
-
 	tc := []struct {
 		label   string
 		seq     string
-		hdsSize int
 		diff    string
+		hdsSize int
 	}{
-		{"DSR", "\x1B[6nworld", 6, "world"},
-		{"OSC 10x", "\x1B]10;?\x1B\\world", 6, "world"},
-		{"VT52_ID", "\x1B[?2l\x1BZ", 2, "\x1B[?2l"},
-		{"OSC 52 query selection", "\x1B]52;c0;5Zub5aeR5aiY5bGxCg==\x1B\\\x1B]52;c0;?\x1B\\", 2, "\x1b]52;c0;5Zub5aeR5aiY5bGxCg==\x1b\\"},
+		{"DSR", "\x1B[6nworld", "world", 6},
+		{"OSC 10x", "\x1B]10;?\x1B\\world", "world", 6},
+		{"VT52_ID", "\x1B[?2l\x1BZ", "\x1B[?2l", 2},
+		{"OSC 52 query selection", "\x1B]52;c0;5Zub5aeR5aiY5bGxCg==\x1B\\\x1B]52;c0;?\x1B\\", "\x1b]52;c0;5Zub5aeR5aiY5bGxCg==\x1b\\", 2},
 	}
 
 	// var output strings.Builder
