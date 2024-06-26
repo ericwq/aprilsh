@@ -75,18 +75,18 @@ const (
 
 const (
 	MouseTrackingMode_Disable           MouseTrackingMode = 0
-	MouseTrackingMode_X10_Compat                          = 9
-	MouseTrackingMode_VT200                               = 1000
-	MouseTrackingMode_VT200_HighLight                     = 1001
-	MouseTrackingMode_VT200_ButtonEvent                   = 1002
-	MouseTrackingMode_VT200_AnyEvent                      = 1003
+	MouseTrackingMode_X10_Compat        MouseTrackingMode = 9
+	MouseTrackingMode_VT200             MouseTrackingMode = 1000
+	MouseTrackingMode_VT200_HighLight   MouseTrackingMode = 1001
+	MouseTrackingMode_VT200_ButtonEvent MouseTrackingMode = 1002
+	MouseTrackingMode_VT200_AnyEvent    MouseTrackingMode = 1003
 )
 
 const (
 	MouseTrackingEnc_Default MouseTrackingEnc = 0
-	MouseTrackingEnc_UTF8                     = 1005
-	MouseTrackingEnc_SGR                      = 1006
-	MouseTrackingEnc_URXVT                    = 1015
+	MouseTrackingEnc_UTF8    MouseTrackingEnc = 1005
+	MouseTrackingEnc_SGR     MouseTrackingEnc = 1006
+	MouseTrackingEnc_URXVT   MouseTrackingEnc = 1015
 )
 
 const (
@@ -158,17 +158,17 @@ func newMouseTrackingState() MouseTrackingState {
 }
 
 type SavedCursor_SCO struct {
-	isSet   bool
 	posX    int
 	posY    int
+	isSet   bool
 	lastCol bool
 }
 
 type SavedCursor_DEC struct {
-	SavedCursor_SCO
-	attrs        Cell
-	originMode   OriginMode // default: OriginMode_Absolute
 	charsetState CharsetState
+	attrs        Cell
+	SavedCursor_SCO
+	originMode OriginMode // default: OriginMode_Absolute
 }
 
 func newSavedCursor_DEC() SavedCursor_DEC {

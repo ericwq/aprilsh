@@ -50,7 +50,7 @@ func (u *UserInput) parse(x UserByte, cursorKeyMode CursorKeyMode) (ret string) 
 	if len(x.Chs) > 1 {
 		return ""
 	}
-	var r rune = x.Chs[0]
+	r := x.Chs[0]
 
 	switch u.state {
 	case USER_INPUT_GROUND:

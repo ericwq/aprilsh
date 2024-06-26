@@ -136,13 +136,15 @@ func calculateRows(oldE, newE *Emulator) int {
  *	 how to replace the following functions? setupterm(), tigetnum(), tigetstr(), tigetflag()
  */
 type Display struct {
+	smcup string // enter and exit alternate screen mode
+	rmcup string // enter and exit alternate screen mode
+
 	// erase character is part of vt200 but not supported by tmux
 	// (or by "screen" terminfo entry, which is what tmux advertises)
 	hasECH       bool
-	hasBCE       bool   // erases result in cell filled with background color
-	supportTitle bool   // supports window title and icon name
-	smcup        string // enter and exit alternate screen mode
-	rmcup        string // enter and exit alternate screen mode
+	hasBCE       bool // erases result in cell filled with background color
+	supportTitle bool // supports window title and icon name
+
 	// ti           *terminfo.Terminfo
 
 	// fields from FrameState
@@ -225,7 +227,6 @@ func NewDisplay(useEnvironment bool) (d *Display, e error) {
 // - oldE: the old terminal state.
 // - newE: the new terminal state.
 func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
-
 	frame := new(FrameState)
 	frame.cursorX = 0
 	frame.cursorY = 0
@@ -682,8 +683,8 @@ func (d *Display) NewFrame(initialized bool, oldE, newE *Emulator) string {
 
 // https://tomscii.sig7.se/zutty/doc/HACKING.html#Frame
 func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeChanged bool,
-	asbChanged bool, frame *FrameState) {
-
+	asbChanged bool, frame *FrameState,
+) {
 	// d.printFramebufferInfo(oldE, newE)
 
 	// mark := "#start"
@@ -706,7 +707,7 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 	if !newE.altScreenBufferMode {
 		var oldRow []Cell
 		var newRow []Cell
-		var blankRow []Cell = make([]Cell, oldE.nCols)
+		blankRow := make([]Cell, oldE.nCols)
 
 		// mark = "stream"
 		rawY := oldE.cf.getPhysicalRow(oldE.posY) // start row, it's physical row
@@ -774,8 +775,9 @@ func (d *Display) replicateContent(initialized bool, oldE, newE *Emulator, sizeC
 }
 
 // replicate alternate screen buffer
-func (d *Display) replicateASB(initialized bool, oldE, newE *Emulator, sizeChanged bool,
-	asbChanged bool, frame *FrameState) {
+func (d *Display) replicateASB(initialized bool, oldE, newE *Emulator, _ bool,
+	asbChanged bool, frame *FrameState,
+) {
 	// util.Log.Debug("replicateASB", "asbChanged", asbChanged, "sizeChanged", sizeChanged)
 
 	/*
@@ -965,7 +967,7 @@ func (d *Display) replicateASB(initialized bool, oldE, newE *Emulator, sizeChang
 		}
 	*/
 
-	var blankRow []Cell = make([]Cell, oldE.nCols)
+	blankRow := make([]Cell, oldE.nCols)
 	if asbChanged {
 		frameY = oldE.nRows - 1
 	} else {
@@ -1197,7 +1199,8 @@ func (d *Display) putRow(initialized bool, frame *FrameState,
 //
 // clear or write empty cells at EOL if possible. whether we should wrap
 func (d *Display) putRow2(initialized bool, frame *FrameState,
-	newE *Emulator, newRow []Cell, frameY int, oldRow []Cell, wrap bool) bool {
+	newE *Emulator, newRow []Cell, frameY int, oldRow []Cell, wrap bool,
+) bool {
 	frameX := 0
 	// newRow := newE.cf.getRow(rawY)
 
@@ -1455,11 +1458,12 @@ func (d *Display) Clone() *Display {
 }
 
 type FrameState struct {
-	cursorX, cursorY int
-	currentRendition Renditions
-	showCursorMode   bool // mosh: cursorVisible
 	lastFrame        *Emulator
 	out              *strings.Builder
+	currentRendition Renditions
+	cursorX          int
+	cursorY          int
+	showCursorMode   bool // mosh: cursorVisible
 }
 
 func (fs *FrameState) append(x string, v ...any) {

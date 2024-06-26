@@ -20,20 +20,20 @@ const (
 
 // support both (scrollable) normal screen buffer and alternate screen buffer
 type Framebuffer struct {
-	nCols        int          // cols number per window
-	nRows        int          // rows number per window
-	saveLines    int          // nRows + saveLines is the scrolling area limitation
+	cells        []Cell       // the cells
+	selection    Rect         // selection area
+	cursor       Cursor       // current cursor style, color and position
+	damage       Damage       // damage scope
 	scrollHead   int          // row offset of scrolling area's logical top row
-	marginTop    int          // current margin top (number of rows above), the top row of scrolling area.
 	marginBottom int          // current margin bottom (number of rows above + 1), the bottom row of scrolling area.
 	historyRows  int          // number of history (off-screen) rows with data
 	viewOffset   int          // how many rows above top row does the view start? screen view start position
+	marginTop    int          // current margin top (number of rows above), the top row of scrolling area.
+	nCols        int          // cols number per window
+	saveLines    int          // nRows + saveLines is the scrolling area limitation
+	nRows        int          // rows number per window
 	margin       bool         // are there (non-default) top/bottom margins set?
-	cells        []Cell       // the cells
-	cursor       Cursor       // current cursor style, color and position
-	selection    Rect         // selection area
 	snapTo       SelectSnapTo // selection state
-	damage       Damage       // damage scope
 }
 
 // create a framebuffer, with zero saveLines.
@@ -704,7 +704,7 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 		}
 	}
 
-	if fb.selection != x.selection || fb.snapTo != x.snapTo || fb.damage != fb.damage {
+	if fb.selection != x.selection || fb.snapTo != x.snapTo || fb.damage != x.damage {
 		if trace {
 			msg := fmt.Sprintf("selection=(%v,%v), snapTo=(%v,%v), damage=(%v,%v)",
 				fb.selection, x.selection, fb.snapTo, x.snapTo, fb.damage, x.damage)
@@ -759,10 +759,7 @@ func (fb *Framebuffer) reachMaxRows(lastRows int) bool {
 }
 
 func (fb *Framebuffer) isFullFrame(lastRows int, oldR int, newR int) bool {
-	if fb.getRowsGap(oldR, newR)+lastRows == fb.marginBottom-1 {
-		return true
-	}
-	return false
+	return fb.getRowsGap(oldR, newR)+lastRows == fb.marginBottom-1
 }
 
 func (fb *Framebuffer) getRowsGap(oldR int, newR int) (gap int) {

@@ -182,7 +182,6 @@ func TestNewFrame_PutRow(t *testing.T) {
 				for i := range v.expectRow {
 					if v.expectRow[i] != gotRow[skipHeader+i] {
 						t.Logf("%q col=%d expect=%q, got=%q\n", v.label, i-6, v.expectRow[i], gotRow[skipHeader+i])
-
 					}
 				}
 				t.Errorf("%q expect \n%s, got \n%s\n", v.label, v.expectRow, gotRow)
@@ -399,22 +398,36 @@ func TestNewFrame_TitleStack(t *testing.T) {
 		oldStack    []string
 		expectSeq   string
 	}{
-		{"no stack", true,
+		{
+			"no stack", true,
 			[]string{},
-			[]string{}, ""},
-		{"new stack = old stack", true,
+			[]string{},
+			"",
+		},
+		{
+			"new stack = old stack", true,
 			[]string{"a1", "a2"},
-			[]string{"a1", "a2"}, ""},
-		{"new stack > old stack", true,
+			[]string{"a1", "a2"},
+			"",
+		},
+		{
+			"new stack > old stack", true,
 			[]string{"a", "b", "c"},
-			[]string{"a", "b"}, "\x1b]2;c\a\x1b[22;0t"},
-		{"new stack < old stack", true,
+			[]string{"a", "b"},
+			"\x1b]2;c\a\x1b[22;0t",
+		},
+		{
+			"new stack < old stack", true,
 			[]string{"t1", "t2"},
-			[]string{"t1", "t2", "t3"}, "\x1b[23;0t\x1b]2;t2\a"},
-		{"max stack with diff", true,
+			[]string{"t1", "t2", "t3"},
+			"\x1b[23;0t\x1b]2;t2\a",
+		},
+		{
+			"max stack with diff", true,
 			[]string{"w1", "w2", "w3", "w4", "w5", "w6", "w7", "w8", "w9"},
 			[]string{"w0", "w1", "w2", "w3", "w4", "w5", "w6", "w7", "w8"},
-			"\x1b]2;w9\a\x1b[22;0t"},
+			"\x1b]2;w9\a\x1b[22;0t",
+		},
 	}
 
 	oldE := NewEmulator3(80, 40, 40)
@@ -577,10 +590,12 @@ func TestNewFrame_Margin(t *testing.T) {
 		seq         string
 		expectSeq   string
 	}{
-		{"already initialized, new has margin", true, true, "\x1B[2;6r",
+		{
+			"already initialized, new has margin", true, true, "\x1B[2;6r",
 			"\x1b[2;6r\x1b[K\x1b[?25l\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\x1b[1;1H\x1b[?25h",
 		},
-		{"already initialized, old has margin", true, false, "\x1B[2;6r",
+		{
+			"already initialized, old has margin", true, false, "\x1B[2;6r",
 			"\x1b[r\x1b[K\x1b[?25l\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\x1b[1;1H\x1b[?25h",
 		},
 	}
@@ -1088,7 +1103,8 @@ func TestPutRow(t *testing.T) {
 		"develop  proj     s.log    s.time\r\n",
 		"ide@openrc-nvide:~ $ cd develop/\r\n",
 		"ide@openrc-nvide:~/develop $ ls -al\r\n",
-		"done\r\n"}
+		"done\r\n",
+	}
 	postSeq := []string{
 		"ide@openrc-nvide:~/develop $ ls -al\r\n",
 		"total 972\r\n",
@@ -1115,8 +1131,10 @@ func TestPutRow(t *testing.T) {
 		{"blank new row zero start", 4, 0, "\x1b[?25l\n\x1b[K"},
 		{"blank new row", 4, 4, "\x1b[?25l\r\n\x1b[K"},
 		{"old row is longer than new one", 8, 0, "\x1b[?25l\n-rwx------   demo.key\x1b[K"},
-		{"new row is longer than old one", 9, 0,
-			"\x1b[?25l\n-rw-r--r--    1 ide\x1b[6X\x1b[6Cdevelop\x1b[8X\x1b[8Cgo.work\x1b[K"},
+		{
+			"new row is longer than old one", 9, 0,
+			"\x1b[?25l\n-rw-r--r--    1 ide\x1b[6X\x1b[6Cdevelop\x1b[8X\x1b[8Cgo.work\x1b[K",
+		},
 	}
 
 	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
@@ -1160,7 +1178,7 @@ func TestPutRow(t *testing.T) {
 			wrap := false
 
 			// run it
-			wrap = d.putRow2(false, frame, newE, newRow, frameY, oldRow, wrap)
+			d.putRow2(false, frame, newE, newRow, frameY, oldRow, wrap)
 
 			// print info
 			util.Logger.Debug("TestPutRow", "After:  ", fmt.Sprintf("fs.cursor=(%2d,%2d)", frame.cursorY, frame.cursorX))
@@ -1200,7 +1218,6 @@ func TestCalculateRows(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-
 			// prepare for condition
 			oldE.posY = v.oldY
 			oldE.posX = v.oldX
@@ -1276,7 +1293,6 @@ func TestDisplayClone(t *testing.T) {
 */
 
 func TestEqualSlice(t *testing.T) {
-
 	a := []int{1, 2, 3, 4}
 	b := []int{1, 2, 3, 4}
 
@@ -1336,7 +1352,6 @@ func BenchmarkStringBuilder(b *testing.B) {
 }
 
 func BenchmarkAppend(b *testing.B) {
-
 	var sb strings.Builder
 
 	frame := new(FrameState)
@@ -1351,7 +1366,6 @@ func BenchmarkAppend(b *testing.B) {
 }
 
 func BenchmarkAppendx(b *testing.B) {
-
 	var sb strings.Builder
 
 	frame := new(FrameState)

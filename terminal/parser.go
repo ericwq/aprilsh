@@ -60,34 +60,28 @@ var strInputState = [...]string{
 }
 
 type Parser struct {
-	inputState  int    // parser state
-	ch          rune   // currrent rune
-	chs         []rune // current graphemes
-	lastChs     []rune // last graphemes
-	handleReady bool   // handler is ready
-
-	// numeric parameters
-	inputOps  []int // numeric parameters
-	nInputOps int   // numeric parameter number
-	maxEscOps int
-
 	// history, raw handler sequence
 	history *list.List
 
-	argBuf      strings.Builder    // string parameter
-	compatLevel CompatibilityLevel // independent from compatLevel in emulator
+	argBuf     strings.Builder // string parameter
+	lastChs    []rune          // last graphemes
+	inputOps   []int           // numeric parameters
+	chs        []rune          // current graphemes
+	inputState int             // parser state
+	nInputOps  int             // numeric parameter number
+	maxEscOps  int
+	ch         rune // currrent rune
 
 	// select character set destination and mode
 	scsDst rune
 	scsMod rune
 
+	handleReady bool               // handler is ready
+	compatLevel CompatibilityLevel // independent from compatLevel in emulator
+
 	// G0~G3 character set compatiable mode, default false
 	vtMode bool
 
-	// logger
-	// logE     *log.Logger
-	// logT     *log.Logger
-	// logU     *log.Logger
 	logTrace bool
 }
 
@@ -194,7 +188,6 @@ func (p *Parser) traceNormalInput() {
 
 // log the unhandled input and reset the state to normal
 func (p *Parser) unhandledInput() {
-
 	util.Logger.Warn("Unhandled input:",
 		"input", p.historyString(),
 		"state", strInputState[p.inputState],

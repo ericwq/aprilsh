@@ -6,19 +6,19 @@ package terminal
 
 // only in vtMode, charset is enabled, otherwise UTF-8 is choosed.
 type CharsetState struct {
-	// indicate vtMode charset or not, default false
-	vtMode bool
-
 	// charset g0,g1,g2,g3
 	g [4]*map[byte]rune
 
 	// Locking shift states (index into g[]):
-	gl int // G0 in GL
-	gr int // G2 in GR
+	gl int
+	gr int
 
 	// Single shift state (0 if none active):
 	// 0 - not active; 2: G2 in GL; 3: G3 in GL
 	ss int
+
+	// indicate vtMode charset or not, default false
+	vtMode bool
 }
 
 func (cs *CharsetState) Equal(x *CharsetState) bool {

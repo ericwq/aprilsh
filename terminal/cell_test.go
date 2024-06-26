@@ -70,20 +70,20 @@ func TestCellComparable(t *testing.T) {
 
 func TestCellCompare(t *testing.T) {
 	tc := []struct {
-		ch0          rune
 		ansiBgColor0 int
-		ch1          rune
 		ansiBgColor1 int
+		ch0          rune
+		ch1          rune
 		ret          bool
 	}{
-		{'a', 0, 'b', 0, false},
-		{'i', 0, 'i', 0, true},
-		{'c', 1, 'c', 1, true},
-		{'中', 8, '中', 8, true},
-		{'j', 0, 'j', 0, true},
-		{'h', 0, 'h', 0, true},
-		{'国', 3, '国', 0, false},
-		{'e', 0, 'e', 7, false},
+		{0, 0, 'b', 'a', false},
+		{0, 0, 'i', 'i', true},
+		{1, 1, 'c', 'c', true},
+		{8, 8, '中', '中', true},
+		{0, 0, 'j', 'j', true},
+		{0, 0, 'h', 'h', true},
+		{3, 0, '国', '国', false},
+		{0, 7, 'e', 'e', false},
 	}
 
 	var cell0, cell1 Cell
@@ -222,13 +222,13 @@ func TestSetUnderline(t *testing.T) {
 
 func TestCellPrintGrapheme(t *testing.T) {
 	tc := []struct {
+		want     string
 		ch       rune
 		fallback bool
-		want     string
 	}{
-		{-1, true, " "},   // print empty contents
-		{'a', false, "a"}, // print regular english contents
-		{'中', false, "中"}, // print regular chinese contents
+		{" ", -1, true},   // print empty contents
+		{"a", 'a', false}, // print regular english contents
+		{"中", '中', false}, // print regular chinese contents
 	}
 	var cell Cell
 	var base Cell

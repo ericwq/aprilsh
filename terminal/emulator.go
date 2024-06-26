@@ -15,74 +15,66 @@ import (
 // TODO consider add InputSpec, InputSpecTable: mapping of a certain VtKey to a sequence of input characters
 // TODO consider add RefreshHandlerFn, OscHandlerFn, BellHandlerFn
 
+// // Terminal state - N.B.: keep resetTerminal () in sync with this!
 type Emulator struct {
-	nRows        int          // replicated by NewFrame(),
-	nCols        int          // replicated by NewFrame(),
-	cf           *Framebuffer // replicated by NewFrame(), current frame buffer
-	frame_pri    Framebuffer  // normal screen buffer
-	frame_alt    Framebuffer  // alternate screen buffer
-	posX         int          // replicated by NewFrame(), current cursor cols position (on-screen)
-	posY         int          // replicated by NewFrame(), current cursor rows position (on-screen)
-	marginTop    int          // replicated by NewFrame(), current margin top (screen view)
-	marginBottom int          // replicated by NewFrame(), current margin bottom (screen view)
-	lastCol      bool
-
-	attrs Cell  // replicated by NewFrame() partially, prototype cell with current attributes
-	fg    Color // TODO: should we keep this?
-	bg    Color // TODO: should we keep this?
-
-	parser *Parser
-
-	// Terminal state - N.B.: keep resetTerminal () in sync with this!
-	reverseVideo        bool // replicated by NewFrame(),
-	hasFocus            bool // default true
-	showCursorMode      bool // replicated by NewFrame(), default true, ds.cursor_visible
-	altScreenBufferMode bool // replicated by NewFrame(), , Alternate Screen Buffer
-	altScreen1049       bool // DECSET and DECRST 1049, default false
-	autoWrapMode        bool // replicated by NewFrame(), default:true
-	autoNewlineMode     bool // replicated by NewFrame(), LNM
-	keyboardLocked      bool // replicated by NewFrame(),
-	insertMode          bool // replicated by NewFrame(),
-	bkspSendsDel        bool // replicated by NewFrame(), default:true, backspace send delete
-	localEcho           bool // replicated by NewFrame(),
-	bracketedPasteMode  bool // replicated by NewFrame(),
-	altScrollMode       bool // replicated by NewFrame(),
-	altSendsEscape      bool // replicated by NewFrame(), default true
-	modifyOtherKeys     uint // replicated by NewFrame(),
-
-	horizMarginMode bool // replicated by NewFrame(), left and right margins support
-	nColsEff        int  // replicated by NewFrame(), right margins
-	hMargin         int  // replicated by NewFrame(), left margins
-
-	tabStops []int // replicated by NewFrame(), tab stop positions
-
-	compatLevel   CompatibilityLevel // replicated by NewFrame(), VT52, VT100, VT400. default:VT400
-	cursorKeyMode CursorKeyMode      // replicated by NewFrame(), default:ANSI: Application(true), ANSI(false)
-	keypadMode    KeypadMode         // replicated by NewFrame(), default:Normal
-	originMode    OriginMode         // replicated by NewFrame(), default:Absolute, ScrollingRegion(true), Absolute(false)
-	colMode       ColMode            // replicated by NewFrame(), default:80, column mode 80 or 132, just for compatibility
-
-	charsetState CharsetState // for forward compatibility
-
-	savedCursor_SCO     SavedCursor_SCO // replicated by NewFrame(), SCO console cursor state
-	savedCursor_DEC_pri SavedCursor_DEC
-	savedCursor_DEC_alt SavedCursor_DEC
+	parser              *Parser
+	cf                  *Framebuffer     // replicated by NewFrame(), current frame buffer
+	selectionStore      map[rune]string  // local storage buffer for selection data in sequence OSC 52
 	savedCursor_DEC     *SavedCursor_DEC // replicated by NewFrame(),
+	windowTitle         string           // replicated by NewFrame()
+	iconLabel           string           // replicated by NewFrame()
+	selectionData       string           // replicated by NewFrame(), store the selection data for OSC 52
+	terminalToHost      strings.Builder  // used for terminal write back
+	tabStops            []int            // replicated by NewFrame(), tab stop positions
+	windowTitleStack    []string         // for XTWINOPS
+	charsetState        CharsetState     // for forward compatibility
+	attrs               Cell             // replicated by NewFrame() partially, prototype cell with current attributes
+	savedCursor_DEC_alt SavedCursor_DEC
+	savedCursor_DEC_pri SavedCursor_DEC
 
-	mouseTrk MouseTrackingState // replicated by NewFrame()
+	frame_alt Framebuffer // alternate screen buffer
+	frame_pri Framebuffer // normal screen buffer
 
-	terminalToHost strings.Builder // used for terminal write back
-	user           UserInput       // TODO consider how to change it.
-	selectionStore map[rune]string // local storage buffer for selection data in sequence OSC 52
-	selectionData  string          // replicated by NewFrame(), store the selection data for OSC 52
+	savedCursor_SCO SavedCursor_SCO    // replicated by NewFrame(), SCO console cursor state
+	bg              Color              // TODO: should we keep this?
+	lastRows        int                // last processed rows
+	bellCount       int                // replicated by NewFrame()
+	posX            int                // replicated by NewFrame(), current cursor cols position (on-screen)
+	posY            int                // replicated by NewFrame(), current cursor rows position (on-screen)
+	nRows           int                // replicated by NewFrame(),
+	nCols           int                // replicated by NewFrame(),
+	marginTop       int                // replicated by NewFrame(), current margin top (screen view)
+	marginBottom    int                // replicated by NewFrame(), current margin bottom (screen view)
+	user            UserInput          // TODO consider how to change it.
+	hMargin         int                // replicated by NewFrame(), left margins
+	modifyOtherKeys uint               // replicated by NewFrame(),
+	fg              Color              // TODO: should we keep this?
+	nColsEff        int                // replicated by NewFrame(), right margins
+	mouseTrk        MouseTrackingState // replicated by NewFrame()
 
-	iconLabel        string   // replicated by NewFrame()
-	windowTitle      string   // replicated by NewFrame()
-	bellCount        int      // replicated by NewFrame()
-	titleInitialized bool     // replicated by NewFrame()
-	windowTitleStack []string // for XTWINOPS
+	altScreenBufferMode bool          // replicated by NewFrame(), , Alternate Screen Buffer
+	horizMarginMode     bool          // replicated by NewFrame(), left and right margins support
+	cursorKeyMode       CursorKeyMode // replicated by NewFrame(), default:ANSI: Application(true), ANSI(false)
+	keypadMode          KeypadMode    // replicated by NewFrame(), default:Normal
+	originMode          OriginMode    // replicated by NewFrame(), default:Absolute, ScrollingRegion(true), Absolute(false)
+	colMode             ColMode       // replicated by NewFrame(), default:80, column mode 80 or 132, just for compatibility
+	showCursorMode      bool          // replicated by NewFrame(), default true, ds.cursor_visible
 
-	lastRows int // last processed rows
+	hasFocus           bool               // default true
+	reverseVideo       bool               // replicated by NewFrame(),
+	altSendsEscape     bool               // replicated by NewFrame(), default true
+	altScreen1049      bool               // DECSET and DECRST 1049, default false
+	compatLevel        CompatibilityLevel // replicated by NewFrame(), VT52, VT100, VT400. default:VT400
+	altScrollMode      bool               // replicated by NewFrame(),
+	bracketedPasteMode bool               // replicated by NewFrame(),
+	localEcho          bool               // replicated by NewFrame(),
+	bkspSendsDel       bool               // replicated by NewFrame(), default:true, backspace send delete
+	insertMode         bool               // replicated by NewFrame(),
+	keyboardLocked     bool               // replicated by NewFrame(),
+	titleInitialized   bool               // replicated by NewFrame()
+	autoNewlineMode    bool               // replicated by NewFrame(), LNM
+	autoWrapMode       bool               // replicated by NewFrame(), default:true
+	lastCol            bool
 }
 
 func NewEmulator3(nCols, nRows, saveLines int) *Emulator {
@@ -825,17 +817,11 @@ func (emu *Emulator) Clone() *Emulator {
 	copy(clone.tabStops, emu.tabStops)
 
 	// clone charsetState
-	for i := range emu.charsetState.g {
-		clone.charsetState.g[i] = emu.charsetState.g[i]
-	}
+	clone.charsetState.g = emu.charsetState.g
 
 	// clone savedCursor_DEC, savedCursor_DEC_pri, savedCursor_DEC_alt
-	for i := range emu.savedCursor_DEC_alt.charsetState.g {
-		clone.savedCursor_DEC_alt.charsetState.g[i] = emu.savedCursor_DEC_alt.charsetState.g[i]
-	}
-	for i := range emu.savedCursor_DEC_pri.charsetState.g {
-		clone.savedCursor_DEC_pri.charsetState.g[i] = emu.savedCursor_DEC_pri.charsetState.g[i]
-	}
+	clone.savedCursor_DEC_alt.charsetState.g = emu.savedCursor_DEC_alt.charsetState.g
+	clone.savedCursor_DEC_pri.charsetState.g = emu.savedCursor_DEC_pri.charsetState.g
 	if emu.savedCursor_DEC == &emu.savedCursor_DEC_alt {
 		clone.savedCursor_DEC = &clone.savedCursor_DEC_alt
 	} else {

@@ -263,7 +263,7 @@ func TestAbs(t *testing.T) {
 		}
 	}
 
-	if 23.4 != Abs(-23.4) {
+	if Abs(-23.4) != 23.4 {
 		t.Errorf("#test Abs() should return positive value. %f\n", Abs(-23.4))
 	}
 }

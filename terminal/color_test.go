@@ -47,39 +47,38 @@ func TestColorValues(t *testing.T) {
 }
 
 /*
-func TestColorFitting(t *testing.T) {
-	pal := []Color{}
-	for i := 0; i < 255; i++ {
-		pal = append(pal, PaletteColor(i))
-	}
+	func TestColorFitting(t *testing.T) {
+		pal := []Color{}
+		for i := 0; i < 255; i++ {
+			pal = append(pal, PaletteColor(i))
+		}
 
-	// Exact color fitting on ANSI colors
-	for i := 0; i < 7; i++ {
-		if FindColor(PaletteColor(i), pal[:8]) != PaletteColor(i) {
-			t.Errorf("Color ANSI fit fail at %d", i)
+		// Exact color fitting on ANSI colors
+		for i := 0; i < 7; i++ {
+			if FindColor(PaletteColor(i), pal[:8]) != PaletteColor(i) {
+				t.Errorf("Color ANSI fit fail at %d", i)
+			}
 		}
-	}
-	// Grey is closest to Silver
-	if FindColor(PaletteColor(8), pal[:8]) != PaletteColor(7) {
-		t.Errorf("Grey does not fit to silver")
-	}
-	// Color fitting of upper 8 colors.
-	for i := 9; i < 16; i++ {
-		if FindColor(PaletteColor(i), pal[:8]) != PaletteColor(i%8) {
-			t.Errorf("Color fit fail at %d", i)
+		// Grey is closest to Silver
+		if FindColor(PaletteColor(8), pal[:8]) != PaletteColor(7) {
+			t.Errorf("Grey does not fit to silver")
 		}
-	}
-	// Imperfect fit
-	if FindColor(ColorOrangeRed, pal[:16]) != ColorRed ||
-		FindColor(ColorAliceBlue, pal[:16]) != ColorWhite ||
-		FindColor(ColorPink, pal) != Color217 ||
-		FindColor(ColorSienna, pal) != Color173 ||
-		FindColor(GetColor("#00FD00"), pal) != ColorLime {
-		t.Errorf("Imperfect color fit")
-	}
+		// Color fitting of upper 8 colors.
+		for i := 9; i < 16; i++ {
+			if FindColor(PaletteColor(i), pal[:8]) != PaletteColor(i%8) {
+				t.Errorf("Color fit fail at %d", i)
+			}
+		}
+		// Imperfect fit
+		if FindColor(ColorOrangeRed, pal[:16]) != ColorRed ||
+			FindColor(ColorAliceBlue, pal[:16]) != ColorWhite ||
+			FindColor(ColorPink, pal) != Color217 ||
+			FindColor(ColorSienna, pal) != Color173 ||
+			FindColor(GetColor("#00FD00"), pal) != ColorLime {
+			t.Errorf("Imperfect color fit")
+		}
 
 }
-
 */
 func TestColorNameLookup(t *testing.T) {
 	values := []struct {
@@ -121,34 +120,35 @@ func TestColorRGB(t *testing.T) {
 }
 
 /*
-func TestFromImageColor(t *testing.T) {
-	red := ic.RGBA{0xFF, 0x00, 0x00, 0x00}
-	white := ic.Gray{0xFF}
-	cyan := ic.CMYK{0xFF, 0x00, 0x00, 0x00}
+	func TestFromImageColor(t *testing.T) {
+		red := ic.RGBA{0xFF, 0x00, 0x00, 0x00}
+		white := ic.Gray{0xFF}
+		cyan := ic.CMYK{0xFF, 0x00, 0x00, 0x00}
 
-	if hex := FromImageColor(red).Hex(); hex != 0xFF0000 {
-		t.Errorf("%v is not 0xFF0000", hex)
+		if hex := FromImageColor(red).Hex(); hex != 0xFF0000 {
+			t.Errorf("%v is not 0xFF0000", hex)
+		}
+		if hex := FromImageColor(white).Hex(); hex != 0xFFFFFF {
+			t.Errorf("%v is not 0xFFFFFF", hex)
+		}
+		if hex := FromImageColor(cyan).Hex(); hex != 0x00FFFF {
+			t.Errorf("%v is not 0x00FFFF", hex)
+		}
 	}
-	if hex := FromImageColor(white).Hex(); hex != 0xFFFFFF {
-		t.Errorf("%v is not 0xFFFFFF", hex)
-	}
-	if hex := FromImageColor(cyan).Hex(); hex != 0x00FFFF {
-		t.Errorf("%v is not 0x00FFFF", hex)
-	}
-}
 */
+
 func TestColorString(t *testing.T) {
 	tc := []struct {
 		name  string
-		color Color
 		want  string
+		color Color
 		isRGB bool
 	}{
-		{"RGB     color string", NewRGBColor(0x35, 0x33, 0x45), "rgb:3535/3333/4545", true},
-		{"palette color string", PaletteColor(2), "rgb:0000/8080/0000", false},
-		{"invalid color string", Color(2), "", false},
-		{"outof range palette color string", Color(379 | ColorValid), "", false}, // any number >378 is undefined color index
-		{"#345678 color string", GetColor("#345678"), "rgb:3434/5656/7878", true},
+		{"RGB     color string", "rgb:3535/3333/4545", NewRGBColor(0x35, 0x33, 0x45), true},
+		{"palette color string", "rgb:0000/8080/0000", PaletteColor(2), false},
+		{"invalid color string", "", Color(2), false},
+		{"outof range palette color string", "", Color(379 | ColorValid), false}, // any number >378 is undefined color index
+		{"#345678 color string", "rgb:3434/5656/7878", GetColor("#345678"), true},
 	}
 
 	for _, v := range tc {
@@ -190,14 +190,14 @@ func TestColorIndex(t *testing.T) {
 func TestColorName(t *testing.T) {
 	tc := []struct {
 		name  string
-		color Color
 		want  string
+		color Color
 	}{
-		{"Balck        ", ColorBlack, "black"},
-		{"Slate grey   ", ColorSlateGray, "slategrey"},
-		{"Slate grey   ", ColorSlateGray, "slategray"},
-		{"Indigo       ", ColorIndigo, "indigo"},
-		{"Absense color", Color108, ""},
+		{"Balck        ", "black", ColorBlack},
+		{"Slate grey   ", "slategrey", ColorSlateGray},
+		{"Slate grey   ", "slategray", ColorSlateGray},
+		{"Indigo       ", "indigo", ColorIndigo},
+		{"Absense color", "", Color108},
 	}
 
 	for _, v := range tc {
