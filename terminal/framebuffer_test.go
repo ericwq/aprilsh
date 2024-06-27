@@ -31,26 +31,26 @@ type Row struct {
 func TestResize(t *testing.T) {
 	tc := []struct {
 		name   string
+		rows   []Row
 		w0, h0 int
 		w1, h1 int
-		rows   []Row
 	}{
-		{"shrink width and height", 80, 40, 50, 30, []Row{
+		{"shrink width and height", []Row{
 			{109, 50, 'y'},
 			{70, 50, 'y'},
 			{69, 50, 'x'},
 			{30, 50, 'x'},
 			{29, 50, 'z'},
 			{0, 50, 'z'},
-		}},
-		{"expend width and height", 60, 30, 80, 40, []Row{
+		}, 80, 40, 50, 30},
+		{"expend width and height", []Row{
 			{0, 40, 'z'},
 			{29, 40, 'z'},
 			{40, 40, 'x'},
 			{69, 40, 'x'},
 			{70, 40, 'y'},
 			{99, 40, 'y'},
-		}},
+		}, 60, 30, 80, 40},
 	}
 
 	for _, v := range tc {
@@ -203,20 +203,20 @@ func TestPageUpDownBottom(t *testing.T) {
 
 	tc := []struct {
 		name             string
-		viewOffset       int    // the parameter for pageUp or pageDown
 		expect           string // expect cell content
+		viewOffset       int    // the parameter for pageUp or pageDown
 		expectViewOffset int    // the result of viewOffset
 		pageType         int    // call pageUp:0 , pageDown:1 or pageToBottom:2
 	}{
-		{"from  0 to  1", 1, "y", 1, 0},        // y area bottom edge
-		{"from  1 to 40", 39, "y", 40, 0},      // y area top edge
-		{"from 40 to 41", 1, "x", 41, 0},       // x area bottom edge
-		{"from 41 to 80", 39, "x", 80, 0},      // x area top edge
-		{"from 80 to 41", 39, "x", 41, 1},      // x area bottom edge
-		{"from 41 to 40", 1, "y", 40, 1},       // y area top edge
-		{"from 40 to  1", 39, "y", 1, 1},       // y area bottom edge
-		{"page to bottom", 0, "z", 0, 2},       // x area top edge
-		{"page to bottom again", 0, "z", 0, 2}, // x area top edge again
+		{"from  0 to  1", "y", 1, 1, 0},        // y area bottom edge
+		{"from  1 to 40", "y", 39, 40, 0},      // y area top edge
+		{"from 40 to 41", "x", 1, 41, 0},       // x area bottom edge
+		{"from 41 to 80", "x", 39, 80, 0},      // x area top edge
+		{"from 80 to 41", "x", 39, 41, 1},      // x area bottom edge
+		{"from 41 to 40", "y", 1, 40, 1},       // y area top edge
+		{"from 40 to  1", "y", 39, 1, 1},       // y area bottom edge
+		{"page to bottom", "z", 0, 0, 2},       // x area top edge
+		{"page to bottom again", "z", 0, 0, 2}, // x area top edge again
 	}
 
 	// fmt.Printf("%s\n", printCells(fb))
@@ -510,40 +510,43 @@ func TestGetSelectedUtf8(t *testing.T) {
 	tc := []struct {
 		label     string
 		seq       string
+		expect    string
 		selection Rect
 		snapTo    SelectSnapTo
-		expect    string
 		ok        bool
 	}{
 		{
 			"english text", "\x1B[21;11Hfirst line  \x0D\x0C    second line   \x0D\x0C    3rd line    \x0D\x0C\x0D\x0C\x0D\x0C",
+			"first line\n    second line\n    3rd line",
 			Rect{Point{11, 20}, Point{79, 22}, false},
 			SelectSnapTo_Word,
-			"first line\n    second line\n    3rd line", true,
+			true,
 		},
 		{
-			"empty selection area", "",
+			"empty selection area", "", "",
 			Rect{Point{0, 0}, Point{0, 0}, false},
 			SelectSnapTo_Word,
-			"", false,
+			false,
 		},
 		{
 			"extreme long line, selection area", "\x1B[31;61Hextreme long line will be wrapped.",
+			"extreme long line will be wrapped.",
 			Rect{Point{60, 30}, Point{80, 31}, false},
 			SelectSnapTo_Word,
-			"extreme long line will be wrapped.", true,
+			true,
 		},
 		{
-			"one row selection area", "\x1B[32;21Hone row selection area",
+			"one row selection area", "\x1B[32;21Hone row selection area", "one row selection area",
 			Rect{Point{14, 31}, Point{80, 31}, false},
 			SelectSnapTo_Word,
-			"one row selection area", true,
+			true,
 		},
 		{
 			"rectangular selection area", "\x1B[35;21Hrectangular \x0D\x0Cselection area",
+			"                    rectangular\nselection area",
 			Rect{Point{0, 34}, Point{80, 35}, true},
 			SelectSnapTo_Line,
-			"                    rectangular\nselection area", true,
+			true,
 		},
 	}
 	emu := NewEmulator3(80, 40, 0)
@@ -551,7 +554,7 @@ func TestGetSelectedUtf8(t *testing.T) {
 	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
 	// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
-	for i, v := range tc {
+	for _, v := range tc {
 		// print the stream to the screen
 		emu.HandleStream(v.seq)
 
@@ -559,13 +562,13 @@ func TestGetSelectedUtf8(t *testing.T) {
 		emu.cf.selection = v.selection
 		emu.cf.setSelectSnapTo(v.snapTo)
 
-		if i == 4 {
-			// fmt.Printf("%s\n", printCells(emu.cf, 34, 35))
+		// if i == 4 {
+		// fmt.Printf("%s\n", printCells(emu.cf, 34, 35))
 
-			// selection := emu.cf.getSnappedSelection()
-			// fmt.Printf("#test getSelectedUtf8() snapTo=%d\n", emu.cf.snapTo)
-			// fmt.Printf("#test getSelectedUtf8() selection=%s\n", &selection)
-		}
+		// selection := emu.cf.getSnappedSelection()
+		// fmt.Printf("#test getSelectedUtf8() snapTo=%d\n", emu.cf.snapTo)
+		// fmt.Printf("#test getSelectedUtf8() selection=%s\n", &selection)
+		// }
 
 		ok, got := emu.cf.getSelectedUtf8()
 		if v.expect != got || v.ok != ok {
@@ -619,13 +622,13 @@ func TestGetCursor(t *testing.T) {
 func TestDamageDeltaCopy(t *testing.T) {
 	tc := []struct {
 		label  string
+		expect string
 		start  int
 		count  int
-		expect string
 	}{
-		{"no intersection", 21, 6, ""},
-		{"copy range > damage area", 3, 20, "damage delta"},
-		{"copy range < damage area", 12, 17, "delta"},
+		{"no intersection", "", 21, 6},
+		{"copy range > damage area", "damage delta", 3, 20},
+		{"copy range < damage area", "delta", 12, 17},
 	}
 	rawSeq := "\x1B[1;6Hdamage delta copy"
 
@@ -694,7 +697,6 @@ func TestGetPhysicalRow(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-
 			// prepare for test
 			fb, _, _ := NewFramebuffer3(80, 40, 80)
 			fb.scrollHead = v.scrollHead
@@ -735,7 +737,6 @@ func TestASBRow(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-
 			// prepare for test
 			fb, _, _ := NewFramebuffer3(120, 20, 0)
 			fb.scrollHead = v.scrollHead
@@ -755,16 +756,16 @@ func TestFramebufferEqual(t *testing.T) {
 	tc := []struct {
 		label      string
 		seq1, seq2 string
-		expect     bool
 		expectStr  []string
+		expect     bool
 	}{
-		{"diff size", "", "", false, []string{"saveLines="}},
-		{"scroll up 5", "\x1B[5S", "", false, []string{"scrollHead="}},
-		{"set cursor blink style", "\x1B[5 q", "", false, []string{"cursor.showStyle="}},
-		{"change viewOffset", "", "", false, []string{"viewOffset="}},
-		{"diff content", "world", "w0rld", false, []string{"newRow", "oldRow"}},
-		{"diff content 0 saveLines", "world", "w0rld", false, []string{"newRow", "oldRow"}},
-		{"set diff selection", "", "", false, []string{"selection="}},
+		{"diff size", "", "", []string{"saveLines="}, false},
+		{"scroll up 5", "\x1B[5S", "", []string{"scrollHead="}, false},
+		{"set cursor blink style", "\x1B[5 q", "", []string{"cursor.showStyle="}, false},
+		{"change viewOffset", "", "", []string{"viewOffset="}, false},
+		{"diff content", "world", "w0rld", []string{"newRow", "oldRow"}, false},
+		{"diff content 0 saveLines", "world", "w0rld", []string{"newRow", "oldRow"}, false},
+		{"set diff selection", "", "", []string{"selection="}, false},
 	}
 
 	var output strings.Builder
@@ -848,12 +849,15 @@ func TestOutputRow(t *testing.T) {
 	tc := []struct {
 		label  string
 		seq    string
+		expect string
 		rowIdx int
 		nCols  int
-		expect string
 	}{
-		{"chinese row", "中文输出", 0, 80,
-			"[  0]中文输出                                                                        "},
+		{
+			"chinese row", "中文输出",
+			"[  0]中文输出                                                                        ",
+			0, 80,
+		},
 	}
 
 	var output strings.Builder

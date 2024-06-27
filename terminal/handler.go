@@ -205,11 +205,10 @@ var strHandlerID = [...]string{
 
 // Handler is the outcome of parsering input, it can be used to perform control sequence on emulator.
 type Handler struct {
-	// name     string              // the name of Handler. TODO consider remove this field
-	id       int                 // handler ID
-	sequence string              // control sequence
-	ch       rune                // the last byte
 	handle   func(emu *Emulator) // handle function that will perform control sequnce on emulator
+	sequence string              // control sequence
+	id       int                 // handler ID
+	ch       rune                // the last byte
 }
 
 func (h *Handler) GetId() int {
@@ -1369,7 +1368,7 @@ func hdl_osc_0_1_2(emu *Emulator, cmd int, arg string) {
 //
 //	The dynamic colors can also be reset to their default (resource) values:
 //	  Ps = 1 1 2  ⇒  Reset text cursor color.
-func hdl_osc_112(emu *Emulator, cmd int, arg string) {
+func hdl_osc_112(emu *Emulator, _ int, _ string) {
 	emu.cf.cursor.color = ColorDefault
 }
 
@@ -1845,10 +1844,8 @@ func sclCompatLevel(Pl int) (rcl CompatibilityLevel) {
 	switch Pl {
 	case 61:
 		rcl = CompatLevel_VT100
-		break
 	case 62, 63, 64, 65:
 		rcl = CompatLevel_VT400
-		break
 	}
 	return
 }
@@ -1965,7 +1962,6 @@ func hdl_csi_xtmodkeys(emu *Emulator, params []int) {
 				// emu.logI.Printf("XTMODKEYS: illegal argument for modifyOtherKeys: %d\n", params[1])
 				util.Logger.Warn("XTMODKEYS: illegal argument for modifyOtherKeys",
 					"params", params[1])
-
 			}
 		}
 	}

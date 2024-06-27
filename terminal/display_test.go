@@ -21,19 +21,19 @@ import (
 
 func TestDisplay(t *testing.T) {
 	tc := []struct {
-		label        string
-		useEnv       bool
-		termEnv      string
 		err          error
+		label        string
+		termEnv      string
+		useEnv       bool
 		hasECH       bool
 		hasBCE       bool
 		supportTitle bool
 	}{
-		{"useEnvironment, base TERM", true, "alacritty", nil, true, true, true},
-		{"useEnvironment, base TERM, title support", true, "xterm", nil, true, true, true},
-		{"useEnvironment, dynamic TERM", true, "sun", errors.New("terminal entry not found"), true, true, false}, // we choose sun, because sun fade out from the market
-		{"useEnvironment, wrong TERM", true, "stranger", errors.New("infocmp: couldn't open terminfo file"), false, false, false},
-		{"not useEnvironment ", false, "anything", nil, true, true, true},
+		{nil, "useEnvironment, base TERM", "alacritty", true, true, true, true},
+		{nil, "useEnvironment, base TERM, title support", "xterm", true, true, true, true},
+		{errors.New("terminal entry not found"), "useEnvironment, dynamic TERM", "sun", true, true, true, false}, // we choose sun, because sun fade out from the market
+		{errors.New("infocmp: couldn't open terminfo file"), "useEnvironment, wrong TERM", "stranger", true, false, false, false},
+		{nil, "not useEnvironment ", "anything", false, true, true, true},
 	}
 
 	for _, v := range tc {
@@ -82,65 +82,75 @@ func TestOpenClose(t *testing.T) {
 func TestNewFrame_PutRow(t *testing.T) {
 	tc := []struct {
 		label       string
+		mix         string
+		expectSeq   string
+		expectRow   string
+		row         int
 		bgRune1     rune
 		bgRune2     rune
-		mix         string
 		initialized bool
-		expectSeq   string
-		row         int
-		expectRow   string
 	}{
 		{
-			"empty screen update one wrap line", ' ', ' ', "\x1B[11;74Houtput for normal wrap line.", true,
-			"\x1b[K\x1b[?25l\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[73X\x1b[73Coutput for normal wrap line.\x1b[K\x1b[?25h", 11,
+			"empty screen update one wrap line", "\x1B[11;74Houtput for normal wrap line.",
+			"\x1b[K\x1b[?25l\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[73X\x1b[73Coutput for normal wrap line.\x1b[K\x1b[?25h",
 			"[ 11] for.normal.wrap.line............................................................",
+			11, ' ', ' ', true,
 		},
 		{
-			"same screen update one wrap line", 'X', 'X', "\x1B[24;74Houtput for normal wrap line.", true,
-			"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXoutput for normal wrap line.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\n\x1b[25;22H", 24,
+			"same screen update one wrap line", "\x1B[24;74Houtput for normal wrap line.",
+			"XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\nXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXoutput for normal wrap line.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX\r\n\x1b[25;22H",
 			"[ 24] for.normal.wrap.line.XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX",
+			24, 'X', 'X', true,
 		},
 		{
-			"new screen with empty line", 'U', 'U', "\x1B[4;4HErase to the end of line\x1B[0K.", true,
-			"UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU\r\nUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU\r\nUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU\r\nUUUErase to the end of line.\x1b[K", 3,
+			"new screen with empty line", "\x1B[4;4HErase to the end of line\x1B[0K.",
+			"UUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU\r\nUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU\r\nUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUUU\r\nUUUErase to the end of line.\x1b[K",
 			"[  3] UUUErase.to.the.end.of.line.....................................................",
+			3, 'U', 'U', true,
 		},
 		{
-			"new screen with big space gap", ' ', ' ',
-			"\x1B[5;1H1st space\x1B[0K\x1b[5;21H2nd!   \x1B[1;37;40m   3rd\x1b[5;79HEOL  \x1b[0m", true,
-			"\x1b[K\x1b[?25l\n\x1b[K\n\x1b[K\n\x1b[K\n1st space\x1b[11X\x1b[11C2nd!   \x1b[0;1;37;40m   3rd\x1b[0m\x1b[45X\x1b[45C\x1b[0;1;37;40mE\x1b[5;80HOL  \x1b[0m\x1b[K\x1b[?25h", 4,
+			"new screen with big space gap",
+			"\x1B[5;1H1st space\x1B[0K\x1b[5;21H2nd!   \x1B[1;37;40m   3rd\x1b[5;79HEOL  \x1b[0m",
+			"\x1b[K\x1b[?25l\n\x1b[K\n\x1b[K\n\x1b[K\n1st space\x1b[11X\x1b[11C2nd!   \x1b[0;1;37;40m   3rd\x1b[0m\x1b[45X\x1b[45C\x1b[0;1;37;40mE\x1b[5;80HOL  \x1b[0m\x1b[K\x1b[?25h",
 			"[  4] 1st.space...........2nd!......3rd.............................................EO",
+			4, ' ', ' ', true,
 		},
 		{
-			"last cell", 'W', 'W', "\x1B[6;77HLAST", true,
-			"WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW\r\nWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW\r\nWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW\r\nWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW\r\nWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW\r\nWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWLAST\r\n\x1b[6;80H", 5,
+			"last cell", "\x1B[6;77HLAST",
+			"WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW\r\nWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW\r\nWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW\r\nWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW\r\nWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW\r\nWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWLAST\r\n\x1b[6;80H",
 			"[  5] WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWLAST",
+			5, 'W', 'W', true,
 		},
 		{
-			"last chinese cell", ' ', ' ', "\x1B[7;7H左边\x1B[7;77H中文", true,
-			"\x1b[K\x1b[?25l\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[6X\x1b[6C左边\x1b[66X\x1b[66C中文\r\n\x1b[7;80H\x1b[?25h", 6,
+			"last chinese cell", "\x1B[7;7H左边\x1B[7;77H中文",
+			"\x1b[K\x1b[?25l\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[6X\x1b[6C左边\x1b[66X\x1b[66C中文\r\n\x1b[7;80H\x1b[?25h",
 			"[  6] ......左边..................................................................中文",
+			6, ' ', ' ', true,
 		},
 		{
-			"last chinese cell early wrap", ' ', ' ', "\x1B[8;7H提早\x1B[8;78H换行", true,
-			"\x1b[K\x1b[?25l\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[6X\x1b[6C提早\x1b[67X\x1b[67C换\r\n行\x1b[K\x1b[?25h", 7,
+			"last chinese cell early wrap", "\x1B[8;7H提早\x1B[8;78H换行",
+			"\x1b[K\x1b[?25l\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[6X\x1b[6C提早\x1b[67X\x1b[67C换\r\n行\x1b[K\x1b[?25h",
 			"[  7] ......提早...................................................................换.",
+			7, ' ', ' ', true,
 		},
 		{
-			"backspace case", ' ', ' ', "\x1b[9;1Hbackspace case\x1b[9;11H", true,
-			"\x1b[K\x1b[?25l\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\nbackspace case\x1b[K\b\b\b\b\x1b[?25h", 8,
+			"backspace case", "\x1b[9;1Hbackspace case\x1b[9;11H",
+			"\x1b[K\x1b[?25l\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\nbackspace case\x1b[K\b\b\b\b\x1b[?25h",
 			"[  8] backspace.case..................................................................",
+			8, ' ', ' ', true,
 		},
 		{
-			"mix color case", ' ', ' ', "\x1b[10;1H\x1b[1;34mdevelop\x1b[m  \x1b[1;34mproj     \x1b[m", true,
-			"\x1b[K\x1b[?25l\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[0;1;34mdevelop\x1b[0m  \x1b[0;1;34mproj\x1b[5X\x1b[5C\x1b[0m\x1b[K\x1b[?25h", 9,
+			"mix color case", "\x1b[10;1H\x1b[1;34mdevelop\x1b[m  \x1b[1;34mproj     \x1b[m",
+			"\x1b[K\x1b[?25l\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[0;1;34mdevelop\x1b[0m  \x1b[0;1;34mproj\x1b[5X\x1b[5C\x1b[0m\x1b[K\x1b[?25h",
 			"[  9] develop..proj...................................................................",
+			9, ' ', ' ', true,
 		},
 		{
-			"mix color, false initialized case", ' ', ' ',
-			"\x1b[10;1H\x1b[1;34mdevelop\x1b[m  \x1b[1;35mproj\x1b[m", false,
-			"\x1b[?5l\x1b[r\x1b[0m\x1b[H\x1b[2J\x1b[?25l\x1b[?1047l\x1b[r\x1b[?69l\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[0;1;34mdevelop\x1b[0m  \x1b[0;1;35mproj\x1b[0m\x1b[K\x1b[0C\x1b[?25h\x1b[1 q\x1b]112\a\x1b[0m\x1b[?2004l\x1b[?1003l\x1b[?1002l\x1b[?1001l\x1b[?1000l\x1b[?1004l\x1b[?1015l\x1b[?1006l\x1b[?1005l\x1b[?7h\x1b[20l\x1b[2l\x1b[4l\x1b[12h\x1b[?67l\x1b[?1036h\x1b[?1007l\x1b[?1l\x1b[?6l\x1b>\x1b[?3l\x1b[3g\x1b[64\"p\x1b[>4;1m", 9,
+			"mix color, false initialized case",
+			"\x1b[10;1H\x1b[1;34mdevelop\x1b[m  \x1b[1;35mproj\x1b[m",
+			"\x1b[?5l\x1b[r\x1b[0m\x1b[H\x1b[2J\x1b[?25l\x1b[?1047l\x1b[r\x1b[?69l\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[0;1;34mdevelop\x1b[0m  \x1b[0;1;35mproj\x1b[0m\x1b[K\x1b[0C\x1b[?25h\x1b[1 q\x1b]112\a\x1b[0m\x1b[?2004l\x1b[?1003l\x1b[?1002l\x1b[?1001l\x1b[?1000l\x1b[?1004l\x1b[?1015l\x1b[?1006l\x1b[?1005l\x1b[?7h\x1b[20l\x1b[2l\x1b[4l\x1b[12h\x1b[?67l\x1b[?1036h\x1b[?1007l\x1b[?1l\x1b[?6l\x1b>\x1b[?3l\x1b[3g\x1b[64\"p\x1b[>4;1m",
 			"[  9] develop..proj...................................................................",
+			9, ' ', ' ', false,
 		},
 	}
 
@@ -193,24 +203,26 @@ func TestNewFrame_PutRow(t *testing.T) {
 func TestNewFrame_ScrollUp(t *testing.T) {
 	tc := []struct {
 		label       string
-		bgRune1     rune
-		bgRune2     rune
 		mixSeq      string
 		extraSeq    string
 		scrollSeq   string
-		initialized bool
 		expectSeq   string
+		bgRune1     rune
+		bgRune2     rune
+		initialized bool
 	}{
 		{
-			"scroll up 5 lines", ' ', ' ', "\x1B[5;1Hscroll\r\ndown\r\nmore\r\nthan\r\n5 lines!",
-			"\r\ndifferent line", "\x1B[4S", true,
+			"scroll up 5 lines", "\x1B[5;1Hscroll\r\ndown\r\nmore\r\nthan\r\n5 lines!",
+			"\r\ndifferent line", "\x1B[4S",
 			"\x1b[?25l\r5 lines!\x1b[K\r\ndifferent line\x1b[K\r\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\x1b[10;15H\x1b[?25h",
+			' ', ' ', true,
 		},
 		{
-			"scroll up 6 lines", ' ', ' ', "\x1B[35;1Hscroll\r\ndown\r\nmore\r\nthan\r\n6\r\nlines!",
-			"", "\x1B[34S", true,
+			"scroll up 6 lines", "\x1B[35;1Hscroll\r\ndown\r\nmore\r\nthan\r\n6\r\nlines!",
+			"", "\x1B[34S",
 			// "\x1b[0m\r\x1b[34S\x1b[40;7H",
 			"\x1b[?25l\rlines!\x1b[K\r\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\x1b[40;7H\x1b[?25h",
+			' ', ' ', true,
 		},
 	}
 
@@ -268,12 +280,12 @@ func TestNewFrame_ScrollUp(t *testing.T) {
 func TestNewFrame_Bell(t *testing.T) {
 	tc := []struct {
 		label       string
+		expectSeq   string
 		initialized bool
 		bell        bool
-		expectSeq   string
 	}{
-		{"no bell", true, false, ""},
-		{"has bell", true, true, "\a"},
+		{"no bell", "", true, false},
+		{"has bell", "\a", true, true},
 	}
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
@@ -306,15 +318,15 @@ func TestNewFrame_Bell(t *testing.T) {
 func TestNewFrame_CursorStyle(t *testing.T) {
 	tc := []struct {
 		label     string
-		showStyle CursorStyle
 		expectSeq string
+		showStyle CursorStyle
 	}{
-		{"same blink block", CursorStyle_BlinkBlock, ""},
-		{"steady block", CursorStyle_SteadyBlock, "\x1B[2 q"},
-		{"blink underline", CursorStyle_BlinkUnderline, "\x1B[3 q"},
-		{"steady underline", CursorStyle_SteadyUnderline, "\x1B[4 q"},
-		{"blink bar", CursorStyle_BlinkBar, "\x1B[5 q"},
-		{"steady bar", CursorStyle_SteadyBar, "\x1B[6 q"},
+		{"same blink block", "", CursorStyle_BlinkBlock},
+		{"steady block", "\x1B[2 q", CursorStyle_SteadyBlock},
+		{"blink underline", "\x1B[3 q", CursorStyle_BlinkUnderline},
+		{"steady underline", "\x1B[4 q", CursorStyle_SteadyUnderline},
+		{"blink bar", "\x1B[5 q", CursorStyle_BlinkBar},
+		{"steady bar", "\x1B[6 q", CursorStyle_SteadyBar},
 	}
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
@@ -346,15 +358,15 @@ func TestNewFrame_CursorStyle(t *testing.T) {
 func TestNewFrame_WindowTitleIconName(t *testing.T) {
 	tc := []struct {
 		label       string
-		initialized bool
 		windowTitle string
 		iconName    string
 		expectSeq   string
+		initialized bool
 	}{
-		{"no window title and icon name", true, "", "", ""},
-		{"has window title", true, "window title", "", "\x1b]2;window title\a"},
-		{"has chinese icon name", true, "", "图标名称", "\x1b]1;图标名称\a"},
-		{"has same window title & icon name", true, "中文标题", "中文标题", "\x1b]0;中文标题\a"},
+		{"no window title and icon name", "", "", "", true},
+		{"has window title", "window title", "", "\x1b]2;window title\a", true},
+		{"has chinese icon name", "", "图标名称", "\x1b]1;图标名称\a", true},
+		{"has same window title & icon name", "中文标题", "中文标题", "\x1b]0;中文标题\a", true},
 	}
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
@@ -393,40 +405,40 @@ func TestNewFrame_WindowTitleIconName(t *testing.T) {
 func TestNewFrame_TitleStack(t *testing.T) {
 	tc := []struct {
 		label       string
-		initialized bool
+		expectSeq   string
 		newStack    []string
 		oldStack    []string
-		expectSeq   string
+		initialized bool
 	}{
 		{
-			"no stack", true,
+			"no stack", "",
 			[]string{},
 			[]string{},
-			"",
+			true,
 		},
 		{
-			"new stack = old stack", true,
+			"new stack = old stack", "",
 			[]string{"a1", "a2"},
 			[]string{"a1", "a2"},
-			"",
+			true,
 		},
 		{
-			"new stack > old stack", true,
+			"new stack > old stack", "\x1b]2;c\a\x1b[22;0t",
 			[]string{"a", "b", "c"},
 			[]string{"a", "b"},
-			"\x1b]2;c\a\x1b[22;0t",
+			true,
 		},
 		{
-			"new stack < old stack", true,
+			"new stack < old stack", "\x1b[23;0t\x1b]2;t2\a",
 			[]string{"t1", "t2"},
 			[]string{"t1", "t2", "t3"},
-			"\x1b[23;0t\x1b]2;t2\a",
+			true,
 		},
 		{
-			"max stack with diff", true,
+			"max stack with diff", "\x1b]2;w9\a\x1b[22;0t",
 			[]string{"w1", "w2", "w3", "w4", "w5", "w6", "w7", "w8", "w9"},
 			[]string{"w0", "w1", "w2", "w3", "w4", "w5", "w6", "w7", "w8"},
-			"\x1b]2;w9\a\x1b[22;0t",
+			true,
 		},
 	}
 
@@ -471,13 +483,13 @@ func TestNewFrame_TitleStack(t *testing.T) {
 func TestNewFrame_ReverseVideo(t *testing.T) {
 	tc := []struct {
 		label        string
-		initialized  bool
-		reverseVideo bool // determine the reverseVideo value of pair terminal
 		seq          string
 		expectSeq    string
+		initialized  bool
+		reverseVideo bool // determine the reverseVideo value of pair terminal
 	}{
-		{"has reverse video", true, true, "\x1B[?5h", "\x1b[?5h"},
-		{"no reverse video", true, false, "\x1B[?5h", "\x1B[?5l"},
+		{"has reverse video", "\x1B[?5h", "\x1b[?5h", true, true},
+		{"no reverse video", "\x1B[?5h", "\x1B[?5l", true, false},
 	}
 	oldE := NewEmulator3(80, 40, 40)
 	newE := NewEmulator3(80, 40, 40)
@@ -544,13 +556,13 @@ func TestNewFrame_Resize(t *testing.T) {
 func TestNewFrame_AltScreenBufferMode(t *testing.T) {
 	tc := []struct {
 		label               string
-		initialized         bool
-		altScreenBufferMode bool
 		seq                 string
 		expectSeq           string
+		initialized         bool
+		altScreenBufferMode bool
 	}{
-		{"already initialized, has altScreenBufferMode", true, true, "\x1B[?1047h", "\x1B[?1047h"},
-		{"already initialized, no altScreenBufferMode", true, false, "\x1B[?1047h", "\x1B[?1047l"},
+		{"already initialized, has altScreenBufferMode", "\x1B[?1047h", "\x1B[?1047h", true, true},
+		{"already initialized, no altScreenBufferMode", "\x1B[?1047h", "\x1B[?1047l", true, false},
 	}
 	oldE := NewEmulator3(8, 4, 4)
 	newE := NewEmulator3(8, 4, 4)
@@ -585,18 +597,20 @@ func TestNewFrame_AltScreenBufferMode(t *testing.T) {
 func TestNewFrame_Margin(t *testing.T) {
 	tc := []struct {
 		label       string
-		initialized bool
-		margin      bool
 		seq         string
 		expectSeq   string
+		initialized bool
+		margin      bool
 	}{
 		{
-			"already initialized, new has margin", true, true, "\x1B[2;6r",
+			"already initialized, new has margin", "\x1B[2;6r",
 			"\x1b[2;6r\x1b[K\x1b[?25l\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\x1b[1;1H\x1b[?25h",
+			true, true,
 		},
 		{
-			"already initialized, old has margin", true, false, "\x1B[2;6r",
+			"already initialized, old has margin", "\x1B[2;6r",
 			"\x1b[r\x1b[K\x1b[?25l\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\x1b[1;1H\x1b[?25h",
+			true, false,
 		},
 	}
 	oldE := NewEmulator3(8, 8, 4)
@@ -632,14 +646,14 @@ func TestNewFrame_Margin(t *testing.T) {
 func TestNewFrame_HMargin(t *testing.T) {
 	tc := []struct {
 		label       string
-		initialized bool
-		margin      bool
 		seq         string
 		expectSeq   string
+		initialized bool
+		margin      bool
 	}{
-		{"already initialized, new has margin", true, true, "\x1B[?69h\x1B[2;6s", "\x1b[?69h\x1b[2;6s"},
-		{"already initialized, old has margin", true, false, "\x1B[?69h\x1B[2;6s", "\x1b[?69l"},
-		{"already initialized, both no margin", true, false, "", ""},
+		{"already initialized, new has margin", "\x1B[?69h\x1B[2;6s", "\x1b[?69h\x1b[2;6s", true, true},
+		{"already initialized, old has margin", "\x1B[?69h\x1B[2;6s", "\x1b[?69l", true, false},
+		{"already initialized, both no margin", "", "", true, false},
 	}
 	oldE := NewEmulator3(8, 8, 4)
 	newE := NewEmulator3(8, 8, 4)
@@ -674,14 +688,14 @@ func TestNewFrame_HMargin(t *testing.T) {
 func TestNewFrame_Decsc(t *testing.T) {
 	tc := []struct {
 		label       string
-		initialized bool
-		decsc       bool
 		seq         string
 		expectSeq   string
+		initialized bool
+		decsc       bool
 	}{
-		{"already initialized, new has decsc", true, true, "\x1B7", "\x1b[?1048h"},
-		{"already initialized, old has decsc", true, false, "\x1B7", "\x1b[?1048l"},
-		{"already initialized, both no decsc", true, false, "", ""},
+		{"already initialized, new has decsc", "\x1B7", "\x1b[?1048h", true, true},
+		{"already initialized, old has decsc", "\x1B7", "\x1b[?1048l", true, false},
+		{"already initialized, both no decsc", "", "", true, false},
 	}
 	oldE := NewEmulator3(8, 8, 4)
 	newE := NewEmulator3(8, 8, 4)
@@ -716,14 +730,14 @@ func TestNewFrame_Decsc(t *testing.T) {
 func TestNewFrame_Scosc(t *testing.T) {
 	tc := []struct {
 		label       string
-		initialized bool
-		scosc       bool
 		seq         string
 		expectSeq   string
+		initialized bool
+		scosc       bool
 	}{
-		{"already initialized, new has scosc", true, true, "\x1B[s", "\x1b[s"},
-		{"already initialized, old has scosc", true, false, "\x1B[s", "\x1b[u"},
-		{"already initialized, both no scosc", true, false, "", ""},
+		{"already initialized, new has scosc", "\x1B[s", "\x1b[s", true, true},
+		{"already initialized, old has scosc", "\x1B[s", "\x1b[u", true, false},
+		{"already initialized, both no scosc", "", "", true, false},
 	}
 	oldE := NewEmulator3(8, 8, 4)
 	newE := NewEmulator3(8, 8, 4)
@@ -758,14 +772,14 @@ func TestNewFrame_Scosc(t *testing.T) {
 func TestNewFrame_ShowCursorMode(t *testing.T) {
 	tc := []struct {
 		label                string
-		initialized          bool
-		showcursorModeForNew bool
 		seq                  string
 		expectSeq            string
+		initialized          bool
+		showcursorModeForNew bool
 	}{
-		{"already initialized, new show no cursor", true, true, "\x1B[?25l", "\x1b[?25l"},
-		{"already initialized, old show no cursor", true, false, "\x1B[?25l", "\x1b[?25h"},
-		{"already initialized, both show cursor", true, false, "", ""},
+		{"already initialized, new show no cursor", "\x1B[?25l", "\x1b[?25l", true, true},
+		{"already initialized, old show no cursor", "\x1B[?25l", "\x1b[?25h", true, false},
+		{"already initialized, both show cursor", "", "", true, false},
 	}
 	oldE := NewEmulator3(8, 8, 4)
 	newE := NewEmulator3(8, 8, 4)
@@ -800,14 +814,14 @@ func TestNewFrame_ShowCursorMode(t *testing.T) {
 func TestNewFrame_BracketedPasteMode(t *testing.T) {
 	tc := []struct {
 		label              string
-		initialized        bool
-		bracketedPasteMode bool
 		seq                string
 		expectSeq          string
+		initialized        bool
+		bracketedPasteMode bool
 	}{
-		{"already initialized, new has bracketedPasteMode", true, true, "\x1B[?2004h", "\x1b[?2004h"},
-		{"already initialized, old has bracketedPasteMode", true, false, "\x1B[?2004h", "\x1b[?2004l"},
-		{"already initialized, both no bracketedPasteMode", true, false, "", ""},
+		{"already initialized, new has bracketedPasteMode", "\x1B[?2004h", "\x1b[?2004h", true, true},
+		{"already initialized, old has bracketedPasteMode", "\x1B[?2004h", "\x1b[?2004l", true, false},
+		{"already initialized, both no bracketedPasteMode", "", "", true, false},
 	}
 	oldE := NewEmulator3(8, 8, 4)
 	newE := NewEmulator3(8, 8, 4)
@@ -890,13 +904,13 @@ func TestNewFrame_MouseTrk(t *testing.T) {
 func TestNewFrame_MouseTrkFocusEventMode(t *testing.T) {
 	tc := []struct {
 		label          string
-		focusEventMode bool
 		seq            string
 		expectSeq      string
+		focusEventMode bool
 	}{
-		{"new has focusEventMode", true, "\x1B[?1004h", "\x1b[?1004h"},
-		{"old has focusEventMode", false, "\x1B[?1004h", "\x1b[?1004l"},
-		{"both no focusEventMode", false, "", ""},
+		{"new has focusEventMode", "\x1B[?1004h", "\x1b[?1004h", true},
+		{"old has focusEventMode", "\x1B[?1004h", "\x1b[?1004l", false},
+		{"both no focusEventMode", "", "", false},
 	}
 	oldE := NewEmulator3(8, 8, 4)
 	newE := NewEmulator3(8, 8, 4)
@@ -1122,18 +1136,18 @@ func TestPutRow(t *testing.T) {
 
 	tc := []struct {
 		label  string
+		expect string
 		row    int // last position
 		col    int
-		expect string
 	}{
-		{"blank old row zero start", 1, 0, "\x1b[?25l\ntotal 972\x1b[K"},
-		{"blank old row", 1, 5, "\x1b[?25l\r\ntotal 972\x1b[K"},
-		{"blank new row zero start", 4, 0, "\x1b[?25l\n\x1b[K"},
-		{"blank new row", 4, 4, "\x1b[?25l\r\n\x1b[K"},
-		{"old row is longer than new one", 8, 0, "\x1b[?25l\n-rwx------   demo.key\x1b[K"},
+		{"blank old row zero start", "\x1b[?25l\ntotal 972\x1b[K", 1, 0},
+		{"blank old row", "\x1b[?25l\r\ntotal 972\x1b[K", 1, 5},
+		{"blank new row zero start", "\x1b[?25l\n\x1b[K", 4, 0},
+		{"blank new row", "\x1b[?25l\r\n\x1b[K", 4, 4},
+		{"old row is longer than new one", "\x1b[?25l\n-rwx------   demo.key\x1b[K", 8, 0},
 		{
-			"new row is longer than old one", 9, 0,
-			"\x1b[?25l\n-rw-r--r--    1 ide\x1b[6X\x1b[6Cdevelop\x1b[8X\x1b[8Cgo.work\x1b[K",
+			"new row is longer than old one",
+			"\x1b[?25l\n-rw-r--r--    1 ide\x1b[6X\x1b[6Cdevelop\x1b[8X\x1b[8Cgo.work\x1b[K", 9, 0,
 		},
 	}
 

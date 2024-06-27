@@ -28,7 +28,7 @@ func TestTerminfo_bce_ech(t *testing.T) {
 
 	buf := bytes.NewBuffer(nil)
 	ti.TPuts(buf, ti.Bell)
-	got := string(buf.Bytes())
+	got := buf.String()
 	if got != "\x07" {
 		t.Errorf("#test TPuts %q expect %q, got %q\n", ti.Bell, "\x07", got)
 	}

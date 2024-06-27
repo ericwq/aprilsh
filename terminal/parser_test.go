@@ -7,6 +7,7 @@ package terminal
 import (
 	"fmt"
 	"io"
+	"log/slog"
 	"reflect"
 	"sort"
 	"strings"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/ericwq/aprilsh/util"
 	"github.com/rivo/uniseg"
-	"log/slog"
 )
 
 // https://www.redhat.com/sysadmin/linux-script-command
@@ -263,13 +263,13 @@ func TestUnisegStringWidth(t *testing.T) {
 func TestCollectNumericParameters(t *testing.T) {
 	tc := []struct {
 		name string
-		want int
 		seq  string
+		want int
 	}{
-		{"normal number     ", 65, "65;23"},
-		{"too large number  ", 0, "65536;22"},
-		{"over size 16      ", 0, "1;2;3;4;5;6;7;8;9;0;1;2;3;4;5;6;"},
-		{"over size 17      ", 0, "1;2;3;4;5;6;7;8;9;0;1;2;3;4;5;6;7;"},
+		{"normal number     ", "65;23", 65},
+		{"too large number  ", "65536;22", 0},
+		{"over size 16      ", "1;2;3;4;5;6;7;8;9;0;1;2;3;4;5;6;", 0},
+		{"over size 17      ", "1;2;3;4;5;6;7;8;9;0;1;2;3;4;5;6;7;", 0},
 	}
 
 	p := NewParser()
@@ -323,43 +323,43 @@ func TestHandle_Graphemes(t *testing.T) {
 	tc := []struct {
 		name      string
 		seq       string // data stream with control sequences
-		hdIDs     []int
-		hdNumber  int    // expect handler number
-		posY      int    // expect print row
-		posX      int    // expect starting cols
 		graphemes string // data string without control sequences
+		hdIDs     []int
+		hdNumber  int // expect handler number
+		posY      int // expect print row
+		posX      int // expect starting cols
 	}{
 		// use CUP to set the active cursor position first
 		{
 			"UTF-8 plain english",
 			"\x1B[1;14Hlong long ago",
+			"long long ago",
 			[]int{CSI_CUP, Graphemes},
 			14, 0, 13,
-			"long long ago",
 		},
 		{
 			"UTF-8 chinese, combining character and flags",
 			"\x1B[2;30HChin\u0308\u0308a 🏖 i国旗🇳🇱Fun 🌈with Flag🇧🇷.s",
+			"Chin\u0308\u0308a 🏖 i国旗🇳🇱Fun 🌈with Flag🇧🇷.s",
 			[]int{CSI_CUP, Graphemes},
 			30, 1, 29,
-			"Chin\u0308\u0308a 🏖 i国旗🇳🇱Fun 🌈with Flag🇧🇷.s",
 		},
 		{
 			"VT mix UTF-8",
 			"\x1B[3;24H中国\x1B%@\xA5AB\xe2\xe3\xe9\x1B%GShanghai\x1B%@CD\xe0\xe1",
+			"中国¥ABâãéShanghaiCDàá",
 			[]int{
 				CSI_CUP, Graphemes, Graphemes, ESC_DOCS_ISO8859_1, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes,
 				Graphemes, ESC_DOCS_UTF8, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes,
 				Graphemes, ESC_DOCS_ISO8859_1, Graphemes, Graphemes, Graphemes, Graphemes,
 			},
 			24, 2, 23,
-			"中国¥ABâãéShanghaiCDàá",
 		},
 		{
 			"VT edge", "\x1B[4;10H\x1B%@Beijing\x1B%G",
+			"Beijing",
 			[]int{CSI_CUP, ESC_DOCS_ISO8859_1, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes, ESC_DOCS_UTF8},
 			10, 3, 9,
-			"Beijing",
 		},
 	}
 
@@ -427,15 +427,15 @@ func TestHandle_Graphemes_Wrap(t *testing.T) {
 	tc := []struct {
 		name      string
 		seq       string
-		posY      int    // expect print row
-		posX      []int  // expect print cols
-		graphemes string // data string without control sequences
+		graphemes string
+		posX      []int
+		posY      int
 	}{
-		{"plain english wrap", "\x1B[8;79Hap\u0308rish", 7, []int{78, 79, 0, 1, 2, 3}, "ap\u0308rish"},
-		{"chinese even wrap", "\x1B[9;79H@@四姑娘山", 8, []int{78, 79, 0, 2, 4, 6}, "@@四姑娘山"},
-		{"chinese odd wrap", "\x1B[10;79H#海螺沟", 9, []int{78, 0, 2, 4, 6}, "#海螺沟"},
-		{"insert wrap", "\x1B[4h\x1B[11;78H#th#", 10, []int{77, 78, 79, 0}, "#th#"},
-		{"english scroll wrap", "\x1B[40;78H#th#", 39, []int{77, 78, 79, 0}, "#th#"},
+		{"plain english wrap", "\x1B[8;79Hap\u0308rish", "ap\u0308rish", []int{78, 79, 0, 1, 2, 3}, 7},
+		{"chinese even wrap", "\x1B[9;79H@@四姑娘山", "@@四姑娘山", []int{78, 79, 0, 2, 4, 6}, 8},
+		{"chinese odd wrap", "\x1B[10;79H#海螺沟", "#海螺沟", []int{78, 0, 2, 4, 6}, 9},
+		{"insert wrap", "\x1B[4h\x1B[11;78H#th#", "#th#", []int{77, 78, 79, 0}, 10},
+		{"english scroll wrap", "\x1B[40;78H#th#", "#th#", []int{77, 78, 79, 0}, 39},
 	}
 
 	p := NewParser()
@@ -495,38 +495,38 @@ func TestHandle_REP(t *testing.T) {
 	tc := []struct {
 		name      string
 		seq       string
-		hdIDs     []int
-		posY      int    // expect print row
-		posX      []int  // expect print cols
 		graphemes string // data string without control sequences
+		hdIDs     []int
+		posX      []int // expect print cols
+		posY      int   // expect print row
 	}{
 		{
 			"plain english REP+wrap", "\x1B[8;79Hp\u0308\x1B[b",
-			[]int{CSI_CUP, Graphemes, CSI_REP},
-			7,
-			[]int{78, 79},
 			"p\u0308p\u0308",
+			[]int{CSI_CUP, Graphemes, CSI_REP},
+			[]int{78, 79},
+			7,
 		},
 		{
 			"chinese even REP+wrap", "\x1B[9;79H四\x1B[5b",
-			[]int{CSI_CUP, Graphemes, CSI_REP},
-			8,
-			[]int{78, 0, 2, 4, 6, 8},
 			"四四四四四四",
+			[]int{CSI_CUP, Graphemes, CSI_REP},
+			[]int{78, 0, 2, 4, 6, 8},
+			8,
 		},
 		{
 			"chinese odd REP+wrap", "\x1B[10;79H#海\x1B[5b",
-			[]int{CSI_CUP, Graphemes, Graphemes, CSI_REP},
-			9,
-			[]int{78, 0, 2, 4, 6, 8, 10},
 			"#海海海海海海",
+			[]int{CSI_CUP, Graphemes, Graphemes, CSI_REP},
+			[]int{78, 0, 2, 4, 6, 8, 10},
+			9,
 		},
 		{
 			"insert REP+wrap", "\x1B[4h\x1B[11;78H#\x1B[5b",
-			[]int{CSI_SM, CSI_CUP, Graphemes, CSI_REP},
-			10,
-			[]int{77, 78, 79, 0, 1, 2},
 			"######",
+			[]int{CSI_SM, CSI_CUP, Graphemes, CSI_REP},
+			[]int{77, 78, 79, 0, 1, 2},
+			10,
 		},
 	}
 
@@ -585,15 +585,15 @@ func TestHandle_REP(t *testing.T) {
 func TestHandle_SGR_RGBcolor(t *testing.T) {
 	tc := []struct {
 		name       string
+		seq        string
 		hdIDs      []int
 		fr, fg, fb int
 		br, bg, bb int
 		attr       charAttribute
-		seq        string
 	}{
-		{"RGB Color 1", []int{CSI_SGR}, 33, 47, 12, 123, 24, 34, Bold, "\x1B[0;1;38;2;33;47;12;48;2;123;24;34m"},
-		{"RGB Color 2", []int{CSI_SGR}, 0, 0, 0, 0, 0, 0, Italic, "\x1B[0;3;38:2:0:0:0;48:2:0:0:0m"},
-		{"RGB Color 3", []int{CSI_SGR}, 12, 34, 128, 59, 190, 155, Underlined, "\x1B[0;4;38:2:12:34:128;48:2:59:190:155m"},
+		{"RGB Color 1", "\x1B[0;1;38;2;33;47;12;48;2;123;24;34m", []int{CSI_SGR}, 33, 47, 12, 123, 24, 34, Bold},
+		{"RGB Color 2", "\x1B[0;3;38:2:0:0:0;48:2:0:0:0m", []int{CSI_SGR}, 0, 0, 0, 0, 0, 0, Italic},
+		{"RGB Color 3", "\x1B[0;4;38:2:12:34:128;48:2:59:190:155m", []int{CSI_SGR}, 12, 34, 128, 59, 190, 155, Underlined},
 	}
 
 	p := NewParser()
@@ -639,19 +639,19 @@ func TestHandle_SGR_RGBcolor(t *testing.T) {
 func TestHandle_SGR_ANSIcolor(t *testing.T) {
 	tc := []struct {
 		name  string
+		seq   string
 		hdIDs []int
 		fg    Color
 		bg    Color
 		attr  charAttribute
-		seq   string
 	}{
 		// here the charAttribute(38) is an unused value, which means nothing for the result.
-		{"default Color", []int{CSI_SGR}, ColorDefault, ColorDefault, charAttribute(38), "\x1B[200m"}, // 38,48 is empty charAttribute
-		{"8 Color", []int{CSI_SGR}, ColorSilver, ColorBlack, Bold, "\x1B[1;37;40m"},
-		{"8 Color 2", []int{CSI_SGR}, ColorMaroon, ColorMaroon, Italic, "\x1B[3;31;41m"},
-		{"16 Color", []int{CSI_SGR}, ColorRed, ColorWhite, Underlined, "\x1B[4;91;107m"},
-		{"256 Color 1", []int{CSI_SGR}, Color33, Color47, Bold, "\x1B[0;1;38:5:33;48:5:47m"},
-		{"256 Color 3", []int{CSI_SGR}, Color128, Color155, Underlined, "\x1B[0;4;38:5:128;48:5:155m"},
+		{"default Color", "\x1B[200m", []int{CSI_SGR}, ColorDefault, ColorDefault, charAttribute(38)}, // 38,48 is empty charAttribute
+		{"8 Color", "\x1B[1;37;40m", []int{CSI_SGR}, ColorSilver, ColorBlack, Bold},
+		{"8 Color 2", "\x1B[3;31;41m", []int{CSI_SGR}, ColorMaroon, ColorMaroon, Italic},
+		{"16 Color", "\x1B[4;91;107m", []int{CSI_SGR}, ColorRed, ColorWhite, Underlined},
+		{"256 Color 1", "\x1B[0;1;38:5:33;48:5:47m", []int{CSI_SGR}, Color33, Color47, Bold},
+		{"256 Color 3", "\x1B[0;4;38:5:128;48:5:155m", []int{CSI_SGR}, Color128, Color155, Underlined},
 	}
 
 	p := NewParser()
@@ -699,23 +699,23 @@ func TestHandle_SGR_ANSIcolor(t *testing.T) {
 func TestHandle_SGR_Break(t *testing.T) {
 	tc := []struct {
 		name  string
-		hdIDs []int
 		seq   string
+		hdIDs []int
 	}{
 		// the folloiwng test the break case for SGR
-		{"break 38    ", []int{CSI_SGR}, "\x1B[38m"},
-		{"break 38;   ", []int{CSI_SGR}, "\x1B[38;m"},
-		{"break 38:5  ", []int{CSI_SGR}, "\x1B[38;5m"},
-		{"break 38:2-1", []int{CSI_SGR}, "\x1B[38:2:23m"},
-		{"break 38:2-2", []int{CSI_SGR}, "\x1B[38:2:23:24m"},
-		{"break 38:7  ", []int{CSI_SGR}, "\x1B[38;7m"},
-		{"break 48    ", []int{CSI_SGR}, "\x1B[48m"},
-		{"break 48;   ", []int{CSI_SGR}, "\x1B[48;m"},
-		{"break 48:5  ", []int{CSI_SGR}, "\x1B[48;5m"},
-		{"break 48:2-1", []int{CSI_SGR}, "\x1B[48:2:23m"},
-		{"break 48:2-2", []int{CSI_SGR}, "\x1B[48:2:23:22m"},
-		{"break 48:7  ", []int{CSI_SGR}, "\x1B[48;7m"},
-		{"sgr0        ", []int{CSI_SGR}, "\x1B[m"},
+		{"break 38    ", "\x1B[38m", []int{CSI_SGR}},
+		{"break 38;   ", "\x1B[38;m", []int{CSI_SGR}},
+		{"break 38:5  ", "\x1B[38;5m", []int{CSI_SGR}},
+		{"break 38:2-1", "\x1B[38:2:23m", []int{CSI_SGR}},
+		{"break 38:2-2", "\x1B[38:2:23:24m", []int{CSI_SGR}},
+		{"break 38:7  ", "\x1B[38;7m", []int{CSI_SGR}},
+		{"break 48    ", "\x1B[48m", []int{CSI_SGR}},
+		{"break 48;   ", "\x1B[48;m", []int{CSI_SGR}},
+		{"break 48:5  ", "\x1B[48;5m", []int{CSI_SGR}},
+		{"break 48:2-1", "\x1B[48:2:23m", []int{CSI_SGR}},
+		{"break 48:2-2", "\x1B[48:2:23:22m", []int{CSI_SGR}},
+		{"break 48:7  ", "\x1B[48;7m", []int{CSI_SGR}},
+		{"sgr0        ", "\x1B[m", []int{CSI_SGR}},
 	}
 	p := NewParser()
 	emu := NewEmulator3(8, 4, 4)
@@ -759,12 +759,24 @@ func TestSequenceWithColor(t *testing.T) {
 		seq   string
 		rends []Renditions
 	}{
-		{"sequence with text and changed color", "\x1b[1;34mdevelop\x1b[m  \x1b[1;34mproj\x1b[m",
+		{
+			"sequence with text and changed color", "\x1b[1;34mdevelop\x1b[m  \x1b[1;34mproj\x1b[m",
 			[]Renditions{
-				{fgColor: ColorNavy, bold: true}, {fgColor: ColorNavy, bold: true}, {fgColor: ColorNavy, bold: true},
-				{fgColor: ColorNavy, bold: true}, {fgColor: ColorNavy, bold: true}, {fgColor: ColorNavy, bold: true},
-				{fgColor: ColorNavy, bold: true}, {}, {}, {fgColor: ColorNavy, bold: true},
-				{fgColor: ColorNavy, bold: true}, {fgColor: ColorNavy, bold: true}, {fgColor: ColorNavy, bold: true}}},
+				{fgColor: ColorNavy, bold: true},
+				{fgColor: ColorNavy, bold: true},
+				{fgColor: ColorNavy, bold: true},
+				{fgColor: ColorNavy, bold: true},
+				{fgColor: ColorNavy, bold: true},
+				{fgColor: ColorNavy, bold: true},
+				{fgColor: ColorNavy, bold: true},
+				{},
+				{},
+				{fgColor: ColorNavy, bold: true},
+				{fgColor: ColorNavy, bold: true},
+				{fgColor: ColorNavy, bold: true},
+				{fgColor: ColorNavy, bold: true},
+			},
+		},
 	}
 	p := NewParser()
 	emu := NewEmulator3(80, 40, 40)
@@ -794,30 +806,30 @@ func TestSequenceWithColor(t *testing.T) {
 					t.Errorf("%s: pos %d expect renditions:\n%v %s, got \n%v\n", v.label, pos, v.rends[pos], cell, got)
 				}
 			}
-
 		})
 	}
 }
+
 func TestHandle_ESC_DCS(t *testing.T) {
 	tc := []struct {
+		wantCharset *map[byte]rune
 		name        string
 		seq         string
 		hdIDs       []int
 		wantIndex   int
-		wantCharset *map[byte]rune
 	}{
-		{"VT100 G0", "\x1B(A", []int{ESC_DCS}, 0, &vt_ISO_UK},
-		{"VT100 G1", "\x1B)B", []int{ESC_DCS}, 1, nil},
-		{"VT220 G2", "\x1B*5", []int{ESC_DCS}, 2, nil},
-		{"VT220 G3", "\x1B+%5", []int{ESC_DCS}, 3, &vt_DEC_Supplement},
-		{"VT300 G1", "\x1B-0", []int{ESC_DCS}, 1, &vt_DEC_Special},
-		{"VT300 G2", "\x1B.<", []int{ESC_DCS}, 2, &vt_DEC_Supplement},
-		{"VT300 G3", "\x1B/>", []int{ESC_DCS}, 3, &vt_DEC_Technical},
-		{"VT300 G3", "\x1B/A", []int{ESC_DCS}, 3, &vt_ISO_8859_1},
-		{"ISO/IEC 2022 G0 A", "\x1B,A", []int{ESC_DCS}, 0, &vt_ISO_UK},
-		{"ISO/IEC 2022 G0 >", "\x1B$>", []int{ESC_DCS}, 0, &vt_DEC_Technical},
+		{&vt_ISO_UK, "VT100 G0", "\x1B(A", []int{ESC_DCS}, 0},
+		{nil, "VT100 G1", "\x1B)B", []int{ESC_DCS}, 1},
+		{nil, "VT220 G2", "\x1B*5", []int{ESC_DCS}, 2},
+		{&vt_DEC_Supplement, "VT220 G3", "\x1B+%5", []int{ESC_DCS}, 3},
+		{&vt_DEC_Special, "VT300 G1", "\x1B-0", []int{ESC_DCS}, 1},
+		{&vt_DEC_Supplement, "VT300 G2", "\x1B.<", []int{ESC_DCS}, 2},
+		{&vt_DEC_Technical, "VT300 G3", "\x1B/>", []int{ESC_DCS}, 3},
+		{&vt_ISO_8859_1, "VT300 G3", "\x1B/A", []int{ESC_DCS}, 3},
+		{&vt_ISO_UK, "ISO/IEC 2022 G0 A", "\x1B,A", []int{ESC_DCS}, 0},
+		{&vt_DEC_Technical, "ISO/IEC 2022 G0 >", "\x1B$>", []int{ESC_DCS}, 0},
 		// for other charset, just replace it with UTF-8
-		{"ISO/IEC 2022 G0 None", "\x1B$%9", []int{ESC_DCS}, 0, nil},
+		{nil, "ISO/IEC 2022 G0 None", "\x1B$%9", []int{ESC_DCS}, 0},
 	}
 
 	p := NewParser()
@@ -856,16 +868,16 @@ func TestHandle_DOCS(t *testing.T) {
 	tc := []struct {
 		name   string
 		seq    string
+		msg    string
+		hdIDs  []int
 		wantGL int
 		wantGR int
 		wantSS int
-		hdIDs  []int
-		msg    string
 	}{
-		{"set DOCS utf-8       ", "\x1B%G", 0, 2, 0, []int{ESC_DOCS_UTF8}, ""},
-		{"set DOCS iso8859-1   ", "\x1B%@", 0, 2, 0, []int{ESC_DOCS_ISO8859_1}, ""},
-		{"ESC Percent unhandled", "\x1B%H", 0, 2, 0, nil, "Unhandled input"},
-		{"VT52 ESC G", "\x1B[?2l\x1BG", 0, 2, 0, []int{CSI_privRM, ESC_DOCS_UTF8}, ""},
+		{"set DOCS utf-8       ", "\x1B%G", "", []int{ESC_DOCS_UTF8}, 0, 2, 0},
+		{"set DOCS iso8859-1   ", "\x1B%@", "", []int{ESC_DOCS_ISO8859_1}, 0, 2, 0},
+		{"ESC Percent unhandled", "\x1B%H", "Unhandled input", nil, 0, 2, 0},
+		{"VT52 ESC G", "\x1B[?2l\x1BG", "", []int{CSI_privRM, ESC_DOCS_UTF8}, 0, 2, 0},
 	}
 
 	p := NewParser()
@@ -1074,12 +1086,12 @@ func TestHandle_SS2_SS3(t *testing.T) {
 func TestHandle_SO_SI(t *testing.T) {
 	tc := []struct {
 		name string
-		r    rune
+		msg  string
 		want int
-		msg  string // test traceNormalInput()
+		r    rune
 	}{
-		{"SO", 0x0E, 1, "Input:['\x0e'] inputOps="}, // G1 as GL
-		{"SI", 0x0F, 0, "Input:['\x0f'] inputOps="}, // G0 as GL
+		{"SO", "Input:['\x0e'] inputOps=", 1, 0x0E}, // G1 as GL
+		{"SI", "Input:['\x0f'] inputOps=", 0, 0x0F}, // G0 as GL
 	}
 
 	p := NewParser()
@@ -1112,17 +1124,17 @@ func TestHandle_SO_SI(t *testing.T) {
 func TestHandle_CUP(t *testing.T) {
 	tc := []struct {
 		name   string
+		seq    string
 		startX int
 		startY int
 		hdIDs  int
 		wantY  int
 		wantX  int
-		seq    string
 	}{
-		{"CSI Ps;PsH normal", 10, 10, CSI_CUP, 23, 13, "\x1B[24;14H"},
-		{"CSI Ps;PsH default", 10, 10, CSI_CUP, 0, 0, "\x1B[H"},
-		{"CSI Ps;PsH second default", 10, 10, CSI_CUP, 0, 0, "\x1B[1H"},
-		{"CSI Ps;PsH outrange active area", 10, 10, CSI_CUP, 39, 79, "\x1B[42;89H"},
+		{"CSI Ps;PsH normal", "\x1B[24;14H", 10, 10, CSI_CUP, 23, 13},
+		{"CSI Ps;PsH default", "\x1B[H", 10, 10, CSI_CUP, 0, 0},
+		{"CSI Ps;PsH second default", "\x1B[1H", 10, 10, CSI_CUP, 0, 0},
+		{"CSI Ps;PsH outrange active area", "\x1B[42;89H", 10, 10, CSI_CUP, 39, 79},
 	}
 	p := NewParser()
 
@@ -1181,17 +1193,17 @@ func TestHandle_RI_NEL(t *testing.T) {
 	tc := []struct {
 		name       string
 		seq        string
+		hdIDs      []int
 		wantY      int
 		wantX      int
-		hdIDs      []int
 		scrollHead int
 	}{
-		{"RI ", "\x1B[11;6H\x1BM", 9, 5, []int{CSI_CUP, ESC_RI}, 0},   // move cursor up to the previouse row
-		{"RI ", "\x1B[1;6H\x1BM", 0, 5, []int{CSI_CUP, ESC_RI}, 39},   // move cursor up to the previouse row, scroll down
-		{"NEL", "\x1B[11;6H\x1BE", 11, 0, []int{CSI_CUP, ESC_NEL}, 0}, // move cursor down to next row, may scroll up
-		{"VT52 CUP no parameter", "\x1B[?2l\x1BH", 0, 0, []int{CSI_privRM, CSI_CUP}, 0},
-		{"VT52 CUP 5,5", "\x1B[?2l\x1BY%%", 5, 5, []int{CSI_privRM, CSI_CUP}, 0}, // % is 37, check ascii table
-		{"VT52 RI ", "\x1B[11;6H\x1B[?2l\x1BI", 9, 5, []int{CSI_CUP, CSI_privRM, ESC_RI}, 0},
+		{"RI ", "\x1B[11;6H\x1BM", []int{CSI_CUP, ESC_RI}, 9, 5, 0},   // move cursor up to the previouse row
+		{"RI ", "\x1B[1;6H\x1BM", []int{CSI_CUP, ESC_RI}, 0, 5, 39},   // move cursor up to the previouse row, scroll down
+		{"NEL", "\x1B[11;6H\x1BE", []int{CSI_CUP, ESC_NEL}, 11, 0, 0}, // move cursor down to next row, may scroll up
+		{"VT52 CUP no parameter", "\x1B[?2l\x1BH", []int{CSI_privRM, CSI_CUP}, 0, 0, 0},
+		{"VT52 CUP 5,5", "\x1B[?2l\x1BY%%", []int{CSI_privRM, CSI_CUP}, 5, 5, 0}, // % is 37, check ascii table
+		{"VT52 RI ", "\x1B[11;6H\x1B[?2l\x1BI", []int{CSI_CUP, CSI_privRM, ESC_RI}, 9, 5, 0},
 	}
 
 	p := NewParser()
@@ -1377,24 +1389,24 @@ func TestHandle_priDA_secDA_DSR(t *testing.T) {
 func TestHandle_VPA_VPR_CHA_HPA_HPR_CNL_CPL(t *testing.T) {
 	tc := []struct {
 		name         string
+		seq          string
 		hdIDs        []int
 		wantY, wantX int
-		seq          string
 	}{
-		{"VPA move cursor to row 2 ", []int{CSI_CUP, CSI_VPA}, 2, 9, "\x1B[9;10H\x1B[3d"},
-		{"VPA move cursor to row 33", []int{CSI_CUP, CSI_VPA}, 33, 8, "\x1B[9;9H\x1B[34d"},
-		{"VPR move cursor to row 12", []int{CSI_CUP, CSI_VPR}, 9, 8, "\x1B[9;9H\x1B[e"},
-		{"VPR move cursor to row 39", []int{CSI_CUP, CSI_VPR}, 39, 8, "\x1B[9;9H\x1B[40e"},
-		{"CHA move cursor to col 0 ", []int{CSI_CUP, CSI_CHA}, 7, 0, "\x1B[8;8H\x1B[G"}, // default Ps is 1
-		{"CHA move cursor to col 78", []int{CSI_CUP, CSI_CHA}, 6, 78, "\x1B[7;7H\x1B[79G"},
-		{"HPA move cursor to col 8 ", []int{CSI_CUP, CSI_HPA}, 5, 8, "\x1B[6;6H\x1B[9`"},
-		{"HPA move cursor to col 79", []int{CSI_CUP, CSI_HPA}, 4, 79, "\x1B[5;5H\x1B[99`"},
-		{"HPR move cursor to col 5 ", []int{CSI_CUP, CSI_HPR}, 4, 5, "\x1B[5;5H\x1B[a"},
-		{"HPR move cursor to col 39", []int{CSI_CUP, CSI_HPR}, 4, 79, "\x1B[5;5H\x1B[79a"},
-		{"CNL move cursor to (5,0) ", []int{CSI_CUP, CSI_CNL}, 5, 0, "\x1B[5;5H\x1B[E"},
-		{"CNL move cursor to (39,0)", []int{CSI_CUP, CSI_CNL}, 39, 0, "\x1B[5;5H\x1B[79E"},
-		{"CPL move cursor to (3,0) ", []int{CSI_CUP, CSI_CPL}, 3, 0, "\x1B[5;5H\x1B[F"},
-		{"CPL move cursor to (0,0) ", []int{CSI_CUP, CSI_CPL}, 0, 0, "\x1B[5;5H\x1B[20F"},
+		{"VPA move cursor to row 2 ", "\x1B[9;10H\x1B[3d", []int{CSI_CUP, CSI_VPA}, 2, 9},
+		{"VPA move cursor to row 33", "\x1B[9;9H\x1B[34d", []int{CSI_CUP, CSI_VPA}, 33, 8},
+		{"VPR move cursor to row 12", "\x1B[9;9H\x1B[e", []int{CSI_CUP, CSI_VPR}, 9, 8},
+		{"VPR move cursor to row 39", "\x1B[9;9H\x1B[40e", []int{CSI_CUP, CSI_VPR}, 39, 8},
+		{"CHA move cursor to col 0 ", "\x1B[8;8H\x1B[G", []int{CSI_CUP, CSI_CHA}, 7, 0}, // default Ps is 1
+		{"CHA move cursor to col 78", "\x1B[7;7H\x1B[79G", []int{CSI_CUP, CSI_CHA}, 6, 78},
+		{"HPA move cursor to col 8 ", "\x1B[6;6H\x1B[9`", []int{CSI_CUP, CSI_HPA}, 5, 8},
+		{"HPA move cursor to col 79", "\x1B[5;5H\x1B[99`", []int{CSI_CUP, CSI_HPA}, 4, 79},
+		{"HPR move cursor to col 5 ", "\x1B[5;5H\x1B[a", []int{CSI_CUP, CSI_HPR}, 4, 5},
+		{"HPR move cursor to col 39", "\x1B[5;5H\x1B[79a", []int{CSI_CUP, CSI_HPR}, 4, 79},
+		{"CNL move cursor to (5,0) ", "\x1B[5;5H\x1B[E", []int{CSI_CUP, CSI_CNL}, 5, 0},
+		{"CNL move cursor to (39,0)", "\x1B[5;5H\x1B[79E", []int{CSI_CUP, CSI_CNL}, 39, 0},
+		{"CPL move cursor to (3,0) ", "\x1B[5;5H\x1B[F", []int{CSI_CUP, CSI_CPL}, 3, 0},
+		{"CPL move cursor to (0,0) ", "\x1B[5;5H\x1B[20F", []int{CSI_CUP, CSI_CPL}, 0, 0},
 	}
 	p := NewParser()
 	emu := NewEmulator3(80, 40, 0)
@@ -1431,20 +1443,20 @@ func TestHandle_VPA_VPR_CHA_HPA_HPR_CNL_CPL(t *testing.T) {
 func TestHistory(t *testing.T) {
 	tc := []struct {
 		name       string
-		value      rune
 		reverseIdx int
+		value      rune
 		want       rune
 	}{
-		{"add a", 'a', 0, 'a'},
-		{"add b", 'b', 0, 'b'},
-		{"add c", 'c', 0, 'c'},
-		{"add d", 'd', 0, 'd'},
-		{"add e", 'e', 0, 'e'},
-		{"add f", 'f', 1, 'e'},
-		{"add d", 'd', 1, 'f'},
-		{"add e", 'e', 1, 'd'},
-		{"add f", 'f', 4, 'e'},
-		{"add x", 'x', 6, '\x00'},
+		{"add a", 0, 'a', 'a'},
+		{"add b", 0, 'b', 'b'},
+		{"add c", 0, 'c', 'c'},
+		{"add d", 0, 'd', 'd'},
+		{"add e", 0, 'e', 'e'},
+		{"add f", 1, 'f', 'e'},
+		{"add d", 1, 'd', 'f'},
+		{"add e", 1, 'e', 'd'},
+		{"add f", 4, 'f', 'e'},
+		{"add x", 6, 'x', '\x00'},
 	}
 
 	p := NewParser()
@@ -1493,31 +1505,30 @@ func TestHandle_DECSTBM(t *testing.T) {
 	tc := []struct {
 		name        string
 		seq         string
+		logMessage  string
 		hdIDs       []int
 		top, bottom int
 		posX, posY  int
-		logMessage  string
 	}{
 		{ // move the cursor to 23,13 first then set new top/bottom margin
-			"DECSTBM ", "\x1B[24;14H\x1B[2;30r",
+			"DECSTBM ", "\x1B[24;14H\x1B[2;30r", "",
 			[]int{CSI_CUP, CSI_DECSTBM},
-			2 - 1, 30, 0, 0, "",
+			2 - 1, 30, 0, 0,
 		},
 		{ // CUP, then a successful STBM follow an ignored STBM.
-			"DECSTBM ", "\x1B[2;6H\x1B[3;32r\x1B[32;30r",
+			"DECSTBM ", "\x1B[2;6H\x1B[3;32r\x1B[32;30r", "Illegal arguments to SetTopBottomMargins",
 			[]int{CSI_CUP, CSI_DECSTBM, CSI_DECSTBM},
-			3 - 1, 32, 0, 0, "Illegal arguments to SetTopBottomMargins",
+			3 - 1, 32, 0, 0,
 		},
 		{
-			"DECSTBM no parameters",
-			"\x1B[2;6H\x1B[r",
+			"DECSTBM no parameters", "\x1B[2;6H\x1B[r", "",
 			[]int{CSI_CUP, CSI_DECSTBM},
-			0, 40, 0, 0, "",
+			0, 40, 0, 0,
 		},
 		{ // CUP, then a successful STBM follow a reset STBM
-			"DECSTBM reset margin", "\x1B[2;6H\x1B[3;36r\x1B[1;40r",
+			"DECSTBM reset margin", "\x1B[2;6H\x1B[3;36r\x1B[1;40r", "",
 			[]int{CSI_CUP, CSI_DECSTBM, CSI_DECSTBM},
-			0, 40, 0, 0, "",
+			0, 40, 0, 0,
 		},
 	}
 
@@ -1575,23 +1586,23 @@ func TestHandle_DECSCL(t *testing.T) {
 	tc := []struct {
 		name     string
 		seq      string
+		msg      string
 		hdIDs    []int
 		cmpLevel CompatibilityLevel
-		msg      string
 	}{
-		{"CompatLevel VT100 param 61", "\x1B[61\"p", []int{CSI_DECSCL}, CompatLevel_VT100, ""},
-		{"CompatLevel VT400 param 62", "\x1B[62\"p", []int{CSI_DECSCL}, CompatLevel_VT400, ""},
-		{"CompatLevel VT400 param 63", "\x1B[63\"p", []int{CSI_DECSCL}, CompatLevel_VT400, ""},
-		{"CompatLevel VT400 param 64", "\x1B[64\"p", []int{CSI_DECSCL}, CompatLevel_VT400, ""},
-		{"CompatLevel VT400 param 65", "\x1B[65\"p", []int{CSI_DECSCL}, CompatLevel_VT400, ""},
-		{"CompatLevel VT400 DECANM  ", "\x1B<", []int{ESC_DECANM}, CompatLevel_VT400, ""},
-		{"VT52 CompatLevel VT100    ", "\x1B[?2l\x1B<", []int{CSI_privRM, ESC_DECANM}, CompatLevel_VT100, ""},
-		{"CompatLevel others        ", "\x1B[66\"p", []int{CSI_DECSCL}, CompatLevel_Unused, "compatibility mode"},
-		{"CompatLevel 8-bit control ", "\x1B[65;0\"p", []int{CSI_DECSCL}, CompatLevel_Unused, "DECSCL: 8-bit controls"},
-		{"CompatLevel 8-bit control ", "\x1B[61;2\"p", []int{CSI_DECSCL}, CompatLevel_Unused, "DECSCL: 8-bit controls"},
-		{"CompatLevel 7-bit control ", "\x1B[65;1\"p", []int{CSI_DECSCL}, CompatLevel_Unused, "DECSCL: 7-bit controls"},
-		{"CompatLevel outof range   ", "\x1B[65;3\"p", []int{CSI_DECSCL}, CompatLevel_Unused, "DECSCL: C1 control transmission mode"},
-		{"CompatLevel unhandled", "\x1B[65;3\"q", []int{CSI_DECSCL}, CompatLevel_Unused, "Unhandled input"},
+		{"CompatLevel VT100 param 61", "\x1B[61\"p", "", []int{CSI_DECSCL}, CompatLevel_VT100},
+		{"CompatLevel VT400 param 62", "\x1B[62\"p", "", []int{CSI_DECSCL}, CompatLevel_VT400},
+		{"CompatLevel VT400 param 63", "\x1B[63\"p", "", []int{CSI_DECSCL}, CompatLevel_VT400},
+		{"CompatLevel VT400 param 64", "\x1B[64\"p", "", []int{CSI_DECSCL}, CompatLevel_VT400},
+		{"CompatLevel VT400 param 65", "\x1B[65\"p", "", []int{CSI_DECSCL}, CompatLevel_VT400},
+		{"CompatLevel VT400 DECANM  ", "\x1B<", "", []int{ESC_DECANM}, CompatLevel_VT400},
+		{"VT52 CompatLevel VT100    ", "\x1B[?2l\x1B<", "", []int{CSI_privRM, ESC_DECANM}, CompatLevel_VT100},
+		{"CompatLevel others        ", "\x1B[66\"p", "compatibility mode", []int{CSI_DECSCL}, CompatLevel_Unused},
+		{"CompatLevel 8-bit control ", "\x1B[65;0\"p", "DECSCL: 8-bit controls", []int{CSI_DECSCL}, CompatLevel_Unused},
+		{"CompatLevel 8-bit control ", "\x1B[61;2\"p", "DECSCL: 8-bit controls", []int{CSI_DECSCL}, CompatLevel_Unused},
+		{"CompatLevel 7-bit control ", "\x1B[65;1\"p", "DECSCL: 7-bit controls", []int{CSI_DECSCL}, CompatLevel_Unused},
+		{"CompatLevel outof range   ", "\x1B[65;3\"p", "DECSCL: C1 control transmission mode", []int{CSI_DECSCL}, CompatLevel_Unused},
+		{"CompatLevel unhandled", "\x1B[65;3\"q", "Unhandled input", []int{CSI_DECSCL}, CompatLevel_Unused},
 	}
 
 	emu := NewEmulator3(8, 4, 0)
@@ -1889,6 +1900,7 @@ func TestHandle_XTWINOPS_Restore(t *testing.T) {
 		})
 	}
 }
+
 func damageArea(cf *Framebuffer, y1, x1, y2, x2 int) (start, end int) {
 	start = cf.getIdx(y1, x1)
 	end = cf.getIdx(y2, x2)
@@ -2609,7 +2621,6 @@ func TestHandle_Focus(t *testing.T) {
 	// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
 	for _, v := range tc {
-
 		t.Run(v.label, func(t *testing.T) {
 			// set previous focus
 			emu.setHasFocus(v.prevFocus)
@@ -4445,7 +4456,7 @@ func TestHandle_OSC_112(t *testing.T) {
 				t.Errorf("%s got zero handlers.", v.label)
 			}
 
-			//set different color for test
+			// set different color for test
 			emu.cf.cursor.color = v.cursorColor
 
 			// execute the control sequence
@@ -4465,6 +4476,7 @@ func TestHandle_OSC_112(t *testing.T) {
 		})
 	}
 }
+
 func TestHandle_DECSCUSR(t *testing.T) {
 	tc := []struct {
 		label   string
@@ -4708,10 +4720,14 @@ func TestMixSequence(t *testing.T) {
 		seq      string // data stream with control sequences
 		hdNumber int    // expect handler number
 	}{
-		{"vi sample 1", "\x1b[?1049h\x1b[22;0;0t\x1b[22;0t\x1b[?1h\x1b=\x1b[H\x1b[2J\x1b]11;?\a\x1b[?2004h\x1b[?u\x1b[c\x1b[?25h",
-			11},
-		{"vi sample 2", "\x1b[?25l\x1b(B\x1b[m\x1b[H\x1b[2J\x1b[>4;2m\x1b]112\a\x1b[2 q\x1b[?1002h\x1b[?1006h\x1b[38;2;233;233;244m\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[J\x1b[H",
-			73},
+		{
+			"vi sample 1", "\x1b[?1049h\x1b[22;0;0t\x1b[22;0t\x1b[?1h\x1b=\x1b[H\x1b[2J\x1b]11;?\a\x1b[?2004h\x1b[?u\x1b[c\x1b[?25h",
+			11,
+		},
+		{
+			"vi sample 2", "\x1b[?25l\x1b(B\x1b[m\x1b[H\x1b[2J\x1b[>4;2m\x1b]112\a\x1b[2 q\x1b[?1002h\x1b[?1006h\x1b[38;2;233;233;244m\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[J\x1b[H",
+			73,
+		},
 		{"vi sample 3", "\x1b[?25l\r\n\x1b[0;1;34mNvChad\x1b[0m\x1b[13;28Hgo.work\x1b[13;55H\x1b[0;1;34mmosh\x1b[0m\x1b[13;82H\x1b[0;1;34mnvide\x1b[0m\x1b[13;109H\x1b[0;1;34mtelescope.nvim\x1b[0m\r\n\x1b[0;1;34maprilsh\x1b[0m\x1b[14;28Hgo.work.sum\x1b[14;55Hmosh-1.3.2.tar.gz\x1b[14;82Hpersonal-access-token.txt\x1b[2C\x1b[0;1;34mterminfo\x1b[0m\r\n\x1b[0;1;34mdotfiles\x1b[0m\x1b[15;28H\x1b[0;1;34mgolangIDE\x1b[0m\x1b[15;55H\x1b[0;1;34mneovim-lua\x1b[0m\x1b[15;82H\x1b[0;1;34ms6\x1b[0m\r\n\x1b[?25h", 174},
 		{"vi file and quit 1", "\x1b[?25l\r\x1b[40;1H\x1b[?25h", 4},
 		{"vi file and quit 2", "\x1b[?25l\x1b]112\a\x1b[2 q\x1b[?25h", 4},

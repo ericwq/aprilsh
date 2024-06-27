@@ -86,14 +86,18 @@ func TestRenditionsGetAttributesReturnFalse(t *testing.T) {
 
 func TestRenditionsSGR_RGBColor(t *testing.T) {
 	tc := []struct {
-		fr, fg, fb int
-		br, bg, bb int
-		attr       charAttribute
-		want       string
+		want string
+		fr   int
+		fg   int
+		fb   int
+		br   int
+		bg   int
+		bb   int
+		attr charAttribute
 	}{
-		{33, 47, 12, 123, 24, 34, Bold, "\033[0;1;38:2:33:47:12;48:2:123:24:34m"},
-		{0, 0, 0, 0, 0, 0, Italic, "\033[0;3;38:2:0:0:0;48:2:0:0:0m"},
-		{12, 34, 128, 59, 190, 155, Underlined, "\033[0;4;38:2:12:34:128;48:2:59:190:155m"},
+		{"\033[0;1;38:2:33:47:12;48:2:123:24:34m", 33, 47, 12, 123, 24, 34, Bold},
+		{"\033[0;3;38:2:0:0:0;48:2:0:0:0m", 0, 0, 0, 0, 0, 0, Italic},
+		{"\033[0;4;38:2:12:34:128;48:2:59:190:155m", 12, 34, 128, 59, 190, 155, Underlined},
 	}
 
 	for _, c := range tc {
@@ -114,17 +118,17 @@ func TestRenditionsSGR_RGBColor(t *testing.T) {
 
 func TestRenditionsSGR_256color(t *testing.T) {
 	tc := []struct {
+		want string
 		fg   Color
 		bg   Color
 		attr charAttribute
-		want string
 	}{
-		{Color33, Color47, RapidBlink, "\033[0;6;38:5:33;48:5:47m"},  // 88-color
-		{ColorDefault, ColorDefault, Italic, "\033[0;3m"},            // just italic
-		{ColorDefault, ColorDefault, charAttribute(38), "\x1B[0m"},   // default Renditions and no charAttribute generate empty string
-		{Color128, Color155, Blink, "\033[0;5;38:5:128;48:5:155m"},   // 256-color
-		{Color205, Color228, Inverse, "\033[0;7;38:5:205;48:5:228m"}, // 256-color
-		{ColorRed, ColorWhite, charAttribute(38), "\033[0;91;107m"},  // 16-color set
+		{"\033[0;6;38:5:33;48:5:47m", Color33, Color47, RapidBlink},  // 88-color
+		{"\033[0;3m", ColorDefault, ColorDefault, Italic},            // just italic
+		{"\x1B[0m", ColorDefault, ColorDefault, charAttribute(38)},   // default Renditions and no charAttribute generate empty string
+		{"\033[0;5;38:5:128;48:5:155m", Color128, Color155, Blink},   // 256-color
+		{"\033[0;7;38:5:205;48:5:228m", Color205, Color228, Inverse}, // 256-color
+		{"\033[0;91;107m", ColorRed, ColorWhite, charAttribute(38)},  // 16-color set
 	}
 
 	for _, c := range tc {
@@ -147,21 +151,21 @@ func TestRenditionsSGR_256color(t *testing.T) {
 
 func TestRenditionsSGR_ANSIcolor(t *testing.T) {
 	tc := []struct {
+		want string
 		fg   int
 		bg   int
 		attr charAttribute
-		want string
 	}{
-		{30, 47, Bold, "\033[0;1;30;47m"},
-		{0, 0, Bold, "\033[0;1m"},
-		{0, 0, charAttribute(38), "\x1B[0m"}, // buildRendition doesn't support 38,48
-		{0, 0, Italic, "\033[0;3m"},
-		{0, 0, Underlined, "\033[0;4m"},
-		{39, 49, Invisible, "\033[0;8m"},
-		{37, 40, Faint, "\033[0;2;37;40m"},
-		{90, 107, Underlined, "\033[0;4;90;107m"},
-		{97, 100, Blink, "\033[0;5;97;100m"},
-		{0, 34, Bold, "\033[0;1;34m"},
+		{"\033[0;1;30;47m", 30, 47, Bold},
+		{"\033[0;1m", 0, 0, Bold},
+		{"\x1B[0m", 0, 0, charAttribute(38)}, // buildRendition doesn't support 38,48
+		{"\033[0;3m", 0, 0, Italic},
+		{"\033[0;4m", 0, 0, Underlined},
+		{"\033[0;8m", 39, 49, Invisible},
+		{"\033[0;2;37;40m", 37, 40, Faint},
+		{"\033[0;4;90;107m", 90, 107, Underlined},
+		{"\033[0;5;97;100m", 97, 100, Blink},
+		{"\033[0;1;34m", 0, 34, Bold},
 	}
 
 	for _, c := range tc {
@@ -186,7 +190,6 @@ func TestRenditionsBuildRenditions(t *testing.T) {
 }
 
 func TestRenditionsRebuild(t *testing.T) {
-
 	tc := []struct {
 		label  string
 		mix    string
@@ -194,11 +197,18 @@ func TestRenditionsRebuild(t *testing.T) {
 		posX   []int
 		expect []string
 	}{
-		{"mix color", "\x1b[1;34mdevelop\x1b[m  ", []int{0, 0}, []int{0, 7},
-			[]string{"\x1b[0;1;34m", "\x1b[0m"}},
-		{"super mix", "\x1B[5;1H1st space\x1B[0K\x1b[5;21H2nd!   \x1B[1;37;40m   3rd\x1b[5;79HEOL",
-			[]int{4, 4, 4, 4}, []int{0, 26, 30, 78},
-			[]string{"\x1b[0m", "\x1b[0m", "\x1B[0;1;37;40m", "\x1b[0;1;37;40m"}},
+		{
+			"mix color", "\x1b[1;34mdevelop\x1b[m  ",
+			[]int{0, 0},
+			[]int{0, 7},
+			[]string{"\x1b[0;1;34m", "\x1b[0m"},
+		},
+		{
+			"super mix", "\x1B[5;1H1st space\x1B[0K\x1b[5;21H2nd!   \x1B[1;37;40m   3rd\x1b[5;79HEOL",
+			[]int{4, 4, 4, 4},
+			[]int{0, 26, 30, 78},
+			[]string{"\x1b[0m", "\x1b[0m", "\x1B[0;1;37;40m", "\x1b[0;1;37;40m"},
+		},
 	}
 	emu := NewEmulator3(80, 40, 40)
 	os.Setenv("TERM", "xterm-256color")
