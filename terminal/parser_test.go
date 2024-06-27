@@ -1647,20 +1647,20 @@ func TestHandle_DECSCL(t *testing.T) {
 func TestHandle_ecma48_SL_SR_FI_BI(t *testing.T) {
 	tc := []struct {
 		name      string
+		seq       string
+		emptyCols []int // empty columens
 		hdIDs     []int
 		tlY, tlX  int // damage area top/left
 		brY, brX  int // damage area bottom/right
-		seq       string
-		emptyCols []int // empty columens
 	}{
-		{"ecma48 SL 2 cols", []int{ESC_DECALN, CSI_ECMA48_SL}, 0, 0, 3, 7, "\x1B#8\x1B[2 @", []int{6, 7}},
-		{"ecma48 SL 1 col ", []int{ESC_DECALN, CSI_ECMA48_SL}, 0, 0, 3, 7, "\x1B#8\x1B[ @", []int{7}},
-		{"ecma48 SL all cols", []int{ESC_DECALN, CSI_ECMA48_SL}, 0, 0, 3, 7, "\x1B#8\x1B[9 @", []int{0, 1, 2, 3, 4, 5, 6, 7}},
-		{"ecma48 SR 4 cols", []int{ESC_DECALN, CSI_ECMA48_SR}, 0, 0, 3, 7, "\x1B#8\x1B[4 A", []int{0, 1, 2, 3}},
-		{"ecma48 SR 1 cols", []int{ESC_DECALN, CSI_ECMA48_SR}, 0, 0, 3, 7, "\x1B#8\x1B[ A", []int{0}},
-		{"ecma48 SR all cols", []int{ESC_DECALN, CSI_ECMA48_SR}, 0, 0, 3, 7, "\x1B#8\x1B[9 A", []int{0, 1, 2, 3, 4, 5, 6, 7}},
-		{"DECFI 1 cols", []int{ESC_DECALN, CSI_CUP, ESC_FI}, 0, 0, 3, 7, "\x1B#8\x1B[4;8H\x1B9", []int{7}},
-		{"DECBI 1 cols", []int{ESC_DECALN, CSI_CUP, ESC_BI}, 0, 0, 3, 7, "\x1B#8\x1B[4;1H\x1B6", []int{0}},
+		{"ecma48 SL 2 cols", "\x1B#8\x1B[2 @", []int{6, 7}, []int{ESC_DECALN, CSI_ECMA48_SL}, 0, 0, 3, 7},
+		{"ecma48 SL 1 col ", "\x1B#8\x1B[ @", []int{7}, []int{ESC_DECALN, CSI_ECMA48_SL}, 0, 0, 3, 7},
+		{"ecma48 SL all cols", "\x1B#8\x1B[9 @", []int{0, 1, 2, 3, 4, 5, 6, 7}, []int{ESC_DECALN, CSI_ECMA48_SL}, 0, 0, 3, 7},
+		{"ecma48 SR 4 cols", "\x1B#8\x1B[4 A", []int{0, 1, 2, 3}, []int{ESC_DECALN, CSI_ECMA48_SR}, 0, 0, 3, 7},
+		{"ecma48 SR 1 cols", "\x1B#8\x1B[ A", []int{0}, []int{ESC_DECALN, CSI_ECMA48_SR}, 0, 0, 3, 7},
+		{"ecma48 SR all cols", "\x1B#8\x1B[9 A", []int{0, 1, 2, 3, 4, 5, 6, 7}, []int{ESC_DECALN, CSI_ECMA48_SR}, 0, 0, 3, 7},
+		{"DECFI 1 cols", "\x1B#8\x1B[4;8H\x1B9", []int{7}, []int{ESC_DECALN, CSI_CUP, ESC_FI}, 0, 0, 3, 7},
+		{"DECBI 1 cols", "\x1B#8\x1B[4;1H\x1B6", []int{0}, []int{ESC_DECALN, CSI_CUP, ESC_BI}, 0, 0, 3, 7},
 	}
 
 	p := NewParser()
@@ -1712,21 +1712,21 @@ func TestHandle_ecma48_SL_SR_FI_BI(t *testing.T) {
 func TestHandle_XTMMODEKEYS(t *testing.T) {
 	tc := []struct {
 		name            string
-		hdIDs           []int
 		seq             string
-		modifyOtherKeys uint
 		msg             string
+		hdIDs           []int
+		modifyOtherKeys uint
 	}{
-		{"XTMODEKEYS 0:x    ", []int{CSI_XTMODKEYS}, "\x1B[>0;1m", 3, "XTMODKEYS: modifyKeyboard"},
-		{"XTMODEKEYS 0:break", []int{CSI_XTMODKEYS}, "\x1B[>0;0m", 3, ""},
-		{"XTMODEKEYS 1:x    ", []int{CSI_XTMODKEYS}, "\x1B[>1;1m", 3, "XTMODKEYS: modifyCursorKeys"},
-		{"XTMODEKEYS 1:break", []int{CSI_XTMODKEYS}, "\x1B[>1;2m", 3, ""},
-		{"XTMODEKEYS 2:x    ", []int{CSI_XTMODKEYS}, "\x1B[>2;1m", 3, "XTMODKEYS: modifyFunctionKeys"},
-		{"XTMODEKEYS 2:break", []int{CSI_XTMODKEYS}, "\x1B[>2;2m", 3, ""},
-		{"XTMODEKEYS 4:x    ", []int{CSI_XTMODKEYS}, "\x1B[>4;2m", 2, ""},
-		{"XTMODEKEYS 4:break", []int{CSI_XTMODKEYS}, "\x1B[>4;3m", 3, "XTMODKEYS: illegal argument for modifyOtherKeys"},
-		{"XTMODEKEYS 1 parameter", []int{CSI_XTMODKEYS}, "\x1B[>4m", 0, ""},
-		{"XTMODEKEYS 0 parameter", []int{CSI_XTMODKEYS}, "\x1B[>m", 3, ""}, // no parameter
+		{"XTMODEKEYS 0:x    ", "\x1B[>0;1m", "XTMODKEYS: modifyKeyboard", []int{CSI_XTMODKEYS}, 3},
+		{"XTMODEKEYS 0:break", "\x1B[>0;0m", "", []int{CSI_XTMODKEYS}, 3},
+		{"XTMODEKEYS 1:x    ", "\x1B[>1;1m", "XTMODKEYS: modifyCursorKeys", []int{CSI_XTMODKEYS}, 3},
+		{"XTMODEKEYS 1:break", "\x1B[>1;2m", "", []int{CSI_XTMODKEYS}, 3},
+		{"XTMODEKEYS 2:x    ", "\x1B[>2;1m", "XTMODKEYS: modifyFunctionKeys", []int{CSI_XTMODKEYS}, 3},
+		{"XTMODEKEYS 2:break", "\x1B[>2;2m", "", []int{CSI_XTMODKEYS}, 3},
+		{"XTMODEKEYS 4:x    ", "\x1B[>4;2m", "", []int{CSI_XTMODKEYS}, 2},
+		{"XTMODEKEYS 4:break", "\x1B[>4;3m", "XTMODKEYS: illegal argument for modifyOtherKeys", []int{CSI_XTMODKEYS}, 3},
+		{"XTMODEKEYS 1 parameter", "\x1B[>4m", "", []int{CSI_XTMODKEYS}, 0},
+		{"XTMODEKEYS 0 parameter", "\x1B[>m", "", []int{CSI_XTMODKEYS}, 3}, // no parameter
 	}
 
 	p := NewParser()
@@ -1774,12 +1774,12 @@ func TestHandle_XTWINOPS_Save(t *testing.T) {
 		label   string
 		seq     string
 		hdIDs   []int
-		index   int
 		warnMsg []string
+		index   int
 	}{
-		{"XTWINOPS 22 0", "\x1B[22;0t", []int{CSI_XTWINOPS}, 0, []string{}},
-		{"XTWINOPS 22 2", "\x1B[22;2t", []int{CSI_XTWINOPS}, 0, []string{}},
-		{"XTWINOPS 22 1", "\x1B[22;1t", []int{CSI_XTWINOPS}, 0, []string{"unhandled operation", "\\x1b[22;1t"}},
+		{"XTWINOPS 22 0", "\x1B[22;0t", []int{CSI_XTWINOPS}, []string{}, 0},
+		{"XTWINOPS 22 2", "\x1B[22;2t", []int{CSI_XTWINOPS}, []string{}, 0},
+		{"XTWINOPS 22 1", "\x1B[22;1t", []int{CSI_XTWINOPS}, []string{"unhandled operation", "\\x1b[22;1t"}, 0},
 	}
 	p := NewParser()
 	emu := NewEmulator3(80, 40, 5)
@@ -1839,14 +1839,14 @@ func TestHandle_XTWINOPS_Restore(t *testing.T) {
 		label   string
 		seq     string
 		hdIDs   []int
-		index   int
 		warnMsg []string
+		index   int
 	}{
-		{"XTWINOPS 23 0", "\x1B[23;0t", []int{CSI_XTWINOPS}, 0, []string{}},
-		{"XTWINOPS 23 2", "\x1B[23;2t", []int{CSI_XTWINOPS}, 0, []string{}},
-		{"XTWINOPS 23 1", "\x1B[23;1t", []int{CSI_XTWINOPS}, 0, []string{"unhandled operation", "\\x1b[23;1t"}},
-		{"XTWINOPS unhandled no Ps", "\x1B[t", []int{CSI_XTWINOPS}, 0, []string{"unhandled operation", "\\x1b[t"}},
-		{"XTWINOPS unhandled illegal Ps", "\x1B[25t", []int{CSI_XTWINOPS}, 0, []string{"unhandled operation", "\\x1b[25t"}},
+		{"XTWINOPS 23 0", "\x1B[23;0t", []int{CSI_XTWINOPS}, []string{}, 0},
+		{"XTWINOPS 23 2", "\x1B[23;2t", []int{CSI_XTWINOPS}, []string{}, 0},
+		{"XTWINOPS 23 1", "\x1B[23;1t", []int{CSI_XTWINOPS}, []string{"unhandled operation", "\\x1b[23;1t"}, 0},
+		{"XTWINOPS unhandled no Ps", "\x1B[t", []int{CSI_XTWINOPS}, []string{"unhandled operation", "\\x1b[t"}, 0},
+		{"XTWINOPS unhandled illegal Ps", "\x1B[25t", []int{CSI_XTWINOPS}, []string{"unhandled operation", "\\x1b[25t"}, 0},
 	}
 	p := NewParser()
 	emu := NewEmulator3(80, 40, 5)
@@ -1941,25 +1941,25 @@ func TestHandle_SCOSC_SCORC(t *testing.T) {
 	tc := []struct {
 		name       string
 		seq        string
+		msg        string
 		hdIDs      []int
 		posY, posX int
 		set        bool
-		msg        string
 	}{
 		{
-			"move cursor, SCOSC, check", "\x1B[22;33H\x1B[s",
+			"move cursor, SCOSC, check", "\x1B[22;33H\x1B[s", "",
 			[]int{CSI_CUP, CSI_SLRM_SCOSC},
-			22 - 1, 33 - 1, true, "",
+			22 - 1, 33 - 1, true,
 		},
 		{
-			"move cursor, SCOSC, move cursor, SCORC, check", "\x1B[33;44H\x1B[s\x1B[42;35H\x1B[u",
+			"move cursor, SCOSC, move cursor, SCORC, check", "\x1B[33;44H\x1B[s\x1B[42;35H\x1B[u", "",
 			[]int{CSI_CUP, CSI_SLRM_SCOSC, CSI_CUP, CSI_SCORC},
-			33 - 1, 44 - 1, false, "",
+			33 - 1, 44 - 1, false,
 		},
 		{
-			"SCORC, check", "\x1B[u",
+			"SCORC, check", "\x1B[u", "Asked to restore cursor (SCORC) but it has not been saved",
 			[]int{CSI_SCORC},
-			0, 0, false, "Asked to restore cursor (SCORC) but it has not been saved",
+			0, 0, false,
 		},
 	}
 
@@ -2166,25 +2166,25 @@ func TestHandle_DECSLRM_Others(t *testing.T) {
 	tc := []struct {
 		name        string
 		seq         string
-		hdIDs       []int
 		logMsg      string
+		hdIDs       []int
 		left, right int
 		posY, posX  int
 	}{
 		{
-			"DECLRMM disable", "\x1B[?69l\x1B[4;49s",
+			"DECLRMM disable", "\x1B[?69l\x1B[4;49s", "",
 			[]int{CSI_privRM, CSI_SLRM_SCOSC},
-			"", 0, 0, 0, 0,
+			0, 0, 0, 0,
 		},
 		{
-			"DECLRMM enable, outof range", "\x1B[?69h\x1B[4;89s",
+			"DECLRMM enable, outof range", "\x1B[?69h\x1B[4;89s", "Illegal arguments to SetLeftRightMargins",
 			[]int{CSI_privSM, CSI_SLRM_SCOSC},
-			"Illegal arguments to SetLeftRightMargins", 0, 0, 0, 0,
+			0, 0, 0, 0,
 		},
-		{
-			"DECLRMM OriginMode_ScrollingRegion, enable", "\x1B[?6h\x1B[?69h\x1B[4;69s", // DECLRMM: Set Left and Right Margins
+		{ // DECLRMM: Set Left and Right Margins
+			"DECLRMM OriginMode_ScrollingRegion, enable", "\x1B[?6h\x1B[?69h\x1B[4;69s", "",
 			[]int{CSI_privSM, CSI_privSM, CSI_SLRM_SCOSC},
-			"", 3, 69, 0, 3,
+			3, 69, 0, 3,
 		},
 	}
 
@@ -2318,18 +2318,18 @@ func TestHandle_DECSTR(t *testing.T) {
 func TestHandle_CR_LF_VT_FF(t *testing.T) {
 	tc := []struct {
 		name  string
+		seq   string
 		hdIDs []int
 		posY  int
 		posX  int
-		seq   string
 	}{
-		{"CR 1 ", []int{CSI_CUP, C0_CR}, 2, 0, "\x1B[3;2H\x0D"},
-		{"CR 2 ", []int{CSI_CUP, C0_CR}, 4, 0, "\x1B[5;10H\x0D"},
-		{"LF   ", []int{CSI_CUP, ESC_IND}, 3, 1, "\x1B[3;2H\x0C"},
-		{"VT   ", []int{CSI_CUP, ESC_IND}, 4, 2, "\x1B[4;3H\x0B"},
-		{"FF   ", []int{CSI_CUP, ESC_IND}, 5, 3, "\x1B[5;4H\x0C"},
-		{"ESC D", []int{CSI_CUP, ESC_IND}, 6, 4, "\x1B[6;5H\x1BD"},
-		{"CHA CR", []int{CSI_privSM, CSI_SLRM_SCOSC, CSI_CUP, C0_CR}, 4, 0, "\x1B[?69h\x1B[4;70s\x1B[5;1H\x0D"},
+		{"CR 1 ", "\x1B[3;2H\x0D", []int{CSI_CUP, C0_CR}, 2, 0},
+		{"CR 2 ", "\x1B[5;10H\x0D", []int{CSI_CUP, C0_CR}, 4, 0},
+		{"LF   ", "\x1B[3;2H\x0C", []int{CSI_CUP, ESC_IND}, 3, 1},
+		{"VT   ", "\x1B[4;3H\x0B", []int{CSI_CUP, ESC_IND}, 4, 2},
+		{"FF   ", "\x1B[5;4H\x0C", []int{CSI_CUP, ESC_IND}, 5, 3},
+		{"ESC D", "\x1B[6;5H\x1BD", []int{CSI_CUP, ESC_IND}, 6, 4},
+		{"CHA CR", "\x1B[?69h\x1B[4;70s\x1B[5;1H\x0D", []int{CSI_privSM, CSI_SLRM_SCOSC, CSI_CUP, C0_CR}, 4, 0},
 	}
 
 	p := NewParser()
@@ -2369,19 +2369,19 @@ func TestHandle_CR_LF_VT_FF(t *testing.T) {
 func TestHandle_CSI_BS_FF_VT_CR_TAB(t *testing.T) {
 	tc := []struct {
 		name         string
-		hdIDs        []int
 		seq          string
+		hdIDs        []int
 		wantY, wantX int
 	}{
 		// call CUP first to set the start position
-		{"CSI backspace number    ", []int{CSI_CUP, CSI_CUP}, "\x1B[1;1H\x1B[23;12\bH", 22, 0},       // undo last character in CSI sequence
-		{"CSI backspace semicolon ", []int{CSI_CUP, CSI_CUP}, "\x1B[1;1H\x1B[23;\b;12H", 22, 11},     // undo last character in CSI sequence
-		{"cursor down 1+3 rows VT ", []int{CSI_CUP, ESC_IND, CSI_CUD}, "\x1B[9;10H\x1B[3\vB", 12, 9}, //(8,9)->(9.9)->(12,9)
-		{"cursor down 1+3 rows FF ", []int{CSI_CUP, ESC_IND, CSI_CUD}, "\x1B[9;10H\x1B[\f3B", 12, 9},
-		{"cursor up 2 rows and CR ", []int{CSI_CUP, C0_CR, CSI_CUU}, "\x1B[8;9H\x1B[\r2A", 5, 0},
-		{"cursor up 3 rows and CR ", []int{CSI_CUP, C0_CR, CSI_CUU}, "\x1B[7;7H\x1B[3\rA", 3, 0},
-		{"cursor forward 2cols +HT", []int{CSI_CUP, C0_HT, CSI_CUF}, "\x1B[4;6H\x1B[2\tC", 3, 10},
-		{"cursor forward 1cols +HT", []int{CSI_CUP, C0_HT, CSI_CUF}, "\x1B[6;3H\x1B[\t1C", 5, 9},
+		{"CSI backspace number    ", "\x1B[1;1H\x1B[23;12\bH", []int{CSI_CUP, CSI_CUP}, 22, 0},       // undo last character in CSI sequence
+		{"CSI backspace semicolon ", "\x1B[1;1H\x1B[23;\b;12H", []int{CSI_CUP, CSI_CUP}, 22, 11},     // undo last character in CSI sequence
+		{"cursor down 1+3 rows VT ", "\x1B[9;10H\x1B[3\vB", []int{CSI_CUP, ESC_IND, CSI_CUD}, 12, 9}, //(8,9)->(9.9)->(12,9)
+		{"cursor down 1+3 rows FF ", "\x1B[9;10H\x1B[\f3B", []int{CSI_CUP, ESC_IND, CSI_CUD}, 12, 9},
+		{"cursor up 2 rows and CR ", "\x1B[8;9H\x1B[\r2A", []int{CSI_CUP, C0_CR, CSI_CUU}, 5, 0},
+		{"cursor up 3 rows and CR ", "\x1B[7;7H\x1B[3\rA", []int{CSI_CUP, C0_CR, CSI_CUU}, 3, 0},
+		{"cursor forward 2cols +HT", "\x1B[4;6H\x1B[2\tC", []int{CSI_CUP, C0_HT, CSI_CUF}, 3, 10},
+		{"cursor forward 1cols +HT", "\x1B[6;3H\x1B[\t1C", []int{CSI_CUP, C0_HT, CSI_CUF}, 5, 9},
 	}
 
 	p := NewParser()
@@ -2419,30 +2419,30 @@ func TestHandle_CSI_BS_FF_VT_CR_TAB(t *testing.T) {
 func TestHandle_CUU_CUD_CUF_CUB_CUP_FI_BI(t *testing.T) {
 	tc := []struct {
 		name  string
+		seq   string
 		hdIDs []int
 		wantY int
 		wantX int
-		seq   string
 	}{
 		// call CUP first to set the start position
-		{"CSI Ps A  ", []int{CSI_CUP, CSI_CUU}, 14, 10, "\x1B[21;11H\x1B[6A"},
-		{"CSI Ps B  ", []int{CSI_CUP, CSI_CUD}, 13, 10, "\x1B[11;11H\x1B[3B"},
-		{"CSI Ps C  ", []int{CSI_CUP, CSI_CUF}, 10, 12, "\x1B[11;11H\x1B[2C"},
-		{"CSI Ps D  ", []int{CSI_CUP, CSI_CUB}, 10, 12, "\x1B[11;21H\x1B[8D"},
-		{"BS        ", []int{CSI_CUP, CSI_CUB}, 12, 11, "\x1B[13;13H\x08"}, // \x08 calls CUB
-		{"CUB       ", []int{CSI_CUP, CSI_CUB}, 12, 11, "\x1B[13;13H\x1B[1D"},
-		{"CUB left  ", []int{CSI_CUP, CSI_CUB}, 20, 0, "\x1B[21;3H\x1B[4D"},
-		{"BS agin   ", []int{CSI_CUP, CSI_CUB}, 12, 10, "\x1B[13;12H\x08"}, // \x08 calls CUB
-		{"DECFI     ", []int{CSI_CUP, ESC_FI}, 12, 22, "\x1B[13;22H\x1b9"},
-		{"DECBI     ", []int{CSI_CUP, ESC_BI}, 12, 20, "\x1B[13;22H\x1b6"},
-		{"CUU with STBM", []int{CSI_DECSTBM, CSI_CUP, CSI_CUU}, 0, 0, "\x1B[3;32r\x1B[2;1H\x1B[7A"},
-		{"CUD with STBM", []int{CSI_DECSTBM, CSI_CUP, CSI_CUD}, 39, 79, "\x1B[3;36r\x1B[40;80H\x1B[3B"},
-		{"CUB SLRM left", []int{CSI_privSM, CSI_SLRM_SCOSC, CSI_CUP, CSI_CUB}, 0, 0, "\x1B[?69h\x1B[3;76s\x1B[1;1H\x1B[5D"},
-		{"CUB with right", []int{CSI_privSM, CSI_SLRM_SCOSC, CSI_CUP, CSI_CUB}, 39, 71, "\x1B[?69h\x1B[3;76s\x1B[40;77H\x1B[4D"},
-		{"VT52 CUU", []int{CSI_CUP, CSI_privRM, CSI_CUU}, 19, 10, "\x1B[21;11H\x1B[?2l\x1BA"},
-		{"VT52 CUD", []int{CSI_CUP, CSI_privRM, CSI_CUD}, 21, 10, "\x1B[21;11H\x1B[?2l\x1BB"},
-		{"VT52 CUF", []int{CSI_CUP, CSI_privRM, CSI_CUF}, 20, 11, "\x1B[21;11H\x1B[?2l\x1BC"},
-		{"VT52 CUB", []int{CSI_CUP, CSI_privRM, CSI_CUB}, 20, 9, "\x1B[21;11H\x1B[?2l\x1BD"},
+		{"CSI Ps A  ", "\x1B[21;11H\x1B[6A", []int{CSI_CUP, CSI_CUU}, 14, 10},
+		{"CSI Ps B  ", "\x1B[11;11H\x1B[3B", []int{CSI_CUP, CSI_CUD}, 13, 10},
+		{"CSI Ps C  ", "\x1B[11;11H\x1B[2C", []int{CSI_CUP, CSI_CUF}, 10, 12},
+		{"CSI Ps D  ", "\x1B[11;21H\x1B[8D", []int{CSI_CUP, CSI_CUB}, 10, 12},
+		{"BS        ", "\x1B[13;13H\x08", []int{CSI_CUP, CSI_CUB}, 12, 11}, // \x08 calls CUB
+		{"CUB       ", "\x1B[13;13H\x1B[1D", []int{CSI_CUP, CSI_CUB}, 12, 11},
+		{"CUB left  ", "\x1B[21;3H\x1B[4D", []int{CSI_CUP, CSI_CUB}, 20, 0},
+		{"BS agin   ", "\x1B[13;12H\x08", []int{CSI_CUP, CSI_CUB}, 12, 10}, // \x08 calls CUB
+		{"DECFI     ", "\x1B[13;22H\x1b9", []int{CSI_CUP, ESC_FI}, 12, 22},
+		{"DECBI     ", "\x1B[13;22H\x1b6", []int{CSI_CUP, ESC_BI}, 12, 20},
+		{"CUU with STBM", "\x1B[3;32r\x1B[2;1H\x1B[7A", []int{CSI_DECSTBM, CSI_CUP, CSI_CUU}, 0, 0},
+		{"CUD with STBM", "\x1B[3;36r\x1B[40;80H\x1B[3B", []int{CSI_DECSTBM, CSI_CUP, CSI_CUD}, 39, 79},
+		{"CUB SLRM left", "\x1B[?69h\x1B[3;76s\x1B[1;1H\x1B[5D", []int{CSI_privSM, CSI_SLRM_SCOSC, CSI_CUP, CSI_CUB}, 0, 0},
+		{"CUB with right", "\x1B[?69h\x1B[3;76s\x1B[40;77H\x1B[4D", []int{CSI_privSM, CSI_SLRM_SCOSC, CSI_CUP, CSI_CUB}, 39, 71},
+		{"VT52 CUU", "\x1B[21;11H\x1B[?2l\x1BA", []int{CSI_CUP, CSI_privRM, CSI_CUU}, 19, 10},
+		{"VT52 CUD", "\x1B[21;11H\x1B[?2l\x1BB", []int{CSI_CUP, CSI_privRM, CSI_CUD}, 21, 10},
+		{"VT52 CUF", "\x1B[21;11H\x1B[?2l\x1BC", []int{CSI_CUP, CSI_privRM, CSI_CUF}, 20, 11},
+		{"VT52 CUB", "\x1B[21;11H\x1B[?2l\x1BD", []int{CSI_CUP, CSI_privRM, CSI_CUB}, 20, 9},
 	}
 
 	p := NewParser()
@@ -2487,23 +2487,21 @@ func TestHandle_SU_SD(t *testing.T) {
 	saveLines := 5
 	tc := []struct {
 		name      string
+		seq       string
 		hdIDs     []int
 		emptyRows []int
-		seq       string
 	}{
-		{"SU scroll up   2 lines", []int{CSI_SU}, []int{nRows - 2, nRows - 1}, "\x1B[2S"}, // bottom 2 is erased
-		{"SD scroll down 3 lines", []int{CSI_SD}, []int{0, 1, 2}, "\x1B[3T"},              // top three is erased.
+		{"SU scroll up   2 lines", "\x1B[2S", []int{CSI_SU}, []int{nRows - 2, nRows - 1}}, // bottom 2 is erased
+		{"SD scroll down 3 lines", "\x1B[3T", []int{CSI_SD}, []int{0, 1, 2}},              // top three is erased.
 		{
-			"SU scroll up 2 with SLRM",
+			"SU scroll up 2 with SLRM", "\x1B[?69h\x1B[3;76s\x1B[2S",
 			[]int{CSI_privSM, CSI_SLRM_SCOSC, CSI_SU},
 			[]int{nRows - 2, nRows - 1},
-			"\x1B[?69h\x1B[3;76s\x1B[2S",
 		}, // bottom 2 is erased
 		{
-			"SD scroll down 3 with SLRM",
+			"SD scroll down 3 with SLRM", "\x1B[?69h\x1B[3;76s\x1B[3T",
 			[]int{CSI_privSM, CSI_SLRM_SCOSC, CSI_SD},
 			[]int{0, 1, 2},
-			"\x1B[?69h\x1B[3;76s\x1B[3T",
 		}, // top three is erased.
 	}
 
@@ -2549,12 +2547,12 @@ func TestHandle_SU_SD(t *testing.T) {
 func TestHandle_HTS_TBC(t *testing.T) {
 	tc := []struct {
 		name  string
-		hdIDs []int
 		seq   string
+		hdIDs []int
 	}{
-		{"Set/Clear tab stop 1", []int{CSI_CUP, ESC_HTS, CSI_TBC}, "\x1B[21;19H\x1BH\x1B[g"}, // set tab stop; clear tab stop
-		{"Set/Clear tab stop 2", []int{CSI_CUP, ESC_HTS, CSI_TBC}, "\x1B[21;39H\x1BH\x1B[0g"},
-		{"Set/Clear tab stop 3", []int{CSI_CUP, ESC_HTS, CSI_TBC}, "\x1B[21;47H\x1BH\x1B[3g"},
+		{"Set/Clear tab stop 1", "\x1B[21;19H\x1BH\x1B[g", []int{CSI_CUP, ESC_HTS, CSI_TBC}}, // set tab stop; clear tab stop
+		{"Set/Clear tab stop 2", "\x1B[21;39H\x1BH\x1B[0g", []int{CSI_CUP, ESC_HTS, CSI_TBC}},
+		{"Set/Clear tab stop 3", "\x1B[21;47H\x1BH\x1B[3g", []int{CSI_CUP, ESC_HTS, CSI_TBC}},
 	}
 	// TODO test to see the HTS same position
 	p := NewParser()
@@ -2601,15 +2599,15 @@ func TestHandle_HTS_TBC(t *testing.T) {
 func TestHandle_Focus(t *testing.T) {
 	tc := []struct {
 		label     string
+		seq       string
 		hdIDs     []int
 		prevFocus bool
 		hasFocus  bool
-		seq       string
 	}{
-		{"focus enable: out", []int{CSI_privSM, CSI_FocusOut}, true, false, "\x1B[?1004h\x1B[O"},
-		{"focus enable:  in", []int{CSI_privSM, CSI_FocusIn}, false, true, "\x1B[?1004h\x1B[I"},
-		{"focus disable:out", []int{CSI_privRM, CSI_FocusOut}, true, true, "\x1B[?1004l\x1B[O"},
-		{"focus disable: in", []int{CSI_privRM, CSI_FocusIn}, false, false, "\x1B[?1004l\x1B[I"},
+		{"focus enable: out", "\x1B[?1004h\x1B[O", []int{CSI_privSM, CSI_FocusOut}, true, false},
+		{"focus enable:  in", "\x1B[?1004h\x1B[I", []int{CSI_privSM, CSI_FocusIn}, false, true},
+		{"focus disable:out", "\x1B[?1004l\x1B[O", []int{CSI_privRM, CSI_FocusOut}, true, true},
+		{"focus disable: in", "\x1B[?1004l\x1B[I", []int{CSI_privRM, CSI_FocusIn}, false, false},
 	}
 
 	p := NewParser()
@@ -2651,22 +2649,21 @@ func TestHandle_Focus(t *testing.T) {
 func TestHandle_HT_CHT_CBT(t *testing.T) {
 	tc := []struct {
 		name  string
+		seq   string
 		hdIDs []int
 		posX  int
-		seq   string
 	}{
-		{"HT case 1  ", []int{CSI_CUP, C0_HT}, 8, "\x1B[21;6H\x09"},                 // move to the next tab stop
-		{"HT case 2  ", []int{CSI_CUP, C0_HT}, 16, "\x1B[21;10H\x09"},               // move to the next tab stop
-		{"CBT back to the 3 tab", []int{CSI_CUP, CSI_CBT}, 8, "\x1B[21;30H\x1B[3Z"}, // move backward to the previous 3 tab stop
-		{"CHT to the next 2 tab", []int{CSI_CUP, CSI_CHT}, 8, "\x1B[21;3H\x1B[1I"},  // move to the next N tab stop
-		{"CHT to the next 4 tab", []int{CSI_CUP, CSI_CHT}, 32, "\x1B[21;3H\x1B[4I"}, // move to the next N tab stop
-		{"CHT to the right edge", []int{CSI_CUP, CSI_CHT}, 79, "\x1B[21;60H\x1B[4I"},
-		{"CBT rule to left edge", []int{CSI_CUP, CSI_CBT}, 0, "\x1B[21;3H\x1B[3Z"}, // under tab rules
+		{"HT case 1  ", "\x1B[21;6H\x09", []int{CSI_CUP, C0_HT}, 8},                 // move to the next tab stop
+		{"HT case 2  ", "\x1B[21;10H\x09", []int{CSI_CUP, C0_HT}, 16},               // move to the next tab stop
+		{"CBT back to the 3 tab", "\x1B[21;30H\x1B[3Z", []int{CSI_CUP, CSI_CBT}, 8}, // move backward to the previous 3 tab stop
+		{"CHT to the next 2 tab", "\x1B[21;3H\x1B[1I", []int{CSI_CUP, CSI_CHT}, 8},  // move to the next N tab stop
+		{"CHT to the next 4 tab", "\x1B[21;3H\x1B[4I", []int{CSI_CUP, CSI_CHT}, 32}, // move to the next N tab stop
+		{"CHT to the right edge", "\x1B[21;60H\x1B[4I", []int{CSI_CUP, CSI_CHT}, 79},
+		{"CBT rule to left edge", "\x1B[21;3H\x1B[3Z", []int{CSI_CUP, CSI_CBT}, 0}, // under tab rules
 		{
-			"CBT tab stop to left edge",
+			"CBT tab stop to left edge", "\x1B[21;4H\x1BH\x1B[21;7H\x1BH\x1B[2Z",
 			[]int{CSI_CUP, ESC_HTS, CSI_CUP, ESC_HTS, CSI_CBT}, // set 2 tab stops, CBT 2 backwards
 			0,
-			"\x1B[21;4H\x1BH\x1B[21;7H\x1BH\x1B[2Z",
 		},
 	}
 
@@ -2704,13 +2701,13 @@ func TestHandle_HT_CHT_CBT(t *testing.T) {
 func TestHandle_LF_ScrollUp(t *testing.T) {
 	tc := []struct {
 		name             string
+		seq              string
 		posY             int
 		expectScrollHead int
-		seq              string
 	}{
-		{"LF within active area", 3, 0, "\x0A\x0A\x0A"},
-		{"LF outof active area", 3, 2, "\x0A\x0A\x0A\x0A\x0A"},
-		{"wrap around margin bottom", 3, 1, "\n\n\n\n\n\n\n\n\n\n\n\n"},
+		{"LF within active area", "\x0A\x0A\x0A", 3, 0},
+		{"LF outof active area", "\x0A\x0A\x0A\x0A\x0A", 3, 2},
+		{"wrap around margin bottom", "\n\n\n\n\n\n\n\n\n\n\n\n", 3, 1},
 	}
 
 	p := NewParser()
@@ -2804,14 +2801,14 @@ func TestHandle_DECALN_RIS(t *testing.T) {
 	tc := []struct {
 		name  string
 		seq   string
-		y, x  int // check the last cell on the screen
-		hdIDs []int
 		want  string
+		hdIDs []int
+		y, x  int // check the last cell on the screen
 	}{
-		{"ESC DECLAN", "\x1B#8", 3, 7, []int{ESC_DECALN}, "E"},                 // the whole screen is filled with 'E'
-		{"ESC RIS   ", "\x1Bc", 3, 7, []int{ESC_RIS}, " "},                     // after reset, the screen is empty
-		{"ESC DECLAN", "\x1B#8", 3, 7, []int{ESC_DECALN}, "E"},                 // the whole screen is filled with 'E'
-		{"VT52 ESC c", "\x1B[?2l\x1Bc", 3, 7, []int{CSI_privRM, ESC_RIS}, " "}, // after reset, the screen is empty
+		{"ESC DECLAN", "\x1B#8", "E", []int{ESC_DECALN}, 3, 7},                 // the whole screen is filled with 'E'
+		{"ESC RIS   ", "\x1Bc", " ", []int{ESC_RIS}, 3, 7},                     // after reset, the screen is empty
+		{"ESC DECLAN", "\x1B#8", "E", []int{ESC_DECALN}, 3, 7},                 // the whole screen is filled with 'E'
+		{"VT52 ESC c", "\x1B[?2l\x1Bc", " ", []int{CSI_privRM, ESC_RIS}, 3, 7}, // after reset, the screen is empty
 	}
 
 	p := NewParser()
