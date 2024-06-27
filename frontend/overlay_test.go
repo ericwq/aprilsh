@@ -98,23 +98,24 @@ func TestCellApply(t *testing.T) {
 	plainCell := terminal.Cell{}
 
 	tc := []struct {
-		name           string
-		active         bool
-		confirmedEpoch int64
-		flag           bool
-		row, col       int
-		unknown        bool
-		contents       rune
 		rend           *terminal.Renditions
 		cell           *terminal.Cell
+		name           string
+		confirmedEpoch int64
+		row            int
+		col            int
+		contents       rune
+		active         bool
+		flag           bool
+		unknown        bool
 	}{
-		{"active=T flag=T unknown=F update cell and rendition", true, 20, true, 10, 10, false, 'E', &underlineRend, &underlineCell},
-		{"active=T flag=F unknown=F update cell", true, 20, false, 11, 10, false, 'E', nil, &plainCell},
-		{"active=T flag=T unknown=T update rendition", true, 20, true, 12, 10, true, 'E', &underlineRend, nil},
-		{"active=T flag=F unknown=T return", true, 20, false, 13, 10, true, 'E', nil, nil},
-		{"active=T flag=T unknown=T return", true, 20, true, 14, 10, true, '\x00', nil, nil},
-		{"tentative early return", true, 9, true, 14, 10, true, 'E', nil, nil},
-		{"active early return", false, 10, true, 14, 10, true, 'E', nil, nil},
+		{&underlineRend, &underlineCell, "active=T flag=T unknown=F update cell and rendition", 20, 10, 10, 'E', true, true, false},
+		{nil, &plainCell, "active=T flag=F unknown=F update cell", 20, 11, 10, 'E', true, false, false},
+		{&underlineRend, nil, "active=T flag=T unknown=T update rendition", 20, 12, 10, 'E', true, true, true},
+		{nil, nil, "active=T flag=F unknown=T return", 20, 13, 10, 'E', true, false, true},
+		{nil, nil, "active=T flag=T unknown=T return", 14, 10, 20, '\x00', true, true, true},
+		{nil, nil, "tentative early return", 9, 14, 10, 'E', true, true, true},
+		{nil, nil, "active early return", 10, 14, 10, 'E', false, true, true},
 	}
 
 	emu := terminal.NewEmulator3(80, 40, 40)
@@ -148,24 +149,49 @@ func TestCellApply(t *testing.T) {
 func TestCellGetValidity(t *testing.T) {
 	tc := []struct {
 		name     string
-		active   bool
-		row, col int
-		lateAck  uint64
-		unknown  bool
 		base     string // base content
 		predict  string // prediction
 		frame    string // frame content
+		row      int
+		col      int
+		lateAck  uint64
 		validity Validity
+		active   bool
+		unknown  bool
 	}{
 		// the test case only check the first cell in babse, prediction and frame
-		{"active=F, unknown=F", false, 13, 70, 20, false, "", "active", "false", Inactive},                        // active is false
-		{"active=T, cursor out of range", true, 41, 70, 0, false, "", "smaller", "lateAck", IncorrectOrExpired},   // row out of range
-		{"active=T, smaller lateAck", true, 13, 70, 0, false, "", "smaller", "lateAck", Pending},                  // smaller lateAck
-		{"active=T, unknown=T", true, 13, 70, 20, true, "", "unknow", "true", CorrectNoCredit},                    // unknown=T
-		{"active=T, unknown=F, blank predict", true, 13, 70, 20, false, "----", "    ", "some", CorrectNoCredit},  // blank prediction
-		{"active=T, unknown=F, found original", true, 12, 70, 20, false, "Else", "Else", "Else", CorrectNoCredit}, // found original
-		{"active=T, unknown=T, isBlank=F correct", true, 14, 70, 5, false, "     ", "right", "right", Correct},    // not found original
-		{"active=T, unknown=F, content not match", true, 11, 70, 20, false, "-----", "Alpha", "Beta", IncorrectOrExpired},
+		{
+			"active=F, unknown=F", "", "active", "false",
+			13, 70, 20, Inactive, false, false,
+		}, // active is false
+		{
+			"active=T, cursor out of range", "", "smaller", "lateAck",
+			41, 70, 0, IncorrectOrExpired, true, false,
+		}, // row out of range
+		{
+			"active=T, smaller lateAck", "", "smaller", "lateAck",
+			13, 70, 0, Pending, true, false,
+		}, // smaller lateAck
+		{
+			"active=T, unknown=T", "", "unknow", "true",
+			13, 70, 20, CorrectNoCredit, true, true,
+		}, // unknown=T
+		{
+			"active=T, unknown=F, blank predict", "----", "    ", "some",
+			13, 70, 20, CorrectNoCredit, true, false,
+		}, // blank prediction
+		{
+			"active=T, unknown=F, found original", "Else", "Else", "Else",
+			12, 70, 20, CorrectNoCredit, true, false,
+		}, // found original
+		{
+			"active=T, unknown=T, isBlank=F correct", "     ", "right", "right",
+			14, 70, 5, Correct, true, false,
+		}, // not found original
+		{
+			"active=T, unknown=F, content not match", "-----", "Alpha", "Beta",
+			11, 70, 20, IncorrectOrExpired, true, false,
+		},
 	}
 
 	emu := terminal.NewEmulator3(80, 40, 40)
@@ -308,15 +334,15 @@ func TestPredictionNewUserInput_Normal(t *testing.T) {
 func TestPredictionApply(t *testing.T) {
 	tc := []struct {
 		name        string
-		row, col    int    // the specified row and col
 		base        string // base content
 		predict     string // prediction
 		result      string // frame content
+		row, col    int    // the specified row and col
 		earlyReturn bool   // apply early return
 	}{
-		/*01*/ {"apply wrapped english input", 9, 75, "", "abcdef", "abcdef", false},
-		/*02*/ {"apply wrapped chinese input", 10, 75, "", "柠檬水", "柠檬水", false},
-		/*03*/ {"apply early return", 11, 70, "", "early return", "early return", true},
+		/*01*/ {"apply wrapped english input", "", "abcdef", "abcdef", 9, 75, false},
+		/*02*/ {"apply wrapped chinese input", "", "柠檬水", "柠檬水", 10, 75, false},
+		/*03*/ {"apply early return", "", "early return", "early return", 11, 70, true},
 	}
 
 	pe := newPredictionEngine()
@@ -410,21 +436,22 @@ func printPredictionCell(emu *terminal.Emulator, pe *PredictionEngine, row, col 
 func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 	tc := []struct {
 		label          string
-		row, col       int    // the specified row and col
-		base           string // base content
-		predict        string // prediction
-		lateAck        uint64 // lateAck control the pending result
-		confirmedEpoch int64  // this control the appply result
-		expect         string // the expect content
+		base           string
+		predict        string
+		expect         string
+		row            int
+		col            int
+		lateAck        uint64
+		confirmedEpoch int64
 	}{
-		{"input backspace for simple cell", 0, 70, "", "abcde\x1B[D\x1B[D\x1B[D\x7f", 0, 4, "acde"},
-		{"input backspace for wide cell", 1, 60, "", "abc太学生\x1B[D\x1B[D\x1B[D\x1B[C\x7f", 0, 4, "abc学生"},
-		{"input backspace for wide cell with base", 2, 60, "东部战区", "\x1B[C\x1B[C\x7f", 0, 5, "东战区"},
-		{"move cursor right, wide cell right edge", 3, 76, "平潭", "\x1B[C\x1B[C", 0, 5, "平潭"},
-		{"move cursor left, wide cell left edge", 4, 0, "三号木", "\x1B[C\x1B[D\x1B[D", 0, 5, "三号木"},
-		{"input backspace left edge", 5, 0, "小鸡腿", "\x1B[C\x7f\x7f", 0, 8, "鸡腿"},
-		{"input backspace unknown case", 6, 74, "", "gocto\x1B[D\x1B[D\x7f\x7f", 0, 4, "gto"},
-		{"backspace, predict unknown case", 7, 60, "", "捉鹰打goto\x7f\x7f\x7f\x7f鸟", 0, 4, "捉鹰打鸟"},
+		{"input backspace for simple cell", "", "abcde\x1B[D\x1B[D\x1B[D\x7f", "acde", 0, 70, 0, 4},
+		{"input backspace for wide cell", "", "abc太学生\x1B[D\x1B[D\x1B[D\x1B[C\x7f", "abc学生", 1, 60, 0, 4},
+		{"input backspace for wide cell with base", "东部战区", "\x1B[C\x1B[C\x7f", "东战区", 2, 60, 0, 5},
+		{"move cursor right, wide cell right edge", "平潭", "\x1B[C\x1B[C", "平潭", 3, 76, 0, 5},
+		{"move cursor left, wide cell left edge", "三号木", "\x1B[C\x1B[D\x1B[D", "三号木", 4, 0, 0, 5},
+		{"input backspace left edge", "小鸡腿", "\x1B[C\x7f\x7f", "鸡腿", 5, 0, 0, 8},
+		{"input backspace unknown case", "", "gocto\x1B[D\x1B[D\x7f\x7f", "gto", 6, 74, 0, 4},
+		{"backspace, predict unknown case", "", "捉鹰打goto\x7f\x7f\x7f\x7f鸟", "捉鹰打鸟", 7, 60, 0, 4},
 	}
 
 	emu := terminal.NewEmulator3(80, 40, 40) // TODO why we can't init emulator outside of for loop
@@ -600,12 +627,12 @@ func TestPredictionActive(t *testing.T) {
 func TestPredictionNewlineCarriageReturn(t *testing.T) {
 	tc := []struct {
 		name       string
-		posY, posX int
 		predict    string
+		posY, posX int
 		gotY, gotX int
 	}{
-		{"normal CR", 2, 3, "CR\x0D", 3, 0},
-		{"bottom CR", 39, 0, "CR\x0D", 39, 0}, // TODO gap is too big, why?
+		{"normal CR", "CR\x0D", 2, 3, 3, 0},
+		{"bottom CR", "CR\x0D", 39, 0, 39, 0}, // TODO gap is too big, why?
 	}
 	pe := newPredictionEngine()
 	emu := terminal.NewEmulator3(80, 40, 40)
@@ -641,15 +668,15 @@ func TestPredictionKillEpoch(t *testing.T) {
 		name  string
 		epoch int64
 		size  int
-	}{"4 rows", 3, 4}
+	}{name: "4 rows", epoch: 3}
 
 	rows := []struct {
+		predict string
 		posY    int
 		posX    int
-		predict string
 	}{
 		// rows: 0,5,9,10
-		{0, 0, "history\r\r\r\r\rchannel\r\r\r\rstarts\rworking"},
+		{"history\r\r\r\r\rchannel\r\r\r\rstarts\rworking", 0, 0},
 	}
 
 	pe := newPredictionEngine()
@@ -982,11 +1009,11 @@ func TestNotificationEngine_adjustMessage(t *testing.T) {
 	tc := []struct {
 		name              string
 		message           string
-		messageExpiration int64
 		expect            string
+		messageExpiration int64
 	}{
-		{"message expire", "message expire", 0, ""},
-		{"message ready", "message 准备好了", 20, "message 准备好了"},
+		{"message expire", "message expire", "", 0},
+		{"message ready", "message 准备好了", "message 准备好了", 20},
 	}
 
 	ne := newNotificationEngien()
