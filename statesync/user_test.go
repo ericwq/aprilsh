@@ -22,14 +22,14 @@ func TestUserStreamSubtract(t *testing.T) {
 
 	tc := []struct {
 		name      string
-		sizeB     bool // add sizes data
 		keystroke string
 		prefix    string
 		remains   string
+		sizeB     bool // add sizes data
 	}{
-		{"subtract english keystroke from prefix", true, "Hello world", "Hello ", "world"},
-		{"subtract chinese keystroke from prefix", false, "你好！中国", "你好！", "中国"},
-		{"subtract equal keystroke from prefix", false, "equal prefix", "equal prefix", ""},
+		{"subtract english keystroke from prefix", "Hello world", "Hello ", "world", true},
+		{"subtract chinese keystroke from prefix", "你好！中国", "你好！", "中国", false},
+		{"subtract equal keystroke from prefix", "equal prefix", "equal prefix", "", false},
 	}
 
 	for _, v := range tc {
@@ -192,16 +192,16 @@ func TestUserStreamString(t *testing.T) {
 	tc := []struct {
 		title     string
 		keystroke string
-		size      bool
 		expect    string
+		size      bool
 	}{
-		{"no size", "has keystroke, no size data", false, "Keystroke:\"has keystroke, no size data\", Resize:, size=27"},
-		{"no keystroke", "", true, "Keystroke:\"\", Resize:(80,40),(132,60),(140,70),, size=3"},
+		{"no size", "has keystroke, no size data", "Keystroke:\"has keystroke, no size data\", Resize:, size=27", false},
+		{"no keystroke", "", "Keystroke:\"\", Resize:(80,40),(132,60),(140,70),, size=3", true},
 		{
-			"both keystroke and size", "has both keystroke and data", true,
-			"Keystroke:\"has both keystroke and data\", Resize:(80,40),(132,60),(140,70),, size=30",
+			"both keystroke and size", "has both keystroke and data",
+			"Keystroke:\"has both keystroke and data\", Resize:(80,40),(132,60),(140,70),, size=30", true,
 		},
-		{"empty", "", false, "Keystroke:\"\", Resize:, size=0"},
+		{"empty", "", "Keystroke:\"\", Resize:, size=0", false},
 	}
 
 	sizes := []struct {
@@ -235,32 +235,30 @@ func TestUserStreamString(t *testing.T) {
 
 func TestUserStreamGetAction(t *testing.T) {
 	tc := []struct {
+		item3        terminal.ActOn
 		title        string
 		keystrokeStr string
-		addSizeItem  bool
+		item1        terminal.UserByte
+		item2        terminal.Resize
 		expectSize   int
 		idx01        int
-		item1        terminal.UserByte
 		idx02        int
-		item2        terminal.Resize
 		idx03        int
-		item3        terminal.ActOn
+		addSizeItem  bool
 	}{
 		{
-			"english keystroke and size", "has both keystroke and data", true, 30,
-			6,
+			nil,
+			"english keystroke and size", "has both keystroke and data",
 			terminal.UserByte{Chs: []rune{'t'}},
-			28,
 			terminal.Resize{Width: 132, Height: 60},
-			31, nil,
+			30, 6, 28, 31, true,
 		},
 		{
-			"chinese keystroke and size", "包含用户输入和窗口大小调整数据", true, 18,
-			6,
+			nil,
+			"chinese keystroke and size", "包含用户输入和窗口大小调整数据",
 			terminal.UserByte{Chs: []rune("和")},
-			15,
 			terminal.Resize{Width: 80, Height: 40},
-			18, nil,
+			18, 6, 15, 18, true,
 		},
 	}
 

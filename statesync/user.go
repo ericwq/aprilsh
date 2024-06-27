@@ -26,9 +26,9 @@ const (
 // UserByte instance is created by aprish client, when client got the user input.
 // Resize instance is created by aprish client, when client change the window size.
 type UserEvent struct {
+	userByte terminal.UserByte
+	resize   terminal.Resize
 	theType  UserEventType
-	userByte terminal.UserByte // Parser::UserByte
-	resize   terminal.Resize   // Parser::Resize
 }
 
 func NewUserEvent(userByte terminal.UserByte) (u UserEvent) {

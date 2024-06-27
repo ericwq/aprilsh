@@ -29,11 +29,11 @@ type pair struct {
 // Complete implements network.State[C any] interface
 type Complete struct {
 	terminal     *terminal.Emulator
-	inputHistory []pair // user input history
-	echoAck      uint64 // which user input is echoed?
 	display      *terminal.Display
 	remainsBuf   strings.Builder
 	diffBuf      strings.Builder
+	inputHistory []pair // user input history
+	echoAck      uint64 // which user input is echoed?
 }
 
 func NewComplete(nCols, nRows, saveLines int) (*Complete, error) {
@@ -50,7 +50,6 @@ func NewComplete(nCols, nRows, saveLines int) (*Complete, error) {
 
 // let the terminal parse and handle the data stream.
 func (c *Complete) ActLarge(str string, feed chan string) string {
-
 	// if there is remains, append the new one
 	c.remainsBuf.WriteString(str)
 
@@ -118,7 +117,6 @@ func (c *Complete) GetEchoAck() uint64 {
 // shrink input history according to timestamp. return true if newestEchoAck changed.
 // update echoAck if find the newest state.
 func (c *Complete) SetEchoAck(now int64) (ret bool) {
-
 	var newestEchoAck uint64 = 0
 	for _, v := range c.inputHistory {
 		if v.timestamp <= now-ECHO_TIMEOUT {
