@@ -25,8 +25,6 @@ const (
 	ADDED_BYTES = 16 /* final OCB block */
 )
 
-// var logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-
 // use sys call to generate random number
 func PrngFill(size int) (dst []byte) {
 	dst = make([]byte, size)
