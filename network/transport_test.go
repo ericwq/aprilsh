@@ -224,7 +224,7 @@ func TestTransportRecvVersionError(t *testing.T) {
 
 	err := server.Recv()
 	if err != nil {
-		expect := errors.New("aprilsh protocol version mismatch.")
+		expect := errors.New("aprilsh protocol version mismatch")
 		if err.Error() != expect.Error() {
 			t.Errorf("#test recv error expect %q, got %q\n", expect, err)
 		}
@@ -309,7 +309,7 @@ func TestTransportRecvNotFoundOld(t *testing.T) {
 	time.Sleep(time.Millisecond * 20)
 
 	err := server.Recv()
-	expect := "Ignoring out-of-order packet. Reference state"
+	expect := "ignoring out-of-order packet, reference state"
 	if !strings.Contains(err.Error(), expect) {
 		t.Errorf("#test recv expect %q, got %q\n", expect, err)
 	}
@@ -348,7 +348,7 @@ func TestTransportRecvOverLimit(t *testing.T) {
 	// prepare the receivedState list
 	for i := 0; i < 1024; i++ {
 		server.receivedState = append(server.receivedState,
-			TimestampedState[*statesync.UserStream]{time.Now().UnixMilli(), +1, initialState.Clone()})
+			TimestampedState[*statesync.UserStream]{initialState.Clone(), time.Now().UnixMilli(), +1})
 		// time.Sleep(time.Millisecond * 2)
 	}
 
@@ -406,7 +406,7 @@ func TestTransportRecvOverLimit2(t *testing.T) {
 	// prepare the receivedState list
 	for i := 0; i < 1024; i++ {
 		server.receivedState = append(server.receivedState,
-			TimestampedState[*statesync.UserStream]{time.Now().UnixMilli(), +1, initialState.Clone()})
+			TimestampedState[*statesync.UserStream]{initialState.Clone(), time.Now().UnixMilli(), +1})
 		// time.Sleep(time.Millisecond * 2)
 	}
 
@@ -465,10 +465,10 @@ func TestTransportRecvOutOfOrder(t *testing.T) {
 
 	// prepare the receivedState list
 	server.receivedState = append(server.receivedState,
-		TimestampedState[*statesync.UserStream]{time.Now().UnixMilli(), 1, initialState.Clone()})
+		TimestampedState[*statesync.UserStream]{initialState.Clone(), time.Now().UnixMilli(), 1})
 	time.Sleep(time.Millisecond * 10)
 	server.receivedState = append(server.receivedState,
-		TimestampedState[*statesync.UserStream]{time.Now().UnixMilli(), 4, initialState.Clone()})
+		TimestampedState[*statesync.UserStream]{initialState.Clone(), time.Now().UnixMilli(), 4})
 	time.Sleep(time.Millisecond * 10)
 
 	// send customized instruction to server
@@ -735,8 +735,12 @@ func TestAwaken(t *testing.T) {
 		{"log 03", []int64{90681115, 91734966}, []int64{90678725, 90681773}, 91734966, true},
 		{"send one/recv alive", []int64{10172, 26216}, []int64{26175, 26375}, 26217, false},
 		{"send just/recv alive", []int64{20172, 20216}, []int64{26175, 26375}, 26217, false},
-		{"time out if no client", []int64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 312950, 315954},
-			[]int64{270993, 273994}, 340981, false},
+		{
+			"time out if no client",
+			[]int64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 312950, 315954},
+			[]int64{270993, 273994},
+			340981, false,
+		},
 	}
 
 	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
@@ -779,15 +783,12 @@ func TestGetServerPort(t *testing.T) {
 
 	got := server.GetServerPort()
 	if got != desiredPort {
-
 		t.Errorf("#TestGetServerPort expect %s, got %s\n", desiredPort, got)
 	}
 	server.Close()
-
 }
 
 func TestGetSentStateLastTimestamp(t *testing.T) {
-
 	// util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
 	util.Logger.CreateLogger(os.Stdout, true, slog.LevelDebug)
 

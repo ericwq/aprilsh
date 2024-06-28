@@ -19,15 +19,15 @@ import (
 func TestFragment(t *testing.T) {
 	tc := []struct {
 		name     string
+		contents string
 		id       uint64
 		num      uint16
 		final    bool
-		contents string
 	}{
-		{"english false frag", 12, 1, false, "first fragment."},
-		{"english true frag", 0, 0, true, "first fragment."},
-		{"chinese true frag", 0, 0, true, "第一块分片。"},
-		{"chinese false frag", 23, 5, false, "第一块分片。"},
+		{"english false frag", "first fragment.", 12, 1, false},
+		{"english true frag", "first fragment.", 0, 0, true},
+		{"chinese true frag", "第一块分片。", 0, 0, true},
+		{"chinese false frag", "第一块分片。", 23, 5, false},
 	}
 
 	for _, v := range tc {
@@ -122,17 +122,17 @@ func TestFragmenter(t *testing.T) {
 
 func TestAddFragmentSkip(t *testing.T) {
 	tc := []struct {
+		contents string
 		id       uint64
 		num      uint16
 		final    bool
-		contents string
 	}{
-		{1, 2, false, "you "},
-		{1, 0, false, "I "},
-		{1, 2, false, "you "}, // repeated frag
-		{1, 1, false, "love "},
-		{1, 1, false, "love "}, // repeated frag
-		{1, 3, true, "too."},
+		{"you ", 1, 2, false},
+		{"I ", 1, 0, false},
+		{"you ", 1, 2, false}, // repeated frag
+		{"love ", 1, 1, false},
+		{"love ", 1, 1, false}, // repeated frag
+		{"too.", 1, 3, true},
 	}
 
 	// expected result
@@ -168,15 +168,15 @@ func TestAddFragmentSkip(t *testing.T) {
 
 func TestGetAssemblyFail(t *testing.T) {
 	tc := []struct {
+		contents string
 		id       uint64
 		num      uint16
 		final    bool
-		contents string
 	}{
-		{1, 2, false, "you "},
-		{1, 0, false, "I "},
-		{1, 1, false, "love "},
-		{1, 3, true, "too."},
+		{"you ", 1, 2, false},
+		{"I ", 1, 0, false},
+		{"love ", 1, 1, false},
+		{"too.", 1, 3, true},
 	}
 
 	// prepare the out-of-order fragments

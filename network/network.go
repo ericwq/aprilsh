@@ -59,11 +59,11 @@ func timestampDiff(tsnew, tsold uint16) uint16 {
 
 // Packet is used for RTT calculation
 type Packet struct {
+	payload        []byte
 	seq            uint64
 	direction      Direction // packet direciton
 	timestamp      uint16    // current packet send time
 	timestampReply uint16    // last packet received time
-	payload        []byte
 }
 
 func NewPacket(direction Direction, timestamp uint16, timestampReply uint16, payload []byte) *Packet {
@@ -195,9 +195,9 @@ var (
 )
 
 var (
-	ErrRecvLength    = errors.New("#recvOne receive zero or negative length data.")
-	ErrRecvOversize  = errors.New("#recvOne received oversize datagram.")
-	ErrRecvDirection = errors.New("#recvOne direction is wrong.")
+	errRecvLength    = errors.New("#recvOne receive zero or negative length data")
+	errRecvOversize  = errors.New("#recvOne received oversize datagram")
+	errRecvDirection = errors.New("#recvOne direction is wrong")
 )
 
 // internal conneciton for testability.
@@ -215,31 +215,24 @@ type cipherSession interface {
 }
 
 type Connection struct {
-	socks         []udpConn // server has only one socket, client has several socket.
-	hasRemoteAddr bool
-	remoteAddr    net.Addr
-	server        bool
-
-	mtu int
-
-	key     *encrypt.Base64Key
-	session cipherSession
-	// session *encrypt.Session
-
+	remoteAddr               net.Addr
+	session                  cipherSession
+	key                      *encrypt.Base64Key
+	socks                    []udpConn // server has only one socket, client has several socket.
+	lastPortChoice           int64     // last change port time
+	SRTT                     float64   // smoothed round-trip time
 	direction                Direction
-	savedTimestamp           int16 // the timestamp when the packet is created
+	mtu                      int
 	savedTimestampReceivedAt int64 // the timestamp when the last packet is received
 	expectedReceiverSeq      uint64
-
-	lastHeard            int64 // last packet receive time
-	lastPortChoice       int64 // last change port time
-	lastRoundtripSuccess int64 // last acked send state timestamp
-
-	RTTHit bool
-	SRTT   float64 // smoothed round-trip time
-	RTTVAR float64 // round-trip time variation
-
+	lastHeard                int64   // last packet receive time
+	RTTVAR                   float64 // round-trip time variation
+	lastRoundtripSuccess     int64   // last acked send state timestamp
 	sync.RWMutex
+	savedTimestamp int16 // the timestamp when the packet is created
+	RTTHit         bool
+	hasRemoteAddr  bool
+	server         bool
 }
 
 func NewConnection(desiredIp string, desiredPort string) *Connection { // server
@@ -555,9 +548,7 @@ func (c *Connection) printSocks(postfix string) {
 
 	str := fmt.Sprintf("printSocks %s", postfix)
 	for i := range c.socks {
-		var x net.Conn
-
-		x = c.socks[i].(net.Conn)
+		x := c.socks[i].(net.Conn)
 		util.Logger.Debug(str,
 			"i", i,
 			"localAddr", x.LocalAddr(),
@@ -655,11 +646,11 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 		return "", err
 	}
 	if n < 0 {
-		return "", fmt.Errorf("length=%d: %w", n, ErrRecvLength)
+		return "", fmt.Errorf("length=%d: %w", n, errRecvLength)
 	}
 
 	if flags&unix.MSG_TRUNC == unix.MSG_TRUNC {
-		return "", fmt.Errorf("datagram size=%d: %w", n, ErrRecvOversize)
+		return "", fmt.Errorf("datagram size=%d: %w", n, errRecvOversize)
 	}
 
 	// fmt.Printf("#recvOne flags=0x%x, MSG_TRUNC=0x%x, n=%d, oobn=%d, err=%p, raddr=%s\n",
@@ -696,12 +687,12 @@ func (c *Connection) recvOne(conn udpConn) (string, error) {
 	if c.server {
 		if p.direction != TO_SERVER {
 			// return "", errors.New("#recvOne server direction is wrong.")
-			return "", fmt.Errorf("to server: %w", ErrRecvDirection)
+			return "", fmt.Errorf("to server: %w", errRecvDirection)
 		}
 	} else {
 		if p.direction != TO_CLIENT {
 			// return "", errors.New("#recvOne client direction is wrong.")
-			return "", fmt.Errorf("to client: %w", ErrRecvDirection)
+			return "", fmt.Errorf("to client: %w", errRecvDirection)
 		}
 	}
 

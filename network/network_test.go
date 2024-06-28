@@ -866,8 +866,8 @@ func TestRecvFail(t *testing.T) {
 		err   error
 	}{
 		{"receive return EWOULDBLOCK err", 0, unix.EWOULDBLOCK},
-		{"receive return n<0 err", 1, ErrRecvLength},
-		{"receive return MSG_TRUNC err", 2, ErrRecvOversize},
+		{"receive return n<0 err", 1, errRecvLength},
+		{"receive return MSG_TRUNC err", 2, errRecvOversize},
 		{"receive return parse control message erro", 3, errors.New("invalid argument")},
 		{"receive return parser decrypt error", 4, errors.New("cipher: message authentication failed")},
 	}
@@ -946,7 +946,7 @@ func TestRecvBranchServer(t *testing.T) {
 
 	// perform the receive
 	_, _, err := server.Recv(1)
-	if !errors.Is(err, ErrRecvDirection) {
+	if !errors.Is(err, errRecvDirection) {
 		t.Errorf("%q client send\n%q to server, server got \n%q\n", title, msg0, err)
 	}
 
@@ -1002,7 +1002,7 @@ func TestRecvBranchClient(t *testing.T) {
 
 	// perform the receive
 	_, _, err := client.Recv(1)
-	if !errors.Is(err, ErrRecvDirection) {
+	if !errors.Is(err, errRecvDirection) {
 		t.Errorf("%q client send\n%q to server, server got \n%q\n", title, msg1, err)
 	}
 }

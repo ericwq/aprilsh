@@ -25,37 +25,30 @@ const (
 )
 
 type TransportSender[T State[T]] struct {
-	// state of sender
-	connection   *Connection
-	currentState T
+	currentState         T
+	connection           *Connection
+	assumedReceiverState *TimestampedState[T] // somewhere in the middle: the assumed state of the receiver
+	hookForTick          func()               // helper function for testing, it's nil by default
+	fragmenter           *Fragmenter          // for fragment creation
+
 	// first element: known, acknowledged receiver sentStates
 	// last element: last sent state
 	sentStates []TimestampedState[T]
 
-	// somewhere in the middle: the assumed state of the receiver
-	assumedReceiverState *TimestampedState[T]
-	// helper function for testing, it's nil by default
-	hookForTick func()
-
-	// for fragment creation
-	fragmenter *Fragmenter
+	verbose uint
 
 	// timing state
-	nextAckTime  int64
 	nextSendTime int64
+	nextAckTime  int64
 
-	verbose            uint
-	shutdownInProgress bool
 	shutdownTries      int
 	shutdownStart      int64
-
-	// information about receiver state
-	ackNum         uint64
-	pendingDataAck bool
-	SEND_MINDELAY  uint  // ms to collect all input
-	lastHeard      int64 // last time received new state
-
-	mindelayClock int64 // time of first pending change to current state
+	ackNum             uint64
+	SEND_MINDELAY      uint  // ms to collect all input
+	lastHeard          int64 // last time received new state
+	mindelayClock      int64 // time of first pending change to current state
+	shutdownInProgress bool
+	pendingDataAck     bool
 }
 
 func NewTransportSender[T State[T]](connection *Connection, initialState T) *TransportSender[T] {
@@ -272,7 +265,7 @@ func (ts *TransportSender[T]) Awaken(now int64) (bool, int) {
 
 // add state into the send states list.
 func (ts *TransportSender[T]) addSentState(timestamp int64, num uint64, state T) {
-	s := TimestampedState[T]{timestamp, num, state.Clone()}
+	s := TimestampedState[T]{state.Clone(), timestamp, num}
 	ts.sentStates = append(ts.sentStates, s)
 
 	// fmt.Printf("#addSentState No.%2d state in sendStates, %T\n", num, ts.sentStates[len(ts.sentStates)-1].state)

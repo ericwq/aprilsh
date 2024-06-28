@@ -20,23 +20,26 @@ const (
 
 // type S or R that must implement the State[T] interface - that is, for itself.
 type Transport[S State[S], R State[R]] struct {
+	lastReceiverState R // the state we were in when user last queried state
+
 	// the underlying, encrypted network connection
 	connection *Connection
 
 	// sender side
 	sender *TransportSender[S]
 
+	fragments *FragmentAssembly
+	port      string // server port
+
 	// simple receiver
 	receivedState       []TimestampedState[R]
 	receiverQuenchTimer int64
-	lastReceiverState   R // the state we were in when user last queried state
-	fragments           *FragmentAssembly
 	verbose             uint
-	port                string // server port
 }
 
 func NewTransportServer[S State[S], R State[R]](initialState S, initialRemote R,
-	desiredIp, desiredPort string) *Transport[S, R] {
+	desiredIp, desiredPort string,
+) *Transport[S, R] {
 	ts := &Transport[S, R]{}
 	ts.connection = NewConnection(desiredIp, desiredPort)
 	ts.sender = NewTransportSender(ts.connection, initialState)
@@ -44,7 +47,7 @@ func NewTransportServer[S State[S], R State[R]](initialState S, initialRemote R,
 
 	ts.receivedState = make([]TimestampedState[R], 0)
 	ts.receivedState = append(ts.receivedState,
-		TimestampedState[R]{time.Now().UnixMilli(), 0, initialRemote.Clone()})
+		TimestampedState[R]{initialRemote.Clone(), time.Now().UnixMilli(), 0})
 
 	ts.lastReceiverState = ts.receivedState[0].state
 	ts.fragments = NewFragmentAssembly()
@@ -52,14 +55,15 @@ func NewTransportServer[S State[S], R State[R]](initialState S, initialRemote R,
 }
 
 func NewTransportClient[S State[S], R State[R]](initialState S, initialRemote R,
-	keyStr, ip, port string) *Transport[S, R] {
+	keyStr, ip, port string,
+) *Transport[S, R] {
 	tc := &Transport[S, R]{}
 	tc.connection = NewConnectionClient(keyStr, ip, port)
 	tc.sender = NewTransportSender(tc.connection, initialState)
 
 	tc.receivedState = make([]TimestampedState[R], 0)
 	tc.receivedState = append(tc.receivedState,
-		TimestampedState[R]{time.Now().UnixMilli(), 0, initialRemote.Clone()})
+		TimestampedState[R]{initialRemote.Clone(), time.Now().UnixMilli(), 0})
 
 	tc.lastReceiverState = tc.receivedState[0].state
 	tc.fragments = NewFragmentAssembly()
@@ -234,7 +238,7 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		// }
 
 		if inst.ProtocolVersion != APRILSH_PROTOCOL_VERSION {
-			return errors.New("aprilsh protocol version mismatch.")
+			return errors.New("aprilsh protocol version mismatch")
 		}
 
 		util.Logger.Trace("got message",
@@ -272,8 +276,8 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		}
 
 		if !found {
-			return fmt.Errorf("Ignoring out-of-order packet. Reference state %d has been "+
-				"discarded or hasn't yet been received.\n", inst.OldNum)
+			return fmt.Errorf("ignoring out-of-order packet, reference state %d has been "+
+				"discarded or hasn't yet been received", inst.OldNum)
 			// this is security-sensitive and part of how we enforce idempotency
 		}
 

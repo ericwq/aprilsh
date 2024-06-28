@@ -27,10 +27,13 @@ type State[C any] interface {
 	Clone() C
 }
 
+// timestamp int64
+// num       uint64
+// state     T
 type TimestampedState[T State[T]] struct {
+	state     T
 	timestamp int64
 	num       uint64
-	state     T
 }
 
 func (t *TimestampedState[T]) numEq(v uint64) bool {

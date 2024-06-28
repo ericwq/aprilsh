@@ -124,12 +124,12 @@ func pushUserBytesTo(t *statesync.UserStream, raw string) {
 func TestSenderRationalizeStates(t *testing.T) {
 	tc := []struct {
 		label      string
-		userBytes  []string
 		prefix     string
-		currentIdx int
+		userBytes  []string
 		expect     []string
+		currentIdx int
 	}{
-		{"remove first", []string{"abc", "abcde", "abcdef", "abcdefg"}, "ab", 1, []string{"", "c", "cde", "cdef", "cdefg"}},
+		{"remove first", "ab", []string{"abc", "abcde", "abcdef", "abcdefg"}, []string{"", "c", "cde", "cdef", "cdefg"}, 1},
 	}
 
 	for _, v := range tc {
@@ -179,13 +179,21 @@ func TestSenderAttemptProspectiveResendOptimization(t *testing.T) {
 	tc := []struct {
 		label        string
 		initialState string
+		expect       string
 		states       []string
 		currentIdx   int
 		assumedIdx   int
-		expect       string
 	}{
-		{"assumed receiver state is the first state", "ab", []string{"abc", "abcde", "abcdef", "abcdefg"}, 2, 0, "\n\a\x12\x05\"\x03cde"},
-		{"resend length - diff length < 100", "ab", []string{"abc", "abcde", "abcdef", "abcdefg"}, 4, 1, "\n\t\x12\a\"\x05cdefg"},
+		{
+			"assumed receiver state is the first state", "ab", "\n\a\x12\x05\"\x03cde",
+			[]string{"abc", "abcde", "abcdef", "abcdefg"},
+			2, 0,
+		},
+		{
+			"resend length - diff length < 100", "ab", "\n\t\x12\a\"\x05cdefg",
+			[]string{"abc", "abcde", "abcdef", "abcdefg"},
+			4, 1,
+		},
 	}
 
 	for _, v := range tc {
@@ -640,8 +648,10 @@ func TestSenderTickVerify(t *testing.T) {
 			client.GetCurrentState(), server.GetLatestRemoteState().state)
 	}
 
-	expect := []string{"tick Warning, round-trip Instruction verification failed",
-		"tick Warning, target state Instruction verification failed"}
+	expect := []string{
+		"tick Warning, round-trip Instruction verification failed",
+		"tick Warning, target state Instruction verification failed",
+	}
 	got := b.String()
 	for i := range expect {
 		if !strings.Contains(got, expect[i]) {
