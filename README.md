@@ -175,7 +175,7 @@ The project name `Aprilsh` is derived from `April+sh`. This project started in s
 - Actually the yellow part can be any terminal based application: [emcas](https://www.gnu.org/software/emacs/), [neovim](https://neovim.io/), [htop](https://htop.dev/), etc.
 - The rest part is provided by the system.
 
-Set `GOFLAGS="-tags=utmps"` before nvim.
+Set `GOFLAGS="-tags=utmps" APRILSH_APSHD_PATH=~/.local/bin/apshd` before nvim.
 
 ## Changelog
 

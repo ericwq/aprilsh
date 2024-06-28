@@ -1,6 +1,6 @@
-FROM alpine:3.19
+FROM alpine:3.20
 LABEL maintainer="Wang Qi ericwq057@qq.com"
-LABEL build_date="2024-02-05"
+# LABEL build_date="2024-02-05"
 # ref https://github.com/robertdebock/docker-alpine-openrc/blob/master/Dockerfile
 
 ENV container=docker
@@ -11,34 +11,35 @@ ARG SSH_PUB_KEY
 ARG HOME=/home/eric
 
 # Enable init.
+# hadolint ignore=DL3018
 RUN apk add --update --no-cache sudo openrc openssh-server utmps rsyslog tzdata htop \
-	&& apk add --no-cache --virtual .build-dependencies uuidgen \
-	&& uuidgen -r > /etc/machine-id \
-	# Disable getty's
-	&& sed -i 's/^\(tty\d\:\:\)/#\1/g' /etc/inittab \
-	&& sed -i \
-	# Change subsystem type to "docker"
-	-e 's/#rc_sys=".*"/rc_sys="docker"/g' \
-	# Allow all variables through
-	-e 's/#rc_env_allow=".*"/rc_env_allow="\*"/g' \
-	# Start crashed services
-	-e 's/#rc_crashed_stop=.*/rc_crashed_stop=NO/g' \
-	-e 's/#rc_crashed_start=.*/rc_crashed_start=YES/g' \
-	# Define extra dependencies for services
-	-e 's/#rc_provide=".*"/rc_provide="loopback net"/g' \
-	/etc/rc.conf \
-	# Remove unnecessary services
-	&& rm -f /etc/init.d/hwdrivers \
-	/etc/init.d/hwclock \
-	/etc/init.d/hwdrivers \
-	/etc/init.d/modules \
-	/etc/init.d/modules-load \
-	/etc/init.d/machine-id \
-	/etc/init.d/modloop \
-	# Can't do cgroups
-	&& sed -i 's/cgroup_add_service /# cgroup_add_service /g' /lib/rc/sh/openrc-run.sh \
-	&& sed -i 's/VSERVER/DOCKER/Ig' /lib/rc/sh/init.sh \
-	&& apk del .build-dependencies
+  && apk add --no-cache --virtual .build-dependencies uuidgen \
+  && uuidgen -r > /etc/machine-id \
+  # Disable getty's
+  && sed -i 's/^\(tty\d\:\:\)/#\1/g' /etc/inittab \
+  && sed -i \
+  # Change subsystem type to "docker"
+  -e 's/#rc_sys=".*"/rc_sys="docker"/g' \
+  # Allow all variables through
+  -e 's/#rc_env_allow=".*"/rc_env_allow="\*"/g' \
+  # Start crashed services
+  -e 's/#rc_crashed_stop=.*/rc_crashed_stop=NO/g' \
+  -e 's/#rc_crashed_start=.*/rc_crashed_start=YES/g' \
+  # Define extra dependencies for services
+  -e 's/#rc_provide=".*"/rc_provide="loopback net"/g' \
+  /etc/rc.conf \
+  # Remove unnecessary services
+  && rm -f /etc/init.d/hwdrivers \
+  /etc/init.d/hwclock \
+  /etc/init.d/hwdrivers \
+  /etc/init.d/modules \
+  /etc/init.d/modules-load \
+  /etc/init.d/machine-id \
+  /etc/init.d/modloop \
+  # Can't do cgroups
+  && sed -i 's/cgroup_add_service /# cgroup_add_service /g' /lib/rc/sh/openrc-run.sh \
+  && sed -i 's/VSERVER/DOCKER/Ig' /lib/rc/sh/init.sh \
+  && apk del .build-dependencies
 
 # Create user/group 
 # eric/develop
@@ -55,24 +56,25 @@ WORKDIR $HOME
 # setup public key login for normal user
 #
 RUN mkdir -p $HOME/.ssh \
-	&& chmod 0700 $HOME/.ssh \
-	&& echo "$SSH_PUB_KEY" > $HOME/.ssh/authorized_keys
+  && chmod 0700 $HOME/.ssh \
+  && echo "$SSH_PUB_KEY" > $HOME/.ssh/authorized_keys
 
+# hadolint ignore=DL3002
 USER root
 
 # enable sshd, permit root login, enable port 22, generate ssh key.
 #
 RUN rc-update add sshd boot \
-	&& sed -i \
-	-e 's/#PermitRootLogin.*/PermitRootLogin\ yes/g' \
-	-e 's/#LogLevel.*/LogLevel\ VERBOSE/g' \
-	-e 's/#PubkeyAuthentication.*/PubkeyAuthentication\ yes/g' \
-	-e 's/#Port 22/Port 22/g' \
-	/etc/ssh/sshd_config \
-	# && echo '%wheel ALL=(ALL) ALL' > /etc/sudoers.d/wheel \
-	&& ssh-keygen -A \
-	# && adduser eric wheel \
-	&& rm -rf /var/cache/apk/*
+  && sed -i \
+  -e 's/#PermitRootLogin.*/PermitRootLogin\ yes/g' \
+  -e 's/#LogLevel.*/LogLevel\ VERBOSE/g' \
+  -e 's/#PubkeyAuthentication.*/PubkeyAuthentication\ yes/g' \
+  -e 's/#Port 22/Port 22/g' \
+  /etc/ssh/sshd_config \
+  # && echo '%wheel ALL=(ALL) ALL' > /etc/sudoers.d/wheel \
+  && ssh-keygen -A \
+  # && adduser eric wheel \
+  && rm -rf /var/cache/apk/*
 
 # enable rsyslog 
 RUN rc-update add rsyslog boot
@@ -93,11 +95,12 @@ RUN rc-update add rsyslog boot
 # set root password
 # set eric password
 # set root public key login
+SHELL ["/bin/ash", "-eo", "pipefail", "-c"]
 RUN mkdir -p /root/.ssh \
-	&& chmod 0700 /root/.ssh \
-	&& echo "root:${ROOT_PWD}" | chpasswd \
-	&& echo "eric:${USER_PWD}" | chpasswd \
-	&& echo "$SSH_PUB_KEY" > /root/.ssh/authorized_keys
+  && chmod 0700 /root/.ssh \
+  && echo "root:${ROOT_PWD}" | chpasswd \
+  && echo "eric:${USER_PWD}" | chpasswd \
+  && echo "$SSH_PUB_KEY" > /root/.ssh/authorized_keys
 
 VOLUME ["/sys/fs/cgroup"]
 
