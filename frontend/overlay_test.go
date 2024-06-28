@@ -235,30 +235,66 @@ func TestCellGetValidity(t *testing.T) {
 func TestPredictionNewUserInput_Normal(t *testing.T) {
 	tc := []struct {
 		label             string
-		row, col          int    // the specified row and col
 		base              string // base content
 		predict           string // prediction
 		result            string // frame content
+		row, col          int    // the specified row and col
 		displayPreference DisplayPreference
-		predictOverwrite  bool // predictOverwrite
 		posY, posX        int  // new cursor position, 0 means doesn't matter
+		predictOverwrite  bool // predictOverwrite
 	}{
-		/* 0*/ {"insert english", 3, 75, "12345", "abcde", "abcde", Adaptive, false, -1, -1},
-		/* 1*/ {"insert chinese", 4, 70, "", "四姑娘山", "四姑娘山", Adaptive, false, -1, -1},
-		/* 2*/ {"Experimental", 4, 60, "", "Experimental", "Experimental", Experimental, false, -1, -1},
-		/* 3*/ {"insert CUF", 4, 75, "", "\x1B[C", "", Adaptive, false, 4, 76},
-		/* 4*/ {"insert CUB", 4, 75, "", "\x1B[D", "", Adaptive, false, 4, 74},
-		/* 5*/ {"insert CR", 4, 75, "", "\r", "", Adaptive, false, 5, 0},
-		/* 6*/ {"insert CUF", 4, 75, "", "\x1BOC", "", Adaptive, false, 4, 76},
-		/* 7*/ {"BEL becomeTentative", 5, 70, "", "\x07", "", Adaptive, false, -1, -1},
-		/* 8*/ {"Never", 4, 75, "", "Never", "", Never, false, 0, 0},
-		/* 9*/ {
-			"insert chinese with base contents", 6, 71, "上海56789", "四姑娘", "四姑娘上",
-			Adaptive, false, -1, -1,
+		/* 0*/ {
+			"insert english", "12345", "abcde", "abcde", 3, 75,
+			Adaptive, -1, -1, false,
 		},
-		/*10*/ {"insert chinese with wrap", 7, 79, "", "四", "四", Adaptive, false, 8, 0},
-		/*11*/ {"insert control becomeTentative", 9, 0, "", "\x11", "", Adaptive, false, -1, -1},
-		/*12*/ {"insert overwrite", 10, 75, "12345", "abcde", "abcde", Adaptive, true, -1, -1},
+		/* 1*/ {
+			"insert chinese", "", "四姑娘山", "四姑娘山", 4, 70,
+			Adaptive, -1, -1, false,
+		},
+		/* 2*/ {
+			"Experimental", "", "Experimental", "Experimental", 4, 60,
+			Experimental, -1, -1, false,
+		},
+		/* 3*/ {
+			"insert CUF", "", "\x1B[C", "", 4, 75,
+			Adaptive, 4, 76, false,
+		},
+		/* 4*/ {
+			"insert CUB", "", "\x1B[D", "", 4, 75,
+			Adaptive, 4, 74, false,
+		},
+		/* 5*/ {
+			"insert CR", "", "\r", "", 4, 75,
+			Adaptive, 5, 0, false,
+		},
+		/* 6*/ {
+			"insert CUF", "", "\x1BOC", "", 4, 75,
+			Adaptive, 4, 76, false,
+		},
+		/* 7*/ {
+			"BEL becomeTentative", "", "\x07", "", 5, 70,
+			Adaptive, -1, -1, false,
+		},
+		/* 8*/ {
+			"Never", "", "Never", "", 4, 75,
+			Never, 0, 0, false,
+		},
+		/* 9*/ {
+			"insert chinese with base contents", "上海56789", "四姑娘", "四姑娘上", 6, 71,
+			Adaptive, -1, -1, false,
+		},
+		/*10*/ {
+			"insert chinese with wrap", "", "四", "四", 7, 79,
+			Adaptive, 8, 0, false,
+		},
+		/*11*/ {
+			"insert control becomeTentative", "", "\x11", "", 9, 0,
+			Adaptive, -1, -1, false,
+		},
+		/*12*/ {
+			"insert overwrite", "12345", "abcde", "abcde", 10, 75,
+			Adaptive, -1, -1, true,
+		},
 	}
 
 	pe := newPredictionEngine()
@@ -505,21 +541,45 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 func TestPrediction_NewUserInput_Backspace_Overwrite(t *testing.T) {
 	tc := []struct {
 		label          string
-		row, col       int    // the specified row and col
 		base           string // base content
 		predict        string // prediction
+		expect         string // the expect content
+		row, col       int    // the specified row and col
 		lateAck        uint64 // lateAck control the pending result
 		confirmedEpoch int64  // this control the appply result
-		expect         string // the expect content
 	}{
-		{"input backspace for simple cell", 0, 70, "", "abcde\x1B[D\x1B[D\x1B[D\x7f", 0, 4, "a cde"},
-		{"input backspace for wide cell", 1, 60, "", "abc太学生\x1B[D\x1B[D\x1B[D\x1B[C\x7f", 0, 4, "abc  学生"},
-		{"input backspace for wide cell with base", 2, 60, "东部战区", "\x1B[C\x1B[C\x7f", 0, 5, "东  战区"},
-		{"move cursor right, wide cell right edge", 3, 76, "平潭", "\x1B[C\x1B[C", 0, 5, "平潭"},
-		{"move cursor left, wide cell left edge", 4, 0, "三号木", "\x1B[C\x1B[D\x1B[D", 0, 5, "三号木"},
-		{"input backspace left edge", 5, 0, "小鸡腿", "\x1B[C\x7f", 0, 8, "  鸡腿"},
-		{"input backspace unknown case", 6, 74, "", "gocto\x1B[D\x1B[D\x7f\x7f", 0, 4, "g  to"},
-		{"backspace, predict unknown case", 7, 60, "", "捉鹰打goto\x7f\x7f\x7f\x7f鸟", 0, 4, "捉鹰打鸟"},
+		{
+			"input backspace for simple cell", "", "abcde\x1B[D\x1B[D\x1B[D\x7f", "a cde",
+			0, 70, 0, 4,
+		},
+		{
+			"input backspace for wide cell", "", "abc太学生\x1B[D\x1B[D\x1B[D\x1B[C\x7f", "abc  学生",
+			1, 60, 0, 4,
+		},
+		{
+			"input backspace for wide cell with base", "东部战区", "\x1B[C\x1B[C\x7f", "东  战区",
+			2, 60, 0, 5,
+		},
+		{
+			"move cursor right, wide cell right edge", "平潭", "\x1B[C\x1B[C", "平潭",
+			3, 76, 0, 5,
+		},
+		{
+			"move cursor left, wide cell left edge", "三号木", "\x1B[C\x1B[D\x1B[D", "三号木",
+			0, 5, 4, 0,
+		},
+		{
+			"input backspace left edge", "小鸡腿", "\x1B[C\x7f", "  鸡腿",
+			5, 0, 0, 8,
+		},
+		{
+			"input backspace unknown case", "", "gocto\x1B[D\x1B[D\x7f\x7f", "g  to",
+			6, 74, 0, 4,
+		},
+		{
+			"backspace, predict unknown case", "", "捉鹰打goto\x7f\x7f\x7f\x7f鸟", "捉鹰打鸟",
+			7, 60, 0, 4,
+		},
 	}
 
 	emu := terminal.NewEmulator3(80, 40, 40)
@@ -715,28 +775,67 @@ func TestPredictionKillEpoch(t *testing.T) {
 func TestPredictionCull(t *testing.T) {
 	tc := []struct {
 		label               string
-		row, col            int               // cursor start position
 		base                string            // base content
 		predict             string            // prediction
 		frame               string            // the expect content
+		row, col            int               // cursor start position
 		displayPreference   DisplayPreference // display preference
 		localFrameLateAcked uint64            // getValidity use localFrameLateAcked to validity cell or cursor prediction
 		localFrameSent      uint64            // the cell prediction expirationFrame is set by localFrameSent+1
 		sendInterval        uint
 	}{
-		/* 0*/ {"displayPreference is never", 0, 0, "", "", "", Never, 0, 0, 0},
-		/* 1*/ {"IncorrectOrExpired >confirmedEpoch, killEpoch()", 1, 70, "", "right", "wrong", Adaptive, 2, 1, 0},
-		/* 2*/ {"IncorrectOrExpired <confirmedEpoch, Experimental, reset2()", 2, 72, "", "rig", "won", Experimental, 3, 2, 0},
-		/* 3*/ {"IncorrectOrExpired <confirmedEpoch, Reset()", 3, 0, "", "right", "wrong", Adaptive, 4, 3, 0},
-		/* 4*/ {"Correct", 4, 0, "", "correct正确", "correct正确", Adaptive, 5, 4, 0},
-		/* 5*/ {"Correct validity, delay >250", 5, 0, "", "正确delay>250", "正确delay>250", Adaptive, 6, 5, 0},
-		/* 6*/ {"Correct validity, delay >5000", 6, 0, "", "delay>5000", "delay>5000", Adaptive, 7, 6, 0},
-		/* 7*/ {"Correct validity, sendInterval=40", 7, 0, "", "sendInterval=40", "sendInterval=40", Adaptive, 8, 7, 40},
-		/* 8*/ {"Correct validity, sendInterval=20", 8, 0, "", "sendInterval=20", "sendInterval=20", Adaptive, 9, 8, 20},
-		/* 9*/ {"Correct validity + wrong cursor", 9, 0, "", "wrong cursor", "wrong cursor", Adaptive, 10, 9, 0},
-		/*10*/ {"Correct validity + wrong cursor + Experimental", 10, 0, "", "wrong cursor + Experimental", "wrong cursor + Experimental", Experimental, 11, 10, 0},
-		/*11*/ {"wrong row", 40, 0, "", "wrong row", "wrong row", Adaptive, 12, 11, 0},
-		/*12*/ {"IncorrectOrExpired + >confirmedEpoch + Experimental", 12, 0, "", "Epoch", "confi", Experimental, 13, 12, 0},
+		/* 0*/ {
+			"displayPreference is never", "", "", "",
+			0, 0, Never, 0, 0, 0,
+		},
+		/* 1*/ {
+			"IncorrectOrExpired >confirmedEpoch, killEpoch()", "", "right", "wrong",
+			1, 70, Adaptive, 2, 1, 0,
+		},
+		/* 2*/ {
+			"IncorrectOrExpired <confirmedEpoch, Experimental, reset2()", "", "rig", "won",
+			2, 72, Experimental, 3, 2, 0,
+		},
+		/* 3*/ {
+			"IncorrectOrExpired <confirmedEpoch, Reset()", "", "right", "wrong",
+			3, 0, Adaptive, 4, 3, 0,
+		},
+		/* 4*/ {
+			"Correct", "", "correct正确", "correct正确",
+			4, 0, Adaptive, 5, 4, 0,
+		},
+		/* 5*/ {
+			"Correct validity, delay >250", "", "正确delay>250", "正确delay>250",
+			5, 0, Adaptive, 6, 5, 0,
+		},
+		/* 6*/ {
+			"Correct validity, delay >5000", "", "delay>5000", "delay>5000",
+			6, 0, Adaptive, 7, 6, 0,
+		},
+		/* 7*/ {
+			"Correct validity, sendInterval=40", "", "sendInterval=40", "sendInterval=40",
+			7, 0, Adaptive, 8, 7, 40,
+		},
+		/* 8*/ {
+			"Correct validity, sendInterval=20", "", "sendInterval=20", "sendInterval=20",
+			8, 0, Adaptive, 9, 8, 20,
+		},
+		/* 9*/ {
+			"Correct validity + wrong cursor", "", "wrong cursor", "wrong cursor",
+			9, 0, Adaptive, 10, 9, 0,
+		},
+		/*10*/ {
+			"Correct validity + wrong cursor + Experimental", "", "wrong cursor + Experimental", "wrong cursor + Experimental",
+			10, 0, Experimental, 11, 10, 0,
+		},
+		/*11*/ {
+			"wrong row", "", "wrong row", "wrong row",
+			40, 0, Adaptive, 12, 11, 0,
+		},
+		/*12*/ {
+			"IncorrectOrExpired + >confirmedEpoch + Experimental", "", "Epoch", "confi",
+			12, 0, Experimental, 13, 12, 0,
+		},
 	}
 	emu := terminal.NewEmulator3(80, 40, 40)
 	pe := newPredictionEngine()
@@ -918,48 +1017,74 @@ func TestTitleEngine(t *testing.T) {
 func TestNotificationEngine(t *testing.T) {
 	tc := []struct {
 		name                  string
-		permanent             bool
-		lastWordFromServer    int64 // delta value based on now
-		lastAckedState        int64 // delta value base on now
 		message               string
 		escapeKeyString       string
+		result                string
+		lastWordFromServer    int64 // delta value based on now
+		lastAckedState        int64 // delta value base on now
+		permanent             bool
 		messageIsNetworkError bool
 		showQuitKeystroke     bool
-		result                string
 	}{
-		{"no message, no expire", false, 60, 80, "", "Ctrl-z", false, true, ""},
 		{
-			"english message, no expire", false, 60, 80, "hello world", "Ctrl-z", false, true,
-			"aprish: hello world [To quit: Ctrl-z .]",
+			"no message, no expire", "", "Ctrl-z",
+			"",
+			60, 80,
+			false, false, true,
 		},
-		{"chinese message, no expire", true, 60, 80, "你好世界", "Ctrl-z", false, false, "aprish: 你好世界"},
 		{
-			"server late", true, 65001, 80, "你好世界", "Ctrl-z", false, false,
+			"english message, no expire", "hello world",
+			"Ctrl-z", "aprish: hello world [To quit: Ctrl-z .]",
+			60, 80,
+			false, false, true,
+		},
+		{
+			"chinese message, no expire", "你好世界", "Ctrl-z",
+			"aprish: 你好世界",
+			60, 80,
+			true, false, false,
+		},
+		{
+			"server late", "你好世界", "Ctrl-z",
 			"aprish: 你好世界 (1:05 without contact.)",
+			65001, 80,
+			true, false, false,
 		},
 		{
-			"reply late", false, 65, 10001, "aia group", "Ctrl-z", false, true,
+			"reply late", "aia group", "Ctrl-z",
 			"aprish: aia group (10 s without reply.) [To quit: Ctrl-z .]",
+			65, 10001,
+			false, false, true,
 		},
 		{
-			"no message, server late", false, 65001, 10001, "top gun 2", "Ctrl-z", false, true,
+			"no message, server late", "top gun 2", "Ctrl-z",
 			"aprish: top gun 2 (1:05 without contact.) [To quit: Ctrl-z .]",
+			65001, 10001,
+			false, false, true,
 		},
 		{
-			"no message, server too late", false, 3802001, 100, "top gun 2", "Ctrl-z", false, true,
+			"no message, server too late", "top gun 2", "Ctrl-z",
 			"aprish: top gun 2 (1:03:22 without contact.) [To quit: Ctrl-z .]",
+			3802001, 100,
+			false, false, true,
 		},
 		{
-			"network error", false, 200, 10001, "***", "Ctrl-z", true, true,
+			"network error", "***", "Ctrl-z",
 			"aprish: network error (10 s without reply.) [To quit: Ctrl-z .]",
+			200, 10001,
+			false, true, true,
 		},
 		{
-			"restore from network failure", false, 200, 20001, "restor from", "Ctrl-z", false, true,
+			"restore from network failure", "restor from", "Ctrl-z",
 			"aprish: restor from (20 s without reply.) [To quit: Ctrl-z .]",
+			200, 20001,
+			false, false, true,
 		},
 		{
-			"no message, server late", false, 65001, 20001, "", "Ctrl-z", false, true,
+			"no message, server late", "", "Ctrl-z",
 			"aprish: Last contact 1:05 ago. [To quit: Ctrl-z .]",
+			65001, 20001,
+			false, false, true,
 		},
 	}
 
