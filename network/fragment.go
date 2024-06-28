@@ -18,11 +18,11 @@ import (
 )
 
 type Fragment struct {
+	contents    string
 	id          uint64
 	fragmentNum uint16
 	final       bool
 	initialized bool
-	contents    string
 }
 
 func NewFragment(id uint64, fragmentNum uint16, final bool, contents string) *Fragment {
@@ -95,7 +95,7 @@ func (f *Fragment) String() string {
 	// contents
 	buf.WriteString(f.contents)
 
-	return string(buf.Bytes())
+	return buf.String()
 }
 
 type FragmentAssembly struct {
@@ -141,13 +141,13 @@ func (f *FragmentAssembly) addFragment(frag *Fragment) bool {
 	} else {
 		// not a new packet
 		// see if we already have this fragments
-		hasThis, idx := f.has(frag)
-		if hasThis {
-			// fmt.Printf("#addFragment skip #%d\n", frag.fragmentNum)
-			if *(f.fragments[idx]) == *frag {
-				// make sure new version is same as what we already have
-			}
-		} else {
+		hasThis, _ := f.has(frag)
+		if !hasThis {
+			// 	// fmt.Printf("#addFragment skip #%d\n", frag.fragmentNum)
+			// 	if *(f.fragments[idx]) == *frag {
+			// 		// make sure new version is same as what we already have
+			// 	}
+			// } else {
 			// fmt.Printf("#addFragment add #%d\n", frag.fragmentNum)
 			f.fragments = append(f.fragments, frag)
 			f.fragmentsArrived++
@@ -198,8 +198,8 @@ func (f *FragmentAssembly) getAssembly() *pb.Instruction {
 }
 
 type Fragmenter struct {
-	nextInstructionId uint64
 	lastInstruction   *pb.Instruction
+	nextInstructionId uint64
 	lastMTU           int
 }
 
