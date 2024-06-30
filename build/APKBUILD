@@ -12,6 +12,7 @@ makedepends="go protoc utmps-dev ncurses ncurses-terminfo musl-locales protoc-ge
 subpackages="
 	$pkgname-client
 	$pkgname-server
+	$pkgname-openrc
 	$pkgname-doc
 	"
 source="$pkgname-$pkgver.tar.gz::https://github.com/ericwq/aprilsh/archive/refs/tags/$pkgver.tar.gz
