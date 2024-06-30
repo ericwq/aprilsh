@@ -29,7 +29,7 @@
 - 2023/Mar/24: solve the locale problem in alpine.
 - 2023/Apr/07: support concurrent UDP server.
 - 2023/Apr/21: finish server start/stop part.
-- 2023/May/01: study [s6](https://skarnet.org/software/s6/) as PID 1 process: [utmps](https://skarnet.org/software/utmps/) require s6, aprilsh should suppport openrc.
+- 2023/May/01: study [s6](https://skarnet.org/software/s6/) as PID 1 process: [utmps](https://skarnet.org/software/utmps/) require s6, aprilsh should support openrc.
 - 2023/May/16: finish [alpine container with openrc support](https://github.com/ericwq/s6)
 - 2023/May/30: finish [eric/goutmp](https://github.com/ericwq/goutmp)
 - 2023/Jun/07: upgrade to `ericwq/goutmp` v0.2.0.
@@ -54,9 +54,9 @@
 - 2023/Nov/13: fix stream output mode display bug, #1.
 - 2023/Nov/19: enhance stream mode to display over buffer size file, #2.
 - 2023/Nov/29: enhance screen difference with mix sequence, fix bug #6,#7,#8.
-- 2023/Dec/08: enhance tilte #14, limit concurrent user #17, fix bug #9,#10,#12,#14,#15,#16.
+- 2023/Dec/08: enhance title #14, limit concurrent user #17, fix bug #9,#10,#12,#14,#15,#16.
 - 2023/Dec/13: fix bug #11, solve computer hibernate problem partly.
-- 2023/Dec/28: enhance utmp access problem #17. fix read dead line problem #18.
+- 2023/Dec/28: enhance utmp access problem #17; fix read dead line problem #18.
 
 </details>
 <details>
@@ -67,19 +67,19 @@
 - 2024/Jan/09: refine for no connection shutdown #20, refine for no request time out,
 - 2024/Jan/09: fix bug #19, #21, #23, #24.
 - 2024/Jan/13: attacked by a terrible fever, the fever last more than 7 days, the cough last more than 10 days.
-- 2024/Jan/25: finish unit test for Framebuffer and Emulator. fix bug #23, #27, #26.
-- 2024/Feb/01: finish release workflow for source tar ball. finish build apk for alpine.
-- 2024/Feb/09: aprilsh-openrc is ready #29. fix environment variable bug for login user #39.
+- 2024/Jan/25: finish unit test for Framebuffer and Emulator; fix bug #23, #27, #26.
+- 2024/Feb/01: finish release workflow for source tar ball; finish build apk for alpine.
+- 2024/Feb/09: aprilsh-openrc is ready #29; fix environment variable bug for login user #39.
 - 2024/Feb/19: syslog support #37, customized ssh port #36, ssh authentication passphrase #41, 
-- 2024/Feb/19: customized port #49, fetch key errror handling #48, password support #45,
-- 2024/Feb/19: hostkey callback #43.
-- 2024/Mar/06: fix bug for server package #60, hild server command options, #59, fix bug for UDS name #61,
+- 2024/Feb/19: customized port #49, fetch key error handling #48, password support #45,
+- 2024/Feb/19: refine hostkey callback #43.
+- 2024/Mar/06: fix bug for server package #60, hide server command options, #59, fix bug for UDS name #61,
 - 2024/Mar/06: check available port before use #51, main server listen on local port #58,
-- 2024/Mar/06: child inherit options from parent #56, each client run on child rocess #55,
+- 2024/Mar/06: child inherit options from parent #56, each client run on child process #55,
 - 2024/Mar/06: fix bug for server quit #57.
-- 2024/Mar/20: fix failed test #60,#61,#62,#63,#66. add container port mapping support #65,
-- 2024/Mar/20: add supervisor for apshd #67. upgrade goutmp to 0.5.1.
-- 2024/Mar/22: add logrotate for apshd, #68, fix test bug for #34. disable warnUnattached().
+- 2024/Mar/20: fix failed test #60,#61,#62,#63,#66; add container port mapping support #65,
+- 2024/Mar/20: add supervisor for apshd #67; upgrade goutmp to 0.5.1.
+- 2024/Mar/22: add logrotate for apshd, #68; fix test bug for #34; disable warnUnattached().
 - 2024/Mar/23: prepare apk build files for aports publish, #34.
 - 2024/Apr/01: skarnet rpm packaging: skalibs.
 - 2024/Apr/02: skarnet rpm packaging: execline.
@@ -98,7 +98,9 @@
 - 2024/May/15: fix alpine execute mode bug.
 - 2024/May/23: fix ssh rsa public key login problem for alpine.
 - 2024/May/24: add ssh container for fedora.
-- 2024/May/27: refine apk build according to aports reivew.
+- 2024/May/27: refine apk build according to aports review (1st round)
 - 2024/May/31: submit clean commit for aports review. add 3 new feat to issues.
 - 2024/Jun/12: understand ssh-auth protocol and openssh implementation.
-- 2024/Jun/15: aprilsh client suppport ssh auth methods: publickey and password.
+- 2024/Jun/15: aprilsh client support ssh auth methods: publickey and password.
+- 2024/Jun/25: upgrade goutmp to 0.5.3; add aprilsh avatar.
+- 2024/Jun/30: fix diagnostics warning for souce; refine APK according to aports review (2nd review).
