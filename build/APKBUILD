@@ -21,7 +21,6 @@ source="$pkgname-$pkgver.tar.gz::https://github.com/ericwq/aprilsh/archive/refs/
 
 _build_tag="-tags utmps"
 
-export PATH=$PATH:~/go/bin
 export GOCACHE="${GOCACHE:-"$srcdir/go-cache"}"
 export GOTMPDIR="${GOTMPDIR:-"$srcdir"}"
 export GOMODCACHE="${GOMODCACHE:-"$srcdir/go"}"
@@ -53,12 +52,14 @@ build() {
 check() {
 	# shellcheck disable=2046
 	APRILSH_APSHD_PATH="$builddir/bin/apshd" \
-	go test $_build_tag $(go list ./... | grep -Ev '(data|protobufs)')
+		go test $_build_tag $(go list ./... | grep -Ev '(data|protobufs)')
 }
 
 package() {
 	install -Dm755 ./bin/apshd ./bin/apsh -t "$pkgdir/usr/bin"
 	install -Dm644 ./doc/*.md -t "$pkgdir/usr/share/doc/$pkgname/"
+	install -Dm755 "$srcdir"/apshd.initd "$pkgdir"/etc/init.d/apshd
+	install -Dm644 "$srcdir"/apshd.logrotate "$pkgdir"/etc/logrotate.d/apshd
 }
 
 client() {
@@ -75,8 +76,6 @@ server() {
 
 server_openrc() {
 	default_openrc
-	install -Dm755 "$srcdir/apshd.initd" "$subpkgdir/etc/init.d/apshd"
-	install -Dm644 "$srcdir/apshd.logrotate" "$subpkgdir/etc/logrotate.d/apshd"
 }
 
 sha512sums="
