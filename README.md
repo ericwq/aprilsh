@@ -3,7 +3,7 @@ Aprilsh: remote shell support intermittent or mobile network. Inspired by [mosh]
 
 ## Installation
 
-#### Reqirement
+#### Requirement
 
 - [open-ssh](https://www.openssh.com/) is a must requirement, sshd is required to perform user authentication.
 - [locale support](https://git.adelielinux.org/adelie/musl-locales/-/wikis/home) is a must requirement.
@@ -20,18 +20,26 @@ If you prefer to build aprilsh manually, please refer to [this document](doc/ins
 
 Before start apshd, you need to make sure you can ssh login to the target server, please refer to [this doc](doc/ssh-openrc.md) to setup a ssh enabled docker container.
 
-Note: aprilsh is still waiting for aports approval. For now please use the following private repository. The private repository only provide `x86_64` packages. Refer to [build doc](doc/build.md) to know how to build apk packages and private repositories.
-
 ```sh
-# add public key
-wget -P /etc/apk/keys/ https://ericwq.github.io/alpine/packager-663ebf9b.rsa.pub
-# add private repository
-echo "https://ericwq.github.io/alpine/v3.19/testing" >> /etc/apk/repositories
+# add testing repositories
+echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
 # update repositories metadata
 apk update
 # install client and server
 apk add aprilsh
 ```
+<!-- Note: aprilsh is still waiting for aports approval. For now please use the following private repository. The private repository only provide `x86_64` packages. Refer to [build doc](doc/build.md) to know how to build apk packages and private repositories. -->
+<!---->
+<!-- ```sh -->
+<!-- # add public key -->
+<!-- wget -P /etc/apk/keys/ https://ericwq.github.io/alpine/packager-663ebf9b.rsa.pub -->
+<!-- # add private repository -->
+<!-- echo "https://ericwq.github.io/alpine/v3.19/testing" >> /etc/apk/repositories -->
+<!-- # update repositories metadata -->
+<!-- apk update -->
+<!-- # install client and server -->
+<!-- apk add aprilsh -->
+<!-- ``` -->
 
 Now you can ssh login to the server and the aprilsh is installed, it's time to start apshd server and login with apsh.
 
@@ -46,12 +54,6 @@ apsh eric@localhost
 
 After apsh login, you connection to the remote server is provided by aprilsh.
 
-Note: when aports finally approve aprilsh, the above private repository will be replaced by official testing repositories. The testing repositories will provide all architecture packages.
-
-```sh
-# add testing repositories
-echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
-```
 
 </details>
 

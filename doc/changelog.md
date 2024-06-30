@@ -104,3 +104,4 @@
 - 2024/Jun/15: aprilsh client support ssh auth methods: publickey and password.
 - 2024/Jun/25: upgrade goutmp to 0.5.3; add aprilsh avatar.
 - 2024/Jun/30: fix diagnostics warning for souce; refine APK according to aports review (2nd review).
+- 2024/Jul/01: alpine aports approve aprilsh 0.7.5; thanks, Kevin Daudt.
