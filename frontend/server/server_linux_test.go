@@ -64,7 +64,7 @@ func TestWarnUnattached(t *testing.T) {
 		ignoreHost string
 		count      int
 	}{
-		// 666 pts/0 exist, 888 pts/7 does not exist, only 666 remains
+		// 666 pts/0 exist, 888 pts/non does not exist, only 666 remains
 		{"one match", "apshd:999", 1},
 		// 666 pts0 exist, 999 pts/ptmx exist, so 666 and 999 remains
 		{"two match", "apshd:888", 2},
@@ -72,8 +72,9 @@ func TestWarnUnattached(t *testing.T) {
 
 	data := []mockData{
 		{"apshd:777", "pts/1", "root", 3, 1, utmps.USER_PROCESS},
-		{"apshd:888", "pts/7", getCurrentUser(), 7, 1221, utmps.USER_PROCESS},
+		{"apshd:888", "pts/non", getCurrentUser(), 7, 1221, utmps.USER_PROCESS},
 		{"apshd:666", "pts/0", getCurrentUser(), 0, 1222, utmps.USER_PROCESS},
+		// 555 doesn't start with apshd
 		{"192.168.0.123 via apshd:555", "pts/0", getCurrentUser(), 0, 1223, utmps.USER_PROCESS},
 		{"apshd:999", "pts/ptmx", getCurrentUser(), 2, 1224, utmps.USER_PROCESS},
 	}
@@ -99,23 +100,12 @@ func TestWarnUnattached(t *testing.T) {
 				setGetRecord(utmps.GetRecord)
 			}()
 
-			warnUnattached(&out, getCurrentUser(), v.ignoreHost)
+			count := warnUnattached(&out, getCurrentUser(), v.ignoreHost)
 
 			got := out.String()
-			// t.Logf("%q\n", got)
-			count := strings.Count(got, "- ")
-			switch count {
-			case 0: // warnUnattached found one unattached session
-				if strings.Contains(got, "a detached session on this server") &&
-					v.count != 1 {
-					t.Errorf("#test warnUnattached() %q expect %d warning, got 1.\n",
-						v.label, v.count)
-				}
-			default: // warnUnattached found more than one unattached session
-				if count != v.count {
-					t.Errorf("#test warnUnattached() %q expect %d warning, got %d. \n%s\n",
-						v.label, v.count, count, got)
-				}
+			if count != v.count {
+				t.Errorf("#test warnUnattached() %q expect %d warning, got %d. \n%s\n",
+					v.label, v.count, count, got)
 			}
 		})
 	}
@@ -131,7 +121,9 @@ func TestWarnUnattachedZero(t *testing.T) {
 	}
 
 	data := []mockData{
+		// root user doesn't match current user
 		{"apshd:777", "pts/1", "root", 3, 1, utmps.USER_PROCESS},
+		// others doesn't start with apshd
 		{"192.168.0.123 via apshd:888", "pts/8", getCurrentUser(), 7, 1221, utmps.USER_PROCESS},
 		{"192.168.0.123 via apshd:666", "pts/0", getCurrentUser(), 0, 1222, utmps.USER_PROCESS},
 		{"192.168.0.123 via apshd:555", "pts/9", getCurrentUser(), 0, 1223, utmps.USER_PROCESS},

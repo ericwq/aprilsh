@@ -1165,9 +1165,9 @@ func setGetRecord(f func() *utmps.Utmpx) {
 // unattached session: session started by client, but there is no client
 // packet received recently. unattached session example: "apshd:8101".
 // attached session example: "192.168.5.1 via apshd:8101"
-func warnUnattached(w io.Writer, userName string, ignoreHost string) {
+func warnUnattached(w io.Writer, userName string, ignoreHost string) int {
 	// check unattached sessions
-	unatttached := make([]string, 0)
+	unatttached := []string{}
 	// unatttached := CheckUnattachedUtmpx(userName, ignoreHost, frontend.CommandServerName)
 	util.Logger.Debug("warnUnattached", "get", "record", "funcGetRecord", funcGetRecord)
 	r := funcGetRecord()
@@ -1177,28 +1177,33 @@ func warnUnattached(w io.Writer, userName string, ignoreHost string) {
 			// does line show unattached session
 			host := r.GetHost()
 			// if testing.Testing() {
-			// 	fmt.Printf("#checkUnattachedRecord() MATCH user=(%q,%q) type=(%d,%d) host=%s\n",
+			// 	fmt.Printf("#warnUnattached() MATCH user=(%q,%q) type=(%d,%d) host=%s\n",
 			// 		r.GetUser(), userName, r.GetType(), utmps.USER_PROCESS, host)
 			// }
 			if len(host) >= 5 && strings.HasPrefix(host, frontend.CommandServerName) &&
 				host != ignoreHost && utmps.DeviceExists(r.GetLine()) {
+				// host starts with apshd; host is not ignoreHost; line exist.
 				unatttached = append(unatttached, host)
 				// if testing.Testing() {
-				// 	fmt.Printf("#checkUnattachedRecord() append host=%s, line=%q\n", host, r.GetLine())
+				// 	fmt.Printf("#warnUnattached() append host=%s, line=%q\n", host, r.GetLine())
 				// }
+				// } else {
+				// 	if testing.Testing() {
+				// 		fmt.Printf("#warnUnattached() MATCH skip host=%s, line=%q\n", host, r.GetLine())
+				// 	}
 			}
 			// } else {
-			// if testing.Testing() {
-			// 	fmt.Printf("#checkUnattachedRecord() skip user=%q,%q; type=%d, line=%s, host=%s, id=%d, pid=%d\n",
-			// 		r.GetUser(), userName, r.GetType(), r.GetLine(), r.GetHost(), r.GetId(), r.GetPid())
-			// }
+			// 	if testing.Testing() {
+			// 		fmt.Printf("#warnUnattached() skip user=%q,%q; type=%d, line=%s, host=%s, id=%d, pid=%d\n",
+			// 			r.GetUser(), userName, r.GetType(), r.GetLine(), r.GetHost(), r.GetId(), r.GetPid())
+			// 	}
 		}
 		r = funcGetRecord()
 	}
 
 	if len(unatttached) == 0 {
 		util.Logger.Debug("warnUnattached", "0", "record")
-		return
+		return 0
 	} else if len(unatttached) == 1 {
 		fmt.Fprintf(w, "\033[37;44mAprilsh: You have a detached session on this server (%s).\033[m\n\n",
 			unatttached[0])
@@ -1213,6 +1218,7 @@ func warnUnattached(w io.Writer, userName string, ignoreHost string) {
 			len(unatttached), sb.String())
 		util.Logger.Debug("warnUnattached", "x", "record")
 	}
+	return len(unatttached)
 }
 
 func checkPortAvailable(port int) bool {
