@@ -59,7 +59,6 @@ package() {
 	install -Dm755 ./bin/apshd ./bin/apsh -t "$pkgdir/usr/bin"
 	install -Dm644 ./doc/*.md -t "$pkgdir/usr/share/doc/$pkgname/"
 	install -Dm755 "$srcdir"/apshd.initd "$pkgdir"/etc/init.d/apshd
-	install -Dm644 "$srcdir"/apshd.logrotate "$pkgdir"/etc/logrotate.d/apshd
 }
 
 client() {
@@ -76,6 +75,7 @@ server() {
 
 server_openrc() {
 	default_openrc
+	install -Dm644 "$srcdir"/apshd.logrotate "$subpkgdir"/etc/logrotate.d/apshd
 }
 
 sha512sums="
