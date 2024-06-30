@@ -170,8 +170,6 @@ func NewDisplay(useEnvironment bool) (d *Display, e error) {
 	d.hasBCE = true
 	d.supportTitle = true
 
-	// d.logW = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-
 	if useEnvironment {
 		term := os.Getenv("TERM")
 		var ti *terminfo.Terminfo
@@ -1024,7 +1022,6 @@ func (d *Display) putRow(initialized bool, frame *FrameState,
 		return false
 	}
 
-	// this row should be wrapped. TODO: need to consider double width cell
 	wrapThis := newRow[len(newRow)-1].wrap
 	// fmt.Printf("#putRow row=%d, wrapThis=%t\n", frameY, wrapThis)
 	rowWidth := newE.nCols

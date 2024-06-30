@@ -804,10 +804,6 @@ func TestStartFail(t *testing.T) {
 			// srv := newMainSrv(&v.conf, mockRunWorker)
 			m := newMainSrv(&v.conf)
 
-			// defer func() {
-			// 	logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-			// }()
-
 			// start mainserver
 			m.start(&v.conf)
 			// fmt.Println("#test start fail!")
@@ -1702,36 +1698,6 @@ func TestOpenPTS(t *testing.T) {
 		})
 	}
 }
-
-// func testGetCurrentUser(t *testing.T) {
-// 	// normal invocation
-// 	userCurrentTest = false
-// 	uid := fmt.Sprintf("%d", os.Getuid())
-// 	expect, _ := user.LookupId(uid)
-//
-// 	got := getCurrentUser()
-// 	if len(got) == 0 || expect.Username != got {
-// 		t.Errorf("#test getCurrentUser expect %s, got %s\n", expect.Username, got)
-// 	}
-//
-// 	// getCurrentUser fail
-// 	old := userCurrentTest
-// 	defer func() {
-// 		userCurrentTest = old
-// 	}()
-//
-// 	// intercept log output
-// 	var b strings.Builder
-// 	util.Logger.CreateLogger(&b, true, slog.LevelDebug)
-//
-// 	userCurrentTest = true
-// 	got = getCurrentUser()
-// 	if got != "" {
-// 		t.Errorf("#test getCurrentUser expect empty string, got %s\n", got)
-// 	}
-// 	// restore logW
-// 	// logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
-// }
 
 func TestGetAvailablePort(t *testing.T) {
 	tc := []struct {

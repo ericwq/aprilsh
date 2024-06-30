@@ -73,7 +73,6 @@ func TestBuildConfig_Darwin_locale(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-
 			// save the stdout,stderr and create replaced pipe
 			stderr := os.Stderr
 			stdout := os.Stdout
@@ -102,8 +101,10 @@ func TestBuildConfig_Darwin_locale(t *testing.T) {
 			}
 
 			// validate the output
-			expect := []string{frontend.CommandServerName, "needs a UTF-8 native locale to run",
-				"Unfortunately, the local environment", "The client-supplied environment"}
+			expect := []string{
+				frontend.CommandServerName, "needs a UTF-8 native locale to run",
+				"Unfortunately, the local environment", "The client-supplied environment",
+			}
 			result := string(out)
 			found := 0
 			for i := range expect {
@@ -202,7 +203,6 @@ func TestBuildConfig(t *testing.T) {
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-
 			// set SHELL for empty commandArgv
 			if len(v.conf0.commandArgv) == 0 {
 				shell := os.Getenv("SHELL")
@@ -228,9 +228,6 @@ func TestBuildConfig(t *testing.T) {
 			}
 			// reset the environment
 			util.ClearLocaleVariables()
-
-			// restore logW
-			// logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 		})
 	}
 }

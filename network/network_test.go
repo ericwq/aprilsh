@@ -967,8 +967,6 @@ func TestRecvFail(t *testing.T) {
 			}
 		}
 	}
-	// restor the logFunc
-	// logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestRecvBranchServer(t *testing.T) {
@@ -1018,9 +1016,6 @@ func TestRecvBranchServer(t *testing.T) {
 	if !errors.Is(err, errRecvDirection) {
 		t.Errorf("%q client send\n%q to server, server got \n%q\n", title, msg0, err)
 	}
-
-	// restor the logFunc
-	// logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestRecvBranchClient(t *testing.T) {
@@ -1171,9 +1166,6 @@ func TestRecvSRTT(t *testing.T) {
 	if gotRTO != MIN_RTO {
 		t.Errorf("%q expect timeout %d, got %d\n", title, MIN_RTO, gotRTO)
 	}
-
-	// restor the logFunc
-	// logFunc = log.New(os.Stderr, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 }
 
 func TestServerRecvTimeout(t *testing.T) {

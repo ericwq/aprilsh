@@ -267,9 +267,6 @@ func TestBuildConfig(t *testing.T) {
 			}
 			// reset the environment
 			util.ClearLocaleVariables()
-
-			// restore logW
-			// logW = log.New(os.Stdout, "WARN: ", log.Ldate|log.Ltime|log.Lshortfile)
 		})
 	}
 }
