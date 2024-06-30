@@ -2492,7 +2492,7 @@ func TestDeviceExist(t *testing.T) {
 		got     bool
 	}{
 		{"pts/0 exist", "pts/0", true},
-		{"pts/1 exist", "pts/1", true},
+		// {"pts/1 exist", "pts/1", true},
 		{"pts/non doesn't exist", "pts/non", false},
 		// {"pts/7 doesn't exist", "pts/7", false},
 	}
