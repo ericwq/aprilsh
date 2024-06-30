@@ -3,34 +3,39 @@
 
 build dependency.
 ```sh
-# apk add go protoc utmps-dev ncurses musl-locales ncurses-terminfo protoc-gen-go
+apk add go protoc utmps-dev ncurses musl-locales ncurses-terminfo protoc-gen-go
 ```
 
 run dependency.
 ```sh
-# apk add musl-locales utmps ncurses logrotate ncurses-terminfo wezterm-extra-terminfo openssh-server
+apk add musl-locales utmps ncurses logrotate ncurses-terminfo wezterm-extra-terminfo openssh-server
 
 ```
 ### install for alpine
 
 add testing repositories to your alpine system, you need the root privilege to do that.
 ```sh
-# echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
-# apk update
+echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
+apk update
 ```
-add aprilsh, which includes aprilsh-server, aprilsh-client, aprilsh-openrc.
+test souce code:
 ```sh
-# apk add aprilsh
+APRILSH_APSHD_PATH="/home/ide/.local/bin/apshd" \
+go test -tags=utmps $(go list ./... | grep -Ev '(data|protobufs)')
+```
+add aprilsh, which includes aprilsh-server, aprilsh-client, aprilsh-openrc:
+```sh
+apk add aprilsh
 ```
 
 run apshd (aprilsh server) as openrc service.
 ```sh
-# rc-service apshd start
+rc-service apshd start
 ```
 
 or run apshd (aprilsh server) manually.
 ```sh
-# apshd 2>/var/log/apshd &
+apshd 2>/var/log/apshd &
 ```
 by default apshd listen on udp localhost:8100.
 ```txt

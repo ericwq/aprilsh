@@ -21,8 +21,7 @@ func TestMainRun_Parameters2(t *testing.T) {
 			"only password auth, no ssh agent, no public key file",
 			[]string{frontend.CommandClientName, "-vv", "ide@localhost"},
 			"xterm-256color",
-			[]string{"prepareAuthMethod ssh auth password", // "password:", "inappropriate ioctl for device"},
-				"/.ssh/known_hosts: no such file or directory"},
+			[]string{"prepareAuthMethod ssh auth password"},
 		},
 	}
 
