@@ -12,7 +12,7 @@ ARG HOME=/home/eric
 
 # Enable init.
 # hadolint ignore=DL3018
-RUN apk add --update --no-cache sudo openrc openssh-server utmps rsyslog tzdata htop \
+RUN apk add --update --no-cache sudo openrc openssh-server utmps rsyslog tzdata htop logrotate \
   && apk add --no-cache --virtual .build-dependencies uuidgen \
   && uuidgen -r > /etc/machine-id \
   # Disable getty's
