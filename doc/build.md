@@ -3,15 +3,11 @@ create the container according to [Creating an Alpine package](https://wiki.alpi
 The container install `alpine-sdk sudo atools` packages, create `packager` user, generate abuild keys, and cache the aports fork by ericwq057.
 
 ```sh
+git clone https://github.com/ericwq/aprilsh.git
+cd aprilsh/build
 docker build -t abuild:0.1.0 -f abuild.dockerfile .
 docker build --no-cache --progress plain -t abuild:0.1.0 -f abuild.dockerfile .
 ```
-if you update abuild keys, remember to back up the keys.
-```sh
-# backup signed keys
-cp ~/.abuild/packager-*.rsa* /home/ide/develop/key/
-```
-
 run as root
 ```sh
 docker run -u root --rm -ti -h abuild --env TZ=Asia/Shanghai --name abuild --privileged \
@@ -33,11 +29,19 @@ run as root, use `apk update` to solve the permission problem for abuild.
 apk update
 sudo -u packager sh
 ```
-run as `packager` user, git pull aports fork.
+run as `packager` user, install required depends.
 ```sh
 sudo apk update
 sudo apk add go protoc utmps-dev ncurses-terminfo openssh-client \
     musl-locales protoc-gen-go colordiff
+```
+if you update abuild keys, remember to back up the keys.
+```sh
+# backup signed keys
+cp ~/.abuild/packager-*.rsa* /home/ide/develop/key/
+```
+pull aports fork.
+```sh
 cd ~/aports
 # rebase pull
 git config pull.rebase true     # rebase pull

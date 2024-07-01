@@ -1,7 +1,7 @@
 # Contributor: Wang Qi <ericwq057@qq.com>
 # Maintainer: Wang Qi <ericwq057@qq.com>
 pkgname=aprilsh
-pkgver=0.7.5
+pkgver=0.7.6
 pkgrel=0
 pkgdesc="Remote shell support intermittent or mobile network"
 url="https://github.com/ericwq/aprilsh"
@@ -70,7 +70,7 @@ client() {
 
 server() {
 	pkgdesc="$pkgname server"
-	depends="musl-locales utmps ncurses ncurses-terminfo wezterm-extra-terminfo openssh-server"
+	depends="musl-locales utmps ncurses ncurses-terminfo openssh-server"
 	amove usr/bin/apshd
 }
 

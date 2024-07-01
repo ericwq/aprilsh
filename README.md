@@ -18,7 +18,7 @@ If you prefer to build aprilsh manually, please refer to [this document](doc/ins
 <details>
 <summary>Alpine linux</summary>
 
-Before start apshd, you need to make sure you can ssh login to the target server, please refer to [this doc](doc/ssh-openrc.md) to setup a ssh enabled docker container.
+Before start apshd, you need to make sure you can ssh login to the target server, please refer to [this doc](doc/ssh-openrc.md) to setup a ssh enabled docker container. Refer to [build doc](doc/build.md) to know how to build apk packages and private repositories.
 
 ```sh
 # add testing repositories
@@ -28,7 +28,7 @@ apk update
 # install client and server
 apk add aprilsh
 ```
-<!-- Note: aprilsh is still waiting for aports approval. For now please use the following private repository. The private repository only provide `x86_64` packages. Refer to [build doc](doc/build.md) to know how to build apk packages and private repositories. -->
+<!-- Note: aprilsh is still waiting for aports approval. For now please use the following private repository. The private repository only provide `x86_64` packages.  -->
 <!---->
 <!-- ```sh -->
 <!-- # add public key -->

@@ -8,7 +8,19 @@ apk add go protoc utmps-dev ncurses musl-locales ncurses-terminfo protoc-gen-go
 
 run dependency.
 ```sh
-apk add musl-locales utmps ncurses logrotate ncurses-terminfo wezterm-extra-terminfo openssh-server
+apk add musl-locales utmps ncurses logrotate ncurses-terminfo openssh-server
+
+```
+### build from source
+```sh
+git clone https://github.com/ericwq/aprilsh.git
+cd aprilsh/frontend/server
+./build.sh
+cd aprilsh/frontend/client
+./build.sh
+cd aprilsh
+APRILSH_APSHD_PATH="/home/ide/.local/bin/apshd" \
+go test -tags=utmps $(go list ./... | grep -Ev '(data|protobufs)')
 
 ```
 ### install for alpine
