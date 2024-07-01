@@ -407,8 +407,8 @@ func (ne *NotificationEngine) apply(emu *terminal.Emulator) {
 	rend := &(terminal.Renditions{})
 	rend.SetForegroundColor(7) // 37
 	rend.SetBackgroundColor(4) // 44
-	notificationBar.SetRenditions(emu.GetRenditions())
-	notificationBar.SetContents([]rune{' '})
+	notificationBar.SetRenditions(*rend)
+	notificationBar.SetContents([]rune{' '}) // TODO use append?
 
 	for i := 0; i < emu.GetWidth(); i++ {
 		emu.GetCellPtr(0, i).Reset2(*notificationBar)
@@ -438,11 +438,9 @@ func (ne *NotificationEngine) apply(emu *terminal.Emulator) {
 
 	var stringToDraw strings.Builder
 
-	// duplicate code in mosh
-	// if len(ne.message) == 0 && !timeExpired {
-	// 	return
-	// }
-
+	if len(ne.message) == 0 && !timeExpired {
+		return
+	}
 	if len(ne.message) == 0 && timeExpired {
 		fmt.Fprintf(&stringToDraw, "aprish: Last %s %s ago.%s", explanation,
 			humanReadableDuration(int(timeElapsed), "seconds"), keystrokeStr)
