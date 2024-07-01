@@ -15,6 +15,7 @@ import (
 
 	"github.com/ericwq/aprilsh/frontend"
 	"github.com/ericwq/aprilsh/util"
+	"github.com/ericwq/goutmp"
 )
 
 var strENOTTY = "operation not supported by device"
@@ -229,5 +230,28 @@ func TestBuildConfig(t *testing.T) {
 			// reset the environment
 			util.ClearLocaleVariables()
 		})
+	}
+}
+
+func TestDeviceExist(t *testing.T) {
+	// _, pts, err := pty.Open()
+	// if err != nil {
+	// 	t.Errorf("TestDeviceExist open pts failed, %s\n", err)
+	// }
+	// fmt.Printf("pts name %s\n", pts.Name())
+	tc := []struct {
+		label   string
+		ptsName string
+		got     bool
+	}{
+		{"ttys000 exist", "ttys000", true},
+		{"ttysNon doesn't exist", "ttysNon", false},
+	}
+
+	for _, v := range tc {
+		got := goutmp.DeviceExists(v.ptsName)
+		if got != v.got {
+			t.Errorf("%s expect %t, got %t\n", v.label, v.got, got)
+		}
 	}
 }

@@ -270,3 +270,22 @@ func TestBuildConfig(t *testing.T) {
 		})
 	}
 }
+
+func TestDeviceExist(t *testing.T) {
+	tc := []struct {
+		label   string
+		ptsName string
+		got     bool
+	}{
+		{"pts/0 exist", "pts/0", true},
+		// {"pts/1 exist", "pts/1", true},
+		{"pts/non doesn't exist", "pts/non", false},
+	}
+
+	for _, v := range tc {
+		got := utmps.DeviceExists(v.ptsName)
+		if got != v.got {
+			t.Errorf("%s expect %t, got %t\n", v.label, v.got, got)
+		}
+	}
+}

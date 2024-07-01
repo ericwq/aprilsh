@@ -104,7 +104,7 @@ func (co *conditionalOverlay) expire(expirationFrame uint64, now int64) {
 	co.predictionTime = now
 }
 
-// represent the cursor	prediction.
+// represent the cursor prediction.
 type conditionalCursorMove struct {
 	conditionalOverlay
 	row int // cursor row
@@ -179,22 +179,22 @@ func newConditionalOverlayCell(expirationFrame uint64, col int, tentativeUntilEp
 }
 
 // reset everything except replacement
-func (coc *conditionalOverlayCell) reset2() {
+func (coc *conditionalOverlayCell) reset() {
 	coc.unknown = false
 	coc.originalContents = make([]terminal.Cell, 0)
-	coc.reset()
+	coc.conditionalOverlay.reset()
 }
 
 // Reset everything if active is F or unknown is T. Otherwise append replacement to the originalContents.
 func (coc *conditionalOverlayCell) resetWithOrig() {
 	if !coc.active || coc.unknown {
 		// fmt.Println("reset2")
-		coc.reset2()
+		coc.reset()
 		return
 	}
 
 	coc.originalContents = append(coc.originalContents, coc.replacement)
-	coc.reset()
+	coc.conditionalOverlay.reset()
 }
 
 func (coc *conditionalOverlayCell) String() string {
@@ -226,7 +226,7 @@ func (coc *conditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 		flag = false
 	}
 
-	// TODO the meaning of unknown?
+	// TODO the meaning of unknown: last cell in row?
 	if coc.unknown {
 		// fmt.Printf("apply #cell (%d,%d) is unknown %q\n", row, coc.col, coc.replacement)
 		// underlining the cell except the last column.
@@ -661,7 +661,7 @@ func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
 		for j := range pe.overlays[i].overlayCells {
 			cell := &(pe.overlays[i].overlayCells[j])
 			if cell.tentative(epoch - 1) {
-				cell.reset2()
+				cell.reset()
 				// fmt.Printf("#killEpoch cell (%2d,%2d) reset2\n", pe.overlays[i].rowNum, cell.col)
 			}
 		}
@@ -925,7 +925,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 					if pe.displayPreference == Experimental {
 						// fmt.Printf("cull #cell killEpoch is called. tentativeUntilEpoch=%d, confirmedEpoch=%d\n",
 						// 	cell.tentativeUntilEpoch, pe.confirmedEpoch)
-						cell.reset2()
+						cell.reset()
 					} else {
 						// fmt.Printf("#cull killEpoch is called. tentativeUntilEpoch=%d, confirmedEpoch=%d\n",
 						// 	cell.tentativeUntilEpoch, pe.confirmedEpoch)
@@ -936,7 +936,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 					// 	pe.localFrameLateAcked, cell.expirationFrame, pe.overlays[i].rowNum, cell.col,
 					// 	cell.replacement, emu.GetCell(pe.overlays[i].rowNum, cell.col))
 					if pe.displayPreference == Experimental {
-						cell.reset2() // only clear the current cell
+						cell.reset() // only clear the current cell
 					} else {
 						pe.Reset() // clear the whole prediction
 						return
@@ -970,12 +970,12 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 					pe.overlays[i].overlayCells[k].replacement.SetRenditions(actualRenditions)
 				}
 
-				cell.reset2() // instead of fallthrough we call cell.reset2()
+				cell.reset() // instead of fallthrough we call cell.reset()
 			case CorrectNoCredit:
 				// fmt.Printf("cull() (%d,%d) return CorrectNoCredit, replacement=%s, original=%s, active=%t, ack=%d, expire=%d\n",
 				// fmt.Printf("cull #CorrectNoCredit tentativeUntilEpoch=%d, confirmedEpoch=%d\n", cell.tentativeUntilEpoch, pe.confirmedEpoch)
 				// 	pe.overlays[i].rowNum, cell.col, cell.replacement, cell.originalContents, cell.active, pe.localFrameLateAcked, cell.expirationFrame)
-				cell.reset2()
+				cell.reset()
 			case Pending:
 				// When a prediction takes a long time to be confirmed, we
 				// activate the predictions even if SRTT is low

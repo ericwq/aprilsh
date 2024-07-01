@@ -28,7 +28,6 @@ import (
 	"github.com/ericwq/aprilsh/network"
 	"github.com/ericwq/aprilsh/statesync"
 	"github.com/ericwq/aprilsh/util"
-	"github.com/ericwq/goutmp"
 	"golang.org/x/sys/unix"
 )
 
@@ -2482,25 +2481,5 @@ func TestCloseChild(t *testing.T) {
 				t.Errorf("startChild expect %q, got \n%s\n", v.expect, got)
 			}
 		})
-	}
-}
-
-func TestDeviceExist(t *testing.T) {
-	tc := []struct {
-		label   string
-		ptsName string
-		got     bool
-	}{
-		{"pts/0 exist", "pts/0", true},
-		// {"pts/1 exist", "pts/1", true},
-		{"pts/non doesn't exist", "pts/non", false},
-		// {"pts/7 doesn't exist", "pts/7", false},
-	}
-
-	for _, v := range tc {
-		got := goutmp.DeviceExists(v.ptsName)
-		if got != v.got {
-			t.Errorf("%s expect %t, got %t\n", v.label, v.got, got)
-		}
 	}
 }
