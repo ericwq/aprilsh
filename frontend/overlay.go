@@ -336,12 +336,11 @@ func (c *conditionalOverlayRow) apply(emu *terminal.Emulator, confirmedEpoch int
 	}
 }
 
-// represent the prediction notifications
 type NotificationEngine struct {
 	escapeKeyString       string
 	message               string
-	lastWordFromServer    int64 // last received state timestamp
-	lastAckedState        int64 // last sent state (acked) timestamp
+	lastWordFromServer    int64 // latest received state timestamp
+	lastAckedState        int64 // first sent state (acked) timestamp
 	messageExpiration     int64
 	messageIsNetworkError bool
 	showQuitKeystroke     bool
@@ -370,18 +369,17 @@ func humanReadableDuration(numSeconds int, secondsAbbr string) string {
 	return tmp.String()
 }
 
-// not receive from server over 6.5 seconds.
+// not receive over 6.5 seconds.
 func (ne *NotificationEngine) serverLate(ts int64) bool {
 	return ts-ne.lastWordFromServer > 6500
 }
 
-// not send (successfully acked) to server over 10 seconds.
+// not send (successfully acked) over 10 seconds.
 func (ne *NotificationEngine) replyLate(ts int64) bool {
 	return ts-ne.lastAckedState > 10000
 }
 
-// return true, if not send (acked) to server or receive from server
-// over predefined time.
+// return true, if send or receive over predefined time.
 func (ne *NotificationEngine) needCountup(ts int64) bool {
 	return ne.serverLate(ts) || ne.replyLate(ts)
 }
@@ -393,13 +391,13 @@ func (ne *NotificationEngine) adjustMessage() {
 	}
 }
 
-// if there's no message and no time expired, just return.
+// if there's no message and no expiration, just return.
 //
-// if there's no message and time expired, print contact/reply time on top line.
+// if there's no message and expiration, print contact/reply time on top line.
 //
-// if there's message and no time expired, print message on top line.
+// if there's message and no expiration, print message on top line.
 //
-// if there's message and time expired, print message and contact/reply time on top line
+// if there's message and expiration, print message and contact/reply time on top line
 func (ne *NotificationEngine) apply(emu *terminal.Emulator) {
 	now := time.Now().UnixMilli()
 	timeExpired := ne.needCountup(now)
@@ -474,10 +472,12 @@ func (ne *NotificationEngine) GetNotificationString() string {
 	return ne.message
 }
 
+// set latest received state timestamp, when network input happens or shutdown
 func (ne *NotificationEngine) ServerHeard(ts int64) {
 	ne.lastWordFromServer = ts
 }
 
+// set first sent state timestamp, when network input happens
 func (ne *NotificationEngine) ServerAcked(ts int64) {
 	ne.lastAckedState = ts
 }
@@ -733,10 +733,12 @@ func (pe *PredictionEngine) timingTestsNecessary() bool {
 	return pe.glitchTrigger <= 0 || !pe.flagging
 }
 
+// set displayPreference when init
 func (pe *PredictionEngine) SetDisplayPreference(v DisplayPreference) {
 	pe.displayPreference = v
 }
 
+// set predictOverwrite when init.
 func (pe *PredictionEngine) SetPredictOverwrite(overwrite bool) {
 	pe.predictOverwrite = overwrite
 }
@@ -766,6 +768,8 @@ func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
 // process user input to prepare local prediction:cells and cursors.
 // before process the input, PredictionEngine calls cull() method to check the prediction validity.
 // a.k.a mosh new_user_byte() method
+//
+// called when user input happens
 func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
 	if len(input) == 0 {
 		return
@@ -1057,6 +1061,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 }
 
 // clean all the cursor predictions and all the cell predictions. increase the epoch.
+// called when there is user input bulk data or terminal resize.
 func (pe *PredictionEngine) Reset() {
 	pe.cursors = make([]conditionalCursorMove, 0)
 	pe.overlays = make([]conditionalOverlayRow, 0)
@@ -1064,18 +1069,22 @@ func (pe *PredictionEngine) Reset() {
 	// fmt.Println("reset #clear cursors and overlays")
 }
 
+// set last sent state num, when user input happens
 func (pe *PredictionEngine) SetLocalFrameSent(v uint64) {
 	pe.localFrameSent = v
 }
 
+// set first sent state num, when network input happens
 func (pe *PredictionEngine) SetLocalFrameAcked(v uint64) {
 	pe.localFrameAcked = v
 }
 
+// set last received remote state acked num, when network input happens
 func (pe *PredictionEngine) SetLocalFrameLateAcked(v uint64) {
 	pe.localFrameLateAcked = v
 }
 
+// set send interval, when network input happens
 func (pe *PredictionEngine) SetSendInterval(value uint) {
 	pe.sendInterval = value
 }
@@ -1325,7 +1334,7 @@ func (te *TitleEngine) setPrefix(v string) {
 	te.prefix = v
 }
 
-// apply the frame title with the prefix
+// set prefix title for terminal
 func (te *TitleEngine) apply(emu *terminal.Emulator) {
 	emu.PrefixWindowTitle(te.prefix)
 }

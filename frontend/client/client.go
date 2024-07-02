@@ -632,201 +632,6 @@ func newSTMClient(config *Config) *STMClient {
 	return &sc
 }
 
-func (sc *STMClient) mainInit() error {
-	// get initial window size
-	col, row, err := term.GetSize(int(os.Stdin.Fd()))
-	if err != nil {
-		return err
-	}
-	util.Logger.Debug("client window size", "col", col, "row", row)
-
-	// local state
-	savedLines := terminal.SaveLinesRowsOption
-	sc.localFramebuffer = terminal.NewEmulator3(col, row, savedLines)
-	sc.newState = terminal.NewEmulator3(col, row, savedLines)
-
-	// initialize screen
-	// init := sc.display.NewFrame(true, sc.localFramebuffer, sc.localFramebuffer)
-	// CSI ? 1049l Use Normal Screen Buffer and restore cursor as in DECRC, xterm.
-	// CSI ? 1l		Normal Cursor Keys (DECCKM)
-	// CSI ? 1004l Disable FocusIn/FocusOut
-	init := "\x1B[?1049l\x1B[?1l\x1B[?1004l"
-	os.Stdout.WriteString(init)
-	util.Logger.Debug("mainInit", "init", init)
-
-	// open network
-	blank := &statesync.UserStream{}
-	terminal, err := statesync.NewComplete(col, row, savedLines)
-	if err != nil {
-		return err
-	}
-	sc.network = network.NewTransportClient(blank, terminal, sc.key, sc.ip, fmt.Sprintf("%d", sc.port))
-
-	// minimal delay on outgoing keystrokes
-	sc.network.SetSendDelay(1)
-
-	// tell server the size of the terminal
-	sc.network.GetCurrentState().PushBackResize(col, row)
-
-	// be noisy as necessary
-	sc.network.SetVerbose(uint(sc.verbose))
-
-	return nil
-}
-
-func (sc *STMClient) processNetworkInput(s string) {
-	// sc.network.Recv()
-	if err := sc.network.ProcessPayload(s); err != nil {
-		util.Logger.Warn("ProcessPayload", "error", err)
-	}
-
-	//  Now give hints to the overlays
-	rs := sc.network.GetLatestRemoteState()
-	sc.overlays.GetNotificationEngine().ServerHeard(rs.GetTimestamp())
-	sc.overlays.GetNotificationEngine().ServerAcked(sc.network.GetSentStateAckedTimestamp())
-
-	sc.overlays.GetPredictionEngine().SetLocalFrameAcked(sc.network.GetSentStateAcked())
-	sc.overlays.GetPredictionEngine().SetSendInterval(sc.network.SentInterval())
-	state := sc.network.GetLatestRemoteState()
-	lateAcked := state.GetState().GetEchoAck()
-	sc.overlays.GetPredictionEngine().SetLocalFrameLateAcked(lateAcked)
-}
-
-func (sc *STMClient) processUserInput(buf string) bool {
-	if sc.network.ShutdownInProgress() {
-		return true
-	}
-	sc.overlays.GetPredictionEngine().SetLocalFrameSent(sc.network.GetSentStateLast())
-
-	// Don't predict for bulk data.
-	paste := len(buf) > 100
-	if paste {
-		sc.overlays.GetPredictionEngine().Reset()
-	}
-
-	util.Logger.Debug("processUserInput", "buf", buf)
-	var input []rune
-	graphemes := uniseg.NewGraphemes(buf)
-	for graphemes.Next() {
-		input = graphemes.Runes()
-		theByte := input[0] // the first byte
-
-		if !paste {
-			sc.overlays.GetPredictionEngine().NewUserInput(sc.localFramebuffer, input)
-		}
-
-		if sc.quitSequenceStarted {
-			if theByte == '.' { // Quit sequence is Ctrl-^ .
-				if sc.network.HasRemoteAddr() && !sc.network.ShutdownInProgress() {
-					sc.overlays.GetNotificationEngine().SetNotificationString(
-						"Exiting on user request...", true, true)
-					sc.network.StartShutdown()
-					return true
-				} else {
-					return false
-				}
-			} else if theByte == 0x1A { // Suspend sequence is escape_key Ctrl-Z
-				// Restore terminal and terminal-driver state
-				os.Stdout.WriteString(sc.display.Close())
-
-				if err := term.Restore(int(os.Stdin.Fd()), sc.savedTermios); err != nil {
-					util.Logger.Error("restore terminal failed", "error", err)
-					return false
-				}
-
-				fmt.Printf("\n\033[37;44m[%s is suspended.]\033[m\n", frontend.CommandClientName)
-
-				// fflush(NULL)
-				//
-				/* actually suspend */
-				// kill(0, SIGSTOP);
-				// TODO check SIGSTOP
-
-				sc.resume()
-			} else if theByte == rune(sc.escapePassKey) || theByte == rune(sc.escapePassKey2) {
-				// Emulation sequence to type escape_key is escape_key +
-				// escape_pass_key (that is escape key without Ctrl)
-				sc.network.GetCurrentState().PushBack([]rune{rune(sc.escapeKey)})
-			} else {
-				// Escape key followed by anything other than . and ^ gets sent literally
-				sc.network.GetCurrentState().PushBack([]rune{rune(sc.escapeKey), theByte})
-			}
-
-			sc.quitSequenceStarted = false
-
-			if sc.overlays.GetNotificationEngine().GetNotificationString() == sc.escapeKeyHelp {
-				sc.overlays.GetNotificationEngine().SetNotificationString("", false, true)
-			}
-
-			continue
-		}
-
-		sc.quitSequenceStarted = sc.escapeKey > 0 && theByte == rune(sc.escapeKey) &&
-			(sc.lfEntered || !sc.escapeRequireslf)
-
-		if sc.quitSequenceStarted {
-			sc.lfEntered = false
-			sc.overlays.GetNotificationEngine().SetNotificationString(sc.escapeKeyHelp, true, false)
-			continue
-		}
-
-		sc.lfEntered = theByte == 0x0A || theByte == 0x0D // LineFeed, Ctrl-J, '\n' or CarriageReturn, Ctrl-M, '\r'
-
-		if theByte == 0x0C { // Ctrl-L
-			sc.repaintRequested = true
-		}
-
-		sc.network.GetCurrentState().PushBack(input)
-	}
-
-	return true
-}
-
-func (sc *STMClient) processResize() bool {
-	// get new size
-	col, row, err := term.GetSize(int(os.Stdin.Fd()))
-	if err != nil {
-		return false
-	}
-
-	// newSize := terminal.Resize{Width: col, Height: row}
-	// tell remote emulator
-	if !sc.network.ShutdownInProgress() {
-		sc.network.GetCurrentState().PushBackResize(col, row)
-	}
-	// note remote emulator will probably reply with its own Resize to adjust our state
-
-	// tell prediction engine
-	sc.overlays.GetPredictionEngine().Reset()
-	return true
-}
-
-func (sc *STMClient) outputNewFrame() {
-	// clean shutdown even when not initialized
-	if sc.network == nil {
-		return
-	}
-
-	// fetch target state
-	state := sc.network.GetLatestRemoteState()
-	sc.newState = state.GetState().GetEmulator()
-	// apply local overlays
-	sc.overlays.Apply(sc.newState)
-
-	// calculate minimal difference from where we are
-	// util.Log.SetLevel(slog.LevelInfo)
-	// diff := sc.display.NewFrame(!sc.repaintRequested, sc.localFramebuffer, sc.newState)
-	diff := state.GetState().GetDiff()
-	// util.Log.SetLevel(slog.LevelDebug)
-	os.Stdout.WriteString(diff)
-	if diff != "" {
-		util.Logger.Debug("outputNewFrame", "diff", diff)
-	}
-
-	sc.repaintRequested = false
-	sc.localFramebuffer = sc.newState
-}
-
 func (sc *STMClient) stillConnecting() bool {
 	// Initially, network == nil
 	return sc.network != nil && sc.network.GetRemoteStateNum() == 0
@@ -996,6 +801,201 @@ func (sc *STMClient) shutdown() error {
 		}
 	}
 	return nil
+}
+
+func (sc *STMClient) mainInit() error {
+	// get initial window size
+	col, row, err := term.GetSize(int(os.Stdin.Fd()))
+	if err != nil {
+		return err
+	}
+	util.Logger.Debug("client window size", "col", col, "row", row)
+
+	// local state
+	savedLines := terminal.SaveLinesRowsOption
+	sc.localFramebuffer = terminal.NewEmulator3(col, row, savedLines)
+	sc.newState = terminal.NewEmulator3(col, row, savedLines)
+
+	// initialize screen
+	// init := sc.display.NewFrame(true, sc.localFramebuffer, sc.localFramebuffer)
+	// CSI ? 1049l Use Normal Screen Buffer and restore cursor as in DECRC, xterm.
+	// CSI ? 1l		Normal Cursor Keys (DECCKM)
+	// CSI ? 1004l Disable FocusIn/FocusOut
+	init := "\x1B[?1049l\x1B[?1l\x1B[?1004l"
+	os.Stdout.WriteString(init)
+	util.Logger.Debug("mainInit", "init", init)
+
+	// open network
+	blank := &statesync.UserStream{}
+	terminal, err := statesync.NewComplete(col, row, savedLines)
+	if err != nil {
+		return err
+	}
+	sc.network = network.NewTransportClient(blank, terminal, sc.key, sc.ip, fmt.Sprintf("%d", sc.port))
+
+	// minimal delay on outgoing keystrokes
+	sc.network.SetSendDelay(1)
+
+	// tell server the size of the terminal
+	sc.network.GetCurrentState().PushBackResize(col, row)
+
+	// be noisy as necessary
+	sc.network.SetVerbose(uint(sc.verbose))
+
+	return nil
+}
+
+func (sc *STMClient) outputNewFrame() {
+	// clean shutdown even when not initialized
+	if sc.network == nil {
+		return
+	}
+
+	// fetch target state
+	state := sc.network.GetLatestRemoteState()
+	sc.newState = state.GetState().GetEmulator()
+	// apply local overlays
+	sc.overlays.Apply(sc.newState)
+
+	// calculate minimal difference from where we are
+	// util.Log.SetLevel(slog.LevelInfo)
+	// diff := sc.display.NewFrame(!sc.repaintRequested, sc.localFramebuffer, sc.newState)
+	diff := state.GetState().GetDiff()
+	// util.Log.SetLevel(slog.LevelDebug)
+	os.Stdout.WriteString(diff)
+	if diff != "" {
+		util.Logger.Debug("outputNewFrame", "diff", diff)
+	}
+
+	sc.repaintRequested = false
+	sc.localFramebuffer = sc.newState
+}
+
+func (sc *STMClient) processNetworkInput(s string) {
+	// sc.network.Recv()
+	if err := sc.network.ProcessPayload(s); err != nil {
+		util.Logger.Warn("ProcessPayload", "error", err)
+	}
+
+	//  Now give hints to the overlays
+	rs := sc.network.GetLatestRemoteState()
+	sc.overlays.GetNotificationEngine().ServerHeard(rs.GetTimestamp())
+	sc.overlays.GetNotificationEngine().ServerAcked(sc.network.GetSentStateAckedTimestamp())
+
+	sc.overlays.GetPredictionEngine().SetLocalFrameAcked(sc.network.GetSentStateAcked())
+	sc.overlays.GetPredictionEngine().SetSendInterval(sc.network.SentInterval())
+	state := sc.network.GetLatestRemoteState()
+	lateAcked := state.GetState().GetEchoAck()
+	sc.overlays.GetPredictionEngine().SetLocalFrameLateAcked(lateAcked)
+}
+
+func (sc *STMClient) processUserInput(buf string) bool {
+	if sc.network.ShutdownInProgress() {
+		return true
+	}
+	sc.overlays.GetPredictionEngine().SetLocalFrameSent(sc.network.GetSentStateLast())
+
+	// Don't predict for bulk data.
+	paste := len(buf) > 100
+	if paste {
+		sc.overlays.GetPredictionEngine().Reset()
+	}
+
+	util.Logger.Debug("processUserInput", "buf", buf)
+	var input []rune
+	graphemes := uniseg.NewGraphemes(buf)
+	for graphemes.Next() {
+		input = graphemes.Runes()
+		theByte := input[0] // the first byte
+
+		if !paste {
+			sc.overlays.GetPredictionEngine().NewUserInput(sc.localFramebuffer, input)
+		}
+
+		if sc.quitSequenceStarted {
+			if theByte == '.' { // Quit sequence is Ctrl-^ .
+				if sc.network.HasRemoteAddr() && !sc.network.ShutdownInProgress() {
+					sc.overlays.GetNotificationEngine().SetNotificationString(
+						"Exiting on user request...", true, true)
+					sc.network.StartShutdown()
+					return true
+				} else {
+					return false
+				}
+			} else if theByte == 0x1A { // Suspend sequence is escape_key Ctrl-Z
+				// Restore terminal and terminal-driver state
+				os.Stdout.WriteString(sc.display.Close())
+
+				if err := term.Restore(int(os.Stdin.Fd()), sc.savedTermios); err != nil {
+					util.Logger.Error("restore terminal failed", "error", err)
+					return false
+				}
+
+				fmt.Printf("\n\033[37;44m[%s is suspended.]\033[m\n", frontend.CommandClientName)
+
+				// fflush(NULL)
+				//
+				/* actually suspend */
+				// kill(0, SIGSTOP);
+				// TODO check SIGSTOP
+
+				sc.resume()
+			} else if theByte == rune(sc.escapePassKey) || theByte == rune(sc.escapePassKey2) {
+				// Emulation sequence to type escape_key is escape_key +
+				// escape_pass_key (that is escape key without Ctrl)
+				sc.network.GetCurrentState().PushBack([]rune{rune(sc.escapeKey)})
+			} else {
+				// Escape key followed by anything other than . and ^ gets sent literally
+				sc.network.GetCurrentState().PushBack([]rune{rune(sc.escapeKey), theByte})
+			}
+
+			sc.quitSequenceStarted = false
+
+			if sc.overlays.GetNotificationEngine().GetNotificationString() == sc.escapeKeyHelp {
+				sc.overlays.GetNotificationEngine().SetNotificationString("", false, true)
+			}
+
+			continue
+		}
+
+		sc.quitSequenceStarted = sc.escapeKey > 0 && theByte == rune(sc.escapeKey) &&
+			(sc.lfEntered || !sc.escapeRequireslf)
+
+		if sc.quitSequenceStarted {
+			sc.lfEntered = false
+			sc.overlays.GetNotificationEngine().SetNotificationString(sc.escapeKeyHelp, true, false)
+			continue
+		}
+
+		sc.lfEntered = theByte == 0x0A || theByte == 0x0D // LineFeed, Ctrl-J, '\n' or CarriageReturn, Ctrl-M, '\r'
+
+		if theByte == 0x0C { // Ctrl-L
+			sc.repaintRequested = true
+		}
+
+		sc.network.GetCurrentState().PushBack(input)
+	}
+
+	return true
+}
+
+func (sc *STMClient) processResize() bool {
+	// get new size
+	col, row, err := term.GetSize(int(os.Stdin.Fd()))
+	if err != nil {
+		return false
+	}
+
+	// newSize := terminal.Resize{Width: col, Height: row}
+	// tell remote emulator
+	if !sc.network.ShutdownInProgress() {
+		sc.network.GetCurrentState().PushBackResize(col, row)
+	}
+	// note remote emulator will probably reply with its own Resize to adjust our state
+
+	// tell prediction engine
+	sc.overlays.GetPredictionEngine().Reset()
+	return true
 }
 
 func (sc *STMClient) main() error {
@@ -1184,6 +1184,7 @@ mainLoop:
 		} else {
 			sc.overlays.GetNotificationEngine().ClearNetworkError()
 		}
+		// NOTE we did not handle CryptoException, sc.overlays.GetNotificationEngine is missing.
 
 		// if connected and no response over TimeoutIfNoResp
 		if sc.network.GetRemoteStateNum() != 0 && sinceLastResponse > frontend.TimeoutIfNoResp {
