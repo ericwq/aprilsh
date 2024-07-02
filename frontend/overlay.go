@@ -357,6 +357,7 @@ func newNotificationEngien() *NotificationEngine {
 	return ne
 }
 
+// convert seconds into readable string
 func humanReadableDuration(numSeconds int, secondsAbbr string) string {
 	var tmp strings.Builder
 	if numSeconds < 60 {
@@ -369,24 +370,36 @@ func humanReadableDuration(numSeconds int, secondsAbbr string) string {
 	return tmp.String()
 }
 
+// not receive from server over 6.5 seconds.
 func (ne *NotificationEngine) serverLate(ts int64) bool {
 	return ts-ne.lastWordFromServer > 6500
 }
 
+// not send (successfully acked) to server over 10 seconds.
 func (ne *NotificationEngine) replyLate(ts int64) bool {
 	return ts-ne.lastAckedState > 10000
 }
 
+// return true, if not send (acked) to server or receive from server
+// over predefined time.
 func (ne *NotificationEngine) needCountup(ts int64) bool {
 	return ne.serverLate(ts) || ne.replyLate(ts)
 }
 
+// if message expired, set empty message.
 func (ne *NotificationEngine) adjustMessage() {
 	if time.Now().UnixMilli() >= ne.messageExpiration {
 		ne.message = ""
 	}
 }
 
+// if there's no message and no time expired, just return.
+//
+// if there's no message and time expired, print contact/reply time on top line.
+//
+// if there's message and no time expired, print message on top line.
+//
+// if there's message and time expired, print message and contact/reply time on top line
 func (ne *NotificationEngine) apply(emu *terminal.Emulator) {
 	now := time.Now().UnixMilli()
 	timeExpired := ne.needCountup(now)
@@ -438,9 +451,10 @@ func (ne *NotificationEngine) apply(emu *terminal.Emulator) {
 
 	var stringToDraw strings.Builder
 
-	if len(ne.message) == 0 && !timeExpired {
-		return
-	}
+	// duplicate code, check the front of method
+	// if len(ne.message) == 0 && !timeExpired {
+	// 	return
+	// }
 	if len(ne.message) == 0 && timeExpired {
 		fmt.Fprintf(&stringToDraw, "aprish: Last %s %s ago.%s", explanation,
 			humanReadableDuration(int(timeElapsed), "seconds"), keystrokeStr)
@@ -468,6 +482,9 @@ func (ne *NotificationEngine) ServerAcked(ts int64) {
 	ne.lastAckedState = ts
 }
 
+// if not send (acked) to server or receive from server over predefined time, return next
+// expire time. normally it's 1 second, if we've been not receive from server for 60 seconds,
+// the returned next expire time is 3 second.
 func (ne *NotificationEngine) waitTime() int {
 	var nextExpiry int64 = math.MaxInt64
 	now := time.Now().UnixMilli()
@@ -486,7 +503,8 @@ func (ne *NotificationEngine) waitTime() int {
 	return int(nextExpiry)
 }
 
-// default parameters: permanent = false, showQuitKeystroke = true
+// set message and message expire time, if permanent is true, message expire time is forever.
+// if permanent is false, message expires 1 second later. also set showQuitKeystroke.
 func (ne *NotificationEngine) SetNotificationString(message string, permanent bool, showQuitKeystroke bool) {
 	ne.message = message
 	if permanent {
@@ -503,12 +521,14 @@ func (ne *NotificationEngine) SetEscapeKeyString(str string) {
 	ne.escapeKeyString = fmt.Sprintf(" [To quit: %s .]", str)
 }
 
+// set (network error) message and message expire time, message expires 3.1 seconds later.
 func (ne *NotificationEngine) SetNetworkError(str string) {
 	ne.message = str
 	ne.messageIsNetworkError = true
 	ne.messageExpiration = time.Now().UnixMilli() + ACK_INTERVAL + 100
 }
 
+// extend message expire time 1 second later, if it's network message error.
 func (ne *NotificationEngine) ClearNetworkError() {
 	// fmt.Printf("clearNetworkError #debug messageIsNetworkError=%t\n", ne.messageIsNetworkError)
 	if ne.messageIsNetworkError {
