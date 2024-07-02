@@ -1016,7 +1016,7 @@ func TestTitleEngine(t *testing.T) {
 
 func TestNotificationEngine(t *testing.T) {
 	tc := []struct {
-		name                  string
+		label                 string
 		message               string
 		escapeKeyString       string
 		result                string
@@ -1075,8 +1075,8 @@ func TestNotificationEngine(t *testing.T) {
 			false, true, true,
 		},
 		{
-			"restore from network failure", "restor from", "Ctrl-z",
-			"aprish: restor from (20 s without reply.) [To quit: Ctrl-z .]",
+			"restore from network failure", "restore from", "Ctrl-z",
+			"aprish: restore from (20 s without reply.) [To quit: Ctrl-z .]",
 			200, 20001,
 			false, false, true,
 		},
@@ -1088,45 +1088,47 @@ func TestNotificationEngine(t *testing.T) {
 		},
 	}
 
-	ne := newNotificationEngien()
-	emu := terminal.NewEmulator3(80, 40, 40)
 	for _, v := range tc {
-		// fmt.Printf("%s start\n", v.name)
-		if !ne.messageIsNetworkError {
-			ne.SetNotificationString(v.message, v.permanent, v.showQuitKeystroke)
-		}
-		ne.SetEscapeKeyString(v.escapeKeyString)
-		ne.ServerHeard(time.Now().UnixMilli() - v.lastWordFromServer)
-		ne.ServerAcked(time.Now().UnixMilli() - v.lastAckedState)
+		t.Run(v.label, func(t *testing.T) {
+			ne := newNotificationEngien()
+			emu := terminal.NewEmulator3(80, 40, 40)
+			// fmt.Printf("%s start\n", v.name)
+			if !ne.messageIsNetworkError {
+				ne.SetNotificationString(v.message, v.permanent, v.showQuitKeystroke)
+			}
+			ne.SetEscapeKeyString(v.escapeKeyString)
+			ne.ServerHeard(time.Now().UnixMilli() - v.lastWordFromServer)
+			ne.ServerAcked(time.Now().UnixMilli() - v.lastAckedState)
 
-		if v.messageIsNetworkError {
-			ne.SetNetworkError(v.name)
-		} else {
-			ne.ClearNetworkError()
-			ne.SetNotificationString(v.message, v.permanent, v.showQuitKeystroke)
-		}
-
-		ne.apply(emu)
-
-		// build the string from emulator
-		var got strings.Builder
-		for i := 0; i < emu.GetWidth(); i++ {
-			cell := emu.GetCell(0, i)
-			if cell.IsDoubleWidthCont() {
-				continue
+			if v.messageIsNetworkError {
+				ne.SetNetworkError(v.label)
+			} else {
+				ne.ClearNetworkError()
+				ne.SetNotificationString(v.message, v.permanent, v.showQuitKeystroke)
 			}
 
-			got.WriteString(cell.GetContents())
-		}
+			ne.apply(emu)
 
-		// validate the result
-		if len(v.result) != 0 {
-			gotStr := strings.TrimSpace(got.String())
-			if gotStr != v.result {
-				t.Errorf("%q expect \n%q, got \n%q\n", v.name, v.result, gotStr)
+			// build the string from emulator
+			var got strings.Builder
+			for i := 0; i < emu.GetWidth(); i++ {
+				cell := emu.GetCell(0, i)
+				if cell.IsDoubleWidthCont() {
+					continue
+				}
+
+				got.WriteString(cell.GetContents())
 			}
-		}
-		// fmt.Printf("%s end\n\n", v.name)
+
+			// validate the result
+			if len(v.result) != 0 {
+				gotStr := strings.TrimSpace(got.String())
+				if gotStr != v.result {
+					t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.result, gotStr)
+				}
+			}
+			// fmt.Printf("%s end\n\n", v.name)
+		})
 	}
 }
 
