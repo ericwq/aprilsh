@@ -1025,66 +1025,67 @@ func TestNotificationEngine(t *testing.T) {
 		permanent             bool
 		messageIsNetworkError bool
 		showQuitKeystroke     bool
+		countUp               bool
 	}{
 		{
 			"no message, no expire", "", "Ctrl-z",
 			"",
 			60, 80,
-			false, false, true,
+			false, false, true, false,
 		},
 		{
 			"english message, no expire", "hello world",
 			"Ctrl-z", "aprish: hello world [To quit: Ctrl-z .]",
 			60, 80,
-			false, false, true,
+			false, false, true, false,
 		},
 		{
 			"chinese message, no expire", "你好世界", "Ctrl-z",
 			"aprish: 你好世界",
 			60, 80,
-			true, false, false,
+			true, false, false, false,
 		},
 		{
-			"server late", "你好世界", "Ctrl-z",
+			"chinese message, receive expire", "你好世界", "Ctrl-z",
 			"aprish: 你好世界 (1:05 without contact.)",
 			65001, 80,
-			true, false, false,
+			true, false, false, true,
 		},
 		{
-			"reply late", "aia group", "Ctrl-z",
+			"english message, sent expire", "aia group", "Ctrl-z",
 			"aprish: aia group (10 s without reply.) [To quit: Ctrl-z .]",
 			65, 10001,
-			false, false, true,
+			false, false, true, true,
 		},
 		{
-			"no message, server late", "top gun 2", "Ctrl-z",
+			"message, both expire", "top gun 2", "Ctrl-z",
 			"aprish: top gun 2 (1:05 without contact.) [To quit: Ctrl-z .]",
 			65001, 10001,
-			false, false, true,
+			false, false, true, true,
 		},
 		{
-			"no message, server too late", "top gun 2", "Ctrl-z",
-			"aprish: top gun 2 (1:03:22 without contact.) [To quit: Ctrl-z .]",
-			3802001, 100,
-			false, false, true,
+			"message, receive expire", "top gun 2", "Ctrl-z",
+			"aprish: top gun 2 (1:00:22 without contact.) [To quit: Ctrl-z .]",
+			3622000, 100,
+			false, false, true, true,
 		},
 		{
-			"network error", "***", "Ctrl-z",
-			"aprish: network error (10 s without reply.) [To quit: Ctrl-z .]",
+			"message, sent expire, enetwork error", "****", "Ctrl-z",
+			"aprish: **** (10 s without reply.) [To quit: Ctrl-z .]",
 			200, 10001,
-			false, true, true,
+			false, true, true, true,
 		},
 		{
-			"restore from network failure", "restore from", "Ctrl-z",
+			"message, sent expire", "restore from", "Ctrl-z",
 			"aprish: restore from (20 s without reply.) [To quit: Ctrl-z .]",
 			200, 20001,
-			false, false, true,
+			false, false, true, true,
 		},
 		{
-			"no message, server late", "", "Ctrl-z",
-			"aprish: Last contact 1:05 ago. [To quit: Ctrl-z .]",
+			"no message, both expire", "", "Ctrl-z",
+			"aprish: Last contact 1:05 ago.",
 			65001, 20001,
-			false, false, true,
+			false, false, false, true,
 		},
 	}
 
@@ -1092,16 +1093,13 @@ func TestNotificationEngine(t *testing.T) {
 		t.Run(v.label, func(t *testing.T) {
 			ne := newNotificationEngien()
 			emu := terminal.NewEmulator3(80, 40, 40)
-			// fmt.Printf("%s start\n", v.name)
-			if !ne.messageIsNetworkError {
-				ne.SetNotificationString(v.message, v.permanent, v.showQuitKeystroke)
-			}
+
 			ne.SetEscapeKeyString(v.escapeKeyString)
 			ne.ServerHeard(time.Now().UnixMilli() - v.lastWordFromServer)
 			ne.ServerAcked(time.Now().UnixMilli() - v.lastAckedState)
 
 			if v.messageIsNetworkError {
-				ne.SetNetworkError(v.label)
+				ne.SetNetworkError(v.message)
 			} else {
 				ne.ClearNetworkError()
 				ne.SetNotificationString(v.message, v.permanent, v.showQuitKeystroke)
@@ -1110,24 +1108,29 @@ func TestNotificationEngine(t *testing.T) {
 			ne.apply(emu)
 
 			// build the string from emulator
-			var got strings.Builder
+			var sb strings.Builder
 			for i := 0; i < emu.GetWidth(); i++ {
 				cell := emu.GetCell(0, i)
 				if cell.IsDoubleWidthCont() {
 					continue
 				}
 
-				got.WriteString(cell.GetContents())
+				sb.WriteString(cell.GetContents())
 			}
+			got := strings.TrimSpace(sb.String())
+			// fmt.Printf("%s:got %q \n\n", v.label, got)
 
 			// validate the result
 			if len(v.result) != 0 {
-				gotStr := strings.TrimSpace(got.String())
-				if gotStr != v.result {
-					t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.result, gotStr)
+				if got != v.result {
+					t.Errorf("%q expect \n%q, got \n%q\n", v.label, v.result, got)
 				}
 			}
-			// fmt.Printf("%s end\n\n", v.name)
+
+			countUp := ne.needCountup(time.Now().UnixMilli())
+			if v.countUp != countUp {
+				t.Errorf("%s expect needCountup %t, got %t\n", v.label, v.countUp, countUp)
+			}
 		})
 	}
 }
