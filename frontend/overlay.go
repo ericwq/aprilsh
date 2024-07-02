@@ -379,7 +379,7 @@ func (ne *NotificationEngine) replyLate(ts int64) bool {
 	return ts-ne.lastAckedState > 10000
 }
 
-// return true, if send or receive over predefined time.
+// return true, if send OR receive over predefined time.
 func (ne *NotificationEngine) needCountup(ts int64) bool {
 	return ne.serverLate(ts) || ne.replyLate(ts)
 }
@@ -482,9 +482,9 @@ func (ne *NotificationEngine) ServerAcked(ts int64) {
 	ne.lastAckedState = ts
 }
 
-// if not send (acked) to server or receive from server over predefined time, return next
-// expire time. normally it's 1 second, if we've been not receive from server for 60 seconds,
-// the returned next expire time is 3 second.
+// if send OR receive over predefined time, return 1 second.
+// if we've been disconnected for 60 seconds, return 3 seconds.
+// otherwise, return message experiation duration.
 func (ne *NotificationEngine) waitTime() int {
 	var nextExpiry int64 = math.MaxInt64
 	now := time.Now().UnixMilli()
@@ -530,7 +530,6 @@ func (ne *NotificationEngine) SetNetworkError(str string) {
 
 // extend message expire time 1 second later, if it's network message error.
 func (ne *NotificationEngine) ClearNetworkError() {
-	// fmt.Printf("clearNetworkError #debug messageIsNetworkError=%t\n", ne.messageIsNetworkError)
 	if ne.messageIsNetworkError {
 		ne.messageExpiration = min(ne.messageExpiration, time.Now().UnixMilli()+1000)
 	}
