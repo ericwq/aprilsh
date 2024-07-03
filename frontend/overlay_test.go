@@ -1014,7 +1014,7 @@ func TestTitleEngine(t *testing.T) {
 	}
 }
 
-func TestNotificationEngine(t *testing.T) {
+func TestNotificationEngine_apply(t *testing.T) {
 	tc := []struct {
 		label                 string
 		message               string
@@ -1137,35 +1137,84 @@ func TestNotificationEngine(t *testing.T) {
 
 func TestNotificationEngine_adjustMessage(t *testing.T) {
 	tc := []struct {
-		name              string
+		label             string
 		message           string
 		expect            string
-		messageExpiration int64
+		messageExpiration int64 // relative duration in ms
 	}{
-		{"message expire", "message expire", "", 0},
-		{"message ready", "message 准备好了", "message 准备好了", 20},
+		{
+			"message expire", "message expire",
+			"", -20,
+		},
+		{
+			"message ready", "message 准备好了",
+			"message 准备好了", 20,
+		},
 	}
 
-	ne := newNotificationEngien()
 	for _, v := range tc {
-		ne.SetNotificationString(v.message, false, false)
+		t.Run(v.label, func(t *testing.T) {
+			ne := newNotificationEngien()
+			ne.SetNotificationString(v.message, false, false)
 
-		// validate the message string
-		if ne.GetNotificationString() != v.message {
-			t.Errorf("%q expect %q, got %q\n", v.name, v.message, ne.GetNotificationString())
-		}
+			// validate the message string
+			if ne.GetNotificationString() != v.message {
+				t.Errorf("%q expect %q, got %q\n", v.label, v.message, ne.GetNotificationString())
+			}
 
-		ne.messageExpiration = time.Now().UnixMilli() + v.messageExpiration
-		ne.adjustMessage()
+			ne.messageExpiration = time.Now().UnixMilli() + v.messageExpiration
+			ne.adjustMessage()
 
-		// validate the empty string
-		if ne.GetNotificationString() != v.expect {
-			t.Errorf("%q expect %q, got %q\n", v.name, v.expect, ne.GetNotificationString())
-		}
+			// validate the empty string
+			if ne.GetNotificationString() != v.expect {
+				t.Errorf("%q expect %q, got %q\n", v.label, v.expect, ne.GetNotificationString())
+			}
+		})
 	}
+}
 
-	if min(7, 8) == 8 {
-		t.Errorf("min should return %d, for min(7,8), got %d\n", 7, 8)
+func TestNotificationEngine_ClearNetworkError(t *testing.T) {
+	tc := []struct {
+		label   string
+		message string
+	}{
+		{"normal", "bless me"},
+	}
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			ne := newNotificationEngien()
+			ne.SetNetworkError(v.message)
+
+			before := ne.messageExpiration
+			ne.ClearNetworkError()
+			after := ne.messageExpiration
+			if before < after {
+				t.Errorf("%s before=%d, after=%d\n", v.label, before, after)
+			}
+		})
+	}
+}
+
+func TestNotificationEngine_WaitTime(t *testing.T) {
+	tc := []struct {
+		label              string
+		lastWordFromServer int64 // delta value based on now
+		lastAckedState     int64 // delta value base on now
+		timeout            int
+	}{
+		{"receive expire", 6501, 10, 1000},
+		{"receive expire over 60 seconds", 60001, 10, 3000},
+	}
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			ne := newNotificationEngien()
+			ne.ServerHeard(time.Now().UnixMilli() - v.lastWordFromServer)
+			ne.ServerAcked(time.Now().UnixMilli() - v.lastAckedState)
+			got := ne.waitTime()
+			if got != v.timeout {
+				t.Errorf("%s expect timeout=%d, got %d\n", v.label, v.timeout, got)
+			}
+		})
 	}
 }
 
