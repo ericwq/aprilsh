@@ -544,8 +544,7 @@ func (ne *NotificationEngine) ClearNetworkError() {
 	}
 }
 
-// represent the prediction engine, which contains prediction cursor movement and
-// prediction rows and cells.
+// contains prediction cursor movement and prediction rows
 type PredictionEngine struct {
 	lastByte              []rune
 	overlays              []conditionalOverlayRow
@@ -569,7 +568,7 @@ type PredictionEngine struct {
 
 /*
 
-The following mesage is from https://mosh.org/mosh-paper.pdf
+The following message is from https://mosh.org/mosh-paper.pdf
 
 Our general strategy is for the Mosh client to make an echo prediction each time
 the user hits a key, but not necessarily to display this prediction immediately.
@@ -584,19 +583,19 @@ that epoch are immediately displayed to the use
 
 func newPredictionEngine() *PredictionEngine {
 	pe := PredictionEngine{}
-	pe.parser = *terminal.NewParser()
-	pe.cursors = make([]conditionalCursorMove, 0)
+	pe.lastByte = make([]rune, 1)
 	pe.overlays = make([]conditionalOverlayRow, 0)
+	pe.cursors = make([]conditionalCursorMove, 0)
+	pe.parser = *terminal.NewParser()
 	pe.predictionEpoch = 1
 	pe.confirmedEpoch = 0
 	pe.sendInterval = 250
 	pe.displayPreference = Adaptive
-	pe.lastByte = make([]rune, 1)
 
 	return &pe
 }
 
-// get or make a prediction row for the prediction engine.
+// get or make a prediction row
 func (pe *PredictionEngine) getOrMakeRow(rowNum int, nCols int) (it *conditionalOverlayRow) {
 	// try to find the existing prediction row
 	for i := range pe.overlays {
@@ -617,7 +616,7 @@ func (pe *PredictionEngine) getOrMakeRow(rowNum int, nCols int) (it *conditional
 	return
 }
 
-// increase prediction epoch by one, become tentative.
+// increase prediction epoch by one, except Experimental mode
 func (pe *PredictionEngine) becomeTentative() {
 	if pe.displayPreference != Experimental {
 		pe.predictionEpoch++
@@ -625,15 +624,16 @@ func (pe *PredictionEngine) becomeTentative() {
 	}
 }
 
-// move the cursor prediction to the new line (col is 0). add the row number by one.
-// if the cursor prediction is in the last row of active area, add a new row to engine.
+// if prediction cursor is the last row of terminal screen, add new prediction row.
+// otherwise, move prediction cursor to next row(col is 0): add row number by one.
 func (pe *PredictionEngine) newlineCarriageReturn(emu *terminal.Emulator) {
 	now := time.Now().UnixMilli()
 	pe.initCursor(emu)
 	pe.cursor().col = 0
 	if pe.cursor().row == emu.GetHeight()-1 {
 		// Don't try to predict scroll until we have versioned cell predictions
-		// TODO need to consider the scrolling part
+
+		// make blank prediction for last row
 		newRow := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
 		for i := range newRow.overlayCells {
 			newRow.overlayCells[i].active = true
@@ -646,7 +646,7 @@ func (pe *PredictionEngine) newlineCarriageReturn(emu *terminal.Emulator) {
 	}
 }
 
-// get the last cursor prediction stored in engine
+// get the latest prediction cursor
 func (pe *PredictionEngine) cursor() *conditionalCursorMove {
 	if len(pe.cursors) == 0 {
 		return nil
@@ -654,13 +654,16 @@ func (pe *PredictionEngine) cursor() *conditionalCursorMove {
 	return &(pe.cursors[len(pe.cursors)-1])
 }
 
-// remove cursor prediction belong to previous epoch, append current cursor position to prediction.
-// remove cell prediction belong to previous epoch.
-// increase the prediction to next epoch.
+// remove prediction cursors and cells belong to previous epoch:
+//
+// remove prediction cursors belong to previous epoch, append current cursor to prediction cursors.
+//
+// disable prediction cells belong to previous epoch. increase prediction epoch by one,
+// except Experimental mode.
 func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
 	// fmt.Printf("#killEpoch A cursors size=%d\n", len(pe.cursors))
 
-	// remove cursor prediction belong to previous epoch
+	// remove prediction cursors belong to previous epoch
 	cursors := make([]conditionalCursorMove, 0)
 	for i := range pe.cursors {
 		if pe.cursors[i].tentative(epoch - 1) {
@@ -674,15 +677,16 @@ func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
 
 	// fmt.Printf("#killEpoch B cursors size=%d\n", len(cursors))
 
-	// add current cursor position to cursor prediction
+	// append current cursor to prediction cursors
 	cursors = append(cursors,
-		newConditionalCursorMove(pe.localFrameSent+1, emu.GetCursorRow(), emu.GetCursorCol(), pe.predictionEpoch))
+		newConditionalCursorMove(pe.localFrameSent+1,
+			emu.GetCursorRow(), emu.GetCursorCol(), pe.predictionEpoch))
 	pe.cursors = cursors
 	pe.cursor().active = true
 
 	// fmt.Printf("#killEpoch C cursors size=%d\n", len(cursors))
 
-	// remove cell prediction belong to previous epoch
+	// disable prediction cells belong to previous epoch
 	for i := range pe.overlays {
 		for j := range pe.overlays[i].overlayCells {
 			cell := &(pe.overlays[i].overlayCells[j])
@@ -690,26 +694,30 @@ func (pe *PredictionEngine) killEpoch(epoch int64, emu *terminal.Emulator) {
 				cell.reset()
 				// fmt.Printf("#killEpoch cell (%2d,%2d) reset2\n", pe.overlays[i].rowNum, cell.col)
 			}
-		}
+		} // pe.reset will clean the predictions.
 	}
 
 	pe.becomeTentative()
 	// fmt.Printf("#killEpoch cursors size=%d, overlays size=%d\n", len(pe.cursors), len(pe.overlays))
 }
 
-// if there is not any cursor prediction, add a cursor prediction based on frame
-// current cursor position. if the cursor's epoch is different from the engine
-// epoch, add a cursor prediction based on engine's cursor position. otherwise
-// don't change the cursor prediction
+// if prediction cursor doesn't exist, add new prediction based on terminal's current cursor position.
+//
+// if prediction cursor exist, if cursor's epoch is different from engine's epoch, add new prediction
+// based on engine's cursor position.
+//
+// otherwise don't change the cursor prediction
 func (pe *PredictionEngine) initCursor(emu *terminal.Emulator) {
 	if len(pe.cursors) == 0 {
-		// initialize a new cursor prediction based on emu's cursor position
-		cursor := newConditionalCursorMove(pe.localFrameSent+1, emu.GetCursorRow(), emu.GetCursorCol(), pe.predictionEpoch)
+		// add new prediction based on terminal's current cursor position
+		cursor := newConditionalCursorMove(pe.localFrameSent+1,
+			emu.GetCursorRow(), emu.GetCursorCol(), pe.predictionEpoch)
 		pe.cursors = append(pe.cursors, cursor)
 		pe.cursor().active = true
 	} else if pe.cursor().tentativeUntilEpoch != pe.predictionEpoch {
 		// initialize new cursor prediction with last cursor position
-		cursor := newConditionalCursorMove(pe.localFrameSent+1, pe.cursor().row, pe.cursor().col, pe.predictionEpoch)
+		cursor := newConditionalCursorMove(pe.localFrameSent+1,
+			pe.cursor().row, pe.cursor().col, pe.predictionEpoch)
 		pe.cursors = append(pe.cursors, cursor)
 		pe.cursor().active = true
 	}
@@ -718,7 +726,7 @@ func (pe *PredictionEngine) initCursor(emu *terminal.Emulator) {
 	// 	len(pe.cursors), pe.cursor().tentativeUntilEpoch, pe.predictionEpoch, pe.cursor().row, pe.cursor().col)
 }
 
-// return true if there is any cursor prediction or any active cell prediction, otherwise false.
+// return true if there is any prediction cursor or any active prediction cell, otherwise false.
 func (pe *PredictionEngine) active() bool {
 	if len(pe.cursors) != 0 {
 		return true
@@ -737,7 +745,6 @@ func (pe *PredictionEngine) active() bool {
 
 // Are there any timing-based triggers that haven't fired yet?
 func (pe *PredictionEngine) timingTestsNecessary() bool {
-	// return !(pe.glitchTrigger > 0 && pe.flagging)
 	return pe.glitchTrigger <= 0 || !pe.flagging
 }
 
@@ -751,13 +758,9 @@ func (pe *PredictionEngine) SetPredictOverwrite(overwrite bool) {
 	pe.predictOverwrite = overwrite
 }
 
-// checks the displayPreference to determine whether we should show the prediction.
-// if yes, move the cursor in emulator, show the cell prediction in emulator.
+// checks displayPreference mode to determine whether we should apply predictions.
+// if yes, move the cursor, show the cell prediction in terminal.
 func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
-	// if pe.displayPreference == Never || !(pe.srttTrigger || pe.glitchTrigger > 0 ||
-	// 	pe.displayPreference == Always || pe.displayPreference == Experimental) {
-	// 	return
-	// }
 	if pe.displayPreference == Never || (!pe.srttTrigger && pe.glitchTrigger <= 0 &&
 		pe.displayPreference != Always && pe.displayPreference != Experimental) {
 		return
@@ -1068,8 +1071,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 	// fmt.Printf("cull # cursor prediction size=%d.\n", len(pe.cursors))
 }
 
-// clean all the cursor predictions and all the cell predictions. increase the epoch.
-// called when there is user input bulk data or terminal resize.
+// clean all the predictions, increase engine's epoch.
 func (pe *PredictionEngine) Reset() {
 	pe.cursors = make([]conditionalCursorMove, 0)
 	pe.overlays = make([]conditionalOverlayRow, 0)
@@ -1097,6 +1099,7 @@ func (pe *PredictionEngine) SetSendInterval(value uint) {
 	pe.sendInterval = value
 }
 
+// TODO need to understand the meaning.
 func (pe *PredictionEngine) waitTime() int {
 	if pe.timingTestsNecessary() && pe.active() {
 		return 50
