@@ -67,15 +67,14 @@ var strValidity = [...]string{
 
 // base of cell prediction or cursor prediction
 type conditionalOverlay struct {
-	expirationFrame     uint64 // frame number, Emulator number.
-	col                 int    // cursor/cell column
+	expirationFrame     uint64 // frame number
+	col                 int    // prediction column
 	active              bool   // represents a prediction at all
 	tentativeUntilEpoch int64  // the epoch of overlay, when to show
-	predictionTime      int64  // used to find long-pending predictions, default value -1
+	predictionTime      int64  // used to find long-pending predictions
 }
 
 func newConditionalOverlay(expirationFrame uint64, col int, tentativeUntilEpoch int64) conditionalOverlay {
-	// default active is false, default predictionTime is -1
 	co := conditionalOverlay{}
 	co.expirationFrame = expirationFrame
 	co.col = col
@@ -86,12 +85,12 @@ func newConditionalOverlay(expirationFrame uint64, col int, tentativeUntilEpoch 
 	return co
 }
 
-// if the prediction epoch is greater than confirmedEpoch, return ture. otherwise false.
+// if prediction epoch is greater than confirmedEpoch, return true. otherwise false.
 func (co *conditionalOverlay) tentative(confirmedEpoch int64) bool {
 	return co.tentativeUntilEpoch > confirmedEpoch
 }
 
-// reset expirationFrame and tentativeUntilEpoch
+// reset expirationFrame, epoch and active
 func (co *conditionalOverlay) reset() {
 	co.expirationFrame = math.MaxUint64
 	co.tentativeUntilEpoch = math.MaxInt64
@@ -107,7 +106,7 @@ func (co *conditionalOverlay) expire(expirationFrame uint64, now int64) {
 // represent the cursor prediction.
 type conditionalCursorMove struct {
 	conditionalOverlay
-	row int // cursor row
+	row int
 }
 
 func newConditionalCursorMove(expirationFrame uint64, row int, col int, tentativeUntilEpoch int64) conditionalCursorMove {
@@ -117,14 +116,15 @@ func newConditionalCursorMove(expirationFrame uint64, row int, col int, tentativ
 	return ccm
 }
 
-// set cursor position in emulator base on cursor prediction, only if the confirmedEpoch
-// is greater than or equal to cursor epoch.
+// apply prediction cursor to terminal:
+//
+// if prediction cursor is active AND the confirmedEpoch is greater than or equal to cursor epoch.
 func (ccm *conditionalCursorMove) apply(emu *terminal.Emulator, confirmedEpoch int64) {
 	if !ccm.active { // only apply to active prediction
 		return
 	}
 
-	if ccm.tentative(confirmedEpoch) { // check if it's the right time.
+	if ccm.tentative(confirmedEpoch) {
 		return
 	}
 
@@ -132,12 +132,19 @@ func (ccm *conditionalCursorMove) apply(emu *terminal.Emulator, confirmedEpoch i
 	emu.MoveCursor(ccm.row, ccm.col)
 }
 
-// Validate the position of cursor prediction. return Correct only when lateAck
-// is greater than expirationFrame and the cursor position of frame is the same as
-// cursor prediction, otherwise IncorrectOrExpired. if the cursor prediction
-// is not active, return Inactive.
+// check validity of prediction cursor:
+//
+// if the prediction cursor is not active, return Inactive.
+//
+// if prediction cursor is out of range, return IncorrectOrExpired
+//
+// if lateAck is smaller than prediction expirationFrame, return Pending
+//
+// if lateAck is greater than prediction expirationFrame and
+// the current cursor position is the same as prediction cursor,
+// return Correct. otherwise return IncorrectOrExpired.
 func (ccm *conditionalCursorMove) getValidity(emu *terminal.Emulator, lateAck uint64) Validity {
-	if !ccm.active { // only validate active prediction
+	if !ccm.active {
 		return Inactive
 	}
 
@@ -159,14 +166,14 @@ func (ccm *conditionalCursorMove) getValidity(emu *terminal.Emulator, lateAck ui
 	return Pending
 }
 
-// represent the prediction cell in the specified column. including the original cell contents and
-// replacement contents.
+// represent the prediction cell in some column,
+// including the original cell contents and replacement contents.
 type conditionalOverlayCell struct {
-	originalContents []terminal.Cell // history cell content including original cell
 	// we don't give credit for correct predictions that match the original contents
-	replacement terminal.Cell // the prediction, replace the cell content
+	originalContents []terminal.Cell // history cell content including original cell
+	replacement      terminal.Cell   // the prediction, replace the cell content
 	conditionalOverlay
-	unknown bool // last cell in row
+	unknown bool // meaning?
 }
 
 func newConditionalOverlayCell(expirationFrame uint64, col int, tentativeUntilEpoch int64) conditionalOverlayCell {
@@ -201,10 +208,18 @@ func (coc *conditionalOverlayCell) String() string {
 	return fmt.Sprintf("{repl:%s; orig:%s, unknown:%t, active:%t}", coc.replacement, coc.originalContents, coc.unknown, coc.active)
 }
 
-// Apply cell prediction to the emulator, replace frame cell with prediction if they doesn't match.
+// apply prediction cell to terminal:
 //
-// For unknown prediction just underline the cell.
-// (row,col) specify the cell. confirmedEpoch specified the epoch. flag means underline the cell.
+// if prediction cell is inactive or out of range, do nothing.
+//
+// if prediction epoch is greater than confirmedEpoch, do nothing.
+//
+// if prediction cell and terminal cell are both blank, do nothing.
+//
+// if prediction cell is unknown, add underline if flag is true AND prediction cell not the last column.
+//
+// if terminal cell is different from prediction cell, replace it with the prediction.
+// add underline if flag is true.
 func (coc *conditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch int64, row int, flag bool) {
 	// if coc.replacement.GetContents() != "" {
 	// 	fmt.Printf("apply #cell (%d,%d) with prediction %q\n", row, coc.col, coc.replacement)
@@ -212,32 +227,31 @@ func (coc *conditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 	// 		coc.active, confirmedEpoch, coc.tentativeUntilEpoch)
 	// }
 
-	// if specified position is out of active area or is not active.
+	// if specified position is not active OR out of range, do nothing
 	if !coc.active || row >= emu.GetHeight() || coc.col >= emu.GetWidth() {
 		return
 	}
 
-	if coc.tentative(confirmedEpoch) { // check if it's the right time.
+	if coc.tentative(confirmedEpoch) { // need to wait for epoch
 		return
 	}
 
-	// both prediction and emulator cell are blank
+	// both prediction cell and terminal cell are blank
 	if coc.replacement.IsBlank() && emu.GetCell(row, coc.col).IsBlank() {
 		flag = false
 	}
 
-	// TODO the meaning of unknown: last cell in row?
 	if coc.unknown {
 		// fmt.Printf("apply #cell (%d,%d) is unknown %q\n", row, coc.col, coc.replacement)
-		// underlining the cell except the last column.
+		// if flag is true and the cell is not the last column, add underline.
 		if flag && coc.col != emu.GetWidth()-1 {
 			emu.GetCellPtr(row, coc.col).SetUnderline(true)
 		}
 		return
 	}
 
-	// if the cell is different from the prediction, replace it with the prediction.
-	// update renditions if flag is true.
+	// if the terminal cell is different from the prediction cell, replace it with the prediction.
+	// add underline if flag is true.
 	if emu.GetCell(row, coc.col) != coc.replacement {
 		// fmt.Printf("apply #cell (%d,%d) with %q\n", row, coc.col, coc.replacement)
 		(*emu.GetCellPtr(row, coc.col)) = coc.replacement
@@ -248,24 +262,21 @@ func (coc *conditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 }
 
 /*
-Validate emulator against cell prediction. Return Correct if frame cell match
-prediction cell and prediction cell doesn't match any history contents.
+check validity of prediction cell:
 
-if the cell is inactive, return Inactive.
+if prediction cell is inactive, return Inactive.
 
-if the prediction position is out of range return IncorrectOrExpired.
+if prediction cell position is out of range return IncorrectOrExpired.
 
-if the lateAck is smaller than the expiration frame, return Pending.
+if lateAck is smaller than prediction expirationFrame, return Pending.
 
-if the lateAck is greater than or equal to the expiration frame, then:
+if prediction cell is unknown, return CorrectNoCredit.
 
-  - for unknown or blank prediction cell, return CorrectNoCredit.
+if prediction cell is blank, return CorrectNoCredit.
 
-  - if the frame cell matches the prediction cell and no history match prediction, retrun Correct.
-
-  - if the frame cell matches the prediction cell and some history match prediction, retrun CorrectNoCredit.
-
-  - if the frame celll doesn't match the prediction cell, return IncorrectOrExpired.
+if terminal cell matches prediction cell: if no history match prediction,
+return Correct, otherwise return CorrectNoCredit. if terminal cell
+doesn't match prediction cell, return IncorrectOrExpired.
 */
 func (coc *conditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, lateAck uint64) Validity {
 	if !coc.active {
@@ -314,8 +325,6 @@ func (coc *conditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, 
 	return IncorrectOrExpired
 }
 
-// represents row prediction, each row contains a group of cell prediction
-// and a row number
 type conditionalOverlayRow struct {
 	overlayCells []conditionalOverlayCell
 	rowNum       int
@@ -327,9 +336,9 @@ func newConditionalOverlayRow(rowNum int) *conditionalOverlayRow {
 	return &row
 }
 
-// For each cell prediction in the row applies the prediction to the emulator
+// apply prediction row to terminal:
 //
-// confirmedEpoch specified the epoch. flag means underline the cell.
+// For each prediction cell in the row applies prediction cell to terminal
 func (c *conditionalOverlayRow) apply(emu *terminal.Emulator, confirmedEpoch int64, flag bool) {
 	for i := range c.overlayCells {
 		c.overlayCells[i].apply(emu, confirmedEpoch, c.rowNum, flag)
