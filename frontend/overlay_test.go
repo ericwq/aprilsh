@@ -1048,19 +1048,19 @@ func TestNotificationEngine_apply(t *testing.T) {
 		{
 			"chinese message, receive expire", "你好世界", "Ctrl-z",
 			"aprish: 你好世界 (1:05 without contact.)",
-			65001, 80,
+			65010, 80,
 			true, false, false, true,
 		},
 		{
 			"english message, sent expire", "aia group", "Ctrl-z",
 			"aprish: aia group (10 s without reply.) [To quit: Ctrl-z .]",
-			65, 10001,
+			65, 10010,
 			false, false, true, true,
 		},
 		{
 			"message, both expire", "top gun 2", "Ctrl-z",
 			"aprish: top gun 2 (1:05 without contact.) [To quit: Ctrl-z .]",
-			65001, 10001,
+			65010, 10010,
 			false, false, true, true,
 		},
 		{
@@ -1072,19 +1072,19 @@ func TestNotificationEngine_apply(t *testing.T) {
 		{
 			"message, sent expire, enetwork error", "****", "Ctrl-z",
 			"aprish: **** (10 s without reply.) [To quit: Ctrl-z .]",
-			200, 10001,
+			200, 10010,
 			false, true, true, true,
 		},
 		{
 			"message, sent expire", "restore from", "Ctrl-z",
 			"aprish: restore from (20 s without reply.) [To quit: Ctrl-z .]",
-			200, 20001,
+			200, 20010,
 			false, false, true, true,
 		},
 		{
 			"no message, both expire", "", "Ctrl-z",
 			"aprish: Last contact 1:05 ago.",
-			65001, 20001,
+			65010, 20010,
 			false, false, false, true,
 		},
 	}
@@ -1143,7 +1143,7 @@ func TestNotificationEngine_adjustMessage(t *testing.T) {
 		messageExpiration int64 // relative duration in ms
 	}{
 		{
-			"message expire", "message expire",
+			"message expired", "message expire",
 			"", -20,
 		},
 		{
@@ -1162,6 +1162,7 @@ func TestNotificationEngine_adjustMessage(t *testing.T) {
 				t.Errorf("%q expect %q, got %q\n", v.label, v.message, ne.GetNotificationString())
 			}
 
+			// fake message expire based on value of messageExpiration
 			ne.messageExpiration = time.Now().UnixMilli() + v.messageExpiration
 			ne.adjustMessage()
 
@@ -1202,14 +1203,29 @@ func TestNotificationEngine_WaitTime(t *testing.T) {
 		lastAckedState     int64 // delta value base on now
 		timeout            int
 	}{
-		{"receive expire", 6501, 10, 1000},
-		{"receive expire over 60 seconds", 60001, 10, 3000},
+		{
+			"receive expire",
+			6510, 10, 1000,
+		},
+		{
+			"send expire",
+			20, 10010, 1000,
+		},
+		{
+			"receive expire over 60 seconds",
+			60010, 10, 3000,
+		},
+		{
+			"no expire",
+			20, 10, 3100,
+		},
 	}
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			ne := newNotificationEngien()
 			ne.ServerHeard(time.Now().UnixMilli() - v.lastWordFromServer)
 			ne.ServerAcked(time.Now().UnixMilli() - v.lastAckedState)
+			ne.SetNetworkError("fake error") // message expire 3.1s later
 			got := ne.waitTime()
 			if got != v.timeout {
 				t.Errorf("%s expect timeout=%d, got %d\n", v.label, v.timeout, got)
