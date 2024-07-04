@@ -1268,10 +1268,12 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 			cell.active = true
 			cell.tentativeUntilEpoch = pe.predictionEpoch
 			cell.expire(pe.localFrameSent+1, now)
+			// TODO: should we back to the original?
 			if len(cell.originalContents) == 0 {
 				// avoid adding original cell content several times
 				cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, i))
 			}
+
 			// util.Logger.Debug("handleUserGrapheme", "i", i, "w", w,
 			// 	"col", pe.cursor().col, "originalContents", cell.originalContents)
 
@@ -1312,7 +1314,6 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 		cell.replacement.SetRenditions(emu.GetRenditions())
 
 		// heuristic: match renditions of character to the left
-		// set current cell renditions with previous (prediction / actual) cell
 		if pe.cursor().col > 0 {
 			prevCell := &(theRow.overlayCells[pe.cursor().col-1])
 			prevCellActual := emu.GetCell(pe.cursor().row, pe.cursor().col-1)
@@ -1325,7 +1326,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 		}
 
 		// wide rune occupies 2 cells.
-		if w == 2 {
+		if w == 2 { // TODO: do we need to init next cell for wide rune?
 			cell.replacement.SetDoubleWidth(true)
 			nextCell := &(theRow.overlayCells[pe.cursor().col+1])
 			nextCell.replacement.SetDoubleWidthCont(true)
@@ -1333,12 +1334,14 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 
 		// set current prediction cell's replacement
 		cell.replacement.SetContents(chs)
+		// TODO: should we back to the original?
 		if len(cell.originalContents) == 0 {
 			// avoid adding original cell content several times
 			cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, pe.cursor().col))
 		}
 
-		// fmt.Printf("#handleUserGrapheme (%d,%d) cell=%s\n\n", pe.cursor().row, pe.cursor().col, cell)
+		util.Logger.Debug("handleUserGrapheme", "row", pe.cursor().row,
+			"col", pe.cursor().col, "cell", cell)
 
 		pe.cursor().expire(pe.localFrameSent+1, now)
 
@@ -1350,8 +1353,8 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 			pe.newlineCarriageReturn(emu)
 		}
 
-		// fmt.Printf("handleUserGrapheme #cursor at (%d,%d) %p size=%d\n\n",
-		// 	pe.cursor().row, pe.cursor().col, pe.cursor(), len(pe.cursors))
+		util.Logger.Debug("handleUserGrapheme", "row", pe.cursor().row,
+			"col", pe.cursor().col, "cursor size", len(pe.cursors))
 	}
 }
 

@@ -15,6 +15,10 @@ import (
 	"github.com/rivo/uniseg"
 )
 
+// func init() {
+// 	util.Logger.CreateLogger(os.Stderr, false, util.TraceLevel)
+// }
+
 func TestOverlay(t *testing.T) {
 	co := newConditionalOverlay(12, 2, 14)
 
