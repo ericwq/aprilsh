@@ -1340,8 +1340,9 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 			cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, pe.cursor().col))
 		}
 
-		util.Logger.Debug("handleUserGrapheme", "row", pe.cursor().row,
-			"col", pe.cursor().col, "cell", cell)
+		util.Logger.Debug("handleUserGrapheme predicting", "localFrameAckedf", pe.localFrameAcked,
+			"expirationFrame", cell.expirationFrame, "contents", chs,
+			"row", pe.cursor().row, "col", pe.cursor().col, "tentativeUntilEpoch", cell.tentativeUntilEpoch)
 
 		pe.cursor().expire(pe.localFrameSent+1, now)
 
