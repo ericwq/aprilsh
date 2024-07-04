@@ -91,6 +91,8 @@ func (co *conditionalOverlay) tentative(confirmedEpoch int64) bool {
 	return co.tentativeUntilEpoch > confirmedEpoch
 }
 
+// reset prediction:
+//
 // reset expirationFrame, epoch and active
 func (co *conditionalOverlay) reset() {
 	co.expirationFrame = math.MaxUint64
@@ -186,6 +188,8 @@ func newConditionalOverlayCell(expirationFrame uint64, col int, tentativeUntilEp
 	return coc
 }
 
+// clear prediction:
+//
 // reset everything except replacement
 func (coc *conditionalOverlayCell) reset() {
 	coc.unknown = false
@@ -193,7 +197,11 @@ func (coc *conditionalOverlayCell) reset() {
 	coc.conditionalOverlay.reset()
 }
 
-// Reset everything if active is F or unknown is T. Otherwise append replacement to the originalContents.
+// reset prediction and remember previous replacement:
+//
+// For unactive or unknown prediction, clear the prediction.
+//
+// Otherwise append replacement to the originalContents, reset prediction.
 func (coc *conditionalOverlayCell) resetWithOrig() {
 	if !coc.active || coc.unknown {
 		// fmt.Println("reset2")
@@ -627,10 +635,11 @@ func (pe *PredictionEngine) becomeTentative() {
 
 // prediction reaction to new line CR:
 //
-// if prediction cursor is not the last row, just increase prediction cursor's row.
+// set prediction cursor to first col.
 //
-// if prediction cursor is the last row of terminal screen, add new prediction row.
-// otherwise, move prediction cursor to next row(col is 0): add row number by one.
+// if prediction cursor is not the last row, increase prediction cursor's row.
+//
+// if prediction cursor is the last row, add new prediction row.
 func (pe *PredictionEngine) newlineCarriageReturn(emu *terminal.Emulator) {
 	now := time.Now().UnixMilli()
 	pe.initCursor(emu)
@@ -748,6 +757,8 @@ func (pe *PredictionEngine) active() bool {
 	return false
 }
 
+// no glitch, no flagging
+//
 // Are there any timing-based triggers that haven't fired yet?
 func (pe *PredictionEngine) timingTestsNecessary() bool {
 	return pe.glitchTrigger <= 0 || !pe.flagging
@@ -799,7 +810,7 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
 		// fmt.Printf("newUserInput #Experimental predictionEpoch = confirmedEpoch = %d\n", pe.confirmedEpoch)
 	}
 
-	util.Logger.Debug("NewUserInput", "predictionEpoch", pe.predictionEpoch, "input", input)
+	util.Logger.Trace("NewUserInput", "predictionEpoch", pe.predictionEpoch, "input", input)
 	pe.cull(emu)
 	now := time.Now().UnixMilli()
 
@@ -810,14 +821,14 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
 	}
 	pe.lastByte = make([]rune, len(input))
 	copy(pe.lastByte, input)
-	util.Logger.Debug("NewUserInput", "lastByte", pe.lastByte, "input", input)
+	util.Logger.Trace("NewUserInput", "lastByte", pe.lastByte, "input", input)
 
 	// TODO: validate we can handle flag grapheme
 	hd := pe.parser.ProcessInput(input...)
 	if hd != nil {
 		switch hd.GetId() {
 		case terminal.Graphemes:
-			util.Logger.Debug("NewUserInput", "Graphemes", hd.GetCh())
+			util.Logger.Trace("NewUserInput", "Graphemes", hd.GetCh())
 			pe.handleUserGrapheme(emu, now, hd.GetCh())
 		case terminal.C0_CR:
 			pe.becomeTentative()
@@ -825,7 +836,7 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
 		case terminal.CSI_CUF: // right arrow
 			pe.initCursor(emu)
 			if pe.cursor().col < emu.GetWidth()-1 {
-				util.Logger.Debug("NewUserInput", "CSI_CUF", "before", "column", pe.cursor().col)
+				util.Logger.Trace("NewUserInput", "CSI_CUF", "before", "column", pe.cursor().col)
 
 				row := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
 				predict := row.overlayCells[pe.cursor().col+1].replacement
@@ -833,7 +844,7 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
 				// check the next cell width, both predict and emulator need to be checked
 				if cell.IsDoubleWidthCont() || predict.IsDoubleWidthCont() {
 					if pe.cursor().col+2 >= emu.GetWidth() {
-						util.Logger.Debug("NewUserInput", "CSI_CUF", "right margin", "column", pe.cursor().col)
+						util.Logger.Trace("NewUserInput", "CSI_CUF", "right margin", "column", pe.cursor().col)
 						break
 					}
 					pe.cursor().col += 2
@@ -842,12 +853,12 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
 				}
 				pe.cursor().expire(pe.localFrameSent+1, now)
 
-				util.Logger.Debug("NewUserInput", "CSI_CUF", "after", "column", pe.cursor().col)
+				util.Logger.Trace("NewUserInput", "CSI_CUF", "after", "column", pe.cursor().col)
 			}
 		case terminal.CSI_CUB: // left arrow
 			pe.initCursor(emu)
 			if pe.cursor().col > 0 { // TODO: consider the left right margin.
-				util.Logger.Debug("NewUserInput", "CSI_CUB", "before", "column", pe.cursor().col)
+				util.Logger.Trace("NewUserInput", "CSI_CUB", "before", "column", pe.cursor().col)
 
 				row := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
 				predict := row.overlayCells[pe.cursor().col-1].replacement
@@ -856,7 +867,7 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
 				if cell.IsDoubleWidthCont() || predict.IsDoubleWidthCont() {
 					if pe.cursor().col-2 <= 0 {
 						pe.cursor().col = 0
-						util.Logger.Debug("NewUserInput", "CSI_CUB", "left margin", "column", pe.cursor().col)
+						util.Logger.Trace("NewUserInput", "CSI_CUB", "left margin", "column", pe.cursor().col)
 						break
 					}
 					pe.cursor().col -= 2
@@ -865,7 +876,7 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
 				}
 				pe.cursor().expire(pe.localFrameSent+1, now)
 
-				util.Logger.Debug("NewUserInput", "CSI_CUB", "after", "column", pe.cursor().col)
+				util.Logger.Trace("NewUserInput", "CSI_CUB", "after", "column", pe.cursor().col)
 			}
 		default:
 			// TODO: we can add support for more control sequences to improve the usability of prediction engine.
@@ -873,7 +884,7 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
 		}
 	}
 
-	util.Logger.Debug("NewUserInput", "predictionEpoch", pe.predictionEpoch)
+	util.Logger.Trace("NewUserInput", "predictionEpoch", pe.predictionEpoch)
 }
 
 // check validity of prediction cell and perform action accordingly:
@@ -1106,7 +1117,8 @@ func (pe *PredictionEngine) SetSendInterval(value uint) {
 	pe.sendInterval = value
 }
 
-// TODO: need to understand the meaning.
+// if no glitch, no flagging and prediction engine is running, return 50.
+// otherwise, return max int.
 func (pe *PredictionEngine) waitTime() int {
 	if pe.timingTestsNecessary() && pe.active() {
 		return 50
@@ -1118,8 +1130,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 	w := uniseg.StringWidth(string(chs))
 	pe.initCursor(emu)
 
-	// fmt.Printf("handleUserGrapheme # got %q\n", chs)
-	if len(chs) == 1 && chs[0] == '\x7f' { // handle backspace
+	if len(chs) == 1 && chs[0] == '\x7f' { // backspace
 		theRow := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
 		if pe.cursor().col > 0 {
 			// fmt.Printf("handleUserGrapheme #backspace start at col=%d\n", pe.cursor().col)
@@ -1231,11 +1242,11 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 	} else { // normal rune, wide rune, combining grapheme
 
 		// for wide rune, only one cell space is not enough, wrap to next row
+		// TODO: noremal rune and wide rune should not be processed serial
 		if w == 2 && pe.cursor().col == emu.GetWidth()-1 {
 			pe.becomeTentative()
 			pe.newlineCarriageReturn(emu)
-			// fmt.Printf("handleUserGrapheme() wrap %q to (%d,%d)\n",
-			// 	string(chs), pe.cursor().row, pe.cursor().col)
+			util.Logger.Trace("handleUserGrapheme", "CR", chs, "row", pe.cursor().row, "col", pe.cursor().col)
 		}
 
 		theRow := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
@@ -1261,8 +1272,9 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 				// avoid adding original cell content several times
 				cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, i))
 			}
+			// util.Logger.Debug("handleUserGrapheme", "i", i, "w", w,
+			// 	"col", pe.cursor().col, "originalContents", cell.originalContents)
 
-			// fmt.Printf("#handleUserGrapheme i=%d, w=%d, col=%d\n", i, w, pe.cursor().col)
 			if i-w < pe.cursor().col { // reach the left edge
 				break
 			}
@@ -1273,7 +1285,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 
 			if i == emu.GetWidth()-1 { // the last column, unknown replacement
 				cell.unknown = true
-			} else if prevCell.active { // the previous prediction cell exist
+			} else if prevCell.active { // the previous prediction exist
 				if prevCell.unknown {
 					// don't change the replacement
 					cell.unknown = true
@@ -1288,8 +1300,8 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 				cell.replacement = prevCellActual
 			}
 
-			// fmt.Printf("position (%d,%d), prevCell=%s, cell=%s, prevCellActual=%s\n",
-			// 	pe.cursor().row, i, prevCell, cell, prevCellActual)
+			util.Logger.Trace("handleUserGrapheme", "row", pe.cursor().row, "col", i,
+				"prevCell", prevCell, "cell", cell, "prevActualCell", prevCellActual)
 		}
 
 		cell := &(theRow.overlayCells[pe.cursor().col])
