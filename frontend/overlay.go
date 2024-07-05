@@ -106,6 +106,11 @@ func (co *conditionalOverlay) expire(expirationFrame uint64, now int64) {
 	co.predictionTime = now
 }
 
+func (co conditionalOverlay) String() string {
+	return fmt.Sprintf("{active:%t; frame:%d, epoch:%d, time:%d, col:%d}",
+		co.active, co.expirationFrame, co.tentativeUntilEpoch, co.predictionTime, co.col)
+}
+
 // represent the cursor prediction.
 type conditionalCursorMove struct {
 	conditionalOverlay
@@ -169,6 +174,11 @@ func (ccm *conditionalCursorMove) getValidity(emu *terminal.Emulator, lateAck ui
 	return Pending
 }
 
+func (co conditionalCursorMove) String() string {
+	return fmt.Sprintf("{active:%t; frame:%d, epoch:%d, time:%d, col:%d, row=%d}",
+		co.active, co.expirationFrame, co.tentativeUntilEpoch, co.predictionTime, co.col, co.row)
+}
+
 // represent the prediction cell in some column,
 // including the original cell contents and replacement contents.
 type conditionalOverlayCell struct {
@@ -214,7 +224,8 @@ func (coc *conditionalOverlayCell) resetWithOrig() {
 }
 
 func (coc *conditionalOverlayCell) String() string {
-	return fmt.Sprintf("{repl:%s; orig:%s, unknown:%t, active:%t}", coc.replacement, coc.originalContents, coc.unknown, coc.active)
+	return fmt.Sprintf("{repl:%s; orig:%s, unknown:%t, active:%t}",
+		coc.replacement, coc.originalContents, coc.unknown, coc.active)
 }
 
 // apply prediction cell to terminal:
@@ -1242,7 +1253,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 	} else { // normal rune, wide rune, combining grapheme
 
 		// for wide rune, only one cell space is not enough, wrap to next row
-		// TODO: noremal rune and wide rune should not be processed serial
+		// TODO: normal rune and wide rune should not be processed serial
 		if w == 2 && pe.cursor().col == emu.GetWidth()-1 {
 			pe.becomeTentative()
 			pe.newlineCarriageReturn(emu)
@@ -1305,7 +1316,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 			}
 
 			util.Logger.Trace("handleUserGrapheme", "row", pe.cursor().row, "col", i,
-				"prevCell", prevCell, "cell", cell, "prevActualCell", prevCellActual)
+				"cell", cell, "prevActualCell", prevCellActual)
 		}
 
 		cell := &(theRow.overlayCells[pe.cursor().col])
@@ -1342,9 +1353,10 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 			cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, pe.cursor().col))
 		}
 
-		util.Logger.Debug("handleUserGrapheme predicting", "localFrameAckedf", pe.localFrameAcked,
-			"expirationFrame", cell.expirationFrame, "contents", chs,
-			"row", pe.cursor().row, "col", pe.cursor().col, "tentativeUntilEpoch", cell.tentativeUntilEpoch)
+		util.Logger.Debug("handleUserGrapheme", "row", pe.cursor().row, "col", pe.cursor().col,
+			"cell", cell)
+		util.Logger.Debug("handleUserGrapheme", "row", pe.cursor().row, "col", pe.cursor().col,
+			"olay", cell.conditionalOverlay.String())
 
 		pe.cursor().expire(pe.localFrameSent+1, now)
 
@@ -1357,7 +1369,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 		}
 
 		util.Logger.Debug("handleUserGrapheme", "row", pe.cursor().row,
-			"col", pe.cursor().col, "cursor size", len(pe.cursors))
+			"col", pe.cursor().col, "cursor", pe.cursors)
 	}
 }
 

@@ -547,26 +547,50 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 
 func TestPrediction_NewUserInput_handleUserGrapheme(t *testing.T) {
 	tc := []struct {
-		label string
-		input string
+		expect           string
+		label            string
+		input            string
+		base             string
+		row, col         int
+		predictOverwrite bool
 	}{
-		{"normal", "A"},
+		{
+			"{repl:A; orig:[ ], unknown:false, active:true}",
+			"normal position", "ABC", "",
+			10, 75, false,
+		},
 	}
 
 	// change log level to trace
-	util.Logger.CreateLogger(os.Stderr, true, util.LevelTrace)
-	defer util.Logger.CreateLogger(os.Stderr, false, slog.LevelInfo)
-
-	util.Logger.Info("test NewUserInput", "info", "yes")
-	util.Logger.Debug("test NewUserInput", "debug", "yes")
-	util.Logger.Trace("test NewUserInput", "trace", "yes")
+	util.Logger.CreateLogger(os.Stderr, false, util.LevelTrace)
 	defer util.Logger.CreateLogger(os.Stderr, false, slog.LevelInfo)
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			emu := terminal.NewEmulator3(80, 40, 40)
 			pe := newPredictionEngine()
-			pe.NewUserInput(emu, []rune(v.input))
+
+			// print base (background) string in terminal
+			emu.MoveCursor(v.row, v.col)
+			emu.HandleLargeStream(v.base)
+
+			// reset the cursor position
+			emu.MoveCursor(v.row, v.col)
+			pe.SetPredictOverwrite(v.predictOverwrite)
+
+			// fake user input
+			graphemes := uniseg.NewGraphemes(v.input)
+			for graphemes.Next() {
+				chs := graphemes.Runes()
+				pe.NewUserInput(emu, chs)
+			}
+
+			// NOTE: only validate first rune
+			predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
+			cell := &(predictRow.overlayCells[v.col])
+			if cell.String() != v.expect {
+				t.Errorf("#test handleUserGrapheme expect %s, got %s\n", v.expect, cell.String())
+			}
 		})
 	}
 }
