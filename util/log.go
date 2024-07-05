@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	LevelTrace = slog.Level(-8)
-	LevelFatal = slog.Level(12)
-	DebugLevel = 1
-	TraceLevel = 2
+	LevelTrace   = slog.Level(-8)
+	LevelFatal   = slog.Level(12)
+	DebugVerbose = 10 // verbose level
+	TraceVerbose = 20 // verbose level
 )
 
 var (
@@ -42,40 +42,6 @@ func init() {
 	Logger.CreateLogger(os.Stderr, false, slog.LevelInfo)
 }
 
-// func (l *myLogger) SetLevel(v slog.Level) {
-// 	l.logLevel.Set(v)
-// }
-
-// func (l *myLogger) AddSource(add bool) {
-// 	Logger.addSource = add
-// }
-
-// how to replace a line in file,sample
-// sed -i 's/.*defer util\.Log\.Restore.*//g' encrypt/encrypt_test.go
-//
-
-//	func (l *myLogger) SetOutput(w io.Writer) {
-//		ho := &slog.HandlerOptions{
-//			AddSource: Logger.addSource,
-//			Level:     Logger.logLevel,
-//			ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
-//				if a.Key == slog.LevelKey {
-//					level := a.Value.Any().(slog.Level)
-//					levelLabel, exists := levelNames[level]
-//					if !exists {
-//						levelLabel = level.String()
-//					}
-//
-//					a.Value = slog.StringValue(levelLabel)
-//				}
-//
-//				return a
-//			},
-//		}
-//		l.Logger = slog.New(slog.NewTextHandler(w, ho)).With("pid", os.Getpid())
-//		slog.SetDefault(l.Logger)
-//	}
-
 func (l *myLogger) CreateLogger(w io.Writer, source bool, level slog.Level) {
 	ho := &slog.HandlerOptions{
 		AddSource: source,
@@ -95,12 +61,29 @@ func (l *myLogger) CreateLogger(w io.Writer, source bool, level slog.Level) {
 		},
 	}
 	l.Logger = slog.New(slog.NewTextHandler(w, ho)).With("pid", os.Getpid())
-	// slog.SetDefault(l.Logger)
+	slog.SetDefault(l.Logger)
 }
 
 func (l *myLogger) Trace(msg string, args ...any) {
 	l.Log(context.Background(), LevelTrace, msg, args...)
 }
+
+// func (l *myLogger) SetOutput(w io.Writer, source bool, level slog.Level) {
+// 	l.CreateLogger(w, source, level)
+// 	slog.SetDefault(l.Logger)
+// }
+
+// func (l *myLogger) SetLevel(v slog.Level) {
+// 	l.logLevel.Set(v)
+// }
+
+// func (l *myLogger) AddSource(add bool) {
+// 	Logger.addSource = add
+// }
+
+// how to replace a line in file,sample
+// sed -i 's/.*defer util\.Log\.Restore.*//g' encrypt/encrypt_test.go
+//
 
 // network: udp, address: localhost:514. check net.Dial() for detail
 // func (l *logger) SetupSyslog(network string, address string) error {

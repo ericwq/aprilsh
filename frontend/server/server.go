@@ -326,9 +326,9 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 
 	// detremine verbose level
 	if v1 {
-		conf.verbose = util.DebugLevel
+		conf.verbose = util.DebugVerbose
 	} else if v2 {
-		conf.verbose = util.TraceLevel
+		conf.verbose = util.TraceVerbose
 	}
 
 	return &conf, buf.String(), nil
@@ -1273,9 +1273,9 @@ func startChildProcess(conf *Config) (*os.Process, error) {
 	args := []string{"-child", "-destination", conf.destination, "-term", conf.term}
 	// inherit vervoce and source options form parent
 	switch conf.verbose {
-	case util.DebugLevel:
+	case util.DebugVerbose:
 		args = append(args, "-v")
-	case util.TraceLevel:
+	case util.TraceVerbose:
 		args = append(args, "-vv")
 	}
 	if conf.addSource {
@@ -2203,9 +2203,9 @@ func main() {
 
 	// setup client log file
 	switch conf.verbose {
-	case util.DebugLevel:
+	case util.DebugVerbose:
 		util.Logger.CreateLogger(os.Stderr, conf.addSource, slog.LevelDebug)
-	case util.TraceLevel:
+	case util.TraceVerbose:
 		util.Logger.CreateLogger(os.Stderr, conf.addSource, util.LevelTrace)
 	default:
 		util.Logger.CreateLogger(os.Stderr, conf.addSource, slog.LevelInfo)

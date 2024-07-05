@@ -633,7 +633,7 @@ func (pe *PredictionEngine) becomeTentative() {
 	}
 }
 
-// prediction reaction to new line CR:
+// prediction action for new line CR:
 //
 // set prediction cursor to first col.
 //
@@ -1246,7 +1246,8 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 		if w == 2 && pe.cursor().col == emu.GetWidth()-1 {
 			pe.becomeTentative()
 			pe.newlineCarriageReturn(emu)
-			util.Logger.Trace("handleUserGrapheme", "CR", chs, "row", pe.cursor().row, "col", pe.cursor().col)
+			util.Logger.Trace("handleUserGrapheme", "CR", chs,
+				"row", pe.cursor().row, "col", pe.cursor().col)
 		}
 
 		theRow := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
@@ -1261,6 +1262,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 		if pe.predictOverwrite {
 			rightMostColumn = pe.cursor().col
 		}
+		// TODO: figure out what this means.
 		for i := rightMostColumn; i > pe.cursor().col; i-- {
 			cell := &(theRow.overlayCells[i])
 			// for cell, unknown=false, active=true, will always add the replacement to originalContents

@@ -128,9 +128,9 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 
 	// detremine verbose level
 	if v1 {
-		conf.verbose = util.DebugLevel
+		conf.verbose = util.DebugVerbose
 	} else if v2 {
-		conf.verbose = util.TraceLevel
+		conf.verbose = util.TraceVerbose
 	}
 	return &conf, buf.String(), nil
 }
@@ -1272,9 +1272,9 @@ func main() {
 
 	// setup client log file
 	switch conf.verbose {
-	case util.DebugLevel:
+	case util.DebugVerbose:
 		util.Logger.CreateLogger(logWriter, conf.addSource, slog.LevelDebug)
-	case util.TraceLevel:
+	case util.TraceVerbose:
 		util.Logger.CreateLogger(logWriter, conf.addSource, util.LevelTrace)
 	default:
 		util.Logger.CreateLogger(logWriter, conf.addSource, slog.LevelInfo)

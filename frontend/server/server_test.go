@@ -2030,7 +2030,7 @@ func TestRunChild(t *testing.T) {
 				desiredIP: "", desiredPort: serverPortStr,
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
-				addSource: true, verbose: util.DebugLevel,
+				addSource: true, verbose: util.DebugVerbose,
 			},
 			Config{
 				desiredPort: portStr, term: "xterm", destination: getCurrentUser() + "@localhost",
@@ -2044,7 +2044,7 @@ func TestRunChild(t *testing.T) {
 				desiredIP: "", desiredPort: serverPortStr,
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
-				addSource: true, verbose: util.DebugLevel,
+				addSource: true, verbose: util.DebugVerbose,
 			},
 			Config{
 				desiredPort: portStr, destination: getCurrentUser() + "@localhost",
@@ -2059,7 +2059,7 @@ func TestRunChild(t *testing.T) {
 				desiredIP: "", desiredPort: serverPortStr,
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
-				addSource: true, verbose: util.DebugLevel,
+				addSource: true, verbose: util.DebugVerbose,
 			},
 			Config{
 				desiredPort: portStr, destination: getCurrentUser() + "@localhost",
@@ -2074,7 +2074,7 @@ func TestRunChild(t *testing.T) {
 				desiredIP: "", desiredPort: serverPortStr,
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"/bin/sh"}, withMotd: false,
-				addSource: true, verbose: util.DebugLevel,
+				addSource: true, verbose: util.DebugVerbose,
 			},
 			Config{
 				desiredPort: portStr, term: "xterm", destination: getCurrentUser() + "@localhost",
@@ -2275,12 +2275,12 @@ func TestStartChildFail(t *testing.T) {
 		{
 			"startShellProcess failed: DebugLevel", "open aprilsh:xterm-fake," + getCurrentUser() + "@fakehost",
 			"start child got key timeout",
-			Config{desiredPort: "6511", verbose: util.DebugLevel},
+			Config{desiredPort: "6511", verbose: util.DebugVerbose},
 		},
 		{
 			"startShellProcess failed: TraceLevel", "open aprilsh:xterm-fake," + getCurrentUser() + "@fakehost",
 			"start child got key timeout",
-			Config{desiredPort: "6512", verbose: util.TraceLevel},
+			Config{desiredPort: "6512", verbose: util.TraceVerbose},
 		},
 		{
 			"startShellProcess failed: addSource", "open aprilsh:xterm-fake," + getCurrentUser() + "@fakehost",

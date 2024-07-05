@@ -6,12 +6,15 @@ package frontend
 
 import (
 	"fmt"
+	"log/slog"
 	"math"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/ericwq/aprilsh/terminal"
+	"github.com/ericwq/aprilsh/util"
 	"github.com/rivo/uniseg"
 )
 
@@ -538,6 +541,32 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 
 				i += uniseg.StringWidth(string(chs))
 			}
+		})
+	}
+}
+
+func TestPrediction_NewUserInput_handleUserGrapheme(t *testing.T) {
+	tc := []struct {
+		label string
+		input string
+	}{
+		{"normal", "A"},
+	}
+
+	// change log level to trace
+	util.Logger.CreateLogger(os.Stderr, true, util.LevelTrace)
+	defer util.Logger.CreateLogger(os.Stderr, false, slog.LevelInfo)
+
+	util.Logger.Info("test NewUserInput", "info", "yes")
+	util.Logger.Debug("test NewUserInput", "debug", "yes")
+	util.Logger.Trace("test NewUserInput", "trace", "yes")
+	defer util.Logger.CreateLogger(os.Stderr, false, slog.LevelInfo)
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			emu := terminal.NewEmulator3(80, 40, 40)
+			pe := newPredictionEngine()
+			pe.NewUserInput(emu, []rune(v.input))
 		})
 	}
 }
