@@ -545,20 +545,33 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 	}
 }
 
+// go test -coverprofile=cover.out -run=handleUserGrapheme -v
+// go tool cover -html=cover.out
 func TestPrediction_NewUserInput_handleUserGrapheme(t *testing.T) {
 	tc := []struct {
-		expect           string
+		expect           string // first prediction cell
 		label            string
-		input            string
-		base             string
+		input            string // user input string
+		base             string // background content
 		row, col         int
 		predictOverwrite bool
+		wrap             bool // wrap means first rune start in next row
 	}{
+		// {
+		// 	"{repl:A; orig:[ ], unknown:false, active:true}",
+		// 	"normal position, normal rune", "ABC", "",
+		// 	10, 75, false, false,
+		// },
 		{
-			"{repl:A; orig:[ ], unknown:false, active:true}",
-			"normal position", "ABC", "",
-			10, 75, false,
+			"{repl:D; orig:[ ], unknown:false, active:true}",
+			"edge position, normal rune", "DEF", "",
+			11, 77, false, false,
 		},
+		// {
+		// 	"{repl:历; orig:[ ], unknown:false, active:true}",
+		// 	"normal position, wide rune", "历史", "",
+		// 	10, 75, false,
+		// },
 	}
 
 	// change log level to trace
@@ -586,7 +599,11 @@ func TestPrediction_NewUserInput_handleUserGrapheme(t *testing.T) {
 			}
 
 			// NOTE: only validate first rune
-			predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
+			row := v.row
+			if v.wrap {
+				row++ // support wrap case
+			}
+			predictRow := pe.getOrMakeRow(row, emu.GetWidth())
 			cell := &(predictRow.overlayCells[v.col])
 			if cell.String() != v.expect {
 				t.Errorf("#test handleUserGrapheme expect %s, got %s\n", v.expect, cell.String())

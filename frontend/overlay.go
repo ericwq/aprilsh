@@ -1356,7 +1356,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 		util.Logger.Debug("handleUserGrapheme", "row", pe.cursor().row, "col", pe.cursor().col,
 			"cell", cell)
 		util.Logger.Debug("handleUserGrapheme", "row", pe.cursor().row, "col", pe.cursor().col,
-			"olay", cell.conditionalOverlay.String())
+			"overlay", cell.conditionalOverlay.String())
 
 		pe.cursor().expire(pe.localFrameSent+1, now)
 
