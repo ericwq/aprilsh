@@ -549,29 +549,30 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 // go tool cover -html=cover.out
 func TestPrediction_NewUserInput_handleUserGrapheme(t *testing.T) {
 	tc := []struct {
-		expect           string // first prediction cell
-		label            string
+		expect           string // prediction cell
+		label            string // test case name
 		input            string // user input string
 		base             string // background content
-		row, col         int
-		predictOverwrite bool
-		wrap             bool // wrap means first rune start in next row
+		row, col         int    // start position
+		expectY, expectX int    // the position of exepect celll
+		predictOverwrite bool   // overwrite or not
+		wrap             bool   // wrap means first rune start in next row
 	}{
 		// {
 		// 	"{repl:A; orig:[ ], unknown:false, active:true}",
 		// 	"normal position, normal rune", "ABC", "",
 		// 	10, 75, false, false,
 		// },
-		{
-			"{repl:D; orig:[ ], unknown:false, active:true}",
-			"edge position, normal rune", "DEF", "",
-			11, 77, false, false,
-		},
 		// {
-		// 	"{repl:历; orig:[ ], unknown:false, active:true}",
-		// 	"normal position, wide rune", "历史", "",
-		// 	10, 75, false,
+		// 	"{repl:G; orig:[4 3 2 1], unknown:false, active:true}",
+		// 	"edge position, normal rune", "DEFGH", "12345",
+		// 	11, 75, 11, 78, false, false,
 		// },
+		{
+			"{repl:直; orig:[0], unknown:false, active:true}",
+			"edge position, wide rune", "大漠孤烟直", "0123456789",
+			10, 70, 10, 78, false, false,
+		},
 	}
 
 	// change log level to trace
@@ -598,13 +599,9 @@ func TestPrediction_NewUserInput_handleUserGrapheme(t *testing.T) {
 				pe.NewUserInput(emu, chs)
 			}
 
-			// NOTE: only validate first rune
-			row := v.row
-			if v.wrap {
-				row++ // support wrap case
-			}
-			predictRow := pe.getOrMakeRow(row, emu.GetWidth())
-			cell := &(predictRow.overlayCells[v.col])
+			// NOTE: only validate specified rune
+			predictRow := pe.getOrMakeRow(v.expectY, emu.GetWidth())
+			cell := &(predictRow.overlayCells[v.expectX])
 			if cell.String() != v.expect {
 				t.Errorf("#test handleUserGrapheme expect %s, got %s\n", v.expect, cell.String())
 			}
