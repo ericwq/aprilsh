@@ -6,15 +6,12 @@ package frontend
 
 import (
 	"fmt"
-	"log/slog"
 	"math"
-	"os"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/ericwq/aprilsh/terminal"
-	"github.com/ericwq/aprilsh/util"
 	"github.com/rivo/uniseg"
 )
 
@@ -558,26 +555,36 @@ func TestPrediction_NewUserInput_handleUserGrapheme(t *testing.T) {
 		predictOverwrite bool   // overwrite or not
 		wrap             bool   // wrap means first rune start in next row
 	}{
-		// {
-		// 	"{repl:A; orig:[ ], unknown:false, active:true}",
-		// 	"normal position, normal rune", "ABC", "",
-		// 	10, 75, false, false,
-		// },
-		// {
-		// 	"{repl:G; orig:[4 3 2 1], unknown:false, active:true}",
-		// 	"edge position, normal rune", "DEFGH", "12345",
-		// 	11, 75, 11, 78, false, false,
-		// },
+		{
+			"{repl:D; orig:[0], unknown:false, active:true}",
+			"normal position, signle normal rune", "D", "01234",
+			11, 75, 11, 75, false, false,
+		},
+		{
+			"{repl:H; orig:[4], unknown:false, active:true}",
+			"edge position, normal rune", "DEFGH", "01234",
+			11, 75, 11, 79, false, false,
+		},
 		{
 			"{repl:直; orig:[0], unknown:false, active:true}",
+			"normal position, single wide rune", "直", "0123456789",
+			12, 70, 12, 70, false, false,
+		},
+		{
+			"{repl:0; orig:[4 2 1 0], unknown:false, active:true}",
+			"normal position, mix rune", "直-20", "0123456789",
+			12, 70, 12, 74, false, false,
+		},
+		{
+			"{repl:直; orig:[8 6 4 2 0], unknown:false, active:true}",
 			"edge position, wide rune", "大漠孤烟直", "0123456789",
 			10, 70, 10, 78, false, false,
 		},
 	}
 
 	// change log level to trace
-	util.Logger.CreateLogger(os.Stderr, false, util.LevelTrace)
-	defer util.Logger.CreateLogger(os.Stderr, false, slog.LevelInfo)
+	// util.Logger.CreateLogger(os.Stderr, false, util.LevelTrace)
+	// defer util.Logger.CreateLogger(os.Stderr, false, slog.LevelInfo)
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {

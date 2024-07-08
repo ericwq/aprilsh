@@ -186,7 +186,7 @@ type conditionalOverlayCell struct {
 	originalContents []terminal.Cell // history cell content including original cell
 	replacement      terminal.Cell   // the prediction, replace the cell content
 	conditionalOverlay
-	unknown bool // meaning?
+	unknown bool // we do predict, but the prediction is tricky.
 }
 
 func newConditionalOverlayCell(expirationFrame uint64, col int, tentativeUntilEpoch int64) conditionalOverlayCell {
@@ -1287,16 +1287,12 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 				cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, i))
 			}
 
-			// util.Logger.Debug("handleUserGrapheme", "i", i, "w", w,
-			// 	"col", pe.cursor().col, "originalContents", cell.originalContents)
+			if i-w < pe.cursor().col { // reach the left edge
+				util.Logger.Trace("handleUserGrapheme", "row", pe.cursor().row, "col", i,
+					"cell", cell, "break", "yes")
+				break
+			}
 
-			// if i-w < pe.cursor().col { // reach the left edge
-			// 	util.Logger.Trace("handleUserGrapheme", "row", pe.cursor().row, "col", i,
-			// 		"cell", cell, "break", "yes")
-			// 	break
-			// }
-
-			// fmt.Printf("handleUserGrapheme() iterate col=%d, prev col=%d\n", i, i-w)
 			prevCell := &(theRow.overlayCells[i-w])
 			prevCellActual := emu.GetCell(pe.cursor().row, i-w)
 
