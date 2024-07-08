@@ -175,8 +175,8 @@ func (ccm *conditionalCursorMove) getValidity(emu *terminal.Emulator, lateAck ui
 }
 
 func (co conditionalCursorMove) String() string {
-	return fmt.Sprintf("{active:%t; frame:%d, epoch:%d, time:%d, col:%d, row=%d}",
-		co.active, co.expirationFrame, co.tentativeUntilEpoch, co.predictionTime, co.col, co.row)
+	return fmt.Sprintf("{active:%t; frame:%d, epoch:%d, time:%d, row:%d, col=%d}",
+		co.active, co.expirationFrame, co.tentativeUntilEpoch, co.predictionTime, co.row, co.col)
 }
 
 // represent the prediction cell in some column,
@@ -839,7 +839,7 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
 	if hd != nil {
 		switch hd.GetId() {
 		case terminal.Graphemes:
-			util.Logger.Trace("NewUserInput", "Graphemes", hd.GetCh())
+			util.Logger.Trace("NewUserInput", "predictionEpoch", pe.predictionEpoch, "Graphemes", hd.GetCh())
 			pe.handleUserGrapheme(emu, now, hd.GetCh())
 		case terminal.C0_CR:
 			pe.becomeTentative()
@@ -1252,28 +1252,22 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 		pe.becomeTentative()
 	} else { // normal rune, wide rune, combining grapheme
 
-		// for wide rune, only one cell space is not enough, wrap to next row
-		// TODO: normal rune and wide rune should not be processed serial
-		if w == 2 && pe.cursor().col == emu.GetWidth()-1 {
-			pe.becomeTentative()
-			pe.newlineCarriageReturn(emu)
-			util.Logger.Trace("handleUserGrapheme", "CR", chs,
-				"row", pe.cursor().row, "col", pe.cursor().col)
-		}
-
-		theRow := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
-		if pe.cursor().col+1 >= emu.GetWidth() {
+		if pe.cursor().col+w >= emu.GetWidth() {
 			// prediction in the last column is tricky
 			// e.g., emacs will show wrap character, shell will just put the character there
 			pe.becomeTentative()
+			// util.Logger.Trace("handleUserGrapheme", "epoch", pe.predictionEpoch, "edge", "cell")
+			if w == 2 && pe.cursor().col == emu.GetWidth()-1 {
+				pe.newlineCarriageReturn(emu)
+			}
 		}
+		theRow := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
 
 		// do the insert in reverse order
 		rightMostColumn := emu.GetWidth() - 1
 		if pe.predictOverwrite {
-			rightMostColumn = pe.cursor().col
+			rightMostColumn = pe.cursor().col // skip the for loop
 		}
-		// TODO: figure out what this means.
 		for i := rightMostColumn; i > pe.cursor().col; i-- {
 			cell := &(theRow.overlayCells[i])
 			// for cell, unknown=false, active=true, will always add the replacement to originalContents
@@ -1281,15 +1275,14 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 			cell.active = true
 			cell.tentativeUntilEpoch = pe.predictionEpoch
 			cell.expire(pe.localFrameSent+1, now)
-			// TODO: should we back to the original?
 			if len(cell.originalContents) == 0 {
 				// avoid adding original cell content several times
 				cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, i))
 			}
 
 			if i-w < pe.cursor().col { // reach the left edge
-				util.Logger.Trace("handleUserGrapheme", "row", pe.cursor().row, "col", i,
-					"cell", cell, "break", "yes")
+				// util.Logger.Trace("handleUserGrapheme", "row", pe.cursor().row, "col", i,
+				// 	"cell", cell, "break", "yes")
 				break
 			}
 
@@ -1313,8 +1306,8 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 				cell.replacement = prevCellActual
 			}
 
-			util.Logger.Trace("handleUserGrapheme", "row", pe.cursor().row, "col", i,
-				"cell", cell, "prevActualCell", prevCellActual)
+			// util.Logger.Trace("handleUserGrapheme", "row", pe.cursor().row, "col", i,
+			// 	"cell", cell, "prevActualCell", prevCellActual)
 		}
 
 		cell := &(theRow.overlayCells[pe.cursor().col])
@@ -1337,7 +1330,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 		}
 
 		// wide rune occupies 2 cells.
-		if w == 2 { // TODO: do we need to init next cell for wide rune?
+		if w == 2 {
 			cell.replacement.SetDoubleWidth(true)
 			nextCell := &(theRow.overlayCells[pe.cursor().col+1])
 			nextCell.replacement.SetDoubleWidthCont(true)
@@ -1345,29 +1338,29 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 
 		// set current prediction cell's replacement
 		cell.replacement.SetContents(chs)
-		// TODO: should we back to the original?
 		if len(cell.originalContents) == 0 {
 			// avoid adding original cell content several times
 			cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, pe.cursor().col))
 		}
 
-		util.Logger.Debug("handleUserGrapheme", "row", pe.cursor().row, "col", pe.cursor().col,
-			"cell", cell)
-		util.Logger.Debug("handleUserGrapheme", "row", pe.cursor().row, "col", pe.cursor().col,
-			"overlay", cell.conditionalOverlay.String())
+		// util.Logger.Trace("handleUserGrapheme", "row", pe.cursor().row, "col", pe.cursor().col,
+		// 	"cell", cell)
+		// util.Logger.Trace("handleUserGrapheme", "row", pe.cursor().row, "col", pe.cursor().col,
+		// 	"overlay", cell.conditionalOverlay.String())
 
 		pe.cursor().expire(pe.localFrameSent+1, now)
 
 		// do we need to wrap?
-		if pe.cursor().col < emu.GetWidth()-1 {
+		if pe.cursor().col < emu.GetWidth()-w {
 			pe.cursor().col += w
 		} else {
 			pe.becomeTentative()
 			pe.newlineCarriageReturn(emu)
+			// util.Logger.Trace("handleUserGrapheme", "epoch", pe.predictionEpoch, "edge", "cursor")
 		}
 
-		util.Logger.Debug("handleUserGrapheme", "row", pe.cursor().row,
-			"col", pe.cursor().col, "cursor", pe.cursors)
+		// util.Logger.Trace("handleUserGrapheme", "row", pe.cursor().row, "col", pe.cursor().col,
+		// 	"cursor", pe.cursor())
 	}
 }
 

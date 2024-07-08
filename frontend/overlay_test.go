@@ -38,6 +38,15 @@ func TestOverlay(t *testing.T) {
 	}
 }
 
+func TestConditionalCursorMove(t *testing.T) {
+	c := newConditionalCursorMove(1, 14, 2, 3)
+	expect := fmt.Sprintf("{active:false; frame:1, epoch:3, time:%d, row:14, col=2}", math.MaxInt64)
+	got := c.String()
+	if got != expect {
+		t.Errorf("#test expect %s, got %s\n", expect, got)
+	}
+}
+
 func TestMoveApply(t *testing.T) {
 	tc := []struct {
 		name           string
@@ -236,7 +245,7 @@ func TestCellGetValidity(t *testing.T) {
 	}
 }
 
-func TestPredictionNewUserInput_Normal(t *testing.T) {
+func TestPrediction_NewUserInput_Normal(t *testing.T) {
 	tc := []struct {
 		label             string
 		base              string // base content
@@ -552,33 +561,48 @@ func TestPrediction_NewUserInput_handleUserGrapheme(t *testing.T) {
 		base             string // background content
 		row, col         int    // start position
 		expectY, expectX int    // the position of exepect celll
+		expectEpoch      int    // updated prediction epoch
 		predictOverwrite bool   // overwrite or not
-		wrap             bool   // wrap means first rune start in next row
 	}{
 		{
 			"{repl:D; orig:[0], unknown:false, active:true}",
 			"normal position, signle normal rune", "D", "01234",
-			11, 75, 11, 75, false, false,
+			11, 75, 11, 75, 2, false,
 		},
 		{
 			"{repl:H; orig:[4], unknown:false, active:true}",
 			"edge position, normal rune", "DEFGH", "01234",
-			11, 75, 11, 79, false, false,
+			11, 75, 11, 79, 4, false,
 		},
 		{
 			"{repl:直; orig:[0], unknown:false, active:true}",
 			"normal position, single wide rune", "直", "0123456789",
-			12, 70, 12, 70, false, false,
+			12, 70, 12, 70, 2, false,
 		},
 		{
 			"{repl:0; orig:[4 2 1 0], unknown:false, active:true}",
 			"normal position, mix rune", "直-20", "0123456789",
-			12, 70, 12, 74, false, false,
+			12, 70, 12, 74, 2, false,
 		},
 		{
 			"{repl:直; orig:[8 6 4 2 0], unknown:false, active:true}",
 			"edge position, wide rune", "大漠孤烟直", "0123456789",
-			10, 70, 10, 78, false, false,
+			10, 70, 10, 78, 4, false,
+		},
+		{
+			"{repl:大; orig:[0], unknown:false, active:true}",
+			"edge position, wide rune", "大", "01",
+			10, 78, 10, 78, 4, false,
+		},
+		{
+			"{repl:大; orig:[0], unknown:false, active:true}",
+			"normal position, overwrite rune", "大", "01",
+			13, 70, 13, 70, 2, true,
+		},
+		{
+			"{repl:大; orig:[1], unknown:false, active:true}",
+			"wrap position, wide rune", "大", "01",
+			13, 79, 14, 0, 3, false,
 		},
 	}
 
@@ -611,6 +635,9 @@ func TestPrediction_NewUserInput_handleUserGrapheme(t *testing.T) {
 			cell := &(predictRow.overlayCells[v.expectX])
 			if cell.String() != v.expect {
 				t.Errorf("#test handleUserGrapheme expect %s, got %s\n", v.expect, cell.String())
+			}
+			if pe.predictionEpoch != int64(v.expectEpoch) {
+				t.Errorf("%q expect epoch %d, got %d\n", v.label, v.expectEpoch, pe.predictionEpoch)
 			}
 		})
 	}
