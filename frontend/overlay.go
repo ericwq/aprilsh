@@ -808,7 +808,7 @@ func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
 //
 // before process the input, PredictionEngine calls cull() method to cull prediction.
 // a.k.a mosh new_user_byte() method
-func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
+func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune, ptime ...int64) {
 	if len(input) == 0 {
 		return
 	}
@@ -818,12 +818,16 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
 		return
 	case Experimental:
 		pe.predictionEpoch = pe.confirmedEpoch
-		// fmt.Printf("newUserInput #Experimental predictionEpoch = confirmedEpoch = %d\n", pe.confirmedEpoch)
 	}
 
 	util.Logger.Trace("NewUserInput", "predictionEpoch", pe.predictionEpoch, "input", input)
 	pe.cull(emu)
-	now := time.Now().UnixMilli()
+	var now int64
+	if len(ptime) > 0 {
+		now = ptime[0]
+	} else {
+		now = time.Now().UnixMilli()
+	}
 
 	// translate application-mode cursor control function to ANSI cursor control sequence
 	// TODO: check the Emulator.cursorKeyMode, DECCKM; mabye this is the cause of bug #25.

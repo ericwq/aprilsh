@@ -1420,19 +1420,22 @@ func TestOverlayManager_apply(t *testing.T) {
 // fake user input string for prediction engine
 func (pe *PredictionEngine) inputString(emu *terminal.Emulator, str string, delay ...int) {
 	var input []rune
+	now := time.Now().UnixMilli()
 
 	index := 0
 	graphemes := uniseg.NewGraphemes(str)
 	for graphemes.Next() {
 		input = graphemes.Runes()
 		if len(delay) > index { // delay parameters is provided to simulate network delay
-			pause := time.Duration(delay[index])
-			// fmt.Printf("#test inputString delay %dms.\n", pause)
-			time.Sleep(time.Millisecond * pause)
+			// pause := time.Duration(delay[index])
+			// fmt.Printf("#test inputString index=%d delay %dms.\n", index, pause)
+
+			ptime := now - int64(delay[index])
+			pe.NewUserInput(emu, input, []int64{ptime}...)
 			index++
+		} else {
+			pe.NewUserInput(emu, input)
 		}
-		// fmt.Printf("#test inputString() user input %s\n", string(input))
-		pe.NewUserInput(emu, input)
 	}
 }
 
