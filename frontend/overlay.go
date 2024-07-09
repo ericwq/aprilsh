@@ -107,7 +107,7 @@ func (co *conditionalOverlay) expire(expirationFrame uint64, now int64) {
 }
 
 func (co conditionalOverlay) String() string {
-	return fmt.Sprintf("{active:%t; frame:%d, epoch:%d, time:%d, col:%d}",
+	return fmt.Sprintf("{active:%t, frame:%d, epoch:%d, time:%d, col:%d}",
 		co.active, co.expirationFrame, co.tentativeUntilEpoch, co.predictionTime, co.col)
 }
 
@@ -832,14 +832,14 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune) {
 	}
 	pe.lastByte = make([]rune, len(input))
 	copy(pe.lastByte, input)
-	util.Logger.Trace("NewUserInput", "lastByte", pe.lastByte, "input", input)
+	// util.Logger.Trace("NewUserInput", "lastByte", pe.lastByte, "input", input)
 
 	// TODO: validate we can handle flag grapheme
 	hd := pe.parser.ProcessInput(input...)
 	if hd != nil {
 		switch hd.GetId() {
 		case terminal.Graphemes:
-			util.Logger.Trace("NewUserInput", "predictionEpoch", pe.predictionEpoch, "Graphemes", hd.GetCh())
+			// util.Logger.Trace("NewUserInput", "predictionEpoch", pe.predictionEpoch, "Graphemes", hd.GetCh())
 			pe.handleUserGrapheme(emu, now, hd.GetCh())
 		case terminal.C0_CR:
 			pe.becomeTentative()
@@ -1149,11 +1149,18 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 			// move predict cursor to the previous position
 			prevPredictCell := theRow.overlayCells[pe.cursor().col-1].replacement
 			prevActualCell := emu.GetCell(pe.cursor().row, pe.cursor().col-1)
+
+			// util.Logger.Trace("handleUserGrapheme", "row", pe.cursor().row, "col", pe.cursor().col,
+			// 	"backspace", true,
+			// 	"prePredictCell", prevPredictCell, "preActualCell", prevActualCell)
+
 			wideCell := false
 			if prevActualCell.IsDoubleWidthCont() || prevPredictCell.IsDoubleWidthCont() {
 				// check the previous cell width, both predict and emulator need to check
 				wideCell = true
 				if pe.cursor().col-2 <= 0 {
+					// util.Logger.Trace("handleUserGrapheme", "row", pe.cursor().row, "col", pe.cursor().col,
+					// 	"col", 0)
 					pe.cursor().col = 0
 					// fmt.Printf("handleUserGrapheme() backspace edge %d\n", pe.cursor().col)
 				} else {

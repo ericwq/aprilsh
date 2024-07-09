@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ericwq/aprilsh/terminal"
+	"github.com/ericwq/aprilsh/util"
 	"github.com/rivo/uniseg"
 )
 
@@ -44,6 +45,15 @@ func TestConditionalCursorMove(t *testing.T) {
 	got := c.String()
 	if got != expect {
 		t.Errorf("#test expect %s, got %s\n", expect, got)
+	}
+}
+
+func TestConditionalOverlay(t *testing.T) {
+	c := newConditionalOverlay(1, 2, 1)
+	expect := fmt.Sprintf("{active:false, frame:1, epoch:1, time:%d, col:2}", math.MaxInt64)
+	got := c.String()
+	if got != expect {
+		t.Errorf("#test expect \n%s, got \n%s\n", expect, got)
 	}
 }
 
@@ -245,7 +255,7 @@ func TestCellGetValidity(t *testing.T) {
 	}
 }
 
-func TestPrediction_NewUserInput_Normal(t *testing.T) {
+func Test_NewUserInput_Normal(t *testing.T) {
 	tc := []struct {
 		label             string
 		base              string // base content
@@ -482,7 +492,7 @@ func printPredictionCell(emu *terminal.Emulator, pe *PredictionEngine, row, col 
 	}
 }
 
-func TestPrediction_NewUserInput_Backspace(t *testing.T) {
+func Test_handleUserGrapheme_Backspace(t *testing.T) {
 	tc := []struct {
 		label          string
 		base           string
@@ -493,53 +503,81 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 		lateAck        uint64
 		confirmedEpoch int64
 	}{
-		{"input backspace for simple cell", "", "abcde\x1B[D\x1B[D\x1B[D\x7f", "acde", 0, 70, 0, 4},
-		{"input backspace for wide cell", "", "abc太学生\x1B[D\x1B[D\x1B[D\x1B[C\x7f", "abc学生", 1, 60, 0, 4},
-		{"input backspace for wide cell with base", "东部战区", "\x1B[C\x1B[C\x7f", "东战区", 2, 60, 0, 5},
-		{"move cursor right, wide cell right edge", "平潭", "\x1B[C\x1B[C", "平潭", 3, 76, 0, 5},
-		{"move cursor left, wide cell left edge", "三号木", "\x1B[C\x1B[D\x1B[D", "三号木", 4, 0, 0, 5},
-		{"input backspace left edge", "小鸡腿", "\x1B[C\x7f\x7f", "鸡腿", 5, 0, 0, 8},
-		{"input backspace unknown case", "", "gocto\x1B[D\x1B[D\x7f\x7f", "gto", 6, 74, 0, 4},
-		{"backspace, predict unknown case", "", "捉鹰打goto\x7f\x7f\x7f\x7f鸟", "捉鹰打鸟", 7, 60, 0, 4},
+		{
+			"no base, backspace for noromal prediction cell", "",
+			"abcde\x1B[D\x1B[D\x1B[D\x7f", "acde", 0, 70,
+			0, 4,
+		},
+		{
+			"no base, backspace for wide prediction cell", "",
+			"abc太学生\x1B[D\x1B[D\x1B[D\x1B[C\x7f", "abc学生", 1,
+			60, 0, 4,
+		},
+		{
+			"wide rune base, backspace for wide predition cell", "东部战区",
+			"\x1B[C\x1B[C\x7f", "东战区", 2, 60,
+			0, 3,
+		},
+		{
+			"wide rune base, move cursor to right edge", "平潭",
+			"\x1B[C\x1B[C", "平潭", 3, 76,
+			0, 5,
+		},
+		{
+			"wide rune base, move cursor to left edge", "三号木",
+			"\x1B[C\x1B[D\x1B[D", "三号木", 4, 0,
+			0, 3,
+		},
+		{
+			"wide rune base, backspace for left edge", "小鸡腿",
+			"\x1B[C\x7f\x7f", "鸡腿", 5, 0,
+			0, 2,
+		},
+		{
+			"no base, backspace for unknown case", "",
+			"gocto\x1B[D\x1B[D\x7f\x7f", "gto", 6, 74,
+			0, 4,
+		},
+		{
+			"backspace, predict unknown case", "",
+			"捉鹰打goto\x7f\x7f\x7f\x7f鸟", "捉鹰打鸟", 7, 60,
+			0, 4,
+		},
 	}
 
-	emu := terminal.NewEmulator3(80, 40, 40) // TODO why we can't init emulator outside of for loop
-	pe := newPredictionEngine()
+	// change log level to trace
+	// util.Logger.CreateLogger(os.Stderr, false, util.LevelTrace)
+	// defer util.Logger.CreateLogger(os.Stderr, false, slog.LevelInfo)
 
+	// go test -coverprofile=cover.out -run=Test_handleUserGrapheme_Backspace -v
+	// go tool cover -html=cover.out
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			pe.Reset()
-			// t.Logf("%q predictionEpoch=%d\n", v.name, pe.predictionEpoch)
-			pe.predictionEpoch = 1 // TODO: when it's time to update predictionEpoch?
-			// fmt.Printf("%s base=%q expect=%q, pos=(%d,%d)\n", v.label, v.base, v.expect, emu.GetCursorRow(), emu.GetCursorCol())
+			emu := terminal.NewEmulator3(80, 40, 40)
+			pe := newPredictionEngine()
 
-			// set the base content
+			// print base (background) string in terminal
 			emu.MoveCursor(v.row, v.col)
 			emu.HandleStream(v.base)
-			// printEmulatorCell(emu, v.row, v.col, v.expect, "After Base")
 
-			// mimic user input for prediction engine
+			// fake user input
 			emu.MoveCursor(v.row, v.col)
 			pe.localFrameLateAcked = v.lateAck
 			pe.inputString(emu, v.predict)
-			// printPredictionCell(emu, pe, v.row, v.col, v.expect, "Predict")
+			util.Logger.Trace("test", "backspace", true)
 
-			// merge the last predict
+			// apply last predict
 			pe.cull(emu)
-			// printPredictionCell(emu, pe, v.row, v.col, v.expect, "After Cull")
 			pe.confirmedEpoch = v.confirmedEpoch
 			pe.apply(emu)
-			// printEmulatorCell(emu, v.row, v.col, v.expect, "Merge")
 
-			// predictRow := pe.getOrMakeRow(v.row, emu.GetWidth())
+			// validate the result
 			i := 0
 			graphemes := uniseg.NewGraphemes(v.expect)
 			for graphemes.Next() {
 				chs := graphemes.Runes()
 
 				cell := emu.GetCell(v.row, v.col+i)
-				// fmt.Printf("#test %s (%d,%d) is %s\n", v.label, v.row, v.col+i, cell)
-				// predict := predictRow.overlayCells[v.col+i].replacement
 				if cell.String() != string(chs) {
 					t.Errorf("%s expect %q at (%d,%d), got cell %q dw=%t, dwcont=%t\n",
 						v.label, string(chs), v.row, v.col+i, cell, cell.IsDoubleWidth(), cell.IsDoubleWidthCont())
@@ -553,7 +591,7 @@ func TestPrediction_NewUserInput_Backspace(t *testing.T) {
 
 // go test -coverprofile=cover.out -run=handleUserGrapheme -v
 // go tool cover -html=cover.out
-func TestPrediction_NewUserInput_handleUserGrapheme(t *testing.T) {
+func Test_handleUserGrapheme_Print(t *testing.T) {
 	tc := []struct {
 		expect           string // prediction cell
 		label            string // test case name
@@ -1377,7 +1415,9 @@ func TestOverlayManager_apply(t *testing.T) {
 	om.Apply(emu)
 }
 
-// add this method for test purpose
+// for test purpose
+//
+// fake user input string for prediction engine
 func (pe *PredictionEngine) inputString(emu *terminal.Emulator, str string, delay ...int) {
 	var input []rune
 
