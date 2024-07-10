@@ -140,7 +140,7 @@ func (ccm *conditionalCursorMove) apply(emu *terminal.Emulator, confirmedEpoch i
 	emu.MoveCursor(ccm.row, ccm.col)
 }
 
-// check validity of prediction cursor:
+// check validity of prediction cursor against terminal cursor:
 //
 // if the prediction cursor is not active, return Inactive.
 //
@@ -282,7 +282,7 @@ func (coc *conditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 }
 
 /*
-check validity of prediction cell:
+check validity of prediction cell against terminal cell:
 
 if prediction cell is inactive, return Inactive.
 
@@ -295,7 +295,9 @@ if prediction cell is unknown, return CorrectNoCredit.
 if prediction cell is blank, return CorrectNoCredit.
 
 if terminal cell matches prediction cell: if no history match prediction,
-return Correct, otherwise return CorrectNoCredit. if terminal cell
+return Correct, otherwise return CorrectNoCredit.
+
+if terminal cell
 doesn't match prediction cell, return IncorrectOrExpired.
 */
 func (coc *conditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, lateAck uint64) Validity {
@@ -804,9 +806,9 @@ func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
 }
 
 // when user input happens, set last sent state num before callling this method,
-// process user input to prepare local prediction:cells and cursors.
+// this method validate previous predictions (cull), then use new input to perform new prediction.
+// perform new prediction means update prediction overlays, which involve cells and cursors.
 //
-// before process the input, PredictionEngine calls cull() method to cull prediction.
 // a.k.a mosh new_user_byte() method
 func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune, ptime ...int64) {
 	if len(input) == 0 {
@@ -822,6 +824,8 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune, p
 
 	util.Logger.Trace("NewUserInput", "predictionEpoch", pe.predictionEpoch, "input", input)
 	pe.cull(emu)
+
+	// add ptime for test
 	var now int64
 	if len(ptime) > 0 {
 		now = ptime[0]
@@ -1117,7 +1121,7 @@ func (pe *PredictionEngine) SetLocalFrameSent(v uint64) {
 	pe.localFrameSent = v
 }
 
-// when network input happens, sset first sent state num
+// when network input happens, set first sent state num
 func (pe *PredictionEngine) SetLocalFrameAcked(v uint64) {
 	pe.localFrameAcked = v
 }
