@@ -243,7 +243,7 @@ func TestConnectionClient(t *testing.T) {
 		},
 		{
 			"wrong host", "", "9081:9090",
-			"wronghost777", "9081", "no such host", false,
+			"wrenghest777", "9081", "no such host", false,
 		}, // error on macOS for ipv6
 		{
 			"wrong connect port", "localhost", "8080",
