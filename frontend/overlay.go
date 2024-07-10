@@ -66,13 +66,13 @@ var strValidity = [...]string{
 	"Inactive",
 }
 
-// base of cell prediction or cursor prediction
+// base of prediction (can be cell or cursor)
 type conditionalOverlay struct {
-	expirationFrame     uint64 // frame number
+	expirationFrame     uint64 // sent frame number
 	col                 int    // prediction column
 	active              bool   // represents a prediction at all
-	tentativeUntilEpoch int64  // the epoch of overlay, when to show
-	predictionTime      int64  // prediction create time, used to find long-pending predictions
+	tentativeUntilEpoch int64  // prediction epoch, when to show
+	predictionTime      int64  // create time, used to find long-pending predictions
 }
 
 func newConditionalOverlay(expirationFrame uint64, col int, tentativeUntilEpoch int64) conditionalOverlay {
@@ -111,7 +111,7 @@ func (co conditionalOverlay) String() string {
 		co.active, co.expirationFrame, co.tentativeUntilEpoch, co.predictionTime, co.col)
 }
 
-// represent the cursor prediction.
+// represent prediction cursor
 type conditionalCursorMove struct {
 	conditionalOverlay
 	row int
@@ -126,7 +126,8 @@ func newConditionalCursorMove(expirationFrame uint64, row int, col int, tentativ
 
 // apply prediction cursor to terminal:
 //
-// if prediction cursor is active AND the confirmedEpoch is greater than or equal to cursor epoch.
+// if prediction cursor is active AND the confirmedEpoch is greater than or equal to cursor epoch,
+// move terminal cursor to prediction position, otherwise do nothing.
 func (ccm *conditionalCursorMove) apply(emu *terminal.Emulator, confirmedEpoch int64) {
 	if !ccm.active { // only apply to active prediction
 		return
@@ -149,7 +150,7 @@ func (ccm *conditionalCursorMove) apply(emu *terminal.Emulator, confirmedEpoch i
 // if lateAck is smaller than prediction expirationFrame, return Pending
 //
 // if lateAck is greater than prediction expirationFrame and
-// the current cursor position is the same as prediction cursor,
+// the terminal cursor position is the same as prediction cursor,
 // return Correct. otherwise return IncorrectOrExpired.
 func (ccm *conditionalCursorMove) getValidity(emu *terminal.Emulator, lateAck uint64) Validity {
 	if !ccm.active {
@@ -252,7 +253,7 @@ func (coc *conditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 		return
 	}
 
-	if coc.tentative(confirmedEpoch) { // need to wait for epoch
+	if coc.tentative(confirmedEpoch) { // need to wait for next epoch
 		return
 	}
 
@@ -297,8 +298,7 @@ if prediction cell is blank, return CorrectNoCredit.
 if terminal cell matches prediction cell: if no history match prediction,
 return Correct, otherwise return CorrectNoCredit.
 
-if terminal cell
-doesn't match prediction cell, return IncorrectOrExpired.
+if terminal cell doesn't match prediction cell, return IncorrectOrExpired.
 */
 func (coc *conditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, lateAck uint64) Validity {
 	if !coc.active {
@@ -572,7 +572,7 @@ type PredictionEngine struct {
 	overlays              []conditionalOverlayRow
 	cursors               []conditionalCursorMove
 	parser                terminal.Parser
-	confirmedEpoch        int64             // only in cull() Correct validity condition, update confirmedEpoch
+	confirmedEpoch        int64             // only update when prediction cell is correct, in cull()
 	glitchTrigger         int               // show predictions temporarily because of long-pending prediction
 	localFrameLateAcked   uint64            // when network input happens, set the last received remote state ack
 	predictionEpoch       int64             // only in becomeTentative(), update predictionEpoch
@@ -1016,6 +1016,8 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 				if cell.tentative(pe.confirmedEpoch) {
 					// if cell.tentativeUntilEpoch > pe.confirmedEpoch {
 					pe.confirmedEpoch = cell.tentativeUntilEpoch
+					util.Logger.Trace("cull", "row", i, "col", j,
+						"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch)
 				}
 
 				// fmt.Printf("#cull Correct glitchTrigger=%d, now=%d, predictionTime=%d, now-cell.predictionTime=%d\n",
@@ -1429,6 +1431,8 @@ func (om *OverlayManager) WaitTime() int {
 }
 
 func (om *OverlayManager) Apply(emu *terminal.Emulator) {
+	util.Logger.Trace("OverlayManager",
+		"predictionEpoch", om.GetPredictionEngine().confirmedEpoch, "apply", true)
 	om.predictions.cull(emu)
 	om.predictions.apply(emu)
 
