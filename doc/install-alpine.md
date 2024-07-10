@@ -1,27 +1,24 @@
 
 ### add dependencies
-
 build dependency.
 ```sh
 apk add go protoc utmps-dev ncurses musl-locales ncurses-terminfo protoc-gen-go
 ```
-
 run dependency.
 ```sh
 apk add musl-locales utmps ncurses logrotate ncurses-terminfo openssh-server
-
 ```
 ### build from source
 ```sh
 git clone https://github.com/ericwq/aprilsh.git
-cd aprilsh/frontend/server
-./build.sh
-cd aprilsh/frontend/client
-./build.sh
 cd aprilsh
-APRILSH_APSHD_PATH="/home/ide/.local/bin/apshd" \
-go test -tags=utmps $(go list ./... | grep -Ev '(data|protobufs)')
+./build.sh    # build client and server, then run the test, only works on linux
 
+# or you can build them separately.
+cd frontend/server
+./build.sh    # build server, only works on linux
+cd frontend/client
+./build.sh    # build client, works on linux and macOS
 ```
 ### install for alpine
 
@@ -30,7 +27,7 @@ add testing repositories to your alpine system, you need the root privilege to d
 echo "https://dl-cdn.alpinelinux.org/alpine/edge/testing" >> /etc/apk/repositories
 apk update
 ```
-test souce code:
+test source code:
 ```sh
 APRILSH_APSHD_PATH="/home/ide/.local/bin/apshd" \
 go test -tags=utmps $(go list ./... | grep -Ev '(data|protobufs)')
