@@ -39,12 +39,17 @@ export GO111MODULE=auto
 
 _dst="$HOME/.local/bin"
 # build server and client
-go build $_build_tag -ldflags="$ldflags" -o $_dst/apshd ./frontend/server
-echo "build apshd to    : $_dst"
+if [ "${_osType}" == 'Linux' ]; then
+  go build $_build_tag -ldflags="$ldflags" -o $_dst/apshd ./frontend/server
+  echo "build apshd to    : $_dst"
+fi
 go build -ldflags="$ldflags" -o $_dst/apsh ./frontend/client
 echo "build apsh  to    : $_dst"
+echo "run with          : $_dst/apsh -vv ide@localhost 2>>/tmp/apsh01.log"
 
 # run test
-echo "run test          :"
-APRILSH_APSHD_PATH="$_dst/apshd" \
-  go test $_build_tag $(go list ./... | grep -Ev '(data|protobufs)')
+if [ "${_osType}" == 'Linux' ]; then
+  echo "run test          :"
+  APRILSH_APSHD_PATH="$_dst/apshd" \
+    go test $_build_tag $(go list ./... | grep -Ev '(data|protobufs)')
+fi

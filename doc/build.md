@@ -59,6 +59,10 @@ git checkout aprilsh            # switch to branch
 git branch                      # list branches
 git checkout aprilsh            # switch to branch
 git branch                      # list branches
+# set tracking information for branch
+git checkout pe-tuning
+git branch --set-upstream-to=origin/pe-tuning
+git pull
 ```
 <!-- https://www.freecodecamp.org/news/git-delete-remote-branch/ -->
 create aprilsh directory if we don't have it.
