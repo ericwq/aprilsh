@@ -803,7 +803,7 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune, p
 		pe.predictionEpoch = pe.confirmedEpoch
 	}
 
-	util.Logger.Trace("NewUserInput", "predictionEpoch", pe.predictionEpoch, "input", input)
+	util.Logger.Trace("prediction message", "predictionEpoch", pe.predictionEpoch, "from", "NewUserInput.start")
 	pe.cull(emu)
 
 	// add ptime for test
@@ -884,7 +884,8 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune, p
 		}
 	}
 
-	util.Logger.Trace("NewUserInput", "predictionEpoch", pe.predictionEpoch)
+	util.Logger.Trace("prediction message", "predictionEpoch", pe.predictionEpoch,
+		"overlays", len(pe.overlays), "from", "NewUserInput.end")
 }
 
 /*
@@ -905,6 +906,9 @@ check validity of prediction cursor and perform action accordingly:
 - remove any prediction cursor, except for Pending validity.
 */
 func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
+	util.Logger.Trace("prediction message", "predictionEpoch", pe.predictionEpoch,
+		"confirmedEpoch", pe.confirmedEpoch, "overlays", len(pe.overlays), "from", "cull")
+
 	if pe.displayPreference == Never {
 		return
 	}
@@ -939,7 +943,14 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 		pe.flagging = true
 	}
 
+	util.Logger.Trace("prediction message", "predictionEpoch", pe.predictionEpoch,
+		"confirmedEpoch", pe.confirmedEpoch, "overlays", len(pe.overlays),
+		"localFrameLateAcked", pe.localFrameLateAcked,
+		"from", "cull")
+
 	// go through prediction cells
+	// TODO: use in-place slice remove
+	// https://josh-weston.medium.com/golang-in-place-slice-operations-5607fd90217
 	overlays := make([]conditionalOverlayRow, 0, len(pe.overlays))
 	for i := 0; i < len(pe.overlays); i++ {
 		if pe.overlays[i].rowNum < 0 || pe.overlays[i].rowNum >= emu.GetHeight() {
@@ -951,8 +962,16 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 			cell := &(pe.overlays[i].overlayCells[j])
 			v := cell.getValidity(emu, pe.overlays[i].rowNum, pe.localFrameLateAcked)
 
+			actualCell := emu.GetCell(pe.overlays[i].rowNum, j)
+
 			switch v {
 			case IncorrectOrExpired:
+				util.Logger.Trace("prediction message", "row", pe.overlays[i].rowNum, "col", j,
+					"validity", "IncorrectOrExpired",
+					"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch,
+					"actualCell", actualCell,
+					"from", "cull")
+
 				if cell.tentative(pe.confirmedEpoch) {
 					/*
 					   fprintf( stderr, "Bad tentative prediction in row %d, col %d (think %lc, actually %lc)\n",
@@ -999,6 +1018,10 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 				   }
 				*/
 
+				util.Logger.Trace("prediction message", "row", pe.overlays[i].rowNum, "col", j, "validity", "Correct",
+					"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch,
+					"from", "cull")
+
 				if cell.tentative(pe.confirmedEpoch) {
 					pe.confirmedEpoch = cell.tentativeUntilEpoch
 
@@ -1007,9 +1030,6 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 					            j->replacement.debug_contents(), i->row_num, j->col,
 					            confirmed_epoch, prediction_epoch );
 					*/
-
-					util.Logger.Trace("cull", "row", i, "col", j,
-						"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch)
 				}
 
 				// When predictions come in quickly, slowly take away the glitch trigger.
@@ -1028,6 +1048,12 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 
 				cell.reset()
 			case CorrectNoCredit:
+
+				util.Logger.Trace("prediction message", "row", pe.overlays[i].rowNum, "col", j,
+					"validity", "CorrectNoCredit",
+					"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch,
+					"from", "cull")
+
 				cell.reset()
 			case Pending:
 				// When a prediction takes a long time to be confirmed, we
@@ -1038,7 +1064,19 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 				} else if gap >= GLITCH_THRESHOLD && pe.glitchTrigger < GLITCH_REPAIR_COUNT {
 					pe.glitchTrigger = GLITCH_REPAIR_COUNT // just display
 				}
+
+				util.Logger.Trace("prediction message", "row", pe.overlays[i].rowNum, "col", j,
+					"validity", "Pending", "gap", gap,
+					"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch,
+					"glitchTrigger", pe.glitchTrigger, "from", "cull")
+
 			default:
+
+				util.Logger.Trace("prediction message", "row", pe.overlays[i].rowNum, "col", j,
+					"validity", "Inactive",
+					"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch,
+					"from", "cull")
+
 			}
 		}
 
@@ -1118,6 +1156,8 @@ func (pe *PredictionEngine) waitTime() int {
 func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64, chs ...rune) {
 	w := uniseg.StringWidth(string(chs))
 	pe.initCursor(emu)
+	util.Logger.Trace("prediction message", "row", pe.cursor().row, "col", pe.cursor().col,
+		"from", "handleUserGrapheme.initCursor")
 
 	if len(chs) == 1 && chs[0] == '\x7f' { // backspace
 		theRow := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
@@ -1318,10 +1358,10 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 			cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, pe.cursor().col))
 		}
 
-		// util.Logger.Trace("handleUserGrapheme", "row", pe.cursor().row, "col", pe.cursor().col,
-		// 	"cell", cell)
-		// util.Logger.Trace("handleUserGrapheme", "row", pe.cursor().row, "col", pe.cursor().col,
-		// 	"overlay", cell.conditionalOverlay.String())
+		util.Logger.Trace("prediction message", "row", pe.cursor().row, "col", pe.cursor().col,
+			"cell", cell, "from", "handleUserGrapheme")
+		util.Logger.Trace("prediction message", "row", pe.cursor().row, "col", pe.cursor().col,
+			"overlay", cell.conditionalOverlay.String(), "from", "handleUserGrapheme")
 
 		pe.cursor().expire(pe.localFrameSent+1, now)
 
@@ -1334,8 +1374,8 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 			// util.Logger.Trace("handleUserGrapheme", "epoch", pe.predictionEpoch, "edge", "cursor")
 		}
 
-		// util.Logger.Trace("handleUserGrapheme", "row", pe.cursor().row, "col", pe.cursor().col,
-		// 	"cursor", pe.cursor())
+		util.Logger.Trace("prediction message", "row", pe.cursor().row, "col", pe.cursor().col,
+			"cursor", pe.cursor(), "from", "handleUserGrapheme")
 	}
 }
 
@@ -1389,8 +1429,8 @@ func (om *OverlayManager) WaitTime() int {
 }
 
 func (om *OverlayManager) Apply(emu *terminal.Emulator) {
-	util.Logger.Trace("OverlayManager",
-		"predictionEpoch", om.GetPredictionEngine().confirmedEpoch, "apply", true)
+	util.Logger.Trace("prediction message",
+		"predictionEpoch", om.GetPredictionEngine().predictionEpoch, "from", "OverlayManager.Apply")
 	om.predictions.cull(emu)
 	om.predictions.apply(emu)
 
