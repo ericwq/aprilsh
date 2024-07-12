@@ -5,7 +5,6 @@
 package statesync
 
 import (
-	"context"
 	"fmt"
 	"math"
 	"strings"
@@ -121,32 +120,26 @@ func (c *Complete) SetEchoAck(now int64) (ret bool) {
 	for _, v := range c.inputHistory {
 		if v.timestamp <= now-ECHO_TIMEOUT {
 			newestEchoAck = v.frameNum
+			// util.Logger.Debug("SetEchoAck", "frameNum", v.frameNum, "timestamp", v.timestamp%10000)
 		}
 		// combine with RegisterInputFrame, if there is any user input
-		// the echo ack will send back to client.
-		// util.Log.Debug("SetEchoAck","frameNum", v.frameNum,"timestamp", v.timestamp%10000)
+		// the echo ack will be updated and sent back to client.
 	}
 
-	// filter frame number which is less than newestEchoAck
-	// filter without allocating
-	// This trick uses the fact that a slice shares the same backing array
-	// and capacity as the original, so the storage is reused for the filtered
-	// slice. Of course, the original contents are modified.
+	// only keep frame number which is greate than newestEchoAck
 	b := c.inputHistory[:0]
-	var z []uint64
 	for _, x := range c.inputHistory {
 		if x.frameNum >= newestEchoAck {
 			b = append(b, x)
 		}
-		z = append(z, x.frameNum)
 	}
 	c.inputHistory = b
 
 	if c.echoAck != newestEchoAck {
 		ret = true
-		util.Logger.Log(context.Background(), util.LevelTrace, "SetEchoAck", "newestEchoAck",
-			newestEchoAck, "inputHistory", z, "time", now%10000, "return", ret)
 	}
+
+	// util.Logger.Debug("SetEchoAck", "newestEchoAck", newestEchoAck, "return", ret, "inputHistory", b)
 
 	c.echoAck = newestEchoAck
 	return

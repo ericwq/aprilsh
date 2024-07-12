@@ -962,15 +962,15 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 			cell := &(pe.overlays[i].overlayCells[j])
 			v := cell.getValidity(emu, pe.overlays[i].rowNum, pe.localFrameLateAcked)
 
-			actualCell := emu.GetCell(pe.overlays[i].rowNum, j)
+			// actualCell := emu.GetCell(pe.overlays[i].rowNum, j)
 
 			switch v {
 			case IncorrectOrExpired:
-				util.Logger.Trace("prediction message", "row", pe.overlays[i].rowNum, "col", j,
-					"validity", "IncorrectOrExpired",
-					"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch,
-					"actualCell", actualCell,
-					"from", "cull")
+				// util.Logger.Trace("prediction message", "row", pe.overlays[i].rowNum, "col", j,
+				// 	"validity", "IncorrectOrExpired",
+				// 	"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch,
+				// 	"actualCell", actualCell,
+				// 	"from", "cull")
 
 				if cell.tentative(pe.confirmedEpoch) {
 					/*
@@ -1018,9 +1018,9 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 				   }
 				*/
 
-				util.Logger.Trace("prediction message", "row", pe.overlays[i].rowNum, "col", j, "validity", "Correct",
-					"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch,
-					"from", "cull")
+				// util.Logger.Trace("prediction message", "row", pe.overlays[i].rowNum, "col", j, "validity", "Correct",
+				// 	"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch,
+				// 	"from", "cull")
 
 				if cell.tentative(pe.confirmedEpoch) {
 					pe.confirmedEpoch = cell.tentativeUntilEpoch
@@ -1049,10 +1049,10 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 				cell.reset()
 			case CorrectNoCredit:
 
-				util.Logger.Trace("prediction message", "row", pe.overlays[i].rowNum, "col", j,
-					"validity", "CorrectNoCredit",
-					"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch,
-					"from", "cull")
+				// util.Logger.Trace("prediction message", "row", pe.overlays[i].rowNum, "col", j,
+				// 	"validity", "CorrectNoCredit",
+				// 	"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch,
+				// 	"from", "cull")
 
 				cell.reset()
 			case Pending:
@@ -1065,17 +1065,17 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 					pe.glitchTrigger = GLITCH_REPAIR_COUNT // just display
 				}
 
-				util.Logger.Trace("prediction message", "row", pe.overlays[i].rowNum, "col", j,
-					"validity", "Pending", "gap", gap,
-					"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch,
-					"glitchTrigger", pe.glitchTrigger, "from", "cull")
+				// util.Logger.Trace("prediction message", "row", pe.overlays[i].rowNum, "col", j,
+				// 	"validity", "Pending", "gap", gap,
+				// 	"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch,
+				// 	"glitchTrigger", pe.glitchTrigger, "from", "cull")
 
 			default:
 
-				util.Logger.Trace("prediction message", "row", pe.overlays[i].rowNum, "col", j,
-					"validity", "Inactive",
-					"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch,
-					"from", "cull")
+				// util.Logger.Trace("prediction message", "row", pe.overlays[i].rowNum, "col", j,
+				// 	"validity", "Inactive",
+				// 	"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch,
+				// 	"from", "cull")
 
 			}
 		}

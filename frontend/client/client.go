@@ -887,6 +887,7 @@ func (sc *STMClient) processNetworkInput(s string) {
 	state := sc.network.GetLatestRemoteState()
 	lateAcked := state.GetState().GetEchoAck()
 	sc.overlays.GetPredictionEngine().SetLocalFrameLateAcked(lateAcked)
+	util.Logger.Debug("processNetworkInput", "lateAcked", lateAcked)
 }
 
 func (sc *STMClient) processUserInput(buf string) bool {

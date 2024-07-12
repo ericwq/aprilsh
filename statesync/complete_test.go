@@ -98,39 +98,54 @@ func TestApplyString_Fail(t *testing.T) {
 
 func TestCompleteSetEchoAck(t *testing.T) {
 	tc := []struct {
-		label  string
-		data   []pair
-		expect bool
+		label   string
+		data    []pair
+		expect  bool
+		echoAck uint64
 	}{
-		{"find two states", []pair{{1, 49}, {2, 43}, {3, 52}}, true},
-		{"too quick to find the latest state", []pair{{1, 9}, {2, 13}, {3, 12}}, false},
+		{
+			"find two states",
+			[]pair{{1, 49}, {2, 43}, {3, 52}},
+			true, 2,
+		},
+		{
+			"too quick to find the latest state",
+			[]pair{{1, 27}, {2, 13}, {3, 12}},
+			false, 0,
+		},
 	}
 
 	c, _ := NewComplete(8, 4, 4)
 	now := time.Now().UnixMilli()
 
 	for _, v := range tc {
-		// reset history
-		c.inputHistory = make([]pair, 0)
-		c.echoAck = 0
+		t.Run(v.label, func(t *testing.T) {
+			// reset history
+			c.inputHistory = make([]pair, 0)
+			c.echoAck = 0
 
-		// register the frame number and time
-		var ts int64 = 0
-		for _, p := range v.data {
+			// register the frame number and time
+			var ts int64 = 0
+			for _, p := range v.data {
 
-			ts += p.timestamp
-			// note: the timestamp is delta value in ms.
-			c.RegisterInputFrame(p.frameNum, now+ts)
-			// fmt.Printf("#test setEchoAck timestamp=%d, ts=%d\n", p.timestamp, ts)
-		}
+				ts += p.timestamp
+				// note: the timestamp is delta value in ms.
+				c.RegisterInputFrame(p.frameNum, now+ts)
+				// fmt.Printf("#test setEchoAck timestamp=%d, ts=%d\n", p.timestamp, ts)
+			}
 
-		// fmt.Printf("#test setEchoAck inputHistory = %v\n", c.inputHistory)
+			// fmt.Printf("#test setEchoAck inputHistory = %v\n", c.inputHistory)
 
-		got := c.SetEchoAck(now + ts)
-		// fmt.Printf("#test setEchoAck inputHistory = %v\n", c.inputHistory)
-		if v.expect != got {
-			t.Errorf("%q expect %t, got %t\n", v.label, v.expect, got)
-		}
+			got := c.SetEchoAck(now + ts)
+			// fmt.Printf("#test setEchoAck inputHistory = %v, echoAck=%d, now=%d\n",
+			// 	c.inputHistory, c.echoAck, now+ts)
+			if v.expect != got {
+				t.Errorf("%q expect return=%t, got %t\n", v.label, v.expect, got)
+			}
+			if v.echoAck != c.GetEchoAck() {
+				t.Errorf("%q expect echoAck=%d, got %d\n", v.label, v.echoAck, c.GetEchoAck())
+			}
+		})
 	}
 }
 
