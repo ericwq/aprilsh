@@ -953,7 +953,8 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 	// go through prediction cells
 	// TODO: use in-place slice remove
 	// https://josh-weston.medium.com/golang-in-place-slice-operations-5607fd90217
-	overlays := make([]conditionalOverlayRow, 0, len(pe.overlays))
+	// overlays := make([]conditionalOverlayRow, 0, len(pe.overlays))
+	overlays := pe.overlays[:0]
 	for i := 0; i < len(pe.overlays); i++ {
 		if pe.overlays[i].rowNum < 0 || pe.overlays[i].rowNum >= emu.GetHeight() {
 			// skip/erase this row if it's out of scope.
