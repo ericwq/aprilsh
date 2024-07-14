@@ -333,6 +333,8 @@ func (coc *conditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, 
 			return Correct
 		}
 		return CorrectNoCredit
+	} else {
+		util.Logger.Trace("conditionalOverlayCell", "found", false, "current", current, "replacement", coc.replacement)
 	}
 
 	return IncorrectOrExpired
@@ -962,15 +964,15 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 			cell := &(pe.overlays[i].overlayCells[j])
 			v := cell.getValidity(emu, pe.overlays[i].rowNum, pe.localFrameLateAcked)
 
-			// actualCell := emu.GetCell(pe.overlays[i].rowNum, j)
+			actualCell := emu.GetCell(pe.overlays[i].rowNum, j)
 
 			switch v {
 			case IncorrectOrExpired:
-				// util.Logger.Trace("prediction message", "row", pe.overlays[i].rowNum, "col", j,
-				// 	"validity", "IncorrectOrExpired",
-				// 	"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch,
-				// 	"actualCell", actualCell,
-				// 	"from", "cull")
+				util.Logger.Trace("prediction message", "row", pe.overlays[i].rowNum, "col", j,
+					"validity", "IncorrectOrExpired",
+					"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch,
+					"actualCell", actualCell,
+					"from", "cull")
 
 				if cell.tentative(pe.confirmedEpoch) {
 					/*
@@ -1018,9 +1020,9 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 				   }
 				*/
 
-				// util.Logger.Trace("prediction message", "row", pe.overlays[i].rowNum, "col", j, "validity", "Correct",
-				// 	"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch,
-				// 	"from", "cull")
+				util.Logger.Trace("prediction message", "row", pe.overlays[i].rowNum, "col", j, "validity", "Correct",
+					"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch,
+					"from", "cull")
 
 				if cell.tentative(pe.confirmedEpoch) {
 					pe.confirmedEpoch = cell.tentativeUntilEpoch

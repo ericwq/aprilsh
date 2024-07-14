@@ -1652,6 +1652,7 @@ mainLoop:
 			timeout = min(timeout, int(networkSleep))
 		}
 
+		// TODO: different implementation from select/read mode
 		now = time.Now().UnixMilli()
 		p := server.GetLatestRemoteState()
 		timeSinceRemoteState = now - p.GetTimestamp()

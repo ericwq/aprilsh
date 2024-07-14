@@ -85,7 +85,7 @@ func (c *Complete) Act(str string) string {
 	_, diff := c.terminal.HandleStream(str)
 	c.diffBuf.WriteString(diff)
 
-	// util.Log.Debug("Act","diff", c.diffBuf.String())
+	// util.Logger.Debug("Act", "input", str, "diff", diff, "diffBuf", c.diffBuf.String())
 	return c.terminal.ReadOctetsToHost()
 }
 
