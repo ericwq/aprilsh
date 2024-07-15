@@ -270,6 +270,11 @@ func (coc *conditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 	// if the terminal cell is different from the prediction cell, replace it with the prediction.
 	// add underline if flag is true.
 	if emu.GetCell(row, coc.col) != coc.replacement {
+
+		util.Logger.Trace("conditionalOverlayCell", "row", row, "col", coc.col,
+			"cell", emu.GetCell(row, coc.col),
+			"apply", coc.replacement)
+
 		(*emu.GetCellPtr(row, coc.col)) = coc.replacement
 		if flag {
 			emu.GetCellPtr(row, coc.col).SetUnderline(true)
@@ -772,11 +777,17 @@ func (pe *PredictionEngine) SetPredictOverwrite(overwrite bool) {
 // checks displayPreference mode to determine whether we should apply predictions.
 // if yes, move the cursor, show the cell prediction in terminal.
 func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
-	if pe.displayPreference == Never || (!pe.srttTrigger && pe.glitchTrigger <= 0 &&
+	util.Logger.Trace("PredictionEngine", "apply", "check",
+		"srttTrigger", pe.srttTrigger, "glitchTrigger", pe.glitchTrigger,
+		"displayPreference", pe.displayPreference)
+
+	if pe.displayPreference == Never || (!pe.srttTrigger && pe.glitchTrigger == 0 &&
 		pe.displayPreference != Always && pe.displayPreference != Experimental) {
+		util.Logger.Trace("PredictionEngine", "apply", "skip")
 		return
 	}
 
+	util.Logger.Trace("PredictionEngine", "apply", "true")
 	for i := range pe.cursors {
 		pe.cursors[i].apply(emu, pe.confirmedEpoch)
 	}
