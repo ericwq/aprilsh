@@ -115,10 +115,14 @@ func (c *Complete) GetEchoAck() uint64 {
 
 // shrink input history according to timestamp. return true if newestEchoAck changed.
 // update echoAck if find the newest state.
-func (c *Complete) SetEchoAck(now int64) (ret bool) {
+func (c *Complete) SetEchoAck(now int64, sentInterval uint) (ret bool) {
 	var newestEchoAck uint64 = 0
+	var st int64 = ECHO_TIMEOUT
+	if sentInterval < ECHO_TIMEOUT {
+		st = int64(sentInterval)
+	}
 	for _, v := range c.inputHistory {
-		if v.timestamp <= now-ECHO_TIMEOUT {
+		if v.timestamp <= now-st {
 			newestEchoAck = v.frameNum
 			// util.Logger.Debug("SetEchoAck", "frameNum", v.frameNum, "timestamp", v.timestamp%10000)
 		}
@@ -139,7 +143,8 @@ func (c *Complete) SetEchoAck(now int64) (ret bool) {
 		ret = true
 	}
 
-	// util.Logger.Debug("SetEchoAck", "newestEchoAck", newestEchoAck, "return", ret, "inputHistory", b)
+	util.Logger.Debug("SetEchoAck", "newestEchoAck", newestEchoAck, "return", ret,
+		"now", now, "inputHistory", b)
 
 	c.echoAck = newestEchoAck
 	return
