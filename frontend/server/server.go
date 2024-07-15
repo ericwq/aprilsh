@@ -1652,10 +1652,6 @@ mainLoop:
 			timeout = min(timeout, int(networkSleep))
 		}
 
-		// TODO: different implementation from select/read mode
-		now = time.Now().UnixMilli()
-		p := server.GetLatestRemoteState()
-		timeSinceRemoteState = now - p.GetTimestamp()
 		terminalToHost.Reset()
 
 		util.Logger.Log(context.Background(), util.LevelTrace, "mainLoop", "port", server.GetServerPort(),
@@ -1663,19 +1659,30 @@ mainLoop:
 		timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
 		select {
 		case <-timer.C:
+			now = time.Now().UnixMilli()
+			p := server.GetLatestRemoteState()
+			timeSinceRemoteState = now - p.GetTimestamp()
+
 			util.Logger.Log(context.Background(), util.LevelTrace, "mainLoop", "timeout", timeout,
 				"complete", complete.WaitTime(now), "networkSleep", networkSleep)
 		case s := <-sigChan:
 			signals.Handler(s)
+			now = time.Now().UnixMilli()
+			p := server.GetLatestRemoteState()
+			timeSinceRemoteState = now - p.GetTimestamp()
+
 		case socketMsg := <-networkChan: // packet received from the network
 			if socketMsg.Err != nil {
 				// TODO handle "use of closed network connection" error?
 				util.Logger.Warn("read from network", "error", socketMsg.Err)
 				continue mainLoop
 			}
+			now = time.Now().UnixMilli()
+			p := server.GetLatestRemoteState()
+			timeSinceRemoteState = now - p.GetTimestamp()
+
 			server.ProcessPayload(socketMsg.Data)
 			p = server.GetLatestRemoteState()
-			timeSinceRemoteState = now - p.GetTimestamp()
 
 			// is new user input available for the terminal?
 			if server.GetRemoteStateNum() != lastRemoteNum {
@@ -1780,6 +1787,10 @@ mainLoop:
 				}
 			}
 		case remains := <-largeFeed:
+			now = time.Now().UnixMilli()
+			p := server.GetLatestRemoteState()
+			timeSinceRemoteState = now - p.GetTimestamp()
+
 			if !server.ShutdownInProgress() {
 				out := complete.ActLarge(remains, largeFeed)
 				terminalToHost.WriteString(out)
@@ -1790,6 +1801,10 @@ mainLoop:
 				server.SetCurrentState(complete)
 			}
 		case masterMsg := <-fileChan:
+			now = time.Now().UnixMilli()
+			p := server.GetLatestRemoteState()
+			timeSinceRemoteState = now - p.GetTimestamp()
+
 			// input from the host needs to be fed to the terminal
 			if !server.ShutdownInProgress() {
 				// If the pty slave is closed, reading from the master can fail with
@@ -1888,7 +1903,7 @@ mainLoop:
 			}
 		}
 
-		if complete.SetEchoAck(now) && !server.ShutdownInProgress() {
+		if complete.SetEchoAck(now, server.SentInterval()) && !server.ShutdownInProgress() {
 			// update client with new echo ack
 			server.SetCurrentState(complete)
 		}
