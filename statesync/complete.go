@@ -116,7 +116,7 @@ func (c *Complete) GetEchoAck() uint64 {
 // shrink input history according to timestamp. return true if newestEchoAck changed.
 // update echoAck if find the newest state.
 func (c *Complete) SetEchoAck(now int64, inputEchoDone bool) (ret bool) {
-	var newestEchoAck uint64 = 0
+	newestEchoAck := c.echoAck
 	var st int64 = ECHO_TIMEOUT
 	if inputEchoDone {
 		st = 0
