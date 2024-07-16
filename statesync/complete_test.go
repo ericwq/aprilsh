@@ -98,11 +98,11 @@ func TestApplyString_Fail(t *testing.T) {
 
 func TestCompleteSetEchoAck(t *testing.T) {
 	tc := []struct {
-		label        string
-		data         []pair
-		echoAck      uint64
-		expect       bool
-		inputResonse bool
+		label         string
+		data          []pair
+		echoAck       uint64
+		expect        bool
+		inputEchoDone bool
 	}{
 		{
 			"slow send interval",
@@ -137,7 +137,7 @@ func TestCompleteSetEchoAck(t *testing.T) {
 
 			// fmt.Printf("#test setEchoAck inputHistory = %v\n", c.inputHistory)
 
-			got := c.SetEchoAck(now+ts, v.inputResonse)
+			got := c.SetEchoAck(now+ts, v.inputEchoDone)
 			// fmt.Printf("#test setEchoAck inputHistory = %v, echoAck=%d, now=%d\n",
 			// 	c.inputHistory, c.echoAck, now+ts)
 			if v.expect != got {
