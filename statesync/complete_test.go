@@ -100,19 +100,19 @@ func TestCompleteSetEchoAck(t *testing.T) {
 	tc := []struct {
 		label        string
 		data         []pair
-		expect       bool
 		echoAck      uint64
-		sentInterval uint
+		expect       bool
+		inputResonse bool
 	}{
 		{
 			"slow send interval",
 			[]pair{{1, 49}, {2, 43}, {3, 52}},
-			true, 2, 51,
+			2, true, false,
 		},
 		{
 			"quick send interval",
 			[]pair{{1, 27}, {2, 13}, {3, 12}},
-			true, 2, 9,
+			3, true, true,
 		},
 	}
 
@@ -137,7 +137,7 @@ func TestCompleteSetEchoAck(t *testing.T) {
 
 			// fmt.Printf("#test setEchoAck inputHistory = %v\n", c.inputHistory)
 
-			got := c.SetEchoAck(now+ts, v.sentInterval)
+			got := c.SetEchoAck(now+ts, v.inputResonse)
 			// fmt.Printf("#test setEchoAck inputHistory = %v, echoAck=%d, now=%d\n",
 			// 	c.inputHistory, c.echoAck, now+ts)
 			if v.expect != got {
