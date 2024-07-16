@@ -777,17 +777,17 @@ func (pe *PredictionEngine) SetPredictOverwrite(overwrite bool) {
 // checks displayPreference mode to determine whether we should apply predictions.
 // if yes, move the cursor, show the cell prediction in terminal.
 func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
-	util.Logger.Trace("PredictionEngine", "apply", "check",
+	util.Logger.Trace("prediction message", "from", "apply",
 		"srttTrigger", pe.srttTrigger, "glitchTrigger", pe.glitchTrigger,
 		"displayPreference", pe.displayPreference)
 
 	if pe.displayPreference == Never || (!pe.srttTrigger && pe.glitchTrigger == 0 &&
 		pe.displayPreference != Always && pe.displayPreference != Experimental) {
-		util.Logger.Trace("PredictionEngine", "apply", "skip")
+		util.Logger.Trace("prediction message", "from", "apply", "mark", "skip")
 		return
 	}
 
-	util.Logger.Trace("PredictionEngine", "apply", "true")
+	util.Logger.Trace("prediction message", "from", "apply", "mark", "apply")
 	for i := range pe.cursors {
 		pe.cursors[i].apply(emu, pe.confirmedEpoch)
 	}
@@ -816,7 +816,7 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune, p
 		pe.predictionEpoch = pe.confirmedEpoch
 	}
 
-	util.Logger.Trace("prediction message", "predictionEpoch", pe.predictionEpoch, "from", "NewUserInput.start")
+	util.Logger.Trace("prediction message", "from", "NewUserInput.start", "predictionEpoch", pe.predictionEpoch)
 	pe.cull(emu)
 
 	// add ptime for test
@@ -897,8 +897,8 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune, p
 		}
 	}
 
-	util.Logger.Trace("prediction message", "predictionEpoch", pe.predictionEpoch,
-		"overlays", len(pe.overlays), "from", "NewUserInput.end")
+	util.Logger.Trace("prediction message", "from", "NewUserInput.end",
+		"predictionEpoch", pe.predictionEpoch, "overlays", len(pe.overlays))
 }
 
 /*
@@ -919,8 +919,9 @@ check validity of prediction cursor and perform action accordingly:
 - remove any prediction cursor, except for Pending validity.
 */
 func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
-	util.Logger.Trace("prediction message", "predictionEpoch", pe.predictionEpoch,
-		"confirmedEpoch", pe.confirmedEpoch, "overlays", len(pe.overlays), "from", "cull")
+	util.Logger.Trace("prediction message", "from", "cull",
+		"predictionEpoch", pe.predictionEpoch, "confirmedEpoch", pe.confirmedEpoch,
+		"overlays", len(pe.overlays))
 
 	if pe.displayPreference == Never {
 		return
@@ -956,10 +957,9 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 		pe.flagging = true
 	}
 
-	util.Logger.Trace("prediction message", "predictionEpoch", pe.predictionEpoch,
-		"confirmedEpoch", pe.confirmedEpoch, "overlays", len(pe.overlays),
-		"localFrameLateAcked", pe.localFrameLateAcked,
-		"from", "cull")
+	util.Logger.Trace("prediction message", "from", "cull",
+		"predictionEpoch", pe.predictionEpoch, "confirmedEpoch", pe.confirmedEpoch, "overlays", len(pe.overlays),
+		"sendInterval", pe.sendInterval, "localFrameLateAcked", pe.localFrameLateAcked)
 
 	// go through prediction cells
 	// TODO: use in-place slice remove
@@ -980,11 +980,10 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 
 			switch v {
 			case IncorrectOrExpired:
-				util.Logger.Trace("prediction message", "row", pe.overlays[i].rowNum, "col", j,
+				util.Logger.Trace("prediction message", "from", "cull", "row", pe.overlays[i].rowNum, "col", j,
 					"validity", "IncorrectOrExpired",
 					"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch,
-					"actualCell", actualCell,
-					"from", "cull")
+					"actualCell", actualCell)
 
 				if cell.tentative(pe.confirmedEpoch) {
 					/*
@@ -1032,9 +1031,8 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 				   }
 				*/
 
-				util.Logger.Trace("prediction message", "row", pe.overlays[i].rowNum, "col", j, "validity", "Correct",
-					"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch,
-					"from", "cull")
+				util.Logger.Trace("prediction message", "from", "cull", "row", pe.overlays[i].rowNum, "col", j,
+					"validity", "Correct", "tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch)
 
 				if cell.tentative(pe.confirmedEpoch) {
 					pe.confirmedEpoch = cell.tentativeUntilEpoch
@@ -1170,8 +1168,8 @@ func (pe *PredictionEngine) waitTime() int {
 func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64, chs ...rune) {
 	w := uniseg.StringWidth(string(chs))
 	pe.initCursor(emu)
-	util.Logger.Trace("prediction message", "row", pe.cursor().row, "col", pe.cursor().col,
-		"from", "handleUserGrapheme.initCursor")
+	util.Logger.Trace("prediction message", "from", "handleUserGrapheme.initCursor",
+		"row", pe.cursor().row, "col", pe.cursor().col)
 
 	if len(chs) == 1 && chs[0] == '\x7f' { // backspace
 		theRow := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
@@ -1372,10 +1370,10 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 			cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, pe.cursor().col))
 		}
 
-		util.Logger.Trace("prediction message", "row", pe.cursor().row, "col", pe.cursor().col,
-			"cell", cell, "from", "handleUserGrapheme")
-		util.Logger.Trace("prediction message", "row", pe.cursor().row, "col", pe.cursor().col,
-			"overlay", cell.conditionalOverlay.String(), "from", "handleUserGrapheme")
+		util.Logger.Trace("prediction message", "from", "handleUserGrapheme", "row", pe.cursor().row, "col",
+			pe.cursor().col, "cell", cell)
+		util.Logger.Trace("prediction message", "from", "handleUserGrapheme", "row", pe.cursor().row, "col",
+			pe.cursor().col, "overlay", cell.conditionalOverlay.String())
 
 		pe.cursor().expire(pe.localFrameSent+1, now)
 
@@ -1388,8 +1386,8 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 			// util.Logger.Trace("handleUserGrapheme", "epoch", pe.predictionEpoch, "edge", "cursor")
 		}
 
-		util.Logger.Trace("prediction message", "row", pe.cursor().row, "col", pe.cursor().col,
-			"cursor", pe.cursor(), "from", "handleUserGrapheme")
+		util.Logger.Trace("prediction message", "from", "handleUserGrapheme", "row", pe.cursor().row, "col",
+			pe.cursor().col, "cursor", pe.cursor())
 	}
 }
 
@@ -1443,8 +1441,8 @@ func (om *OverlayManager) WaitTime() int {
 }
 
 func (om *OverlayManager) Apply(emu *terminal.Emulator) {
-	util.Logger.Trace("prediction message",
-		"predictionEpoch", om.GetPredictionEngine().predictionEpoch, "from", "OverlayManager.Apply")
+	util.Logger.Trace("prediction message", "from", "OverlayManager.Apply",
+		"predictionEpoch", om.GetPredictionEngine().predictionEpoch)
 	om.predictions.cull(emu)
 	om.predictions.apply(emu)
 
