@@ -448,7 +448,7 @@ func (ne *NotificationEngine) apply(emu *terminal.Emulator) {
 	rend.SetForegroundColor(7) // 37
 	rend.SetBackgroundColor(4) // 44
 	notificationBar.SetRenditions(*rend)
-	notificationBar.SetContents([]rune{' '}) // TODO: use append?
+	notificationBar.SetContents([]rune{' '})
 
 	for i := 0; i < emu.GetWidth(); i++ {
 		emu.GetCellPtr(0, i).Reset2(*notificationBar)
@@ -870,7 +870,7 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune, p
 			}
 		case terminal.CSI_CUB: // left arrow
 			pe.initCursor(emu)
-			if pe.cursor().col > 0 { // TODO: consider the left right margin.
+			if pe.cursor().col > 0 {
 				util.Logger.Trace("NewUserInput", "CSI_CUB", "before", "column", pe.cursor().col)
 
 				row := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
@@ -892,7 +892,7 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune, p
 				util.Logger.Trace("NewUserInput", "CSI_CUB", "after", "column", pe.cursor().col)
 			}
 		default:
-			// TODO: we can add support for more control sequences to improve the usability of prediction engine.
+			// we can add support for more control sequences to improve the usability of prediction engine.
 			pe.becomeTentative()
 		}
 	}
@@ -962,9 +962,6 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 		"sendInterval", pe.sendInterval, "localFrameLateAcked", pe.localFrameLateAcked)
 
 	// go through prediction cells
-	// TODO: use in-place slice remove
-	// https://josh-weston.medium.com/golang-in-place-slice-operations-5607fd90217
-	// overlays := make([]conditionalOverlayRow, 0, len(pe.overlays))
 	overlays := pe.overlays[:0]
 	for i := 0; i < len(pe.overlays); i++ {
 		if pe.overlays[i].rowNum < 0 || pe.overlays[i].rowNum >= emu.GetHeight() {
@@ -1061,10 +1058,9 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 				cell.reset()
 			case CorrectNoCredit:
 
-				// util.Logger.Trace("prediction message", "row", pe.overlays[i].rowNum, "col", j,
+				// util.Logger.Trace("prediction message", "from", "cull", "row", pe.overlays[i].rowNum, "col", j,
 				// 	"validity", "CorrectNoCredit",
-				// 	"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch,
-				// 	"from", "cull")
+				//       "tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch)
 
 				cell.reset()
 			case Pending:
@@ -1077,17 +1073,16 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 					pe.glitchTrigger = GLITCH_REPAIR_COUNT // just display
 				}
 
-				// util.Logger.Trace("prediction message", "row", pe.overlays[i].rowNum, "col", j,
+				// util.Logger.Trace("prediction message", "from", "cull", "row", pe.overlays[i].rowNum, "col", j,
 				// 	"validity", "Pending", "gap", gap,
 				// 	"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch,
-				// 	"glitchTrigger", pe.glitchTrigger, "from", "cull")
+				// 	"glitchTrigger", pe.glitchTrigger)
 
 			default:
 
-				// util.Logger.Trace("prediction message", "row", pe.overlays[i].rowNum, "col", j,
+				// util.Logger.Trace("prediction message", "from", "cull", "row", pe.overlays[i].rowNum, "col", j,
 				// 	"validity", "Inactive",
-				// 	"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch,
-				// 	"from", "cull")
+				// 	"tentativeUntilEpoch", cell.tentativeUntilEpoch, "confirmedEpoch", pe.confirmedEpoch)
 
 			}
 		}

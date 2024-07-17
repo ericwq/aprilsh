@@ -106,3 +106,4 @@
 - 2024/Jun/30: fix diagnostics warning for souce; refine APK according to aports review (2nd review).
 - 2024/Jul/01: alpine aports approve aprilsh 0.7.5; thanks, Kevin Daudt.
 - 2024/Jul/15: still working on prediction engine.
+- 2024/Jul/17: overlay: add input echo mechanism to improve server side timeout.
