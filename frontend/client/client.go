@@ -859,7 +859,9 @@ func (sc *STMClient) outputNewFrame() {
 
 	// calculate minimal difference from where we are
 	// util.Log.SetLevel(slog.LevelInfo)
-	// diff := sc.display.NewFrame(!sc.repaintRequested, sc.localFramebuffer, sc.newState)
+	odiff := sc.display.NewFrame(true, sc.localFramebuffer, sc.newState)
+	util.Logger.Debug("outputNewFrame", "odiff", odiff)
+
 	diff := state.GetState().GetDiff()
 	// util.Log.SetLevel(slog.LevelDebug)
 	os.Stdout.WriteString(diff)
@@ -883,7 +885,7 @@ func (sc *STMClient) processNetworkInput(s string) {
 	sc.overlays.GetNotificationEngine().ServerAcked(sc.network.GetSentStateAckedTimestamp())
 
 	sc.overlays.GetPredictionEngine().SetLocalFrameAcked(sc.network.GetSentStateAcked())
-	sc.overlays.GetPredictionEngine().SetSendInterval(sc.network.SentInterval())
+	sc.overlays.GetPredictionEngine().SetSendInterval(sc.network.SentInterval() + 30)
 	state := sc.network.GetLatestRemoteState()
 	lateAcked := state.GetState().GetEchoAck()
 	sc.overlays.GetPredictionEngine().SetLocalFrameLateAcked(lateAcked)
@@ -1022,7 +1024,7 @@ func (sc *STMClient) main() error {
 	eg := errgroup.Group{}
 	// read from network
 	eg.Go(func() error {
-		frontend.ReadFromNetwork(1, networkChan, networkDownChan, sc.network.GetConnection())
+		frontend.ReadFromNetwork(15, networkChan, networkDownChan, sc.network.GetConnection())
 		return nil
 	})
 

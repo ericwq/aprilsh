@@ -271,11 +271,14 @@ func (coc *conditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 	// add underline if flag is true.
 	if emu.GetCell(row, coc.col) != coc.replacement {
 
-		util.Logger.Trace("conditionalOverlayCell", "row", row, "col", coc.col,
-			"cell", emu.GetCell(row, coc.col),
-			"apply", coc.replacement)
+		util.Logger.Trace("prediction message", "from", "conditionalOverlayCell.apply",
+			"row", row, "col", coc.col,
+			"cell", emu.GetCell(row, coc.col), "replacement", coc.replacement)
 
 		(*emu.GetCellPtr(row, coc.col)) = coc.replacement
+		util.Logger.Trace("prediction message", "from", "conditionalOverlayCell.apply",
+			"row", row, "col", coc.col,
+			"cell", emu.GetCell(row, coc.col), "replacement", coc.replacement)
 		if flag {
 			emu.GetCellPtr(row, coc.col).SetUnderline(true)
 		}
