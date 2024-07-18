@@ -420,7 +420,7 @@ func (c *conditionalOverlayRow) apply2(emu *terminal.Emulator, confirmedEpoch in
 	}
 }
 
-type PEDiff struct {
+type predictionDiff struct {
 	cell     terminal.Cell
 	row, col int
 }
@@ -629,7 +629,7 @@ func (ne *NotificationEngine) ClearNetworkError() {
 // predict cursor movement and user input
 type PredictionEngine struct {
 	lastByte              []rune
-	diff                  []PEDiff
+	diff                  []predictionDiff
 	overlays              []conditionalOverlayRow
 	cursors               []conditionalCursorMove
 	parser                terminal.Parser
@@ -879,7 +879,7 @@ func (pe *PredictionEngine) apply2(emu *terminal.Emulator) {
 	for i := range pe.overlays {
 		pe.overlays[i].apply2(emu, pe.confirmedEpoch, pe.flagging,
 			func(row int, col int, cell terminal.Cell) {
-				pe.diff = append(pe.diff, PEDiff{cell: cell, row: row, col: col})
+				pe.diff = append(pe.diff, predictionDiff{cell: cell, row: row, col: col})
 			})
 	}
 }
@@ -1485,8 +1485,11 @@ func (pe *PredictionEngine) GetDiff() string {
 		sb.WriteString(pe.diff[i].cell.String())
 	}
 	util.Logger.Trace("prediction message", "from", "GetDiff", "diff", sb.String())
-	pe.diff = []PEDiff{}
+	pe.diff = []predictionDiff{}
 
+	if sb.Len() > 0 {
+		return sb.String()
+	}
 	return ""
 }
 
