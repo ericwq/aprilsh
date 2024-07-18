@@ -858,15 +858,32 @@ func (sc *STMClient) outputNewFrame() {
 	sc.overlays.Apply(sc.newState)
 
 	// calculate minimal difference from where we are
-	// util.Log.SetLevel(slog.LevelInfo)
-	odiff := sc.display.NewFrame(true, sc.localFramebuffer, sc.newState)
-	util.Logger.Debug("outputNewFrame", "odiff", odiff)
-
-	diff := state.GetState().GetDiff()
-	// util.Log.SetLevel(slog.LevelDebug)
-	os.Stdout.WriteString(diff)
-	if diff != "" {
+	if sc.localFramebuffer == sc.newState {
+		// we have prediction ?
+		overlayDiff := sc.overlays.GetPredictionEngine().GetDiff()
+		if overlayDiff != "" {
+			os.Stdout.WriteString(overlayDiff)
+			util.Logger.Debug("outputNewFrame", "overlayDiff", overlayDiff,
+				"localFramebuffer", fmt.Sprintf("%p", sc.localFramebuffer))
+		}
+	} else {
+		diff := state.GetState().GetDiff()
 		util.Logger.Debug("outputNewFrame", "diff", diff)
+		if diff != "" {
+			os.Stdout.WriteString(diff)
+		}
+		// stateDiff := sc.display.NewFrame(true, sc.localFramebuffer, sc.newState)
+		// util.Logger.Debug("outputNewFrame", "stateDiff", stateDiff,
+		// 	"localFramebuffer", fmt.Sprintf("%p", sc.localFramebuffer),
+		// 	"newState", fmt.Sprintf("%p", sc.newState))
+		// if stateDiff == "" {
+		// } else {
+		// 	diff := state.GetState().GetDiff()
+		// 	util.Logger.Debug("outputNewFrame", "diff", diff)
+		// 	if diff != "" && stateDiff != diff {
+		// 		os.Stdout.WriteString(diff)
+		// 	}
+		// }
 	}
 
 	sc.repaintRequested = false

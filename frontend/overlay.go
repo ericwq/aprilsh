@@ -272,16 +272,62 @@ func (coc *conditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 	if emu.GetCell(row, coc.col) != coc.replacement {
 
 		util.Logger.Trace("prediction message", "from", "conditionalOverlayCell.apply",
-			"row", row, "col", coc.col,
+			"row", row, "col", coc.col, "emu", fmt.Sprintf("%p", emu),
 			"cell", emu.GetCell(row, coc.col), "replacement", coc.replacement)
 
 		(*emu.GetCellPtr(row, coc.col)) = coc.replacement
+
 		util.Logger.Trace("prediction message", "from", "conditionalOverlayCell.apply",
-			"row", row, "col", coc.col,
+			"row", row, "col", coc.col, "emu", fmt.Sprintf("%p", emu),
 			"cell", emu.GetCell(row, coc.col), "replacement", coc.replacement)
+
 		if flag {
 			emu.GetCellPtr(row, coc.col).SetUnderline(true)
 		}
+	}
+}
+
+func (coc *conditionalOverlayCell) apply2(emu *terminal.Emulator, confirmedEpoch int64, row int, flag bool, f diffFunc) {
+	// if specified position is not active OR out of range, do nothing
+	if !coc.active || row >= emu.GetHeight() || coc.col >= emu.GetWidth() {
+		return
+	}
+
+	if coc.tentative(confirmedEpoch) { // need to wait for next epoch
+		return
+	}
+
+	// both prediction cell and terminal cell are blank
+	if coc.replacement.IsBlank() && emu.GetCell(row, coc.col).IsBlank() {
+		flag = false
+	}
+
+	if coc.unknown {
+		// if flag is true and the cell is not the last column, add underline.
+		if flag && coc.col != emu.GetWidth()-1 {
+			emu.GetCellPtr(row, coc.col).SetUnderline(true)
+		}
+		return
+	}
+
+	// if the terminal cell is different from the prediction cell, replace it with the prediction.
+	// add underline if flag is true.
+	if emu.GetCell(row, coc.col) != coc.replacement {
+
+		util.Logger.Trace("prediction message", "from", "conditionalOverlayCell.apply2",
+			"row", row, "col", coc.col, "emu", fmt.Sprintf("%p", emu),
+			"cell", emu.GetCell(row, coc.col), "replacement", coc.replacement)
+
+		(*emu.GetCellPtr(row, coc.col)) = coc.replacement
+
+		util.Logger.Trace("prediction message", "from", "conditionalOverlayCell.apply2",
+			"row", row, "col", coc.col, "emu", fmt.Sprintf("%p", emu),
+			"cell", emu.GetCell(row, coc.col), "replacement", coc.replacement)
+
+		if flag {
+			emu.GetCellPtr(row, coc.col).SetUnderline(true)
+		}
+		f(row, coc.col, emu.GetCell(row, coc.col))
 	}
 }
 
@@ -367,6 +413,19 @@ func (c *conditionalOverlayRow) apply(emu *terminal.Emulator, confirmedEpoch int
 		c.overlayCells[i].apply(emu, confirmedEpoch, c.rowNum, flag)
 	}
 }
+
+func (c *conditionalOverlayRow) apply2(emu *terminal.Emulator, confirmedEpoch int64, flag bool, f diffFunc) {
+	for i := range c.overlayCells {
+		c.overlayCells[i].apply2(emu, confirmedEpoch, c.rowNum, flag, f)
+	}
+}
+
+type PEDiff struct {
+	cell     terminal.Cell
+	row, col int
+}
+
+type diffFunc func(row, col int, cell terminal.Cell)
 
 type NotificationEngine struct {
 	escapeKeyString       string
@@ -570,6 +629,7 @@ func (ne *NotificationEngine) ClearNetworkError() {
 // predict cursor movement and user input
 type PredictionEngine struct {
 	lastByte              []rune
+	diff                  []PEDiff
 	overlays              []conditionalOverlayRow
 	cursors               []conditionalCursorMove
 	parser                terminal.Parser
@@ -800,6 +860,30 @@ func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
 	}
 }
 
+func (pe *PredictionEngine) apply2(emu *terminal.Emulator) {
+	util.Logger.Trace("prediction message", "from", "apply",
+		"srttTrigger", pe.srttTrigger, "glitchTrigger", pe.glitchTrigger,
+		"displayPreference", pe.displayPreference)
+
+	if pe.displayPreference == Never || (!pe.srttTrigger && pe.glitchTrigger == 0 &&
+		pe.displayPreference != Always && pe.displayPreference != Experimental) {
+		util.Logger.Trace("prediction message", "from", "apply", "mark", "skip")
+		return
+	}
+
+	util.Logger.Trace("prediction message", "from", "apply", "mark", "apply")
+	for i := range pe.cursors {
+		pe.cursors[i].apply(emu, pe.confirmedEpoch)
+	}
+
+	for i := range pe.overlays {
+		pe.overlays[i].apply2(emu, pe.confirmedEpoch, pe.flagging,
+			func(row int, col int, cell terminal.Cell) {
+				pe.diff = append(pe.diff, PEDiff{cell: cell, row: row, col: col})
+			})
+	}
+}
+
 /*
 when user input happens, set last sent state number before callling this method,
 this method validate previous predictions (cull), then use new input to prepare for new prediction.
@@ -819,7 +903,9 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune, p
 		pe.predictionEpoch = pe.confirmedEpoch
 	}
 
-	util.Logger.Trace("prediction message", "from", "NewUserInput.start", "predictionEpoch", pe.predictionEpoch)
+	util.Logger.Trace("prediction message", "from", "NewUserInput.start",
+		"emu", fmt.Sprintf("%p", emu),
+		"predictionEpoch", pe.predictionEpoch)
 	pe.cull(emu)
 
 	// add ptime for test
@@ -1389,6 +1475,21 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 	}
 }
 
+func (pe *PredictionEngine) GetDiff() string {
+	if len(pe.diff) == 0 {
+		return ""
+	}
+
+	var sb strings.Builder
+	for i := range pe.diff {
+		sb.WriteString(pe.diff[i].cell.String())
+	}
+	util.Logger.Trace("prediction message", "from", "GetDiff", "diff", sb.String())
+	pe.diff = []PEDiff{}
+
+	return ""
+}
+
 // represent the prediction title prefix.
 type TitleEngine struct {
 	prefix string
@@ -1442,7 +1543,7 @@ func (om *OverlayManager) Apply(emu *terminal.Emulator) {
 	util.Logger.Trace("prediction message", "from", "OverlayManager.Apply",
 		"predictionEpoch", om.GetPredictionEngine().predictionEpoch)
 	om.predictions.cull(emu)
-	om.predictions.apply(emu)
+	om.predictions.apply2(emu)
 
 	om.notifications.adjustMessage()
 	om.notifications.apply(emu)
