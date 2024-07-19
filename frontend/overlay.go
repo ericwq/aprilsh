@@ -1496,7 +1496,6 @@ func (pe *PredictionEngine) IsApplied() bool {
 }
 
 func (pe *PredictionEngine) ClearApplied(v bool) {
-	pe.diff = []appliedDiff{}
 	pe.applied = v
 }
 
