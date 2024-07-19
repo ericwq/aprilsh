@@ -867,11 +867,11 @@ func (pe *PredictionEngine) apply2(emu *terminal.Emulator) {
 
 	if pe.displayPreference == Never || (!pe.srttTrigger && pe.glitchTrigger == 0 &&
 		pe.displayPreference != Always && pe.displayPreference != Experimental) {
-		util.Logger.Trace("prediction message", "from", "apply", "mark", "skip")
+		util.Logger.Trace("prediction message", "from", "apply", "action", "skip")
 		return
 	}
 
-	util.Logger.Trace("prediction message", "from", "apply", "mark", "apply")
+	util.Logger.Trace("prediction message", "from", "apply", "action", "apply")
 	for i := range pe.cursors {
 		pe.cursors[i].apply(emu, pe.confirmedEpoch)
 	}
@@ -1008,10 +1008,6 @@ check validity of prediction cursor and perform action accordingly:
 - remove any prediction cursor, except for Pending validity.
 */
 func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
-	util.Logger.Trace("prediction message", "from", "cull",
-		"predictionEpoch", pe.predictionEpoch, "confirmedEpoch", pe.confirmedEpoch,
-		"overlays", len(pe.overlays))
-
 	if pe.displayPreference == Never {
 		return
 	}
@@ -1210,6 +1206,10 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 		}
 	}
 	pe.cursors = cursors
+
+	util.Logger.Trace("prediction message", "from", "cull",
+		"predictionEpoch", pe.predictionEpoch, "confirmedEpoch", pe.confirmedEpoch,
+		"overlays", len(pe.overlays))
 }
 
 // clear the whole predictions, start new epoch.
