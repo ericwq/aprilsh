@@ -170,6 +170,9 @@ func (ccm *conditionalCursorMove) getValidity(emu *terminal.Emulator, lateAck ui
 		if emu.GetCursorCol() == ccm.col && emu.GetCursorRow() == ccm.row {
 			return Correct
 		} else {
+			util.Logger.Trace("prediction message", "from", "conditionalCursorMove.getValidity",
+				"row", ccm.row, "col", ccm.col,
+				"terminal.row", emu.GetCursorRow(), "terminal.col", emu.GetCursorCol())
 			return IncorrectOrExpired
 		}
 	}
@@ -1192,6 +1195,9 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 			pe.cursors = make([]conditionalCursorMove, 0)
 		} else {
 			pe.Reset()
+			util.Logger.Trace("prediction message", "from", "cull", "cursor", "Reset",
+				"validity", "IncorrectOrExpired", "predictionEpoch", pe.predictionEpoch)
+
 			return
 		}
 	}

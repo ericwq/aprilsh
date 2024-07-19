@@ -899,7 +899,7 @@ func (sc *STMClient) processNetworkInput(s string) {
 	// test predict underline with +40 delay
 	// test slow network with +30 delay
 	// normal with zero delay
-	sc.overlays.GetPredictionEngine().SetSendInterval(sc.network.SentInterval())
+	sc.overlays.GetPredictionEngine().SetSendInterval(sc.network.SentInterval() + 30)
 	state := sc.network.GetLatestRemoteState()
 	lateAcked := state.GetState().GetEchoAck()
 	sc.overlays.GetPredictionEngine().SetLocalFrameLateAcked(lateAcked)
@@ -1042,7 +1042,7 @@ func (sc *STMClient) main() error {
 		// test predict underline with +19 timeout
 		// test slow network with +15 timeout
 		// normal with 1 timeout
-		frontend.ReadFromNetwork(1, networkChan, networkDownChan, sc.network.GetConnection())
+		frontend.ReadFromNetwork(15, networkChan, networkDownChan, sc.network.GetConnection())
 		return nil
 	})
 
