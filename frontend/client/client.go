@@ -856,34 +856,25 @@ func (sc *STMClient) outputNewFrame() {
 	sc.newState = state.GetState().GetEmulator()
 	// apply local overlays
 	sc.overlays.Apply(sc.newState)
+	predictDiff := sc.overlays.GetPredictionEngine().GetApplied()
+	diff := state.GetState().GetDiff()
+
+	util.Logger.Trace("outputNewFrame", "predictDiff", predictDiff,
+		"applied", sc.overlays.GetPredictionEngine().IsApplied())
+	util.Logger.Trace("outputNewFrame", "diff", diff,
+		"localFramebuffer", fmt.Sprintf("%p", sc.localFramebuffer),
+		"newState", fmt.Sprintf("%p", sc.newState))
 
 	// calculate minimal difference from where we are
-	if sc.localFramebuffer == sc.newState {
-		// we have prediction ?
-		overlayDiff := sc.overlays.GetPredictionEngine().GetDiff()
-		if overlayDiff != "" {
-			os.Stdout.WriteString(overlayDiff)
-			util.Logger.Debug("outputNewFrame", "overlayDiff", overlayDiff,
-				"localFramebuffer", fmt.Sprintf("%p", sc.localFramebuffer))
-		}
-	} else {
-		diff := state.GetState().GetDiff()
-		util.Logger.Debug("outputNewFrame", "diff", diff)
-		if diff != "" {
+	if predictDiff != "" {
+		os.Stdout.WriteString(predictDiff)
+		util.Logger.Trace("outputNewFrame", "predictDiff", predictDiff)
+	} else if diff != "" {
+		if !sc.overlays.GetPredictionEngine().IsApplied() {
 			os.Stdout.WriteString(diff)
+			util.Logger.Trace("outputNewFrame", "diff", diff)
 		}
-		// stateDiff := sc.display.NewFrame(true, sc.localFramebuffer, sc.newState)
-		// util.Logger.Debug("outputNewFrame", "stateDiff", stateDiff,
-		// 	"localFramebuffer", fmt.Sprintf("%p", sc.localFramebuffer),
-		// 	"newState", fmt.Sprintf("%p", sc.newState))
-		// if stateDiff == "" {
-		// } else {
-		// 	diff := state.GetState().GetDiff()
-		// 	util.Logger.Debug("outputNewFrame", "diff", diff)
-		// 	if diff != "" && stateDiff != diff {
-		// 		os.Stdout.WriteString(diff)
-		// 	}
-		// }
+		sc.overlays.GetPredictionEngine().ClearApplied(false)
 	}
 
 	sc.repaintRequested = false
@@ -902,6 +893,7 @@ func (sc *STMClient) processNetworkInput(s string) {
 	sc.overlays.GetNotificationEngine().ServerAcked(sc.network.GetSentStateAckedTimestamp())
 
 	sc.overlays.GetPredictionEngine().SetLocalFrameAcked(sc.network.GetSentStateAcked())
+	// TODO: fake slow network, remove this after test, test predict underline with 40
 	sc.overlays.GetPredictionEngine().SetSendInterval(sc.network.SentInterval() + 30)
 	state := sc.network.GetLatestRemoteState()
 	lateAcked := state.GetState().GetEchoAck()
@@ -1041,6 +1033,7 @@ func (sc *STMClient) main() error {
 	eg := errgroup.Group{}
 	// read from network
 	eg.Go(func() error {
+		// TODO: fake slow network, remove this after test, test predict underline with 19
 		frontend.ReadFromNetwork(15, networkChan, networkDownChan, sc.network.GetConnection())
 		return nil
 	})

@@ -314,15 +314,21 @@ func (coc *conditionalOverlayCell) apply2(emu *terminal.Emulator, confirmedEpoch
 	// add underline if flag is true.
 	if emu.GetCell(row, coc.col) != coc.replacement {
 
+		// util.Logger.Trace("prediction message", "from", "conditionalOverlayCell.apply2",
+		// 	"row", row, "col", coc.col, "cell", fmt.Sprintf("%#v", emu.GetCell(row, coc.col)))
+		//
+		// util.Logger.Trace("prediction message", "from", "conditionalOverlayCell.apply2",
+		// 	"row", row, "col", coc.col, "repl", fmt.Sprintf("%#v", coc.replacement))
+
 		util.Logger.Trace("prediction message", "from", "conditionalOverlayCell.apply2",
 			"row", row, "col", coc.col, "emu", fmt.Sprintf("%p", emu),
-			"cell", emu.GetCell(row, coc.col), "replacement", coc.replacement)
+			"cell", emu.GetCell(row, coc.col), "repl", coc.replacement)
 
 		(*emu.GetCellPtr(row, coc.col)) = coc.replacement
 
 		util.Logger.Trace("prediction message", "from", "conditionalOverlayCell.apply2",
 			"row", row, "col", coc.col, "emu", fmt.Sprintf("%p", emu),
-			"cell", emu.GetCell(row, coc.col), "replacement", coc.replacement)
+			"cell", emu.GetCell(row, coc.col), "repl", coc.replacement)
 
 		if flag {
 			emu.GetCellPtr(row, coc.col).SetUnderline(true)
@@ -419,13 +425,6 @@ func (c *conditionalOverlayRow) apply2(emu *terminal.Emulator, confirmedEpoch in
 		c.overlayCells[i].apply2(emu, confirmedEpoch, c.rowNum, flag, f)
 	}
 }
-
-type predictionDiff struct {
-	cell     terminal.Cell
-	row, col int
-}
-
-type diffFunc func(row, col int, cell terminal.Cell)
 
 type NotificationEngine struct {
 	escapeKeyString       string
@@ -629,7 +628,7 @@ func (ne *NotificationEngine) ClearNetworkError() {
 // predict cursor movement and user input
 type PredictionEngine struct {
 	lastByte              []rune
-	diff                  []predictionDiff
+	diff                  []appliedDiff
 	overlays              []conditionalOverlayRow
 	cursors               []conditionalCursorMove
 	parser                terminal.Parser
@@ -647,6 +646,7 @@ type PredictionEngine struct {
 	srttTrigger           bool              // show predictions because of slow round trip time
 	flagging              bool              // whether we are underlining predictions
 	predictOverwrite      bool              // if true, overwrite terminal cell
+	applied               bool
 }
 
 /*
@@ -879,7 +879,7 @@ func (pe *PredictionEngine) apply2(emu *terminal.Emulator) {
 	for i := range pe.overlays {
 		pe.overlays[i].apply2(emu, pe.confirmedEpoch, pe.flagging,
 			func(row int, col int, cell terminal.Cell) {
-				pe.diff = append(pe.diff, predictionDiff{cell: cell, row: row, col: col})
+				pe.diff = append(pe.diff, appliedDiff{cell: cell, row: row, col: col})
 			})
 	}
 }
@@ -1475,7 +1475,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 	}
 }
 
-func (pe *PredictionEngine) GetDiff() string {
+func (pe *PredictionEngine) GetApplied() string {
 	if len(pe.diff) == 0 {
 		return ""
 	}
@@ -1484,14 +1484,28 @@ func (pe *PredictionEngine) GetDiff() string {
 	for i := range pe.diff {
 		sb.WriteString(pe.diff[i].cell.String())
 	}
-	util.Logger.Trace("prediction message", "from", "GetDiff", "diff", sb.String())
-	pe.diff = []predictionDiff{}
+	// util.Logger.Trace("prediction message", "from", "GetDiff", "diff", sb.String())
+	pe.diff = []appliedDiff{}
+	pe.applied = true
 
-	if sb.Len() > 0 {
-		return sb.String()
-	}
-	return ""
+	return sb.String()
 }
+
+func (pe *PredictionEngine) IsApplied() bool {
+	return pe.applied
+}
+
+func (pe *PredictionEngine) ClearApplied(v bool) {
+	pe.diff = []appliedDiff{}
+	pe.applied = v
+}
+
+type appliedDiff struct {
+	cell     terminal.Cell
+	row, col int
+}
+
+type diffFunc func(row, col int, cell terminal.Cell)
 
 // represent the prediction title prefix.
 type TitleEngine struct {
