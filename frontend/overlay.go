@@ -247,50 +247,7 @@ if prediction cell is unknown, add underline if flag is true AND prediction cell
 if terminal cell is different from prediction cell, replace it with the prediction.
 add underline if flag is true.
 */
-func (coc *conditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch int64, row int, flag bool) {
-	// if specified position is not active OR out of range, do nothing
-	if !coc.active || row >= emu.GetHeight() || coc.col >= emu.GetWidth() {
-		return
-	}
-
-	if coc.tentative(confirmedEpoch) { // need to wait for next epoch
-		return
-	}
-
-	// both prediction cell and terminal cell are blank
-	if coc.replacement.IsBlank() && emu.GetCell(row, coc.col).IsBlank() {
-		flag = false
-	}
-
-	if coc.unknown {
-		// if flag is true and the cell is not the last column, add underline.
-		if flag && coc.col != emu.GetWidth()-1 {
-			emu.GetCellPtr(row, coc.col).SetUnderline(true)
-		}
-		return
-	}
-
-	// if the terminal cell is different from the prediction cell, replace it with the prediction.
-	// add underline if flag is true.
-	if emu.GetCell(row, coc.col) != coc.replacement {
-
-		util.Logger.Trace("prediction message", "from", "conditionalOverlayCell.apply",
-			"row", row, "col", coc.col, "emu", fmt.Sprintf("%p", emu),
-			"cell", emu.GetCell(row, coc.col), "replacement", coc.replacement)
-
-		(*emu.GetCellPtr(row, coc.col)) = coc.replacement
-
-		util.Logger.Trace("prediction message", "from", "conditionalOverlayCell.apply",
-			"row", row, "col", coc.col, "emu", fmt.Sprintf("%p", emu),
-			"cell", emu.GetCell(row, coc.col), "replacement", coc.replacement)
-
-		if flag {
-			emu.GetCellPtr(row, coc.col).SetUnderline(true)
-		}
-	}
-}
-
-func (coc *conditionalOverlayCell) apply2(emu *terminal.Emulator, confirmedEpoch int64, row int, flag bool, f diffFunc) {
+func (coc *conditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch int64, row int, flag bool, f diffFunc) {
 	// if specified position is not active OR out of range, do nothing
 	if !coc.active || row >= emu.GetHeight() || coc.col >= emu.GetWidth() {
 		return
@@ -417,15 +374,9 @@ func newConditionalOverlayRow(rowNum int) *conditionalOverlayRow {
 // apply prediction row to terminal:
 //
 // For each prediction cell in the row applies prediction cell to terminal
-func (c *conditionalOverlayRow) apply(emu *terminal.Emulator, confirmedEpoch int64, flag bool) {
+func (c *conditionalOverlayRow) apply(emu *terminal.Emulator, confirmedEpoch int64, flag bool, f diffFunc) {
 	for i := range c.overlayCells {
-		c.overlayCells[i].apply(emu, confirmedEpoch, c.rowNum, flag)
-	}
-}
-
-func (c *conditionalOverlayRow) apply2(emu *terminal.Emulator, confirmedEpoch int64, flag bool, f diffFunc) {
-	for i := range c.overlayCells {
-		c.overlayCells[i].apply2(emu, confirmedEpoch, c.rowNum, flag, f)
+		c.overlayCells[i].apply(emu, confirmedEpoch, c.rowNum, flag, f)
 	}
 }
 
@@ -840,30 +791,10 @@ func (pe *PredictionEngine) SetPredictOverwrite(overwrite bool) {
 	pe.predictOverwrite = overwrite
 }
 
-// checks displayPreference mode to determine whether we should apply predictions.
-// if yes, move the cursor, show the cell prediction in terminal.
+// if there is no slow RTT and no glitch, predictions run in the background,
+// displayPreference mode also determine whether predictions run in the background.
+// if it doesn't run in the background, move the cursor, show the cell prediction in terminal.
 func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
-	util.Logger.Trace("prediction message", "from", "apply",
-		"srttTrigger", pe.srttTrigger, "glitchTrigger", pe.glitchTrigger,
-		"displayPreference", pe.displayPreference)
-
-	if pe.displayPreference == Never || (!pe.srttTrigger && pe.glitchTrigger == 0 &&
-		pe.displayPreference != Always && pe.displayPreference != Experimental) {
-		util.Logger.Trace("prediction message", "from", "apply", "mark", "skip")
-		return
-	}
-
-	util.Logger.Trace("prediction message", "from", "apply", "mark", "apply")
-	for i := range pe.cursors {
-		pe.cursors[i].apply(emu, pe.confirmedEpoch)
-	}
-
-	for i := range pe.overlays {
-		pe.overlays[i].apply(emu, pe.confirmedEpoch, pe.flagging)
-	}
-}
-
-func (pe *PredictionEngine) apply2(emu *terminal.Emulator) {
 	util.Logger.Trace("prediction message", "from", "apply",
 		"srttTrigger", pe.srttTrigger, "glitchTrigger", pe.glitchTrigger,
 		"displayPreference", pe.displayPreference)
@@ -880,7 +811,7 @@ func (pe *PredictionEngine) apply2(emu *terminal.Emulator) {
 	}
 
 	for i := range pe.overlays {
-		pe.overlays[i].apply2(emu, pe.confirmedEpoch, pe.flagging,
+		pe.overlays[i].apply(emu, pe.confirmedEpoch, pe.flagging,
 			func(row int, col int, cell terminal.Cell) {
 				pe.diff = append(pe.diff, appliedDiff{cell: cell, row: row, col: col})
 			})
@@ -1565,7 +1496,7 @@ func (om *OverlayManager) Apply(emu *terminal.Emulator) {
 	util.Logger.Trace("prediction message", "from", "OverlayManager.Apply",
 		"predictionEpoch", om.GetPredictionEngine().predictionEpoch)
 	om.predictions.cull(emu)
-	om.predictions.apply2(emu)
+	om.predictions.apply(emu)
 
 	om.notifications.adjustMessage()
 	om.notifications.apply(emu)

@@ -153,7 +153,7 @@ func TestCellApply(t *testing.T) {
 		}
 
 		// call apply
-		predict.apply(emu, v.confirmedEpoch, v.row, v.flag)
+		predict.apply(emu, v.confirmedEpoch, v.row, v.flag, func(row, col int, cell terminal.Cell) {})
 
 		// validate cell
 		cell := emu.GetCell(v.row, v.col)
