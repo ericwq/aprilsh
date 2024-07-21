@@ -854,8 +854,18 @@ func (sc *STMClient) outputNewFrame() {
 	// fetch target state
 	state := sc.network.GetLatestRemoteState()
 	sc.newState = state.GetState().GetEmulator()
+
+	util.Logger.Trace("outputNewFrame", "before", "Apply",
+		"terminal.cursor.row", sc.newState.GetCursorRow(),
+		"terminal.cursor.col", sc.newState.GetCursorCol())
+
 	// apply local overlays
 	sc.overlays.Apply(sc.newState)
+
+	util.Logger.Trace("outputNewFrame", "after", "Apply",
+		"terminal.cursor.row", sc.newState.GetCursorRow(),
+		"terminal.cursor.col", sc.newState.GetCursorCol())
+
 	predictDiff := sc.overlays.GetPredictionEngine().GetApplied()
 	diff := state.GetState().GetDiff()
 
@@ -868,13 +878,11 @@ func (sc *STMClient) outputNewFrame() {
 	// calculate minimal difference from where we are
 	if predictDiff != "" {
 		os.Stdout.WriteString(predictDiff)
-		util.Logger.Debug("prediction message", "from", "outputNewFrame", "action", "output",
-			"predictDiff", predictDiff)
+		util.Logger.Debug("outputNewFrame", "action", "predict", "predictDiff", predictDiff)
 	} else if diff != "" {
 		if !sc.overlays.GetPredictionEngine().IsApplied() {
 			os.Stdout.WriteString(diff)
-			util.Logger.Debug("outputNewFrame", "action", "output",
-				"diff", diff)
+			util.Logger.Debug("outputNewFrame", "action", "output", "diff", diff)
 		}
 		sc.overlays.GetPredictionEngine().ClearApplied(false)
 	}
