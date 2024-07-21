@@ -140,6 +140,8 @@ func (ccm *conditionalCursorMove) apply(emu *terminal.Emulator, confirmedEpoch i
 	}
 
 	emu.MoveCursor(ccm.row, ccm.col)
+	util.Logger.Trace("prediction message", "from", "conditionalCursorMove.apply",
+		"row", ccm.row, "col", ccm.col, "cursor", "move")
 }
 
 /*
@@ -274,19 +276,19 @@ func (coc *conditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 	// add underline if flag is true.
 	if emu.GetCell(row, coc.col) != coc.replacement {
 
-		// util.Logger.Trace("prediction message", "from", "conditionalOverlayCell.apply2",
+		// util.Logger.Trace("prediction message", "from", "conditionalOverlayCell.apply",
 		// 	"row", row, "col", coc.col, "cell", fmt.Sprintf("%#v", emu.GetCell(row, coc.col)))
 		//
-		// util.Logger.Trace("prediction message", "from", "conditionalOverlayCell.apply2",
+		// util.Logger.Trace("prediction message", "from", "conditionalOverlayCell.apply",
 		// 	"row", row, "col", coc.col, "repl", fmt.Sprintf("%#v", coc.replacement))
 
-		util.Logger.Trace("prediction message", "from", "conditionalOverlayCell.apply2",
+		util.Logger.Trace("prediction message", "from", "conditionalOverlayCell.apply",
 			"row", row, "col", coc.col, "emu", fmt.Sprintf("%p", emu),
 			"cell", emu.GetCell(row, coc.col), "repl", coc.replacement)
 
 		(*emu.GetCellPtr(row, coc.col)) = coc.replacement
 
-		util.Logger.Trace("prediction message", "from", "conditionalOverlayCell.apply2",
+		util.Logger.Trace("prediction message", "from", "conditionalOverlayCell.apply",
 			"row", row, "col", coc.col, "emu", fmt.Sprintf("%p", emu),
 			"cell", emu.GetCell(row, coc.col), "repl", coc.replacement)
 
@@ -806,15 +808,15 @@ func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
 	}
 
 	util.Logger.Trace("prediction message", "from", "apply", "action", "apply")
-	for i := range pe.cursors {
-		pe.cursors[i].apply(emu, pe.confirmedEpoch)
-	}
-
 	for i := range pe.overlays {
 		pe.overlays[i].apply(emu, pe.confirmedEpoch, pe.flagging,
 			func(row int, col int, cell terminal.Cell) {
 				pe.diff = append(pe.diff, appliedDiff{cell: cell, row: row, col: col})
 			})
+	}
+
+	for i := range pe.cursors {
+		pe.cursors[i].apply(emu, pe.confirmedEpoch)
 	}
 }
 
