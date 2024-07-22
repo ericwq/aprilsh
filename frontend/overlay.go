@@ -602,7 +602,7 @@ type PredictionEngine struct {
 	srttTrigger           bool              // show predictions because of slow round trip time
 	flagging              bool              // whether we are underlining predictions
 	predictOverwrite      bool              // if true, overwrite terminal cell
-	applied               bool
+	applied               bool              // if the prediction has been applied
 }
 
 /*
@@ -922,6 +922,7 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune, p
 			// we can add support for more control sequences to improve the usability of prediction engine.
 			pe.becomeTentative()
 		}
+		pe.ClearApplied()
 	}
 
 	util.Logger.Trace("prediction message", "from", "NewUserInput.end",
@@ -1416,7 +1417,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 }
 
 func (pe *PredictionEngine) GetApplied() string {
-	if len(pe.diff) == 0 {
+	if pe.applied || len(pe.diff) == 0 {
 		return ""
 	}
 
@@ -1435,8 +1436,8 @@ func (pe *PredictionEngine) IsApplied() bool {
 	return pe.applied
 }
 
-func (pe *PredictionEngine) ClearApplied(v bool) {
-	pe.applied = v
+func (pe *PredictionEngine) ClearApplied() {
+	pe.applied = false
 }
 
 type appliedDiff struct {

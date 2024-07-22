@@ -878,13 +878,14 @@ func (sc *STMClient) outputNewFrame() {
 	// calculate minimal difference from where we are
 	if predictDiff != "" {
 		os.Stdout.WriteString(predictDiff)
-		util.Logger.Debug("outputNewFrame", "action", "predict", "predictDiff", predictDiff)
+		util.Logger.Debug("outputNewFrame", "action", "predict", "predictDiff", predictDiff,
+			"IsApplied", sc.overlays.GetPredictionEngine().IsApplied())
 	} else if diff != "" {
 		if !sc.overlays.GetPredictionEngine().IsApplied() {
 			os.Stdout.WriteString(diff)
 			util.Logger.Debug("outputNewFrame", "action", "output", "diff", diff)
 		}
-		sc.overlays.GetPredictionEngine().ClearApplied(false)
+		sc.overlays.GetPredictionEngine().ClearApplied()
 	}
 
 	/*
