@@ -181,7 +181,7 @@ Set `GOFLAGS="-tags=utmps" APRILSH_APSHD_PATH=~/.local/bin/apshd` before nvim.
 
 ## Changelog
 
-Ready for early access. The missing part is prediction engine tuning. Check [here](doc/changelog.md) for history detail.
+Ready for early access. Currently working on prediction engine. Check [here](doc/changelog.md) for history detail.
 
 ## License
 

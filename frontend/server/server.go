@@ -7,7 +7,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -61,6 +60,10 @@ const (
 	apshdPath = "APRILSH_APSHD_PATH" // executable server file path for testing
 
 	earlyShutdown = "early-shutdown"
+
+	stateStandby    = 0
+	stateInputReady = 1
+	stateEchoDone   = 2
 )
 
 var usage = `Usage:
@@ -1622,6 +1625,7 @@ func serve(ptmx *os.File, pts *os.File, pw *io.PipeWriter, complete *statesync.C
 
 	childReleased := false
 	largeFeed := make(chan string, 1)
+	inputEcho := stateStandby
 
 mainLoop:
 	for {
@@ -1652,29 +1656,37 @@ mainLoop:
 			timeout = min(timeout, int(networkSleep))
 		}
 
-		now = time.Now().UnixMilli()
-		p := server.GetLatestRemoteState()
-		timeSinceRemoteState = now - p.GetTimestamp()
 		terminalToHost.Reset()
 
-		util.Logger.Log(context.Background(), util.LevelTrace, "mainLoop", "port", server.GetServerPort(),
+		util.Logger.Trace("mainLoop", "port", server.GetServerPort(),
 			"network.WaitTime", w0, "complete.WaitTime", w1, "timeout", timeout)
 		timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
 		select {
 		case <-timer.C:
-			util.Logger.Log(context.Background(), util.LevelTrace, "mainLoop", "timeout", timeout,
+			now = time.Now().UnixMilli()
+			p := server.GetLatestRemoteState()
+			timeSinceRemoteState = now - p.GetTimestamp()
+
+			util.Logger.Trace("mainLoop", "timeout", timeout,
 				"complete", complete.WaitTime(now), "networkSleep", networkSleep)
 		case s := <-sigChan:
 			signals.Handler(s)
+			now = time.Now().UnixMilli()
+			p := server.GetLatestRemoteState()
+			timeSinceRemoteState = now - p.GetTimestamp()
+
 		case socketMsg := <-networkChan: // packet received from the network
 			if socketMsg.Err != nil {
 				// TODO handle "use of closed network connection" error?
 				util.Logger.Warn("read from network", "error", socketMsg.Err)
 				continue mainLoop
 			}
+			now = time.Now().UnixMilli()
+			p := server.GetLatestRemoteState()
+			timeSinceRemoteState = now - p.GetTimestamp()
+
 			server.ProcessPayload(socketMsg.Data)
 			p = server.GetLatestRemoteState()
-			timeSinceRemoteState = now - p.GetTimestamp()
 
 			// is new user input available for the terminal?
 			if server.GetRemoteStateNum() != lastRemoteNum {
@@ -1716,6 +1728,9 @@ mainLoop:
 
 				if terminalToHost.Len() > 0 {
 					util.Logger.Debug("input from remote", "arise", "socket", "data", terminalToHost.String())
+					if inputEcho == stateStandby {
+						inputEcho = stateInputReady
+					}
 				}
 
 				if !us.Empty() {
@@ -1779,16 +1794,25 @@ mainLoop:
 				}
 			}
 		case remains := <-largeFeed:
+			now = time.Now().UnixMilli()
+			p := server.GetLatestRemoteState()
+			timeSinceRemoteState = now - p.GetTimestamp()
+
 			if !server.ShutdownInProgress() {
 				out := complete.ActLarge(remains, largeFeed)
 				terminalToHost.WriteString(out)
 
 				util.Logger.Debug("ouput from host", "arise", "remains", "input", out)
+				inputEcho = stateEchoDone
 
 				// update client with new state of terminal
 				server.SetCurrentState(complete)
 			}
 		case masterMsg := <-fileChan:
+			now = time.Now().UnixMilli()
+			p := server.GetLatestRemoteState()
+			timeSinceRemoteState = now - p.GetTimestamp()
+
 			// input from the host needs to be fed to the terminal
 			if !server.ShutdownInProgress() {
 				// If the pty slave is closed, reading from the master can fail with
@@ -1807,6 +1831,9 @@ mainLoop:
 					terminalToHost.WriteString(out)
 
 					util.Logger.Debug("output from host", "arise", "master", "ouput", masterMsg.Data, "input", out)
+					if inputEcho == stateInputReady {
+						inputEcho = stateEchoDone
+					}
 
 					// update client with new state of terminal
 					server.SetCurrentState(complete)
@@ -1887,9 +1914,13 @@ mainLoop:
 			}
 		}
 
-		if complete.SetEchoAck(now) && !server.ShutdownInProgress() {
+		if complete.SetEchoAck(now, inputEcho == stateEchoDone) && !server.ShutdownInProgress() {
 			// update client with new echo ack
 			server.SetCurrentState(complete)
+		}
+
+		if inputEcho == stateEchoDone {
+			inputEcho = stateStandby
 		}
 
 		// util.Log.Debug("mainLoop","point", 500)
@@ -1899,7 +1930,7 @@ mainLoop:
 		}
 		// util.Log.Debug("mainLoop","point", "d")
 
-		now = time.Now().UnixMilli()
+		// now = time.Now().UnixMilli()
 		if server.GetRemoteStateNum() == 0 && server.ShutdownInProgress() {
 			// abort if no connection over TimeoutIfNoConnect seconds
 

@@ -852,19 +852,51 @@ func (sc *STMClient) outputNewFrame() {
 	}
 
 	// fetch target state
+	// NOTE: clone the state for prediction, otherwise the state will be messed up by prediction
 	state := sc.network.GetLatestRemoteState()
-	sc.newState = state.GetState().GetEmulator()
+	sc.newState = state.GetState().GetEmulator().Clone()
+
+	// util.Logger.Trace("outputNewFrame", "before", "Apply",
+	// 	"state.cursor.row", sc.newState.GetCursorRow(),
+	// 	"state.cursor.col", sc.newState.GetCursorCol())
+
 	// apply local overlays
 	sc.overlays.Apply(sc.newState)
 
-	// calculate minimal difference from where we are
-	// util.Log.SetLevel(slog.LevelInfo)
-	// diff := sc.display.NewFrame(!sc.repaintRequested, sc.localFramebuffer, sc.newState)
+	// util.Logger.Trace("outputNewFrame", "after", "Apply",
+	// 	"state.cursor.row", sc.newState.GetCursorRow(),
+	// 	"state.cursor.col", sc.newState.GetCursorCol())
+
+	// predictDiff := sc.overlays.GetPredictionEngine().GetApplied()
 	diff := state.GetState().GetDiff()
-	// util.Log.SetLevel(slog.LevelDebug)
-	os.Stdout.WriteString(diff)
-	if diff != "" {
-		util.Logger.Debug("outputNewFrame", "diff", diff)
+
+	dispDiff := sc.display.NewFrame(!sc.repaintRequested, sc.localFramebuffer, sc.newState)
+	// util.Logger.Debug("outputNewFrame", "dispDiff", dispDiff)
+
+	// util.Logger.Trace("prediction message", "from", "outputNewFrame", "predictDiff", predictDiff,
+	// 	"diff", diff, "applied", sc.overlays.GetPredictionEngine().IsApplied())
+	// util.Logger.Trace("prediction message", "from", "outputNewFrame",
+	// 	"localFramebuffer", fmt.Sprintf("%p", sc.localFramebuffer),
+	// 	"newState", fmt.Sprintf("%p", sc.newState))
+
+	// calculate minimal difference from where we are
+	/*
+		if predictDiff != "" {
+			os.Stdout.WriteString(predictDiff)
+			util.Logger.Debug("outputNewFrame", "action", "predict", "predictDiff", predictDiff)
+		} else if diff != "" {
+			if !sc.overlays.GetPredictionEngine().IsApplied() {
+				os.Stdout.WriteString(diff)
+				util.Logger.Debug("outputNewFrame", "action", "output", "diff", diff)
+			}
+			sc.overlays.GetPredictionEngine().ClearApplied(false)
+		}
+	*/
+	if diff != "" || dispDiff != "" {
+		util.Logger.Debug("outputNewFrame", "action", "output", "dispDiff", dispDiff, "diff", diff)
+	}
+	if dispDiff != "" {
+		os.Stdout.WriteString(dispDiff)
 	}
 
 	sc.repaintRequested = false
@@ -883,10 +915,15 @@ func (sc *STMClient) processNetworkInput(s string) {
 	sc.overlays.GetNotificationEngine().ServerAcked(sc.network.GetSentStateAckedTimestamp())
 
 	sc.overlays.GetPredictionEngine().SetLocalFrameAcked(sc.network.GetSentStateAcked())
-	sc.overlays.GetPredictionEngine().SetSendInterval(sc.network.SentInterval())
+	// TODO: fake slow network, remove this after test,
+	// test predict underline with +40 delay
+	// test slow network with +30 delay
+	// normal with zero delay
+	sc.overlays.GetPredictionEngine().SetSendInterval(sc.network.SentInterval() + 30)
 	state := sc.network.GetLatestRemoteState()
 	lateAcked := state.GetState().GetEchoAck()
 	sc.overlays.GetPredictionEngine().SetLocalFrameLateAcked(lateAcked)
+	util.Logger.Trace("processNetworkInput", "lateAcked", lateAcked)
 }
 
 func (sc *STMClient) processUserInput(buf string) bool {
@@ -901,7 +938,7 @@ func (sc *STMClient) processUserInput(buf string) bool {
 		sc.overlays.GetPredictionEngine().Reset()
 	}
 
-	util.Logger.Debug("processUserInput", "buf", buf)
+	util.Logger.Debug("processUserInput", "buf", buf, "hex", fmt.Sprintf("% 2x", buf))
 	var input []rune
 	graphemes := uniseg.NewGraphemes(buf)
 	for graphemes.Next() {
@@ -1021,7 +1058,11 @@ func (sc *STMClient) main() error {
 	eg := errgroup.Group{}
 	// read from network
 	eg.Go(func() error {
-		frontend.ReadFromNetwork(1, networkChan, networkDownChan, sc.network.GetConnection())
+		// TODO: fake slow network, remove this after test,
+		// test predict underline with +19 timeout
+		// test slow network with +15 timeout
+		// normal with 1 timeout
+		frontend.ReadFromNetwork(15, networkChan, networkDownChan, sc.network.GetConnection())
 		return nil
 	})
 

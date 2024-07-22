@@ -5,7 +5,6 @@
 package statesync
 
 import (
-	"context"
 	"fmt"
 	"math"
 	"strings"
@@ -86,7 +85,7 @@ func (c *Complete) Act(str string) string {
 	_, diff := c.terminal.HandleStream(str)
 	c.diffBuf.WriteString(diff)
 
-	// util.Log.Debug("Act","diff", c.diffBuf.String())
+	// util.Logger.Debug("Act", "input", str, "diff", diff, "diffBuf", c.diffBuf.String())
 	return c.terminal.ReadOctetsToHost()
 }
 
@@ -116,37 +115,36 @@ func (c *Complete) GetEchoAck() uint64 {
 
 // shrink input history according to timestamp. return true if newestEchoAck changed.
 // update echoAck if find the newest state.
-func (c *Complete) SetEchoAck(now int64) (ret bool) {
-	var newestEchoAck uint64 = 0
+func (c *Complete) SetEchoAck(now int64, inputEchoDone bool) (ret bool) {
+	newestEchoAck := c.echoAck
+	var st int64 = ECHO_TIMEOUT
+	if inputEchoDone {
+		st = 0
+	}
 	for _, v := range c.inputHistory {
-		if v.timestamp <= now-ECHO_TIMEOUT {
+		if v.timestamp <= now-st {
 			newestEchoAck = v.frameNum
+			// util.Logger.Debug("SetEchoAck", "frameNum", v.frameNum, "timestamp", v.timestamp%10000)
 		}
 		// combine with RegisterInputFrame, if there is any user input
-		// the echo ack will send back to client.
-		// util.Log.Debug("SetEchoAck","frameNum", v.frameNum,"timestamp", v.timestamp%10000)
+		// the echo ack will be updated and sent back to client.
 	}
 
-	// filter frame number which is less than newestEchoAck
-	// filter without allocating
-	// This trick uses the fact that a slice shares the same backing array
-	// and capacity as the original, so the storage is reused for the filtered
-	// slice. Of course, the original contents are modified.
+	// only keep frame number which is greate than newestEchoAck
 	b := c.inputHistory[:0]
-	var z []uint64
 	for _, x := range c.inputHistory {
 		if x.frameNum >= newestEchoAck {
 			b = append(b, x)
 		}
-		z = append(z, x.frameNum)
 	}
 	c.inputHistory = b
 
 	if c.echoAck != newestEchoAck {
 		ret = true
-		util.Logger.Log(context.Background(), util.LevelTrace, "SetEchoAck", "newestEchoAck",
-			newestEchoAck, "inputHistory", z, "time", now%10000, "return", ret)
 	}
+
+	util.Logger.Debug("SetEchoAck", "newestEchoAck", newestEchoAck, "return", ret,
+		"now", now, "inputHistory", b)
 
 	c.echoAck = newestEchoAck
 	return
@@ -255,6 +253,8 @@ func (c *Complete) ApplyString(diff string) error {
 			// if terminalToHost != "" {
 			// 	fmt.Printf("warn: terminalToHost=%s\n", terminalToHost)
 			// }
+			// util.Logger.Trace("ApplyString", "after", "apply",
+			// 	"cursor.row", c.terminal.GetCursorRow(), "cursor.col", c.terminal.GetCursorCol())
 		} else if input.Instruction[i].Resize != nil {
 			newSize := terminal.Resize{
 				Height: int(input.Instruction[i].Resize.GetHeight()),

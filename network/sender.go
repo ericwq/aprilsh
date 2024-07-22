@@ -349,7 +349,7 @@ func (ts *TransportSender[T]) makeChaff() string {
 func (ts *TransportSender[T]) tick() error {
 	ts.calculateTimers() // updates assumed receiver state and rationalizes
 
-	// util.Log.Debug("tick","point", 100)
+	// util.Logger.Debug("tick", "point", 100)
 
 	// skip send if there is no peer
 	if !ts.connection.getHasRemoteAddr() {
@@ -365,7 +365,7 @@ func (ts *TransportSender[T]) tick() error {
 		return nil
 	}
 
-	// util.Log.Debug("tick","point", 100,"assumedReceiverState", ts.getAssumedReceiverStateIdx())
+	// util.Logger.Debug("tick", "point", 100, "assumedReceiverState", ts.getAssumedReceiverStateIdx())
 	// Determine if a new diff or empty ack needs to be sent
 	diff := ts.currentState.DiffFrom(ts.assumedReceiverState.state)
 	// util.Log.Debug("tick", "point", 200)
