@@ -852,8 +852,9 @@ func (sc *STMClient) outputNewFrame() {
 	}
 
 	// fetch target state
+	// NOTE: clone the state for prediction, otherwise the state will be messed up by prediction
 	state := sc.network.GetLatestRemoteState()
-	sc.newState = state.GetState().GetEmulator()
+	sc.newState = state.GetState().GetEmulator().Clone()
 
 	// util.Logger.Trace("outputNewFrame", "before", "Apply",
 	// 	"state.cursor.row", sc.newState.GetCursorRow(),
@@ -866,8 +867,11 @@ func (sc *STMClient) outputNewFrame() {
 	// 	"state.cursor.row", sc.newState.GetCursorRow(),
 	// 	"state.cursor.col", sc.newState.GetCursorCol())
 
-	predictDiff := sc.overlays.GetPredictionEngine().GetApplied()
+	// predictDiff := sc.overlays.GetPredictionEngine().GetApplied()
 	diff := state.GetState().GetDiff()
+
+	dispDiff := sc.display.NewFrame(!sc.repaintRequested, sc.localFramebuffer, sc.newState)
+	// util.Logger.Debug("outputNewFrame", "dispDiff", dispDiff)
 
 	// util.Logger.Trace("prediction message", "from", "outputNewFrame", "predictDiff", predictDiff,
 	// 	"diff", diff, "applied", sc.overlays.GetPredictionEngine().IsApplied())
@@ -876,15 +880,23 @@ func (sc *STMClient) outputNewFrame() {
 	// 	"newState", fmt.Sprintf("%p", sc.newState))
 
 	// calculate minimal difference from where we are
-	if predictDiff != "" {
-		os.Stdout.WriteString(predictDiff)
-		util.Logger.Debug("outputNewFrame", "action", "predict", "predictDiff", predictDiff)
-	} else if diff != "" {
-		if !sc.overlays.GetPredictionEngine().IsApplied() {
-			os.Stdout.WriteString(diff)
-			util.Logger.Debug("outputNewFrame", "action", "output", "diff", diff)
+	/*
+		if predictDiff != "" {
+			os.Stdout.WriteString(predictDiff)
+			util.Logger.Debug("outputNewFrame", "action", "predict", "predictDiff", predictDiff)
+		} else if diff != "" {
+			if !sc.overlays.GetPredictionEngine().IsApplied() {
+				os.Stdout.WriteString(diff)
+				util.Logger.Debug("outputNewFrame", "action", "output", "diff", diff)
+			}
+			sc.overlays.GetPredictionEngine().ClearApplied(false)
 		}
-		sc.overlays.GetPredictionEngine().ClearApplied(false)
+	*/
+	if diff != "" || dispDiff != "" {
+		util.Logger.Debug("outputNewFrame", "action", "output", "dispDiff", dispDiff, "diff", diff)
+	}
+	if dispDiff != "" {
+		os.Stdout.WriteString(dispDiff)
 	}
 
 	sc.repaintRequested = false
@@ -926,7 +938,7 @@ func (sc *STMClient) processUserInput(buf string) bool {
 		sc.overlays.GetPredictionEngine().Reset()
 	}
 
-	util.Logger.Debug("processUserInput", "buf", buf)
+	util.Logger.Debug("processUserInput", "buf", buf, "hex", fmt.Sprintf("% 2x", buf))
 	var input []rune
 	graphemes := uniseg.NewGraphemes(buf)
 	for graphemes.Next() {

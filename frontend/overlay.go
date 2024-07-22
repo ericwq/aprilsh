@@ -129,12 +129,8 @@ apply prediction cursor to state:
 
 if prediction cursor is active AND the confirmedEpoch is greater than or equal to cursor epoch,
 move terminal cursor to prediction position, otherwise do nothing.
-
-NOTE: if we change the cursor position of state, for prediction case, the cursor position of response state
-will be changed. so we don't change the cursor position of state.
-or, we should consider use the line based update mode.
 */
-func (ccm *conditionalCursorMove) apply(_ *terminal.Emulator, confirmedEpoch int64) {
+func (ccm *conditionalCursorMove) apply(emu *terminal.Emulator, confirmedEpoch int64) {
 	if !ccm.active { // only apply to active prediction
 		return
 	}
@@ -143,7 +139,7 @@ func (ccm *conditionalCursorMove) apply(_ *terminal.Emulator, confirmedEpoch int
 		return
 	}
 
-	// emu.MoveCursor(ccm.row, ccm.col)
+	emu.MoveCursor(ccm.row, ccm.col)
 	util.Logger.Trace("prediction message", "from", "conditionalCursorMove.apply",
 		"row", ccm.row, "col", ccm.col, "cursor", "move")
 }
@@ -845,7 +841,7 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune, p
 	}
 
 	util.Logger.Trace("prediction message", "from", "NewUserInput.start",
-		"emu", fmt.Sprintf("%p", emu),
+		"state", fmt.Sprintf("%p", emu),
 		"predictionEpoch", pe.predictionEpoch)
 	pe.cull(emu)
 
@@ -1500,6 +1496,7 @@ func (om *OverlayManager) WaitTime() int {
 
 func (om *OverlayManager) Apply(emu *terminal.Emulator) {
 	util.Logger.Trace("prediction message", "from", "OverlayManager.Apply",
+		"state", fmt.Sprintf("%p", emu),
 		"predictionEpoch", om.GetPredictionEngine().predictionEpoch)
 	om.predictions.cull(emu)
 	om.predictions.apply(emu)
