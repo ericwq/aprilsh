@@ -854,10 +854,11 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune, p
 	}
 
 	// translate application-mode cursor control function to ANSI cursor control sequence
-	// TODO: check the Emulator.cursorKeyMode, DECCKM; mabye this is the cause of bug #25.
-	if len(pe.lastByte) == 1 && pe.lastByte[0] == '\x1b' && len(input) == 1 && input[0] == 'O' {
-		input[0] = '['
-	}
+	// cursorKeyMode, DECCKM; fix bug #25.
+	// if len(pe.lastByte) == 1 && pe.lastByte[0] == '\x1b' && len(input) == 1 && input[0] == 'O' {
+	// 	input[0] = '['
+	// }
+
 	pe.lastByte = make([]rune, len(input))
 	copy(pe.lastByte, input)
 	// util.Logger.Trace("NewUserInput", "lastByte", pe.lastByte, "input", input)
