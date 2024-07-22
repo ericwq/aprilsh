@@ -801,7 +801,7 @@ func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
 		"srttTrigger", pe.srttTrigger, "glitchTrigger", pe.glitchTrigger,
 		"displayPreference", pe.displayPreference)
 
-	if pe.displayPreference == Never || (!pe.srttTrigger && pe.glitchTrigger == 0 &&
+	if pe.applied || pe.displayPreference == Never || (!pe.srttTrigger && pe.glitchTrigger == 0 &&
 		pe.displayPreference != Always && pe.displayPreference != Experimental) {
 		util.Logger.Trace("prediction message", "from", "apply", "action", "skip")
 		return
@@ -864,6 +864,7 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune, p
 	// util.Logger.Trace("NewUserInput", "lastByte", pe.lastByte, "input", input)
 
 	// TODO: validate we can handle flag grapheme
+	// Fun 🌈with Flag🇧🇷.s
 	hd := pe.parser.ProcessInput(input...)
 	if hd != nil {
 		switch hd.GetId() {
@@ -922,7 +923,7 @@ func (pe *PredictionEngine) NewUserInput(emu *terminal.Emulator, input []rune, p
 			// we can add support for more control sequences to improve the usability of prediction engine.
 			pe.becomeTentative()
 		}
-		pe.ClearApplied()
+		pe.applied = false
 	}
 
 	util.Logger.Trace("prediction message", "from", "NewUserInput.end",
