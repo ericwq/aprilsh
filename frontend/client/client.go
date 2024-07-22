@@ -359,7 +359,6 @@ func (c *Config) fetchKey() error {
 		Timeout:           time.Duration(3) * time.Second,
 	}
 
-	// TODO understand ssh login session, is that possible to replace the sshd depdends?
 	client, err := ssh.Dial("tcp", sshHost, clientConfig)
 	if err != nil {
 		return err
@@ -915,11 +914,11 @@ func (sc *STMClient) processNetworkInput(s string) {
 	sc.overlays.GetNotificationEngine().ServerAcked(sc.network.GetSentStateAckedTimestamp())
 
 	sc.overlays.GetPredictionEngine().SetLocalFrameAcked(sc.network.GetSentStateAcked())
-	// TODO: fake slow network, remove this after test,
+	// NOTE: fake slow network, remove this after test,
 	// test predict underline with +40 delay
 	// test slow network with +30 delay
 	// normal with zero delay
-	sc.overlays.GetPredictionEngine().SetSendInterval(sc.network.SentInterval() + 30)
+	sc.overlays.GetPredictionEngine().SetSendInterval(sc.network.SentInterval())
 	state := sc.network.GetLatestRemoteState()
 	lateAcked := state.GetState().GetEchoAck()
 	sc.overlays.GetPredictionEngine().SetLocalFrameLateAcked(lateAcked)
@@ -974,7 +973,7 @@ func (sc *STMClient) processUserInput(buf string) bool {
 				//
 				/* actually suspend */
 				// kill(0, SIGSTOP);
-				// TODO check SIGSTOP
+				// TODO: check SIGSTOP
 
 				sc.resume()
 			} else if theByte == rune(sc.escapePassKey) || theByte == rune(sc.escapePassKey2) {
@@ -1058,11 +1057,11 @@ func (sc *STMClient) main() error {
 	eg := errgroup.Group{}
 	// read from network
 	eg.Go(func() error {
-		// TODO: fake slow network, remove this after test,
+		// NOTE: fake slow network, remove this after test,
 		// test predict underline with +19 timeout
 		// test slow network with +15 timeout
 		// normal with 1 timeout
-		frontend.ReadFromNetwork(15, networkChan, networkDownChan, sc.network.GetConnection())
+		frontend.ReadFromNetwork(1, networkChan, networkDownChan, sc.network.GetConnection())
 		return nil
 	})
 
