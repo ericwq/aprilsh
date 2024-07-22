@@ -866,11 +866,8 @@ func (sc *STMClient) outputNewFrame() {
 	// 	"state.cursor.row", sc.newState.GetCursorRow(),
 	// 	"state.cursor.col", sc.newState.GetCursorCol())
 
-	// predictDiff := sc.overlays.GetPredictionEngine().GetApplied()
+	predictDiff := sc.overlays.GetPredictionEngine().GetApplied()
 	diff := state.GetState().GetDiff()
-
-	dispDiff := sc.display.NewFrame(!sc.repaintRequested, sc.localFramebuffer, sc.newState)
-	// util.Logger.Debug("outputNewFrame", "dispDiff", dispDiff)
 
 	// util.Logger.Trace("prediction message", "from", "outputNewFrame", "predictDiff", predictDiff,
 	// 	"diff", diff, "applied", sc.overlays.GetPredictionEngine().IsApplied())
@@ -879,25 +876,27 @@ func (sc *STMClient) outputNewFrame() {
 	// 	"newState", fmt.Sprintf("%p", sc.newState))
 
 	// calculate minimal difference from where we are
-	/*
-		if predictDiff != "" {
-			os.Stdout.WriteString(predictDiff)
-			util.Logger.Debug("outputNewFrame", "action", "predict", "predictDiff", predictDiff)
-		} else if diff != "" {
-			if !sc.overlays.GetPredictionEngine().IsApplied() {
-				os.Stdout.WriteString(diff)
-				util.Logger.Debug("outputNewFrame", "action", "output", "diff", diff)
-			}
-			sc.overlays.GetPredictionEngine().ClearApplied(false)
+	if predictDiff != "" {
+		os.Stdout.WriteString(predictDiff)
+		util.Logger.Debug("outputNewFrame", "action", "predict", "predictDiff", predictDiff)
+	} else if diff != "" {
+		if !sc.overlays.GetPredictionEngine().IsApplied() {
+			os.Stdout.WriteString(diff)
+			util.Logger.Debug("outputNewFrame", "action", "output", "diff", diff)
 		}
-	*/
-	if diff != "" || dispDiff != "" {
-		util.Logger.Debug("outputNewFrame", "action", "output", "dispDiff", dispDiff, "diff", diff)
-	}
-	if dispDiff != "" {
-		os.Stdout.WriteString(dispDiff)
+		sc.overlays.GetPredictionEngine().ClearApplied(false)
 	}
 
+	/*
+		dispDiff := sc.display.NewFrame(!sc.repaintRequested, sc.localFramebuffer, sc.newState)
+		util.Logger.Debug("outputNewFrame", "dispDiff", dispDiff)
+		if diff != "" || dispDiff != "" {
+			util.Logger.Debug("outputNewFrame", "action", "output", "dispDiff", dispDiff, "diff", diff)
+		}
+		if dispDiff != "" {
+			os.Stdout.WriteString(dispDiff)
+		}
+	*/
 	sc.repaintRequested = false
 	sc.localFramebuffer = sc.newState
 }
