@@ -125,12 +125,16 @@ func newConditionalCursorMove(expirationFrame uint64, row int, col int, tentativ
 }
 
 /*
-apply prediction cursor to terminal:
+apply prediction cursor to state:
 
 if prediction cursor is active AND the confirmedEpoch is greater than or equal to cursor epoch,
 move terminal cursor to prediction position, otherwise do nothing.
+
+NOTE: if we change the cursor position of state, for prediction case, the cursor position of response state
+will be changed. so we don't change the cursor position of state.
+or, we should consider use the line based update mode.
 */
-func (ccm *conditionalCursorMove) apply(emu *terminal.Emulator, confirmedEpoch int64) {
+func (ccm *conditionalCursorMove) apply(_ *terminal.Emulator, confirmedEpoch int64) {
 	if !ccm.active { // only apply to active prediction
 		return
 	}
@@ -139,13 +143,13 @@ func (ccm *conditionalCursorMove) apply(emu *terminal.Emulator, confirmedEpoch i
 		return
 	}
 
-	emu.MoveCursor(ccm.row, ccm.col)
+	// emu.MoveCursor(ccm.row, ccm.col)
 	util.Logger.Trace("prediction message", "from", "conditionalCursorMove.apply",
 		"row", ccm.row, "col", ccm.col, "cursor", "move")
 }
 
 /*
-check validity of prediction cursor against terminal cursor:
+check validity of prediction cursor against state cursor:
 
 if the prediction cursor is not active, return Inactive.
 
@@ -174,7 +178,7 @@ func (ccm *conditionalCursorMove) getValidity(emu *terminal.Emulator, lateAck ui
 		} else {
 			util.Logger.Trace("prediction message", "from", "conditionalCursorMove.getValidity",
 				"row", ccm.row, "col", ccm.col,
-				"terminal.row", emu.GetCursorRow(), "terminal.col", emu.GetCursorCol())
+				"state.row", emu.GetCursorRow(), "state.col", emu.GetCursorCol())
 			return IncorrectOrExpired
 		}
 	}
@@ -236,17 +240,17 @@ func (coc *conditionalOverlayCell) String() string {
 }
 
 /*
-apply prediction cell to terminal:
+apply prediction cell to state:
 
 if prediction cell is inactive or out of range, do nothing.
 
 if prediction epoch is greater than confirmedEpoch, do nothing.
 
-if prediction cell and terminal cell are both blank, do nothing.
+if prediction cell and state cell are both blank, do nothing.
 
 if prediction cell is unknown, add underline if flag is true AND prediction cell not the last column.
 
-if terminal cell is different from prediction cell, replace it with the prediction.
+if state cell is different from prediction cell, replace it with the prediction.
 add underline if flag is true.
 */
 func (coc *conditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch int64, row int, flag bool, f diffFunc) {
@@ -272,7 +276,7 @@ func (coc *conditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 		return
 	}
 
-	// if the terminal cell is different from the prediction cell, replace it with the prediction.
+	// if the state cell is different from the prediction cell, replace it with the prediction.
 	// add underline if flag is true.
 	if emu.GetCell(row, coc.col) != coc.replacement {
 
@@ -300,7 +304,7 @@ func (coc *conditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 }
 
 /*
-check validity of prediction cell against terminal cell:
+check validity of prediction cell against state cell:
 
 if prediction cell is inactive, return Inactive.
 
@@ -312,10 +316,10 @@ if prediction cell is unknown, return CorrectNoCredit.
 
 if prediction cell is blank, return CorrectNoCredit.
 
-if terminal cell matches prediction cell: if no history match prediction,
+if state cell matches prediction cell: if no history match prediction,
 return Correct, otherwise return CorrectNoCredit.
 
-if terminal cell doesn't match prediction cell, return IncorrectOrExpired.
+if state cell doesn't match prediction cell, return IncorrectOrExpired.
 */
 func (coc *conditionalOverlayCell) getValidity(emu *terminal.Emulator, row int, lateAck uint64) Validity {
 	if !coc.active {
@@ -373,9 +377,9 @@ func newConditionalOverlayRow(rowNum int) *conditionalOverlayRow {
 	return &row
 }
 
-// apply prediction row to terminal:
+// apply prediction row to state:
 //
-// For each prediction cell in the row applies prediction cell to terminal
+// For each prediction cell in the row applies prediction cell to state
 func (c *conditionalOverlayRow) apply(emu *terminal.Emulator, confirmedEpoch int64, flag bool, f diffFunc) {
 	for i := range c.overlayCells {
 		c.overlayCells[i].apply(emu, confirmedEpoch, c.rowNum, flag, f)
@@ -818,6 +822,7 @@ func (pe *PredictionEngine) apply(emu *terminal.Emulator) {
 	for i := range pe.cursors {
 		pe.cursors[i].apply(emu, pe.confirmedEpoch)
 	}
+	util.Logger.Trace("prediction message", "from", "apply", "cursors", pe.cursors)
 }
 
 /*
@@ -1148,7 +1153,7 @@ func (pe *PredictionEngine) cull(emu *terminal.Emulator) {
 
 	util.Logger.Trace("prediction message", "from", "cull",
 		"predictionEpoch", pe.predictionEpoch, "confirmedEpoch", pe.confirmedEpoch,
-		"overlays", len(pe.overlays))
+		"overlays", len(pe.overlays), "cursors", pe.cursors)
 }
 
 // clear the whole predictions, start new epoch.
@@ -1409,8 +1414,7 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 			// util.Logger.Trace("handleUserGrapheme", "epoch", pe.predictionEpoch, "edge", "cursor")
 		}
 
-		util.Logger.Trace("prediction message", "from", "handleUserGrapheme", "row", pe.cursor().row, "col",
-			pe.cursor().col, "cursor", pe.cursor())
+		util.Logger.Trace("prediction message", "from", "handleUserGrapheme", "cursors", pe.cursors)
 	}
 }
 

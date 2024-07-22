@@ -253,6 +253,8 @@ func (c *Complete) ApplyString(diff string) error {
 			// if terminalToHost != "" {
 			// 	fmt.Printf("warn: terminalToHost=%s\n", terminalToHost)
 			// }
+			// util.Logger.Trace("ApplyString", "after", "apply",
+			// 	"cursor.row", c.terminal.GetCursorRow(), "cursor.col", c.terminal.GetCursorCol())
 		} else if input.Instruction[i].Resize != nil {
 			newSize := terminal.Resize{
 				Height: int(input.Instruction[i].Resize.GetHeight()),

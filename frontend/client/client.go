@@ -855,16 +855,16 @@ func (sc *STMClient) outputNewFrame() {
 	state := sc.network.GetLatestRemoteState()
 	sc.newState = state.GetState().GetEmulator()
 
-	util.Logger.Trace("outputNewFrame", "before", "Apply",
-		"terminal.cursor.row", sc.newState.GetCursorRow(),
-		"terminal.cursor.col", sc.newState.GetCursorCol())
+	// util.Logger.Trace("outputNewFrame", "before", "Apply",
+	// 	"state.cursor.row", sc.newState.GetCursorRow(),
+	// 	"state.cursor.col", sc.newState.GetCursorCol())
 
 	// apply local overlays
 	sc.overlays.Apply(sc.newState)
 
-	util.Logger.Trace("outputNewFrame", "after", "Apply",
-		"terminal.cursor.row", sc.newState.GetCursorRow(),
-		"terminal.cursor.col", sc.newState.GetCursorCol())
+	// util.Logger.Trace("outputNewFrame", "after", "Apply",
+	// 	"state.cursor.row", sc.newState.GetCursorRow(),
+	// 	"state.cursor.col", sc.newState.GetCursorCol())
 
 	predictDiff := sc.overlays.GetPredictionEngine().GetApplied()
 	diff := state.GetState().GetDiff()
