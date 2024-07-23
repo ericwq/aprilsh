@@ -1,7 +1,7 @@
 # Contributor: Wang Qi <ericwq057@qq.com>
 # Maintainer: Wang Qi <ericwq057@qq.com>
 pkgname=aprilsh
-pkgver=0.7.6
+pkgver=0.7.7
 pkgrel=0
 pkgdesc="Remote shell support intermittent or mobile network"
 url="https://github.com/ericwq/aprilsh"
@@ -26,52 +26,52 @@ export GOTMPDIR="${GOTMPDIR:-"$srcdir"}"
 export GOMODCACHE="${GOMODCACHE:-"$srcdir/go"}"
 
 prepare() {
-	default_prepare
+  default_prepare
 
-	protoc --go_out=. -I . ./protobufs/transportInstruction.proto
-	protoc --go_out=. -I . ./protobufs/hostInput.proto
-	protoc --go_out=. -I . ./protobufs/userInput.proto
+  protoc --go_out=. -I . ./protobufs/transportInstruction.proto
+  protoc --go_out=. -I . ./protobufs/hostInput.proto
+  protoc --go_out=. -I . ./protobufs/userInput.proto
 }
 
 build() {
-	_module_name=$(head ./go.mod | grep '^module' | awk '{print $2}')
-	_go_version=$(go version | grep 'version' | awk '{print $3}')
+  _module_name=$(head ./go.mod | grep '^module' | awk '{print $2}')
+  _go_version=$(go version | grep 'version' | awk '{print $3}')
 
-	_date_str=$(date -u "+%Y-%m-%dT%H:%M:%SZ" ${SOURCE_DATE_EPOCH:+-d @$SOURCE_DATE_EPOCH})
-	local ldflags="-s -w \
+  _date_str=$(date -u "+%Y-%m-%dT%H:%M:%SZ" ${SOURCE_DATE_EPOCH:+-d @$SOURCE_DATE_EPOCH})
+  local ldflags="-s -w \
 		-X $_module_name/frontend.BuildTime=$_date_str \
 		-X $_module_name/frontend.GitBranch=HEAD \
 		-X $_module_name/frontend.GitCommit=alpine \
 		-X $_module_name/frontend.GitTag=$pkgver \
 		-X $_module_name/frontend.GoVersion=$_go_version \
 		"
-	go build $_build_tag -ldflags="$ldflags" -o ./bin/apshd ./frontend/server
-	go build -ldflags="$ldflags" -o ./bin/apsh ./frontend/client
+  go build $_build_tag -ldflags="$ldflags" -o ./bin/apshd ./frontend/server
+  go build -ldflags="$ldflags" -o ./bin/apsh ./frontend/client
 }
 
 check() {
-	# shellcheck disable=2046
-	APRILSH_APSHD_PATH="$builddir/bin/apshd" \
-		go test $_build_tag $(go list ./... | grep -Ev '(data|protobufs)')
+  # shellcheck disable=2046
+  APRILSH_APSHD_PATH="$builddir/bin/apshd" \
+    go test $_build_tag $(go list ./... | grep -Ev '(data|protobufs)')
 }
 
 package() {
-	install -Dm755 ./bin/apshd ./bin/apsh -t "$pkgdir/usr/bin"
-	install -Dm644 ./doc/*.md -t "$pkgdir/usr/share/doc/$pkgname/"
-	install -Dm755 "$srcdir"/apshd.initd "$pkgdir"/etc/init.d/apshd
-	install -Dm644 "$srcdir"/apshd.logrotate "$pkgdir"/etc/logrotate.d/apshd
+  install -Dm755 ./bin/apshd ./bin/apsh -t "$pkgdir/usr/bin"
+  install -Dm644 ./doc/*.md -t "$pkgdir/usr/share/doc/$pkgname/"
+  install -Dm755 "$srcdir"/apshd.initd "$pkgdir"/etc/init.d/apshd
+  install -Dm644 "$srcdir"/apshd.logrotate "$pkgdir"/etc/logrotate.d/apshd
 }
 
 client() {
-	pkgdesc="$pkgname client"
-	depends="musl-locales ncurses ncurses-terminfo"
-	amove usr/bin/apsh
+  pkgdesc="$pkgname client"
+  depends="musl-locales ncurses ncurses-terminfo"
+  amove usr/bin/apsh
 }
 
 server() {
-	pkgdesc="$pkgname server"
-	depends="musl-locales utmps ncurses ncurses-terminfo openssh-server"
-	amove usr/bin/apshd
+  pkgdesc="$pkgname server"
+  depends="musl-locales utmps ncurses ncurses-terminfo openssh-server"
+  amove usr/bin/apshd
 }
 
 sha512sums="
