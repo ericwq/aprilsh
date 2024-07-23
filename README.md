@@ -167,6 +167,12 @@ There are also some goals for this project:
 
 The project name `Aprilsh` is derived from `April+sh`. This project started in shanghai April 2022, and it's a remote shell. Use the above command to add musl locales support and utmps support for alpine. Note alpine only support UTF-8 charmap.
 
+## Improvement
+
+- prediction engine use server response frame number if server detect input response, otherwise fixed server timeout will be used as ack number
+- prediction engine allow ANSI cursor control sequence for application (e.g. htop up and down arrow key)
+- prediction engine support chinese character
+
 ## Architecture
 
 ![aprilsh.svg](img/aprilsh.svg)
@@ -181,7 +187,7 @@ Set `GOFLAGS="-tags=utmps" APRILSH_APSHD_PATH=~/.local/bin/apshd` before nvim.
 
 ## Changelog
 
-Ready for early access. Currently working on prediction engine. Check [here](doc/changelog.md) for history detail.
+Ready for early access. Check [here](doc/changelog.md) for history detail.
 
 ## License
 
