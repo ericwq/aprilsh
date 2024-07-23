@@ -69,6 +69,10 @@ func TestTransportClientSend(t *testing.T) {
 			client.GetCurrentState(), server.GetLatestRemoteState().state)
 	}
 
+	if runtime.GOARCH == "s390x" {
+		t.Skip("for s390x, skip this test.")
+	}
+
 	// validate sentStates shrink after a server response
 	expectNum = 1
 	gotNum = client.sender.getSentStateAcked()

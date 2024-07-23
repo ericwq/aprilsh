@@ -41,7 +41,8 @@ func TestOverlay(t *testing.T) {
 
 func TestConditionalCursorMove(t *testing.T) {
 	c := newConditionalCursorMove(1, 14, 2, 3)
-	expect := fmt.Sprintf("{active:false; frame:1, epoch:3, time:%d, row:14, col=2}", math.MaxInt64)
+	pt := math.MaxInt64
+	expect := fmt.Sprintf("{active:false; frame:1, epoch:3, time:%d, row:14, col=2}", pt)
 	got := c.String()
 	if got != expect {
 		t.Errorf("#test expect %s, got %s\n", expect, got)
@@ -50,7 +51,8 @@ func TestConditionalCursorMove(t *testing.T) {
 
 func TestConditionalOverlay(t *testing.T) {
 	c := newConditionalOverlay(1, 2, 1)
-	expect := fmt.Sprintf("{active:false, frame:1, epoch:1, time:%d, col:2}", math.MaxInt64)
+	pt := math.MaxInt64
+	expect := fmt.Sprintf("{active:false, frame:1, epoch:1, time:%d, col:2}", pt)
 	got := c.String()
 	if got != expect {
 		t.Errorf("#test expect \n%s, got \n%s\n", expect, got)
