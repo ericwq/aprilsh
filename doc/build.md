@@ -53,11 +53,11 @@ git checkout master             # switch to master
 git branch -d aprilsh           # delete local branch
 git push origin -d aprilsh      # delete remote branch
 # create new branch and switch to it.
-git branch aprilsh              # create branch
-git checkout aprilsh            # switch to branch
+git branch aprilsh-0.7.x        # create branch
+git checkout aprilsh-0.7.x      # switch to branch
 # switch to branch
 git branch                      # list branches
-git checkout aprilsh            # switch to branch
+git checkout aprilsh-0.7.x      # switch to branch
 git branch                      # list branches
 # set tracking information for branch
 git checkout pe-tuning
@@ -127,11 +127,18 @@ testing/aprilsh: new aport
 https://github.com/ericwq/aprilsh
 Remote shell support intermittent or mobile network
 ```
+upgrade
+```txt
+testing/aprilsh: upgrade to 0.7.x
+
+https://github.com/ericwq/aprilsh
+Remote shell support intermittent or mobile network
+```
 commit the update, push to the remote branch.
 ```sh
 git diff
 git commit -a
-git push origin aprilsh
+git push origin aprilsh-0.7.x
 ```
 ## directory structure of alpine repository
 if you don't keep the directory structure of alpine repository, you will get the following error:
