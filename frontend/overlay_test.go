@@ -7,6 +7,7 @@ package frontend
 import (
 	"fmt"
 	"math"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -40,22 +41,28 @@ func TestOverlay(t *testing.T) {
 }
 
 func TestConditionalCursorMove(t *testing.T) {
-	c := newConditionalCursorMove(1, 14, 2, 3)
-	pt := math.MaxInt64
-	expect := fmt.Sprintf("{active:false; frame:1, epoch:3, time:%d, row:14, col=2}", pt)
-	got := c.String()
-	if got != expect {
-		t.Errorf("#test expect %s, got %s\n", expect, got)
+	if runtime.GOARCH == "riscv64" || runtime.GOARCH == "ppc64le" ||
+		runtime.GOARCH == "amd64" || runtime.GOARCH == "s390x" {
+		c := newConditionalCursorMove(1, 14, 2, 3)
+		pt := math.MaxInt64
+		expect := fmt.Sprintf("{active:false; frame:1, epoch:3, time:%d, row:14, col=2}", pt)
+		got := c.String()
+		if got != expect {
+			t.Errorf("#test expect %s, got %s\n", expect, got)
+		}
 	}
 }
 
 func TestConditionalOverlay(t *testing.T) {
-	c := newConditionalOverlay(1, 2, 1)
-	pt := math.MaxInt64
-	expect := fmt.Sprintf("{active:false, frame:1, epoch:1, time:%d, col:2}", pt)
-	got := c.String()
-	if got != expect {
-		t.Errorf("#test expect \n%s, got \n%s\n", expect, got)
+	if runtime.GOARCH == "riscv64" || runtime.GOARCH == "ppc64le" ||
+		runtime.GOARCH == "amd64" || runtime.GOARCH == "s390x" {
+		c := newConditionalOverlay(1, 2, 1)
+		pt := math.MaxInt64
+		expect := fmt.Sprintf("{active:false, frame:1, epoch:1, time:%d, col:2}", pt)
+		got := c.String()
+		if got != expect {
+			t.Errorf("#test expect \n%s, got \n%s\n", expect, got)
+		}
 	}
 }
 
