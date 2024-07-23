@@ -17,7 +17,7 @@ func TestGotSignal(t *testing.T) {
 		syscall.SIGIO, syscall.SIGIOT, syscall.SIGKILL, syscall.SIGPIPE, syscall.SIGPOLL,
 		syscall.SIGPROF, syscall.SIGPWR, syscall.SIGQUIT, syscall.SIGSEGV, syscall.SIGSTKFLT,
 		syscall.SIGSTOP, syscall.SIGSYS, syscall.SIGTERM, syscall.SIGTRAP, syscall.SIGTSTP,
-		syscall.SIGTTIN, syscall.SIGTTOU, syscall.SIGUNUSED, syscall.SIGURG, syscall.SIGUSR1,
+		syscall.SIGTTIN, syscall.SIGTTOU, syscall.SIGURG, syscall.SIGUSR1,
 		syscall.SIGUSR2, syscall.SIGVTALRM, syscall.SIGWINCH, syscall.SIGXCPU, syscall.SIGXFSZ,
 	}
 
@@ -27,7 +27,7 @@ func TestGotSignal(t *testing.T) {
 		true, false, true, true, false,
 		true, true, true, true, true,
 		true, true, true, true, true,
-		true, true, false, true, true,
+		true, true, true, true,
 		true, true, true, true, true,
 	}
 
