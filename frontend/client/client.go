@@ -882,9 +882,11 @@ func (sc *STMClient) outputNewFrame() {
 	} else if diff != "" {
 		if !sc.overlays.GetPredictionEngine().IsApplied() {
 			os.Stdout.WriteString(diff)
+			util.Logger.Debug("outputNewFrame", "action", "output", "diff", diff)
+		} else {
+			util.Logger.Debug("outputNewFrame", "action", "skip", "diff", diff)
 		}
 		sc.overlays.GetPredictionEngine().ClearApplied()
-		util.Logger.Debug("outputNewFrame", "action", "output", "diff", diff)
 	}
 
 	/*

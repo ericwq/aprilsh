@@ -1199,108 +1199,111 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 		"row", pe.cursor().row, "col", pe.cursor().col)
 
 	if len(chs) == 1 && chs[0] == '\x7f' { // backspace
-		theRow := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
-		if pe.cursor().col > 0 {
+		/*
+			theRow := pe.getOrMakeRow(pe.cursor().row, emu.GetWidth())
+			if pe.cursor().col > 0 {
 
-			// move predict cursor to the previous position
-			prevPredictCell := theRow.overlayCells[pe.cursor().col-1].replacement
-			prevActualCell := emu.GetCell(pe.cursor().row, pe.cursor().col-1)
+				// move predict cursor to the previous position
+				prevPredictCell := theRow.overlayCells[pe.cursor().col-1].replacement
+				prevActualCell := emu.GetCell(pe.cursor().row, pe.cursor().col-1)
 
-			// util.Logger.Trace("handleUserGrapheme", "row", pe.cursor().row, "col", pe.cursor().col,
-			// 	"backspace", true,
-			// 	"prePredictCell", prevPredictCell, "preActualCell", prevActualCell)
+				// util.Logger.Trace("handleUserGrapheme", "row", pe.cursor().row, "col", pe.cursor().col,
+				// 	"backspace", true,
+				// 	"prePredictCell", prevPredictCell, "preActualCell", prevActualCell)
 
-			wideCell := false
-			if prevActualCell.IsDoubleWidthCont() || prevPredictCell.IsDoubleWidthCont() {
-				// check the previous cell width, both predict and emulator need to check
-				wideCell = true
-				if pe.cursor().col-2 <= 0 {
-					// util.Logger.Trace("handleUserGrapheme", "row", pe.cursor().row, "col", pe.cursor().col,
-					// 	"col", 0)
-					pe.cursor().col = 0
+				wideCell := false
+				if prevActualCell.IsDoubleWidthCont() || prevPredictCell.IsDoubleWidthCont() {
+					// check the previous cell width, both predict and emulator need to check
+					wideCell = true
+					if pe.cursor().col-2 <= 0 {
+						// util.Logger.Trace("handleUserGrapheme", "row", pe.cursor().row, "col", pe.cursor().col,
+						// 	"col", 0)
+						pe.cursor().col = 0
+					} else {
+						pe.cursor().col -= 2
+					}
 				} else {
-					pe.cursor().col -= 2
+					pe.cursor().col--
 				}
-			} else {
-				pe.cursor().col--
-			}
-			pe.cursor().expire(pe.localFrameSent+1, now)
+				pe.cursor().expire(pe.localFrameSent+1, now)
 
-			if pe.predictOverwrite {
-				// clear the previous cell
-				cell := &(theRow.overlayCells[pe.cursor().col]) // previous predict cell
-				cell.resetWithOrig()
-				cell.active = true
-				cell.tentativeUntilEpoch = pe.predictionEpoch
-				cell.expire(pe.localFrameSent+1, now)
-
-				origCell := emu.GetCell(emu.GetCursorRow(), emu.GetCursorCol()) // oritinal cursor cell
-				if len(cell.originalContents) == 0 {
-					// avoid adding original cell content several times
-					cell.originalContents = append(cell.originalContents, origCell)
-				}
-				cell.replacement = origCell
-				cell.replacement.Clear()
-				cell.replacement.Append(' ')
-
-				if wideCell { // handle wide cell
-					cell2 := &(theRow.overlayCells[pe.cursor().col+1])
-					cell2.resetWithOrig()
-					cell2.active = true
-					cell2.tentativeUntilEpoch = pe.predictionEpoch
-					cell2.expire(pe.localFrameSent+1, now)
-					cell2.replacement.Clear()
-					cell2.replacement.Append(' ')
-				}
-			} else {
-				// iterate from current col to the right end, for each cell,
-				// replace the current cell with next cell.
-				for i := pe.cursor().col; i < emu.GetWidth(); i++ {
-					cell := &(theRow.overlayCells[i])
-					wideCell := false
-
+				if pe.predictOverwrite {
+					// clear the previous cell
+					cell := &(theRow.overlayCells[pe.cursor().col]) // previous predict cell
 					cell.resetWithOrig()
 					cell.active = true
 					cell.tentativeUntilEpoch = pe.predictionEpoch
 					cell.expire(pe.localFrameSent+1, now)
+
+					origCell := emu.GetCell(emu.GetCursorRow(), emu.GetCursorCol()) // oritinal cursor cell
 					if len(cell.originalContents) == 0 {
 						// avoid adding original cell content several times
-						cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, i))
+						cell.originalContents = append(cell.originalContents, origCell)
 					}
+					cell.replacement = origCell
+					cell.replacement.Clear()
+					cell.replacement.Append(' ')
 
-					if i+2 < emu.GetWidth() {
-						nextCell := &(theRow.overlayCells[i+1])
-						if nextCell.replacement.IsDoubleWidthCont() {
-							nextCell = &(theRow.overlayCells[i+2])
-							wideCell = true
-						}
-						nextCellActual := emu.GetCell(pe.cursor().row, i+1)
-						if nextCellActual.IsDoubleWidthCont() {
-							nextCellActual = emu.GetCell(pe.cursor().row, i+2)
-							wideCell = true
+					if wideCell { // handle wide cell
+						cell2 := &(theRow.overlayCells[pe.cursor().col+1])
+						cell2.resetWithOrig()
+						cell2.active = true
+						cell2.tentativeUntilEpoch = pe.predictionEpoch
+						cell2.expire(pe.localFrameSent+1, now)
+						cell2.replacement.Clear()
+						cell2.replacement.Append(' ')
+					}
+				} else {
+					// iterate from current col to the right end, for each cell,
+					// replace the current cell with next cell.
+					for i := pe.cursor().col; i < emu.GetWidth(); i++ {
+						cell := &(theRow.overlayCells[i])
+						wideCell := false
+
+						cell.resetWithOrig()
+						cell.active = true
+						cell.tentativeUntilEpoch = pe.predictionEpoch
+						cell.expire(pe.localFrameSent+1, now)
+						if len(cell.originalContents) == 0 {
+							// avoid adding original cell content several times
+							cell.originalContents = append(cell.originalContents, emu.GetCell(pe.cursor().row, i))
 						}
 
-						if nextCell.active {
-							if nextCell.unknown {
-								cell.unknown = true
+						if i+2 < emu.GetWidth() {
+							nextCell := &(theRow.overlayCells[i+1])
+							if nextCell.replacement.IsDoubleWidthCont() {
+								nextCell = &(theRow.overlayCells[i+2])
+								wideCell = true
+							}
+							nextCellActual := emu.GetCell(pe.cursor().row, i+1)
+							if nextCellActual.IsDoubleWidthCont() {
+								nextCellActual = emu.GetCell(pe.cursor().row, i+2)
+								wideCell = true
+							}
+
+							if nextCell.active {
+								if nextCell.unknown {
+									cell.unknown = true
+								} else {
+									cell.unknown = false
+									cell.replacement = nextCell.replacement
+								}
 							} else {
 								cell.unknown = false
-								cell.replacement = nextCell.replacement
+								cell.replacement = nextCellActual
 							}
 						} else {
-							cell.unknown = false
-							cell.replacement = nextCellActual
+							cell.unknown = true
 						}
-					} else {
-						cell.unknown = true
-					}
 
-					if wideCell {
-						i++
+						if wideCell {
+							i++
+						}
 					}
 				}
 			}
-		}
+		*/
+		pe.becomeTentative()
 	} else if len(chs) == 1 && chs[0] < 0x20 { // handle non printable control sequence
 		// unknown print
 		pe.becomeTentative()

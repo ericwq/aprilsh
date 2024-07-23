@@ -492,7 +492,7 @@ func printPredictionCell(emu *terminal.Emulator, pe *PredictionEngine, row, col 
 	}
 }
 
-func Test_handleUserGrapheme_Backspace(t *testing.T) {
+func test_handleUserGrapheme_Backspace(t *testing.T) {
 	tc := []struct {
 		label          string
 		base           string
@@ -681,7 +681,7 @@ func Test_handleUserGrapheme_Print(t *testing.T) {
 	}
 }
 
-func TestPrediction_NewUserInput_Backspace_Overwrite(t *testing.T) {
+func testPrediction_NewUserInput_Backspace_Overwrite(t *testing.T) {
 	tc := []struct {
 		label          string
 		base           string // base content
