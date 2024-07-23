@@ -1375,16 +1375,18 @@ func (pe *PredictionEngine) handleUserGrapheme(emu *terminal.Emulator, now int64
 		cell.replacement.SetRenditions(emu.GetRenditions())
 
 		// heuristic: match renditions of character to the left
-		if pe.cursor().col > 0 {
-			prevCell := &(theRow.overlayCells[pe.cursor().col-1])
-			prevCellActual := emu.GetCell(pe.cursor().row, pe.cursor().col-1)
+		/*
+			if pe.cursor().col > 0 {
+				prevCell := &(theRow.overlayCells[pe.cursor().col-1])
+				prevCellActual := emu.GetCell(pe.cursor().row, pe.cursor().col-1)
 
-			if prevCell.active && !prevCell.unknown {
-				cell.replacement.SetRenditions(prevCell.replacement.GetRenditions())
-			} else {
-				cell.replacement.SetRenditions(prevCellActual.GetRenditions())
+				if prevCell.active && !prevCell.unknown {
+					cell.replacement.SetRenditions(prevCell.replacement.GetRenditions())
+				} else {
+					cell.replacement.SetRenditions(prevCellActual.GetRenditions())
+				}
 			}
-		}
+		*/
 
 		// wide rune occupies 2 cells.
 		if w == 2 {
