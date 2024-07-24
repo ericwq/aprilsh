@@ -1002,6 +1002,14 @@ func hdl_csi_dsr(emu *Emulator, cmd int) {
 // CSI Pm m  Character Attributes (SGR).
 // select graphics rendition -- e.g., bold, blinking, etc.
 // support 8, 16, 256 color, RGB color.
+//
+// https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_(Select_Graphic_Rendition)_parameters
+// https://invisible-island.net/xterm/ctlseqs/ctlseqs.html
+// https://wezfurlong.org/wezterm/faq.html#how-do-i-enable-undercurl-curly-underlines
+//
+// underline style test
+// '\x1b[58:2::255:0:0m\x1b[4:1msingle\x1b[4:2mdouble\x1b[4:3mcurly\x1b[4:4mdotted\x1b[4:5mdashed\x1b[0m\n'
+// '\x1b[38;2;255;140;0;48;2;255;228;225mExample 24 bit color escape sequence\x1b[0m'
 func hdl_csi_sgr(emu *Emulator, params []int) {
 	// we need to change the field, get the field pointer
 	rend := &emu.attrs.renditions
@@ -1009,7 +1017,7 @@ func hdl_csi_sgr(emu *Emulator, params []int) {
 		attr := params[k]
 
 		// process the 8-color set, 16-color set and default color
-		if rend.buildRendition(attr) {
+		if /* len(params) == 1 && */ rend.buildRendition(attr) {
 			continue
 		}
 		switch attr {
@@ -1063,11 +1071,60 @@ func hdl_csi_sgr(emu *Emulator, params []int) {
 			default:
 				k += len(params) - 1 - k
 			}
+		case 4:
+			if k >= len(params)-1 {
+				break
+			}
+			switch params[k+1] {
+			case 0, 1, 2, 3, 4, 5:
+				rend.setUnderlineStyle(charAttribute(params[k+1]))
+				k += 1
+			default:
+				k += len(params) - 1 - k
+			}
+		case 58:
+			/*
+			 CSI 24 m   -> No underline
+			 CSI 4 m    -> Single underline
+			 CSI 4:0 m  -> No underline
+			 CSI 4:1 m  -> Single underline
+			 CSI 4:2 m  -> Double underline
+			 CSI 4:3 m  -> Curly underline
+			 CSI 4:4 m  -> Dotted underline
+			 CSI 4:5 m  -> Dashed underline
+
+			 CSI 58:2::R:G:B m   -> set underline color to specified true color RGB
+			 CSI 58:5:I m        -> set underline color to palette index I (0-255)
+			 CSI 59              -> restore underline color to default
+			*/
+			if k >= len(params)-1 {
+				break
+			}
+			switch params[k+1] {
+			case 5:
+				if k+1 >= len(params)-1 {
+					k += len(params) - 1 - k
+					break
+				}
+				rend.setUnderlineColor2(params[k+2])
+				k += 2
+			case 2:
+				if k+1 >= len(params)-4 {
+					k += len(params) - 1 - k
+					break
+				}
+				red := params[k+3]
+				green := params[k+4]
+				blue := params[k+5]
+				rend.setUnderlineColor(red, green, blue)
+				k += 5
+			default:
+				k += len(params) - 1 - k
+			}
+		case 59:
+			rend.setUnderlineColor3(ColorDefault)
 		default:
-			// emu.logU.Printf("attribute not supported. %d \n", attr)
-			util.Logger.Warn("attribute not supported",
-				"unimplement", "CSI SGR",
-				"attr", attr)
+			util.Logger.Warn("attribute not supported", "unimplement", "CSI SGR", "params", params)
 		}
 	}
 }

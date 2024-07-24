@@ -22,11 +22,23 @@ const (
 	Invisible
 )
 
+// underline style
+const (
+	ULS_NONE charAttribute = iota
+	ULS_SINGLE
+	ULS_DOUBLE
+	ULS_Curly
+	ULS_DOTTED
+	ULS_DASHED
+)
+
 // Renditions determines the foreground and background color and character attribute.
 // it is comparable. default background/foreground is ColorDefault
 type Renditions struct {
 	fgColor Color
 	bgColor Color
+	ulColor Color
+	ulStyle charAttribute
 	// character attributes
 	bold       bool
 	faint      bool
@@ -61,6 +73,11 @@ func (rend *Renditions) SetBackgroundColor(index int) {
 	rend.bgColor = PaletteColor(index)
 }
 
+// set the ANSI underline indexed color. The index start from 0. represent ANSI standard color.
+func (rend *Renditions) setUnderlineColor2(index int) {
+	rend.ulColor = PaletteColor(index)
+}
+
 // set the ansi foreground palette color based on Color const
 func (rend *Renditions) setAnsiForeground(c Color) {
 	rend.fgColor = c
@@ -71,14 +88,29 @@ func (rend *Renditions) setAnsiBackground(c Color) {
 	rend.bgColor = c
 }
 
-// set the RGB foreground color
+// set RGB foreground color
 func (rend *Renditions) SetFgColor(r, g, b int) {
 	rend.fgColor = NewRGBColor(int32(r), int32(g), int32(b))
 }
 
-// set the RGB background color
+// set RGB background color
 func (rend *Renditions) SetBgColor(r, g, b int) {
 	rend.bgColor = NewRGBColor(int32(r), int32(g), int32(b))
+}
+
+// set RGB underline color
+func (rend *Renditions) setUnderlineColor(r, g, b int) {
+	rend.ulColor = NewRGBColor(int32(r), int32(g), int32(b))
+}
+
+// set 256 underline color
+func (rend *Renditions) setUnderlineColor3(v Color) {
+	rend.ulColor = v
+}
+
+// set underline style
+func (rend *Renditions) setUnderlineStyle(v charAttribute) {
+	rend.ulStyle = v
 }
 
 // generate SGR sequence based on Renditions

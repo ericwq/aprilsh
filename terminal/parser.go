@@ -218,7 +218,7 @@ func (p *Parser) setState(newState int) {
 	p.inputState = newState
 }
 
-// collect numeric parameter and stor them in inputOps array.
+// collect numeric parameter and store them in inputOps array.
 func (p *Parser) collectNumericParameters(ch rune) (isNumeric bool) {
 	if '0' <= ch && ch <= '9' {
 		isNumeric = true
