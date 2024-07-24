@@ -1010,17 +1010,13 @@ func hdl_csi_dsr(emu *Emulator, cmd int) {
 // underline style test
 // '\x1b[58:2::255:0:0m\x1b[4:1msingle\x1b[4:2mdouble\x1b[4:3mcurly\x1b[4:4mdotted\x1b[4:5mdashed\x1b[0m\n'
 // '\x1b[38;2;255;140;0;48;2;255;228;225mExample 24 bit color escape sequence\x1b[0m'
-func hdl_csi_sgr(emu *Emulator, params []int) {
+func hdl_csi_sgr(emu *Emulator, params []int, seps ...rune) {
 	// we need to change the field, get the field pointer
 	rend := &emu.attrs.renditions
 	for k := 0; k < len(params); k++ {
-		attr := params[k]
+		// attr := params[k]
 
-		// process the 8-color set, 16-color set and default color
-		if /* len(params) == 1 && */ rend.buildRendition(attr) {
-			continue
-		}
-		switch attr {
+		switch params[k] {
 		case 38:
 			if k >= len(params)-1 {
 				break
@@ -1072,19 +1068,7 @@ func hdl_csi_sgr(emu *Emulator, params []int) {
 				k += len(params) - 1 - k
 			}
 		case 4:
-			if k >= len(params)-1 {
-				break
-			}
-			switch params[k+1] {
-			case 0, 1, 2, 3, 4, 5:
-				rend.setUnderlineStyle(charAttribute(params[k+1]))
-				k += 1
-			default:
-				k += len(params) - 1 - k
-			}
-		case 58:
 			/*
-			 CSI 24 m   -> No underline
 			 CSI 4 m    -> Single underline
 			 CSI 4:0 m  -> No underline
 			 CSI 4:1 m  -> Single underline
@@ -1092,7 +1076,23 @@ func hdl_csi_sgr(emu *Emulator, params []int) {
 			 CSI 4:3 m  -> Curly underline
 			 CSI 4:4 m  -> Dotted underline
 			 CSI 4:5 m  -> Dashed underline
-
+			*/
+			if k >= len(params)-1 {
+				break
+			}
+			if seps[k] == ':' {
+				switch params[k+1] {
+				case 0, 1, 2, 3, 4, 5:
+					rend.setUnderlineStyle(charAttribute(params[k+1]))
+					k += 1
+				default:
+					k += len(params) - 1 - k
+				}
+			} else {
+				rend.buildRendition(params[k])
+			}
+		case 58:
+			/*
 			 CSI 58:2::R:G:B m   -> set underline color to specified true color RGB
 			 CSI 58:5:I m        -> set underline color to palette index I (0-255)
 			 CSI 59              -> restore underline color to default
@@ -1124,7 +1124,13 @@ func hdl_csi_sgr(emu *Emulator, params []int) {
 		case 59:
 			rend.setUnderlineColor3(ColorDefault)
 		default:
-			util.Logger.Warn("attribute not supported", "unimplement", "CSI SGR", "params", params)
+			/*
+			 process the 8-color set, 16-color set and default color
+			 CSI 24 m   -> No underline
+			*/
+			if !rend.buildRendition(params[k]) {
+				util.Logger.Warn("attribute not supported", "unimplement", "CSI SGR", "params", params)
+			}
 		}
 	}
 }

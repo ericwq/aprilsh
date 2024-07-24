@@ -66,6 +66,7 @@ type Parser struct {
 	argBuf     strings.Builder // string parameter
 	lastChs    []rune          // last graphemes
 	inputOps   []int           // numeric parameters
+	inputSep   []rune          // input speerator ':', ";", or empty
 	chs        []rune          // current graphemes
 	inputState int             // parser state
 	nInputOps  int             // numeric parameter number
@@ -163,6 +164,7 @@ func (p *Parser) reset() {
 
 	p.maxEscOps = 16
 	p.inputOps = make([]int, p.maxEscOps)
+	p.inputSep = make([]rune, p.maxEscOps)
 	p.nInputOps = 0
 	p.argBuf.Reset()
 
@@ -232,6 +234,7 @@ func (p *Parser) collectNumericParameters(ch rune) (isNumeric bool) {
 	} else if ch == ';' || ch == ':' {
 		isNumeric = true
 		if p.nInputOps < p.maxEscOps { // move to the next parameter
+			p.inputSep[p.nInputOps-1] = ch
 			p.inputOps[p.nInputOps] = 0
 			p.nInputOps += 1
 		} else {
@@ -273,6 +276,16 @@ func (p *Parser) copyArgs() (args []int) {
 	} else {
 		args = make([]int, p.nInputOps)
 		copy(args, p.inputOps)
+	}
+	return
+}
+
+func (p *Parser) copySeps() (args []rune) {
+	if p.nInputOps == 1 && p.inputSep[0] == 0 {
+		args = []rune{}
+	} else {
+		args = make([]rune, p.nInputOps)
+		copy(args, p.inputSep)
 	}
 	return
 }
@@ -841,10 +854,11 @@ func (p *Parser) handle_SGR() (hd *Handler) {
 	if params == nil { // default value is 0
 		params = []int{0}
 	}
+	spes := p.copySeps()
 
 	hd = &Handler{id: CSI_SGR, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
-		hdl_csi_sgr(emu, params)
+		hdl_csi_sgr(emu, params, spes...)
 	}
 
 	p.setState(InputState_Normal)
