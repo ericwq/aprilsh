@@ -1,4 +1,4 @@
-// Copyright 2022 wangqi. All rights reserved.
+// Copyright 2022~2024 wangqi. All rights reserved.
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
@@ -112,6 +112,10 @@ func (p *Parser) appendToHistory(r rune) {
 
 func (p *Parser) replaceHistory(chs ...rune) {
 	p.resetHistory()
+	// for i := range p.inputSep {
+	// 	p.inputSep[i] = 0
+	// }
+
 	for _, r := range chs {
 		p.appendToHistory(r)
 	}

@@ -1,4 +1,4 @@
-// Copyright 2022 wangqi. All rights reserved.
+// Copyright 2022~2024 wangqi. All rights reserved.
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
@@ -27,7 +27,7 @@ const (
 	ULS_NONE charAttribute = iota
 	ULS_SINGLE
 	ULS_DOUBLE
-	ULS_Curly
+	ULS_CURLY
 	ULS_DOTTED
 	ULS_DASHED
 )
@@ -74,7 +74,7 @@ func (rend *Renditions) SetBackgroundColor(index int) {
 }
 
 // set the ANSI underline indexed color. The index start from 0. represent ANSI standard color.
-func (rend *Renditions) setUnderlineColor2(index int) {
+func (rend *Renditions) setUnderlineColor(index int) {
 	rend.ulColor = PaletteColor(index)
 }
 
@@ -99,14 +99,14 @@ func (rend *Renditions) SetBgColor(r, g, b int) {
 }
 
 // set RGB underline color
-func (rend *Renditions) setUnderlineColor(r, g, b int) {
+func (rend *Renditions) setUnderlineRGBColor(r, g, b int) {
 	rend.ulColor = NewRGBColor(int32(r), int32(g), int32(b))
 }
 
-// set 256 underline color
-func (rend *Renditions) setUnderlineColor3(v Color) {
-	rend.ulColor = v
-}
+// // set 256 underline color
+// func (rend *Renditions) setUnderlineColor3(v Color) {
+// 	rend.ulColor = v
+// }
 
 // set underline style
 func (rend *Renditions) setUnderlineStyle(v charAttribute) {
@@ -116,6 +116,7 @@ func (rend *Renditions) setUnderlineStyle(v charAttribute) {
 // generate SGR sequence based on Renditions
 // CSI Pm m  Character Attributes (SGR).
 // https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Functions-using-CSI-_-ordered-by-the-final-character_s_
+// https://sw.kovidgoyal.net/kitty/underlines/
 func (rend *Renditions) SGR() string {
 	// quick check for default Renditions
 	def := Renditions{}
@@ -138,6 +139,17 @@ func (rend *Renditions) SGR() string {
 		sgr.WriteString(";3")
 	}
 	if rend.underline {
+		if rend.ulStyle > ULS_NONE {
+			sgr.WriteString(fmt.Sprintf(";4:%d", rend.ulStyle))
+		}
+		if rend.ulColor != ColorDefault {
+			if rend.ulColor.IsRGB() {
+				r, g, b := rend.ulColor.RGB()
+				fmt.Fprintf(&sgr, ";58:2::%d:%d:%d", r, g, b) // RGB foreground
+			} else {
+				fmt.Fprintf(&sgr, ";58:5:%d", rend.ulColor.Index())
+			}
+		}
 		sgr.WriteString(";4")
 	}
 	if rend.blink {
@@ -155,7 +167,7 @@ func (rend *Renditions) SGR() string {
 
 	// deal with foreground and background color. we only support colons to separate the subparameters
 	// for default color, we don't do anything.
-	if rend.fgColor > 0 {
+	if rend.fgColor != ColorDefault {
 		if rend.fgColor.IsRGB() {
 			r, g, b := rend.fgColor.RGB()
 			fmt.Fprintf(&sgr, ";38:2:%d:%d:%d", r, g, b) // RGB foreground
@@ -167,7 +179,7 @@ func (rend *Renditions) SGR() string {
 			fmt.Fprintf(&sgr, ";38:5:%d", rend.fgColor.Index())
 		}
 	}
-	if rend.bgColor > 0 {
+	if rend.bgColor != ColorDefault {
 		if rend.bgColor.IsRGB() {
 			r, g, b := rend.bgColor.RGB()
 			fmt.Fprintf(&sgr, ";48:2:%d:%d:%d", r, g, b) // RGB background
@@ -255,6 +267,8 @@ func (rend *Renditions) buildRendition(attribute int) (processed bool) {
 		rend.ClearAttributes()
 		rend.setAnsiForeground(ColorDefault) // default foreground color
 		rend.setAnsiBackground(ColorDefault) // default background color
+		rend.ulColor = ColorDefault
+		rend.ulStyle = ULS_NONE
 	case 1:
 		rend.bold = true
 	case 2:

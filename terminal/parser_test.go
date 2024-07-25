@@ -1,4 +1,4 @@
-// Copyright 2022 wangqi. All rights reserved.
+// Copyright 2022~2024 wangqi. All rights reserved.
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
@@ -582,32 +582,79 @@ func TestHandle_REP(t *testing.T) {
 	}
 }
 
-func TestHandle_SGR_RGBcolor(t *testing.T) {
+func TestHandle_SGR_UnderlineColor(t *testing.T) {
 	tc := []struct {
-		name       string
-		seq        string
-		hdIDs      []int
-		fr, fg, fb int
-		br, bg, bb int
-		attr       charAttribute
+		label string
+		seq   string
+		hdIDs []int
+		rend  Renditions
 	}{
-		{"RGB Color 1", "\x1B[0;1;38;2;33;47;12;48;2;123;24;34m", []int{CSI_SGR}, 33, 47, 12, 123, 24, 34, Bold},
-		{"RGB Color 2", "\x1B[0;3;38:2:0:0:0;48:2:0:0:0m", []int{CSI_SGR}, 0, 0, 0, 0, 0, 0, Italic},
-		{"RGB Color 3", "\x1B[0;4;38:2:12:34:128;48:2:59:190:155m", []int{CSI_SGR}, 12, 34, 128, 59, 190, 155, Underlined},
+		{
+			"single underline with RGB color", "\x1b[58:2::255:24:12;4:1msingle",
+			[]int{CSI_SGR, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes},
+			Renditions{underline: true, ulStyle: ULS_SINGLE, ulColor: NewRGBColor(255, 24, 12)},
+		},
+		{
+			"double underline with palette index color", "\x1B[58:5:47m\x1b[4:2mdouble",
+			[]int{CSI_SGR, CSI_SGR, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes},
+			Renditions{underline: true, ulStyle: ULS_DOUBLE, ulColor: Color47},
+		},
+		{
+			"curly underline with palette index color", "\x1B[58:5:133;4:3mcurly",
+			[]int{CSI_SGR, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes},
+			Renditions{underline: true, ulStyle: ULS_CURLY, ulColor: Color133},
+		},
+		{
+			"no underline", "\x1B[58:5:133;4:0mno",
+			[]int{CSI_SGR, Graphemes, Graphemes},
+			Renditions{underline: false, ulStyle: ULS_NONE, ulColor: Color133},
+		},
+		{
+			"no underline color", "\x1B[58:5:133;59mnocolor",
+			[]int{CSI_SGR, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes},
+			Renditions{underline: false, ulStyle: ULS_NONE, ulColor: ColorDefault},
+		},
+		{
+			"4:x break", "\x1b[58:2::255:24:12;4:6mdotted",
+			[]int{CSI_SGR, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes, Graphemes},
+			Renditions{underline: false, ulStyle: ULS_NONE, ulColor: NewRGBColor(255, 24, 12)},
+		},
+		{
+			"4m with color", "\x1b[58:2::255:24:12;4m",
+			[]int{CSI_SGR},
+			Renditions{underline: true, ulStyle: ULS_SINGLE, ulColor: NewRGBColor(255, 24, 12)},
+		},
+		{
+			"4m without color", "\x1b[4m",
+			[]int{CSI_SGR},
+			Renditions{underline: true, ulStyle: ULS_SINGLE, ulColor: ColorDefault},
+		},
+		{
+			"4;m break", "\x1b[4;m",
+			[]int{CSI_SGR},
+			Renditions{},
+		},
+		{"58m break", "\x1b[58m", []int{CSI_SGR}, Renditions{}},
+		{"58;m break", "\x1b[58;m", []int{CSI_SGR}, Renditions{}},
+		{"58;5m break", "\x1b[58;5m", []int{CSI_SGR}, Renditions{}},
+		{"58:2:23m break", "\x1b[58:2:0m", []int{CSI_SGR}, Renditions{}},
+		{"58:2:23:22m break", "\x1b[58:2:0:22m", []int{CSI_SGR}, Renditions{}},
+		{"58:2:23:22:21m break", "\x1b[58:2:0:22:21m", []int{CSI_SGR}, Renditions{}},
+		{"58;9 break", "\x1b[58;9m", []int{CSI_SGR}, Renditions{}},
 	}
 
 	p := NewParser()
 	// the default size of emu is 80x40 [colxrow]
-	emu := NewEmulator3(8, 4, 4) // this is the pre-condidtion for the test case.
+	emu := NewEmulator3(28, 4, 4) // this is the pre-condidtion for the test case.
 
 	for _, v := range tc {
-		t.Run(v.name, func(t *testing.T) {
+		t.Run(v.label, func(t *testing.T) {
 			// process control sequence
 			hds := make([]*Handler, 0, 16)
 			hds = p.processStream(v.seq, hds)
 
-			if len(hds) == 0 {
-				t.Errorf("%s got zero handlers.", v.name)
+			if len(hds) != len(v.hdIDs) {
+				t.Fatalf("%s got %d handlers, expect %d handlers", v.label, len(hds), len(v.hdIDs))
 			}
 
 			// reset the renditions
@@ -617,20 +664,73 @@ func TestHandle_SGR_RGBcolor(t *testing.T) {
 			for j, hd := range hds {
 				hd.handle(emu)
 				if hd.id != v.hdIDs[j] { // validate the control sequences id
-					t.Errorf("%s: seq=%q expect %s, got %s\n",
-						v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+					t.Fatalf("%s: seq=%q \n hd.index=%d expect %s, got %s\n",
+						v.label, v.seq, j, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 				}
 			}
 
 			// validate the result
 			got := emu.attrs.renditions
-			want := Renditions{}
-			want.SetBgColor(v.br, v.bg, v.bb)
-			want.SetFgColor(v.fr, v.fg, v.fb)
-			want.SetAttributes(v.attr, true)
+			if got != v.rend {
+				t.Errorf("%s: %q expect renditions \n%v, got \n%v", v.label, v.seq, v.rend, got)
+			}
+		})
+	}
+}
 
-			if got != want {
-				t.Errorf("%s:\t %q expect renditions %v, got %v", v.name, v.seq, want, got)
+func TestHandle_SGR_RGBcolor(t *testing.T) {
+	tc := []struct {
+		label string
+		seq   string
+		hdIDs []int
+		rend  Renditions
+	}{
+		{
+			"RGB Color 1", "\x1B[0;1;38;2;33;47;12;48;2;123;24;34m",
+			[]int{CSI_SGR},
+			Renditions{fgColor: NewRGBColor(33, 47, 12), bgColor: NewRGBColor(123, 24, 34), bold: true},
+		},
+		{
+			"RGB Color 2", "\x1B[0;3;38:2:0:0:0;48:2:0:0:0m",
+			[]int{CSI_SGR},
+			Renditions{fgColor: NewRGBColor(0, 0, 0), bgColor: NewRGBColor(0, 0, 0), italic: true},
+		},
+		{
+			"RGB Color 3", "\x1B[0;4;38:2:12:34:128;48:2:59:190:155m",
+			[]int{CSI_SGR},
+			Renditions{fgColor: NewRGBColor(12, 34, 128), bgColor: NewRGBColor(59, 190, 155), underline: true, ulStyle: ULS_SINGLE},
+		},
+	}
+
+	p := NewParser()
+	emu := NewEmulator3(8, 4, 4) // this is the pre-condidtion for the test case.
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			// process control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) == 0 {
+				t.Fatalf("%s got zero handlers.", v.label)
+			}
+
+			// reset the renditions
+			emu.attrs.renditions = Renditions{}
+
+			// handle the control sequence
+			for j, hd := range hds {
+				hd.handle(emu)
+				if hd.id != v.hdIDs[j] { // validate the control sequences id
+					t.Fatalf("%s: seq=%q expect %s, got %s\n",
+						v.label, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+				}
+			}
+
+			// validate the result
+			got := emu.attrs.renditions
+			if got != v.rend {
+				t.Errorf("%s: %q expect renditions \n%v, got \n%v", v.label, v.seq, v.rend, got)
 			}
 		})
 	}
@@ -638,37 +738,57 @@ func TestHandle_SGR_RGBcolor(t *testing.T) {
 
 func TestHandle_SGR_ANSIcolor(t *testing.T) {
 	tc := []struct {
-		name  string
+		label string
 		seq   string
 		hdIDs []int
-		fg    Color
-		bg    Color
-		attr  charAttribute
+		rend  Renditions
 	}{
-		// here the charAttribute(38) is an unused value, which means nothing for the result.
-		{"default Color", "\x1B[200m", []int{CSI_SGR}, ColorDefault, ColorDefault, charAttribute(38)}, // 38,48 is empty charAttribute
-		{"8 Color", "\x1B[1;37;40m", []int{CSI_SGR}, ColorSilver, ColorBlack, Bold},
-		{"8 Color 2", "\x1B[3;31;41m", []int{CSI_SGR}, ColorMaroon, ColorMaroon, Italic},
-		{"16 Color", "\x1B[4;91;107m", []int{CSI_SGR}, ColorRed, ColorWhite, Underlined},
-		{"256 Color 1", "\x1B[0;1;38:5:33;48:5:47m", []int{CSI_SGR}, Color33, Color47, Bold},
-		{"256 Color 3", "\x1B[0;4;38:5:128;48:5:155m", []int{CSI_SGR}, Color128, Color155, Underlined},
+		{
+			"invalid SGR parameter", "\x1B[200m",
+			[]int{CSI_SGR},
+			Renditions{fgColor: ColorDefault, bgColor: ColorDefault},
+		},
+		{
+			"8 Color", "\x1B[1;37;40m",
+			[]int{CSI_SGR},
+			Renditions{fgColor: ColorSilver, bgColor: ColorBlack, bold: true},
+		},
+		{
+			"8 Color 2", "\x1B[3;31;41m",
+			[]int{CSI_SGR},
+			Renditions{fgColor: ColorMaroon, bgColor: ColorMaroon, italic: true},
+		},
+		{
+			"16 Color", "\x1B[4;91;107m",
+			[]int{CSI_SGR},
+			Renditions{fgColor: ColorRed, bgColor: ColorWhite, underline: true, ulStyle: ULS_SINGLE},
+		},
+		{
+			"256 Color 1", "\x1B[0;1;38:5:33;48:5:47m",
+			[]int{CSI_SGR},
+			Renditions{fgColor: Color33, bgColor: Color47, bold: true},
+		},
+		{
+			"256 Color 3", "\x1B[0;4;38:5:128;48:5:155m",
+			[]int{CSI_SGR},
+			Renditions{fgColor: Color128, bgColor: Color155, underline: true, ulStyle: ULS_SINGLE},
+		},
 	}
 
 	p := NewParser()
 	emu := NewEmulator3(8, 4, 4)
-	var place strings.Builder
-	// this will swallow the output from SGR, such as : attribute not supported.
-	util.Logger.CreateLogger(&place, true, slog.LevelDebug)
+	// first test case will print "attribute not supported"
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
 	// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
 	for _, v := range tc {
-		t.Run(v.name, func(t *testing.T) {
+		t.Run(v.label, func(t *testing.T) {
 			// process control sequence
 			hds := make([]*Handler, 0, 16)
 			hds = p.processStream(v.seq, hds)
 
 			if len(hds) == 0 {
-				t.Errorf("%s got zero handlers.", v.name)
+				t.Fatalf("%s got zero handlers.", v.label)
 			}
 
 			emu.attrs.renditions = Renditions{}
@@ -677,20 +797,15 @@ func TestHandle_SGR_ANSIcolor(t *testing.T) {
 			for j, hd := range hds {
 				hd.handle(emu)
 				if hd.id != v.hdIDs[j] { // validate the control sequences id
-					t.Errorf("%s: seq=%q expect %s, got %s\n",
-						v.name, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+					t.Fatalf("%s: seq=%q expect %s, got %s\n",
+						v.label, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
 				}
 			}
 
 			// validate the result
 			got := emu.attrs.renditions
-			want := Renditions{}
-			want.setAnsiForeground(v.fg)
-			want.setAnsiBackground(v.bg)
-			want.buildRendition(int(v.attr))
-
-			if got != want {
-				t.Errorf("%s:\t %q expect renditions %v, got %v", v.name, v.seq, want, got)
+			if got != v.rend {
+				t.Errorf("%s: %q expect renditions \n%v, got \n%v", v.label, v.seq, v.rend, got)
 			}
 		})
 	}

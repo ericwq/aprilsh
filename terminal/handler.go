@@ -1,4 +1,4 @@
-// Copyright 2022 wangqi. All rights reserved.
+// Copyright 2022~2024 wangqi. All rights reserved.
 // Use of this source code is governed by a MIT-style
 // license that can be found in the LICENSE file.
 
@@ -1006,15 +1006,11 @@ func hdl_csi_dsr(emu *Emulator, cmd int) {
 // https://en.wikipedia.org/wiki/ANSI_escape_code#SGR_(Select_Graphic_Rendition)_parameters
 // https://invisible-island.net/xterm/ctlseqs/ctlseqs.html
 // https://wezfurlong.org/wezterm/faq.html#how-do-i-enable-undercurl-curly-underlines
-//
-// underline style test
-// '\x1b[58:2::255:0:0m\x1b[4:1msingle\x1b[4:2mdouble\x1b[4:3mcurly\x1b[4:4mdotted\x1b[4:5mdashed\x1b[0m\n'
-// '\x1b[38;2;255;140;0;48;2;255;228;225mExample 24 bit color escape sequence\x1b[0m'
 func hdl_csi_sgr(emu *Emulator, params []int, seps ...rune) {
 	// we need to change the field, get the field pointer
 	rend := &emu.attrs.renditions
 	for k := 0; k < len(params); k++ {
-		// attr := params[k]
+		// fmt.Printf("hdl_csi_sgr k=%2d, params[k]=%3d, params=%v, iterate\n", k, params[k], params)
 
 		switch params[k] {
 		case 38:
@@ -1069,28 +1065,41 @@ func hdl_csi_sgr(emu *Emulator, params []int, seps ...rune) {
 			}
 		case 4:
 			/*
-			 CSI 4 m    -> Single underline
-			 CSI 4:0 m  -> No underline
-			 CSI 4:1 m  -> Single underline
-			 CSI 4:2 m  -> Double underline
-			 CSI 4:3 m  -> Curly underline
-			 CSI 4:4 m  -> Dotted underline
-			 CSI 4:5 m  -> Dashed underline
+				<ESC>[4:0m  # no underline
+				<ESC>[4:1m  # straight underline
+				<ESC>[4:2m  # double underline
+				<ESC>[4:3m  # curly underline
+				<ESC>[4:4m  # dotted underline
+				<ESC>[4:5m  # dashed underline
+				<ESC>[4m    # straight underline (for backwards compat)
+				<ESC>[24m   # no underline (for backwards compat)
 			*/
-			if k >= len(params)-1 {
-				break
-			}
-			if seps[k] == ':' {
+			// fmt.Printf("hdl_csi_sgr seps=%c params=%d\n", seps, params)
+			// if k > len(params)-1 {
+			// 	break
+			// }
+			if k+1 <= len(seps)-1 && seps[k] == ':' {
+				// fmt.Printf("hdl_csi_sgr k=%d, seps[k]=%c, params[k+1]=%d\n", k, seps[k], params[k+1])
 				switch params[k+1] {
-				case 0, 1, 2, 3, 4, 5:
+				case 0:
+					// rend.buildRendition(24)
+					rend.underline = false
+					rend.setUnderlineStyle(charAttribute(params[k+1]))
+					k += 1
+				case 1, 2, 3, 4, 5:
+					// rend.buildRendition(4)
+					rend.underline = true
 					rend.setUnderlineStyle(charAttribute(params[k+1]))
 					k += 1
 				default:
 					k += len(params) - 1 - k
 				}
 			} else {
-				rend.buildRendition(params[k])
+				rend.underline = true
+				rend.setUnderlineStyle(ULS_SINGLE)
 			}
+			// fmt.Printf("hdl_csi_sgr k=%d rend.underline=%t, rend.ulColor=%d, rend.ulStyle=%d\n",
+			// 	k, rend.underline, rend.ulColor, rend.ulStyle)
 		case 58:
 			/*
 			 CSI 58:2::R:G:B m   -> set underline color to specified true color RGB
@@ -1106,7 +1115,7 @@ func hdl_csi_sgr(emu *Emulator, params []int, seps ...rune) {
 					k += len(params) - 1 - k
 					break
 				}
-				rend.setUnderlineColor2(params[k+2])
+				rend.setUnderlineColor(params[k+2])
 				k += 2
 			case 2:
 				if k+1 >= len(params)-4 {
@@ -1116,13 +1125,13 @@ func hdl_csi_sgr(emu *Emulator, params []int, seps ...rune) {
 				red := params[k+3]
 				green := params[k+4]
 				blue := params[k+5]
-				rend.setUnderlineColor(red, green, blue)
+				rend.setUnderlineRGBColor(red, green, blue)
 				k += 5
 			default:
 				k += len(params) - 1 - k
 			}
 		case 59:
-			rend.setUnderlineColor3(ColorDefault)
+			rend.ulColor = ColorDefault
 		default:
 			/*
 			 process the 8-color set, 16-color set and default color
