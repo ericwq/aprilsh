@@ -637,9 +637,9 @@ func TestHandle_SGR_UnderlineColor(t *testing.T) {
 		{"58m break", "\x1b[58m", []int{CSI_SGR}, Renditions{}},
 		{"58;m break", "\x1b[58;m", []int{CSI_SGR}, Renditions{}},
 		{"58;5m break", "\x1b[58;5m", []int{CSI_SGR}, Renditions{}},
-		{"58:2:23m break", "\x1b[58:2:0m", []int{CSI_SGR}, Renditions{}},
-		{"58:2:23:22m break", "\x1b[58:2:0:22m", []int{CSI_SGR}, Renditions{}},
-		{"58:2:23:22:21m break", "\x1b[58:2:0:22:21m", []int{CSI_SGR}, Renditions{}},
+		{"58:2:0m break", "\x1b[58:2:0m", []int{CSI_SGR}, Renditions{}},
+		{"58:2:0:22m break", "\x1b[58:2:0:22m", []int{CSI_SGR}, Renditions{}},
+		{"58:2:0:22:21m break", "\x1b[58:2:0:22:21m", []int{CSI_SGR}, Renditions{}},
 		{"58;9 break", "\x1b[58;9m", []int{CSI_SGR}, Renditions{}},
 	}
 

@@ -1082,12 +1082,10 @@ func hdl_csi_sgr(emu *Emulator, params []int, seps ...rune) {
 				// fmt.Printf("hdl_csi_sgr k=%d, seps[k]=%c, params[k+1]=%d\n", k, seps[k], params[k+1])
 				switch params[k+1] {
 				case 0:
-					// rend.buildRendition(24)
 					rend.underline = false
 					rend.setUnderlineStyle(charAttribute(params[k+1]))
 					k += 1
 				case 1, 2, 3, 4, 5:
-					// rend.buildRendition(4)
 					rend.underline = true
 					rend.setUnderlineStyle(charAttribute(params[k+1]))
 					k += 1

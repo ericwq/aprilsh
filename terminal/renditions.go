@@ -140,7 +140,12 @@ func (rend *Renditions) SGR() string {
 	}
 	if rend.underline {
 		if rend.ulStyle > ULS_NONE {
-			sgr.WriteString(fmt.Sprintf(";4:%d", rend.ulStyle))
+			switch rend.ulStyle {
+			case ULS_SINGLE:
+				sgr.WriteString(";4")
+			default:
+				sgr.WriteString(fmt.Sprintf(";4:%d", rend.ulStyle))
+			}
 		}
 		if rend.ulColor != ColorDefault {
 			if rend.ulColor.IsRGB() {
@@ -150,7 +155,6 @@ func (rend *Renditions) SGR() string {
 				fmt.Fprintf(&sgr, ";58:5:%d", rend.ulColor.Index())
 			}
 		}
-		sgr.WriteString(";4")
 	}
 	if rend.blink {
 		sgr.WriteString(";5")
@@ -277,6 +281,7 @@ func (rend *Renditions) buildRendition(attribute int) (processed bool) {
 		rend.italic = true
 	case 4:
 		rend.underline = true
+		rend.ulStyle = ULS_SINGLE
 	case 5:
 		rend.blink = true
 	case 6:

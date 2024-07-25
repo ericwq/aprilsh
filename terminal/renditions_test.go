@@ -234,3 +234,37 @@ func TestRenditionsRebuild(t *testing.T) {
 		}
 	}
 }
+
+func TestRenditionsSGRunderline(t *testing.T) {
+	tc := []struct {
+		label  string
+		expect string
+		rend   Renditions
+	}{
+		{
+			"just underline", "\x1b[0;4m",
+			Renditions{underline: true, ulStyle: ULS_SINGLE},
+		},
+		{
+			"RGB color curly underline", "\x1b[0;4:3;58:2::255:0:0m",
+			Renditions{ulColor: NewRGBColor(255, 0, 0), underline: true, ulStyle: ULS_CURLY},
+		},
+		{
+			"dashed underline, palette index color ", "\x1b[0;4:4;38:5:128;48:5:155m",
+			Renditions{fgColor: Color128, bgColor: Color155, underline: true, ulStyle: ULS_DOTTED},
+		},
+		{
+			"palette index color curly underline", "\x1b[0;4:3;58:5:133m",
+			Renditions{underline: true, ulStyle: ULS_CURLY, ulColor: Color133},
+		},
+	}
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			got := v.rend.SGR()
+
+			if got != v.expect {
+				t.Errorf("%s: expect SGR \n%q, got \n%q", v.label, v.expect, got)
+			}
+		})
+	}
+}
