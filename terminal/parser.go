@@ -475,7 +475,7 @@ func (p *Parser) handle_OSC() (hd *Handler) {
 				hdl_osc_112(emu, cmd, arg)
 			}
 		default:
-			util.Logger.Warn("unhandled OSC", "cmd", cmd, "arg", arg)
+			util.Logger.Warn("unhandled OSC", "cmd", cmd, "arg", arg, "seq", p.historyString())
 		}
 	}
 
@@ -1231,7 +1231,7 @@ func (p *Parser) handle_DCS() (hd *Handler) {
 			hdl_dcs_decrqss(emu, arg)
 		}
 	} else {
-		util.Logger.Warn("DCS", "unimplement", "DCS", "arg", arg)
+		util.Logger.Warn("DCS", "unimplement", "DCS", "arg", arg, "seq", p.historyString())
 	}
 
 	return hd

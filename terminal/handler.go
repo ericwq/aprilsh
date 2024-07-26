@@ -2058,9 +2058,8 @@ func hdl_csi_xtmodkeys(emu *Emulator, params []int) {
 //	  Ps = 2 3 ; 2  ⇒  Restore xterm window title from stack.
 func hdl_csi_xtwinops(emu *Emulator, params []int, sequence string) {
 	if len(params) == 0 {
-		util.Logger.Warn("unhandled operation",
-			"seq", sequence,
-			"id", strHandlerID[CSI_XTWINOPS])
+		util.Logger.Warn("unhandled operation", "seq", sequence,
+			"params", params, "id", strHandlerID[CSI_XTWINOPS])
 		return
 	}
 	switch params[0] {
@@ -2071,9 +2070,8 @@ func hdl_csi_xtwinops(emu *Emulator, params []int, sequence string) {
 		case 1:
 			fallthrough
 		default:
-			util.Logger.Warn("unhandled operation",
-				"seq", sequence,
-				"id", strHandlerID[CSI_XTWINOPS])
+			util.Logger.Warn("unhandled operation", "seq", sequence,
+				"params", params, "id", strHandlerID[CSI_XTWINOPS])
 		}
 	case 23:
 		switch params[1] {
@@ -2082,14 +2080,12 @@ func hdl_csi_xtwinops(emu *Emulator, params []int, sequence string) {
 		case 1:
 			fallthrough
 		default:
-			util.Logger.Warn("unhandled operation",
-				"seq", sequence,
-				"id", strHandlerID[CSI_XTWINOPS])
+			util.Logger.Warn("unhandled operation", "seq", sequence,
+				"params", params, "id", strHandlerID[CSI_XTWINOPS])
 		}
 	default:
-		util.Logger.Warn("unhandled operation",
-			"seq", sequence,
-			"id", strHandlerID[CSI_XTWINOPS])
+		util.Logger.Warn("unhandled operation", "seq", sequence,
+			"params", params, "id", strHandlerID[CSI_XTWINOPS])
 	}
 }
 
