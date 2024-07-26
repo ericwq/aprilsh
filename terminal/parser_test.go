@@ -3625,13 +3625,13 @@ func TestHandle_privSM_privRM_Log(t *testing.T) {
 	}{
 		{"privSM:   4", "\x1B[?4h", "DECSCLM: Set smooth scroll", CSI_privSM},
 		{"privSM:   8", "\x1B[?8h", "DECARM: Set auto-repeat mode", CSI_privSM},
-		{"privSM:  12", "\x1B[?12h", "Start blinking cursor", CSI_privSM},
+		{"privSM:  13", "\x1B[?13h", "Start blinking cursor", CSI_privSM},
 		// {"privSM:1001", "\x1B[?1001h", CSI_privSM, "Set VT200 Highlight Mouse mode"},
 		{"privSM:unknow", "\x1B[?2022h", "set priv mode", CSI_privSM},
 
 		{"privRM:   4", "\x1B[?4l", "DECSCLM: Set jump scroll", CSI_privRM},
 		{"privRM:   8", "\x1B[?8l", "DECARM: Reset auto-repeat mode", CSI_privRM},
-		{"privRM:  12", "\x1B[?12l", "Stop blinking cursor", CSI_privRM},
+		{"privRM:  13", "\x1B[?13l", "Stop blinking cursor", CSI_privRM},
 		// {"privRM:1001", "\x1B[?1001l", CSI_privRM, "Reset VT200 Highlight Mouse mode"},
 		{"privRM:unknow", "\x1B[?2022l", "reset priv mode", CSI_privRM},
 	}
@@ -4118,6 +4118,62 @@ func TestHandle_privSM_privRM_2(t *testing.T) {
 		if v.isResetCharsetState != gotRCS || v.compatLevel != gotCL {
 			t.Errorf("%s seq=%q expect reset CharsetState and compatbility level (%t,%d), got(%t,%d)",
 				v.name, v.seq, v.isResetCharsetState, v.compatLevel, gotRCS, gotCL)
+		}
+	}
+}
+
+func TestHandle_privSM_privRM_12(t *testing.T) {
+	tc := []struct {
+		label string
+		seq   string
+		hdIDs []int
+		cs    CursorStyle
+	}{
+		{
+			"privSM 12", "\x1B[?12h",
+			[]int{CSI_privSM},
+			CursorStyle_BlinkBlock,
+		},
+		{
+			"privRM 12", "\x1B[?12l",
+			[]int{CSI_privRM},
+			CursorStyle_SteadyBlock,
+		},
+	}
+
+	p := NewParser()
+	emu := NewEmulator3(80, 40, 500)
+	var place strings.Builder
+	util.Logger.CreateLogger(&place, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
+
+	for _, v := range tc {
+
+		// process control sequence
+		hds := make([]*Handler, 0, 16)
+		hds = p.processStream(v.seq, hds)
+
+		if len(hds) == 0 {
+			t.Fatalf("%s got zero handlers.", v.label)
+		}
+
+		// reset cursor style
+		emu.cf.cursor.showStyle = CursorStyle_Invalid
+
+		// handle the control sequence
+		for j, hd := range hds {
+			hd.handle(emu)
+			if hd.id != v.hdIDs[j] {
+				t.Fatalf("%s:\t %q expect %s, got %s\n",
+					v.label, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+			}
+		}
+
+		// validate the result
+		got := emu.cf.cursor.showStyle
+		if got != v.cs {
+			t.Errorf("%s seq=%q expect cursor style (%d), got(%d)",
+				v.label, v.seq, v.cs, got)
 		}
 	}
 }

@@ -1504,7 +1504,7 @@ func hdl_csi_privSM(emu *Emulator, params []int) {
 			emu.switchColMode(ColMode_C132)
 		case 4:
 			// emu.logT.Println("DECSCLM: Set smooth scroll")
-			util.Logger.Debug("DECSCLM: Set smooth scroll")
+			util.Logger.Debug("DECSCLM: Set smooth scroll", "unimplement", "DECSET", "params", params)
 		case 5:
 			// emu.framebuffer.DS.ReverseVideo = true // DECSCNM Reverse
 			emu.reverseVideo = true
@@ -1516,13 +1516,15 @@ func hdl_csi_privSM(emu *Emulator, params []int) {
 			emu.autoWrapMode = true
 		case 8:
 			// emu.logU.Println("DECARM: Set auto-repeat mode")
-			util.Logger.Warn("DECARM: Set auto-repeat mode", "unimplement", "DECSET")
+			util.Logger.Warn("DECARM: Set auto-repeat mode", "unimplement", "DECSET", "params", params)
 		case 9:
 			// emu.framebuffer.DS.mouseTrk.mode = MouseModeX10
 			emu.mouseTrk.mode = MouseTrackingMode_X10_Compat
 		case 12:
-			// emu.logU.Println("Start blinking cursor") // TODO support blinking
-			util.Logger.Warn("Start blinking cursor", "unimplement", "DECSET")
+			hdl_csi_decscusr(emu, int(CursorStyle_BlinkBlock))
+		case 13:
+			// Start blinking cursor (set only via resource or menu)
+			util.Logger.Warn("Start blinking cursor", "unimplement", "DECSET", "params", params)
 		case 25:
 			// emu.framebuffer.DS.CursorVisible = true // DECTCEM zutty:showCursorMode
 			emu.showCursorMode = true
@@ -1586,7 +1588,7 @@ func hdl_csi_privSM(emu *Emulator, params []int) {
 			emu.bracketedPasteMode = true
 		default:
 			// emu.logU.Printf("set priv mode %d\n", param)
-			util.Logger.Warn("set priv mode", "unimplement", "DECSET", "param", param)
+			util.Logger.Warn("set priv mode", "unimplement", "DECSET", "params", param)
 		}
 	}
 }
@@ -1607,7 +1609,7 @@ func hdl_csi_privRM(emu *Emulator, params []int) {
 			emu.switchColMode(ColMode_C80)
 		case 4:
 			// emu.logT.Println("DECSCLM: Set jump scroll")
-			util.Logger.Debug("DECSCLM: Set jump scroll")
+			util.Logger.Debug("DECSCLM: Set jump scroll", "unimplement", "DECRST", "params", params)
 		case 5:
 			// emu.framebuffer.DS.ReverseVideo = false // Normal
 			emu.reverseVideo = false
@@ -1619,13 +1621,15 @@ func hdl_csi_privRM(emu *Emulator, params []int) {
 			emu.autoWrapMode = false
 		case 8:
 			// emu.logU.Println("DECARM: Reset auto-repeat mode")
-			util.Logger.Warn("DECARM: Reset auto-repeat mode", "unimplement", "DECRST")
+			util.Logger.Warn("DECARM: Reset auto-repeat mode", "unimplement", "DECRST", "params", params)
 		case 9, 1000, 1001, 1002, 1003:
 			// emu.framebuffer.DS.mouseTrk.mode = MouseModeNone
 			emu.mouseTrk.mode = MouseTrackingMode_Disable
 		case 12:
-			// emu.logU.Println("Stop blinking cursor")
-			util.Logger.Warn("Stop blinking cursor", "unimplement", "DECRST")
+			hdl_csi_decscusr(emu, int(CursorStyle_SteadyBlock))
+		case 13:
+			// Disable blinking cursor (reset only via resource or menu).
+			util.Logger.Warn("Stop blinking cursor", "unimplement", "DECRST", "params", params)
 		case 25:
 			// emu.framebuffer.DS.CursorVisible = false
 			emu.showCursorMode = false
@@ -1671,7 +1675,7 @@ func hdl_csi_privRM(emu *Emulator, params []int) {
 			emu.bracketedPasteMode = false
 		default:
 			// emu.logU.Printf("reset priv mode %d\n", param)
-			util.Logger.Warn("reset priv mode", "unimplement", "DECRST", "param", param)
+			util.Logger.Warn("reset priv mode", "unimplement", "DECRST", "params", param)
 		}
 	}
 }
@@ -1902,9 +1906,7 @@ func hdl_csi_decscusr(emu *Emulator, arg int) {
 	case 6:
 		emu.cf.cursor.showStyle = CursorStyle_SteadyBar
 	default:
-		util.Logger.Warn("unexpected Ps parameter",
-			"id", strHandlerID[CSI_DECSCUSR],
-			"arg", arg)
+		util.Logger.Warn("unexpected Ps parameter", "id", strHandlerID[CSI_DECSCUSR], "arg", arg)
 	}
 }
 

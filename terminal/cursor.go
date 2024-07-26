@@ -25,6 +25,7 @@ Set cursor style (DECSCUSR), VT520.
 */
 const (
 	CursorStyle_BlinkBlock CursorStyle = iota
+	_hidden_cursor_style
 	CursorStyle_SteadyBlock
 	CursorStyle_BlinkUnderline
 	CursorStyle_SteadyUnderline
