@@ -1603,7 +1603,7 @@ func hdl_csi_privSM(emu *Emulator, params []int) {
 // TODO: implement it
 func hdl_csi_decrqm(emu *Emulator, params []int) {
 	resp := fmt.Sprintf("\x1B?%d;%d$y", params[0], 0)
-	util.Logger.Warn("DECRQM is not implemented!")
+	util.Logger.Warn("DECRQM is not supported", "resp", resp)
 	emu.writePty(resp)
 }
 

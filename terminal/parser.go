@@ -1191,10 +1191,17 @@ func (p *Parser) handle_privRM() (hd *Handler) {
 
 func (p *Parser) handle_DECRQM() (hd *Handler) {
 	params := p.copyArgs()
+	if params == nil { // default value is 0
+		params = []int{0}
+	}
 
-	hd = &Handler{id: CSI_DECRQM, ch: p.ch, sequence: p.historyString()}
-	hd.handle = func(emu *Emulator) {
-		hdl_csi_decrqm(emu, params)
+	if params[0] == 2026 {
+		hd = &Handler{id: CSI_DECRQM, ch: p.ch, sequence: p.historyString()}
+		hd.handle = func(emu *Emulator) {
+			hdl_csi_decrqm(emu, params)
+		}
+	} else {
+		util.Logger.Warn("unimplemented DECRQM", "seq", p.historyString())
 	}
 
 	p.setState(InputState_Normal)
