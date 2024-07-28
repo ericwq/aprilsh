@@ -6,6 +6,7 @@ package terminal
 
 import (
 	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"sort"
 	"strconv"
@@ -51,6 +52,7 @@ const (
 	CSI_DECSCL
 	CSI_DECSCUSR
 	CSI_privSM
+	CSI_DECRQM
 	CSI_DECSTBM
 	CSI_DECSTR
 	CSI_ECMA48_SL
@@ -81,7 +83,9 @@ const (
 	CSI_VPR
 	CSI_XTMODKEYS
 	CSI_XTWINOPS
+	CSI_U
 	DCS_DECRQSS
+	DCS_XTGETTCAP
 	ESC_BI
 	ESC_DCS
 	ESC_DECALN
@@ -139,6 +143,7 @@ var strHandlerID = [...]string{
 	"csi_decscl",
 	"csi_decscusr",
 	"csi_decset",
+	"csi_decrqm",
 	"csi_decstbm",
 	"csi_decstr",
 	"csi_ecma48_SL",
@@ -169,7 +174,9 @@ var strHandlerID = [...]string{
 	"csi_vpr",
 	"csi_xtmodkeys",
 	"csi_xtwinops",
+	"csi_u",
 	"dcs_decrqss",
+	"dcs_xtgettcap",
 	"esc_bi",
 	"esc_dcs",
 	"esc_decaln",
@@ -1499,7 +1506,7 @@ func hdl_csi_privSM(emu *Emulator, params []int) {
 		case 2:
 			resetCharsetState(&emu.charsetState) // Designate USASCII for character sets G0-G3 (DECANM), VT100, and set VT100 mode.
 			emu.setCompatLevel(CompatLevel_VT400)
-			// emu.framebuffer.DS.compatLevel = CompatLevelVT400
+			// util.Logger.Warn("DECANM", "changeTo", "Designate USASCII for character sets G0-G3 (DECANM), VT100, and set VT100 mode", "params", params)
 		case 3:
 			emu.switchColMode(ColMode_C132)
 		case 4:
@@ -1593,6 +1600,18 @@ func hdl_csi_privSM(emu *Emulator, params []int) {
 	}
 }
 
+// TODO: implement it
+func hdl_csi_decrqm(emu *Emulator, params []int) {
+	resp := fmt.Sprintf("\x1B?%d;%d$y", params[0], 0)
+	util.Logger.Warn("DECRQM is not implemented!")
+	emu.writePty(resp)
+}
+
+// TODO: implement it
+func hdl_csi_u(_ *Emulator, _ []int) {
+	util.Logger.Warn("CSI U is not implemented!")
+}
+
 // CSI ? Pm l
 // DEC Private Mode Reset (DECRST).
 func hdl_csi_privRM(emu *Emulator, params []int) {
@@ -1604,7 +1623,7 @@ func hdl_csi_privRM(emu *Emulator, params []int) {
 		case 2:
 			resetCharsetState(&emu.charsetState) // Designate VT52 mode (DECANM), VT100.
 			emu.setCompatLevel(CompatLevel_VT52)
-			// emu.framebuffer.DS.compatLevel = CompatLevel_VT52
+			// util.Logger.Warn("DECANM", "changeTo", "Designate VT52 mode", "params", params)
 		case 3:
 			emu.switchColMode(ColMode_C80)
 		case 4:
@@ -1758,6 +1777,49 @@ func hdl_dcs_decrqss(emu *Emulator, arg string) {
 		resp := fmt.Sprintf("\x1BP0$r%s\x1B\\", arg[2:])
 		emu.writePty(resp)
 	}
+}
+
+/*
+DCS + q Pt ST
+
+	Request Termcap/Terminfo String (XTGETTCAP), xterm.  The
+	string following the "q" is a list of names encoded in
+	hexadecimal (2 digits per character) separated by ; which
+	correspond to termcap or terminfo key names.
+	A few special features are also recognized, which are not key
+	names:
+
+	o   Co for termcap colors (or colors for terminfo colors), and
+
+	o   TN for termcap name (or name for terminfo name).
+
+	o   RGB for the ncurses direct-color extension.
+	    Only a terminfo name is provided, since termcap
+	    applications cannot use this information.
+
+	xterm responds with
+	DCS 1 + r Pt ST for valid requests, adding to Pt an = , and
+	the value of the corresponding string that xterm would send,
+	or
+	DCS 0 + r ST for invalid requests.
+	The strings are encoded in hexadecimal (2 digits per
+	character).  If more than one name is given, xterm replies
+	with each name/value pair in the same response.  An invalid
+	name (one not found in xterm's tables) ends processing of the
+	list of names.
+*/
+func hdl_dcs_xtgettcap(_ *Emulator, arg string) {
+	name := strings.Split(arg, ";")
+	for i := range name {
+		dst := make([]byte, hex.DecodedLen(len(name[i])))
+		n, err := hex.Decode(dst, []byte(name[i]))
+		if err != nil {
+			util.Logger.Warn("XTGETTCAP decode error", "i", i, "name[i]", name[i], "error", err)
+		}
+		util.Logger.Warn("XTGETTCAP", "i", i, "name[i]", dst[:n])
+		// TODO: lookup terminfo and return the result
+	}
+	util.Logger.Warn("XTGETTCAP is not implemented!", "arg", arg, "name", name)
 }
 
 // CSI Pl ; Pr s

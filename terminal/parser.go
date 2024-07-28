@@ -1189,6 +1189,30 @@ func (p *Parser) handle_privRM() (hd *Handler) {
 	return hd
 }
 
+func (p *Parser) handle_DECRQM() (hd *Handler) {
+	params := p.copyArgs()
+
+	hd = &Handler{id: CSI_DECRQM, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *Emulator) {
+		hdl_csi_decrqm(emu, params)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+func (p *Parser) handle_CSI_U() (hd *Handler) {
+	params := p.copyArgs()
+
+	hd = &Handler{id: CSI_U, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *Emulator) {
+		hdl_csi_u(emu, params)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
 // Set Top and Bottom Margins
 func (p *Parser) handle_DECSTBM() (hd *Handler) {
 	params := p.copyArgs()
@@ -1229,6 +1253,11 @@ func (p *Parser) handle_DCS() (hd *Handler) {
 		hd = &Handler{id: DCS_DECRQSS, ch: p.ch, sequence: p.historyString()}
 		hd.handle = func(emu *Emulator) {
 			hdl_dcs_decrqss(emu, arg)
+		}
+	} else if strings.HasPrefix(arg, "+q") {
+		hd = &Handler{id: DCS_XTGETTCAP, ch: p.ch, sequence: p.historyString()}
+		hd.handle = func(emu *Emulator) {
+			hdl_dcs_xtgettcap(emu, arg[2:])
 		}
 	} else {
 		util.Logger.Warn("DCS", "unimplement", "DCS", "arg", arg, "seq", p.historyString())
@@ -1973,6 +2002,18 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_privSM() // DECSET
 		case 'l':
 			hd = p.handle_privRM() // DECRST
+		case 'u':
+			hd = p.handle_CSI_U()
+		case '$':
+			p.argBuf.WriteRune(ch)
+		case 'p':
+			p.argBuf.WriteRune(ch)
+			if p.argBuf.String() == "$p" {
+				hd = p.handle_DECRQM()
+			} else {
+				p.unhandledInput()
+			}
+			p.argBuf.Reset()
 		default:
 			p.unhandledInput()
 		}

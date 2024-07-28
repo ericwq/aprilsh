@@ -4928,3 +4928,56 @@ func TestMixSequence(t *testing.T) {
 		})
 	}
 }
+
+func TestNvimClean(t *testing.T) {
+	tc := []struct {
+		label string
+		seq   string
+		hdIDs []int
+	}{
+		{
+			"first", "\x1b[?1049h\x1b[22;0;0t\x1b[?1h\x1b=\x1b[H\x1b[2J\x1b[?2004h\x1b[?2026$p\x1b[0m\x1b[4:3m\x1bP$qm\x1b\\\x1b[?u\x1b[c\x1b[?25h",
+
+			[]int{
+				CSI_privSM, CSI_XTWINOPS, CSI_privSM, ESC_DECKPAM, CSI_CUP, CSI_ED, CSI_privSM,
+				CSI_DECRQM, CSI_SGR, CSI_SGR, DCS_DECRQSS, CSI_U, CSI_priDA, CSI_privSM,
+			},
+		},
+		{
+			"second", "\x1b]11;?\a\x1bP+q5463;524742;73657472676266;73657472676262\x1b\\\x1b[0m\x1b[48;2;1;2;3m\x1bP$qm\x1b\\",
+			[]int{OSC_10_11_12_17_19, DCS_XTGETTCAP, CSI_SGR, CSI_SGR, DCS_DECRQSS},
+		},
+	}
+
+	p := NewParser()
+	emu := NewEmulator3(8, 4, 0)
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			// process control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if len(hds) != len(v.hdIDs) {
+				for i := range hds {
+					if i <= len(v.hdIDs)-1 && hds[i].id != v.hdIDs[i] {
+						t.Logf("NvimClean %s: i=%d, got %s, expect =%s, seq=%q\n",
+							v.label, i, strHandlerID[hds[i].id], strHandlerID[v.hdIDs[i]], hds[i].sequence)
+					} else {
+						t.Logf("NvimClean %s: i=%d, got %s, seq=%q\n",
+							v.label, i, strHandlerID[hds[i].id], hds[i].sequence)
+					}
+				}
+				t.Fatalf("%s got %d handlers, expect %d handlers", v.label, len(hds), len(v.hdIDs))
+			}
+
+			// handle the control sequence
+			for j, hd := range hds {
+				hd.handle(emu)
+				if hd.id != v.hdIDs[j] { // validate the control sequences id
+					t.Fatalf("%s: seq=%q \n hd.index=%d expect %s, got %s\n",
+						v.label, v.seq, j, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+				}
+			}
+		})
+	}
+}
