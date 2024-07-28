@@ -169,6 +169,7 @@ The project name `Aprilsh` is derived from `April+sh`. This project started in s
 
 ## Improvement
 
+- support large volumes of output generated from terminal application
 - prediction engine use server response frame number if server detect input response, otherwise fixed server timeout will be used as ack number
 - prediction engine allow ANSI cursor control sequence for application (e.g. htop up and down arrow key)
 - prediction engine support chinese character
