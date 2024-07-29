@@ -308,7 +308,7 @@ func hdl_graphemes(emu *Emulator, chs ...rune) {
 	c := emu.cf.getCellPtr(emu.posY, emu.posX)
 	*c = emu.attrs
 	c.SetContents(chs)
-	// fmt.Printf("#hdl_graphemes print %q at (%d,%d) %q\n", c, emu.posY, emu.posX, c.renditions.SGR())
+	// util.Logger.Trace("hdl_graphemes", "col", emu.posX, "row", emu.posY, "ch", c)
 
 	/// for double width graphemes
 	if w == 2 && emu.posX < emu.nColsEff-1 {
@@ -1817,16 +1817,19 @@ DCS + q Pt ST
 */
 func hdl_dcs_xtgettcap(_ *Emulator, arg string) {
 	name := strings.Split(arg, ";")
+	n2 := []string{}
 	for i := range name {
 		dst := make([]byte, hex.DecodedLen(len(name[i])))
 		n, err := hex.Decode(dst, []byte(name[i]))
 		if err != nil {
 			util.Logger.Warn("XTGETTCAP decode error", "i", i, "name[i]", name[i], "error", err)
 		}
-		util.Logger.Warn("XTGETTCAP", "i", i, "name[i]", dst[:n])
+		// util.Logger.Warn("XTGETTCAP", "i", i, "name[i]", dst[:n])
+		n2 = append(n2, string(dst[:n]))
 		// TODO: lookup terminfo and return the result
 	}
 	util.Logger.Warn("XTGETTCAP is not implemented!", "arg", arg, "name", name)
+	util.Logger.Warn("XTGETTCAP is not implemented!", "n2", n2)
 }
 
 // CSI Pl ; Pr s
