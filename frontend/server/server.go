@@ -1727,7 +1727,7 @@ mainLoop:
 				}
 
 				if terminalToHost.Len() > 0 {
-					util.Logger.Debug("input from remote", "arise", "socket", "data", terminalToHost.String())
+					util.Logger.Debug("input for host", "arise", "socket", "data", terminalToHost.String())
 					if inputEcho == stateStandby {
 						inputEcho = stateInputReady
 					}
@@ -1799,6 +1799,7 @@ mainLoop:
 			timeSinceRemoteState = now - p.GetTimestamp()
 
 			if !server.ShutdownInProgress() {
+				util.Logger.Debug("ouput from host", "arise", "remains", "output", remains)
 				out := complete.ActLarge(remains, largeFeed)
 				terminalToHost.WriteString(out)
 
@@ -1827,10 +1828,11 @@ mainLoop:
 						server.StartShutdown()
 					}
 				} else {
+					util.Logger.Debug("output from host", "arise", "master", "ouput", masterMsg.Data)
 					out := complete.ActLarge(masterMsg.Data, largeFeed)
 					terminalToHost.WriteString(out)
 
-					util.Logger.Debug("output from host", "arise", "master", "ouput", masterMsg.Data, "input", out)
+					util.Logger.Debug("output from host", "arise", "master", "input", out)
 					if inputEcho == stateInputReady {
 						inputEcho = stateEchoDone
 					}
@@ -1848,7 +1850,7 @@ mainLoop:
 				server.StartShutdown()
 			}
 
-			util.Logger.Debug("input to host", "arise", "merge-", "data", terminalToHost.String())
+			util.Logger.Debug("input for host", "arise", "merge-", "data", terminalToHost.String())
 		}
 
 		idleShutdown := false
