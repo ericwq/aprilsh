@@ -1600,16 +1600,23 @@ func hdl_csi_privSM(emu *Emulator, params []int) {
 	}
 }
 
-// TODO: implement it
+// TODO: Synchronized output is not supported
+// https://gist.github.com/christianparpart/d8a62cc1ab659194337d73e399004036
 func hdl_csi_decrqm(emu *Emulator, params []int) {
-	resp := fmt.Sprintf("\x1B?%d;%d$y", params[0], 0)
-	util.Logger.Warn("DECRQM is not supported", "resp", resp)
+	resp := fmt.Sprintf("\x1B[?%d;%d$y", params[0], 0)
+	util.Logger.Debug("Synchronized output is not supported", "resp", resp)
 	emu.writePty(resp)
 }
 
 // TODO: implement it
+// Detection of support for this protocol
+// An application can query the terminal for support of this protocol by sending
+// the escape code querying for the current progressive enhancement status followed
+// by request for the primary device attributes. If an answer for the device
+// attributes is received without getting back an answer for the progressive
+// enhancement the terminal does not support this protocol.
 func hdl_csi_u(_ *Emulator, _ []int) {
-	util.Logger.Warn("CSI U is not implemented!")
+	util.Logger.Warn("CSI U is not supported")
 }
 
 // CSI ? Pm l
