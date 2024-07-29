@@ -4992,6 +4992,9 @@ func TestNvimClean(t *testing.T) {
 
 	p := NewParser()
 	emu := NewEmulator3(8, 4, 0)
+
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			// process control sequence
