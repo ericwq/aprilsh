@@ -4994,6 +4994,7 @@ func TestNvimClean(t *testing.T) {
 	emu := NewEmulator3(8, 4, 0)
 
 	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stderr, false, util.LevelTrace)
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
