@@ -115,6 +115,7 @@ const (
 	OSC_0_1_2
 	OSC_10_11_12_17_19
 	OSC_112
+	OSC_8
 	VT52_EGM
 	VT52_ID
 )
@@ -206,6 +207,7 @@ var strHandlerID = [...]string{
 	"osc_0_1_2",
 	"osc_10_11_12_17_19",
 	"osc_112",
+	"osc_8",
 	"vt52_egm",
 	"vt52_id",
 }
@@ -1447,6 +1449,22 @@ func hdl_osc_0_1_2(emu *Emulator, cmd int, arg string) {
 //	  Ps = 1 1 2  ⇒  Reset text cursor color.
 func hdl_osc_112(emu *Emulator, _ int, _ string) {
 	emu.cf.cursor.color = ColorDefault
+}
+
+// A hyperlink is opened upon encountering an OSC 8 escape sequence with the target URI.
+// The syntax is
+//
+// OSC 8 ; params ; URI ST
+//
+// Following this, all subsequent cells that are painted are hyperlinks to this target.
+// A hyperlink is closed with the same escape sequence, omitting the parameters and the
+// URI but keeping the separators:
+//
+// OSC 8 ; ; ST
+//
+// printf '\e]8;12;http://example.com\e\\This is a link\e]8;;\e\\\n'
+func hdl_osc_8(_ *Emulator, cmd int, arg string) {
+	util.Logger.Warn("OSC 8 is not implemented!", "cmd", cmd, "arg", arg)
 }
 
 // CSI Pm h  Set Mode (SM).

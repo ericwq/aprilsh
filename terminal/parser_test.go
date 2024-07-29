@@ -4885,22 +4885,52 @@ func TestMixSequence(t *testing.T) {
 	}{
 		{
 			"vi sample 1", "\x1b[?1049h\x1b[22;0;0t\x1b[22;0t\x1b[?1h\x1b=\x1b[H\x1b[2J\x1b]11;?\a\x1b[?2004h\x1b[?u\x1b[c\x1b[?25h",
-			11,
+			12,
 		},
 		{
 			"vi sample 2", "\x1b[?25l\x1b(B\x1b[m\x1b[H\x1b[2J\x1b[>4;2m\x1b]112\a\x1b[2 q\x1b[?1002h\x1b[?1006h\x1b[38;2;233;233;244m\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[K\n\x1b[J\x1b[H",
 			73,
 		},
-		{"vi sample 3", "\x1b[?25l\r\n\x1b[0;1;34mNvChad\x1b[0m\x1b[13;28Hgo.work\x1b[13;55H\x1b[0;1;34mmosh\x1b[0m\x1b[13;82H\x1b[0;1;34mnvide\x1b[0m\x1b[13;109H\x1b[0;1;34mtelescope.nvim\x1b[0m\r\n\x1b[0;1;34maprilsh\x1b[0m\x1b[14;28Hgo.work.sum\x1b[14;55Hmosh-1.3.2.tar.gz\x1b[14;82Hpersonal-access-token.txt\x1b[2C\x1b[0;1;34mterminfo\x1b[0m\r\n\x1b[0;1;34mdotfiles\x1b[0m\x1b[15;28H\x1b[0;1;34mgolangIDE\x1b[0m\x1b[15;55H\x1b[0;1;34mneovim-lua\x1b[0m\x1b[15;82H\x1b[0;1;34ms6\x1b[0m\r\n\x1b[?25h", 174},
-		{"vi file and quit 1", "\x1b[?25l\r\x1b[40;1H\x1b[?25h", 4},
-		{"vi file and quit 2", "\x1b[?25l\x1b]112\a\x1b[2 q\x1b[?25h", 4},
-		{"vi file and quit 3", "\x1b[?25l\x1b]112\a\x1b[2 q\x1b[?1002l\x1b[?1006l\x1b(B\x1b[m\x1b[?25h\x1b[?1l\x1b>\x1b[>4;0m\x1b[?1049l\x1b[23;0;0t\x1b[?2004l\x1b[?1004l\x1b[?25h", 16},
-		{"vi file and quit 4", "ide@openrc-nvide:~/develop $ \x1b[6n", 30},
-		{"vi file and quit result", "\a\x1b[22;0t\x1b[r\x1b[0m\x1b[H\x1b[2J\x1b[?25l\x1b[?47l\x1b[r\x1b[?69l\x1b[1;30H\x1b[?25h\x1b[1 q\x1b]112\a\x1b[0m\x1b[?2004l\x1b[?1003l\x1b[?1002l\x1b[?1001l\x1b[?1000l\x1b[?1004l\x1b[?1015l\x1b[?1006l\x1b[?1005l\x1b[?7h\x1b[20l\x1b[2l\x1b[4l\x1b[12h\x1b[?67l\x1b[?1036h\x1b[?1007l\x1b[?1l\x1b[?6l\x1b>\x1b[?3l\x1b[3g\x1b[64\"p\x1b[>4;0m", 39},
-		{"empty screen, vi utf-8 file", "\x1b[?1049h\x1b[22;0;0t\x1b[?1h\x1b=\x1b[H\x1b[2J\x1b]11;?\a\x1b[?2004h\x1b[?u\x1b[c\x1b[?25h", 10},
-		{"empty screen, vi utf-8 dup", "\x1b[?1049h\x1b[?2004h\x1b[?1h\x1b=", 4},
-		{"screen with content, vi utf-8", "\x1b[?1049h\x1b[0m\x1b[1;40r\x1b[?25l\x1b[40;1H\x1b[1S\x1b[r\x1b[40;1H\x1b[K\x1b[1;1H\x1b[?25h\x1b[?2004h\x1b[?1h\x1b=", 14},
-		{"init string", "\x1b[?5l\x1b[r\x1b[0m\x1b[H\x1b[2J\x1b[?25l\x1b[?1047l\x1b[r\x1b[?69l\x1b[?25h\x1b[1 q\x1b]112\a\x1b[0m\x1b[?2004l\x1b[?1003l\x1b[?1002l\x1b[?1001l\x1b[?1000l\x1b[?1004l\x1b[?1015l\x1b[?1006l\x1b[?1005l\x1b[?7h\x1b[20l\x1b[2l\x1b[4l\x1b[12h\x1b[?67l\x1b[?1036h\x1b[?1007l\x1b[?1l\x1b[?6l\x1b>\x1b[?3l\x1b[3g\x1b[64\"p\x1b[>4;1m", 37},
+		{
+			"vi sample 3", "\x1b[?25l\r\n\x1b[0;1;34mNvChad\x1b[0m\x1b[13;28Hgo.work\x1b[13;55H\x1b[0;1;34mmosh\x1b[0m\x1b[13;82H\x1b[0;1;34mnvide\x1b[0m\x1b[13;109H\x1b[0;1;34mtelescope.nvim\x1b[0m\r\n\x1b[0;1;34maprilsh\x1b[0m\x1b[14;28Hgo.work.sum\x1b[14;55Hmosh-1.3.2.tar.gz\x1b[14;82Hpersonal-access-token.txt\x1b[2C\x1b[0;1;34mterminfo\x1b[0m\r\n\x1b[0;1;34mdotfiles\x1b[0m\x1b[15;28H\x1b[0;1;34mgolangIDE\x1b[0m\x1b[15;55H\x1b[0;1;34mneovim-lua\x1b[0m\x1b[15;82H\x1b[0;1;34ms6\x1b[0m\r\n\x1b[?25h",
+			174,
+		},
+		{
+			"vi file and quit 1", "\x1b[?25l\r\x1b[40;1H\x1b[?25h",
+			4,
+		},
+		{
+			"vi file and quit 2", "\x1b[?25l\x1b]112\a\x1b[2 q\x1b[?25h",
+			4,
+		},
+		{
+			"vi file and quit 3", "\x1b[?25l\x1b]112\a\x1b[2 q\x1b[?1002l\x1b[?1006l\x1b(B\x1b[m\x1b[?25h\x1b[?1l\x1b>\x1b[>4;0m\x1b[?1049l\x1b[23;0;0t\x1b[?2004l\x1b[?1004l\x1b[?25h",
+			16,
+		},
+		{
+			"vi file and quit 4", "ide@openrc-nvide:~/develop $ \x1b[6n",
+			30,
+		},
+		{
+			"vi file and quit result", "\a\x1b[22;0t\x1b[r\x1b[0m\x1b[H\x1b[2J\x1b[?25l\x1b[?47l\x1b[r\x1b[?69l\x1b[1;30H\x1b[?25h\x1b[1 q\x1b]112\a\x1b[0m\x1b[?2004l\x1b[?1003l\x1b[?1002l\x1b[?1001l\x1b[?1000l\x1b[?1004l\x1b[?1015l\x1b[?1006l\x1b[?1005l\x1b[?7h\x1b[20l\x1b[2l\x1b[4l\x1b[12h\x1b[?67l\x1b[?1036h\x1b[?1007l\x1b[?1l\x1b[?6l\x1b>\x1b[?3l\x1b[3g\x1b[64\"p\x1b[>4;0m",
+			39,
+		},
+		{
+			"empty screen, vi utf-8 file", "\x1b[?1049h\x1b[22;0;0t\x1b[?1h\x1b=\x1b[H\x1b[2J\x1b]11;?\a\x1b[?2004h\x1b[?u\x1b[c\x1b[?25h",
+			11,
+		},
+		{
+			"empty screen, vi utf-8 dup", "\x1b[?1049h\x1b[?2004h\x1b[?1h\x1b=",
+			4,
+		},
+		{
+			"screen with content, vi utf-8", "\x1b[?1049h\x1b[0m\x1b[1;40r\x1b[?25l\x1b[40;1H\x1b[1S\x1b[r\x1b[40;1H\x1b[K\x1b[1;1H\x1b[?25h\x1b[?2004h\x1b[?1h\x1b=",
+			14,
+		},
+		{
+			"init string", "\x1b[?5l\x1b[r\x1b[0m\x1b[H\x1b[2J\x1b[?25l\x1b[?1047l\x1b[r\x1b[?69l\x1b[?25h\x1b[1 q\x1b]112\a\x1b[0m\x1b[?2004l\x1b[?1003l\x1b[?1002l\x1b[?1001l\x1b[?1000l\x1b[?1004l\x1b[?1015l\x1b[?1006l\x1b[?1005l\x1b[?7h\x1b[20l\x1b[2l\x1b[4l\x1b[12h\x1b[?67l\x1b[?1036h\x1b[?1007l\x1b[?1l\x1b[?6l\x1b>\x1b[?3l\x1b[3g\x1b[64\"p\x1b[>4;1m",
+			37,
+		},
 	}
 	p := NewParser()
 	emu := NewEmulator3(8, 4, 0)
@@ -4937,7 +4967,7 @@ func TestNvimClean(t *testing.T) {
 		hdIDs []int
 	}{
 		{
-			"first", "\x1b[?1049h\x1b[22;0;0t\x1b[?1h\x1b=\x1b[H\x1b[2J\x1b[?2004h\x1b[?2026$p\x1b[0m\x1b[4:3m\x1bP$qm\x1b\\\x1b[?u\x1b[c\x1b[?25h",
+			"CSI u", "\x1b[?1049h\x1b[22;0;0t\x1b[?1h\x1b=\x1b[H\x1b[2J\x1b[?2004h\x1b[?2026$p\x1b[0m\x1b[4:3m\x1bP$qm\x1b\\\x1b[?u\x1b[c\x1b[?25h",
 			"\x1b[?2026;0$y\x1bP0$rm\x1b\\\x1b[?64;1;9;15;21;22c",
 			[]int{
 				CSI_privSM, CSI_XTWINOPS, CSI_privSM, ESC_DECKPAM, CSI_CUP, CSI_ED, CSI_privSM,
@@ -4945,17 +4975,21 @@ func TestNvimClean(t *testing.T) {
 			},
 		},
 		{
-			"second", "\x1b]11;?\a\x1bP+q5463;524742;73657472676266;73657472676262\x1b\\\x1b[0m\x1b[48;2;1;2;3m\x1bP$qm\x1b\\",
+			"DCS XTGETTCAP", "\x1b]11;?\a\x1bP+q5463;524742;73657472676266;73657472676262\x1b\\\x1b[0m\x1b[48;2;1;2;3m\x1bP$qm\x1b\\",
 			"\x1b]11;rgb:0000/0000/0000\x1b\\\x1bP0$rm\x1b\\",
 			[]int{OSC_10_11_12_17_19, DCS_XTGETTCAP, CSI_SGR, CSI_SGR, DCS_DECRQSS},
 		},
 		{
-			"osc 8",
-			"\x1b[?2026h\x1b(B\x1b[m\x1b[38;2;186;187;241m    1   \x1b(B\x1b[m\x1b[38;2;153;209;219m\x1b[48;2;59;63;82m<\x1b(B\x1b[m\x1b[38;2;202;158;230m\x1b[48;2;59;63;82mimg\x1b(B\x1b[m\x1b[38;2;198;208;245m\x1b[48;2;59;63;82m \x1b(B\x1b[m\x1b[3m\x1b[38;2;129;200;190m\x1b[48;2;59;63;82msrc\x1b(B\x1b[m\x1b[38;2;153;209;219m\x1b[48;2;59;63;82m=\x1b(B\x1b[m\x1b[38;2;166;209;137m\x1b[48;2;59;63;82m\"\x1b(B\x1b[0;4m\x1b[3m\x1b[38;2;242;213;207m\x1b[48;2;59;63;82m\x1b]8;;img/aprilsh-avatar.png\x1b\\img/aprilsh-avatar.png\x1b(B\x1b[m\x1b[38;2;166;209;137m\x1b[48;2;59;63;82m\x1b]8;;\x1b\\\"\x1b(B\x1b[m\x1b[38;2;198;208;245m\x1b[48;2;59;63;82m \x1b(B\x1b[m\x1b[3m\x1b[38;2;129;200;190m\x1b[48;2;59;63;82malt\x1b(B\x1b[m\x1b[38;2;153;209;219m\x1b[48;2;59;63;82m=\x1b(B\x1b[m\x1b[38;2;166;209;137m\x1b[48;2;59;63;82m\"image\"\x1b(B\x1b[m\x1b[38;2;198;208;245m\x1b[48;2;59;63;82m \x1b(B\x1b[m\x1b[3m\x1b[38;2;129;200;190m\x1b[48;2;59;63;82mwidth\x1b(B\x1b[m\x1b[38;2;153;209;219m\x1b[48;2;59;63;82m=\x1b(B\x1b[m\x1b[38;2;166;209;137m\x1b[48;2;59;63;82m\"150\"\x1b(B\x1b[m\x1b[38;2;153;209;219m\x1b[48;2;59;63;82m/>\x1b(B\x1b[m\x1b[38;2;198;208;245m\x1b[48;2;59;63;82m                                                                                          \r\n\x1b(B\x1b[m\x1b[38;2;81;87;109m    1   \x1b(B\x1b[m\x1b[38;2;198;208;245mAprilsh: remote shell support intermittent or mobile network. Inspired by [mosh](https://mosh.org/) and [zutty](https://github.com/tomscii/zutty). ap\r\n\x1b(B\x1b[m\x1b[38;2;81;87;109m    2   \x1b(B\x1b[m\x1b[38;2;198;208;245m\x1b[K\r\n\x1b(B\x1b[m\x1b[38;2;81;87;109m    3   \x1b(B\x1b[m\x1b[38;2;239;159;118m## Installation\x1b(B\x1b[m\x1b[38;2;198;208;245m\x1b[K\r\n\x1b(B\x1b[m\x1b[38;2;81;87;109m    4   \x1b(B\x1b[m\x1b[38;2;198;208;245m\x1b[K\r\n\x1b(B\x1b[m\x1b[38;2;81;87;109m    5   \x1b(B\x1b[m\x1b[38;2;166;209;137m#### Requirement\x1b(B\x1b[m\x1b[38;2;198;208;245m\x1b[K\r\n\x1b(B\x1b[m\x1b[38;2;81;87;109m    6   \x1b(B\x1b[m\x1b[38;2;198;208;245m\x1b[K\r\n\x1b(B\x1b[m\x1b[38;2;81;87;109m    7   \x1b(B\x1b[m\x1b[38;2;244;184;228m- \x1b(B\x1b[m\x1b[38;2;133;193;220m\x1b]8;;https://www.openssh.com/\x1b\\open-ssh\x1b(B\x1b[m\x1b[38;2;198;208;245m\x1b]8;;\x1b\\ is a must requirement, sshd is required to perform user authentication.\x1b[K\r\n\x1b(B\x1b[m\x1b[38;2;81;87;109m    8   \x1b(B\x1b[m\x1b[38;2;244;184;228m- \x1b(B\x1b[m\x1b[38;2;133;193;220m\x1b]8;;https://git.adelielinux.org/adelie/musl-locales/-/wikis/home\x1b\\locale support\x1b(B\x1b[m\x1b[38;2;198;208;245m\x1b]8;;\x1b\\ is a must requirement.\x1b[K\r\n\x1b(B\x1b[m\x1b[38;2;81;87;109m    9   \x1b(B\x1b[m\x1b[38;2;244;184;228m- \x1b(B\x1b[m\x1b[38;2;133;193;220m\x1b]8;;https://invisible-island.net/ncurses/\x1b\\ncurses and terminfo\x1b(B\x1b[m\x1b[38;2;198;208;245m\x1b]8;;\x1b\\ is a must requirement.\x1b[K\r\n\x1b(B\x1b[m\x1b[38;2;81;87;109m   10   \x1b(B\x1b[m\x1b[38;2;244;184;228m- \x1b(B\x1b[m\x1b[38;2;133;193;220m\x1b]8;;https://systemd.io/\x1b\\systmd\x1b(B\x1b[m\x1b[38;2;198;208;245m\x1b]8;;\x1b\\ is required by redhat linux family (fedora, centos, redhat).\x1b[K\r\n\x1b(B\x1b[m\x1b[38;2;81;87;109m   11   \x1b(B\x1b[m\x1b[38;2;244;184;228m- \x1b(B\x1b[m\x1b[38;2;133;193;220m\x1b]8;;https://github.com/OpenRC/openrc\x1b\\openrc\x1b(B\x1b[m\x1b[38;2;198;208;245m\x1b]8;;\x1b\\ is required by alpine.\x1b[K\r\n\x1b(B\x1b[m\x1b[38;2;81;87;109m   12   \x1b(B\x1b[m\x1b[38;2;244;184;228m- \x1b(B\x1b[m\x1b[38;2;133;193;220m\x1b]8;;https://skarnet.org/software/utmps/\x1b\\utmps\x1b(B\x1b[m\x1b[38;2;198;208;245m\x1b]8;;\x1b\\ is required by alpine\x1b[K\r\n\x1b(B\x1b[m\x1b[38;2;81;87;109m   13   \x1b(B\x1b[m\x1b[38;2;244;184;228m- \x1b(B\x1b[m\x1b[38;2;133;193;220m\x1b]8;;https://github.com/logrotate/logrotate\x1b\\logrotate\x1b(B\x1b[m\x1b[38;2;198;208;245m\x1b]8;;\x1b\\ is required by alpine.\x1b[K\r\n\x1b(B\x1b[m\x1b[38;2;81;87;109m   14   \x1b(B\x1b[m\x1b[38;2;198;208;245m\x1b[K\r\n\x1b(B\x1b[m\x1b[38;2;81;87;109m   15   \x1b(B\x1b[m\x1b[38;2;198;208;245mIf you prefer to build aprilsh manually, please refer to \x1b(B\x1b[m\x1b[38;2;133;193;220m\x1b]8;;doc/install-alpine.md\x1b\\this document\x1b(B\x1b[m\x1b[38;2;198;208;245m\x1b]8;;\x1b\\\x1b[K\r\n\x1b(B\x1b[m\x1b[38;2;81;87;109m   16   \x1b(B\x1b[m\x1b[38;2;198;208;245m\x1b[K\r\n\x1b(B\x1b[m\x1b[38;2;81;87;109m   17   \x1b(B\x1b[m\x1b[38;2;153;209;219m<\x1b(B\x1b[m\x1b[38;2;202;158;230mdetails\x1b(B\x1b[m\x1b[38;2;153;209;219m>\x1b(B\x1b[m\x1b[38;2;198;208;245m\x1b[K\r\n\x1b(B\x1b[m\x1b[38;2;81;87;109m   18   \x1b(B\x1b[m\x1b[38;2;153;209;219m<\x1b(B\x1b[m\x1b[38;2;202;158;230msummary\x1b(B\x1b[m\x1b[38;2;153;209;219m>\x1b(B\x1b[m\x1b[38;2;198;208;245mAlpine linux\x1b(B\x1b[m\x1b[38;2;153;209;219m</\x1b(B\x1b[m\x1b[38;2;202;158;230msummary\x1b(B\x1b[m\x1b[38;2;153;209;219m>\x1b(B\x1b[m\x1b[38;2;198;208;245m\x1b[K\r\n\x1b(B\x1b[m\x1b[38;2;81;87;109m   19   \x1b(B\x1b[m\x1b[38;2;198;208;245m\x1b[K\r\n\x1b(B\x1b[m\x1b[38;2;81;87;109m   20   \x1b(B\x1b[m\x1b[38;2;198;208;245mBefore start apshd, you need to make sure you can ssh login to the target server, please refer to \x1b(B\x1b[m\x1b[38;2;133;193;220m\x1b]8;;doc/ssh-openrc.md\x1b\\this doc\x1b(B\x1b[m\x1b[38;2;198;208;245m\x1b]8;;\x1b\\ to setup a ss",
+			"OSC 8",
+			"\x1b(B\x1b[m\x1b[38;2;133;193;220m\x1b]8;12;https://github.com/OpenRC/openrc\x1b\\openrc\x1b(B\x1b[m\x1b[38;2;198;208;245m\x1b]8;;\x1b\\",
 			"",
-			[]int{},
+			[]int{
+				ESC_DCS, CSI_SGR, CSI_SGR, OSC_8, Graphemes, Graphemes, Graphemes,
+				Graphemes, Graphemes, Graphemes, ESC_DCS, CSI_SGR, CSI_SGR, OSC_8,
+			},
 		},
 	}
+
 	p := NewParser()
 	emu := NewEmulator3(8, 4, 0)
 	for _, v := range tc {
