@@ -5040,3 +5040,39 @@ func TestNvimClean(t *testing.T) {
 		})
 	}
 }
+
+func TestHistoryString(t *testing.T) {
+	tc := []struct {
+		label   string
+		seq     string
+		history string
+		index   int
+	}{
+		{
+			"unhandled sequence", "\x1b[?2026h\x1b[8;34;140t",
+			"\x1b[8;34;140t", 1,
+		},
+	}
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			p := NewParser()
+
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			if !p.handleReady {
+				t.Fatalf("%s expect true, got %t\n", v.label, p.handleReady)
+			}
+
+			got := hds[v.index].sequence
+			if got != v.history {
+				t.Errorf("%s expect history %q got %q\n", v.label, v.history, got)
+
+				for i := range hds {
+					t.Errorf("i=%d,ch=%c, arg=%s, seq=%q\n",
+						i, hds[i].GetCh(), strHandlerID[hds[i].GetId()], hds[i].sequence)
+				}
+			}
+		})
+	}
+}
