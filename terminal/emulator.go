@@ -75,6 +75,7 @@ type Emulator struct {
 	autoNewlineMode    bool               // replicated by NewFrame(), LNM
 	autoWrapMode       bool               // replicated by NewFrame(), default:true
 	lastCol            bool
+	syncOutpuMode      bool
 }
 
 func NewEmulator3(nCols, nRows, saveLines int) *Emulator {
@@ -1195,6 +1196,10 @@ func (emu *Emulator) getRowAt(pY int) (row []Cell) {
 	row = emu.cf.cells[start:end]
 	return row
 }
+
+// func (emu *Emulator) SyncOutput() bool {
+// 	return emu.syncOutpuMode
+// }
 
 func cycleSelectSnapTo2(snapTo SelectSnapTo) SelectSnapTo {
 	return SelectSnapTo((int(snapTo) + 1) % int(SelectSnapTo_COUNT))

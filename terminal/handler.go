@@ -1611,6 +1611,8 @@ func hdl_csi_privSM(emu *Emulator, params []int) {
 		case 2004:
 			// emu.framebuffer.DS.BracketedPaste = true // xterm zutty:bracketedPasteMode
 			emu.bracketedPasteMode = true
+		case 2026:
+			emu.syncOutpuMode = true
 		default:
 			// emu.logU.Printf("set priv mode %d\n", param)
 			util.Logger.Warn("set priv mode", "unimplement", "DECSET", "params", param)
@@ -1618,11 +1620,26 @@ func hdl_csi_privSM(emu *Emulator, params []int) {
 	}
 }
 
-// TODO: Synchronized output is not supported
+// DECRPM—Report Mode - Terminal To Host
+//
 // https://gist.github.com/christianparpart/d8a62cc1ab659194337d73e399004036
+// https://vt100.net/docs/vt510-rm/DECRPM.html
+//
+// DECRPM: CSI ? Pd ; Ps $ y
+//
+// Ps	Mode Setting
+// 0	Mode not recognized
+// 1	Set
+// 2	Reset
+// 3	Permanently set
+// 4	Permanently reset
 func hdl_csi_decrqm(emu *Emulator, params []int) {
-	resp := fmt.Sprintf("\x1B[?%d;%d$y", params[0], 0)
-	util.Logger.Warn("Synchronized output is not supported", "resp", resp)
+	syncOutput := 2
+	if emu.syncOutpuMode {
+		syncOutput = 1
+	}
+	resp := fmt.Sprintf("\x1B[?%d;%d$y", params[0], syncOutput)
+	// util.Logger.Warn("Synchronized output is not supported", "resp", resp)
 	emu.writePty(resp)
 }
 
@@ -1717,6 +1734,8 @@ func hdl_csi_privRM(emu *Emulator, params []int) {
 		case 2004:
 			// emu.framebuffer.DS.BracketedPaste = false
 			emu.bracketedPasteMode = false
+		case 2026:
+			emu.syncOutpuMode = false
 		default:
 			// emu.logU.Printf("reset priv mode %d\n", param)
 			util.Logger.Warn("reset priv mode", "unimplement", "DECRST", "params", param)
