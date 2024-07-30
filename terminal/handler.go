@@ -1622,7 +1622,7 @@ func hdl_csi_privSM(emu *Emulator, params []int) {
 // https://gist.github.com/christianparpart/d8a62cc1ab659194337d73e399004036
 func hdl_csi_decrqm(emu *Emulator, params []int) {
 	resp := fmt.Sprintf("\x1B[?%d;%d$y", params[0], 0)
-	util.Logger.Debug("Synchronized output is not supported", "resp", resp)
+	util.Logger.Warn("Synchronized output is not supported", "resp", resp)
 	emu.writePty(resp)
 }
 

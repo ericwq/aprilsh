@@ -511,7 +511,9 @@ func (ne *NotificationEngine) apply(emu *terminal.Emulator) {
 
 	// write message to terminal
 	emu.MoveCursor(0, 0)
+	util.Logger.Trace("NotificationEngine", "apply", "start")
 	emu.HandleStream(stringToDraw.String())
+	util.Logger.Trace("NotificationEngine", "arise", "end", "data", stringToDraw.String())
 }
 
 func (ne *NotificationEngine) GetNotificationString() string {

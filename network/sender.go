@@ -380,9 +380,9 @@ func (ts *TransportSender[T]) tick() error {
 	if ts.verbose > 0 && len(diff) > 0 {
 		// verify diff has round-trip identity (modulo Unicode fallback rendering)
 		newState := ts.assumedReceiverState.state.Clone()
-		// util.Log.Debug("tick","point", 410)
+		util.Logger.Trace("tick", "point", 410)
 		newState.ApplyString(diff)
-		// util.Log.Debug("tick","point", 420)
+		util.Logger.Trace("tick", "point", 420)
 		if !ts.currentState.Equal(newState) {
 			ts.currentState.EqualTrace(newState) // TODO remove this if integration test is finished
 			util.Logger.Warn("#tick Warning, round-trip Instruction verification failed!")

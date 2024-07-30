@@ -1127,8 +1127,9 @@ mainLoop:
 				time.Sleep(time.Duration(200) * time.Millisecond)
 				continue mainLoop
 			}
-			// util.Log.Info("got from network", "data", networkMsg.Data)
+			// util.Logger.Trace("got from network", "data", networkMsg.Data)
 			sc.processNetworkInput(networkMsg.Data)
+			// util.Logger.Trace("got from network", "data", "done")
 
 		case fileMsg := <-fileChan:
 
@@ -1214,8 +1215,9 @@ mainLoop:
 			sc.overlays.GetNotificationEngine().SetNotificationString("", false, true)
 		}
 
-		// util.Log.Warn("mainLoop", "before", "tick")
+		// util.Logger.Trace("mainLoop", "before", "tick")
 		err := sc.network.Tick()
+		// util.Logger.Trace("mainLoop", "after", "tick")
 		if err != nil {
 			util.Logger.Warn("tick send failed", "error", err)
 			sc.overlays.GetNotificationEngine().SetNetworkError(err.Error())
