@@ -2150,21 +2150,27 @@ func hdl_csi_xtmodkeys(emu *Emulator, params []int) {
 
 // CSI Ps ; Ps ; Ps t
 //
-//	Window manipulation (XTWINOPS), dtterm, extended by xterm.
-//	These controls may be disabled using the allowWindowOps
-//	resource.
+// Window manipulation (XTWINOPS), dtterm, extended by xterm.
+// These controls may be disabled using the allowWindowOps
+// resource.
 //
-//	xterm uses Extended Window Manager Hints (EWMH) to maximize
-//	the window.  Some window managers have incomplete support for
-//	EWMH.  For instance, fvwm, flwm and quartz-wm advertise
-//	support for maximizing windows horizontally or vertically, but
-//	in fact equate those to the maximize operation.
-//	  Ps = 2 2 ; 0  ⇒  Save xterm icon and window title on stack.
-//	  Ps = 2 2 ; 1  ⇒  Save xterm icon title on stack.
-//	  Ps = 2 2 ; 2  ⇒  Save xterm window title on stack.
-//	  Ps = 2 3 ; 0  ⇒  Restore xterm icon and window title from stack.
-//	  Ps = 2 3 ; 1  ⇒  Restore xterm icon title from stack.
-//	  Ps = 2 3 ; 2  ⇒  Restore xterm window title from stack.
+// xterm uses Extended Window Manager Hints (EWMH) to maximize
+// the window.  Some window managers have incomplete support for
+// EWMH.  For instance, fvwm, flwm and quartz-wm advertise
+// support for maximizing windows horizontally or vertically, but
+// in fact equate those to the maximize operation.
+//
+// Ps = 2 2 ; 0  ⇒  Save xterm icon and window title on stack.
+// Ps = 2 2 ; 1  ⇒  Save xterm icon title on stack.
+// Ps = 2 2 ; 2  ⇒  Save xterm window title on stack.
+// Ps = 2 3 ; 0  ⇒  Restore xterm icon and window title from stack.
+// Ps = 2 3 ; 1  ⇒  Restore xterm icon title from stack.
+// Ps = 2 3 ; 2  ⇒  Restore xterm window title from stack.
+//
+// Ps = 8 ;  height ;  width ⇒  Resize the text area to given
+// height and width in characters.  Omitted parameters reuse the
+// current height or width.  Zero parameters use the display's
+// height or width.
 func hdl_csi_xtwinops(emu *Emulator, params []int, sequence string) {
 	if len(params) == 0 {
 		util.Logger.Warn("unhandled operation", "seq", sequence,
@@ -2192,6 +2198,19 @@ func hdl_csi_xtwinops(emu *Emulator, params []int, sequence string) {
 			util.Logger.Warn("unhandled operation", "seq", sequence,
 				"params", params, "id", strHandlerID[CSI_XTWINOPS])
 		}
+	case 8:
+		w := emu.GetWidth()
+		h := emu.GetHeight()
+
+		if len(params) == 3 {
+			if params[2] != 0 {
+				w = params[2]
+			}
+			if params[1] != 0 {
+				h = params[1]
+			}
+		}
+		emu.resize(w, h)
 	default:
 		util.Logger.Warn("unhandled operation", "seq", sequence,
 			"params", params, "id", strHandlerID[CSI_XTWINOPS])

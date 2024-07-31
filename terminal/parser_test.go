@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"os"
 	"reflect"
 	"sort"
 	"strings"
@@ -1881,6 +1882,43 @@ func TestHandle_XTMMODEKEYS(t *testing.T) {
 		if v.modifyOtherKeys != 3 && got != v.modifyOtherKeys {
 			t.Errorf("%s seq=%q modifyOtherKeys: expect %d, got %d\n", v.name, v.seq, v.modifyOtherKeys, got)
 		}
+	}
+}
+
+func TestHandle_XTWINOPS_8(t *testing.T) {
+	tc := []struct {
+		label  string
+		seq    string
+		width  int
+		height int
+	}{
+		{"omitted parameters", "\x1b[8;;t", 80, 40},
+		{"change width and height", "\x1b[8;20;40t", 40, 20},
+		{"zero parameters", "\x1b[8;0;0t", 80, 40},
+	}
+
+	// util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+	util.Logger.CreateLogger(os.Stderr, false, util.LevelTrace)
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			emu := NewEmulator3(80, 40, 40)
+			p := NewParser()
+
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			for _, hd := range hds {
+				hd.handle(emu)
+			}
+			gotW := emu.GetWidth()
+			gotH := emu.GetHeight()
+
+			if v.width != gotW || v.height != gotH {
+				t.Errorf("%s %q expect w:h=%d:%d, got w:h=%d:%d\n",
+					v.label, v.seq, v.width, v.height, gotW, gotH)
+			}
+		})
 	}
 }
 
