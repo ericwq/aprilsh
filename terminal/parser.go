@@ -1474,7 +1474,7 @@ func (p *Parser) handle_XTWINOPS() (hd *Handler) {
 
 	hd = &Handler{id: CSI_XTWINOPS, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
-		hdl_csi_xtwinops(emu, params, p.historyString())
+		hdl_csi_xtwinops(emu, params, hd.sequence)
 	}
 	p.setState(InputState_Normal)
 	return hd

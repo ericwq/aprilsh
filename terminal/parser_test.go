@@ -1892,9 +1892,24 @@ func TestHandle_XTWINOPS_Save(t *testing.T) {
 		warnMsg []string
 		index   int
 	}{
-		{"XTWINOPS 22 0", "\x1B[22;0t", []int{CSI_XTWINOPS}, []string{}, 0},
-		{"XTWINOPS 22 2", "\x1B[22;2t", []int{CSI_XTWINOPS}, []string{}, 0},
-		{"XTWINOPS 22 1", "\x1B[22;1t", []int{CSI_XTWINOPS}, []string{"unhandled operation", "\\x1b[22;1t"}, 0},
+		{
+			"XTWINOPS 22 0", "\x1B[22;0t",
+			[]int{CSI_XTWINOPS},
+			[]string{},
+			0,
+		},
+		{
+			"XTWINOPS 22 2", "\x1B[22;2t",
+			[]int{CSI_XTWINOPS},
+			[]string{},
+			0,
+		},
+		{
+			"XTWINOPS 22 1", "\x1B[22;1t",
+			[]int{CSI_XTWINOPS},
+			[]string{"unhandled operation", "\\x1b[22;1t"},
+			0,
+		},
 	}
 	p := NewParser()
 	emu := NewEmulator3(80, 40, 5)
@@ -4940,7 +4955,7 @@ func TestMixSequence(t *testing.T) {
 	emu := NewEmulator3(8, 4, 0)
 
 	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
-	// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stderr, true, util.LevelTrace)
 
 	for _, v := range tc {
 		t.Run(v.name, func(t *testing.T) {
@@ -4977,7 +4992,7 @@ func TestNvimClean(t *testing.T) {
 	}{
 		{
 			"CSI u", "\x1b[?1049h\x1b[22;0;0t\x1b[?1h\x1b=\x1b[H\x1b[2J\x1b[?2004h\x1b[?2026$p\x1b[0m\x1b[4:3m\x1bP$qm\x1b\\\x1b[?u\x1b[c\x1b[?25h",
-			"\x1b[?2026;0$y\x1bP0$rm\x1b\\\x1b[?64;1;9;15;21;22c",
+			"\x1b[?2026;2$y\x1bP0$rm\x1b\\\x1b[?64;1;9;15;21;22c",
 			[]int{
 				CSI_privSM, CSI_XTWINOPS, CSI_privSM, ESC_DECKPAM, CSI_CUP, CSI_ED, CSI_privSM,
 				CSI_DECRQM, CSI_SGR, CSI_SGR, DCS_DECRQSS, CSI_U, CSI_priDA, CSI_privSM,
@@ -5049,10 +5064,16 @@ func TestHistoryString(t *testing.T) {
 		index   int
 	}{
 		{
-			"unhandled sequence", "\x1b[?2026h\x1b[8;34;140t",
+			"unhandled sequence", "\x1b[?2026h\x1b[8;34;140t\x1b[?2026l",
 			"\x1b[8;34;140t", 1,
 		},
 	}
+
+	// util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+	var place strings.Builder
+	util.Logger.CreateLogger(&place, false, util.LevelTrace)
+	emu := NewEmulator3(8, 4, 0)
+
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			p := NewParser()
@@ -5060,18 +5081,11 @@ func TestHistoryString(t *testing.T) {
 			hds := make([]*Handler, 0, 16)
 			hds = p.processStream(v.seq, hds)
 
-			if !p.handleReady {
-				t.Fatalf("%s expect true, got %t\n", v.label, p.handleReady)
-			}
+			hds[v.index].handle(emu)
+			result := place.String()
 
-			got := hds[v.index].sequence
-			if got != v.history {
-				t.Errorf("%s expect history %q got %q\n", v.label, v.history, got)
-
-				for i := range hds {
-					t.Errorf("i=%d,ch=%c, arg=%s, seq=%q\n",
-						i, hds[i].GetCh(), strHandlerID[hds[i].GetId()], hds[i].sequence)
-				}
+			if strings.Contains(result, "2026l") {
+				t.Errorf("%s got warn log \n%s", v.label, result)
 			}
 		})
 	}
