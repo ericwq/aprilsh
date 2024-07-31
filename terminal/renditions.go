@@ -35,11 +35,11 @@ const (
 // Renditions determines the foreground and background color and character attribute.
 // it is comparable. default background/foreground is ColorDefault
 type Renditions struct {
-	fgColor Color
-	bgColor Color
-	ulColor Color
-	ulStyle charAttribute
-	link    int
+	fgColor   Color
+	bgColor   Color
+	ulColor   Color
+	ulStyle   charAttribute
+	linkIndex int
 	// character attributes
 	bold       bool
 	faint      bool

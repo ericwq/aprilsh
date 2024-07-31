@@ -18,6 +18,7 @@ import (
 // // Terminal state - N.B.: keep resetTerminal () in sync with this!
 type Emulator struct {
 	parser              *Parser
+	links               *links
 	cf                  *Framebuffer     // replicated by NewFrame(), current frame buffer
 	selectionStore      map[rune]string  // local storage buffer for selection data in sequence OSC 52
 	savedCursor_DEC     *SavedCursor_DEC // replicated by NewFrame(),
@@ -189,6 +190,7 @@ func (emu *Emulator) resize(nCols, nRows int) {
 
 	emu.normalizeCursorPos()
 	emu.showCursor()
+	emu.links = newLinks()
 
 	// TODO pty resize
 }
@@ -274,6 +276,8 @@ func (emu *Emulator) resetAttrs() {
 	// reset the character attributes
 	params := []int{0} // preapare parameters for SGR
 	hdl_csi_sgr(emu, params)
+
+	emu.links = newLinks()
 }
 
 func (emu *Emulator) resetScreen() {
@@ -476,6 +480,7 @@ func (emu *Emulator) switchScreenBufferMode(altScreenBufferMode bool) {
 
 	// fmt.Printf(" switchScreenBufferMode=%t marginBottom=%d, marginTop=%d, nRows=%d, nCols=%d\n",
 	// 	emu.altScreenBufferMode, emu.marginBottom, emu.marginTop, emu.nRows, emu.nCols)
+	emu.links = newLinks()
 }
 
 // only set compatibility level for emulator
@@ -835,6 +840,8 @@ func (emu *Emulator) Clone() *Emulator {
 	// clone windowTitleStack
 	clone.windowTitleStack = make([]string, len(emu.windowTitleStack))
 	copy(clone.windowTitleStack, emu.windowTitleStack)
+
+	clone.links = emu.links.clone()
 
 	// ignore logI,logT,logU,logW
 	return &clone

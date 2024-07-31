@@ -1471,11 +1471,11 @@ func hdl_osc_8(emu *Emulator, _ int, arg string) {
 	}
 
 	rend := &emu.attrs.renditions
-	links := newLinks()
 	if parts[1] != "" {
-		rend.link = 0
+		rend.linkIndex = emu.links.addLink(parts[1])
+		util.Logger.Trace("OSC 8", "linkIndex", rend.linkIndex, "url", parts[1])
 	} else {
-		rend.link = links.AddLink(parts[1])
+		rend.linkIndex = 0
 	}
 }
 
