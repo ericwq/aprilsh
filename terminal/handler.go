@@ -1463,8 +1463,20 @@ func hdl_osc_112(emu *Emulator, _ int, _ string) {
 // OSC 8 ; ; ST
 //
 // printf '\e]8;12;http://example.com\e\\This is a link\e]8;;\e\\\n'
-func hdl_osc_8(_ *Emulator, cmd int, arg string) {
-	util.Logger.Warn("OSC 8 is not implemented!", "cmd", cmd, "arg", arg)
+func hdl_osc_8(emu *Emulator, _ int, arg string) {
+	parts := strings.Split(arg, ";")
+	if len(parts) != 2 {
+		util.Logger.Warn("OSC 8 is not implemented!", "arg", arg, "parts", parts)
+		return
+	}
+
+	rend := &emu.attrs.renditions
+	links := newLinks()
+	if parts[1] != "" {
+		rend.link = 0
+	} else {
+		rend.link = links.AddLink(parts[1])
+	}
 }
 
 // CSI Pm h  Set Mode (SM).

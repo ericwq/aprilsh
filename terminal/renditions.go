@@ -39,6 +39,7 @@ type Renditions struct {
 	bgColor Color
 	ulColor Color
 	ulStyle charAttribute
+	link    int
 	// character attributes
 	bold       bool
 	faint      bool
