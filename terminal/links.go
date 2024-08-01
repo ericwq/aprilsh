@@ -13,6 +13,23 @@ const (
 	maxIDLength  = 250
 )
 
+/*
+Terminal emulators traditionally use maybe a dozen or so bytes per cell. Adding hyperlinks
+potentially increases it by magnitudes. As such, it's tricky to implement this feature in
+terminal emulators (without consuming way too much memory), and they probably want to expose
+some safety limits.
+
+Both VTE and iTerm2 limit the URI to 2083 bytes. There's no de jure limit, the de facto is
+2000-ish. Internet Explorer supports 2083.
+
+VTE currently limits the id to 250 bytes. It's subject to change without notice, and you
+should most definitely not rely on this particular number. Utilities are kindly requested
+to stay way below this limit, so that a few layers of intermediate software that need to
+mangle the id (e.g. add a prefix denoting their window/pane ID) still stay safe. Of course
+such intermediate layers are also kindly requested to keep their added prefix at a reasonable
+size. There's no limit for the id's length in iTerm2.
+*/
+
 type link struct {
 	url   string
 	id    string
@@ -32,23 +49,8 @@ func newLinks() *linkSet {
 	return v
 }
 
+// return exist link index or return new link index
 func (x *linkSet) addLink(id string, url string) (index int) {
-	/*
-	   Terminal emulators traditionally use maybe a dozen or so bytes per cell. Adding hyperlinks
-	   potentially increases it by magnitudes. As such, it's tricky to implement this feature in
-	   terminal emulators (without consuming way too much memory), and they probably want to expose
-	   some safety limits.
-
-	   Both VTE and iTerm2 limit the URI to 2083 bytes. There's no de jure limit, the de facto is
-	   2000-ish. Internet Explorer supports 2083.
-
-	   VTE currently limits the id to 250 bytes. It's subject to change without notice, and you
-	   should most definitely not rely on this particular number. Utilities are kindly requested
-	   to stay way below this limit, so that a few layers of intermediate software that need to
-	   mangle the id (e.g. add a prefix denoting their window/pane ID) still stay safe. Of course
-	   such intermediate layers are also kindly requested to keep their added prefix at a reasonable
-	   size. There's no limit for the id's length in iTerm2.
-	*/
 	if len(url) > maxURILength-1 {
 		url = url[:maxURILength-1]
 	}
@@ -57,14 +59,15 @@ func (x *linkSet) addLink(id string, url string) (index int) {
 		id = id[:maxIDLength-1]
 	}
 
-	index = slices.IndexFunc(x.links, func(l link) bool {
-		return l.url == url && l.id == id
-	})
+	if len(x.links) > 0 {
+		idx := slices.IndexFunc(x.links, func(l link) bool {
+			return l.url == url && l.id == id
+		})
 
-	if index != -1 {
-		return index
+		if idx != -1 {
+			return x.links[idx].index
+		}
 	}
-
 	index = x.nextIndex
 	x.links = append(x.links, link{id: id, url: url, index: index})
 	x.nextIndex++
