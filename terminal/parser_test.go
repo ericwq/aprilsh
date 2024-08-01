@@ -4693,6 +4693,56 @@ func TestHandle_OSC_112(t *testing.T) {
 	}
 }
 
+func TestHandle_OSC_8(t *testing.T) {
+	tc := []struct {
+		label string
+		seq   string
+		hdIDs []int
+		index int
+	}{
+		{"open link", "\x1B]8;;http://go.dev/\x1B\\", []int{OSC_8}, 1},
+		{"close link", "\x1B]8;;\x1B\\", []int{OSC_8}, 0},
+		{"link with id", "\x1B]8;id=9;http://example.com\x1B\\", []int{OSC_8}, 1},
+		{"malform id", "\x1B]8;id9;http://example.com\x1B\\", []int{OSC_8}, -1},
+		{"empty id", "\x1B]8;id=;http://example.com\x1B\\", []int{OSC_8}, 1},
+		{"unsupported parameters", "\x1B]8;id=xyz123:foo=bar:baz=quux;http://example.com\x1B\\", []int{OSC_8}, -1},
+		{"invalid parameters", "\x1B]8;;;http://example.com\x1B\\", []int{OSC_8}, -1},
+	}
+	p := NewParser()
+	emu := NewEmulator3(80, 40, 5)
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stderr, true, util.LevelTrace)
+
+	for _, v := range tc {
+		emu.resetTerminal()
+
+		t.Run(v.label, func(t *testing.T) {
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			// set different linkIndex value for validation
+			emu.attrs.renditions.linkIndex = -1
+
+			// execute the control sequence
+			for j, hd := range hds {
+				hd.handle(emu)
+
+				// validate the control sequences id
+				if hd.id != v.hdIDs[j] {
+					t.Fatalf("%s: seq=%q expect %s, got %s\n",
+						v.label, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+				}
+			}
+
+			got := emu.attrs.renditions.linkIndex
+			if got != v.index {
+				t.Errorf("%s exect linkIndex %d, got %d\n",
+					v.label, v.index, got)
+			}
+		})
+	}
+}
+
 func TestHandle_DECSCUSR(t *testing.T) {
 	tc := []struct {
 		label   string

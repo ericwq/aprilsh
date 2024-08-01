@@ -18,7 +18,7 @@ import (
 // // Terminal state - N.B.: keep resetTerminal () in sync with this!
 type Emulator struct {
 	parser              *Parser
-	links               *links
+	links               *linkSet
 	cf                  *Framebuffer     // replicated by NewFrame(), current frame buffer
 	selectionStore      map[rune]string  // local storage buffer for selection data in sequence OSC 52
 	savedCursor_DEC     *SavedCursor_DEC // replicated by NewFrame(),

@@ -51,19 +51,6 @@ type Renditions struct {
 	invisible  bool
 }
 
-// func (r *Renditions) Equal(x *Renditions) bool {
-// 	if r.fgColor != x.fgColor || r.bgColor != x.bgColor {
-// 		return false
-// 	}
-//
-// 	if r.bold != x.bold || r.faint != x.faint || r.italic != x.italic ||
-// 		r.underline != x.underline || r.blink != x.blink || r.rapidBlink != x.rapidBlink ||
-// 		r.inverse != x.inverse || r.invisible != x.invisible {
-// 		return false
-// 	}
-// 	return true
-// }
-
 // set the ANSI foreground indexed color. The index start from 0. represent ANSI standard color.
 func (rend *Renditions) SetForegroundColor(index int) {
 	rend.fgColor = PaletteColor(index)
@@ -103,11 +90,6 @@ func (rend *Renditions) SetBgColor(r, g, b int) {
 func (rend *Renditions) setUnderlineRGBColor(r, g, b int) {
 	rend.ulColor = NewRGBColor(int32(r), int32(g), int32(b))
 }
-
-// // set 256 underline color
-// func (rend *Renditions) setUnderlineColor3(v Color) {
-// 	rend.ulColor = v
-// }
 
 // set underline style
 func (rend *Renditions) setUnderlineStyle(v charAttribute) {
@@ -259,6 +241,8 @@ func (rend *Renditions) ClearAttributes() {
 	rend.rapidBlink = false
 	rend.inverse = false
 	rend.invisible = false
+
+	rend.linkIndex = 0
 }
 
 // build renditions based on attribute parameter. This method can process 8-color, 16-color set and

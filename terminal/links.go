@@ -6,49 +6,78 @@ package terminal
 
 import (
 	"slices"
-	"sort"
+)
+
+const (
+	maxURILength = 2083
+	maxIDLength  = 250
 )
 
 type link struct {
-	url string
-	num int
+	url   string
+	id    string
+	index int
 }
 
-type links struct {
-	linkSet   []link
-	linkIndex int
+type linkSet struct {
+	links     []link
+	nextIndex int
 }
 
-func newLinks() *links {
-	v := &links{}
-	v.linkSet = make([]link, 0, 16)
-	v.linkIndex = 1
+func newLinks() *linkSet {
+	v := &linkSet{}
+	v.links = make([]link, 0, 8)
+	v.nextIndex = 1
 
 	return v
 }
 
-func (x *links) addLink(url string) (idx int) {
-	idx = slices.IndexFunc(x.linkSet, func(c link) bool { return c.url == url })
-	if idx > 0 {
-		return idx
+func (x *linkSet) addLink(id string, url string) (index int) {
+	/*
+	   Terminal emulators traditionally use maybe a dozen or so bytes per cell. Adding hyperlinks
+	   potentially increases it by magnitudes. As such, it's tricky to implement this feature in
+	   terminal emulators (without consuming way too much memory), and they probably want to expose
+	   some safety limits.
+
+	   Both VTE and iTerm2 limit the URI to 2083 bytes. There's no de jure limit, the de facto is
+	   2000-ish. Internet Explorer supports 2083.
+
+	   VTE currently limits the id to 250 bytes. It's subject to change without notice, and you
+	   should most definitely not rely on this particular number. Utilities are kindly requested
+	   to stay way below this limit, so that a few layers of intermediate software that need to
+	   mangle the id (e.g. add a prefix denoting their window/pane ID) still stay safe. Of course
+	   such intermediate layers are also kindly requested to keep their added prefix at a reasonable
+	   size. There's no limit for the id's length in iTerm2.
+	*/
+	if len(url) > maxURILength-1 {
+		url = url[:maxURILength-1]
 	}
 
-	idx = x.linkIndex
-	x.linkSet = append(x.linkSet, link{url: url, num: x.linkIndex})
-	x.linkIndex++
+	if len(id) > maxIDLength-1 {
+		id = id[:maxIDLength-1]
+	}
 
-	sort.Slice(x.linkSet, func(i, j int) bool {
-		return x.linkSet[i].num < x.linkSet[j].num
+	index = slices.IndexFunc(x.links, func(l link) bool {
+		return l.url == url && l.id == id
 	})
+
+	if index != -1 {
+		return index
+	}
+
+	index = x.nextIndex
+	x.links = append(x.links, link{id: id, url: url, index: index})
+	x.nextIndex++
+
 	return
 }
 
-func (x *links) clone() *links {
-	clone := links{}
+func (x *linkSet) clone() *linkSet {
+	clone := linkSet{}
 
-	clone.linkIndex = x.linkIndex
-	clone.linkSet = make([]link, len(x.linkSet))
-	copy(clone.linkSet, x.linkSet)
+	clone.nextIndex = x.nextIndex
+	clone.links = make([]link, len(x.links))
+	copy(clone.links, x.links)
 
 	return &clone
 }

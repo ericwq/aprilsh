@@ -1464,16 +1464,36 @@ func hdl_osc_112(emu *Emulator, _ int, _ string) {
 //
 // printf '\e]8;12;http://example.com\e\\This is a link\e]8;;\e\\\n'
 func hdl_osc_8(emu *Emulator, _ int, arg string) {
-	parts := strings.Split(arg, ";")
-	if len(parts) != 2 {
-		util.Logger.Warn("OSC 8 is not implemented!", "arg", arg, "parts", parts)
+	params := strings.Split(arg, ";")
+	if len(params) != 2 {
+		util.Logger.Warn("OSC 8: invalid parameters", "arg", arg, "params", params)
 		return
 	}
 
 	rend := &emu.attrs.renditions
-	if parts[1] != "" {
-		rend.linkIndex = emu.links.addLink(parts[1])
-		util.Logger.Trace("OSC 8", "linkIndex", rend.linkIndex, "url", parts[1])
+	if params[1] != "" {
+		// params is an optional list of key=value assignments, separated by the : character.
+		// Example: id=xyz123:foo=bar:baz=quux. Currently only the id key is defined, see below.
+		// These parameters allow future extendability of this feature. In the typical case no
+		// parameters are defined, in that case obviously the two semicolons have to be present
+		// next to each other.
+
+		id := ""
+		if strings.Contains(params[0], ":") {
+			util.Logger.Warn("OSC 8: unsupported parameters", "arg", arg, "params", params)
+			return
+		} else if strings.Contains(params[0], "=") {
+			parts := strings.Split(params[0], "=")
+			if strings.ToLower(parts[0]) == "id" {
+				id = parts[1]
+			}
+		} else if params[0] != "" {
+			util.Logger.Warn("OSC 8: invalid parameters", "arg", arg, "params", params)
+			return
+		}
+
+		rend.linkIndex = emu.links.addLink(id, params[1])
+		util.Logger.Trace("OSC 8", "linkIndex", rend.linkIndex, "id", id, "url", params[1])
 	} else {
 		rend.linkIndex = 0
 	}
