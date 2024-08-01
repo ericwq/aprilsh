@@ -543,7 +543,7 @@ func (emu *Emulator) excludeHandler(hd *Handler, before int, after int) bool {
 	switch hd.id {
 	case CSI_DSR, CSI_priDA, CSI_secDA, DCS_DECRQSS:
 		return true
-	case OSC_4, OSC_10_11_12_17_19:
+	case OSC_4, OSC_10_11_12_17_19, CSI_DECRQM:
 		return true
 	case OSC_52: // special case: set OSC 52 data, then query it, the response will be updated.
 		if before != after {
