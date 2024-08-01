@@ -143,7 +143,7 @@ func (c *Complete) SetEchoAck(now int64, inputEchoDone bool) (ret bool) {
 		ret = true
 	}
 
-	util.Logger.Debug("SetEchoAck", "newestEchoAck", newestEchoAck, "return", ret,
+	util.Logger.Trace("SetEchoAck", "newestEchoAck", newestEchoAck, "return", ret,
 		"now", now, "inputHistory", b)
 
 	c.echoAck = newestEchoAck

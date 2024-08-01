@@ -1658,7 +1658,7 @@ mainLoop:
 
 		terminalToHost.Reset()
 
-		util.Logger.Trace("mainLoop", "port", server.GetServerPort(),
+		util.Logger.Debug("mainLoop", "port", server.GetServerPort(),
 			"network.WaitTime", w0, "complete.WaitTime", w1, "timeout", timeout)
 		timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
 		select {

@@ -1885,6 +1885,9 @@ DCS + q Pt ST
 	with each name/value pair in the same response.  An invalid
 	name (one not found in xterm's tables) ends processing of the
 	list of names.
+
+request: "\x1bP+q5463;524742;73657472676266;73657472676262\x1b\\"
+response: "\x1bP1+r5463=31\x1b\\\x1bP1+r524742=382F382F38\x1b\\\x1bP0+r73657472676266\x1b\\\x1bP0+r73657472676262\x1b\\"
 */
 func hdl_dcs_xtgettcap(_ *Emulator, arg string) {
 	name := strings.Split(arg, ";")
