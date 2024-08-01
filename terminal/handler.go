@@ -1493,7 +1493,7 @@ func hdl_osc_8(emu *Emulator, _ int, arg string) {
 		}
 
 		rend.linkIndex = emu.links.addLink(id, params[1])
-		util.Logger.Trace("OSC 8", "linkIndex", rend.linkIndex, "id", id, "url", params[1])
+		// util.Logger.Trace("OSC 8", "linkIndex", rend.linkIndex, "id", id, "url", params[1])
 	} else {
 		rend.linkIndex = 0
 	}
