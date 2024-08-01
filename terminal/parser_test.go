@@ -5128,3 +5128,82 @@ func TestHistoryString(t *testing.T) {
 		})
 	}
 }
+
+func TestHandle_DECRQM_break(t *testing.T) {
+	tc := []struct {
+		label string
+		seq   string
+		log   string
+	}{
+		{"not DECRQM break", "\x1b[?20p", "Unhandled input"},
+		{"DECRQM without pd", "\x1b[?;$p", "unimplemented DECRQM"},
+		{"DECRQM unsupported pd", "\x1b[?7$p", "unimplemented DECRQM"},
+		{"DECRQM no pd", "\x1b[?$p", "unimplemented DECRQM"},
+	}
+
+	var place strings.Builder
+	util.Logger.CreateLogger(&place, false, util.LevelTrace)
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			p := NewParser()
+			emu := NewEmulator3(80, 40, 0)
+
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			for i := range hds {
+				hds[i].handle(emu)
+			}
+			result := place.String()
+
+			if strings.Contains(result, "2026l") {
+				t.Errorf("%s got warn log \n%s", v.label, result)
+			}
+		})
+	}
+}
+
+func TestHandle_DECRQM(t *testing.T) {
+	tc := []struct {
+		name string
+		seq  string
+		resp string
+	}{
+		{
+			"2026 set default", "\x1b[?2026$p", "\x1b[?2026;2$y",
+		},
+		{
+			"2026 reset", "\x1B[?2026h\x1b[?2026$p", "\x1B[?2026;1$y",
+		},
+		{
+			"2026 set", "\x1B[?2026l\x1b[?2026$p", "\x1B[?2026;2$y",
+		},
+	}
+
+	var place strings.Builder
+	util.Logger.CreateLogger(&place, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
+
+	for _, v := range tc {
+		p := NewParser()
+		emu := NewEmulator3(80, 40, 0)
+		emu.terminalToHost.Reset()
+
+		t.Run(v.name, func(t *testing.T) {
+			// parse control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			// handle the control sequence
+			for _, hd := range hds {
+				hd.handle(emu)
+			}
+
+			got := emu.terminalToHost.String()
+			if v.resp != got {
+				t.Errorf("%s seq:%q expect %q, got %q\n", v.name, v.seq, v.resp, got)
+			}
+		})
+	}
+}
