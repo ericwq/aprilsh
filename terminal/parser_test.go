@@ -5257,3 +5257,90 @@ func TestHandle_DECRQM(t *testing.T) {
 		})
 	}
 }
+
+func TestHandle_MouseTrack(t *testing.T) {
+	tc := []struct {
+		label string
+		seq   string
+		hdIDs []int
+		wantY int
+		wantX int
+	}{
+		{
+			"SGR press/release", "\x1b[?1006h\x1B[<0:14;24M\x1B[<0:14;24m",
+			[]int{CSI_privSM, CSI_MOUSETRACK, CSI_MOUSETRACK},
+			23, 13,
+		},
+		{
+			"URXVT press/release", "\x1b[?1015h\x1B[<0:14;24M\x1B[<0:14;24m",
+			[]int{CSI_privSM, CSI_MOUSETRACK, CSI_MOUSETRACK},
+			0, 0,
+		},
+	}
+
+	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+
+	for _, v := range tc {
+		p := NewParser()
+		emu := NewEmulator3(80, 40, 0)
+
+		t.Run(v.label, func(t *testing.T) {
+			// parse control sequence
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			// reset the cursor position
+			emu.posY = 0
+			emu.posX = 0
+
+			// execute the control sequence
+			for j, hd := range hds {
+				hd.handle(emu)
+				if hd.id != v.hdIDs[j] {
+					t.Fatalf("%s: seq=%q expect %s, got %s\n",
+						v.label, v.seq, strHandlerID[v.hdIDs[j]], strHandlerID[hd.id])
+				}
+			}
+			// get the result
+			gotY := emu.posY
+			gotX := emu.posX
+
+			if gotX != v.wantX || gotY != v.wantY {
+				t.Errorf("%s expect cursor position (%d,%d), got (%d,%d)\n",
+					v.label, v.wantX, v.wantY, gotX, gotY)
+			}
+		})
+	}
+}
+
+func TestHandle_MouseTrack_break(t *testing.T) {
+	tc := []struct {
+		label string
+		seq   string
+		log   string
+	}{
+		{"unhandled break", "\x1b[<20p", "Unhandled input"},
+	}
+
+	var place strings.Builder
+	util.Logger.CreateLogger(&place, false, util.LevelTrace)
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			p := NewParser()
+			emu := NewEmulator3(80, 40, 0)
+
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.seq, hds)
+
+			for i := range hds {
+				hds[i].handle(emu)
+			}
+			result := place.String()
+
+			if strings.Contains(result, "2026l") {
+				t.Errorf("%s got warn log \n%s", v.label, result)
+			}
+		})
+	}
+}

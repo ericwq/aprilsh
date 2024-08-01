@@ -28,6 +28,7 @@ const (
 	InputState_CSI_Bang
 	InputState_CSI_SPC
 	InputState_CSI_GT
+	InputState_CSI_LT
 	InputState_DCS
 	InputState_DCS_Esc
 	InputState_OSC
@@ -51,6 +52,7 @@ var strInputState = [...]string{
 	"CSI_Bang",
 	"CSI_SPC",
 	"CSI_GT",
+	"CSI_LT",
 	"DCS",
 	"DCS_Esc",
 	"OSC",
@@ -1530,6 +1532,18 @@ func (p *Parser) handle_ID() (hd *Handler) {
 	return hd
 }
 
+func (p *Parser) handle_MouseTrack(press bool) (hd *Handler) {
+	params := p.copyArgs()
+
+	hd = &Handler{id: CSI_MOUSETRACK, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *Emulator) {
+		hdl_csi_mousetrack(emu, press, params)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
 // process data stream from outside. for VT mode, character set can be changed
 // according to control sequences. for UTF-8 mode, no need to change character set.
 // the result is a *Handler list. waiting to be executed later.
@@ -1937,6 +1951,8 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 			p.setState(InputState_CSI_SPC)
 		case '>':
 			p.setState(InputState_CSI_GT)
+		case '<':
+			p.setState(InputState_CSI_LT)
 		case '\x07': // BEL is ignored \a in c++
 		case '\x08': // BS is \b
 			// undo last character in CSI sequence:
@@ -2000,6 +2016,18 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_secDA()
 		case 'm':
 			hd = p.handle_XTMODKEYS()
+		default:
+			p.unhandledInput()
+		}
+	case InputState_CSI_LT:
+		if p.collectNumericParameters(ch) {
+			break
+		}
+		switch ch {
+		case 'M':
+			hd = p.handle_MouseTrack(true)
+		case 'm':
+			hd = p.handle_MouseTrack(false)
 		default:
 			p.unhandledInput()
 		}

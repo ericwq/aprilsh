@@ -84,6 +84,7 @@ const (
 	CSI_XTMODKEYS
 	CSI_XTWINOPS
 	CSI_U
+	CSI_MOUSETRACK
 	DCS_DECRQSS
 	DCS_XTGETTCAP
 	ESC_BI
@@ -176,6 +177,7 @@ var strHandlerID = [...]string{
 	"csi_xtmodkeys",
 	"csi_xtwinops",
 	"csi_u",
+	"csi_mousetrack",
 	"dcs_decrqss",
 	"dcs_xtgettcap",
 	"esc_bi",
@@ -2253,5 +2255,47 @@ func hdl_csi_xtwinops(emu *Emulator, params []int, sequence string) {
 func hdl_csi_rep(emu *Emulator, arg int, chs []rune) {
 	for k := 0; k < arg; k++ {
 		hdl_graphemes(emu, chs...)
+	}
+}
+
+/*
+SGR (1006)
+
+	The normal mouse response is altered to use
+
+	o   CSI < followed by semicolon-separated
+
+	o   encoded button value,
+
+	o   Px and Py ordinates and
+
+	o   a final character which is M  for button press and m  for
+	    button release.
+
+	The encoded button value in this case does not add 32 since
+	that was useful only in the X10 scheme for ensuring that the
+	byte containing the button value is a printable code.
+
+	o   The modifiers are encoded in the same way.
+
+	o   A different final character is used for button release to
+	    resolve the X10 ambiguity regarding which button was
+	    released.
+
+	The highlight tracking responses are also modified to an SGR-
+	like format, using the same SGR-style scheme and button-
+	encodings.
+
+	"\x1b[<0;1;5M"
+*/
+func hdl_csi_mousetrack(emu *Emulator, press bool, params []int) {
+	switch emu.mouseTrk.enc {
+	case MouseTrackingEnc_SGR:
+		if !press && len(params) == 3 {
+			hdl_csi_cup(emu, params[2], params[1])
+		}
+	default:
+		util.Logger.Warn("unhandled operation", "encoding", emu.mouseTrk.enc,
+			"press", press, "params", params, "id", strHandlerID[CSI_MOUSETRACK])
 	}
 }
