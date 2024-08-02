@@ -5357,7 +5357,7 @@ func Test_XTGETTCAP(t *testing.T) {
 			[]string{"5463=31", "524742=382F382F38", "73657472676266", "73657472676262"},
 		},
 	}
-	//   request: "\x1bP+q5463;524742;73657472676266;73657472676262\x1b\\"
+	// request: "\x1bP+q5463;524742;73657472676266;73657472676262\x1b\\"
 	// response: "\x1bP1+r5463=31\x1b\\\x1bP1+r524742=382F382F38\x1b\\\x1bP0+r73657472676266\x1b\\\x1bP0+r73657472676262\x1b\\"
 
 	util.Logger.CreateLogger(os.Stderr, false, util.LevelTrace)
@@ -5367,18 +5367,18 @@ func Test_XTGETTCAP(t *testing.T) {
 		t.Run(v.label, func(t *testing.T) {
 			parts := strings.Split(v.request, ";")
 			for i := range parts {
-				txt, _ := decode(parts[i])
+				txt, _ := hexDecode(parts[i])
 				util.Logger.Info(fmt.Sprintf("%18s is %10s", parts[i], txt))
 			}
 
 			for j := range v.response {
 				p := strings.Split(v.response[j], "=")
 				if len(p) == 2 {
-					k, _ := decode(p[0])
-					v, _ := decode(p[1])
+					k, _ := hexDecode(p[0])
+					v, _ := hexDecode(p[1])
 					util.Logger.Info(fmt.Sprintf("%18s = %10s", k, v))
 				} else {
-					k, _ := decode(p[0])
+					k, _ := hexDecode(p[0])
 					util.Logger.Info(fmt.Sprintf("%18s = ", k))
 				}
 			}
@@ -5386,11 +5386,7 @@ func Test_XTGETTCAP(t *testing.T) {
 	}
 }
 
-func decode(hd string) (string, error) {
-	dst := make([]byte, hex.DecodedLen(len(hd)))
-	n, err := hex.Decode(dst, []byte(hd))
-	if err != nil {
-		return "", err
-	}
-	return string(dst[:n]), nil
+func hexDecode(s string) (string, error) {
+	decoded, err := hex.DecodeString(s)
+	return string(decoded), err
 }

@@ -1857,55 +1857,6 @@ func hdl_dcs_decrqss(emu *Emulator, arg string) {
 	}
 }
 
-/*
-DCS + q Pt ST
-
-	Request Termcap/Terminfo String (XTGETTCAP), xterm.  The
-	string following the "q" is a list of names encoded in
-	hexadecimal (2 digits per character) separated by ; which
-	correspond to termcap or terminfo key names.
-	A few special features are also recognized, which are not key
-	names:
-
-	o   Co for termcap colors (or colors for terminfo colors), and
-
-	o   TN for termcap name (or name for terminfo name).
-
-	o   RGB for the ncurses direct-color extension.
-	    Only a terminfo name is provided, since termcap
-	    applications cannot use this information.
-
-	xterm responds with
-	DCS 1 + r Pt ST for valid requests, adding to Pt an = , and
-	the value of the corresponding string that xterm would send,
-	or
-	DCS 0 + r ST for invalid requests.
-	The strings are encoded in hexadecimal (2 digits per
-	character).  If more than one name is given, xterm replies
-	with each name/value pair in the same response.  An invalid
-	name (one not found in xterm's tables) ends processing of the
-	list of names.
-
-request: "\x1bP+q5463;524742;73657472676266;73657472676262\x1b\\"
-response: "\x1bP1+r5463=31\x1b\\\x1bP1+r524742=382F382F38\x1b\\\x1bP0+r73657472676266\x1b\\\x1bP0+r73657472676262\x1b\\"
-*/
-func hdl_dcs_xtgettcap(_ *Emulator, arg string) {
-	name := strings.Split(arg, ";")
-	n2 := []string{}
-	for i := range name {
-		dst := make([]byte, hex.DecodedLen(len(name[i])))
-		n, err := hex.Decode(dst, []byte(name[i]))
-		if err != nil {
-			util.Logger.Warn("XTGETTCAP decode error", "i", i, "name[i]", name[i], "error", err)
-		}
-		// util.Logger.Warn("XTGETTCAP", "i", i, "name[i]", dst[:n])
-		n2 = append(n2, string(dst[:n]))
-		// TODO: lookup terminfo and return the result
-	}
-	util.Logger.Warn("XTGETTCAP is not implemented!", "arg", arg, "name", name)
-	util.Logger.Warn("XTGETTCAP is not implemented!", "n2", n2)
-}
-
 // CSI Pl ; Pr s
 //
 //	Set left and right margins (DECSLRM), VT420 and up.  This is
@@ -2301,4 +2252,78 @@ func hdl_csi_mousetrack(emu *Emulator, press bool, params []int) {
 		util.Logger.Warn("unhandled operation", "encoding", emu.mouseTrk.enc,
 			"press", press, "params", params, "id", strHandlerID[CSI_MOUSETRACK])
 	}
+}
+
+/*
+DCS + q Pt ST
+
+	Request Termcap/Terminfo String (XTGETTCAP), xterm.  The
+	string following the "q" is a list of names encoded in
+	hexadecimal (2 digits per character) separated by ; which
+	correspond to termcap or terminfo key names.
+	A few special features are also recognized, which are not key
+	names:
+
+	o   Co for termcap colors (or colors for terminfo colors), and
+
+	o   TN for termcap name (or name for terminfo name).
+
+	o   RGB for the ncurses direct-color extension.
+	    Only a terminfo name is provided, since termcap
+	    applications cannot use this information.
+
+	xterm responds with
+	DCS 1 + r Pt ST for valid requests, adding to Pt an = , and
+	the value of the corresponding string that xterm would send,
+	or
+	DCS 0 + r Pt ST for invalid requests.
+	The strings are encoded in hexadecimal (2 digits per
+	character).  If more than one name is given, xterm replies
+	with each name/value pair in the same response.  An invalid
+	name (one not found in xterm's tables) ends processing of the
+	list of names.
+
+request: "\x1bP+q5463;524742;73657472676266;73657472676262\x1b\\"
+response: "\x1bP1+r5463=31\x1b\\\x1bP1+r524742=382F382F38\x1b\\\x1bP0+r73657472676266\x1b\\\x1bP0+r73657472676262\x1b\\"
+*/
+func hdl_dcs_xtgettcap(emu *Emulator, arg string) {
+	qNames := strings.Split(arg, ";")
+	for i := range qNames {
+		// TODO: add support for TN, Co, RGB
+		xtgettcapReply(emu, qNames[i])
+	}
+}
+
+// decode capability name, lookup its value, write response to pty.
+//
+// Reply format:
+//
+// \EP 1 + r cap=value \E\\
+//
+// Where 'cap' and 'value are hex encoded ascii strings
+func xtgettcapReply(emu *Emulator, hexCapName string) {
+	name, err := hex.DecodeString(hexCapName)
+	if err != nil {
+		util.Logger.Warn("XTGETTCAP: invalid hex encoding, ignoring capability", "name", name, "error", err)
+		return
+	}
+
+	value, ok := lookupTerminfoCap(string(name))
+	util.Logger.Warn("XTGETTCAP", "hexCapName", hexCapName, "valid", ok, "name", string(name), "value", value)
+
+	if !ok {
+		emu.writePty(fmt.Sprintf("\x1BP0+r%s\x1B\\", hexCapName))
+		return
+	}
+	if len(value) == 0 {
+		emu.writePty(fmt.Sprintf("\x1BP1+r%s\x1B\\", hexCapName))
+		return
+	}
+
+	hexValue := hex.EncodeToString([]byte(value))
+	emu.writePty(fmt.Sprintf("\x1BP1+r%s=%s\x1B\\", hexCapName, hexValue))
+}
+
+func lookupTerminfoCap(_ string) (value string, ok bool) {
+	return
 }
