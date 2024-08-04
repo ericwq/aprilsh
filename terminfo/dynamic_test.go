@@ -6,27 +6,101 @@ package terminfo
 
 import (
 	"io"
+	"os"
 	"testing"
 
 	"github.com/ericwq/aprilsh/util"
 )
+
+func TestUnescape(t *testing.T) {
+	expectStr := "\x1b[%i%p1%d;%p2%dH"
+	if nTerminfo.getstr("cup") != expectStr {
+		t.Errorf("cup expect %q, got %q\n", expectStr, nTerminfo.getstr("cup"))
+	}
+
+	expectBool := true
+	if nTerminfo.getflag("am") != expectBool {
+		t.Errorf("am expect %t, got %t\n", expectBool, nTerminfo.getflag("am"))
+	}
+
+	expectNum := 80
+	if nTerminfo.getnum("cols") != expectNum {
+		t.Errorf("cols expect %d, got %d\n", expectNum, nTerminfo.getnum("cols"))
+	}
+
+	tc := []struct {
+		label string
+		data  string
+		value []rune
+	}{
+		{
+			"special escape",
+			"\\0\\n\\r\\t\\b\\f\\s",
+			[]rune{'\x00', '\n', '\r', '\t', '\b', '\f', ' '},
+		},
+	}
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			got := unescape(v.data)
+			if got != string(v.value) {
+				t.Errorf("%s require %q, got %q\b", v.label, string(v.value), got)
+			}
+		})
+	}
+}
+
+func TestSetupterm(t *testing.T) {
+	badTc := &termcap{}
+	err := badTc.setupterm("badTerm")
+	if err == nil {
+		t.Errorf("setupterm expect errors got \n%s\n", err)
+	}
+}
 
 func TestLookupCap(t *testing.T) {
 	tc := []struct {
 		label  string
 		names  []string
 		values []string
-	}{}
+		ok     []bool
+	}{
+		{
+			"special capability",
+			[]string{"tc"},
+			[]string{os.Getenv("TERM")},
+			[]bool{true},
+		},
+		{
+			"number capability",
+			[]string{"colors", "cols"},
+			[]string{"256", "80"},
+			[]bool{true, true},
+		},
+		{
+			"string capability",
+			[]string{"cup", "setrgbf", "setrgbb"},
+			[]string{"\x1b[%i%p1%d;%p2%dH", "", ""},
+			[]bool{true, false, false},
+		},
+		{
+			"bool capability",
+			[]string{"am"},
+			[]string{""},
+			[]bool{true},
+		},
+	}
 
 	util.Logger.CreateLogger(io.Discard, false, util.LevelTrace)
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
-			for i := range v.names {
+			for i, name := range v.names {
+				value, ok := LookupCap(name)
+				if v.values[i] != value || ok != v.ok[i] {
+					t.Errorf("%s name:%-9s expect %q got %q,ok=%t",
+						v.label, name, v.values[i], value, ok)
+				}
 			}
-			// if strings.Contains(result, "2026l") {
-			// 	t.Errorf("%s got warn log \n%s", v.label, result)
-			// }
 		})
 	}
 }

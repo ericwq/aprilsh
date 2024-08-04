@@ -41,7 +41,7 @@ const (
 	escaped
 )
 
-var errNotAddressable = errors.New("terminal not cursor addressable")
+// var errNotAddressable = errors.New("terminal not cursor addressable")
 
 var nTerminfo *termcap
 
@@ -166,35 +166,30 @@ func (tc *termcap) setupterm(name string) error {
 	return nil
 }
 
-func init() {
-	termName := os.Getenv("TERM")
-	// TODO: case: no TERM, empty TERM, can't find TERM
-	nTerminfo.setupterm(termName)
-}
-
 func LookupCap(cap string) (string, bool) {
 	cap = strings.ToLower(cap)
 	if cap == "tc" {
 		return nTerminfo.name, true
 	}
 
-	for key := range nTerminfo.nums {
-		if key == cap {
-			return fmt.Sprintf("%d", nTerminfo.nums[key]), true
-		}
+	if v, ok := nTerminfo.nums[cap]; ok {
+		return fmt.Sprintf("%d", v), true
 	}
 
-	for key := range nTerminfo.strs {
-		if key == cap {
-			return nTerminfo.strs[key], true
-		}
+	if v, ok := nTerminfo.strs[cap]; ok {
+		return v, true
 	}
 
-	for key := range nTerminfo.bools {
-		if key == cap {
-			return "", true
-		}
+	if _, ok := nTerminfo.bools[cap]; ok {
+		return "", true
 	}
 
 	return "", false
+}
+
+func init() {
+	termName := os.Getenv("TERM")
+	// TODO: case: no TERM, empty TERM, can't find TERM
+	nTerminfo = &termcap{}
+	nTerminfo.setupterm(termName)
 }
