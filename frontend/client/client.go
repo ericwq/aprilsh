@@ -379,9 +379,26 @@ func (c *Config) fetchKey() error {
 	var b []byte
 	cmd := fmt.Sprintf("/usr/bin/apshd -b -t %s -destination %s -p %d",
 		os.Getenv("TERM"), c.destination[0], c.port)
-	fmt.Fprintf(os.Stderr, "cmd=%s\n", cmd)
+	// fmt.Fprintf(os.Stderr, "cmd=%s\n", cmd)
+
+	// Turns out, you can't simply change environment variables in SSH sessions.
+	// The OpenSSH server denies those requests unless you've whitelisted the
+	// specific variable in your server settings. This is for security reasons:
+	// people with access to a restricted list of commands could set an environment
+	// variable like LD_PRELOAD to escape their jail. (If your user has access to a
+	// shell there are other ways to set environment variables.)
+	//
+	// To allow changing an environment variable over SSH, change the AcceptEnv
+	// setting in your OpenSSH server configuration (typically /etc/ssh/sshd_config)
+	// to accept your environment variable:
+	//
+	// 	err = session.Setenv("TERM", os.Getenv("TERM"))
+	// 	if err != nil {
+	// 		return err
+	// 	}
 
 	if b, err = session.Output(cmd); err != nil {
+		fmt.Print(string(b))
 		return err
 	}
 	out := strings.TrimSpace(string(b))
@@ -1323,6 +1340,8 @@ func main() {
 	default:
 		util.Logger.CreateLogger(logWriter, conf.addSource, slog.LevelInfo)
 	}
+
+	terminfo.InitTerminfo()
 
 	// https://earthly.dev/blog/golang-errors/
 	// https://gosamples.dev/check-error-type/

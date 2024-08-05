@@ -183,10 +183,13 @@ func LookupTerminfo(capName string) (string, bool) {
 }
 
 func init() {
+}
+
+func InitTerminfo() {
 	termName := os.Getenv("TERM")
 	if termName == "" {
 		fmt.Printf("not find TERM, please provide one.\n")
-		os.Exit(1)
+		os.Exit(17)
 	}
 	nTerminfo = &termcap{}
 	err := nTerminfo.setupterm(termName)

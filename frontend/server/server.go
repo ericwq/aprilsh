@@ -33,6 +33,7 @@ import (
 	"github.com/ericwq/aprilsh/network"
 	"github.com/ericwq/aprilsh/statesync"
 	"github.com/ericwq/aprilsh/terminal"
+	"github.com/ericwq/aprilsh/terminfo"
 	"github.com/ericwq/aprilsh/util"
 	utmps "github.com/ericwq/goutmp"
 	"golang.org/x/sync/errgroup"
@@ -2222,6 +2223,11 @@ func main() {
 	if conf.version {
 		printVersion()
 		return
+	}
+
+	if conf.term != "" {
+		os.Setenv("TERM", conf.term)
+		terminfo.InitTerminfo()
 	}
 
 	fmt.Fprintf(os.Stderr, "main process %d args=%s, uds=%s\n", os.Getpid(), os.Args, unixsockAddr)
