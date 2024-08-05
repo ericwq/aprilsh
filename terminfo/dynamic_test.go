@@ -13,6 +13,7 @@ import (
 )
 
 func TestUnescape(t *testing.T) {
+	dynamicInit()
 	expectStr := "\x1b[%i%p1%d;%p2%dH"
 	if nTerminfo.getstr("cup") != expectStr {
 		t.Errorf("cup expect %q, got %q\n", expectStr, nTerminfo.getstr("cup"))
@@ -50,14 +51,40 @@ func TestUnescape(t *testing.T) {
 }
 
 func TestSetupterm(t *testing.T) {
-	badTc := &termcap{}
+	badTc := &terminfo{}
 	err := badTc.setupterm("badTerm")
 	if err == nil {
 		t.Errorf("setupterm expect errors got \n%s\n", err)
 	}
 }
 
-func TestLookupTerminfo(t *testing.T) {
+func TestInit_BadTerm(t *testing.T) {
+	term := os.Getenv("TERM")
+	os.Setenv("TERM", "badTerm@$%")
+
+	defer func() {
+		if p := recover(); p != nil {
+			os.Setenv("TERM", term)
+		}
+	}()
+	dynamicInit()
+	t.Errorf("should panic")
+}
+
+func TestInit_NoTerm(t *testing.T) {
+	term := os.Getenv("TERM")
+	os.Unsetenv("TERM")
+
+	defer func() {
+		if p := recover(); p != nil {
+			os.Setenv("TERM", term)
+		}
+	}()
+	dynamicInit()
+	t.Errorf("should panic")
+}
+
+func TestLookup(t *testing.T) {
 	tc := []struct {
 		label  string
 		names  []string
@@ -91,11 +118,12 @@ func TestLookupTerminfo(t *testing.T) {
 	}
 
 	util.Logger.CreateLogger(io.Discard, false, util.LevelTrace)
+	dynamicInit()
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			for i, name := range v.names {
-				value, ok := LookupTerminfo(name)
+				value, ok := Lookup(name)
 				if v.values[i] != value || ok != v.ok[i] {
 					t.Errorf("%s name:%-9s expect %q got %q,ok=%t",
 						v.label, name, v.values[i], value, ok)

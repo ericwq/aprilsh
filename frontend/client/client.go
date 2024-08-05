@@ -77,7 +77,7 @@ func printColors() {
 	value, ok := os.LookupEnv("TERM")
 	if ok {
 		if value != "" {
-			colors, ok := terminfo.LookupTerminfo("colors")
+			colors, ok := terminfo.Lookup("colors")
 			if ok {
 				fmt.Printf("%s %s\n", value, colors)
 			} else {
@@ -1296,7 +1296,6 @@ func main() {
 
 	// For security, make sure we don't dump core
 	encrypt.DisableDumpingCore()
-	terminfo.Init()
 
 	conf, _, err := parseFlags(os.Args[0], os.Args[1:])
 	if errors.Is(err, flag.ErrHelp) {
@@ -1341,8 +1340,6 @@ func main() {
 	default:
 		util.Logger.CreateLogger(logWriter, conf.addSource, slog.LevelInfo)
 	}
-
-	terminfo.Init()
 
 	// https://earthly.dev/blog/golang-errors/
 	// https://gosamples.dev/check-error-type/

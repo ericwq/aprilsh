@@ -14,7 +14,7 @@ import (
 	"strings"
 )
 
-type termcap struct {
+type terminfo struct {
 	bools   map[string]bool
 	nums    map[string]int
 	strs    map[string]string
@@ -23,15 +23,15 @@ type termcap struct {
 	aliases []string
 }
 
-func (tc *termcap) getnum(s string) int {
+func (tc *terminfo) getnum(s string) int {
 	return (tc.nums[s])
 }
 
-func (tc *termcap) getflag(s string) bool {
+func (tc *terminfo) getflag(s string) bool {
 	return (tc.bools[s])
 }
 
-func (tc *termcap) getstr(s string) string {
+func (tc *terminfo) getstr(s string) string {
 	return (tc.strs[s])
 }
 
@@ -41,67 +41,8 @@ const (
 	escaped
 )
 
-// var errNotAddressable = errors.New("terminal not cursor addressable")
-
-var nTerminfo *termcap
-
-func unescape(s string) string {
-	// Various escapes are in \x format.  Control codes are
-	// encoded as ^M (carat followed by ASCII equivalent).
-	// escapes are: \e, \E - escape
-	//  \0 NULL, \n \l \r \t \b \f \s for equivalent C escape.
-	buf := &bytes.Buffer{}
-	esc := none
-
-	for i := 0; i < len(s); i++ {
-		c := s[i]
-		switch esc {
-		case none:
-			switch c {
-			case '\\':
-				esc = escaped
-			case '^':
-				esc = control
-			default:
-				buf.WriteByte(c)
-			}
-		case control:
-			buf.WriteByte(c ^ 1<<6)
-			esc = none
-		case escaped:
-			switch c {
-			case 'E', 'e':
-				buf.WriteByte(0x1b)
-			case '0', '1', '2', '3', '4', '5', '6', '7':
-				if i+2 < len(s) && s[i+1] >= '0' && s[i+1] <= '7' && s[i+2] >= '0' && s[i+2] <= '7' {
-					buf.WriteByte(((c - '0') * 64) + ((s[i+1] - '0') * 8) + (s[i+2] - '0'))
-					i = i + 2
-				} else if c == '0' {
-					buf.WriteByte(0)
-				}
-			case 'n':
-				buf.WriteByte('\n')
-			case 'r':
-				buf.WriteByte('\r')
-			case 't':
-				buf.WriteByte('\t')
-			case 'b':
-				buf.WriteByte('\b')
-			case 'f':
-				buf.WriteByte('\f')
-			case 's':
-				buf.WriteByte(' ')
-			default:
-				buf.WriteByte(c)
-			}
-			esc = none
-		}
-	}
-	return (buf.String())
-}
-
-func (tc *termcap) setupterm(name string) error {
-	cmd := exec.Command("infocmp", "-1", name)
+func (tc *terminfo) setupterm(termName string) error {
+	cmd := exec.Command("infocmp", "-1", termName)
 	output := &bytes.Buffer{}
 	cmd.Stdout = output
 	cmd.Stderr = output
@@ -166,7 +107,70 @@ func (tc *termcap) setupterm(name string) error {
 	return nil
 }
 
-func LookupTerminfo(capName string) (string, bool) {
+// var errNotAddressable = errors.New("terminal not cursor addressable")
+
+var nTerminfo *terminfo
+
+func unescape(s string) string {
+	// Various escapes are in \x format.  Control codes are
+	// encoded as ^M (carat followed by ASCII equivalent).
+	// escapes are: \e, \E - escape
+	//  \0 NULL, \n \l \r \t \b \f \s for equivalent C escape.
+	buf := &bytes.Buffer{}
+	esc := none
+
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		switch esc {
+		case none:
+			switch c {
+			case '\\':
+				esc = escaped
+			case '^':
+				esc = control
+			default:
+				buf.WriteByte(c)
+			}
+		case control:
+			buf.WriteByte(c ^ 1<<6)
+			esc = none
+		case escaped:
+			switch c {
+			case 'E', 'e':
+				buf.WriteByte(0x1b)
+			case '0', '1', '2', '3', '4', '5', '6', '7':
+				if i+2 < len(s) && s[i+1] >= '0' && s[i+1] <= '7' && s[i+2] >= '0' && s[i+2] <= '7' {
+					buf.WriteByte(((c - '0') * 64) + ((s[i+1] - '0') * 8) + (s[i+2] - '0'))
+					i = i + 2
+				} else if c == '0' {
+					buf.WriteByte(0)
+				}
+			case 'n':
+				buf.WriteByte('\n')
+			case 'r':
+				buf.WriteByte('\r')
+			case 't':
+				buf.WriteByte('\t')
+			case 'b':
+				buf.WriteByte('\b')
+			case 'f':
+				buf.WriteByte('\f')
+			case 's':
+				buf.WriteByte(' ')
+			default:
+				buf.WriteByte(c)
+			}
+			esc = none
+		}
+	}
+	return (buf.String())
+}
+
+func Lookup(capName string) (string, bool) {
+	if nTerminfo == nil {
+		dynamicInit()
+	}
+
 	if v, ok := nTerminfo.nums[capName]; ok {
 		return fmt.Sprintf("%d", v), true
 	}
@@ -182,16 +186,14 @@ func LookupTerminfo(capName string) (string, bool) {
 	return "", false
 }
 
-func Init() {
+func dynamicInit() {
 	termName := os.Getenv("TERM")
 	if termName == "" {
-		fmt.Printf("not find TERM, please provide one.\n")
-		os.Exit(17)
+		panic("not find TERM, please provide one")
 	}
-	nTerminfo = &termcap{}
+	nTerminfo = &terminfo{}
 	err := nTerminfo.setupterm(termName)
 	if err != nil {
-		fmt.Printf("terminfo report:%s\n", err)
 		panic(err)
 	}
 
