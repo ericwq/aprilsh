@@ -2227,7 +2227,7 @@ func main() {
 
 	if conf.term != "" {
 		os.Setenv("TERM", conf.term)
-		terminfo.InitTerminfo()
+		terminfo.Init()
 	}
 
 	fmt.Fprintf(os.Stderr, "main process %d args=%s, uds=%s\n", os.Getpid(), os.Args, unixsockAddr)

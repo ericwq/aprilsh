@@ -1296,6 +1296,7 @@ func main() {
 
 	// For security, make sure we don't dump core
 	encrypt.DisableDumpingCore()
+	terminfo.Init()
 
 	conf, _, err := parseFlags(os.Args[0], os.Args[1:])
 	if errors.Is(err, flag.ErrHelp) {
@@ -1341,7 +1342,7 @@ func main() {
 		util.Logger.CreateLogger(logWriter, conf.addSource, slog.LevelInfo)
 	}
 
-	terminfo.InitTerminfo()
+	terminfo.Init()
 
 	// https://earthly.dev/blog/golang-errors/
 	// https://gosamples.dev/check-error-type/
