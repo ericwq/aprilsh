@@ -118,7 +118,7 @@ func TestLookup(t *testing.T) {
 	}
 
 	util.Logger.CreateLogger(io.Discard, false, util.LevelTrace)
-	dynamicInit()
+	nTerminfo = nil
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
