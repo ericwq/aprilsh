@@ -9,27 +9,25 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ericwq/terminfo"
-	_ "github.com/ericwq/terminfo/base"
-	"github.com/ericwq/terminfo/dynamic"
+	"github.com/ericwq/aprilsh/terminfo"
 	"golang.org/x/exp/constraints"
 )
 
 // LookupTerminfo attempts to find a definition for the named $TERM falling
 // back to attempting to parse the output from infocmp.
-func LookupTerminfo(name string) (ti *terminfo.Terminfo, e error) {
-	ti, e = terminfo.LookupTerminfo(name)
-	if e != nil {
-		// ti, e = loadDynamicTerminfo(name)
-		ti, _, e := dynamic.LoadTerminfo(name)
-		if e != nil {
-			return nil, e
-		}
-		terminfo.AddTerminfo(ti)
-	}
-
-	return
-}
+// func LookupTerminfo(name string) (ti *terminfo.Terminfo, e error) {
+// 	ti, e = terminfo.LookupTerminfo(name)
+// 	if e != nil {
+// 		// ti, e = loadDynamicTerminfo(name)
+// 		ti, _, e := dynamic.LoadTerminfo(name)
+// 		if e != nil {
+// 			return nil, e
+// 		}
+// 		terminfo.AddTerminfo(ti)
+// 	}
+//
+// 	return
+// }
 
 // extract specified row from the resize screen.
 // func getRowFrom(from []Cell, posY int, w int) (row []Cell) {
@@ -172,23 +170,11 @@ func NewDisplay(useEnvironment bool) (d *Display, e error) {
 
 	if useEnvironment {
 		term := os.Getenv("TERM")
-		var ti *terminfo.Terminfo
 
-		ti, e = LookupTerminfo(term)
-		if e != nil {
-			return nil, e
-		}
+		fmt.Fprintf(os.Stderr, "query: bce, ech, smcup, rmcup\n")
 
-		// check for ECH
-		if ti.EraseChars != "" {
-			d.hasECH = true
-		}
-
-		// check for BCE
-		if ti.BackColorErase {
-			d.hasBCE = true
-		}
-
+		_, d.hasBCE = terminfo.LookupTerminfo("bce")
+		_, d.hasECH = terminfo.LookupTerminfo("ech")
 		/* Check if we can set the window title and icon name.  terminfo does not
 		   have reliable information on this, so we hardcode a whitelist of
 		   terminal type prefixes. */
@@ -204,15 +190,11 @@ func NewDisplay(useEnvironment bool) (d *Display, e error) {
 			}
 		}
 
-		// TODO consider use MOSH_NO_TERM_INIT to control this behavior
-		d.smcup = ti.EnterCA
-		d.rmcup = ti.ExitCA
+		d.smcup, _ = terminfo.LookupTerminfo("smcup")
+		d.rmcup, _ = terminfo.LookupTerminfo("rmcup")
 
-		// d.ti = ti
-		// util.Log.Debug("NewDisplay",
-		// 	"smcup", d.smcup,
-		// 	"rmcup", d.rmcup,
-		// 	"term", term)
+		fmt.Fprintf(os.Stderr, "query:\nbce=%t, ech=%t, smcup=%q, rmcup=%q\n",
+			d.hasBCE, d.hasECH, d.smcup, d.rmcup)
 	}
 
 	return d, nil

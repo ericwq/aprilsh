@@ -541,7 +541,7 @@ func (emu *Emulator) GetParser() *Parser {
 // after: the response length after handler.
 func (emu *Emulator) excludeHandler(hd *Handler, before int, after int) bool {
 	switch hd.id {
-	case CSI_DSR, CSI_priDA, CSI_secDA, DCS_DECRQSS:
+	case CSI_DSR, CSI_priDA, CSI_secDA, DCS_DECRQSS, DCS_XTGETTCAP:
 		return true
 	case OSC_4, OSC_10_11_12_17_19, CSI_DECRQM:
 		return true

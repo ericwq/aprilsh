@@ -5139,7 +5139,7 @@ func TestNvimClean(t *testing.T) {
 
 			gotResp := emu.ReadOctetsToHost()
 			if gotResp != v.resp {
-				t.Errorf("%s expect response %q, got %q\n", v.label, v.resp, gotResp)
+				t.Errorf("%s expect response \n%q, got \n%q\n", v.label, v.resp, gotResp)
 			}
 		})
 	}
@@ -5389,4 +5389,41 @@ func Test_XTGETTCAP(t *testing.T) {
 func hexDecode(s string) (string, error) {
 	decoded, err := hex.DecodeString(s)
 	return string(decoded), err
+}
+
+func TestXtgettcapReply_Return(t *testing.T) {
+	tc := []struct {
+		label string
+		param string
+		log   string
+		resp  string
+	}{
+		{"hex decode error", "hex", "invalid hex encoding", ""},
+		{"bool capability", "616d", "", "\x1BP1+r616d\x1B\\"},
+	}
+	// hexValue := hex.EncodeToString([]byte("am"))
+	// fmt.Printf("am=%s\n", hexValue)
+	// am=616d
+
+	for _, v := range tc {
+		emu := NewEmulator3(80, 40, 0)
+		var place strings.Builder
+		util.Logger.CreateLogger(&place, false, util.LevelTrace)
+
+		t.Run(v.label, func(t *testing.T) {
+			emu.terminalToHost.Reset()
+
+			xtgettcapReply(emu, v.param)
+
+			got := emu.ReadOctetsToHost()
+			if v.resp != "" && got != v.resp {
+				t.Errorf("%s expect response %q, got %q\n", v.label, v.resp, got)
+			}
+
+			result := place.String()
+			if v.log != "" && !strings.Contains(result, v.log) {
+				t.Errorf("%s expect warn log \n%s\n, got nothing\n", v.label, result)
+			}
+		})
+	}
 }

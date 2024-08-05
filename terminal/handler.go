@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ericwq/aprilsh/terminfo"
 	"github.com/ericwq/aprilsh/util"
 	"github.com/rivo/uniseg"
 )
@@ -2289,7 +2290,6 @@ response: "\x1bP1+r5463=31\x1b\\\x1bP1+r524742=382F382F38\x1b\\\x1bP0+r736574726
 func hdl_dcs_xtgettcap(emu *Emulator, arg string) {
 	qNames := strings.Split(arg, ";")
 	for i := range qNames {
-		// TODO: add support for TN, Co, RGB
 		xtgettcapReply(emu, qNames[i])
 	}
 }
@@ -2308,7 +2308,8 @@ func xtgettcapReply(emu *Emulator, hexCapName string) {
 		return
 	}
 
-	value, ok := lookupTerminfoCap(string(name))
+	value, ok := terminfo.LookupTerminfo(string(name))
+	// value, ok := LookupTerminfo3(string(name))
 	util.Logger.Warn("XTGETTCAP", "hexCapName", hexCapName, "valid", ok, "name", string(name), "value", value)
 
 	if !ok {
@@ -2324,6 +2325,6 @@ func xtgettcapReply(emu *Emulator, hexCapName string) {
 	emu.writePty(fmt.Sprintf("\x1BP1+r%s=%s\x1B\\", hexCapName, hexValue))
 }
 
-func lookupTerminfoCap(_ string) (value string, ok bool) {
-	return
-}
+// func LookupTerminfo3(_ string) (value string, ok bool) {
+// 	return
+// }

@@ -166,21 +166,16 @@ func (tc *termcap) setupterm(name string) error {
 	return nil
 }
 
-func LookupCap(cap string) (string, bool) {
-	cap = strings.ToLower(cap)
-	if cap == "tc" {
-		return nTerminfo.name, true
-	}
-
-	if v, ok := nTerminfo.nums[cap]; ok {
+func LookupTerminfo(capName string) (string, bool) {
+	if v, ok := nTerminfo.nums[capName]; ok {
 		return fmt.Sprintf("%d", v), true
 	}
 
-	if v, ok := nTerminfo.strs[cap]; ok {
+	if v, ok := nTerminfo.strs[capName]; ok {
 		return v, true
 	}
 
-	if _, ok := nTerminfo.bools[cap]; ok {
+	if _, ok := nTerminfo.bools[capName]; ok {
 		return "", true
 	}
 
@@ -189,7 +184,69 @@ func LookupCap(cap string) (string, bool) {
 
 func init() {
 	termName := os.Getenv("TERM")
-	// TODO: case: no TERM, empty TERM, can't find TERM
+	if termName == "" {
+		fmt.Printf("not find TERM, please provide one.\n")
+		os.Exit(1)
+	}
 	nTerminfo = &termcap{}
-	nTerminfo.setupterm(termName)
+	err := nTerminfo.setupterm(termName)
+	if err != nil {
+		fmt.Printf("terminfo report:%s\n", err)
+		panic(err)
+	}
+
+	/*
+		https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Device-Control-functions
+
+		A few special features are also recognized, which are not key names:
+
+		o Co for termcap colors (or colors for terminfo colors), and
+		o TN for termcap name (or name for terminfo name).
+		o RGB for the ncurses direct-color extension.
+		  Only a terminfo name is provided, since termcap
+		  applications cannot use this information.
+
+		 https://www.man7.org/linux/man-pages/man5/user_caps.5.html
+
+		RGB
+		boolean, number or string, used to assert that the
+		set_a_foreground and set_a_background capabilities
+		correspond to direct colors, using an RGB (red/green/blue)
+		convention.  This capability allows the color_content
+		function to return appropriate values without requiring the
+		application to initialize colors using init_color.
+
+		The capability type determines the values which ncurses sees:
+
+		boolean
+		implies that the number of bits for red, green and blue
+		are the same.  Using the maximum number of colors,
+		ncurses adds two, divides that sum by three, and assigns
+		the result to red, green and blue in that order.
+
+		If the number of bits needed for the number of colors is
+		not a multiple of three, the blue (and green) components
+		lose in comparison to red.
+
+		number
+		tells ncurses what result to add to red, green and blue.
+		If ncurses runs out of bits, blue (and green) lose just
+		as in the boolean case.
+
+		string
+		explicitly list the number of bits used for red, green
+		and blue components as a slash-separated list of decimal
+		integers.
+	*/
+	nTerminfo.nums["Co"] = nTerminfo.getnum("colors")
+	nTerminfo.strs["TN"] = nTerminfo.name
+
+	capName := "RGB"
+	if _, ok := nTerminfo.nums[capName]; !ok {
+		if _, ok := nTerminfo.bools[capName]; !ok {
+			if _, ok := nTerminfo.strs[capName]; !ok {
+				nTerminfo.strs[capName] = "8/8/8"
+			}
+		}
+	}
 }

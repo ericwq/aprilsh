@@ -25,6 +25,7 @@ import (
 	"github.com/ericwq/aprilsh/network"
 	"github.com/ericwq/aprilsh/statesync"
 	"github.com/ericwq/aprilsh/terminal"
+	"github.com/ericwq/aprilsh/terminfo"
 	"github.com/ericwq/aprilsh/util"
 	"github.com/ericwq/ssh_config" // go env -w GOPROXY=https://goproxy.cn,direct
 	"github.com/rivo/uniseg"
@@ -76,12 +77,11 @@ func printColors() {
 	value, ok := os.LookupEnv("TERM")
 	if ok {
 		if value != "" {
-			// ti, err := terminfo.LookupTerminfo(value)
-			ti, err := terminal.LookupTerminfo(value)
-			if err == nil {
-				fmt.Printf("%s %d\n", value, ti.Colors)
+			colors, ok := terminfo.LookupTerminfo("colors")
+			if ok {
+				fmt.Printf("%s %s\n", value, colors)
 			} else {
-				fmt.Printf("Dynamic load terminfo failed. %s Install infocmp (ncurses package) first.\n", err)
+				fmt.Printf("Dynamic load terminfo failed. Install infocmp (ncurses package) first.")
 			}
 		} else {
 			fmt.Println("The TERM is empty string.")
@@ -379,7 +379,7 @@ func (c *Config) fetchKey() error {
 	var b []byte
 	cmd := fmt.Sprintf("/usr/bin/apshd -b -t %s -destination %s -p %d",
 		os.Getenv("TERM"), c.destination[0], c.port)
-	// fmt.Printf("cmd=%s\n", cmd)
+	fmt.Fprintf(os.Stderr, "cmd=%s\n", cmd)
 
 	if b, err = session.Output(cmd); err != nil {
 		return err
@@ -603,6 +603,7 @@ func newSTMClient(config *Config) *STMClient {
 	var err error
 	sc.display, err = terminal.NewDisplay(true)
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "%s\n", err)
 		return nil
 	}
 

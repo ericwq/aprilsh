@@ -57,7 +57,7 @@ func TestSetupterm(t *testing.T) {
 	}
 }
 
-func TestLookupCap(t *testing.T) {
+func TestLookupTerminfo(t *testing.T) {
 	tc := []struct {
 		label  string
 		names  []string
@@ -66,9 +66,9 @@ func TestLookupCap(t *testing.T) {
 	}{
 		{
 			"special capability",
-			[]string{"tc"},
-			[]string{os.Getenv("TERM")},
-			[]bool{true},
+			[]string{"TN", "Co", "RGB"},
+			[]string{os.Getenv("TERM"), "256", "8/8/8"},
+			[]bool{true, true, true},
 		},
 		{
 			"number capability",
@@ -95,7 +95,7 @@ func TestLookupCap(t *testing.T) {
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			for i, name := range v.names {
-				value, ok := LookupCap(name)
+				value, ok := LookupTerminfo(name)
 				if v.values[i] != value || ok != v.ok[i] {
 					t.Errorf("%s name:%-9s expect %q got %q,ok=%t",
 						v.label, name, v.values[i], value, ok)
