@@ -2309,8 +2309,7 @@ func xtgettcapReply(emu *Emulator, hexCapName string) {
 	}
 
 	value, ok := terminfo.Lookup(string(name))
-	// value, ok := LookupTerminfo3(string(name))
-	util.Logger.Warn("XTGETTCAP", "hexCapName", hexCapName, "valid", ok, "name", string(name), "value", value)
+	// util.Logger.Warn("XTGETTCAP", "hexCapName", hexCapName, "valid", ok, "name", string(name), "value", value)
 
 	if !ok {
 		emu.writePty(fmt.Sprintf("\x1BP0+r%s\x1B\\", hexCapName))

@@ -14,6 +14,9 @@ import (
 	"strings"
 )
 
+// https://github.com/xo/terminfo
+// TODO: check the above implementation, dynamic.go is just a simple implementation.
+
 type terminfo struct {
 	bools   map[string]bool
 	nums    map[string]int
@@ -166,7 +169,6 @@ func unescape(s string) string {
 
 func Lookup(capName string) (string, bool) {
 	if pTerminfo == nil {
-		fmt.Println("init pTerminfo")
 		dynamicInit()
 	}
 
