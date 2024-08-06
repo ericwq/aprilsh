@@ -74,21 +74,29 @@ func printVersion() {
 }
 
 func printColors() {
-	value, ok := os.LookupEnv("TERM")
+	colors, ok := terminfo.Lookup("colors")
 	if ok {
-		if value != "" {
-			colors, ok := terminfo.Lookup("colors")
-			if ok {
-				fmt.Printf("%s %s\n", value, colors)
+		fmt.Printf("%s %s\n", os.Getenv("TERM"), colors)
+	} else {
+		fmt.Printf("Dynamic load terminfo failed. Install infocmp (ncurses package) first.")
+	}
+	/*
+		value, ok := os.LookupEnv("TERM")
+		if ok {
+			if value != "" {
+				colors, ok := terminfo.Lookup("colors")
+				if ok {
+					fmt.Printf("%s %s\n", value, colors)
+					// } else {
+					// 	fmt.Printf("Dynamic load terminfo failed. Install infocmp (ncurses package) first.")
+				}
 			} else {
-				fmt.Printf("Dynamic load terminfo failed. Install infocmp (ncurses package) first.")
+				fmt.Println("The TERM is empty string.")
 			}
 		} else {
-			fmt.Println("The TERM is empty string.")
+			fmt.Println("The TERM doesn't exist.")
 		}
-	} else {
-		fmt.Println("The TERM doesn't exist.")
-	}
+	*/
 }
 
 func parseFlags(progname string, args []string) (config *Config, output string, err error) {

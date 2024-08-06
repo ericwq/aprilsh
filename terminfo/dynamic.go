@@ -166,6 +166,7 @@ func unescape(s string) string {
 
 func Lookup(capName string) (string, bool) {
 	if pTerminfo == nil {
+		fmt.Println("init pTerminfo")
 		dynamicInit()
 	}
 
@@ -182,6 +183,11 @@ func Lookup(capName string) (string, bool) {
 	}
 
 	return "", false
+}
+
+// mainly for test purpose
+func Reset() {
+	pTerminfo = nil
 }
 
 func dynamicInit() {

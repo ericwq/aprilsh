@@ -56,7 +56,7 @@ func TestUnescape(t *testing.T) {
 
 func TestSetupterm(t *testing.T) {
 	defer func() {
-		pTerminfo = nil
+		Reset()
 	}()
 
 	badTc := &terminfo{}

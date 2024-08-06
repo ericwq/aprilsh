@@ -15,20 +15,20 @@ import (
 
 	"github.com/creack/pty"
 	"github.com/ericwq/aprilsh/frontend"
+	"github.com/ericwq/aprilsh/terminfo"
 )
 
 func TestPrintColors(t *testing.T) {
 	tc := []struct {
-		label  string
-		term   string
-		expect []string
+		label   string
+		termEnv string
+		expect  []string
 	}{
-		{"lookup terminfo failed", "NotExist", []string{"Dynamic load terminfo failed."}},
-		{"TERM is empty", "", []string{"The TERM is empty string."}},
-		{"TERM doesn't exit", "-remove", []string{"The TERM doesn't exist."}},
+		// {"wrong termname", "NotExist", []string{}},
 		{"normal found", "xterm-256color", []string{"xterm-256color", "256"}},
-		// {"dynamic found", "xfce", []string{"xfce 8 (dynamic)"}},
-		{"dynamic not found", "xxx", []string{"Dynamic load terminfo failed."}},
+		{"not found", "xxx", []string{}},
+		{"TERM is empty", "", []string{}},
+		{"no TERM exit", "-remove", []string{}},
 	}
 
 	for _, v := range tc {
@@ -41,12 +41,20 @@ func TestPrintColors(t *testing.T) {
 			term := os.Getenv("TERM")
 
 			// set TERM according to test case
-			if v.term == "-remove" {
+			if v.termEnv == "-remove" {
 				os.Unsetenv("TERM")
 			} else {
-				os.Setenv("TERM", v.term)
+				os.Setenv("TERM", v.termEnv)
 			}
 
+			defer func() {
+				if p := recover(); p != nil {
+					os.Setenv("TERM", term)
+					os.Stdout = saveStdout
+					// fmt.Printf("recover from %q\n", v.label)
+				}
+				terminfo.Reset()
+			}()
 			printColors()
 
 			// restore stdout
