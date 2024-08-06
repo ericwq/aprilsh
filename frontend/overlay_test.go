@@ -125,7 +125,7 @@ func TestCellApply(t *testing.T) {
 	tc := []struct {
 		rend           *terminal.Renditions
 		cell           *terminal.Cell
-		name           string
+		label          string
 		confirmedEpoch int64
 		row            int
 		col            int
@@ -145,29 +145,31 @@ func TestCellApply(t *testing.T) {
 
 	emu := terminal.NewEmulator3(80, 40, 40)
 	for _, v := range tc {
-		predict := newConditionalOverlayCell(10, v.col, 10)
+		t.Run(v.label, func(t *testing.T) {
+			predict := newConditionalOverlayCell(10, v.col, 10)
 
-		predict.active = v.active
-		predict.unknown = v.unknown
-		// set content for emulator cell
-		if v.contents != '\x00' {
-			emu.GetCellPtr(v.row, v.col).Append(v.contents)
-		}
+			predict.active = v.active
+			predict.unknown = v.unknown
+			// set content for emulator cell
+			if v.contents != '\x00' {
+				emu.GetCellPtr(v.row, v.col).Append(v.contents)
+			}
 
-		// call apply
-		predict.apply(emu, v.confirmedEpoch, v.row, v.flag, func(row, col int, cell terminal.Cell) {})
+			// call apply
+			predict.apply(emu, v.confirmedEpoch, v.row, v.flag, func(row, col int, cell terminal.Cell) {})
 
-		// validate cell
-		cell := emu.GetCell(v.row, v.col)
-		if v.cell != nil && cell != *(v.cell) {
-			t.Errorf("%q cell (%d,%d) contents expect\n%v\ngot \n%v\n", v.name, v.row, v.col, *v.cell, cell)
-		}
+			// validate rendition
+			rend := emu.GetCell(v.row, v.col).GetRenditions()
+			if v.rend != nil && rend != *v.rend {
+				t.Fatalf("cell (%d,%d) renditions expect \n%v, got \n%v\n", v.row, v.col, *v.rend, rend)
+			}
 
-		// validate rendition
-		rend := emu.GetCell(v.row, v.col).GetRenditions()
-		if v.rend != nil && rend != *v.rend {
-			t.Errorf("%q cell (%d,%d) renditions expect %v, got %v\n", v.name, v.row, v.col, *v.rend, rend)
-		}
+			// validate cell
+			cell := emu.GetCell(v.row, v.col)
+			if v.cell != nil && cell != *(v.cell) {
+				t.Fatalf("cell (%d,%d) contents expect\n%#v, got \n%#v\n", v.row, v.col, *v.cell, cell)
+			}
+		})
 	}
 }
 
