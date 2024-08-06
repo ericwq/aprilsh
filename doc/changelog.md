@@ -109,4 +109,4 @@
 - 2024/Jul/17: overlay: add input echo mechanism to improve server side timeout.
 - 2024/Jul/23: prediction engine works for slow network.
 - 2024/Jul/30: support XTWINOPS 8, DECSET 12 and DECRST 12, Underline Style.
-- 2024/Aug/07: support SGI 1006, synchronized output, OSC 8, XTGETTCAP, terminfo sub-package
+- 2024/Aug/07: support SGR 1006, synchronized output, OSC 8, XTGETTCAP, terminfo sub-package

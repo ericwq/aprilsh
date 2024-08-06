@@ -173,8 +173,9 @@ The project name `Aprilsh` is derived from `April+sh`. This project started in s
 - prediction engine use server response frame number if server detect input response, otherwise fixed server timeout will be used as ack number
 - prediction engine allow ANSI cursor control sequence for application (e.g. htop up and down arrow key)
 - prediction engine support chinese character
-- plan to support `new` control sequence [CSI u](https://github.com/ericwq/aprilsh/issues/74), [OSC 8](https://github.com/ericwq/aprilsh/issues/87), [synchronized output](https://github.com/ericwq/aprilsh/issues/89)
-- plan to support [XTGETTCAP](https://github.com/ericwq/aprilsh/issues/88)
+- support [XTGETTCAP](https://github.com/ericwq/aprilsh/issues/88), [SGR 1006](https://github.com/ericwq/aprilsh/issues/91),  [synchronized output](https://github.com/ericwq/aprilsh/issues/89),  [OSC 8](https://github.com/ericwq/aprilsh/issues/87)
+- support htop arrow key (mosh has a bug)
+- plan to support `new` control sequence [CSI u](https://github.com/ericwq/aprilsh/issues/74)
 
 ## Architecture
 
