@@ -107,9 +107,7 @@ func (tc *terminfo) setupterm(termName string) error {
 	return nil
 }
 
-// var errNotAddressable = errors.New("terminal not cursor addressable")
-
-var nTerminfo *terminfo
+var pTerminfo *terminfo
 
 func unescape(s string) string {
 	// Various escapes are in \x format.  Control codes are
@@ -167,19 +165,19 @@ func unescape(s string) string {
 }
 
 func Lookup(capName string) (string, bool) {
-	if nTerminfo == nil {
+	if pTerminfo == nil {
 		dynamicInit()
 	}
 
-	if v, ok := nTerminfo.nums[capName]; ok {
+	if v, ok := pTerminfo.nums[capName]; ok {
 		return fmt.Sprintf("%d", v), true
 	}
 
-	if v, ok := nTerminfo.strs[capName]; ok {
+	if v, ok := pTerminfo.strs[capName]; ok {
 		return v, true
 	}
 
-	if _, ok := nTerminfo.bools[capName]; ok {
+	if _, ok := pTerminfo.bools[capName]; ok {
 		return "", true
 	}
 
@@ -191,9 +189,10 @@ func dynamicInit() {
 	if termName == "" {
 		panic("not find TERM, please provide one")
 	}
-	nTerminfo = &terminfo{}
-	err := nTerminfo.setupterm(termName)
+	pTerminfo = &terminfo{}
+	err := pTerminfo.setupterm(termName)
 	if err != nil {
+		pTerminfo = nil
 		panic(err)
 	}
 
@@ -240,14 +239,14 @@ func dynamicInit() {
 		and blue components as a slash-separated list of decimal
 		integers.
 	*/
-	nTerminfo.nums["Co"] = nTerminfo.getnum("colors")
-	nTerminfo.strs["TN"] = nTerminfo.name
+	pTerminfo.nums["Co"] = pTerminfo.getnum("colors")
+	pTerminfo.strs["TN"] = pTerminfo.name
 
 	capName := "RGB"
-	if _, ok := nTerminfo.nums[capName]; !ok {
-		if _, ok := nTerminfo.bools[capName]; !ok {
-			if _, ok := nTerminfo.strs[capName]; !ok {
-				nTerminfo.strs[capName] = "8/8/8"
+	if _, ok := pTerminfo.nums[capName]; !ok {
+		if _, ok := pTerminfo.bools[capName]; !ok {
+			if _, ok := pTerminfo.strs[capName]; !ok {
+				pTerminfo.strs[capName] = "8/8/8"
 			}
 		}
 	}
