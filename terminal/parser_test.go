@@ -5089,7 +5089,7 @@ func TestNvimClean(t *testing.T) {
 		},
 		{
 			"DCS XTGETTCAP", "\x1b]11;?\a\x1bP+q5463;524742;73657472676266;73657472676262\x1b\\\x1b[0m\x1b[48;2;1;2;3m\x1bP$qm\x1b\\",
-			"\x1b]11;rgb:0000/0000/0000\x1b\\\x1bP0$rm\x1b\\",
+			"\x1b]11;rgb:0000/0000/0000\x1b\\\x1bP0+r5463\x1b\\\x1bP1+r524742=382f382f38\x1b\\\x1bP0+r73657472676266\x1b\\\x1bP0+r73657472676262\x1b\\\x1bP0$rm\x1b\\",
 			[]int{OSC_10_11_12_17_19, DCS_XTGETTCAP, CSI_SGR, CSI_SGR, DCS_DECRQSS},
 		},
 		{
@@ -5346,7 +5346,7 @@ func TestHandle_MouseTrack_break(t *testing.T) {
 	}
 }
 
-func Test_XTGETTCAP(t *testing.T) {
+func Test_HexSample(t *testing.T) {
 	tc := []struct {
 		label    string
 		request  string
@@ -5360,8 +5360,8 @@ func Test_XTGETTCAP(t *testing.T) {
 	// request: "\x1bP+q5463;524742;73657472676266;73657472676262\x1b\\"
 	// response: "\x1bP1+r5463=31\x1b\\\x1bP1+r524742=382F382F38\x1b\\\x1bP0+r73657472676266\x1b\\\x1bP0+r73657472676262\x1b\\"
 
-	util.Logger.CreateLogger(os.Stderr, false, util.LevelTrace)
-	// util.Logger.CreateLogger(io.Discard, false, util.LevelTrace)
+	// util.Logger.CreateLogger(os.Stderr, false, util.LevelTrace)
+	util.Logger.CreateLogger(io.Discard, false, util.LevelTrace)
 
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
