@@ -171,14 +171,12 @@ func NewDisplay(useEnvironment bool) (d *Display, e error) {
 	if useEnvironment {
 		term := os.Getenv("TERM")
 
-		fmt.Fprintf(os.Stderr, "query: bce, ech, smcup, rmcup\n")
-
 		_, d.hasBCE = terminfo.Lookup("bce")
 		_, d.hasECH = terminfo.Lookup("ech")
+
 		/* Check if we can set the window title and icon name.  terminfo does not
 		   have reliable information on this, so we hardcode a whitelist of
 		   terminal type prefixes. */
-
 		d.supportTitle = false
 		titleTermTypes := []string{"xterm", "rxvt", "kterm", "Eterm", "alacritty", "screen", "tmux"}
 		if term != "" {
@@ -192,9 +190,6 @@ func NewDisplay(useEnvironment bool) (d *Display, e error) {
 
 		d.smcup, _ = terminfo.Lookup("smcup")
 		d.rmcup, _ = terminfo.Lookup("rmcup")
-
-		fmt.Fprintf(os.Stderr, "query:\nbce=%t, ech=%t, smcup=%q, rmcup=%q\n",
-			d.hasBCE, d.hasECH, d.smcup, d.rmcup)
 	}
 
 	return d, nil

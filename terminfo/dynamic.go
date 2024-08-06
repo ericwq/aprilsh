@@ -207,7 +207,7 @@ func dynamicInit() {
 		  Only a terminfo name is provided, since termcap
 		  applications cannot use this information.
 
-		 https://www.man7.org/linux/man-pages/man5/user_caps.5.html
+		https://www.man7.org/linux/man-pages/man5/user_caps.5.html
 
 		RGB
 		boolean, number or string, used to assert that the

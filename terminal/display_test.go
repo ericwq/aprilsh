@@ -6,7 +6,6 @@ package terminal
 
 import (
 	"encoding/base64"
-	"errors"
 	"fmt"
 	"io"
 	"log/slog"
@@ -21,19 +20,34 @@ import (
 
 func TestDisplay(t *testing.T) {
 	tc := []struct {
-		err          error
 		label        string
+		err          string
 		termEnv      string
 		useEnv       bool
 		hasECH       bool
 		hasBCE       bool
 		supportTitle bool
 	}{
-		{nil, "useEnvironment, base TERM", "alacritty", true, true, true, true},
-		{nil, "useEnvironment, base TERM, title support", "xterm", true, true, true, true},
-		{errors.New("terminal entry not found"), "useEnvironment, dynamic TERM", "sun", true, true, true, false}, // we choose sun, because sun fade out from the market
-		{errors.New("infocmp: couldn't open terminfo file"), "useEnvironment, wrong TERM", "stranger", true, false, false, false},
-		{nil, "not useEnvironment ", "anything", false, true, true, true},
+		{
+			"useEnvironment, base TERM", "", "alacritty",
+			true, true, true, true,
+		},
+		{
+			"useEnvironment, base TERM, title support", "", "xterm",
+			true, true, true, true,
+		},
+		{
+			"useEnvironment, dynamic TERM", "terminal entry not found", "sun",
+			true, true, true, false,
+		}, // we choose sun, because sun fade out from the market
+		{
+			"useEnvironment, wrong TERM", "infocmp: couldn't open terminfo file", "stranger",
+			true, true, true, false,
+		},
+		{
+			"not useEnvironment ", "", "anything",
+			false, true, true, true,
+		},
 	}
 
 	for _, v := range tc {
@@ -54,7 +68,7 @@ func TestDisplay(t *testing.T) {
 				}
 			} else {
 				// fmt.Printf("#test NewDisplay() %q return %q ,expect %q\n", v.label, e, v.err)
-				if !strings.HasPrefix(e.Error(), v.err.Error()) {
+				if !strings.HasPrefix(e.Error(), v.err) {
 					t.Errorf("%q expect err %q, got %q\n", v.label, v.err, e)
 				}
 			}
