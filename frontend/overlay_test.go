@@ -6,6 +6,8 @@ package frontend
 
 import (
 	"fmt"
+	"io"
+	"log/slog"
 	"math"
 	"strings"
 	"testing"
@@ -143,6 +145,9 @@ func TestCellApply(t *testing.T) {
 		{nil, nil, "active early return", 10, 14, 10, 'E', false, true, true},
 	}
 
+	// util.Logger.CreateLogger(os.Stderr, false, util.LevelTrace)
+	util.Logger.CreateLogger(io.Discard, false, slog.LevelDebug)
+
 	emu := terminal.NewEmulator3(80, 40, 40)
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
@@ -150,6 +155,10 @@ func TestCellApply(t *testing.T) {
 
 			predict.active = v.active
 			predict.unknown = v.unknown
+			// if v.rend != nil {
+			// 	predict.replacement.SetRenditions(underlineRend)
+			// }
+
 			// set content for emulator cell
 			if v.contents != '\x00' {
 				emu.GetCellPtr(v.row, v.col).Append(v.contents)

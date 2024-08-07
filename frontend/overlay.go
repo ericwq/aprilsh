@@ -281,10 +281,10 @@ func (coc *conditionalOverlayCell) apply(emu *terminal.Emulator, confirmedEpoch 
 		//
 		// util.Logger.Trace("prediction message", "from", "conditionalOverlayCell.apply",
 		// 	"row", row, "col", coc.col, "repl", fmt.Sprintf("%#v", coc.replacement))
-
-		util.Logger.Trace("prediction message", "from", "conditionalOverlayCell.apply",
-			"row", row, "col", coc.col, "emu", fmt.Sprintf("%p", emu),
-			"cell", emu.GetCell(row, coc.col), "repl", coc.replacement)
+		//
+		// util.Logger.Trace("prediction message", "from", "conditionalOverlayCell.apply",
+		// 	"row", row, "col", coc.col, "emu", fmt.Sprintf("%p", emu),
+		// 	"cell", emu.GetCell(row, coc.col), "repl", coc.replacement)
 
 		(*emu.GetCellPtr(row, coc.col)) = coc.replacement
 

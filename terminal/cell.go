@@ -152,6 +152,7 @@ func (c *Cell) printGrapheme(out io.Writer) {
 
 func (c *Cell) SetUnderline(underline bool) {
 	c.renditions.underline = underline
+	c.renditions.ulStyle = ULS_SINGLE
 }
 
 // return cell grapheme width: 0,1,2
