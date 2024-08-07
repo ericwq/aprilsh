@@ -505,7 +505,7 @@ func printPredictionCell(emu *terminal.Emulator, pe *PredictionEngine, row, col 
 	}
 }
 
-func test_handleUserGrapheme_Backspace(t *testing.T) {
+func test_handleUserGrapheme_Backspace_Comment(t *testing.T) {
 	tc := []struct {
 		label          string
 		base           string
@@ -597,6 +597,94 @@ func test_handleUserGrapheme_Backspace(t *testing.T) {
 				}
 
 				i += uniseg.StringWidth(string(chs))
+			}
+		})
+	}
+}
+
+func Test_handleUserGrapheme_Backspace(t *testing.T) {
+	tc := []struct {
+		label          string
+		base           string
+		predict        string
+		expect         string
+		row            int
+		col            int
+		lateAck        uint64
+		confirmedEpoch int64 // fake confirmedEpoch from remote
+		expectEpoch    int64 // expected predictionEpoch
+	}{
+		{
+			"no base, backspace for noromal prediction cell", "",
+			"abcde\x1B[D\x1B[D\x1B[D\x7f", "acde", 0, 70,
+			0, 3, 3,
+		},
+		{
+			"no base, backspace for wide prediction cell", "",
+			"abc太学生\x1B[D\x1B[D\x1B[D\x1B[C\x7f", "abc学生", 1,
+			60, 0, 3, 3,
+		},
+		{
+			"wide rune base, backspace for wide predition cell", "东部战区",
+			"\x1B[C\x1B[C\x7f", "东战区", 2, 60,
+			0, 3, 3,
+		},
+		{
+			"wide rune base, move cursor to right edge", "平潭",
+			"\x1B[C\x1B[C", "平潭", 3, 76,
+			0, 2, 2,
+		},
+		{
+			"wide rune base, move cursor to left edge", "三号木",
+			"\x1B[C\x1B[D\x1B[D", "三号木", 4, 0,
+			0, 2, 2,
+		},
+		{
+			"wide rune base, backspace for left edge", "小鸡腿",
+			"\x1B[C\x7f\x7f", "鸡腿", 5, 0,
+			0, 4, 4,
+		},
+		{
+			"no base, backspace for unknown case", "",
+			"gocto\x1B[D\x1B[D\x7f\x7f", "gto", 6, 74,
+			0, 4, 4,
+		},
+		{
+			"backspace, predict unknown case", "",
+			"捉鹰打goto\x7f\x7f\x7f\x7f鸟", "捉鹰打鸟", 7, 60,
+			0, 6, 6,
+		},
+	}
+
+	// change log level to trace
+	// util.Logger.CreateLogger(os.Stderr, false, util.LevelTrace)
+	util.Logger.CreateLogger(io.Discard, false, slog.LevelDebug)
+
+	// go test -coverprofile=cover.out -run=Test_handleUserGrapheme_Backspace -v
+	// go tool cover -html=cover.out
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			emu := terminal.NewEmulator3(80, 40, 40)
+			pe := newPredictionEngine()
+
+			// print base (background) string in terminal
+			emu.MoveCursor(v.row, v.col)
+			emu.HandleStream(v.base)
+
+			// fake user input
+			emu.MoveCursor(v.row, v.col)
+			pe.localFrameLateAcked = v.lateAck
+			pe.inputString(emu, v.predict)
+			// util.Logger.Trace("test", "backspace", true)
+
+			// apply last predict
+			pe.confirmedEpoch = v.confirmedEpoch
+			pe.cull(emu)
+			pe.apply(emu)
+
+			// validate the result
+			if pe.predictionEpoch != v.expectEpoch {
+				t.Errorf("expect confirmedEpoch=%d, got %d\n", v.expectEpoch, pe.predictionEpoch)
 			}
 		})
 	}
@@ -1385,6 +1473,48 @@ func TestNotificationEngine_WaitTime(t *testing.T) {
 			got := ne.waitTime()
 			if got != v.timeout {
 				t.Errorf("%s expect timeout=%d, got %d\n", v.label, v.timeout, got)
+			}
+		})
+	}
+}
+
+func TestPredictionEngineApplied(t *testing.T) {
+	a := &terminal.Cell{}
+	a.SetContents([]rune{'a'})
+	b := &terminal.Cell{}
+	b.SetContents([]rune{'b'})
+
+	tc := []struct {
+		label   string
+		result  string
+		diff    []appliedDiff
+		applied bool
+	}{
+		{
+			"no diff", "",
+			[]appliedDiff{},
+			false,
+		},
+		{
+			"regular diff", "ab",
+			[]appliedDiff{{*a, 1, 1}, {*b, 1, 2}},
+			true,
+		},
+	}
+	for _, v := range tc {
+		pe := newPredictionEngine()
+		// emu := terminal.NewEmulator3(80, 40, 40)
+		pe.ClearApplied()
+		t.Run(v.label, func(t *testing.T) {
+			if len(v.diff) != 0 {
+				pe.diff = v.diff
+			}
+			got := pe.GetApplied()
+			applied := pe.IsApplied()
+
+			if got != v.result || applied != v.applied {
+				t.Errorf("%s expect diff %q, got %q\n", v.label, v.result, got)
+				t.Errorf("%s expect applied %t, got %t\n", v.label, v.applied, applied)
 			}
 		})
 	}
