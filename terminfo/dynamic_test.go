@@ -14,23 +14,23 @@ import (
 
 func TestUnescape(t *testing.T) {
 	defer func() {
-		pTerminfo = nil
+		Reset()
 	}()
 	dynamicInit()
 
 	expectStr := "\x1b[%i%p1%d;%p2%dH"
-	if pTerminfo.getstr("cup") != expectStr {
-		t.Errorf("cup expect %q, got %q\n", expectStr, pTerminfo.getstr("cup"))
+	if cache.pTerminfo.getstr("cup") != expectStr {
+		t.Errorf("cup expect %q, got %q\n", expectStr, cache.pTerminfo.getstr("cup"))
 	}
 
 	expectBool := true
-	if pTerminfo.getflag("am") != expectBool {
-		t.Errorf("am expect %t, got %t\n", expectBool, pTerminfo.getflag("am"))
+	if cache.pTerminfo.getflag("am") != expectBool {
+		t.Errorf("am expect %t, got %t\n", expectBool, cache.pTerminfo.getflag("am"))
 	}
 
 	expectNum := 80
-	if pTerminfo.getnum("cols") != expectNum {
-		t.Errorf("cols expect %d, got %d\n", expectNum, pTerminfo.getnum("cols"))
+	if cache.pTerminfo.getnum("cols") != expectNum {
+		t.Errorf("cols expect %d, got %d\n", expectNum, cache.pTerminfo.getnum("cols"))
 	}
 
 	tc := []struct {
@@ -73,7 +73,7 @@ func TestInit_BadTerm(t *testing.T) {
 	defer func() {
 		if p := recover(); p != nil {
 			os.Setenv("TERM", term)
-			pTerminfo = nil
+			Reset()
 		}
 	}()
 	dynamicInit()
@@ -87,7 +87,7 @@ func TestInit_NoTerm(t *testing.T) {
 	defer func() {
 		if p := recover(); p != nil {
 			os.Setenv("TERM", term)
-			pTerminfo = nil
+			Reset()
 		}
 	}()
 	dynamicInit()
@@ -129,7 +129,7 @@ func TestLookup(t *testing.T) {
 
 	util.Logger.CreateLogger(io.Discard, false, util.LevelTrace)
 	defer func() {
-		pTerminfo = nil
+		Reset()
 	}()
 
 	for _, v := range tc {

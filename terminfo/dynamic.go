@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 // https://github.com/xo/terminfo
@@ -110,7 +111,10 @@ func (tc *terminfo) setupterm(termName string) error {
 	return nil
 }
 
-var pTerminfo *terminfo
+var cache struct {
+	pTerminfo *terminfo
+	sync.Once
+}
 
 func unescape(s string) string {
 	// Various escapes are in \x format.  Control codes are
@@ -168,19 +172,19 @@ func unescape(s string) string {
 }
 
 func Lookup(capName string) (string, bool) {
-	if pTerminfo == nil {
-		dynamicInit()
+	if cache.pTerminfo == nil {
+		cache.Do(dynamicInit)
 	}
 
-	if v, ok := pTerminfo.nums[capName]; ok {
+	if v, ok := cache.pTerminfo.nums[capName]; ok {
 		return fmt.Sprintf("%d", v), true
 	}
 
-	if v, ok := pTerminfo.strs[capName]; ok {
+	if v, ok := cache.pTerminfo.strs[capName]; ok {
 		return v, true
 	}
 
-	if _, ok := pTerminfo.bools[capName]; ok {
+	if _, ok := cache.pTerminfo.bools[capName]; ok {
 		return "", true
 	}
 
@@ -189,7 +193,8 @@ func Lookup(capName string) (string, bool) {
 
 // mainly for test purpose
 func Reset() {
-	pTerminfo = nil
+	cache.pTerminfo = nil
+	cache.Once = sync.Once{}
 }
 
 func dynamicInit() {
@@ -197,10 +202,10 @@ func dynamicInit() {
 	if termName == "" {
 		panic("not find TERM, please provide one")
 	}
-	pTerminfo = &terminfo{}
-	err := pTerminfo.setupterm(termName)
+	cache.pTerminfo = &terminfo{}
+	err := cache.pTerminfo.setupterm(termName)
 	if err != nil {
-		pTerminfo = nil
+		cache.pTerminfo = nil
 		panic(err)
 	}
 
@@ -247,14 +252,14 @@ func dynamicInit() {
 		and blue components as a slash-separated list of decimal
 		integers.
 	*/
-	pTerminfo.nums["Co"] = pTerminfo.getnum("colors")
-	pTerminfo.strs["TN"] = pTerminfo.name
+	cache.pTerminfo.nums["Co"] = cache.pTerminfo.getnum("colors")
+	cache.pTerminfo.strs["TN"] = cache.pTerminfo.name
 
 	capName := "RGB"
-	if _, ok := pTerminfo.nums[capName]; !ok {
-		if _, ok := pTerminfo.bools[capName]; !ok {
-			if _, ok := pTerminfo.strs[capName]; !ok {
-				pTerminfo.strs[capName] = "8/8/8"
+	if _, ok := cache.pTerminfo.nums[capName]; !ok {
+		if _, ok := cache.pTerminfo.bools[capName]; !ok {
+			if _, ok := cache.pTerminfo.strs[capName]; !ok {
+				cache.pTerminfo.strs[capName] = "8/8/8"
 			}
 		}
 	}
