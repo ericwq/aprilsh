@@ -100,50 +100,43 @@ func printColors() {
 	*/
 }
 
-func queryCap() {
+func queryCap(f *os.File) {
 	fmt.Println("Query terminal extend capablility")
 	caps := []struct {
 		label string
 		query string
+		resp  string
 	}{
-		// {"CSI u", "\x1B[?u"},
-		{"Primary DA", "\x1B[c"},
+		{label: "CSI u", query: "\x1B[?u"},
+		{label: "Primary DA", query: "\x1B[c"},
 	}
 
-	for _, cap := range caps {
+	s, err := term.MakeRaw(int(f.Fd()))
+	if err != nil {
+		fmt.Printf("open tty error: %s\n", err)
+		return
+	}
 
-		// if err := syscall.SetNonblock(1, true); err != nil {
-		// 	panic(err)
-		// }
-		// f := os.NewFile(1, "stdin")
-		//
-		// if err := f.SetDeadline(time.Now().Add(time.Duration(200) * time.Millisecond)); err != nil {
-		// 	panic(err)
-		// }
-		// ptmx, pts, err := pty.Open()
-		// defer func() {
-		// 	ptmx.Close()
-		// 	pts.Close()
-		// }()
-		//
-		// if err != nil {
-		// 	fmt.Printf("open tty error: %s\n", err)
-		// 	return
-		// }
-
-		var buf [1024]byte
-		fmt.Printf("### %s: device stdin=%s, stdout=%s\n", cap.label, os.Stdin.Name(), os.Stdout.Name())
-		fmt.Printf("Query: %q\n", cap.query)
-		fmt.Print(cap.query)
-
-		n, err := os.Stdout.Read(buf[:])
+	var buf [1024]byte
+	for i, cap := range caps {
+		fmt.Fprint(f, cap.query)
+		n, err := f.Read(buf[:])
 		if err == nil {
 			if n > 0 {
-				fmt.Printf("Response: %q\n", buf[:n])
+				caps[i].resp = string(buf[:n])
 			}
 		} else if errors.Is(err, os.ErrDeadlineExceeded) {
 			fmt.Printf("Read error: %s\n", err)
+			break
 		}
+	}
+
+	term.Restore(int(f.Fd()), s)
+
+	for _, cap := range caps {
+		fmt.Printf("%s %-15s %s\n", strings.Repeat("-", 5), cap.label, strings.Repeat("-", 5))
+		fmt.Printf("Query: %q\n", cap.query)
+		fmt.Printf("Response: %q\n", cap.resp)
 	}
 }
 
@@ -1384,7 +1377,7 @@ func main() {
 	}
 
 	if conf.query {
-		queryCap()
+		queryCap(os.Stdout)
 		return
 	}
 
