@@ -53,6 +53,7 @@ Options:
   -h,  --help        print this message
   -c,  --colors      print the number of terminal color
        --version     print version information
+  -q   --query       query terminal extend capability
 ---------------------------------------------------------------------------------------------------
   -p,  --port        apshd server port (default 8100)
   destination        in the form of user@host[:port], here the port is ssh server port (default 22)
@@ -99,6 +100,53 @@ func printColors() {
 	*/
 }
 
+func queryCap() {
+	fmt.Println("Query terminal extend capablility")
+	caps := []struct {
+		label string
+		query string
+	}{
+		// {"CSI u", "\x1B[?u"},
+		{"Primary DA", "\x1B[c"},
+	}
+
+	for _, cap := range caps {
+
+		// if err := syscall.SetNonblock(1, true); err != nil {
+		// 	panic(err)
+		// }
+		// f := os.NewFile(1, "stdin")
+		//
+		// if err := f.SetDeadline(time.Now().Add(time.Duration(200) * time.Millisecond)); err != nil {
+		// 	panic(err)
+		// }
+		// ptmx, pts, err := pty.Open()
+		// defer func() {
+		// 	ptmx.Close()
+		// 	pts.Close()
+		// }()
+		//
+		// if err != nil {
+		// 	fmt.Printf("open tty error: %s\n", err)
+		// 	return
+		// }
+
+		var buf [1024]byte
+		fmt.Printf("### %s: device stdin=%s, stdout=%s\n", cap.label, os.Stdin.Name(), os.Stdout.Name())
+		fmt.Printf("Query: %q\n", cap.query)
+		fmt.Print(cap.query)
+
+		n, err := os.Stdout.Read(buf[:])
+		if err == nil {
+			if n > 0 {
+				fmt.Printf("Response: %q\n", buf[:n])
+			}
+		} else if errors.Is(err, os.ErrDeadlineExceeded) {
+			fmt.Printf("Read error: %s\n", err)
+		}
+	}
+}
+
 func parseFlags(progname string, args []string) (config *Config, output string, err error) {
 	// https://eli.thegreenplace.net/2020/testing-flag-parsing-in-go-programs/
 	flagSet := flag.NewFlagSet(progname, flag.ContinueOnError)
@@ -125,6 +173,9 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.StringVar(&conf.sshClientID, "i", "", "ssh client identity file")
 	flagSet.IntVar(&conf.mapping, "mapping", 0, "container port mapping")
 	flagSet.IntVar(&conf.mapping, "m", 0, "container port mapping")
+
+	flagSet.BoolVar(&conf.query, "query", false, "query terminal extend capability")
+	flagSet.BoolVar(&conf.query, "q", false, "query terminal extend capability")
 
 	err = flagSet.Parse(args)
 	if err != nil {
@@ -159,6 +210,7 @@ type Config struct {
 	version          bool
 	colors           bool
 	addSource        bool // add source file to log
+	query            bool
 }
 
 var errNoResponse = errors.New("no response, please make sure the server is running")
@@ -450,6 +502,10 @@ func (c *Config) buildConfig() (string, bool) {
 
 	// just need terminal number of colors
 	if c.colors {
+		return "", true
+	}
+
+	if c.query {
 		return "", true
 	}
 
@@ -1324,6 +1380,11 @@ func main() {
 
 	if conf.colors {
 		printColors()
+		return
+	}
+
+	if conf.query {
+		queryCap()
 		return
 	}
 
