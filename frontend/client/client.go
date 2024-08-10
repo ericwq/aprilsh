@@ -119,6 +119,7 @@ func queryTerminal(stdout *os.File) error {
 		return fmt.Errorf("set raw mode for tty output error: %w", err)
 	}
 
+	var buf [1024]byte
 	for i := range caps {
 		_, err := stdout.WriteString(caps[i].query)
 		if err != nil {
@@ -128,7 +129,6 @@ func queryTerminal(stdout *os.File) error {
 		// readCh := make(chan string, 1)
 		// timer := time.NewTimer(time.Duration(10) * time.Millisecond)
 		// go func(i int) {
-		var buf [1024]byte
 		n, err := stdout.Read(buf[:])
 		if err == nil && n > 0 {
 			caps[i].resp = string(buf[:n])
