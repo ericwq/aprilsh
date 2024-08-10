@@ -100,44 +100,73 @@ func printColors() {
 	*/
 }
 
-func queryCap(f *os.File) {
-	fmt.Println("Query terminal extend capablility")
+func queryTerminal(stdout *os.File) error {
 	caps := []struct {
+		error error
 		label string
 		query string
 		resp  string
 	}{
 		{label: "CSI u", query: "\x1B[?u"},
 		{label: "Primary DA", query: "\x1B[c"},
+		{label: "Synchronized output", query: "\x1b[?2026$p"},
 	}
+	fmt.Println("Query terminal capablility (press Enter is required on some terminal)")
 
-	s, err := term.MakeRaw(int(f.Fd()))
+	// set terminal in raw mode , don't print to output.
+	save1, err := term.MakeRaw(int(stdout.Fd()))
 	if err != nil {
-		fmt.Printf("open tty error: %s\n", err)
-		return
+		return fmt.Errorf("set raw mode for tty output error: %w", err)
 	}
 
-	var buf [1024]byte
-	for i, cap := range caps {
-		fmt.Fprint(f, cap.query)
-		n, err := f.Read(buf[:])
-		if err == nil {
-			if n > 0 {
-				caps[i].resp = string(buf[:n])
-			}
-		} else if errors.Is(err, os.ErrDeadlineExceeded) {
-			fmt.Printf("Read error: %s\n", err)
-			break
+	for i := range caps {
+		_, err := stdout.WriteString(caps[i].query)
+		if err != nil {
+			caps[i].error = fmt.Errorf("write tty error: %w", err)
+			continue
 		}
+		// readCh := make(chan string, 1)
+		// timer := time.NewTimer(time.Duration(10) * time.Millisecond)
+		// go func(i int) {
+		var buf [1024]byte
+		n, err := stdout.Read(buf[:])
+		if err == nil && n > 0 {
+			caps[i].resp = string(buf[:n])
+		} else {
+			caps[i].error = fmt.Errorf("read tty error: %w", err)
+		}
+		// readCh <- "ok"
+		// }(i)
+		// select {
+		// case <-timer.C:
+		// 	caps[i].resp = "\r"
+		// 	caps[i].error = os.ErrDeadlineExceeded
+		// 	stdout.WriteString("\r")
+		// case <-readCh:
+		// }
+
 	}
 
-	term.Restore(int(f.Fd()), s)
+	term.Restore(int(stdout.Fd()), save1)
+	// terminal raw mode end
 
+	ok := ""
 	for _, cap := range caps {
-		fmt.Printf("%s %-15s %s\n", strings.Repeat("-", 5), cap.label, strings.Repeat("-", 5))
+		if cap.resp != "\r" && cap.error == nil {
+			ok = "\x1b[38:5:46mOk\x1b[0m"
+		} else {
+			ok = "\x1b[38:5:226mWarn\x1b[0m"
+		}
+		fmt.Printf("%s %-20s %s%s\n", strings.Repeat("-", 5),
+			cap.label, strings.Repeat("-", 5), ok)
 		fmt.Printf("Query: %q\n", cap.query)
+		if cap.error != nil {
+			fmt.Printf("Read: %s\n", cap.error)
+		}
 		fmt.Printf("Response: %q\n", cap.resp)
+
 	}
+	return nil
 }
 
 func parseFlags(progname string, args []string) (config *Config, output string, err error) {
@@ -1377,7 +1406,9 @@ func main() {
 	}
 
 	if conf.query {
-		queryCap(os.Stdout)
+		if err := queryTerminal(os.Stdout); err != nil {
+			fmt.Printf("%s\n", err)
+		}
 		return
 	}
 
