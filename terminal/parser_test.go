@@ -5363,6 +5363,12 @@ func Test_HexSample(t *testing.T) {
 	// util.Logger.CreateLogger(os.Stderr, false, util.LevelTrace)
 	util.Logger.CreateLogger(io.Discard, false, util.LevelTrace)
 
+	// hexValue := hex.EncodeToString([]byte("Co"))
+	// fmt.Printf("Co=%s\n", hexValue)
+	//
+	// txt, _ := hex.DecodeString("38")
+	// fmt.Printf("resp=%s\n", txt)
+
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			parts := strings.Split(v.request, ";")
@@ -5401,9 +5407,6 @@ func TestXtgettcapReply_Return(t *testing.T) {
 		{"hex decode error", "hex", "invalid hex encoding", ""},
 		{"bool capability", "616d", "", "\x1BP1+r616d\x1B\\"},
 	}
-	// hexValue := hex.EncodeToString([]byte("am"))
-	// fmt.Printf("am=%s\n", hexValue)
-	// am=616d
 
 	for _, v := range tc {
 		emu := NewEmulator3(80, 40, 0)
