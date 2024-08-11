@@ -107,10 +107,21 @@ func queryTerminal(stdout *os.File) error {
 		query string
 		resp  string
 	}{
-		{label: "CSI u", query: "\x1B[?u"},
 		{label: "Primary DA", query: "\x1B[c"},
+		{label: "Secondary DA", query: "\x1B[>c"},
+		{label: "Device Status Report", query: "\x1b[5n"},
+		{label: "XTGETTCAP RGB", query: "\x1bP+q524742\x1b\\"},
+		{label: "XTGETTCAP TN", query: "\x1bP+q544e\x1b\\"},
+		{label: "XTGETTCAP Co", query: "\x1bP+q436f\x1b\\"},
 		{label: "Synchronized output", query: "\x1b[?2026$p"},
+		{label: "CSI u", query: "\x1B[?u"},
 	}
+
+	// "\x1bP1+r524742=38\x1b\\" 8
+	// "\x1bP1+r544E=787465726D2D323536636F6C6F72\x1b\\" xterm-256color
+	// "\x1bP1+r436F=323536\x1b\\" 256
+	// DECRQM 2026: Synchronized output
+
 	fmt.Println("Query terminal capablility (press Enter is required on some terminal)")
 
 	// set terminal in raw mode , don't print to output.
@@ -157,14 +168,13 @@ func queryTerminal(stdout *os.File) error {
 		} else {
 			ok = "\x1b[38:5:226mWarn\x1b[0m"
 		}
-		fmt.Printf("%s %-20s %s%s\n", strings.Repeat("-", 5),
-			cap.label, strings.Repeat("-", 5), ok)
+		fmt.Printf("%s %-20s %s%s\n", strings.Repeat("-", 15),
+			cap.label, strings.Repeat("-", 15), ok)
 		fmt.Printf("Query: %q\n", cap.query)
 		if cap.error != nil {
 			fmt.Printf("Read: %s\n", cap.error)
 		}
-		fmt.Printf("Response: %q\n", cap.resp)
-
+		fmt.Printf("Response: %q\n\n", cap.resp)
 	}
 	return nil
 }
