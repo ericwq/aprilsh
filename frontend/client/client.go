@@ -131,7 +131,7 @@ func queryTerminal(stdout *os.File) (caps []tCap, err error) {
 	respChan := make(chan tResp, 1)
 	var buf [1024]byte
 	var reading int64 = 0
-	timeout := 5
+	timeout := 35 // for remote session, query need more time to finish
 
 	// set terminal in raw mode , don't print to output.
 	save1, err := term.MakeRaw(int(stdout.Fd()))
@@ -1442,7 +1442,9 @@ func main() {
 
 	if conf.query {
 		caps, err := queryTerminal(os.Stdout)
-		fmt.Println("Query terminal capablility")
+		fmt.Printf("%s reports: query terminal capablility\n%s\n\n",
+			frontend.CommandClientName,
+			"please make sure network RTT time is less than 35ms.")
 		if err != nil {
 			fmt.Printf("%s\n", err)
 		}
@@ -1454,8 +1456,8 @@ func main() {
 			} else {
 				mark = "\x1b[38:5:226mWarn\x1b[0m" // Yellow Warn
 			}
-			fmt.Printf("%s %-20s %s%s\n", strings.Repeat("-", 15),
-				cap.label, strings.Repeat("-", 15), mark)
+			fmt.Printf("%s%-20s%s%s\n", strings.Repeat("-", 28),
+				cap.label, strings.Repeat("-", 28), mark)
 			fmt.Printf("Query: %q\n", cap.query)
 			if cap.resp.error != nil {
 				fmt.Printf("Read: %s\n", cap.resp.error)
