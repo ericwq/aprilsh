@@ -254,6 +254,7 @@ func dynamicInit() {
 	*/
 	cache.pTerminfo.nums["Co"] = cache.pTerminfo.getnum("colors")
 	cache.pTerminfo.strs["TN"] = cache.pTerminfo.name
+	// WezTerm response TN=WezTerm
 
 	capName := "RGB"
 	if _, ok := cache.pTerminfo.nums[capName]; !ok {

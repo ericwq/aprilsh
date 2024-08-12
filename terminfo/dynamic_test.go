@@ -140,6 +140,7 @@ func TestLookup(t *testing.T) {
 					t.Errorf("%s name:%-9s expect %q got %q,ok=%t",
 						v.label, name, v.values[i], value, ok)
 				}
+				// fmt.Printf("%s=%s\n", name, value)
 			}
 		})
 	}
