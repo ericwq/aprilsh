@@ -6,6 +6,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/hex"
 	"errors"
 	"flag"
 	"fmt"
@@ -101,36 +102,33 @@ func printColors() {
 	*/
 }
 
-type termResp struct {
+type tResp struct {
 	error    error
 	response string
 }
 
-func queryTerminal(stdout *os.File) error {
-	caps := []struct {
-		label string
-		query string
-		resp  termResp
-	}{
+type tCap struct {
+	label string
+	query string
+	resp  tResp
+}
+
+// query terminal capablility
+func queryTerminal(stdout *os.File) (caps []tCap, err error) {
+	caps = []tCap{
 		{label: "Primary DA", query: "\x1B[c"},
 		{label: "Device Status Report", query: "\x1b[5n"},
 		{label: "XTGETTCAP RGB", query: "\x1bP+q524742\x1b\\"},
 		{label: "XTGETTCAP TN", query: "\x1bP+q544e\x1b\\"},
 		{label: "XTGETTCAP Co", query: "\x1bP+q436f\x1b\\"},
 		{label: "Synchronized output", query: "\x1b[?2026$p"},
+		// DECRQM 2026: Synchronized output
 		{label: "CSI u", query: "\x1B[?u"},
 		{label: "Secondary DA", query: "\x1B[>c"},
 		// the last one should always get response from terminal, it will stop the read goroutine
 	}
 
-	// "\x1bP1+r524742=38\x1b\\" 8
-	// "\x1bP1+r544E=787465726D2D323536636F6C6F72\x1b\\" xterm-256color
-	// "\x1bP1+r436F=323536\x1b\\" 256
-	// DECRQM 2026: Synchronized output
-
-	fmt.Println("Query terminal capablility")
-
-	respChan := make(chan termResp, 1)
+	respChan := make(chan tResp, 1)
 	var buf [1024]byte
 	var reading int64 = 0
 	timeout := 5
@@ -138,27 +136,27 @@ func queryTerminal(stdout *os.File) error {
 	// set terminal in raw mode , don't print to output.
 	save1, err := term.MakeRaw(int(stdout.Fd()))
 	if err != nil {
-		return fmt.Errorf("set raw mode for std-output error: %w", err)
+		return caps, fmt.Errorf("set raw mode for %s error: %w", stdout.Name(), err)
 	}
 
 	for i := range caps {
 		// send query
 		_, err := stdout.WriteString(caps[i].query)
 		if err != nil {
-			caps[i].resp.error = fmt.Errorf("write std-output error: %w", err)
+			caps[i].resp.error = fmt.Errorf("write to %s error: %w", stdout.Name(), err)
 			continue
 		}
 
 		timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
 		if atomic.LoadInt64(&reading) == 0 {
-			go func(fr io.Reader, buf []byte, respChan chan termResp) {
+			go func(fr io.Reader, buf []byte, respChan chan tResp) {
 				atomic.StoreInt64(&reading, 1)
 
 				n, err := fr.Read(buf)
 				if n > 0 {
-					respChan <- termResp{response: string(buf[:n]), error: nil}
+					respChan <- tResp{response: string(buf[:n]), error: nil}
 				} else {
-					respChan <- termResp{response: "", error: err}
+					respChan <- tResp{error: err}
 				}
 
 				atomic.StoreInt64(&reading, 0)
@@ -170,36 +168,40 @@ func queryTerminal(stdout *os.File) error {
 		case resp := <-respChan:
 			caps[i].resp = resp
 		case <-timer.C:
-			caps[i].resp = termResp{error: os.ErrDeadlineExceeded}
+			caps[i].resp = tResp{error: os.ErrDeadlineExceeded}
 		}
 	}
 
 	err = term.Restore(int(stdout.Fd()), save1)
 	if err != nil {
-		return fmt.Errorf("restore mode for std-output error: %w", err)
+		return caps, fmt.Errorf("restore mode for %s error: %w", stdout.Name(), err)
 	}
 	// terminal raw mode end
 
-	// print the query result
-	ok := ""
-	for _, cap := range caps {
-		if cap.resp.response != "" && cap.resp.error == nil {
-			ok = "\x1b[38:5:46mOk\x1b[0m"
-		} else {
-			ok = "\x1b[38:5:226mWarn\x1b[0m"
-		}
-		fmt.Printf("%s %-20s %s%s\n", strings.Repeat("-", 15),
-			cap.label, strings.Repeat("-", 15), ok)
-		fmt.Printf("Query: %q\n", cap.query)
-		if cap.resp.error != nil {
-			fmt.Printf("Read: %s\n", cap.resp.error)
-		}
-		fmt.Printf("Response: %q\n\n", cap.resp.response)
+	return caps, nil
+}
+
+// simple parser for hex decoding
+func parseHex(s string) string {
+	var b strings.Builder
+	if strings.Contains(s, "\x1bP1+r") && strings.HasSuffix(s, "\x1b\\") {
+
+		start := strings.Index(s, "r")
+		end := strings.Index(s, "=")
+		v := s[start+1 : end]
+		hv, _ := hex.DecodeString(v)
+		b.Write(hv)
+
+		start = strings.Index(s, "=")
+		end = strings.Index(s, "\x1b\\")
+		v = s[start+1 : end]
+		hv, _ = hex.DecodeString(v)
+
+		b.WriteString("=")
+		b.Write(hv)
 	}
 
-	// fmt.Printf("reading=%d\n", reading)
-
-	return nil
+	return b.String()
 }
 
 func parseFlags(progname string, args []string) (config *Config, output string, err error) {
@@ -1439,9 +1441,28 @@ func main() {
 	}
 
 	if conf.query {
-		if err := queryTerminal(os.Stdout); err != nil {
+		caps, err := queryTerminal(os.Stdout)
+		fmt.Println("Query terminal capablility")
+		if err != nil {
 			fmt.Printf("%s\n", err)
 		}
+
+		mark := ""
+		for _, cap := range caps {
+			if cap.resp.response != "" && cap.resp.error == nil {
+				mark = "\x1b[38:5:46mOk\x1b[0m" // green Ok
+			} else {
+				mark = "\x1b[38:5:226mWarn\x1b[0m" // Yellow Warn
+			}
+			fmt.Printf("%s %-20s %s%s\n", strings.Repeat("-", 15),
+				cap.label, strings.Repeat("-", 15), mark)
+			fmt.Printf("Query: %q\n", cap.query)
+			if cap.resp.error != nil {
+				fmt.Printf("Read: %s\n", cap.resp.error)
+			}
+			fmt.Printf("Response: %q %s\n\n", cap.resp.response, parseHex(cap.resp.response))
+		}
+
 		return
 	}
 

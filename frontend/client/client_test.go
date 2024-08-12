@@ -489,3 +489,122 @@ func TestGetSignersFail(t *testing.T) {
 		})
 	}
 }
+
+func TestParseHex(t *testing.T) {
+	tc := []struct {
+		label  string
+		resp   string
+		expect string
+	}{
+		{"regular RGB", "\x1bP1+r524742=382F382F38\x1b\\", "RGB=8/8/8"},
+		{"regular TN", "\x1bP1+r544E=57657A5465726D\x1b\\", "TN=WezTerm"},
+		{"not XTGETTCAP", "\x1b[?2026$p", ""},
+		{"empty string", "", ""},
+	}
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			got := parseHex(v.resp)
+			if got != v.expect {
+				t.Errorf("%q expect %q got %q\n", v.label, v.expect, got)
+			}
+		})
+	}
+}
+
+func TestQueryTerminal_Fail(t *testing.T) {
+	tc := []struct {
+		label  string
+		expect string
+		args   []string
+	}{
+		{
+			"query pipe", "set raw mode for",
+			[]string{frontend.CommandClientName, "-q"},
+		},
+	}
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			// intercept stdout
+			saveStdout := os.Stdout
+			// r, w, _ := pty.Open()
+			r, w, _ := os.Pipe()
+			os.Stdout = w
+
+			// prepare data
+			os.Args = v.args
+			// test main
+			main()
+
+			// restore stdout
+			w.Close()
+			out, _ := io.ReadAll(r)
+			os.Stdout = saveStdout
+			r.Close()
+
+			// validate the result
+			result := string(out)
+			if !strings.Contains(result, v.expect) {
+				t.Errorf("%q expect %q, got \n%s\n", v.label, v.expect, result)
+			}
+			// fmt.Print(result)
+		})
+	}
+}
+
+func testQueryTerminal_Main(t *testing.T) {
+	tc := []struct {
+		label  string
+		expect string
+		args   []string
+	}{
+		{
+			"query pipe", "set raw mode for std-output error",
+			[]string{frontend.CommandClientName, "-q"},
+		},
+	}
+
+	// unfortunately we can't intercept the stdout for this case.
+	// run this test will only improve the test coverage
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			// prepare data
+			os.Args = v.args
+			// test main
+			main()
+		})
+	}
+}
+
+func TestQueryTerminal_Func(t *testing.T) {
+	tc := []struct {
+		label  string
+		expect int
+	}{
+		{
+			"query func", 3,
+		},
+	}
+
+	// unfortunately we can't intercept the stdout for this case.
+	// run this test will only improve the test coverage
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			caps, err := queryTerminal(os.Stdout)
+			if err != nil {
+				t.Fatalf("%s expect nil err, got %s\n", v.label, err)
+			}
+
+			count := 0
+			for i := range caps {
+				if caps[i].resp.error == nil {
+					count++
+				}
+			}
+			if count < v.expect {
+				t.Errorf("%q expect at least %d response without error, got %d\n",
+					v.label, v.expect, count)
+			}
+		})
+	}
+}
