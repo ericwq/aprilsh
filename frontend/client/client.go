@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -100,21 +101,26 @@ func printColors() {
 	*/
 }
 
+type termResp struct {
+	error    error
+	response string
+}
+
 func queryTerminal(stdout *os.File) error {
 	caps := []struct {
-		error error
 		label string
 		query string
-		resp  string
+		resp  termResp
 	}{
 		{label: "Primary DA", query: "\x1B[c"},
-		{label: "Secondary DA", query: "\x1B[>c"},
 		{label: "Device Status Report", query: "\x1b[5n"},
 		{label: "XTGETTCAP RGB", query: "\x1bP+q524742\x1b\\"},
 		{label: "XTGETTCAP TN", query: "\x1bP+q544e\x1b\\"},
 		{label: "XTGETTCAP Co", query: "\x1bP+q436f\x1b\\"},
 		{label: "Synchronized output", query: "\x1b[?2026$p"},
 		{label: "CSI u", query: "\x1B[?u"},
+		{label: "Secondary DA", query: "\x1B[>c"},
+		// the last one should always get response from terminal, it will stop the read goroutine
 	}
 
 	// "\x1bP1+r524742=38\x1b\\" 8
@@ -122,48 +128,62 @@ func queryTerminal(stdout *os.File) error {
 	// "\x1bP1+r436F=323536\x1b\\" 256
 	// DECRQM 2026: Synchronized output
 
-	fmt.Println("Query terminal capablility (press Enter is required on some terminal)")
+	fmt.Println("Query terminal capablility")
+
+	respChan := make(chan termResp, 1)
+	var buf [1024]byte
+	var reading int64 = 0
+	timeout := 5
 
 	// set terminal in raw mode , don't print to output.
 	save1, err := term.MakeRaw(int(stdout.Fd()))
 	if err != nil {
-		return fmt.Errorf("set raw mode for tty output error: %w", err)
+		return fmt.Errorf("set raw mode for std-output error: %w", err)
 	}
 
-	var buf [1024]byte
 	for i := range caps {
+		// send query
 		_, err := stdout.WriteString(caps[i].query)
 		if err != nil {
-			caps[i].error = fmt.Errorf("write tty error: %w", err)
+			caps[i].resp.error = fmt.Errorf("write std-output error: %w", err)
 			continue
 		}
-		// readCh := make(chan string, 1)
-		// timer := time.NewTimer(time.Duration(10) * time.Millisecond)
-		// go func(i int) {
-		n, err := stdout.Read(buf[:])
-		if err == nil && n > 0 {
-			caps[i].resp = string(buf[:n])
-		} else {
-			caps[i].error = fmt.Errorf("read tty error: %w", err)
-		}
-		// readCh <- "ok"
-		// }(i)
-		// select {
-		// case <-timer.C:
-		// 	caps[i].resp = "\r"
-		// 	caps[i].error = os.ErrDeadlineExceeded
-		// 	stdout.WriteString("\r")
-		// case <-readCh:
-		// }
 
+		timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
+		if atomic.LoadInt64(&reading) == 0 {
+			go func(fr io.Reader, buf []byte, respChan chan termResp) {
+				atomic.StoreInt64(&reading, 1)
+
+				n, err := fr.Read(buf)
+				if n > 0 {
+					respChan <- termResp{response: string(buf[:n]), error: nil}
+				} else {
+					respChan <- termResp{response: "", error: err}
+				}
+
+				atomic.StoreInt64(&reading, 0)
+			}(stdout, buf[:], respChan)
+		}
+
+		// wait response or timeout
+		select {
+		case resp := <-respChan:
+			caps[i].resp = resp
+		case <-timer.C:
+			caps[i].resp = termResp{error: os.ErrDeadlineExceeded}
+		}
 	}
 
-	term.Restore(int(stdout.Fd()), save1)
+	err = term.Restore(int(stdout.Fd()), save1)
+	if err != nil {
+		return fmt.Errorf("restore mode for std-output error: %w", err)
+	}
 	// terminal raw mode end
 
+	// print the query result
 	ok := ""
 	for _, cap := range caps {
-		if cap.resp != "\r" && cap.error == nil {
+		if cap.resp.response != "" && cap.resp.error == nil {
 			ok = "\x1b[38:5:46mOk\x1b[0m"
 		} else {
 			ok = "\x1b[38:5:226mWarn\x1b[0m"
@@ -171,11 +191,14 @@ func queryTerminal(stdout *os.File) error {
 		fmt.Printf("%s %-20s %s%s\n", strings.Repeat("-", 15),
 			cap.label, strings.Repeat("-", 15), ok)
 		fmt.Printf("Query: %q\n", cap.query)
-		if cap.error != nil {
-			fmt.Printf("Read: %s\n", cap.error)
+		if cap.resp.error != nil {
+			fmt.Printf("Read: %s\n", cap.resp.error)
 		}
-		fmt.Printf("Response: %q\n\n", cap.resp)
+		fmt.Printf("Response: %q\n\n", cap.resp.response)
 	}
+
+	// fmt.Printf("reading=%d\n", reading)
+
 	return nil
 }
 
