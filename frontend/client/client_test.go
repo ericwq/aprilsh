@@ -6,7 +6,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"strings"
@@ -612,13 +611,19 @@ func TestQueryTerminal_Func(t *testing.T) {
 				if caps[i].resp.error == nil {
 					count++
 				}
-				fmt.Printf("query=%q, response=%q, error=%s\n",
-					caps[i].query, caps[i].resp.response, caps[i].resp.error)
+				// fmt.Printf("query=%q, response=%q, error=%s\n",
+				// 	caps[i].query, caps[i].resp.response, caps[i].resp.error)
 			}
 			if count < v.expect {
 				t.Errorf("%q expect at least %d successful response, got %d successful response\n",
 					v.label, v.expect, count)
 			}
 		})
+	}
+}
+
+func testQT(t *testing.T) {
+	if tm := term.IsTerminal(int(os.Stdout.Fd())); !tm {
+		t.Fatalf("%s is not terminal\n", os.Stdout.Name())
 	}
 }
