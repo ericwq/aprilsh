@@ -590,9 +590,6 @@ func TestQueryTerminal_Func(t *testing.T) {
 		// {"query func for stdout", 3},
 	}
 
-	// NOTE: unfortunately we can't intercept the stdout for this case.
-	// run this test will only improve the test coverage
-	//
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			_, pts, _ := pty.Open()
@@ -618,12 +615,15 @@ func TestQueryTerminal_Func(t *testing.T) {
 				t.Errorf("%q expect at least %d successful response, got %d successful response\n",
 					v.label, v.expect, count)
 			}
+			pts.Close()
 		})
 	}
 }
 
-func testQT(t *testing.T) {
-	if tm := term.IsTerminal(int(os.Stdout.Fd())); !tm {
-		t.Fatalf("%s is not terminal\n", os.Stdout.Name())
+func TestQT(t *testing.T) {
+	f := os.Stdout
+	if tm := term.IsTerminal(int(f.Fd())); !tm {
+		t.Skipf("%s is not terminal\n", f.Name())
 	}
+	f.Close()
 }
