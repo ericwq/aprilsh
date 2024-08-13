@@ -583,10 +583,8 @@ func TestQueryTerminal_Func(t *testing.T) {
 		expect int
 	}{
 		{"query func for pty", 0},
-		// TODO:
-		// go test . (package list mode) failed on os.Stdout
-		// go test (local directory mode) success on os.Stdout
-		// we choose to use pty as a best effort for this test
+		// https://github.com/golang/go/issues/68851
+		// we choose to use pty as best effort for this test
 		// {"query func for stdout", 3},
 	}
 
