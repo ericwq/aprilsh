@@ -619,9 +619,9 @@ func TestQueryTerminal_Func(t *testing.T) {
 }
 
 func TestQT(t *testing.T) {
-	f := os.Stdout
+	f, _ := os.Open("/dev/tty")
 	if tm := term.IsTerminal(int(f.Fd())); !tm {
-		t.Skipf("%s is not terminal\n", f.Name())
+		t.Errorf("%s is not terminal\n", f.Name())
 	}
 	f.Close()
 }
