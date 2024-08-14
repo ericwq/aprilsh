@@ -778,7 +778,8 @@ func (sc *STMClient) stillConnecting() bool {
 func (sc *STMClient) resume() {
 	// Restore termios state
 	if err := term.Restore(int(os.Stdin.Fd()), sc.rawTermios); err != nil {
-		os.Exit(1)
+		util.Logger.Warn("resume: restore terminal failed", "error", err)
+		return
 	}
 
 	// Put terminal in application-cursor-key mode
@@ -918,7 +919,7 @@ func (sc *STMClient) shutdown() error {
 	util.Logger.Info("close terminal", "seq", sc.display.Close())
 
 	if err := term.Restore(int(os.Stdin.Fd()), sc.savedTermios); err != nil {
-		util.Logger.Warn("restore terminal failed", "error", err)
+		util.Logger.Warn("shutdown: restore terminal failed", "error", err)
 		return err
 	}
 
