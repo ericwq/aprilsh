@@ -1,0 +1,68 @@
+// Copyright 2022~2024 wangqi. All rights reserved.
+// Use of this source code is governed by a MIT-style
+// license that can be found in the LICENSE file.
+
+package terminal
+
+import (
+	"errors"
+	"sync"
+)
+
+var (
+	ErrEmptyStack = errors.New("empty stack")
+	ErrLastData   = errors.New("last data in stack")
+)
+
+type stack[V any] struct {
+	data []V
+	max  int
+	sync.Mutex
+}
+
+// create stack with max items,
+func NewStack[V any](max int) *stack[V] {
+	s := &stack[V]{}
+	s.max = max
+	s.data = make([]V, 0, max)
+	return s
+}
+
+// push the new data item.
+//
+// If a push request is received and the stack is full, the oldest entry from
+// the stack is evicted.
+func (s *stack[V]) Push(v V) int {
+	s.Lock()
+	defer s.Unlock()
+
+	if len(s.data) >= s.max {
+		s.data = append(s.data[1:], v)
+	} else {
+		s.data = append(s.data, v)
+	}
+
+	return len(s.data)
+}
+
+// pop the last data item.
+//
+// If a pop request is received that empties the stack, report ErrLastData.
+// if a pop request is received and the stack is empty, report ErrEmptyStack.
+func (s *stack[V]) Pop() (last V, err error) {
+	s.Lock()
+	defer s.Unlock()
+
+	pos := len(s.data)
+	if pos == 0 {
+		return last, ErrEmptyStack
+	}
+
+	last = s.data[pos-1]
+	s.data = s.data[:pos-1]
+	if len(s.data) == 0 {
+		err = ErrLastData
+	}
+
+	return last, err
+}
