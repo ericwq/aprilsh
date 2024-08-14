@@ -105,6 +105,7 @@ func printColors() {
 type tResp struct {
 	error    error
 	response string
+	time     time.Duration
 }
 
 type tCap struct {
@@ -114,7 +115,8 @@ type tCap struct {
 }
 
 // query terminal capablility
-func queryTerminal(stdout *os.File) (caps []tCap, err error) {
+// for remote session, query need more time to finish
+func queryTerminal(stdout *os.File, timeout int) (caps []tCap, err error) {
 	caps = []tCap{
 		{label: "Primary DA", query: "\x1B[c"},
 		{label: "Device Status Report", query: "\x1b[5n"},
@@ -131,7 +133,6 @@ func queryTerminal(stdout *os.File) (caps []tCap, err error) {
 	respChan := make(chan tResp, 1)
 	var buf [1024]byte
 	var reading int64 = 0
-	timeout := 35 // for remote session, query need more time to finish
 
 	// set terminal in raw mode , don't print to output.
 	save1, err := term.MakeRaw(int(stdout.Fd()))
@@ -147,6 +148,7 @@ func queryTerminal(stdout *os.File) (caps []tCap, err error) {
 			continue
 		}
 
+		begin := time.Now()
 		timer := time.NewTimer(time.Duration(timeout) * time.Millisecond)
 		if atomic.LoadInt64(&reading) == 0 {
 			go func(fr io.Reader, buf []byte, respChan chan tResp) {
@@ -170,6 +172,7 @@ func queryTerminal(stdout *os.File) (caps []tCap, err error) {
 		case <-timer.C:
 			caps[i].resp = tResp{error: os.ErrDeadlineExceeded}
 		}
+		caps[i].resp.time = time.Since(begin)
 	}
 
 	err = term.Restore(int(stdout.Fd()), save1)
@@ -1442,10 +1445,10 @@ func main() {
 	}
 
 	if conf.query {
-		caps, err := queryTerminal(os.Stdout)
-		fmt.Printf("%s reports: query terminal capablility\n%s\n\n",
-			frontend.CommandClientName,
-			"please make sure network RTT time is less than 35ms.")
+		timeout := 50
+		caps, err := queryTerminal(os.Stdout, timeout)
+		fmt.Printf("%s: query terminal capablility\n%s %dms.\n", frontend.CommandClientName,
+			"please make sure network RTT time is less than", timeout)
 		if err != nil {
 			fmt.Printf("%s\n", err)
 		}
@@ -1459,7 +1462,7 @@ func main() {
 			}
 			fmt.Printf("%s%-20s%s%s\n", strings.Repeat("-", 28),
 				cap.label, strings.Repeat("-", 28), mark)
-			fmt.Printf("Query: %q\n", cap.query)
+			fmt.Printf("Query: %-40q Duration: %dms\n", cap.query, cap.resp.time.Milliseconds())
 			if cap.resp.error != nil {
 				fmt.Printf("Read: %s\n", cap.resp.error)
 			}

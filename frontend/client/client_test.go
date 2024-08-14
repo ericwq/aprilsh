@@ -596,7 +596,7 @@ func TestQueryTerminal_Func(t *testing.T) {
 			if tm := term.IsTerminal(int(pts.Fd())); !tm {
 				t.Fatalf("%s: %s is not terminal\n", v.label, pts.Name())
 			}
-			caps, err := queryTerminal(pts)
+			caps, err := queryTerminal(pts, 7)
 			if err != nil {
 				t.Fatalf("%s expect nil err, got %s\n", v.label, err)
 			}
