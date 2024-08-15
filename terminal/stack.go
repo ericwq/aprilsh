@@ -11,24 +11,24 @@ import (
 
 var (
 	ErrEmptyStack = errors.New("empty stack")
-	ErrLastData   = errors.New("last data in stack")
+	ErrLastItem   = errors.New("last item in stack")
 )
 
-type stack[V any] struct {
+type stack[V comparable] struct {
 	data []V
 	max  int
 	sync.Mutex
 }
 
-// create stack with max items,
-func NewStack[V any](max int) *stack[V] {
+// create LIFO stack with max items
+func NewStack[V comparable](max int) *stack[V] {
 	s := &stack[V]{}
 	s.max = max
 	s.data = make([]V, 0, max)
 	return s
 }
 
-// push the new data item.
+// push new item input stack.
 //
 // If a push request is received and the stack is full, the oldest entry from
 // the stack is evicted.
@@ -45,7 +45,7 @@ func (s *stack[V]) Push(v V) int {
 	return len(s.data)
 }
 
-// pop the last data item.
+// pop last item from stack.
 //
 // If a pop request is received that empties the stack, report ErrLastData.
 // if a pop request is received and the stack is empty, report ErrEmptyStack.
@@ -61,8 +61,31 @@ func (s *stack[V]) Pop() (last V, err error) {
 	last = s.data[pos-1]
 	s.data = s.data[:pos-1]
 	if len(s.data) == 0 {
-		err = ErrLastData
+		err = ErrLastItem
 	}
 
 	return last, err
+}
+
+func (s *stack[V]) Clone() *stack[V] {
+	clone := NewStack[V](s.max)
+	clone.data = make([]V, s.max)
+	copy(clone.data, s.data)
+	return clone
+}
+
+func (s *stack[V]) Equal(c *stack[V]) bool {
+	if s.max != c.max {
+		return false
+	}
+	if len(s.data) != len(c.data) {
+		return false
+	}
+	for i := range s.data {
+		if s.data[i] != c.data[i] {
+			return false
+		}
+	}
+
+	return true
 }

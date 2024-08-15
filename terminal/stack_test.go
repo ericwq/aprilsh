@@ -50,13 +50,57 @@ func TestStack_Oversie_Empty(t *testing.T) {
 	for i := len(expect) - 1; i >= 0; i-- {
 		got, _ := s.Pop()
 		if got != expect[i] {
-			t.Errorf("stack oversize expect %d pop %c, got %c\n", i, expect[i], got)
+			t.Errorf("stack oversize: expect %d pop %c, got %c\n", i, expect[i], got)
 		}
 	}
 
 	// empty pop
 	_, err := s.Pop()
 	if !errors.Is(err, ErrEmptyStack) {
-		t.Errorf("stack empty pop expect %s, got %s\n", ErrEmptyStack, err)
+		t.Errorf("stack empty pop: expect %s, got %s\n", ErrEmptyStack, err)
+	}
+
+	// push one item into stack
+	s.Push('x')
+
+	x, err := s.Pop()
+	if !errors.Is(err, ErrLastItem) {
+		t.Errorf("stack pop last item: expect %s, got %s\n", ErrLastItem, err)
+	}
+	if x != 'x' {
+		t.Errorf("stack pop last item: expect %c, got %c\n", 'x', x)
+	}
+}
+
+func TestStack_Equal(t *testing.T) {
+	data := []string{"first", "second", "third"}
+	s := NewStack[string](len(data))
+	for i := range data {
+		s.Push(data[i])
+	}
+
+	s2 := s.Clone()
+
+	// same stack compare
+	if !s.Equal(s2) {
+		t.Errorf("stack equal: expect true, got false\n")
+	}
+
+	// empty stack compare
+	s3 := NewStack[string](len(data))
+	if s.Equal(s3) {
+		t.Errorf("stack equal: expect false, got true\n")
+	}
+
+	// different item compare
+	s2.data[2] = "forth"
+	if s.Equal(s2) {
+		t.Errorf("stack equal: expect false, got true\n")
+	}
+
+	// diff max compare
+	s4 := NewStack[string](len(data) - 1)
+	if s.Equal(s4) {
+		t.Errorf("stack equal: expect false, got true\n")
 	}
 }
