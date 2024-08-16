@@ -310,9 +310,9 @@ func (t *Transport[S, R]) ProcessPayload(s string) error {
 		newState.timestamp = time.Now().UnixMilli()
 		newState.num = inst.NewNum
 		if len(inst.Diff) > 0 {
-			util.Logger.Trace("got message", "applyString", "start")
+			// util.Logger.Trace("got message", "applyString", "start")
 			newState.state.ApplyString(string(inst.Diff))
-			util.Logger.Trace("got message", "applyString", "end")
+			// util.Logger.Trace("got message", "applyString", "end")
 		}
 
 		// Insert new state in sorted place
