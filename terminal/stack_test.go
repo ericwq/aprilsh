@@ -104,3 +104,28 @@ func TestStack_Equal(t *testing.T) {
 		t.Errorf("stack equal: expect false, got true\n")
 	}
 }
+
+func TestStack_Peek(t *testing.T) {
+	data := []float64{1.1, 2.2, 3.3}
+	s := NewStack[float64](len(data))
+	for i := range data {
+		s.Push(data[i])
+	}
+	// fmt.Printf("after init: %v\n", s.data)
+
+	// validate get peek
+	d2 := s.GetPeek()
+	if d2 != data[2] {
+		t.Errorf("stack get peek: expect %f, got %f\n", data[2], d2)
+	}
+
+	// validate update peek
+	newf := 4.5
+	s.UpdatePeek(newf)
+	d2 = s.GetPeek()
+	if d2 != newf {
+		t.Errorf("stack get peek: expect %f, got %f\n", newf, d2)
+	}
+
+	// fmt.Printf("after test: %v\n", s.data)
+}

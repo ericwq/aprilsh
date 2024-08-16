@@ -67,6 +67,14 @@ func (s *stack[V]) Pop() (last V, err error) {
 	return last, err
 }
 
+func (s *stack[V]) GetPeek() (v V) {
+	return s.data[len(s.data)-1]
+}
+
+func (s *stack[V]) UpdatePeek(v V) {
+	s.data[len(s.data)-1] = v
+}
+
 func (s *stack[V]) Clone() *stack[V] {
 	clone := NewStack[V](s.max)
 	clone.data = make([]V, s.max)
