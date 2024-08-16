@@ -77,7 +77,7 @@ func (s *stack[V]) UpdatePeek(v V) {
 
 func (s *stack[V]) Clone() *stack[V] {
 	clone := NewStack[V](s.max)
-	clone.data = make([]V, s.max)
+	clone.data = make([]V, len(s.data))
 	copy(clone.data, s.data)
 	return clone
 }

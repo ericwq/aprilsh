@@ -1705,7 +1705,7 @@ func hdl_csi_u_query(emu *Emulator, _ []int) {
 	flags := stack.GetPeek()
 	resp := fmt.Sprintf("\x1B[?%du", flags)
 	emu.writePty(resp)
-	util.Logger.Debug("CSI U query", "resp", resp)
+	util.Logger.Debug("CSI u query", "resp", resp)
 }
 
 func hdl_csi_u_set(emu *Emulator, flags int, mode int) {
@@ -1722,22 +1722,22 @@ func hdl_csi_u_set(emu *Emulator, flags int, mode int) {
 		f := stack.GetPeek()
 		stack.UpdatePeek(f &^ flags)
 	default:
-		util.Logger.Warn("CSI U set", "invalid mode", mode, "flags", flags)
+		util.Logger.Warn("CSI u set", "invalid mode", mode, "flags", flags)
 
 	}
-	util.Logger.Debug("CSI U set: after update", "flags", stack.GetPeek())
+	util.Logger.Debug("CSI u set", "when", "after update", "flags", stack.GetPeek())
 }
 
 func hdl_csi_u_push(emu *Emulator, flags int) {
 	stack := emu.cf.kittyKbd
 
 	stack.Push(flags & KITTY_KBD_SUPPORTED)
-	util.Logger.Debug("CSI U push: after push", "flags", stack.GetPeek())
+	util.Logger.Debug("CSI u push", "when", "after push", "flags", stack.GetPeek())
 }
 
 func hdl_csi_u_pop(emu *Emulator, count int) {
 	stack := emu.cf.kittyKbd
-	util.Logger.Debug("CSI U pop:", "levels", count)
+	util.Logger.Debug("CSI u pop", "levels", count)
 
 	for i := 0; i < count; i++ {
 		_, err := stack.Pop()
@@ -1747,7 +1747,7 @@ func hdl_csi_u_pop(emu *Emulator, count int) {
 		}
 	}
 
-	util.Logger.Debug("CSI U pop: after pop", "flags", stack.GetPeek())
+	util.Logger.Debug("CSI u pop", "when", "after pop", "flags", stack.GetPeek())
 }
 
 // CSI ? Pm l
