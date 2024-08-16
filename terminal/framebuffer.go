@@ -20,6 +20,7 @@ const (
 
 // support both (scrollable) normal screen buffer and alternate screen buffer
 type Framebuffer struct {
+	kittyKbd     *stack[int]  // kitty keyborad protocol stack
 	cells        []Cell       // the cells
 	selection    Rect         // selection area
 	cursor       Cursor       // current cursor style, color and position
@@ -47,6 +48,8 @@ func NewFramebuffer2(nCols, nRows int) Framebuffer {
 // return the framebuffer and external marginTop,marginBottom.
 func NewFramebuffer3(nCols, nRows, saveLines int) (fb Framebuffer, marginTop int, marginBottom int) {
 	fb = Framebuffer{}
+	fb.kittyKbd = NewStack[int](KITTY_KBD_STACK_MAX)
+	fb.kittyKbd.Push(0)
 
 	fb.cells = make([]Cell, nCols*(nRows+saveLines))
 	fb.nCols = nCols
@@ -702,6 +705,16 @@ func (fb *Framebuffer) equal(x *Framebuffer, trace bool) (ret bool) {
 		} else {
 			return false
 		}
+	}
+
+	if !fb.kittyKbd.Equal(x.kittyKbd) {
+		if trace {
+			msg := fmt.Sprintf("kittyKbd.data=(%v,%v), kittyKbd.max=(%d,%d)",
+				fb.kittyKbd.data, x.kittyKbd.data, fb.kittyKbd.max, x.kittyKbd.max)
+			util.Logger.Warn(msg)
+			ret = false
+		}
+		return false
 	}
 
 	if fb.selection != x.selection || fb.snapTo != x.snapTo || fb.damage != x.damage {

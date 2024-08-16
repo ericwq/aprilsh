@@ -814,6 +814,9 @@ func (emu *Emulator) Clone() *Emulator {
 		clone.cf = &clone.frame_pri
 	}
 
+	clone.frame_alt.kittyKbd = emu.frame_alt.kittyKbd.Clone()
+	clone.frame_pri.kittyKbd = emu.frame_pri.kittyKbd.Clone()
+
 	// create a new parser
 	clone.parser = &Parser{}
 	clone.parser.reset()

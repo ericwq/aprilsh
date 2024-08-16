@@ -5081,10 +5081,10 @@ func TestNvimClean(t *testing.T) {
 	}{
 		{
 			"CSI u", "\x1b[?1049h\x1b[22;0;0t\x1b[?1h\x1b=\x1b[H\x1b[2J\x1b[?2004h\x1b[?2026$p\x1b[0m\x1b[4:3m\x1bP$qm\x1b\\\x1b[?u\x1b[c\x1b[?25h",
-			"\x1b[?2026;2$y\x1bP0$rm\x1b\\\x1b[?64;1;9;15;21;22c",
+			"\x1b[?2026;2$y\x1bP0$rm\x1b\\\x1b[?0u\x1b[?64;1;9;15;21;22c",
 			[]int{
 				CSI_privSM, CSI_XTWINOPS, CSI_privSM, ESC_DECKPAM, CSI_CUP, CSI_ED, CSI_privSM,
-				CSI_DECRQM, CSI_SGR, CSI_SGR, DCS_DECRQSS, CSI_U, CSI_priDA, CSI_privSM,
+				CSI_DECRQM, CSI_SGR, CSI_SGR, DCS_DECRQSS, CSI_U_QUERY, CSI_priDA, CSI_privSM,
 			},
 		},
 		{
@@ -5429,4 +5429,9 @@ func TestXtgettcapReply_Return(t *testing.T) {
 			}
 		})
 	}
+}
+
+func testAndNot(_ *testing.T) {
+	var x uint8 = 0x7f
+	fmt.Printf("n x=%08b,^x=%08b, x&^2=%08b\n", x, ^x, x&^2)
 }

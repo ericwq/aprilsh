@@ -6,6 +6,7 @@ package terminal
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 )
 
@@ -84,6 +85,11 @@ func TestStack_Equal(t *testing.T) {
 	// same stack compare
 	if !s.Equal(s2) {
 		t.Errorf("stack equal: expect true, got false\n")
+	}
+
+	// compare with DeepEqual
+	if !reflect.DeepEqual(s, s2) {
+		t.Errorf("stack deep equal: expect \n s=%p %v, got \ns2=%p %v\n", s, s, s2, s2)
 	}
 
 	// empty stack compare

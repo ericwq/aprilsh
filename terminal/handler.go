@@ -7,6 +7,7 @@ package terminal
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -15,6 +16,21 @@ import (
 	"github.com/ericwq/aprilsh/terminfo"
 	"github.com/ericwq/aprilsh/util"
 	"github.com/rivo/uniseg"
+)
+
+const (
+	KITTY_KBD_DISAMBIGUATE      = 0x01
+	KITTY_KBD_REPORT_EVENT      = 0x02
+	KITTY_KBD_REPORT_ALTERNATE  = 0x04
+	KITTY_KBD_REPORT_ALL        = 0x08
+	KITTY_KBD_REPORT_ASSOCIATED = 0x10
+	KITTY_KBD_SUPPORTED         = (KITTY_KBD_DISAMBIGUATE |
+		KITTY_KBD_REPORT_EVENT |
+		KITTY_KBD_REPORT_ALTERNATE |
+		KITTY_KBD_REPORT_ALL |
+		KITTY_KBD_REPORT_ASSOCIATED)
+
+	KITTY_KBD_STACK_MAX = 9
 )
 
 /*
@@ -84,7 +100,10 @@ const (
 	CSI_VPR
 	CSI_XTMODKEYS
 	CSI_XTWINOPS
-	CSI_U
+	CSI_U_QUERY
+	CSI_U_SET
+	CSI_U_PUSH
+	CSI_U_POP
 	CSI_MOUSETRACK
 	DCS_DECRQSS
 	DCS_XTGETTCAP
@@ -177,7 +196,10 @@ var strHandlerID = [...]string{
 	"csi_vpr",
 	"csi_xtmodkeys",
 	"csi_xtwinops",
-	"csi_u",
+	"csi_u_query",
+	"csi_u_set",
+	"csi_u_push",
+	"csi_u_pop",
 	"csi_mousetrack",
 	"dcs_decrqss",
 	"dcs_xtgettcap",
@@ -1678,15 +1700,54 @@ func hdl_csi_decrqm(emu *Emulator, params []int) {
 	emu.writePty(resp)
 }
 
-// TODO: implement it
-// Detection of support for this protocol
-// An application can query the terminal for support of this protocol by sending
-// the escape code querying for the current progressive enhancement status followed
-// by request for the primary device attributes. If an answer for the device
-// attributes is received without getting back an answer for the progressive
-// enhancement the terminal does not support this protocol.
-func hdl_csi_u(_ *Emulator, _ []int) {
-	util.Logger.Warn("CSI U is not supported")
+func hdl_csi_u_query(emu *Emulator, _ []int) {
+	stack := emu.cf.kittyKbd
+	flags := stack.GetPeek()
+	resp := fmt.Sprintf("\x1B[?%du", flags)
+	emu.writePty(resp)
+	util.Logger.Debug("CSI U query", "resp", resp)
+}
+
+func hdl_csi_u_set(emu *Emulator, flags int, mode int) {
+	stack := emu.cf.kittyKbd
+	flags &= KITTY_KBD_SUPPORTED
+
+	switch mode {
+	case 1: // set bits are set, unset bits are reset
+		stack.UpdatePeek(flags)
+	case 2: // set bits are set, unset bits are left unchanged
+		f := stack.GetPeek()
+		stack.UpdatePeek(f | flags)
+	case 3: // set bits are reset, unset bits are left unchanged
+		f := stack.GetPeek()
+		stack.UpdatePeek(f &^ flags)
+	default:
+		util.Logger.Warn("CSI U set", "invalid mode", mode, "flags", flags)
+
+	}
+	util.Logger.Debug("CSI U set: after update", "flags", stack.GetPeek())
+}
+
+func hdl_csi_u_push(emu *Emulator, flags int) {
+	stack := emu.cf.kittyKbd
+
+	stack.Push(flags & KITTY_KBD_SUPPORTED)
+	util.Logger.Debug("CSI U push: after push", "flags", stack.GetPeek())
+}
+
+func hdl_csi_u_pop(emu *Emulator, count int) {
+	stack := emu.cf.kittyKbd
+	util.Logger.Debug("CSI U pop:", "levels", count)
+
+	for i := 0; i < count; i++ {
+		_, err := stack.Pop()
+		if errors.Is(err, ErrLastItem) {
+			stack.Push(0)
+			break
+		}
+	}
+
+	util.Logger.Debug("CSI U pop: after pop", "flags", stack.GetPeek())
 }
 
 // CSI ? Pm l

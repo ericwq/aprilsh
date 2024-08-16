@@ -29,6 +29,7 @@ const (
 	InputState_CSI_SPC
 	InputState_CSI_GT
 	InputState_CSI_LT
+	InputState_CSI_Equal
 	InputState_DCS
 	InputState_DCS_Esc
 	InputState_OSC
@@ -53,6 +54,7 @@ var strInputState = [...]string{
 	"CSI_SPC",
 	"CSI_GT",
 	"CSI_LT",
+	"CSI_Equal",
 	"DCS",
 	"DCS_Esc",
 	"OSC",
@@ -1215,12 +1217,49 @@ func (p *Parser) handle_DECRQM() (hd *Handler) {
 	return hd
 }
 
-func (p *Parser) handle_CSI_U() (hd *Handler) {
+func (p *Parser) handle_CSI_U_query() (hd *Handler) {
 	params := p.copyArgs()
 
-	hd = &Handler{id: CSI_U, ch: p.ch, sequence: p.historyString()}
+	hd = &Handler{id: CSI_U_QUERY, ch: p.ch, sequence: p.historyString()}
 	hd.handle = func(emu *Emulator) {
-		hdl_csi_u(emu, params)
+		hdl_csi_u_query(emu, params)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+func (p *Parser) handle_CSI_U_set() (hd *Handler) {
+	flags := p.getPs(0, 0)
+	mode := p.getPs(1, 1)
+
+	hd = &Handler{id: CSI_U_SET, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *Emulator) {
+		hdl_csi_u_set(emu, flags, mode)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+func (p *Parser) handle_CSI_U_push() (hd *Handler) {
+	flags := p.getPs(0, 0)
+
+	hd = &Handler{id: CSI_U_PUSH, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *Emulator) {
+		hdl_csi_u_push(emu, flags)
+	}
+
+	p.setState(InputState_Normal)
+	return hd
+}
+
+func (p *Parser) handle_CSI_U_pop() (hd *Handler) {
+	count := p.getPs(0, 1)
+
+	hd = &Handler{id: CSI_U_POP, ch: p.ch, sequence: p.historyString()}
+	hd.handle = func(emu *Emulator) {
+		hdl_csi_u_pop(emu, count)
 	}
 
 	p.setState(InputState_Normal)
@@ -1953,6 +1992,8 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 			p.setState(InputState_CSI_GT)
 		case '<':
 			p.setState(InputState_CSI_LT)
+		case '=':
+			p.setState(InputState_CSI_Equal)
 		case '\x07': // BEL is ignored \a in c++
 		case '\x08': // BS is \b
 			// undo last character in CSI sequence:
@@ -1970,6 +2011,16 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 		case '\x0C', '\x0B': // FF is \f, VT is \v
 			hd = p.handle_IND()
 			p.setState(InputState_CSI)
+		default:
+			p.unhandledInput()
+		}
+	case InputState_CSI_Equal:
+		if p.collectNumericParameters(ch) {
+			break
+		}
+		switch ch {
+		case 'u':
+			hd = p.handle_CSI_U_set()
 		default:
 			p.unhandledInput()
 		}
@@ -2016,6 +2067,8 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_secDA()
 		case 'm':
 			hd = p.handle_XTMODKEYS()
+		case 'u':
+			hd = p.handle_CSI_U_push()
 		default:
 			p.unhandledInput()
 		}
@@ -2028,6 +2081,8 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 			hd = p.handle_MouseTrack(true)
 		case 'm':
 			hd = p.handle_MouseTrack(false)
+		case 'u':
+			hd = p.handle_CSI_U_pop()
 		default:
 			p.unhandledInput()
 		}
@@ -2043,7 +2098,7 @@ func (p *Parser) ProcessInput(chs ...rune) (hd *Handler) {
 		case 'l':
 			hd = p.handle_privRM() // DECRST
 		case 'u':
-			hd = p.handle_CSI_U()
+			hd = p.handle_CSI_U_query()
 		case '$':
 			p.argBuf.WriteRune(ch)
 		case 'p':
