@@ -247,7 +247,7 @@ func TestDiffFrom(t *testing.T) {
 			80, 40,
 		},
 		{
-			"screen with content then vi utf-8 file", "\x1b]11;rgb:0000/0000/0000\x1b\\\x1b[?64;1;9;15;21;22c",
+			"screen with content then vi utf-8 file", "\x1b]11;rgb:0000/0000/0000\x1b\\\x1b[?0u\x1b[?64;1;9;15;21;22c",
 			[]string{
 				"\x1b]0;aprilsh\a", // set title to avoid title stack warning
 				"ide@openrc-nvide:~/develop $ \x1b[6n",
