@@ -7,6 +7,7 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -629,10 +630,17 @@ func (c *Config) buildCaps(caps []tCap) {
 	for _, cap := range caps {
 		if cap.resp.response != "" && cap.resp.error == nil {
 			c.caps[cap.query] = cap.resp.response
-		} else {
-			c.caps[cap.query] = ""
+			// } else {
+			// 	c.caps[cap.query] = ""
 		}
 	}
+	// https://medium.com/@briankworld/working-with-json-data-in-go-a-guide-to-marshalling-and-unmarshalling-78eccb51b115
+	jsonData, err := json.Marshal(c.caps)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("JSON data:", string(jsonData))
+	fmt.Println("JSON data size:", len(jsonData))
 }
 
 // read password from specified input source
