@@ -214,6 +214,7 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.SetOutput(&buf)
 
 	var conf Config
+	conf.caps = make(map[string]string)
 
 	var v1, v2 bool
 	flagSet.BoolVar(&v1, "v", false, "verbose log output debug level")
@@ -256,6 +257,7 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 
 // fieldalignment -fix frontend/client/client.go
 type Config struct {
+	caps             map[string]string
 	predictOverwrite string
 	sshClientID      string // ssh client identity, for SSH public key authentication
 	host             string // target host/server
@@ -621,6 +623,16 @@ func (c *Config) buildConfig() (string, bool) {
 	c.predictOverwrite = strings.ToLower(os.Getenv(_PREDICTION_OVERWRITE))
 
 	return "", true
+}
+
+func (c *Config) buildCaps(caps []tCap) {
+	for _, cap := range caps {
+		if cap.resp.response != "" && cap.resp.error == nil {
+			c.caps[cap.query] = cap.resp.response
+		} else {
+			c.caps[cap.query] = ""
+		}
+	}
 }
 
 // read password from specified input source
@@ -1444,9 +1456,11 @@ func main() {
 		return
 	}
 
+	// query terminal capability
+	timeout := 50
+	caps, err := queryTerminal(os.Stdout, timeout)
 	if conf.query {
-		timeout := 50
-		caps, err := queryTerminal(os.Stdout, timeout)
+		// caps, err := queryTerminal(os.Stdout, timeout)
 		fmt.Printf("%s: query terminal capablility\n%s %dms.\n", frontend.CommandClientName,
 			"please make sure network RTT time is less than", timeout)
 		if err != nil {
@@ -1471,6 +1485,7 @@ func main() {
 
 		return
 	}
+	conf.buildCaps(caps)
 
 	var logWriter io.Writer
 	logWriter = os.Stderr
