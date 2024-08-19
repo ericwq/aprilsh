@@ -5435,3 +5435,103 @@ func testAndNot(_ *testing.T) {
 	var x uint8 = 0x7f
 	fmt.Printf("n x=%08b,^x=%08b, x&^2=%08b\n", x, ^x, x&^2)
 }
+
+func TestCSI_U(t *testing.T) {
+	tc := []struct {
+		label    string
+		req      string
+		log      string
+		hdIDs    []int
+		flags    int
+		stackLen int
+	}{
+		{
+			"set disambiguate escape codes, mode 1", "\x1b[=1;1u", "after update",
+			[]int{CSI_U_SET},
+			1, 1,
+		},
+		{
+			"set report event types, mode 2", "\x1b[=2;2u", "after update",
+			[]int{CSI_U_SET},
+			2, 1,
+		},
+		{
+			"set report alternate keys, mode 3", "\x1b[=4;3u", "after update",
+			[]int{CSI_U_SET},
+			0, 1,
+		},
+		{
+			"set invalid mode", "\x1b[=4;8u", "invalid mode",
+			[]int{CSI_U_SET},
+			0, 1,
+		},
+		{
+			"push flags twice", "\x1b[>2u\x1b[>8u", "after push",
+			[]int{CSI_U_PUSH, CSI_U_PUSH},
+			8, 3,
+		},
+		{
+			"push flags threee times, pop once", "\x1b[>2u\x1b[>4u\x1b[>8u\x1b[<2u", "after pop",
+			[]int{CSI_U_PUSH, CSI_U_PUSH, CSI_U_PUSH, CSI_U_POP},
+			2, 2,
+		},
+		{
+			"push flags twice", "\x1b[<2u", "after pop",
+			[]int{CSI_U_POP},
+			0, 1,
+		},
+		{
+			"invalid CSI =", "\x1b[=4;8x", "unimplement",
+			[]int{},
+			0, 1,
+		},
+	}
+
+	for _, v := range tc {
+		p := NewParser()
+		emu := NewEmulator3(80, 40, 0)
+
+		var place strings.Builder
+		util.Logger.CreateLogger(&place, false, util.LevelTrace)
+
+		t.Run(v.label, func(t *testing.T) {
+			hds := make([]*Handler, 0, 16)
+			hds = p.processStream(v.req, hds)
+
+			// validate handler ID
+			if len(hds) != len(v.hdIDs) {
+				for i := range hds {
+					if i <= len(v.hdIDs)-1 && hds[i].id != v.hdIDs[i] {
+						t.Logf("%s: i=%d, got %s, expect =%s, seq=%q\n",
+							v.label, i, strHandlerID[hds[i].id], strHandlerID[v.hdIDs[i]], hds[i].sequence)
+					} else {
+						t.Logf("%s: i=%d, got %s, seq=%q\n",
+							v.label, i, strHandlerID[hds[i].id], hds[i].sequence)
+					}
+				}
+				t.Fatalf("%s got %d handlers, expect %d handlers", v.label, len(hds), len(v.hdIDs))
+			}
+
+			// run handler
+			for i := range hds {
+				hds[i].handle(emu)
+			}
+
+			flags := emu.cf.kittyKbd.GetPeek()
+			stackLen := len(emu.cf.kittyKbd.data)
+
+			if flags != v.flags {
+				t.Errorf("%s expect flags %x, got %x\n", v.label, v.flags, flags)
+			}
+
+			if stackLen != v.stackLen {
+				t.Errorf("%s exect stack length %d, got %d\n", v.label, v.stackLen, stackLen)
+			}
+			result := place.String()
+
+			if !strings.Contains(result, v.log) {
+				t.Errorf("%s expect %q in log\n%s", v.label, v.log, result)
+			}
+		})
+	}
+}
