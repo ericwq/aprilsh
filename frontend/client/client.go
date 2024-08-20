@@ -496,13 +496,21 @@ func (c *Config) fetchKey() error {
 	}
 	defer session.Close()
 
+	// https://medium.com/@briankworld/working-with-json-data-in-go-a-guide-to-marshalling-and-unmarshalling-78eccb51b115
+	jsonCaps, err := json.Marshal(c.caps)
+	if err != nil {
+		return err
+	}
+	// dst := make([]byte, base64.StdEncoding.EncodedLen(len(c.caps)))
+	// base64.StdEncoding.Encode(dst, []byte(c.caps))
+
 	// Once a Session is created, you can execute a single command on
 	// the remote side using the Run method.
 	// before fetchKey() it's the server port, after it's target port
 	var b []byte
-	cmd := fmt.Sprintf("/usr/bin/apshd -b -t %s -destination %s -p %d",
-		os.Getenv("TERM"), c.destination[0], c.port)
-	// fmt.Fprintf(os.Stderr, "cmd=%s\n", cmd)
+	cmd := fmt.Sprintf("/usr/bin/apshd -b -t %s -destination %s -p %d -caps %s",
+		os.Getenv("TERM"), c.destination[0], c.port, jsonCaps)
+	util.Logger.Debug("fetchKey", "cmd", cmd)
 
 	// Turns out, you can't simply change environment variables in SSH sessions.
 	// The OpenSSH server denies those requests unless you've whitelisted the
@@ -634,13 +642,6 @@ func (c *Config) buildCaps(caps []tCap) {
 			// 	c.caps[cap.query] = ""
 		}
 	}
-	// https://medium.com/@briankworld/working-with-json-data-in-go-a-guide-to-marshalling-and-unmarshalling-78eccb51b115
-	jsonData, err := json.Marshal(c.caps)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println("JSON data:", string(jsonData))
-	fmt.Println("JSON data size:", len(jsonData))
 }
 
 // read password from specified input source
@@ -1493,7 +1494,6 @@ func main() {
 
 		return
 	}
-	conf.buildCaps(caps)
 
 	var logWriter io.Writer
 	logWriter = os.Stderr
@@ -1517,6 +1517,7 @@ func main() {
 		util.Logger.CreateLogger(logWriter, conf.addSource, slog.LevelInfo)
 	}
 
+	conf.buildCaps(caps)
 	// https://earthly.dev/blog/golang-errors/
 	// https://gosamples.dev/check-error-type/
 	// https://www.digitalocean.com/community/tutorials/how-to-add-extra-information-to-errors-in-go

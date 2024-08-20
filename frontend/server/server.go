@@ -79,6 +79,7 @@ Options:
   -b,  --begin       begin a client connection
   -t,  --term        client TERM (such as xterm-256color, or alacritty or xterm-kitty)
   -d,  --destination in the form of user@host[:port], here the port is ssh server port (default 22)
+       --caps        client terminal capability
 ---------------------------------------------------------------------------------------------------
   -s,  --server      listen with SSH ip
   -i,  --ip          listen with this ip/host
@@ -140,6 +141,7 @@ type Config struct {
 	term        string   // client TERM
 	host        string   // target host/server
 	destination string   // [user@]hostname, destination string
+	caps        string   // terminal capability
 	commandPath string   // shell command path (absolute path)
 	commandArgv []string // the positional (non-flag) command-line arguments.
 	autoStop    int      // auto stop after N seconds
@@ -313,6 +315,8 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.Var(&conf.locales, "locale", "locale list, key=value pair")
 	flagSet.Var(&conf.locales, "l", "locale list, key=value pair")
 
+	flagSet.StringVar(&conf.caps, "caps", "", "client TERM capability")
+
 	err = flagSet.Parse(args)
 	if err != nil {
 		return nil, buf.String(), err
@@ -370,8 +374,9 @@ func beginChild(conf *Config) { //(port string, term string) {
 	// }
 
 	// request from server
-	// open aprilsh:TERM,user@server.domain
-	request := fmt.Sprintf("%s%s,%s", frontend.AprilshMsgOpen, conf.term, conf.destination)
+	// open aprilsh:TERM,user@server.domain,{terminal capability}
+	request := fmt.Sprintf("%s%s,%s,%s",
+		frontend.AprilshMsgOpen, conf.term, conf.destination, conf.caps)
 	conn.SetDeadline(time.Now().Add(time.Millisecond * 20))
 	conn.WriteTo([]byte(request), dest)
 	// n, err := conn.WriteTo([]byte(request), dest)
@@ -718,17 +723,18 @@ func (m *mainSrv) startChild(req string, addr *net.UDPAddr, conf2 Config) {
 		return
 	}
 
-	// open aprilsh:TERM,user@server.domain
-	// parse term and destination from req
+	// open aprilsh:TERM,user@server.domain,{terminal capability}
+	// parse term, destination and terminal capability from request
 	body := strings.Split(req, ":")
 	content := strings.Split(body[1], ",")
-	if len(content) != 2 {
+	if len(content) != 3 {
 		resp := m.writeRespTo(addr, frontend.AprilshMsgOpen, "malform request")
 		util.Logger.Warn("malform request", "request", req, "response", resp)
 		return
 	}
 	conf2.term = content[0]
 	conf2.destination = content[1]
+	conf2.caps = content[2]
 
 	// parse user and host from destination
 	dest := strings.Split(content[1], "@")
@@ -1262,7 +1268,7 @@ func startChildProcess(conf *Config) (*os.Process, error) {
 	// conf{term,user,desiredPort,destination}
 
 	util.Logger.Debug("startChild", "user", conf.user, "term", conf.term,
-		"desiredPort", conf.desiredPort, "destination", conf.destination)
+		"desiredPort", conf.desiredPort, "destination", conf.destination, "caps", conf.caps)
 
 	// specify child process
 	commandPath := "/usr/bin/apshd"
@@ -2238,7 +2244,7 @@ func main() {
 		return
 	}
 
-	// setup client log file
+	// setup server log
 	switch conf.verbose {
 	case util.DebugVerbose:
 		util.Logger.CreateLogger(os.Stderr, conf.addSource, slog.LevelDebug)
