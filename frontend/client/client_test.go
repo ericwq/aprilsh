@@ -5,6 +5,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/gob"
 	"errors"
 	"io"
 	"os"
@@ -624,4 +626,15 @@ func TestQT(t *testing.T) {
 		t.Errorf("%s is not terminal\n", f.Name())
 	}
 	f.Close()
+}
+
+func TestGOB(t *testing.T) {
+	// https://go.dev/blog/gob
+	// https://tech.shaadi.com/2021/10/05/serialize-using-gob-in-golang/
+	caps := map[string]string{"1": "first", "2": "second"}
+	var network bytes.Buffer // Stand-in for the network.
+
+	// Create an encoder and send a value.
+	enc := gob.NewEncoder(&network)
+	err := enc.Encode(caps)
 }
