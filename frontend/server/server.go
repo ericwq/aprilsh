@@ -560,7 +560,7 @@ func (m *mainSrv) run(conf *Config) {
 		m.conn.Close()
 	}()
 
-	buf := make([]byte, 128)
+	buf := make([]byte, 131072) // getconf ARG_MAX
 	shutdown := false
 
 	if syslogSupport {
@@ -1268,7 +1268,8 @@ func startChildProcess(conf *Config) (*os.Process, error) {
 	// conf{term,user,desiredPort,destination}
 
 	util.Logger.Debug("startChild", "user", conf.user, "term", conf.term,
-		"desiredPort", conf.desiredPort, "destination", conf.destination, "caps", conf.caps)
+		"desiredPort", conf.desiredPort, "destination", conf.destination, "caps", conf.caps,
+		"caps length", len(conf.caps))
 
 	// specify child process
 	commandPath := "/usr/bin/apshd"
@@ -1290,6 +1291,7 @@ func startChildProcess(conf *Config) (*os.Process, error) {
 	if conf.addSource {
 		args = append(args, "-source")
 	}
+	args = append(args, "-caps", conf.caps)
 
 	// var pts *os.File
 	// var pr *io.PipeReader
@@ -1331,7 +1333,7 @@ func startChildProcess(conf *Config) (*os.Process, error) {
 	u, _ := user.Lookup(conf.user)
 	// uid, _ := strconv.ParseInt(u.Uid, 10, 32)
 	// gid, _ := strconv.ParseInt(u.Gid, 10, 32)
-	util.Logger.Debug("startChild check user", "user", u.Username, "gid", u.Gid, "HOME", u.HomeDir)
+	util.Logger.Debug("startChild", "user", u.Username, "gid", u.Gid, "HOME", u.HomeDir)
 
 	// set base env
 	// TODO should we put LOGNAME, MAIL into env?
@@ -1368,8 +1370,8 @@ func startChildProcess(conf *Config) (*os.Process, error) {
 	env = append(env, envArgs+"="+strings.Join(args, " "))
 	env = append(env, envUDS+"="+unixsockAddr)
 
-	util.Logger.Debug("startChild env:", "env", env)
-	util.Logger.Debug("startChild command:", "commandPath", commandPath, "commandArgv", commandArgv)
+	util.Logger.Debug("startChild", "env", env)
+	util.Logger.Debug("startChild", "commandPath", commandPath, "commandArgv", commandArgv)
 
 	sysProcAttr := &syscall.SysProcAttr{}
 	sysProcAttr.Setsid = true // start a new session
@@ -2038,8 +2040,9 @@ func runChild(conf *Config) (err error) {
 		// second := strings.Split(first[1], ":")
 		conf.host = ""
 	}
+
 	util.Logger.Debug("runChild", "user", conf.user, "host", conf.host, "term", conf.term,
-		"desiredPort", conf.desiredPort, "destination", conf.destination)
+		"desiredPort", conf.desiredPort, "destination", conf.destination, "caps", conf.caps)
 	/*
 		If this variable is set to a positive integer number, it specifies how
 		long (in seconds) apshd will wait to receive an update from the
@@ -2086,6 +2089,9 @@ func runChild(conf *Config) (err error) {
 	// open parser and terminal
 	savedLines := terminal.SaveLinesRowsOption
 	terminal, err := statesync.NewComplete(int(windowSize.Col), int(windowSize.Row), savedLines)
+	caps, err := frontend.DecodeTerminalCaps([]byte(conf.caps))
+	util.Logger.Debug("runChild", "caps", caps)
+	terminal.SetTerminalCaps(caps)
 
 	// open network
 	blank := &statesync.UserStream{}
