@@ -7,7 +7,6 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -215,7 +214,7 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 	flagSet.SetOutput(&buf)
 
 	var conf Config
-	conf.caps = make(map[string]string)
+	conf.caps = make(map[int]string)
 
 	var v1, v2 bool
 	flagSet.BoolVar(&v1, "v", false, "verbose log output debug level")
@@ -258,7 +257,7 @@ func parseFlags(progname string, args []string) (config *Config, output string, 
 
 // fieldalignment -fix frontend/client/client.go
 type Config struct {
-	caps             map[string]string
+	caps             map[int]string
 	predictOverwrite string
 	sshClientID      string // ssh client identity, for SSH public key authentication
 	host             string // target host/server
@@ -497,20 +496,18 @@ func (c *Config) fetchKey() error {
 	defer session.Close()
 
 	// https://medium.com/@briankworld/working-with-json-data-in-go-a-guide-to-marshalling-and-unmarshalling-78eccb51b115
-	jsonCaps, err := json.Marshal(c.caps)
-	if err != nil {
-		return err
-	}
-	// dst := make([]byte, base64.StdEncoding.EncodedLen(len(c.caps)))
-	// base64.StdEncoding.Encode(dst, []byte(c.caps))
+	dst := frontend.EncodeTerminalCaps(c.caps)
 
 	// Once a Session is created, you can execute a single command on
 	// the remote side using the Run method.
 	// before fetchKey() it's the server port, after it's target port
+	//
+	// Finding maximum length of arguments for a new process
+	// getconf ARG_MAX
 	var b []byte
 	cmd := fmt.Sprintf("/usr/bin/apshd -b -t %s -destination %s -p %d -caps %s",
-		os.Getenv("TERM"), c.destination[0], c.port, jsonCaps)
-	util.Logger.Debug("fetchKey", "cmd", cmd)
+		os.Getenv("TERM"), c.destination[0], c.port, dst)
+	util.Logger.Debug("fetchKey", "cmd", cmd, "caps length", len(dst))
 
 	// Turns out, you can't simply change environment variables in SSH sessions.
 	// The OpenSSH server denies those requests unless you've whitelisted the
@@ -635,11 +632,11 @@ func (c *Config) buildConfig() (string, bool) {
 }
 
 func (c *Config) buildCaps(caps []tCap) {
+	p := terminal.NewParser()
 	for _, cap := range caps {
+		hds := p.ProcessStream(cap.query)
 		if cap.resp.response != "" && cap.resp.error == nil {
-			c.caps[cap.query] = cap.resp.response
-			// } else {
-			// 	c.caps[cap.query] = ""
+			c.caps[hds[0].GetId()] = cap.resp.response
 		}
 	}
 }
