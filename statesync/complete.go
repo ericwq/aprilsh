@@ -322,3 +322,7 @@ func (c *Complete) EqualTrace(x *Complete) bool {
 	ret := c.terminal.EqualTrace(x.terminal)
 	return ret
 }
+
+func (c *Complete) SetTerminalCaps(caps map[int]string) {
+	c.terminal.SetTerminalCaps(caps)
+}

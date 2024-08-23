@@ -6,6 +6,7 @@ package terminal
 
 import (
 	"fmt"
+	"maps"
 	"strings"
 
 	"github.com/ericwq/aprilsh/util"
@@ -21,6 +22,7 @@ type Emulator struct {
 	links               *linkSet
 	cf                  *Framebuffer     // replicated by NewFrame(), current frame buffer
 	selectionStore      map[rune]string  // local storage buffer for selection data in sequence OSC 52
+	caps                map[int]string   // client terminal capability
 	savedCursor_DEC     *SavedCursor_DEC // replicated by NewFrame(),
 	windowTitle         string           // replicated by NewFrame()
 	iconLabel           string           // replicated by NewFrame()
@@ -120,7 +122,7 @@ func NewEmulator3(nCols, nRows, saveLines int) *Emulator {
 	emu.savedCursor_DEC_alt = newSavedCursor_DEC()
 	emu.savedCursor_DEC = &emu.savedCursor_DEC_pri
 	emu.initSelectionStore()
-	// emu.initLog()
+	emu.caps = make(map[int]string)
 
 	emu.resetTerminal()
 	emu.windowTitleStack = make([]string, 0)
@@ -810,6 +812,8 @@ func (emu *Emulator) Clone() *Emulator {
 	clone.frame_pri.cells = make([]Cell, len(emu.frame_pri.cells))
 	copy(clone.frame_pri.cells, emu.frame_pri.cells)
 
+	clone.copyCaps(emu.caps)
+
 	if emu.cf == &emu.frame_alt {
 		clone.cf = &clone.frame_alt
 	} else {
@@ -1176,6 +1180,16 @@ func (emu *Emulator) equal(x *Emulator, trace bool) (ret bool) {
 		}
 	}
 
+	if !maps.Equal(emu.caps, x.caps) {
+		if trace {
+			ret = false
+			msg := fmt.Sprintf("caps=(%v,%v)", emu.caps, x.caps)
+			util.Logger.Warn(msg)
+		} else {
+			return false
+		}
+	}
+
 	// return emu.frame_pri.Equal(&x.frame_pri) && emu.frame_alt.Equal(&x.frame_alt)
 	if !ret {
 		if trace {
@@ -1209,9 +1223,16 @@ func (emu *Emulator) getRowAt(pY int) (row []Cell) {
 	return row
 }
 
-// func (emu *Emulator) SyncOutput() bool {
-// 	return emu.syncOutpuMode
-// }
+func (emu *Emulator) SetTerminalCaps(x map[int]string) {
+	emu.copyCaps(x)
+}
+
+func (emu *Emulator) copyCaps(x map[int]string) {
+	emu.caps = make(map[int]string)
+	for k, v := range x {
+		emu.caps[k] = v
+	}
+}
 
 func cycleSelectSnapTo2(snapTo SelectSnapTo) SelectSnapTo {
 	return SelectSnapTo((int(snapTo) + 1) % int(SelectSnapTo_COUNT))

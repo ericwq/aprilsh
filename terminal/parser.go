@@ -1583,6 +1583,16 @@ func (p *Parser) handle_MouseTrack(press bool) (hd *Handler) {
 	return hd
 }
 
+func (p *Parser) ProcessStream(seq string) []*Handler {
+	hds := make([]*Handler, 0, 16)
+
+	if len(seq) == 0 {
+		return hds
+	}
+	hds = p.processStream(seq, hds)
+	return hds
+}
+
 // process data stream from outside. for VT mode, character set can be changed
 // according to control sequences. for UTF-8 mode, no need to change character set.
 // the result is a *Handler list. waiting to be executed later.
