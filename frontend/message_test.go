@@ -5,8 +5,11 @@
 package frontend
 
 import (
+	"encoding/base64"
+	"encoding/json"
 	"io"
 	"log/slog"
+	"maps"
 	"os"
 	"strings"
 	"testing"
@@ -93,5 +96,41 @@ func TestPrintUsage(t *testing.T) {
 		if found != len(v.expect) {
 			t.Errorf("%s expect \n%s, got \n%s\n", v.label, v.expect, output)
 		}
+	}
+}
+
+func TestTerminalCaps(t *testing.T) {
+	tc := []struct {
+		expect map[int]string
+		label  string
+	}{
+		{map[int]string{1: "first", 2: "second"}, "normal"},
+		{map[int]string{}, "empty map"},
+		{nil, "nil map"},
+	}
+
+	for _, v := range tc {
+		t.Run(v.label, func(t *testing.T) {
+			middle := EncodeTerminalCaps(v.expect)
+			got, _ := DecodeTerminalCaps(middle)
+			if !maps.Equal(got, v.expect) {
+				t.Errorf("%s expect map %v, got %v\n", v.label, v.expect, got)
+			}
+		})
+	}
+
+	_, err := DecodeTerminalCaps([]byte("bad base64"))
+	if err == nil {
+		t.Errorf("expect error, got nil\n")
+	}
+	// fmt.Printf("%s err=%s\n", "report", err)
+
+	jsonData, _ := json.Marshal("some string")
+	dst := make([]byte, base64.StdEncoding.EncodedLen(len(jsonData)))
+	base64.StdEncoding.Encode(dst, []byte(jsonData))
+
+	_, err = DecodeTerminalCaps(dst)
+	if err == nil {
+		t.Errorf("expect error, got nil\n")
 	}
 }

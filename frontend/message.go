@@ -4,7 +4,11 @@
 
 package frontend
 
-import "fmt"
+import (
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+)
 
 const (
 	AprilshMsgOpen     = "open aprilsh:"
@@ -53,4 +57,29 @@ func PrintUsage(hint string, usage ...string) {
 	if len(usage) > 0 {
 		fmt.Printf("%s", usage[0])
 	}
+}
+
+func EncodeTerminalCaps(caps map[int]string) []byte {
+	jsonData, _ := json.Marshal(caps)
+	dst := make([]byte, base64.StdEncoding.EncodedLen(len(jsonData)))
+	base64.StdEncoding.Encode(dst, []byte(jsonData))
+
+	return dst
+}
+
+func DecodeTerminalCaps(str []byte) (map[int]string, error) {
+	caps := make(map[int]string)
+
+	dst := make([]byte, base64.StdEncoding.DecodedLen(len(str)))
+	n, err := base64.StdEncoding.Decode(dst, []byte(str))
+	if err != nil {
+		return nil, err
+	}
+	dst = dst[:n]
+
+	err = json.Unmarshal(dst, &caps)
+	if err != nil {
+		return nil, err
+	}
+	return caps, nil
 }
