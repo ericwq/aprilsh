@@ -1701,53 +1701,69 @@ func hdl_csi_decrqm(emu *Emulator, params []int) {
 }
 
 func hdl_csi_u_query(emu *Emulator, _ []int) {
-	stack := emu.cf.kittyKbd
-	flags := stack.GetPeek()
-	resp := fmt.Sprintf("\x1B[?%du", flags)
-	emu.writePty(resp)
-	util.Logger.Debug("CSI u query", "resp", resp)
+	if emu.Support(CSI_U_QUERY) {
+		stack := emu.cf.kittyKbd
+		flags := stack.GetPeek()
+		resp := fmt.Sprintf("\x1B[?%du", flags)
+		emu.writePty(resp)
+		util.Logger.Debug("CSI u query", "resp", resp)
+	} else {
+		util.Logger.Warn("CSI u query", "support", false)
+	}
 }
 
 func hdl_csi_u_set(emu *Emulator, flags int, mode int) {
-	stack := emu.cf.kittyKbd
-	flags &= KITTY_KBD_SUPPORTED
+	if emu.Support(CSI_U_QUERY) {
+		stack := emu.cf.kittyKbd
+		flags &= KITTY_KBD_SUPPORTED
 
-	switch mode {
-	case 1: // set bits are set, unset bits are reset
-		stack.UpdatePeek(flags)
-	case 2: // set bits are set, unset bits are left unchanged
-		f := stack.GetPeek()
-		stack.UpdatePeek(f | flags)
-	case 3: // set bits are reset, unset bits are left unchanged
-		f := stack.GetPeek()
-		stack.UpdatePeek(f &^ flags)
-	default:
-		util.Logger.Warn("CSI u set", "invalid mode", mode, "flags", flags)
+		switch mode {
+		case 1: // set bits are set, unset bits are reset
+			stack.UpdatePeek(flags)
+		case 2: // set bits are set, unset bits are left unchanged
+			f := stack.GetPeek()
+			stack.UpdatePeek(f | flags)
+		case 3: // set bits are reset, unset bits are left unchanged
+			f := stack.GetPeek()
+			stack.UpdatePeek(f &^ flags)
+		default:
+			util.Logger.Warn("CSI u set", "invalid mode", mode, "flags", flags)
 
+		}
+		util.Logger.Debug("CSI u set", "when", "after update", "flags", stack.GetPeek())
+	} else {
+		util.Logger.Warn("CSI u set", "support", false)
 	}
-	util.Logger.Debug("CSI u set", "when", "after update", "flags", stack.GetPeek())
 }
 
 func hdl_csi_u_push(emu *Emulator, flags int) {
-	stack := emu.cf.kittyKbd
+	if emu.Support(CSI_U_QUERY) {
+		stack := emu.cf.kittyKbd
 
-	stack.Push(flags & KITTY_KBD_SUPPORTED)
-	util.Logger.Debug("CSI u push", "when", "after push", "flags", stack.GetPeek())
+		stack.Push(flags & KITTY_KBD_SUPPORTED)
+		util.Logger.Debug("CSI u push", "when", "after push", "flags", stack.GetPeek())
+	} else {
+		util.Logger.Warn("CSI u push", "support", false)
+	}
 }
 
 func hdl_csi_u_pop(emu *Emulator, count int) {
-	stack := emu.cf.kittyKbd
-	util.Logger.Debug("CSI u pop", "levels", count)
+	if emu.Support(CSI_U_QUERY) {
+		stack := emu.cf.kittyKbd
+		util.Logger.Debug("CSI u pop", "levels", count)
 
-	for i := 0; i < count; i++ {
-		_, err := stack.Pop()
-		if errors.Is(err, ErrLastItem) {
-			stack.Push(0)
-			break
+		for i := 0; i < count; i++ {
+			_, err := stack.Pop()
+			if errors.Is(err, ErrLastItem) {
+				stack.Push(0)
+				break
+			}
 		}
-	}
 
-	util.Logger.Debug("CSI u pop", "when", "after pop", "flags", stack.GetPeek())
+		util.Logger.Debug("CSI u pop", "when", "after pop", "flags", stack.GetPeek())
+	} else {
+		util.Logger.Warn("CSI u pop", "support", false)
+	}
 }
 
 // CSI ? Pm l

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"maps"
 	"os"
 	"reflect"
 	"strings"
@@ -824,5 +825,15 @@ func TestExcludeHandler(t *testing.T) {
 				t.Errorf("%q expct diff %q, got %q\n", v.label, v.diff, diff)
 			}
 		})
+	}
+}
+
+func TestTerminalCaps(t *testing.T) {
+	emu := NewEmulator3(80, 40, 40)
+	caps := map[int]string{1: "one", 2: "two", 3: "three"}
+	emu.SetTerminalCaps(caps)
+
+	if !maps.Equal(caps, emu.caps) {
+		t.Errorf("terminal caps test: expect %v, %p, got %v, %p\n", caps, caps, emu.caps, emu.caps)
 	}
 }

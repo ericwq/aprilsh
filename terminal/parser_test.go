@@ -4607,8 +4607,7 @@ func TestHandle_OSC_10x(t *testing.T) {
 
 		t.Run(v.name, func(t *testing.T) {
 			// process control sequence
-			hds := make([]*Handler, 0, 16)
-			hds = p.processStream(v.seq, hds)
+			hds := p.ProcessStream(v.seq)
 
 			if len(hds) == 0 {
 				t.Errorf("%s got zero handlers.", v.name)
@@ -5105,6 +5104,7 @@ func TestNvimClean(t *testing.T) {
 
 	p := NewParser()
 	emu := NewEmulator3(8, 4, 0)
+	emu.caps[CSI_U_QUERY] = "\x1b[0u"
 
 	util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
 	// util.Logger.CreateLogger(os.Stderr, false, util.LevelTrace)
@@ -5490,6 +5490,7 @@ func TestCSI_U(t *testing.T) {
 	for _, v := range tc {
 		p := NewParser()
 		emu := NewEmulator3(80, 40, 0)
+		emu.caps[CSI_U_QUERY] = "\x1b[0u"
 
 		var place strings.Builder
 		util.Logger.CreateLogger(&place, false, util.LevelTrace)
@@ -5533,5 +5534,84 @@ func TestCSI_U(t *testing.T) {
 				t.Errorf("%s expect %q in log\n%s", v.label, v.log, result)
 			}
 		})
+	}
+}
+
+func TestCSI_U_NotSupport(t *testing.T) {
+	tc := []struct {
+		label string
+		req   string
+		log   []string
+		hdIDs []int
+	}{
+		{
+			"query not support", "\x1b[?u",
+			[]string{"support=false", "CSI u query"},
+			[]int{CSI_U_SET},
+		},
+		{
+			"set not support", "\x1b[=4;3u",
+			[]string{"support=false", "CSI u set"},
+			[]int{CSI_U_SET},
+		},
+		{
+			"push not support", "\x1b[>2u",
+			[]string{"support=false", "CSI u push"},
+			[]int{CSI_U_PUSH},
+		},
+		{
+			"pop not support", "\x1b[<2u",
+			[]string{"support=false", "CSI u pop"},
+			[]int{CSI_U_POP},
+		},
+	}
+
+	for _, v := range tc {
+		p := NewParser()
+		emu := NewEmulator3(80, 40, 0)
+
+		var place strings.Builder
+		util.Logger.CreateLogger(&place, false, util.LevelTrace)
+
+		t.Run(v.label, func(t *testing.T) {
+			hds := p.ProcessStream(v.req)
+
+			// validate handler ID
+			if len(hds) != len(v.hdIDs) {
+				for i := range hds {
+					if i <= len(v.hdIDs)-1 && hds[i].id != v.hdIDs[i] {
+						t.Logf("%s: i=%d, got %s, expect =%s, seq=%q\n",
+							v.label, i, strHandlerID[hds[i].id], strHandlerID[v.hdIDs[i]], hds[i].sequence)
+					} else {
+						t.Logf("%s: i=%d, got %s, seq=%q\n",
+							v.label, i, strHandlerID[hds[i].id], hds[i].sequence)
+					}
+				}
+				t.Fatalf("%s got %d handlers, expect %d handlers", v.label, len(hds), len(v.hdIDs))
+			}
+
+			// run handler
+			for i := range hds {
+				hds[i].handle(emu)
+			}
+
+			result := place.String()
+
+			for i := 0; i < len(v.log); i++ {
+				if strings.Contains(result, v.log[i]) {
+					continue
+				} else {
+					t.Errorf("%s expect %q in log\n%s", v.label, v.log[i], result)
+				}
+			}
+		})
+	}
+}
+
+func TestProcessStream_Empty(t *testing.T) {
+	p := NewParser()
+	hds := p.ProcessStream("")
+	if len(hds) != 0 {
+		t.Errorf("ProcessStream expect empyt handlers, got %v\n", hds)
 	}
 }

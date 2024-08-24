@@ -534,6 +534,13 @@ func (emu *Emulator) GetParser() *Parser {
 	return emu.parser
 }
 
+func (emu *Emulator) Support(cap int) bool {
+	if _, ok := emu.caps[cap]; ok {
+		return true
+	}
+	return false
+}
+
 // check hander which will generate response. return true if excluded, otherwise false.
 //
 // hd: control sequence handler
@@ -547,7 +554,13 @@ func (emu *Emulator) excludeHandler(hd *Handler, before int, after int) bool {
 		return true
 	case OSC_4, OSC_10_11_12_17_19, CSI_DECRQM:
 		return true
-	case CSI_U_QUERY, CSI_U_PUSH, CSI_U_POP, CSI_U_SET:
+	case CSI_U_QUERY:
+		return true
+	case CSI_U_PUSH, CSI_U_POP, CSI_U_SET:
+		if emu.Support(CSI_U_QUERY) {
+			// special case: change local terminal emulator setting
+			return false
+		}
 		return true
 	case OSC_52: // special case: set OSC 52 data, then query it, the response will be updated.
 		if before != after {
