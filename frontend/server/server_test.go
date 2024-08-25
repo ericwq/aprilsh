@@ -737,8 +737,8 @@ func TestMainSrvStart(t *testing.T) {
 	for _, v := range tc {
 		t.Run(v.label, func(t *testing.T) {
 			// init log
-			// util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
-			util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
+			util.Logger.CreateLogger(io.Discard, true, slog.LevelDebug)
+			// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
 			srv := newMainSrv(&v.conf)
 
@@ -867,6 +867,9 @@ func mockClient(port string, pause int, action string, ex ...string) string {
 
 	defer conn.Close()
 
+	caps := map[int]string{1: "first", 2: "second"}
+	capsBuf := frontend.EncodeTerminalCaps(caps)
+
 	// send handshake message based on action & port
 	var txbuf []byte
 	switch action {
@@ -874,6 +877,8 @@ func mockClient(port string, pause int, action string, ex ...string) string {
 		switch len(ex) {
 		case 0:
 			txbuf = []byte(frontend.AprilshMsgOpen + "xterm," + getCurrentUser() + "@localhost")
+			txbuf = append(txbuf, ',')
+			txbuf = append(txbuf, capsBuf...)
 		case 1:
 			// the request missing the ','
 			txbuf = []byte(fmt.Sprintf("%s%s", frontend.AprilshMsgOpen, ex[0]))
@@ -2261,6 +2266,10 @@ func TestStartFail2(t *testing.T) {
 }
 
 func TestStartChildFail(t *testing.T) {
+	capsMap := map[int]string{1: "first", 2: "second"}
+	caps := string(frontend.EncodeTerminalCaps(capsMap))
+	// caps := "eyIxIjoiZmlyc3QiLCIyIjoic2Vjb25kIn0="
+
 	tc := []struct {
 		label  string
 		req    string
@@ -2268,22 +2277,22 @@ func TestStartChildFail(t *testing.T) {
 		conf   Config
 	}{
 		{
-			"destination without @", "a:b,cd",
+			"destination without @", "a:b,cd," + caps,
 			"open aprilsh:malform destination",
 			Config{desiredPort: "6510"},
 		},
 		{
-			"startShellProcess failed: DebugLevel", "open aprilsh:xterm-fake," + getCurrentUser() + "@fakehost",
+			"startShellProcess failed: DebugLevel", "open aprilsh:xterm-fake," + getCurrentUser() + "@fakehost," + caps,
 			"start child got key timeout",
 			Config{desiredPort: "6511", verbose: util.DebugVerbose},
 		},
 		{
-			"startShellProcess failed: TraceLevel", "open aprilsh:xterm-fake," + getCurrentUser() + "@fakehost",
+			"startShellProcess failed: TraceLevel", "open aprilsh:xterm-fake," + getCurrentUser() + "@fakehost," + caps,
 			"start child got key timeout",
 			Config{desiredPort: "6512", verbose: util.TraceVerbose},
 		},
 		{
-			"startShellProcess failed: addSource", "open aprilsh:xterm-fake," + getCurrentUser() + "@fakehost",
+			"startShellProcess failed: addSource", "open aprilsh:xterm-fake," + getCurrentUser() + "@fakehost," + caps,
 			"start child got key timeout",
 			Config{desiredPort: "6513", addSource: true},
 		},
@@ -2307,7 +2316,7 @@ func TestStartChildFail(t *testing.T) {
 			go func() {
 				defer wg.Done()
 
-				buf := make([]byte, 128)
+				buf := make([]byte, 131072)
 				shutdown := false
 				for {
 					select {
