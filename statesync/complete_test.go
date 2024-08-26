@@ -334,7 +334,7 @@ func TestDiffFrom(t *testing.T) {
 
 			t2.WriteString(c.Act(ss.String()))
 			if v.resp != t2.String() {
-				t.Errorf("%s: terminal response expect %q, got %q\n", v.label, v.resp, t2.String())
+				t.Errorf("%s: terminal response expect \n%q, got \n%q\n", v.label, v.resp, t2.String())
 			}
 
 			// util.Log.Debug("TestDiffFrom","point", 601)
