@@ -154,13 +154,13 @@ After read through `mosh` source code, I decide to rewrite it with golang. Go is
 
 There are several rules for this project:
 
-- Keep the base design of `mosh`: `SSP`, UDP, keystroke prediction.
+- Keep base design of `mosh`: `SSP`, UDP, keystroke prediction.
 - Use 3rd party library as less as possible to keep it clean.
 
 There are also some goals for this project:
 
 - Full UTF-8 support, including [emoji and flag](https://unicode.org/emoji/charts/emoji-list.html) support.
-- Support the terminal 24bit color.
+- Support terminal 24bit color.
 - Upgrade to [proto3](https://developers.google.com/protocol-buffers/docs/proto3)
 - Use terminfo database for better compatibility.
 - Prove golang is a good choice for terminal developing.
@@ -169,12 +169,11 @@ The project name `Aprilsh` is derived from `April+sh`. This project started in s
 
 ## Improvement
 
-- support large volumes of output generated from terminal application
-- prediction engine use server response frame number if server detect input response, otherwise fixed server timeout will be used as ack number
-- prediction engine allow ANSI cursor control sequence for application (e.g. htop up and down arrow key)
+- prediction engine prefer user input instead of timeout
 - prediction engine support chinese character
 - support [XTGETTCAP](https://github.com/ericwq/aprilsh/issues/88), [SGR 1006](https://github.com/ericwq/aprilsh/issues/91),  [synchronized output](https://github.com/ericwq/aprilsh/issues/89),  [OSC 8](https://github.com/ericwq/aprilsh/issues/87)
 - support htop arrow key (mosh has a bug)
+- support large volumes of output generated from terminal application (mosh has a bug)
 - plan to support `new` control sequence [CSI u](https://github.com/ericwq/aprilsh/issues/74)
 
 ## Architecture
