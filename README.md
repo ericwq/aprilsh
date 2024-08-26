@@ -6,12 +6,12 @@ Aprilsh: remote shell support intermittent or mobile network. Inspired by [mosh]
 #### Requirement
 
 - [open-ssh](https://www.openssh.com/) is a must requirement, sshd is required to perform user authentication.
-- [locale support](https://git.adelielinux.org/adelie/musl-locales/-/wikis/home) is a must requirement.
 - [ncurses and terminfo](https://invisible-island.net/ncurses/) is a must requirement.
 - [systmd](https://systemd.io/) is required by redhat linux family (fedora, centos, redhat).
-- [openrc](https://github.com/OpenRC/openrc) is required by alpine.
-- [utmps](https://skarnet.org/software/utmps/) is required by alpine
-- [logrotate](https://github.com/logrotate/logrotate) is required by alpine.
+- [openrc](https://github.com/OpenRC/openrc) is required by alpine linux.
+- [utmps](https://skarnet.org/software/utmps/) is required by alpine linux.
+- [logrotate](https://github.com/logrotate/logrotate) is a optional requirement by alpine.
+- [locale support](https://git.adelielinux.org/adelie/musl-locales/-/wikis/home) is a build requirement.
 
 If you prefer to build aprilsh manually, please refer to [this document](doc/install-alpine.md)
 
@@ -41,7 +41,7 @@ apk add aprilsh
 <!-- apk add aprilsh -->
 <!-- ``` -->
 
-Now you can ssh login to the server and the aprilsh is installed, it's time to start apshd server and login with apsh.
+Now you can ssh login to the server, it's time to start apshd server and login with apsh.
 
 ```sh
 # start apshd server
@@ -169,12 +169,12 @@ The project name `Aprilsh` is derived from `April+sh`. This project started in s
 
 ## Improvement
 
-- prediction engine prefer user input instead of timeout
+- prediction engine evaluate based on both user input response and server side timeout
 - prediction engine support chinese character
-- support [XTGETTCAP](https://github.com/ericwq/aprilsh/issues/88), [SGR 1006](https://github.com/ericwq/aprilsh/issues/91),  [synchronized output](https://github.com/ericwq/aprilsh/issues/89),  [OSC 8](https://github.com/ericwq/aprilsh/issues/87)
+- support [XTGETTCAP](https://github.com/ericwq/aprilsh/issues/88), [SGR 1006](https://github.com/ericwq/aprilsh/issues/91), [synchronized output](https://github.com/ericwq/aprilsh/issues/89), [OSC 8](https://github.com/ericwq/aprilsh/issues/87), [CSI u](https://github.com/ericwq/aprilsh/issues/74)
 - support htop arrow key (mosh has a bug)
 - support large volumes of output generated from terminal application (mosh has a bug)
-- plan to support `new` control sequence [CSI u](https://github.com/ericwq/aprilsh/issues/74)
+- plan to support [terminal query across multi-terminal emulator](https://github.com/ericwq/aprilsh/issues/95)
 
 ## Architecture
 
