@@ -557,11 +557,10 @@ func (emu *Emulator) excludeHandler(hd *Handler, before int, after int) bool {
 	case CSI_U_QUERY:
 		return true
 	case CSI_U_PUSH, CSI_U_POP, CSI_U_SET:
-		if emu.Support(CSI_U_QUERY) {
+		if !emu.Support(CSI_U_QUERY) {
 			// special case: change local terminal emulator setting
-			return false
+			return true
 		}
-		return true
 	case OSC_52: // special case: set OSC 52 data, then query it, the response will be updated.
 		if before != after {
 			return true

@@ -817,6 +817,69 @@ func TestFramebufferEqual(t *testing.T) {
 	}
 }
 
+func TestFramebufferEqual_caps(t *testing.T) {
+	tc := []struct {
+		label  string
+		stack1 []int
+		stack2 []int
+		log    []string
+		equal  bool
+	}{
+		{
+			"same stack",
+			[]int{},
+			[]int{},
+			[]string{},
+			true,
+		},
+		{
+			"different stack",
+			[]int{2},
+			[]int{},
+			[]string{"kittyKbd.data", "kittyKbd.max"},
+			false,
+		},
+	}
+
+	var output strings.Builder
+
+	util.Logger.CreateLogger(&output, true, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stdout, true, slog.LevelDebug)
+
+	for _, v := range tc {
+		fb1, _, _ := NewFramebuffer3(80, 40, 40)
+		fb2, _, _ := NewFramebuffer3(80, 40, 40)
+		output.Reset()
+
+		t.Run(v.label, func(t *testing.T) {
+			s1 := NewStack[int](len(v.stack1))
+			for i := range v.stack1 {
+				s1.Push(v.stack1[i])
+			}
+			fb1.kittyKbd = s1
+
+			s2 := NewStack[int](len(v.stack2))
+			for i := range v.stack2 {
+				s2.Push(v.stack2[i])
+			}
+			fb2.kittyKbd = s2
+
+			equal := fb1.equal(&fb2, false)
+			if equal != v.equal {
+				t.Errorf("%q expect %t, got %t\n", v.label, v.equal, equal)
+			}
+
+			fb1.equal(&fb2, true)
+			trace := output.String()
+			for i := range v.log {
+				if !strings.Contains(trace, v.log[i]) {
+					t.Errorf("%q equal trace expect \n%s, got \n%s\n", v.label, v.log[i], trace)
+				}
+			}
+		})
+	}
+}
+
 func TestGetRowsGap(t *testing.T) {
 	tc := []struct {
 		label string

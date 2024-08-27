@@ -724,6 +724,63 @@ func TestEmulatorEqual(t *testing.T) {
 	}
 }
 
+func TestEmulatorEqual_Caps(t *testing.T) {
+	tc := []struct {
+		caps1 map[int]string
+		caps2 map[int]string
+		label string
+		log   []string
+		equal bool
+	}{
+		{
+			map[int]string{CSI_U_QUERY: "fake"},
+			map[int]string{CSI_U_QUERY: "fake"},
+			"same caps",
+			[]string{},
+			true,
+		},
+		{
+			map[int]string{},
+			map[int]string{},
+			"empty caps",
+			[]string{},
+			true,
+		},
+		{
+			map[int]string{CSI_U_QUERY: "fake"},
+			map[int]string{},
+			"empty caps",
+			[]string{"caps="},
+			false,
+		},
+	}
+	var output strings.Builder
+	util.Logger.CreateLogger(&output, true, slog.LevelDebug)
+
+	for _, v := range tc {
+		emu1 := NewEmulator3(80, 40, 40)
+		emu1.SetTerminalCaps(v.caps1)
+		emu2 := NewEmulator3(80, 40, 40)
+		emu2.SetTerminalCaps(v.caps2)
+		output.Reset()
+
+		t.Run(v.label, func(t *testing.T) {
+			equal := emu1.Equal(emu2)
+			if equal != v.equal {
+				t.Errorf("%q expect %t, got %t\n", v.label, v.equal, equal)
+			}
+
+			emu1.EqualTrace(emu2)
+			trace := output.String()
+			for i := range v.log {
+				if !strings.Contains(trace, v.log[i]) {
+					t.Errorf("%q EqualTrace() expect \n%s, \ngot \n%s\n", v.label, v.log[i], trace)
+				}
+			}
+		})
+	}
+}
+
 func TestLargeStream(t *testing.T) {
 	// 读取文件内容
 	file, err := os.Open("../data/regret_poem.txt")
@@ -780,21 +837,57 @@ func TestLargeStream(t *testing.T) {
 
 func TestExcludeHandler(t *testing.T) {
 	tc := []struct {
-		label   string
-		seq     string
-		diff    string
-		hdsSize int
+		label     string
+		seq       string // input sequence for terminal (remote)
+		diff      string // pass to local terminal
+		writeBack string // terminal write back
+		hdsSize   int
+		caps      bool
 	}{
-		{"DSR", "\x1B[6nworld", "world", 6},
-		{"OSC 10x", "\x1B]10;?\x1B\\world", "world", 6},
-		{"VT52_ID", "\x1B[?2l\x1BZ", "\x1B[?2l", 2},
-		{"OSC 52 query selection", "\x1B]52;c0;5Zub5aeR5aiY5bGxCg==\x1B\\\x1B]52;c0;?\x1B\\", "\x1b]52;c0;5Zub5aeR5aiY5bGxCg==\x1b\\", 2},
+		{"DSR", "\x1B[6nworld", "world", "\x1b[1;1R", 6, false},
+		{"OSC 10x", "\x1B]10;?\x1B\\world", "world", "\x1b]10;rgb:0000/0000/0000\x1b\\", 6, false},
+		{"VT52_ID", "\x1B[?2l\x1BZ", "\x1B[?2l", "\x1b/Z", 2, false},
+		{
+			"OSC 52 query selection", "\x1B]52;c0;5Zub5aeR5aiY5bGxCg==\x1B\\\x1B]52;c0;?\x1B\\",
+			"\x1b]52;c0;5Zub5aeR5aiY5bGxCg==\x1b\\", "\x1b]52;c;5Zub5aeR5aiY5bGxCg==\x1b\\", 2, false,
+		},
+		{"CSI u query: not support", "\x1b[?u", "", "", 1, false},
+		{"CSI u query: support", "\x1b[?u", "", "\x1b[?0u", 1, true},
+		{"CSI u set: not support", "\x1b[=2;2u", "", "", 1, false},
+		{"CSI u push: support", "\x1b[>2u", "\x1b[>2u", "", 1, true},
 	}
 
-	// var output strings.Builder
+	util.Logger.CreateLogger(io.Discard, false, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stdout, true, slog.LevelDebug)
 
-	// util.Logger.CreateLogger(&output, true, slog.LevelDebug)
-	util.Logger.CreateLogger(os.Stdout, true, slog.LevelDebug)
+	for _, v := range tc {
+		emu := NewEmulator3(80, 40, 40)
+		if v.caps {
+			caps := map[int]string{CSI_U_QUERY: "support"}
+			emu.SetTerminalCaps(caps)
+		}
+		t.Run(v.label, func(t *testing.T) {
+			hds, diff := emu.HandleStream(v.seq)
+
+			if len(hds) != v.hdsSize {
+				t.Errorf("%q expct hds size %d, got %d\n", v.label, v.hdsSize, len(hds))
+			}
+
+			if diff != v.diff {
+				t.Errorf("%q expct diff %q, got %q\n", v.label, v.diff, diff)
+			}
+
+			writeBack := emu.ReadOctetsToHost()
+			if writeBack != v.writeBack {
+				t.Errorf("%q expect write back %q, got %q\n", v.label, v.writeBack, writeBack)
+			}
+		})
+	}
+}
+
+func TestSetLastRows(t *testing.T) {
+	util.Logger.CreateLogger(io.Discard, false, slog.LevelDebug)
+	// util.Logger.CreateLogger(os.Stdout, true, slog.LevelDebug)
 
 	emu := NewEmulator3(80, 40, 40)
 
@@ -811,20 +904,6 @@ func TestExcludeHandler(t *testing.T) {
 	got := emu.GetHeight()
 	if got != expect {
 		t.Errorf("%s expect %d, got %d\n", "GetHeight", expect, got)
-	}
-
-	// test large input
-	for _, v := range tc {
-		t.Run(v.label, func(t *testing.T) {
-			emu = NewEmulator3(80, 40, 40)
-			hds, diff := emu.HandleStream(v.seq)
-			if len(hds) != v.hdsSize {
-				t.Errorf("%q expct hds size %d, got %d\n", v.label, v.hdsSize, len(hds))
-			}
-			if diff != v.diff {
-				t.Errorf("%q expct diff %q, got %q\n", v.label, v.diff, diff)
-			}
-		})
 	}
 }
 
