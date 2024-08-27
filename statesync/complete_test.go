@@ -308,6 +308,10 @@ func TestDiffFrom(t *testing.T) {
 			a, _ := NewComplete(v.nCols, v.nRows, savedLines)
 			c, _ := NewComplete(v.nCols, v.nRows, savedLines)
 
+			caps := map[int]string{terminal.CSI_U_QUERY: "fake_query"}
+			a.GetEmulator().SetTerminalCaps(caps)
+			c.GetEmulator().SetTerminalCaps(caps)
+
 			// fmt.Printf("#TestDiffFrom point=%d\n", 333)
 			// assumed state prepare
 			var t2 strings.Builder

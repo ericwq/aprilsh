@@ -45,7 +45,7 @@ if [ "${_osType}" == 'Linux' ]; then
 fi
 go build -ldflags="$ldflags" -o $_dst/apsh ./frontend/client
 echo "build apsh  to    : $_dst"
-echo "run with          : $_dst/apsh -vv ide@localhost 2>>/tmp/apsh01.log"
+# echo "run with          : $_dst/apsh -vv ide@localhost 2>>/tmp/apsh01.log"
 
 # run test
 if [ "${_osType}" == 'Linux' ]; then
