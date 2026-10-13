@@ -134,7 +134,7 @@ func (lv *localeFlag) IsBoolFlag() bool {
 type Config struct {
 	locales localeFlag // localse environment variables
 	// the serve func
-	serve       func(*os.File, *os.File, *io.PipeWriter, *statesync.Complete, *network.Transport[*statesync.Complete, *statesync.UserStream], int64, int64, string) error
+	serve       func(*os.File, *os.File, *io.PipeWriter, *statesync.Complete, *network.Transport[*statesync.Complete, *statesync.UserStream], int64, int64, string, <-chan os.Signal) error
 	user        string   // target user
 	desiredIP   string   // server ip/host
 	desiredPort string   // server port
@@ -390,7 +390,7 @@ func beginChild(conf *Config) { //(port string, term string) {
 
 	// read the response
 	response := make([]byte, 128)
-	conn.SetDeadline(time.Now().Add(time.Millisecond * 200))
+	conn.SetReadDeadline(time.Now().Add(childStartupTimeout + time.Second))
 	m, _, err := conn.ReadFrom(response)
 	if err != nil {
 		fmt.Println(err)
@@ -402,6 +402,9 @@ func beginChild(conf *Config) { //(port string, term string) {
 
 const (
 	unixsockNetwork = "unixgram"
+	// Worker startup includes process scheduling, PTY and shell initialization.
+	// Allow slow machines to complete the handshake, but keep the wait bounded.
+	childStartupTimeout = 5 * time.Second
 )
 
 // "/tmp/aprilsh.sock"
@@ -795,7 +798,8 @@ func (m *mainSrv) startChild(req string, addr *net.UDPAddr, conf2 Config) {
 	// }(&conf2, m.exChan, m.whChan)
 
 	// timeout read key from worker
-	timer := time.NewTimer(time.Duration(145) * time.Millisecond)
+	timer := time.NewTimer(childStartupTimeout)
+	defer timer.Stop()
 	select {
 	case <-timer.C:
 		delete(m.workers, p) // clear failed worker
@@ -1587,6 +1591,7 @@ func startShellProcess(pts *os.File, pr *io.PipeReader, _ string, conf *Config) 
 func serve(ptmx *os.File, pts *os.File, pw *io.PipeWriter, complete *statesync.Complete, // waitChan chan bool,
 	server *network.Transport[*statesync.Complete, *statesync.UserStream],
 	networkTimeout int64, networkSignaledTimeout int64, user string,
+	sigChan <-chan os.Signal,
 ) error {
 	// scale timeouts
 	networkTimeoutMs := networkTimeout * 1000
@@ -1626,10 +1631,6 @@ func serve(ptmx *os.File, pts *os.File, pw *io.PipeWriter, complete *statesync.C
 		frontend.ReadFromFile(10, fileChan, fileDownChan, ptmx)
 		return nil
 	})
-
-	// intercept signal
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGUSR1, syscall.SIGINT, syscall.SIGTERM)
 
 	childReleased := false
 	largeFeed := make(chan string, 1)
@@ -1960,8 +1961,7 @@ mainLoop:
 		}
 	}
 
-	// stop signal and network
-	signal.Stop(sigChan)
+	// stop network
 	server.Close()
 
 	if !childReleased {
@@ -2109,6 +2109,12 @@ func runChild(conf *Config) (err error) {
 		}
 	*/
 
+	// Intercept shutdown signals before publishing the key. The parent may stop
+	// the worker immediately after the handshake, before serve starts running.
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGUSR1, syscall.SIGINT, syscall.SIGTERM)
+	defer signal.Stop(sigChan)
+
 	// send the key to run()
 	uxClient.send(fmt.Sprintf("%s:%s,%s", _KeyHeader, conf.desiredPort, server.GetKey()))
 	// exChan <- server.GetKey()
@@ -2156,7 +2162,7 @@ func runChild(conf *Config) (err error) {
 				util.Logger.Warn("runChild can't update utmp")
 			}
 		}
-		conf.serve(ptmx, pts, pw, terminal, server, networkTimeout, networkSignaledTimeout, conf.user)
+		conf.serve(ptmx, pts, pw, terminal, server, networkTimeout, networkSignaledTimeout, conf.user, sigChan)
 		uxClient.send(fmt.Sprintf("%s:%s,%s", _ServeHeader, conf.desiredPort, "shutdown"))
 
 		// clear utmp entry

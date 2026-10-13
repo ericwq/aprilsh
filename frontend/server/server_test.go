@@ -1255,6 +1255,7 @@ func TestMalformRequest(t *testing.T) {
 func mockServe(ptmx *os.File, pts *os.File, pw *io.PipeWriter, terminal *statesync.Complete, // x chan bool,
 	network *network.Transport[*statesync.Complete, *statesync.UserStream],
 	networkTimeout int64, networkSignaledTimeout int64, user string,
+	sigChan <-chan os.Signal,
 ) error {
 	time.Sleep(10 * time.Millisecond)
 	// x <- true
@@ -1281,11 +1282,10 @@ func failRunWorker(conf *Config, exChan chan string, whChan chan *workhorse) err
 
 func TestRunWorkerKillSignal(t *testing.T) {
 	tc := []struct {
-		label  string
-		resp   string // response client read
-		conf   Config
-		pause  int // pause between client send and read
-		finish int // pause before shutdown message
+		label string
+		resp  string // response client read
+		conf  Config
+		pause int // pause between client send and read
 	}{
 		{
 			"runWorker stopped by signal kill", frontend.AprilshMsgOpen + "7101,",
@@ -1294,7 +1294,7 @@ func TestRunWorkerKillSignal(t *testing.T) {
 				locales:     localeFlag{"LC_ALL": "en_US.UTF-8", "LANG": "en_US.UTF-8"},
 				commandPath: "/bin/sh", commandArgv: []string{"-sh"}, withMotd: true,
 			},
-			10, 150,
+			10,
 		},
 	}
 
@@ -1306,6 +1306,12 @@ func TestRunWorkerKillSignal(t *testing.T) {
 			os.Stdout = w
 
 			util.Logger.CreateLogger(w, true, slog.LevelDebug)
+			// Drain output while the server runs so verbose workers cannot fill the pipe.
+			drained := make(chan struct{})
+			go func() {
+				io.Copy(io.Discard, r)
+				close(drained)
+			}()
 			// util.Logger.CreateLogger(os.Stderr, true, slog.LevelDebug)
 
 			// set serve func and runWorker func
@@ -1317,13 +1323,6 @@ func TestRunWorkerKillSignal(t *testing.T) {
 			v.conf.commandPath = os.Getenv("SHELL")
 			v.conf.commandArgv = []string{getShellNameFrom(v.conf.commandPath)}
 
-			// send kill signal after some time (finish ms)
-			timer1 := time.NewTimer(time.Duration(v.finish) * time.Millisecond)
-			go func() {
-				<-timer1.C
-				srv.downChan <- true
-			}()
-
 			srv.start(&v.conf)
 
 			// mock client operation
@@ -1332,14 +1331,61 @@ func TestRunWorkerKillSignal(t *testing.T) {
 				t.Errorf("#test run expect %q got %q\n", v.resp, resp)
 			}
 
+			// Stop only after the startup handshake, not after a fixed scheduling delay.
+			srv.downChan <- true
 			srv.wait()
 
 			// restore stdout
 			w.Close()
-			io.ReadAll(r)
+			<-drained
 			os.Stdout = saveStdout
 			r.Close()
 		})
+	}
+}
+
+// A slow worker must not make the request-side handshake expire first.
+func TestBeginChildDelayedResponse(t *testing.T) {
+	conn, err := net.ListenPacket("udp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	conn.SetDeadline(time.Now().Add(10 * time.Second))
+
+	done := make(chan error, 1)
+	const response = "open aprilsh:7101,test-key\n"
+	go func() {
+		buf := make([]byte, 1024)
+		_, addr, err := conn.ReadFrom(buf)
+		if err == nil {
+			// Exceed the old 200ms request timeout.
+			time.Sleep(300 * time.Millisecond)
+			_, err = conn.WriteTo([]byte(response), addr)
+		}
+		done <- err
+	}()
+
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	old := os.Stdout
+	os.Stdout = w
+	defer func() { os.Stdout = old }()
+	port := strconv.Itoa(conn.LocalAddr().(*net.UDPAddr).Port)
+	beginChild(&Config{desiredPort: port, term: "xterm", destination: "user@localhost"})
+	w.Close()
+	out, err := io.ReadAll(r)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	if string(out) != response {
+		t.Fatalf("expected %q, got %q", response, out)
 	}
 }
 
